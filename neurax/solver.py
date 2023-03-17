@@ -15,7 +15,7 @@ def solve_branched(
     triang_branch_fn: Callable,
     backsub_branch_fn: Callable,
 ):
-    diags, solves = triang_branched(
+    diags, uppers, solves = triang_branched(
         levels, parents, lowers, diags, uppers, solves, branch_cond, triang_branch_fn
     )
     solves = backsub_branched(
@@ -36,14 +36,14 @@ def triang_branched(
 ):
     for level in range(np.max(levels), -1, -1):
 
-        diags, solves = _triang_level(
+        diags, uppers, solves = _triang_level(
             level, levels, lowers, diags, uppers, solves, triang_branch_fn
         )
         diags, solves = _eliminate_parents_upper(
             level, levels, parents, diags, solves, branch_cond
         )
 
-    return diags, solves
+    return diags, uppers, solves
 
 
 def backsub_branched(
@@ -65,11 +65,11 @@ def _triang_level(level, levels, lowers, diags, uppers, solves, triang_branch_fn
     num_branches = len(levels)
     for b in range(num_branches):
         if levels[b] == level:
-            diags[b], solves[b] = triang_branch_fn(
+            diags[b], uppers[b], solves[b] = triang_branch_fn(
                 lowers[b], diags[b], uppers[b], solves[b]
             )
 
-    return diags, solves
+    return diags, uppers, solves
 
 
 def _backsub_level(level, levels, diags, uppers, solves, backsub_branch_fn):
