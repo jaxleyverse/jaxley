@@ -84,7 +84,7 @@ def _backsub_level(level, levels, diags, uppers, solves, backsub_branch_fn):
 def _eliminate_parents_upper(level, levels, parents, diags, solves, branch_cond):
     num_branches = len(levels)
     for b in range(num_branches):
-        if levels[b] == level and parents[b] is not None:
+        if levels[b] == level and parents[b] > -1:
             last_of_3 = diags[b][-1]
             last_of_3_solve = solves[b][-1]
 
@@ -106,7 +106,7 @@ def _eliminate_parents_upper(level, levels, parents, diags, solves, branch_cond)
 def _eliminate_children_lower(level, levels, parents, solves, branch_cond):
     num_branches = len(levels)
     for b in range(num_branches):
-        if levels[b] == level and parents[b] is not None:
+        if levels[b] == level and parents[b] > -1:
             solves[b] = (
                 solves[b]
                 .at[-1]
