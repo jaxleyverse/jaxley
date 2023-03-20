@@ -1,5 +1,3 @@
-from typing import Callable
-
 import jax.numpy as jnp
 from jax import vmap
 from tridiax.thomas import thomas_triang, thomas_backsub
@@ -13,6 +11,9 @@ def solve_branched(
     solves,
     branch_cond,
 ):
+    """
+    Solve branched.
+    """
     diags, uppers, solves = triang_branched(
         parents, lowers, diags, uppers, solves, branch_cond
     )
@@ -28,6 +29,9 @@ def triang_branched(
     solves,
     branch_cond,
 ):
+    """
+    Triang.
+    """
     branches_in_each_level = [jnp.asarray([1, 2]), jnp.asarray([0])]
     for bil in branches_in_each_level:
         diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
@@ -45,6 +49,9 @@ def backsub_branched(
     solves,
     branch_cond,
 ):
+    """
+    Backsub.
+    """
     branches_in_each_level = [jnp.asarray([0]), jnp.asarray([1, 2])]
     for bil in branches_in_each_level:
         solves = _eliminate_children_lower(bil, parents, solves, branch_cond)
