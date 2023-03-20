@@ -4,6 +4,7 @@ from tridiax.thomas import thomas_triang, thomas_backsub
 
 
 def solve_branched(
+    branches_in_each_level,
     parents,
     lowers,
     diags,
@@ -15,13 +16,22 @@ def solve_branched(
     Solve branched.
     """
     diags, uppers, solves = triang_branched(
-        parents, lowers, diags, uppers, solves, branch_cond
+        branches_in_each_level,
+        parents,
+        lowers,
+        diags,
+        uppers,
+        solves,
+        branch_cond,
     )
-    solves = backsub_branched(parents, diags, uppers, solves, branch_cond)
+    solves = backsub_branched(
+        branches_in_each_level, parents, diags, uppers, solves, branch_cond
+    )
     return solves
 
 
 def triang_branched(
+    branches_in_each_level,
     parents,
     lowers,
     diags,
@@ -32,21 +42,21 @@ def triang_branched(
     """
     Triang.
     """
-    branches_in_each_level = [jnp.asarray([1, 2]), jnp.asarray([0])]
-    for bil in branches_in_each_level[:-1]:
+    for bil in reversed(branches_in_each_level[1:]):
         diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
         diags, solves = _eliminate_parents_upper(
             bil, parents, diags, solves, branch_cond
         )
     # At last level, we do not want to eliminate anymore.
     diags, uppers, solves = _triang_level(
-        branches_in_each_level[-1], lowers, diags, uppers, solves
+        branches_in_each_level[0], lowers, diags, uppers, solves
     )
 
     return diags, uppers, solves
 
 
 def backsub_branched(
+    branches_in_each_level,
     parents,
     diags,
     uppers,
@@ -56,8 +66,6 @@ def backsub_branched(
     """
     Backsub.
     """
-    branches_in_each_level = [jnp.asarray([0]), jnp.asarray([1, 2])]
-
     # At first level, we do not want to eliminate.
     solves = _backsub_level(branches_in_each_level[0], diags, uppers, solves)
     for bil in branches_in_each_level[1:]:
