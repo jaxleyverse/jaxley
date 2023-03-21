@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from neurax.utils.solver_utils import compute_levels
 
 
 def _compute_num_kids(parents):
@@ -24,6 +25,7 @@ def _compute_index_of_kid(parents):
 def plot_morph(parents):
     num_kids = _compute_num_kids(parents)
     index_of_kid = _compute_index_of_kid(parents)
+    levels = compute_levels(parents)
     num_branches = len(parents)
     x_fig = 6.0
     y_fig = 4.0
@@ -36,7 +38,7 @@ def plot_morph(parents):
     for b in range(1, num_branches):
         start_point = endpoints[parents[b]]
         num_kids_of_parent = num_kids[parents[b]]
-        y_offset = (((index_of_kid[b] / (num_kids_of_parent - 1))) - 0.5) * 2.0
+        y_offset = (((index_of_kid[b] / (num_kids_of_parent - 1))) - 0.5) * 1.0
         len_of_path = np.sqrt(y_offset**2 + 1.0)
         end_point = [
             start_point[0] + 1.0 / len_of_path,
@@ -53,7 +55,28 @@ def plot_morph(parents):
     ax.set_xticks([])
     ax.spines["top"].set_visible(False)
     ax.set_yticks([])
-    ax.set_xlim([0, 5])
-    len_y = 5.0 * y_fig / x_fig
+    x_plot_size = np.max(levels) + 1
+    ax.set_xlim([0, x_plot_size])
+    len_y = x_plot_size * y_fig / x_fig
     ax.set_ylim([-len_y / 2, len_y / 2])
-    plt.show()
+
+
+# Correct:
+# ```
+# if b == 0:
+#     num_neighbours_in_branch = num_neighbours_in_branch.at[-1].set(1.0)
+#     num_neighbours_in_branch = num_neighbours_in_branch.at[0].set(3.0)
+# elif b == 1:
+#     num_neighbours_in_branch = num_neighbours_in_branch.at[0].set(4.0)
+# elif b == 4:
+#     num_neighbours_in_branch = num_neighbours_in_branch.at[0].set(3.0)
+# elif b in [2, 3, 5, 6, 7]:
+#     num_neighbours_in_branch = num_neighbours_in_branch.at[0].set(1.0)
+# ```
+
+# print("parent_inds", parent_inds)
+# for j in range(7):
+#     c = child_inds[j]
+#     p = parent_inds[j]
+#     i_ax_br = i_ax_br.at[c].set((voltages[p] - voltages[c]) * coupling_conds)
+#     i_ax_br = i_ax_br.at[p].set((voltages[c] - voltages[p]) * coupling_conds)
