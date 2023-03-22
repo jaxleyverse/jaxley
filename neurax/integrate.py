@@ -10,7 +10,7 @@ NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 
 
-def solve(cell, dt, u, params, stimulus):
+def solve(cell, init, params, stimulus, t_max, dt: float = 0.025):
     """
     Solve function.
     """
@@ -20,12 +20,13 @@ def solve(cell, dt, u, params, stimulus):
     NUM_BRANCHES = cell.num_branches
     NSEG_PER_BRANCH = cell.nseg_per_branch
 
-    saveat = jnp.zeros((1_000,))
+    num_time_steps = int(t_max / dt)
+    saveat = jnp.zeros((num_time_steps,))
 
     t = 0.0
     init_state = (
         t,
-        u,
+        init,
         params,
         stimulus.i_delay,
         stimulus.i_amp,
@@ -40,7 +41,7 @@ def solve(cell, dt, u, params, stimulus):
         saveat,
     )
 
-    final_state = lax.fori_loop(0, 1_000, body_fun, init_state)
+    final_state = lax.fori_loop(0, num_time_steps, body_fun, init_state)
     return final_state[-1]
 
 
