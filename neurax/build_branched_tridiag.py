@@ -53,48 +53,6 @@ def define_all_tridiags(
     )
 
 
-def get_external_input(
-    voltages: jnp.ndarray,
-    t: float,
-    i_dur: float,
-    i_amp: float,
-    radius: float,
-    length_single_compartment: float,
-    nseg_per_branch: int,
-):
-    """
-    Compute external input to each compartment.
-    """
-    zero_vec = jnp.zeros_like(voltages)
-    stim_on = jnp.greater_equal(t, 5.0)
-    stim_off = jnp.less_equal(t, 5.0 + i_dur)
-    stim_ = jnp.logical_and(stim_on, stim_off)
-    current_in_comp = i_amp / 2 / pi / radius / length_single_compartment
-    external_currents = lax.cond(
-        stim_,
-        lambda x: x.at[nseg_per_branch - 1].set(current_in_comp),
-        lambda x: x,
-        zero_vec,
-    )
-    return external_currents
-
-
-def get_num_neighbours(
-    num_kids: jnp.ndarray,
-    nseg_per_branch: int,
-    num_branches: int,
-):
-    """
-    Number of neighbours of each compartment.
-    """
-    num_neighbours = 2 * jnp.ones((num_branches * nseg_per_branch))
-    num_neighbours = num_neighbours.at[nseg_per_branch - 1].set(1.0)
-    num_neighbours = num_neighbours.at[jnp.arange(num_branches) * nseg_per_branch].set(
-        num_kids + 1.0
-    )
-    return num_neighbours
-
-
 def _define_tridiag_for_branch(
     voltages: jnp.ndarray,
     na_conds: jnp.ndarray,

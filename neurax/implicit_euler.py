@@ -1,11 +1,10 @@
-from typing import Callable
-
 import jax.numpy as jnp
 from jax import vmap
 from tridiax.thomas import thomas_triang, thomas_backsub
 
 
 def solve_branched(
+    branches_in_each_level,
     parents,
     lowers,
     diags,
@@ -13,14 +12,26 @@ def solve_branched(
     solves,
     branch_cond,
 ):
+    """
+    Solve branched.
+    """
     diags, uppers, solves = triang_branched(
-        parents, lowers, diags, uppers, solves, branch_cond
+        branches_in_each_level,
+        parents,
+        lowers,
+        diags,
+        uppers,
+        solves,
+        branch_cond,
     )
-    solves = backsub_branched(parents, diags, uppers, solves, branch_cond)
+    solves = backsub_branched(
+        branches_in_each_level, parents, diags, uppers, solves, branch_cond
+    )
     return solves
 
 
 def triang_branched(
+    branches_in_each_level,
     parents,
     lowers,
     diags,
@@ -28,25 +39,36 @@ def triang_branched(
     solves,
     branch_cond,
 ):
-    branches_in_each_level = [jnp.asarray([1, 2]), jnp.asarray([0])]
-    for bil in branches_in_each_level:
+    """
+    Triang.
+    """
+    for bil in reversed(branches_in_each_level[1:]):
         diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
         diags, solves = _eliminate_parents_upper(
             bil, parents, diags, solves, branch_cond
         )
+    # At last level, we do not want to eliminate anymore.
+    diags, uppers, solves = _triang_level(
+        branches_in_each_level[0], lowers, diags, uppers, solves
+    )
 
     return diags, uppers, solves
 
 
 def backsub_branched(
+    branches_in_each_level,
     parents,
     diags,
     uppers,
     solves,
     branch_cond,
 ):
-    branches_in_each_level = [jnp.asarray([0]), jnp.asarray([1, 2])]
-    for bil in branches_in_each_level:
+    """
+    Backsub.
+    """
+    # At first level, we do not want to eliminate.
+    solves = _backsub_level(branches_in_each_level[0], diags, uppers, solves)
+    for bil in branches_in_each_level[1:]:
         solves = _eliminate_children_lower(bil, parents, solves, branch_cond)
         solves = _backsub_level(bil, diags, uppers, solves)
     return solves
@@ -66,7 +88,7 @@ def _triang_level(branches_in_level, lowers, diags, uppers, solves):
 
 def _backsub_level(branches_in_level, diags, uppers, solves):
     bil = branches_in_level
-    solves.at[bil].set(
+    solves = solves.at[bil].set(
         vmap(thomas_backsub, in_axes=(0, 0, 0))(solves[bil], uppers[bil], diags[bil])
     )
     return solves
