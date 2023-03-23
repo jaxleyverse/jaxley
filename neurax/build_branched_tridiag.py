@@ -1,6 +1,6 @@
 from math import pi
 import jax.numpy as jnp
-from jax import lax
+from jax import lax, vmap
 
 
 def define_all_tridiags(
@@ -19,38 +19,29 @@ def define_all_tridiags(
     Set up tridiagonal system for each branch.
     """
     lowers, diags, uppers, solves = [], [], [], []
-    for b in range(num_branches):
-        l_ind = b * nseg_per_branch
-        u_ind = (b + 1) * nseg_per_branch
-        voltages_in_branch = voltages[l_ind:u_ind]
-        na_conds_in_branch = na_conds[l_ind:u_ind]
-        kd_conds_in_branch = kd_conds[l_ind:u_ind]
-        leak_conds_in_branch = leak_conds[l_ind:u_ind]
-        i_ext_in_branch = i_ext[l_ind:u_ind]
-        num_neighbours_in_branch = num_neighbours[l_ind:u_ind]
 
-        lower, diag, upper, solve = _define_tridiag_for_branch(
-            voltages=voltages_in_branch,
-            na_conds=na_conds_in_branch,
-            kd_conds=kd_conds_in_branch,
-            leak_conds=leak_conds_in_branch,
-            i_ext=i_ext_in_branch,
-            dt=dt,
-            num_neighbours=num_neighbours_in_branch,
-            coupling_conds=coupling_conds,
-            nseg_per_branch=nseg_per_branch,
-        )
-        lowers.append(lower)
-        diags.append(diag)
-        uppers.append(upper)
-        solves.append(solve)
+    voltages = jnp.reshape(voltages, (num_branches, -1))
+    na_conds = jnp.reshape(na_conds, (num_branches, -1))
+    kd_conds = jnp.reshape(kd_conds, (num_branches, -1))
+    leak_conds = jnp.reshape(leak_conds, (num_branches, -1))
+    i_ext = jnp.reshape(i_ext, (num_branches, -1))
+    num_neighbours = jnp.reshape(num_neighbours, (num_branches, -1))
 
-    return (
-        jnp.asarray(lowers),
-        jnp.asarray(diags),
-        jnp.asarray(uppers),
-        jnp.asarray(solves),
+    lowers, diags, uppers, solves = vmap(
+        _define_tridiag_for_branch, in_axes=(0, 0, 0, 0, 0, None, 0, None, None)
+    )(
+        voltages,
+        na_conds,
+        kd_conds,
+        leak_conds,
+        i_ext,
+        dt,
+        num_neighbours,
+        coupling_conds,
+        nseg_per_branch,
     )
+
+    return (lowers, diags, uppers, solves)
 
 
 def _define_tridiag_for_branch(
