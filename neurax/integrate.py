@@ -9,13 +9,14 @@ from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.solver_gate import solve_gate_exponential, solve_gate_implicit
 from neurax.stimulus import get_external_input
+from neurax.utils.cell_utils import index_of_loc
 
 
 NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 
 
-def solve(cell, init, params, stimulus, t_max, dt: float = 0.025):
+def solve(cell, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     """
     Solve function.
     """
@@ -25,20 +26,27 @@ def solve(cell, init, params, stimulus, t_max, dt: float = 0.025):
     NUM_BRANCHES = cell.num_branches
     NSEG_PER_BRANCH = cell.nseg_per_branch
 
-    num_time_steps = int(t_max / dt)
-    saveat = jnp.zeros((2, num_time_steps))
+    num_recordings = len(recordings)
+    num_time_steps = int(t_max / dt) + 1
+    saveat = jnp.zeros((num_recordings, num_time_steps))
 
-    saveat = saveat.at[0, 0].set(init[4 * (NSEG_PER_BRANCH - 1)])
-    saveat = saveat.at[1, 0].set(init[0])
+    num_states = 4
+    rec_inds = [index_of_loc(r.branch_ind, r.loc, cell.nseg_per_branch) for r in recordings]
+    rec_inds = jnp.asarray(rec_inds) * num_states
+    stim_inds = [index_of_loc(s.branch_ind, s.loc, cell.nseg_per_branch) for s in stimuli]
+    stim_inds = jnp.asarray(stim_inds)
+    stim_currents = jnp.asarray([s.current for s in stimuli])
+
+    # Save voltage at the beginning.
+    saveat = saveat.at[:, 0].set(init[rec_inds])
 
     t = 0.0
     init_state = (
         t,
         init,
         params,
-        stimulus.i_delay,
-        stimulus.i_amp,
-        stimulus.i_dur,
+        stim_inds,
+        stim_currents,
         dt,
         cell.radius,
         cell.length_single_compartment,
@@ -47,19 +55,19 @@ def solve(cell, init, params, stimulus, t_max, dt: float = 0.025):
         cell.branches_in_each_level,
         cell.parents,
         saveat,
+        rec_inds,
     )
 
     final_state = lax.fori_loop(0, num_time_steps, body_fun, init_state)
-    return final_state[-1]
+    return final_state[-2]
 
 
 def find_root(
     t,
     u,
     params,
-    i_delay,
-    i_amp,
-    i_dur,
+    i_inds,
+    i_stim,
     dt,
     radius,
     length_single_compartment,
@@ -85,13 +93,10 @@ def find_root(
     # External input
     i_ext = get_external_input(
         voltages=voltages,
-        t=t,
-        i_delay=i_delay,
-        i_dur=i_dur,
-        i_amp=i_amp,
+        i_inds=i_inds,
+        i_stim=i_stim,
         radius=radius,
         length_single_compartment=length_single_compartment,
-        nseg_per_branch=NSEG_PER_BRANCH,
     )
     lowers, diags, uppers, solves = define_all_tridiags(
         voltages,
@@ -127,9 +132,8 @@ def body_fun(i, state):
         t,
         u_inner,
         params,
-        i_delay,
-        i_amp,
-        i_dur,
+        i_inds,
+        i_stim,
         dt,
         radius,
         length_single_compartment,
@@ -138,15 +142,15 @@ def body_fun(i, state):
         branches_in_each_level,
         parents,
         saveat,
+        rec_inds,
     ) = state
 
     u_inner = find_root(
         t,
         u_inner,
         params,
-        i_delay,
-        i_amp,
-        i_dur,
+        i_inds,
+        i_stim[:, i],
         dt,
         radius,
         length_single_compartment,
@@ -157,16 +161,14 @@ def body_fun(i, state):
     )
     t += dt
 
-    saveat = saveat.at[0, i + 1].set(u_inner[4 * (NSEG_PER_BRANCH - 1)])
-    saveat = saveat.at[1, i + 1].set(u_inner[0])
+    saveat = saveat.at[:, i + 1].set(u_inner[rec_inds])
 
     return (
         t,
         u_inner,
         params,
-        i_delay,
-        i_amp,
-        i_dur,
+        i_inds,
+        i_stim,
         dt,
         radius,
         length_single_compartment,
@@ -175,4 +177,5 @@ def body_fun(i, state):
         branches_in_each_level,
         parents,
         saveat,
+        rec_inds,
     )

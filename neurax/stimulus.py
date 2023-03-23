@@ -5,34 +5,40 @@ from jax import lax
 
 
 class Stimulus:
-    def __init__(self, i_delay, i_dur, i_amp):
-        self.i_delay = i_delay
-        self.i_dur = i_dur
-        self.i_amp = i_amp
+    def __init__(self, branch_ind, loc, current: jnp.ndarray):
+        """
+        Args:
+            current: Time series of the current.
+        """
+        self.branch_ind = branch_ind
+        self.loc = loc
+        self.current = current
+
+
+def step_current(
+    i_delay: float,
+    i_dur: float,
+    i_amp: float,
+    time_vec: jnp.asarray,
+):
+    zero_vec = jnp.zeros_like(time_vec)
+    stim_on = jnp.greater_equal(time_vec, i_delay)
+    stim_off = jnp.less_equal(time_vec, i_delay + i_dur)
+    protocol_on = jnp.logical_and(stim_on, stim_off)
+    return zero_vec.at[protocol_on].set(i_amp)
 
 
 def get_external_input(
     voltages: jnp.ndarray,
-    t: float,
-    i_delay: float,
-    i_dur: float,
-    i_amp: float,
+    i_inds: jnp.ndarray,
+    i_stim: jnp.ndarray, 
     radius: float,
     length_single_compartment: float,
-    nseg_per_branch: int,
 ):
     """
     Compute external input to each compartment.
     """
     zero_vec = jnp.zeros_like(voltages)
-    stim_on = jnp.greater_equal(t, i_delay)
-    stim_off = jnp.less_equal(t, i_delay + i_dur)
-    stim_ = jnp.logical_and(stim_on, stim_off)
-    current_in_comp = i_amp / 2 / pi / radius / length_single_compartment
-    external_currents = lax.cond(
-        stim_,
-        lambda x: x.at[nseg_per_branch - 1].set(current_in_comp),
-        lambda x: x,
-        zero_vec,
-    )
-    return external_currents
+    current = i_stim / 2 / pi / radius / length_single_compartment
+    stim_at_timestep = zero_vec.at[i_inds].set(current)
+    return stim_at_timestep
