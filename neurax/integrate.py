@@ -112,7 +112,7 @@ def find_root(
         diags,
         uppers,
         solves,
-        0.0,  # -dt * coupling_conds,
+        -dt * coupling_conds,
     )
     new_v = jnp.concatenate(solves)
 
