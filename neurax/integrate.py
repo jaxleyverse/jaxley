@@ -1,8 +1,13 @@
 from jax import lax
 import jax.numpy as jnp
-from neurax.mechanisms import solve_gate_implicit, m_gate, h_gate, n_gate
+from neurax.mechanisms.hh_neuron import (
+    m_gate,
+    h_gate,
+    n_gate,
+)
 from neurax.build_branched_tridiag import define_all_tridiags
-from neurax.implicit_euler import solve_branched
+from neurax.solver_voltage import solve_branched
+from neurax.solver_gate import solve_gate_exponential, solve_gate_implicit
 from neurax.stimulus import get_external_input
 
 
@@ -21,7 +26,10 @@ def solve(cell, init, params, stimulus, t_max, dt: float = 0.025):
     NSEG_PER_BRANCH = cell.nseg_per_branch
 
     num_time_steps = int(t_max / dt)
-    saveat = jnp.zeros((num_time_steps,))
+    saveat = jnp.zeros((2, num_time_steps))
+
+    saveat = saveat.at[0, 0].set(init[4 * (NSEG_PER_BRANCH - 1)])
+    saveat = saveat.at[1, 0].set(init[0])
 
     t = 0.0
     init_state = (
@@ -66,9 +74,9 @@ def find_root(
     hs = u[2::4]
     ns = u[3::4]
 
-    new_m = solve_gate_implicit(ms, dt, *m_gate(voltages))
-    new_h = solve_gate_implicit(hs, dt, *h_gate(voltages))
-    new_n = solve_gate_implicit(ns, dt, *n_gate(voltages))
+    new_m = solve_gate_exponential(ms, dt, *m_gate(voltages))
+    new_h = solve_gate_exponential(hs, dt, *h_gate(voltages))
+    new_n = solve_gate_exponential(ns, dt, *n_gate(voltages))
 
     na_conds = params[::3] * (ms**3) * hs
     kd_conds = params[1::3] * ns**4
@@ -104,7 +112,7 @@ def find_root(
         diags,
         uppers,
         solves,
-        -dt * coupling_conds,
+        0.0,  # -dt * coupling_conds,
     )
     new_v = jnp.concatenate(solves)
 
@@ -149,7 +157,8 @@ def body_fun(i, state):
     )
     t += dt
 
-    saveat = saveat.at[i].set(u_inner[0])
+    saveat = saveat.at[0, i + 1].set(u_inner[4 * (NSEG_PER_BRANCH - 1)])
+    saveat = saveat.at[1, i + 1].set(u_inner[0])
 
     return (
         t,

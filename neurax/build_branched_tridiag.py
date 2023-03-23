@@ -68,7 +68,7 @@ def _define_tridiag_for_branch(
     Defines the tridiagonal system to solve for a single branch.
     """
     voltage_terms = na_conds + kd_conds + leak_conds
-    constant_terms = 50.0 * na_conds + (-90.0) * kd_conds + (-65.0) * leak_conds + i_ext
+    constant_terms = 50.0 * na_conds + (-77.0) * kd_conds + (-54.3) * leak_conds + i_ext
 
     # Diagonal and solve.
     a_v = 1.0 + dt * voltage_terms + dt * num_neighbours * coupling_conds
