@@ -1,13 +1,8 @@
 from jax import lax
 import jax.numpy as jnp
-from neurax.mechanisms.hh_neuron import (
-    m_gate,
-    h_gate,
-    n_gate,
-)
+from neurax.mechanisms.hh_neuron import hh_neuron_gate
 from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
-from neurax.solver_gate import solve_gate_exponential, solve_gate_implicit
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
 
@@ -31,9 +26,13 @@ def solve(cell, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     saveat = jnp.zeros((num_recordings, num_time_steps))
 
     num_states = 4
-    rec_inds = [index_of_loc(r.branch_ind, r.loc, cell.nseg_per_branch) for r in recordings]
+    rec_inds = [
+        index_of_loc(r.branch_ind, r.loc, cell.nseg_per_branch) for r in recordings
+    ]
     rec_inds = jnp.asarray(rec_inds) * num_states
-    stim_inds = [index_of_loc(s.branch_ind, s.loc, cell.nseg_per_branch) for s in stimuli]
+    stim_inds = [
+        index_of_loc(s.branch_ind, s.loc, cell.nseg_per_branch) for s in stimuli
+    ]
     stim_inds = jnp.asarray(stim_inds)
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
@@ -76,20 +75,14 @@ def find_root(
     branches_in_each_level,
     parents,
 ):
-
     voltages = u[::4]  # mV
     ms = u[1::4]
     hs = u[2::4]
     ns = u[3::4]
 
-    new_m = solve_gate_exponential(ms, dt, *m_gate(voltages))
-    new_h = solve_gate_exponential(hs, dt, *h_gate(voltages))
-    new_n = solve_gate_exponential(ns, dt, *n_gate(voltages))
-
-    # Multiply with 1000 to convert Siemens to milli Siemens.
-    na_conds = params[::3] * (ms**3) * hs * 1000  # mS/cm^2
-    kd_conds = params[1::3] * ns**4 * 1000 # mS/cm^2
-    leak_conds = params[2::3] * 1000 # mS/cm^2
+    membrane_current_terms, states = hh_neuron_gate(voltages, (ms, hs, ns), dt, params)
+    new_m, new_h, new_n = states
+    voltage_terms, constant_terms = membrane_current_terms
 
     # External input
     i_ext = get_external_input(
@@ -101,10 +94,8 @@ def find_root(
     )
     lowers, diags, uppers, solves = define_all_tridiags(
         voltages,
-        na_conds,
-        kd_conds,
-        leak_conds=leak_conds,
-        i_ext=i_ext,
+        voltage_terms,
+        i_ext=i_ext + constant_terms,
         num_neighbours=num_neighbours,
         nseg_per_branch=NSEG_PER_BRANCH,
         num_branches=NUM_BRANCHES,
