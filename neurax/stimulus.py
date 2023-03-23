@@ -21,6 +21,9 @@ def step_current(
     i_amp: float,
     time_vec: jnp.asarray,
 ):
+    """
+    Return step current in unit nA.
+    """
     zero_vec = jnp.zeros_like(time_vec)
     stim_on = jnp.greater_equal(time_vec, i_delay)
     stim_off = jnp.less_equal(time_vec, i_delay + i_dur)
@@ -36,9 +39,13 @@ def get_external_input(
     length_single_compartment: float,
 ):
     """
-    Compute external input to each compartment.
+    Return external input to each compartment in uA / cm^2.
     """
     zero_vec = jnp.zeros_like(voltages)
-    current = i_stim / 2 / pi / radius / length_single_compartment
+    # `radius`: um
+    # `length_single_compartment`: um
+    # `i_stim`: nA
+    current = i_stim / 2 / pi / radius / length_single_compartment  # nA / um^2
+    current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
     stim_at_timestep = zero_vec.at[i_inds].set(current)
     return stim_at_timestep

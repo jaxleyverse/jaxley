@@ -3,17 +3,21 @@ import jax.numpy as jnp
 
 
 class Cell:
-    def __init__(self, num_branches, parents, nseg_per_branch, length, radius, r_l):
+    def __init__(self, num_branches, parents, nseg_per_branch, length, radius, r_a):
         self.num_branches = num_branches
         self.parents = parents
         self.nseg_per_branch = nseg_per_branch
         self.length_single_compartment = length / nseg_per_branch
         self.radius = radius
-        self.r_l = r_l
+        self.r_a = r_a
 
+        # `radius`: um
+        # `r_a`: ohm cm
+        # `length_single_compartment`: um
         self.coupling_conds = (
-            self.radius / 2.0 / self.r_l / self.length_single_compartment**2
-        )
+            self.radius / 2.0 / self.r_a / self.length_single_compartment**2
+        )  # S * um / cm / um^2 = S / cm / um
+        self.coupling_conds *= (10**7)  # Convert (S / cm / um) -> (mS / cm^2)
         self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
         self.levels = compute_levels(self.parents)
         self.branches_in_each_level = compute_branches_in_level(self.levels)

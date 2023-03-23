@@ -35,7 +35,7 @@ def solve(cell, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     rec_inds = jnp.asarray(rec_inds) * num_states
     stim_inds = [index_of_loc(s.branch_ind, s.loc, cell.nseg_per_branch) for s in stimuli]
     stim_inds = jnp.asarray(stim_inds)
-    stim_currents = jnp.asarray([s.current for s in stimuli])
+    stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
     # Save voltage at the beginning.
     saveat = saveat.at[:, 0].set(init[rec_inds])
@@ -77,7 +77,7 @@ def find_root(
     parents,
 ):
 
-    voltages = u[::4]
+    voltages = u[::4]  # mV
     ms = u[1::4]
     hs = u[2::4]
     ns = u[3::4]
@@ -86,9 +86,10 @@ def find_root(
     new_h = solve_gate_exponential(hs, dt, *h_gate(voltages))
     new_n = solve_gate_exponential(ns, dt, *n_gate(voltages))
 
-    na_conds = params[::3] * (ms**3) * hs
-    kd_conds = params[1::3] * ns**4
-    leak_conds = params[2::3]
+    # Multiply with 1000 to convert Siemens to milli Siemens.
+    na_conds = params[::3] * (ms**3) * hs * 1000  # mS/cm^2
+    kd_conds = params[1::3] * ns**4 * 1000 # mS/cm^2
+    leak_conds = params[2::3] * 1000 # mS/cm^2
 
     # External input
     i_ext = get_external_input(
