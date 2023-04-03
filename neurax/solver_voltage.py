@@ -4,6 +4,7 @@ from tridiax.thomas import thomas_triang, thomas_backsub
 
 
 def solve_branched(
+    parents_in_each_level,
     branches_in_each_level,
     parents,
     lowers,
@@ -16,8 +17,8 @@ def solve_branched(
     Solve branched.
     """
     diags, uppers, solves = triang_branched(
+        parents_in_each_level,
         branches_in_each_level,
-        parents,
         lowers,
         diags,
         uppers,
@@ -25,14 +26,19 @@ def solve_branched(
         branch_cond,
     )
     solves = backsub_branched(
-        branches_in_each_level, parents, diags, uppers, solves, branch_cond
+        branches_in_each_level,
+        parents,
+        diags,
+        uppers,
+        solves,
+        branch_cond,
     )
     return solves
 
 
 def triang_branched(
+    parents_in_each_level,
     branches_in_each_level,
-    parents,
     lowers,
     diags,
     uppers,
@@ -42,10 +48,16 @@ def triang_branched(
     """
     Triang.
     """
-    for bil in reversed(branches_in_each_level[1:]):
+    for bil, parents_in_level in zip(
+        reversed(branches_in_each_level[1:]), reversed(parents_in_each_level[1:])
+    ):
         diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
         diags, solves = _eliminate_parents_upper(
-            bil, parents, diags, solves, branch_cond
+            parents_in_level,
+            bil,
+            diags,
+            solves,
+            branch_cond,
         )
     # At last level, we do not want to eliminate anymore.
     diags, uppers, solves = _triang_level(
@@ -105,43 +117,34 @@ def _eliminate_single_parent_upper(diag_at_branch, solve_at_branch, branch_cond)
     return update_diag, update_solve
 
 
-def _eliminate_parents_upper(branches_in_level, parents, diags, solves, branch_cond):
+def _eliminate_parents_upper(
+    parents_in_level,
+    branches_in_level,
+    diags,
+    solves,
+    branch_cond,
+):
     bil = branches_in_level
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, None))(
         diags[bil, -1], solves[bil, -1], branch_cond
     )
-    result = lax.fori_loop(
-        0,
-        len(bil),
-        _body_fun_eliminate_parents_upper,
-        (diags, solves, parents, bil, new_diag, new_solve),
+    diags = diags.at[parents_in_level, 0].set(
+        diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
     )
-    return result[0], result[1]
-
-
-def _body_fun_eliminate_parents_upper(i, vals):
-    diags, solves, parents, bil, new_diag, new_solve = vals
-    diags = diags.at[parents[bil[i]], 0].set(diags[parents[bil[i]], 0] + new_diag[i])
-    solves = solves.at[parents[bil[i]], 0].set(
-        solves[parents[bil[i]], 0] + new_solve[i]
+    solves = solves.at[parents_in_level, 0].set(
+        solves[parents_in_level, 0] + jnp.sum(jnp.reshape(new_solve, (-1, 2)), axis=1)
     )
-    return (diags, solves, parents, bil, new_diag, new_solve)
+    return diags, solves
 
 
-def _eliminate_children_lower(branches_in_level, parents, solves, branch_cond):
+def _eliminate_children_lower(
+    branches_in_level,
+    parents,
+    solves,
+    branch_cond,
+):
     bil = branches_in_level
-    solves = lax.fori_loop(
-        0,
-        len(bil),
-        _body_fun_eliminate_children_lower,
-        (solves, branch_cond, parents, bil),
-    )[0]
-    return solves
-
-
-def _body_fun_eliminate_children_lower(i, vals):
-    solves, branch_cond, parents, bil = vals
-    solves = solves.at[bil[i], -1].set(
-        solves[bil[i], -1] - branch_cond * solves[parents[bil[i]], 0]
+    solves = solves.at[bil, -1].set(
+        solves[bil, -1] - branch_cond * solves[parents[bil], 0]
     )
-    return (solves, branch_cond, parents, bil)
+    return solves

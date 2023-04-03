@@ -51,6 +51,7 @@ def solve(cell, init, params, stimuli, recordings, t_max, dt: float = 0.025):
         cell.length_single_compartment,
         cell.num_neighbours,
         cell.coupling_conds,
+        cell.parents_in_each_level,
         cell.branches_in_each_level,
         cell.parents,
         saveat,
@@ -72,6 +73,7 @@ def find_root(
     length_single_compartment,
     num_neighbours,
     coupling_conds,
+    parents_in_each_level,
     branches_in_each_level,
     parents,
 ):
@@ -103,6 +105,7 @@ def find_root(
         coupling_conds=coupling_conds,
     )
     solves = solve_branched(
+        parents_in_each_level,
         branches_in_each_level,
         parents,
         lowers,
@@ -131,6 +134,7 @@ def body_fun(i, state):
         length_single_compartment,
         num_neighbours,
         coupling_conds,
+        parents_in_each_level,
         branches_in_each_level,
         parents,
         saveat,
@@ -148,6 +152,7 @@ def body_fun(i, state):
         length_single_compartment,
         num_neighbours,
         coupling_conds,
+        parents_in_each_level,
         branches_in_each_level,
         parents,
     )
@@ -166,6 +171,7 @@ def body_fun(i, state):
         length_single_compartment,
         num_neighbours,
         coupling_conds,
+        parents_in_each_level,
         branches_in_each_level,
         parents,
         saveat,
