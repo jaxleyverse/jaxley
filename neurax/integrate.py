@@ -2,6 +2,7 @@ from jax import lax
 import jax.numpy as jnp
 from jax import vmap
 from neurax.mechanisms.hh_neuron import hh_neuron_gate
+from neurax.mechanisms.glutamate_synapse import glutamate
 from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
@@ -12,7 +13,16 @@ NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 
 
-def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
+def solve(
+    cells,
+    init,
+    params,
+    stimuli,
+    recordings,
+    connections,
+    t_max,
+    dt: float = 0.025,
+):
     """
     Solve function.
     """
@@ -43,6 +53,22 @@ def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     stim_inds = jnp.asarray(stim_inds)
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
+    pre_syn_inds = [
+        index_of_loc(c.pre_branch_ind, c.pre_loc, NSEG_PER_BRANCH) for c in connections
+    ]
+    pre_syn_inds = jnp.asarray(pre_syn_inds)
+    pre_syn_cell_inds = jnp.asarray([c.pre_cell_ind for c in connections])
+
+    post_syn_inds = [
+        index_of_loc(c.post_branch_ind, c.post_loc, NSEG_PER_BRANCH)
+        for c in connections
+    ]
+    post_syn_inds = jnp.asarray(post_syn_inds)
+    post_syn_cell_inds = jnp.asarray([c.post_cell_ind for c in connections])
+
+    synaptic_conds = jnp.asarray([c.synaptic_cond for c in connections])
+    init_syn_states = jnp.asarray([0.0] * len(connections))
+
     # Save voltage at the beginning.
     saveat = saveat.at[:, 0].set(init[0, rec_cell_inds, rec_inds])  # 0 = voltage
 
@@ -50,6 +76,7 @@ def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     init_state = (
         t,
         init,
+        init_syn_states,
         params,
         stim_cell_inds,
         stim_inds,
@@ -65,19 +92,30 @@ def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
         saveat,
         rec_cell_inds,
         rec_inds,
+        synaptic_conds,
+        pre_syn_inds,
+        pre_syn_cell_inds,
+        post_syn_inds,
+        post_syn_cell_inds,
     )
 
     final_state = lax.fori_loop(0, num_time_steps, body_fun, init_state)
-    return final_state[-3]
+    return final_state[-8]
 
 
 def find_root(
     t,
     u,
+    ss,
     params,
     i_cell_inds,
     i_inds,
     i_stim,
+    synaptic_conds,
+    pre_syn_inds,
+    pre_syn_cell_inds,
+    post_syn_inds,
+    post_syn_cell_inds,
     dt,
     radius,
     length_single_compartment,
@@ -92,26 +130,45 @@ def find_root(
     hs = u[2]
     ns = u[3]
 
+    # Membrane input.
     membrane_current_terms, states = hh_neuron_gate(voltages, ms, hs, ns, dt, params)
     new_m, new_h, new_n = states
     voltage_terms, constant_terms = membrane_current_terms
 
-    # External input
+    # External input.
     i_ext = get_external_input(
         voltages, i_cell_inds, i_inds, i_stim, radius, length_single_compartment
     )
+
+    # Synaptic input.
+    synapse_current_terms, synapse_states = glutamate(
+        voltages,
+        ss,
+        pre_syn_inds,
+        pre_syn_cell_inds,
+        post_syn_inds,
+        post_syn_cell_inds,
+        dt,
+        synaptic_conds,
+    )
+    (new_s,) = synapse_states
+    syn_voltage_terms, syn_constant_terms = synapse_current_terms
+
+    # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = vmap(
         define_all_tridiags, in_axes=(0, 0, 0, None, None, None, None, None)
     )(
         voltages,
-        voltage_terms,
-        i_ext + constant_terms,
+        voltage_terms + syn_voltage_terms,
+        i_ext + constant_terms + syn_constant_terms,
         num_neighbours,
         NSEG_PER_BRANCH,
         NUM_BRANCHES,
         dt,
         coupling_conds,
     )
+
+    # Solve quasi-tridiagonal system.
     solves = vmap(solve_branched, in_axes=(None, None, None, 0, 0, 0, 0, None))(
         parents_in_each_level,
         branches_in_each_level,
@@ -126,7 +183,7 @@ def find_root(
     new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
 
     out = jnp.stack([new_v, new_m, new_h, new_n])
-    return out
+    return out, new_s
 
 
 def body_fun(i, state):
@@ -136,6 +193,7 @@ def body_fun(i, state):
     (
         t,
         u_inner,
+        syn_states,
         params,
         i_cell_inds,
         i_inds,
@@ -151,15 +209,26 @@ def body_fun(i, state):
         saveat,
         rec_cell_inds,
         rec_inds,
+        synaptic_conds,
+        pre_syn_inds,
+        pre_syn_cell_inds,
+        post_syn_inds,
+        post_syn_cell_inds,
     ) = state
 
-    u_inner = find_root(
+    u_inner, syn_states = find_root(
         t,
         u_inner,
+        syn_states,
         params,
         i_cell_inds,
         i_inds,
         i_stim[:, i],
+        synaptic_conds,
+        pre_syn_inds,
+        pre_syn_cell_inds,
+        post_syn_inds,
+        post_syn_cell_inds,
         dt,
         radius,
         length_single_compartment,
@@ -176,6 +245,7 @@ def body_fun(i, state):
     return (
         t,
         u_inner,
+        syn_states,
         params,
         i_cell_inds,
         i_inds,
@@ -191,4 +261,9 @@ def body_fun(i, state):
         saveat,
         rec_cell_inds,
         rec_inds,
+        synaptic_conds,
+        pre_syn_inds,
+        pre_syn_cell_inds,
+        post_syn_inds,
+        post_syn_cell_inds,
     )
