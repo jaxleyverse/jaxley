@@ -5,11 +5,12 @@ from jax import lax
 
 
 class Stimulus:
-    def __init__(self, branch_ind, loc, current: jnp.ndarray):
+    def __init__(self, cell_ind, branch_ind, loc, current: jnp.ndarray):
         """
         Args:
             current: Time series of the current.
         """
+        self.cell_ind = cell_ind
         self.branch_ind = branch_ind
         self.loc = loc
         self.current = current
@@ -33,8 +34,9 @@ def step_current(
 
 def get_external_input(
     voltages: jnp.ndarray,
+    i_cell_inds: jnp.ndarray,
     i_inds: jnp.ndarray,
-    i_stim: jnp.ndarray, 
+    i_stim: jnp.ndarray,
     radius: float,
     length_single_compartment: float,
 ):
@@ -47,5 +49,5 @@ def get_external_input(
     # `i_stim`: nA
     current = i_stim / 2 / pi / radius / length_single_compartment  # nA / um^2
     current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
-    stim_at_timestep = zero_vec.at[i_inds].set(current)
+    stim_at_timestep = zero_vec.at[i_cell_inds, i_inds].set(current)
     return stim_at_timestep
