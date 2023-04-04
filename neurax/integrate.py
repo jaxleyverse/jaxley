@@ -22,6 +22,14 @@ def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     NUM_BRANCHES = cells[0].num_branches
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
 
+    for cell in cells:
+        assert (
+            cell.num_branches == NUM_BRANCHES
+        ), "Different num_branches between cells."
+        assert (
+            cell.nseg_per_branch == NSEG_PER_BRANCH
+        ), "Different nseg_per_branch between cells."
+
     num_recordings = len(recordings)
     num_time_steps = int(t_max / dt) + 1
     saveat = jnp.zeros((num_recordings, num_time_steps))
