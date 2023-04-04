@@ -26,9 +26,8 @@ def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     num_time_steps = int(t_max / dt) + 1
     saveat = jnp.zeros((num_recordings, num_time_steps))
 
-    num_states = 4
     rec_inds = [index_of_loc(r.branch_ind, r.loc, NSEG_PER_BRANCH) for r in recordings]
-    rec_inds = jnp.asarray(rec_inds) * num_states
+    rec_inds = jnp.asarray(rec_inds)
     rec_cell_inds = jnp.asarray([r.cell_ind for r in recordings])
 
     stim_inds = [index_of_loc(s.branch_ind, s.loc, NSEG_PER_BRANCH) for s in stimuli]
@@ -37,7 +36,7 @@ def solve(cells, init, params, stimuli, recordings, t_max, dt: float = 0.025):
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
     # Save voltage at the beginning.
-    saveat = saveat.at[:, 0].set(init[rec_cell_inds, rec_inds])  # TODO
+    saveat = saveat.at[:, 0].set(init[0, rec_cell_inds, rec_inds])  # 0 = voltage
 
     t = 0.0
     init_state = (
@@ -80,10 +79,10 @@ def find_root(
     branches_in_each_level,
     parents,
 ):
-    voltages = u[:, ::4]  # mV
-    ms = u[:, 1::4]
-    hs = u[:, 2::4]
-    ns = u[:, 3::4]
+    voltages = u[0]  # mV
+    ms = u[1]
+    hs = u[2]
+    ns = u[3]
 
     membrane_current_terms, states = hh_neuron_gate(voltages, ms, hs, ns, dt, params)
     new_m, new_h, new_n = states
@@ -115,10 +114,10 @@ def find_root(
         solves,
         -dt * coupling_conds,
     )
-    ncells = len(u)
+    ncells = len(voltages)
     new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
 
-    out = jnp.concatenate((new_v, new_m, new_h, new_n), axis=1)
+    out = jnp.stack([new_v, new_m, new_h, new_n])
     return out
 
 
@@ -164,7 +163,7 @@ def body_fun(i, state):
     )
     t += dt
 
-    saveat = saveat.at[:, i + 1].set(u_inner[rec_cell_inds, rec_inds])
+    saveat = saveat.at[:, i + 1].set(u_inner[0, rec_cell_inds, rec_inds])  # 0 = voltage
 
     return (
         t,
