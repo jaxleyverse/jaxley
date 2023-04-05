@@ -11,6 +11,7 @@ from neurax.utils.cell_utils import index_of_loc
 
 NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
+SOLVER = ""
 
 
 def solve(
@@ -22,15 +23,18 @@ def solve(
     connections,
     t_max,
     dt: float = 0.025,
+    solver="stone",
 ):
     """
     Solve function.
     """
     global NUM_BRANCHES
     global NSEG_PER_BRANCH
+    global SOLVER
 
     NUM_BRANCHES = cells[0].num_branches
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
+    SOLVER = solver
 
     for cell in cells:
         assert (
@@ -169,7 +173,7 @@ def find_root(
     )
 
     # Solve quasi-tridiagonal system.
-    solves = vmap(solve_branched, in_axes=(None, None, None, 0, 0, 0, 0, None))(
+    solves = vmap(solve_branched, in_axes=(None, None, None, 0, 0, 0, 0, None, None))(
         parents_in_each_level,
         branches_in_each_level,
         parents,
@@ -178,6 +182,7 @@ def find_root(
         uppers,
         solves,
         -dt * coupling_conds,
+        SOLVER,
     )
     ncells = len(voltages)
     new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
