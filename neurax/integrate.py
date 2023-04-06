@@ -1,6 +1,8 @@
-from jax import lax
+from typing import List
+
+import jax
+from jax import lax, grad, vmap, vjp
 import jax.numpy as jnp
-from jax import vmap
 from neurax.mechanisms.hh_neuron import hh_neuron_gate
 from neurax.mechanisms.glutamate_synapse import glutamate
 from neurax.build_branched_tridiag import define_all_tridiags
@@ -23,11 +25,56 @@ def solve(
     connections,
     t_max,
     dt: float = 0.025,
-    solver="stone",
+    solver: str = "stone",
+    checkpoint_inds: List[int] = [],
 ):
     """
     Solve function.
     """
+    state = prepare_state(
+        cells, init, params, stimuli, recordings, connections, t_max, dt, solver
+    )
+    num_time_steps = int(t_max / dt) + 1
+
+    # Initialize arrays for checkpoints.
+    assert 0 not in checkpoint_inds, "Checkpoints at index 0 is not implemented."
+    checkpoint_inds = [0] + checkpoint_inds  # Add 0 index for convenience later.
+
+    current_state = state
+
+    def inner_loop(current_state, cp_ind1, cp_ind2):
+        current_state = lax.fori_loop(
+            cp_ind1,
+            cp_ind2,
+            body_fun,
+            current_state,
+        )
+        return current_state
+
+    for cp_ind in range(len(checkpoint_inds) - 1):
+        current_state = jax.checkpoint(inner_loop, static_argnums=(1, 2))(
+            current_state,
+            checkpoint_inds[cp_ind],
+            checkpoint_inds[cp_ind + 1],
+        )
+    # The trace from the last checkpoint until the end should not be checkpointed to
+    # avoid useless recomputation.
+    current_state = inner_loop(current_state, checkpoint_inds[-1], num_time_steps)
+
+    return current_state[-8]
+
+
+def prepare_state(
+    cells,
+    init,
+    params,
+    stimuli,
+    recordings,
+    connections,
+    t_max,
+    dt: float = 0.025,
+    solver: str = "stone",
+):
     global NUM_BRANCHES
     global NSEG_PER_BRANCH
     global SOLVER
@@ -102,9 +149,7 @@ def solve(
         post_syn_inds,
         post_syn_cell_inds,
     )
-
-    final_state = lax.fori_loop(0, num_time_steps, body_fun, init_state)
-    return final_state[-8]
+    return init_state
 
 
 def find_root(
