@@ -20,6 +20,7 @@ def solve(
     cells,
     init,
     params,
+    syn_params,
     stimuli,
     recordings,
     connections,
@@ -32,7 +33,16 @@ def solve(
     Solve function.
     """
     state = prepare_state(
-        cells, init, params, stimuli, recordings, connections, t_max, dt, solver
+        cells,
+        init,
+        params,
+        syn_params,
+        stimuli,
+        recordings,
+        connections,
+        t_max,
+        dt,
+        solver,
     )
     num_time_steps = int(t_max / dt) + 1
 
@@ -61,13 +71,14 @@ def solve(
     # avoid useless recomputation.
     current_state = inner_loop(current_state, checkpoint_inds[-1], num_time_steps)
 
-    return current_state[-8]
+    return current_state[-7]
 
 
 def prepare_state(
     cells,
     init,
     params,
+    syn_params,
     stimuli,
     recordings,
     connections,
@@ -117,7 +128,6 @@ def prepare_state(
     post_syn_inds = jnp.asarray(post_syn_inds)
     post_syn_cell_inds = jnp.asarray([c.post_cell_ind for c in connections])
 
-    synaptic_conds = jnp.asarray([c.synaptic_cond for c in connections])
     init_syn_states = jnp.asarray([0.0] * len(connections))
 
     # Save voltage at the beginning.
@@ -129,6 +139,7 @@ def prepare_state(
         init,
         init_syn_states,
         params,
+        syn_params,
         stim_cell_inds,
         stim_inds,
         stim_currents,
@@ -143,7 +154,6 @@ def prepare_state(
         saveat,
         rec_cell_inds,
         rec_inds,
-        synaptic_conds,
         pre_syn_inds,
         pre_syn_cell_inds,
         post_syn_inds,
@@ -157,10 +167,10 @@ def find_root(
     u,
     ss,
     params,
+    syn_params,
     i_cell_inds,
     i_inds,
     i_stim,
-    synaptic_conds,
     pre_syn_inds,
     pre_syn_cell_inds,
     post_syn_inds,
@@ -198,7 +208,7 @@ def find_root(
         post_syn_inds,
         post_syn_cell_inds,
         dt,
-        synaptic_conds,
+        syn_params,
     )
     (new_s,) = synapse_states
     syn_voltage_terms, syn_constant_terms = synapse_current_terms
@@ -245,6 +255,7 @@ def body_fun(i, state):
         u_inner,
         syn_states,
         params,
+        syn_params,
         i_cell_inds,
         i_inds,
         i_stim,
@@ -259,7 +270,6 @@ def body_fun(i, state):
         saveat,
         rec_cell_inds,
         rec_inds,
-        synaptic_conds,
         pre_syn_inds,
         pre_syn_cell_inds,
         post_syn_inds,
@@ -271,10 +281,10 @@ def body_fun(i, state):
         u_inner,
         syn_states,
         params,
+        syn_params,
         i_cell_inds,
         i_inds,
         i_stim[:, i],
-        synaptic_conds,
         pre_syn_inds,
         pre_syn_cell_inds,
         post_syn_inds,
@@ -297,6 +307,7 @@ def body_fun(i, state):
         u_inner,
         syn_states,
         params,
+        syn_params,
         i_cell_inds,
         i_inds,
         i_stim,
@@ -311,7 +322,6 @@ def body_fun(i, state):
         saveat,
         rec_cell_inds,
         rec_inds,
-        synaptic_conds,
         pre_syn_inds,
         pre_syn_cell_inds,
         post_syn_inds,
