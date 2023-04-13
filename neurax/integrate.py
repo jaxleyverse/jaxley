@@ -9,14 +9,11 @@ from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
-from neurax.utils.syn_utils import group_by_num_occurences_and_vals
 
 
 NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 SOLVER = ""
-GROUPED_POST_SYN_INDS = []
-GROUPED_POST_SYNS = []
 
 
 def solve(
@@ -28,6 +25,8 @@ def solve(
     recordings,
     connections,
     t_max,
+    grouped_post_syn_inds,
+    grouped_post_syns,
     dt: float = 0.025,
     solver: str = "stone",
     checkpoint_inds: List[int] = [],
@@ -44,6 +43,8 @@ def solve(
         recordings,
         connections,
         t_max,
+        grouped_post_syn_inds,
+        grouped_post_syns,
         dt,
         solver,
     )
@@ -86,14 +87,14 @@ def prepare_state(
     recordings,
     connections,
     t_max,
+    grouped_post_syn_inds,
+    grouped_post_syns,
     dt: float = 0.025,
     solver: str = "stone",
 ):
     global NUM_BRANCHES
     global NSEG_PER_BRANCH
     global SOLVER
-    global GROUPED_POST_SYN_INDS
-    global GROUPED_POST_SYNS
 
     NUM_BRANCHES = cells[0].num_branches
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
@@ -126,17 +127,6 @@ def prepare_state(
     pre_syn_inds = jnp.asarray(pre_syn_inds)
     pre_syn_cell_inds = jnp.asarray([c.pre_cell_ind for c in connections])
 
-    post_syn_inds = [
-        index_of_loc(c.post_branch_ind, c.post_loc, NSEG_PER_BRANCH)
-        for c in connections
-    ]
-    post_syn_inds = jnp.asarray(post_syn_inds)
-    post_syn_cell_inds = jnp.asarray([c.post_cell_ind for c in connections])
-
-    GROUPED_POST_SYN_INDS, GROUPED_POST_SYNS, _ = group_by_num_occurences_and_vals(
-        jnp.stack([post_syn_cell_inds, post_syn_inds])
-    )
-
     init_syn_states = jnp.asarray([0.0] * len(connections))
 
     # Save voltage at the beginning.
@@ -164,6 +154,8 @@ def prepare_state(
         rec_inds,
         pre_syn_inds,
         pre_syn_cell_inds,
+        grouped_post_syn_inds,
+        grouped_post_syns,
         saveat,
     )
     return init_state
@@ -180,6 +172,8 @@ def find_root(
     i_stim,
     pre_syn_inds,
     pre_syn_cell_inds,
+    grouped_post_syn_inds,
+    grouped_post_syns,
     dt,
     radius,
     length_single_compartment,
@@ -210,8 +204,8 @@ def find_root(
         ss,
         pre_syn_inds,
         pre_syn_cell_inds,
-        GROUPED_POST_SYN_INDS,
-        GROUPED_POST_SYNS,
+        grouped_post_syn_inds,
+        grouped_post_syns,
         dt,
         syn_params,
     )
@@ -276,6 +270,8 @@ def body_fun(i, state):
         rec_inds,
         pre_syn_inds,
         pre_syn_cell_inds,
+        grouped_post_syn_inds,
+        grouped_post_syns,
         saveat,
     ) = state
 
@@ -290,6 +286,8 @@ def body_fun(i, state):
         i_stim[:, i],
         pre_syn_inds,
         pre_syn_cell_inds,
+        grouped_post_syn_inds,
+        grouped_post_syns,
         dt,
         radius,
         length_single_compartment,
@@ -324,5 +322,7 @@ def body_fun(i, state):
         rec_inds,
         pre_syn_inds,
         pre_syn_cell_inds,
+        grouped_post_syn_inds,
+        grouped_post_syns,
         saveat,
     )
