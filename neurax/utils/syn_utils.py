@@ -3,7 +3,18 @@ import jax.numpy as jnp
 from neurax.utils.cell_utils import index_of_loc
 
 
-def prepare_synapses(conns, nseg_per_branch):
+def prepare_presyn(conns, nseg_per_branch):
+    pre_syn_inds = [
+        index_of_loc(c.pre_branch_ind, c.pre_loc, nseg_per_branch) for c in conns
+    ]
+    pre_syn_inds = jnp.asarray(pre_syn_inds)
+    pre_syn_cell_inds = jnp.asarray([c.pre_cell_ind for c in conns])
+
+    init_syn_states = jnp.asarray([0.0] * len(conns))
+    return pre_syn_cell_inds, pre_syn_inds, init_syn_states
+
+
+def prepare_postsyn(conns, nseg_per_branch):
     """Group the synapses by the number of inputs into each compartment.
 
     This is a separate function that has to be run by the user because `jnp.unique`

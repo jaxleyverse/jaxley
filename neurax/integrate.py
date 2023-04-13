@@ -14,7 +14,7 @@ from neurax.utils.cell_utils import index_of_loc
 NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 SOLVER = ""
-MEMBRANE_UPDATE_FNS = []
+CHANNELS = []
 
 
 def solve(
@@ -22,11 +22,9 @@ def solve(
     init_v,
     membrane_states,
     membrane_params,
-    membrane_update_fns,
+    membrane_channels,
     syn_params,
-    connections,
-    grouped_post_syn_inds,
-    grouped_post_syns,
+    connectivity,
     stimuli,
     recordings,
     t_max,
@@ -37,10 +35,10 @@ def solve(
     """
     Solve function.
     """
-    global MEMBRANE_UPDATE_FNS
-    MEMBRANE_UPDATE_FNS = membrane_update_fns
+    global CHANNELS
+    CHANNELS = membrane_channels
 
-    assert len(membrane_params) == len(membrane_update_fns)
+    assert len(membrane_params) == len(membrane_channels)
     assert len(membrane_params) == len(membrane_states)
 
     state = prepare_state(
@@ -51,10 +49,8 @@ def solve(
         syn_params,
         stimuli,
         recordings,
-        connections,
+        connectivity,
         t_max,
-        grouped_post_syn_inds,
-        grouped_post_syns,
         dt,
         solver,
     )
@@ -96,10 +92,8 @@ def prepare_state(
     syn_params,
     stimuli,
     recordings,
-    connections,
+    connectivity,
     t_max,
-    grouped_post_syn_inds,
-    grouped_post_syns,
     dt: float = 0.025,
     solver: str = "stone",
 ):
@@ -132,14 +126,6 @@ def prepare_state(
     stim_inds = jnp.asarray(stim_inds)
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
-    pre_syn_inds = [
-        index_of_loc(c.pre_branch_ind, c.pre_loc, NSEG_PER_BRANCH) for c in connections
-    ]
-    pre_syn_inds = jnp.asarray(pre_syn_inds)
-    pre_syn_cell_inds = jnp.asarray([c.pre_cell_ind for c in connections])
-
-    init_syn_states = jnp.asarray([0.0] * len(connections))
-
     # Save voltage at the beginning.
     saveat = saveat.at[:, 0].set(init_v[rec_cell_inds, rec_inds])  # 0 = voltage
 
@@ -148,7 +134,7 @@ def prepare_state(
         t,
         init_v,
         membrane_states,
-        init_syn_states,
+        connectivity.init_syn_states,
         membrane_params,
         syn_params,
         stim_cell_inds,
@@ -164,10 +150,10 @@ def prepare_state(
         cells[0].parents,
         rec_cell_inds,
         rec_inds,
-        pre_syn_inds,
-        pre_syn_cell_inds,
-        grouped_post_syn_inds,
-        grouped_post_syns,
+        connectivity.pre_syn_inds,
+        connectivity.pre_syn_cell_inds,
+        connectivity.grouped_post_syn_inds,
+        connectivity.grouped_post_syns,
         saveat,
     )
     return init_state
@@ -202,7 +188,7 @@ def find_root(
     voltage_terms = jnp.zeros_like(v)
     constant_terms = jnp.zeros_like(v)
     new_states = []
-    for i, update_fn in enumerate(MEMBRANE_UPDATE_FNS):
+    for i, update_fn in enumerate(CHANNELS):
         membrane_current_terms, states = update_fn(voltages, u[i], dt, params[i])
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
