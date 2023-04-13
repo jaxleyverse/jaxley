@@ -3,6 +3,22 @@ import jax.numpy as jnp
 from neurax.utils.cell_utils import index_of_loc
 
 
+def postsyn_voltage_updates(
+    voltages, grouped_inds, post_syn, non_zero_voltage_term, non_zero_constant_term
+):
+    voltage_term = jnp.zeros_like(voltages)
+    constant_term = jnp.zeros_like(voltages)
+
+    for g, p in zip(grouped_inds, post_syn):
+        summed_volt = jnp.sum(non_zero_voltage_term[g], axis=1)
+        summed_const = jnp.sum(non_zero_constant_term[g], axis=1)
+
+        voltage_term = voltage_term.at[p[:, 0], p[:, 1]].set(summed_volt)
+        constant_term = constant_term.at[p[:, 0], p[:, 1]].set(summed_const)
+
+    return voltage_term, constant_term
+
+
 def prepare_presyn(conns, nseg_per_branch):
     pre_syn_inds = [
         index_of_loc(c.pre_branch_ind, c.pre_loc, nseg_per_branch) for c in conns
@@ -10,8 +26,7 @@ def prepare_presyn(conns, nseg_per_branch):
     pre_syn_inds = jnp.asarray(pre_syn_inds)
     pre_syn_cell_inds = jnp.asarray([c.pre_cell_ind for c in conns])
 
-    init_syn_states = jnp.asarray([0.0] * len(conns))
-    return pre_syn_cell_inds, pre_syn_inds, init_syn_states
+    return pre_syn_cell_inds, pre_syn_inds
 
 
 def prepare_postsyn(conns, nseg_per_branch):

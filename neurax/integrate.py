@@ -1,30 +1,33 @@
 from typing import List
 
 import jax
-from jax import lax, grad, vmap, vjp
+from jax import lax, vmap
 import jax.numpy as jnp
-from neurax.mechanisms.hh_neuron import hh_neuron_gate
-from neurax.mechanisms.glutamate_synapse import glutamate
+
 from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
+from neurax.utils.syn_utils import postsyn_voltage_updates
 
 
 NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 SOLVER = ""
-CHANNELS = []
+MEM_CHANNELS = []
+SYN_CHANNELS = []
 
 
 def solve(
     cells,
+    connectivities,
     init_v,
-    membrane_states,
-    membrane_params,
-    membrane_channels,
+    mem_states,
+    mem_params,
+    mem_channels,
+    syn_states,
     syn_params,
-    connectivity,
+    syn_channels,
     stimuli,
     recordings,
     t_max,
@@ -35,21 +38,24 @@ def solve(
     """
     Solve function.
     """
-    global CHANNELS
-    CHANNELS = membrane_channels
+    global MEM_CHANNELS
+    global SYN_CHANNELS
+    MEM_CHANNELS = mem_channels
+    SYN_CHANNELS = syn_channels
 
-    assert len(membrane_params) == len(membrane_channels)
-    assert len(membrane_params) == len(membrane_states)
+    assert len(mem_params) == len(mem_channels)
+    assert len(mem_params) == len(mem_states)
 
     state = prepare_state(
         cells,
         init_v,
-        membrane_states,
-        membrane_params,
+        mem_states,
+        mem_params,
+        syn_states,
         syn_params,
         stimuli,
         recordings,
-        connectivity,
+        connectivities,
         t_max,
         dt,
         solver,
@@ -87,12 +93,13 @@ def solve(
 def prepare_state(
     cells,
     init_v,
-    membrane_states,
-    membrane_params,
+    mem_states,
+    mem_params,
+    syn_states,
     syn_params,
     stimuli,
     recordings,
-    connectivity,
+    connectivities,
     t_max,
     dt: float = 0.025,
     solver: str = "stone",
@@ -133,9 +140,9 @@ def prepare_state(
     init_state = (
         t,
         init_v,
-        membrane_states,
-        connectivity.init_syn_states,
-        membrane_params,
+        mem_states,
+        syn_states,
+        mem_params,
         syn_params,
         stim_cell_inds,
         stim_inds,
@@ -150,10 +157,10 @@ def prepare_state(
         cells[0].parents,
         rec_cell_inds,
         rec_inds,
-        connectivity.pre_syn_inds,
-        connectivity.pre_syn_cell_inds,
-        connectivity.grouped_post_syn_inds,
-        connectivity.grouped_post_syns,
+        [c.pre_syn_inds for c in connectivities],
+        [c.pre_syn_cell_inds for c in connectivities],
+        [c.grouped_post_syn_inds for c in connectivities],
+        [c.grouped_post_syns for c in connectivities],
         saveat,
     )
     return init_state
@@ -188,11 +195,10 @@ def find_root(
     voltage_terms = jnp.zeros_like(v)
     constant_terms = jnp.zeros_like(v)
     new_states = []
-    for i, update_fn in enumerate(CHANNELS):
+    for i, update_fn in enumerate(MEM_CHANNELS):
         membrane_current_terms, states = update_fn(voltages, u[i], dt, params[i])
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
-
         new_states.append(states)
 
     # External input.
@@ -201,18 +207,27 @@ def find_root(
     )
 
     # Synaptic input.
-    synapse_current_terms, synapse_states = glutamate(
-        voltages,
-        ss,
-        pre_syn_inds,
-        pre_syn_cell_inds,
-        grouped_post_syn_inds,
-        grouped_post_syns,
-        dt,
-        syn_params,
-    )
-    (new_s,) = synapse_states
-    syn_voltage_terms, syn_constant_terms = synapse_current_terms
+    syn_voltage_terms = jnp.zeros_like(v)
+    syn_constant_terms = jnp.zeros_like(v)
+    new_syn_states = []
+    for i, update_fn in enumerate(SYN_CHANNELS):
+        synapse_current_terms, synapse_states = update_fn(
+            voltages,
+            ss[i],
+            pre_syn_inds[i],
+            pre_syn_cell_inds[i],
+            dt,
+            syn_params[i],
+        )
+        synapse_current_terms = postsyn_voltage_updates(
+            voltages,
+            grouped_post_syn_inds[i],
+            grouped_post_syns[i],
+            *synapse_current_terms
+        )
+        syn_voltage_terms += synapse_current_terms[0]
+        syn_constant_terms += synapse_current_terms[1]
+        new_syn_states.append(synapse_states)
 
     # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = vmap(
@@ -242,7 +257,7 @@ def find_root(
     )
     ncells = len(voltages)
     new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
-    return new_v, new_states, new_s
+    return new_v, new_states, new_syn_states
 
 
 def body_fun(i, state):
