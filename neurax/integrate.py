@@ -14,19 +14,22 @@ from neurax.utils.cell_utils import index_of_loc
 NUM_BRANCHES = -1
 NSEG_PER_BRANCH = -1
 SOLVER = ""
+MEMBRANE_UPDATE_FNS = []
 
 
 def solve(
     cells,
-    init,
-    params,
+    init_v,
+    membrane_states,
+    membrane_params,
+    membrane_update_fns,
     syn_params,
-    stimuli,
-    recordings,
     connections,
-    t_max,
     grouped_post_syn_inds,
     grouped_post_syns,
+    stimuli,
+    recordings,
+    t_max,
     dt: float = 0.025,
     solver: str = "stone",
     checkpoint_inds: List[int] = [],
@@ -34,10 +37,17 @@ def solve(
     """
     Solve function.
     """
+    global MEMBRANE_UPDATE_FNS
+    MEMBRANE_UPDATE_FNS = membrane_update_fns
+
+    assert len(membrane_params) == len(membrane_update_fns)
+    assert len(membrane_params) == len(membrane_states)
+
     state = prepare_state(
         cells,
-        init,
-        params,
+        init_v,
+        membrane_states,
+        membrane_params,
         syn_params,
         stimuli,
         recordings,
@@ -80,8 +90,9 @@ def solve(
 
 def prepare_state(
     cells,
-    init,
-    params,
+    init_v,
+    membrane_states,
+    membrane_params,
     syn_params,
     stimuli,
     recordings,
@@ -130,14 +141,15 @@ def prepare_state(
     init_syn_states = jnp.asarray([0.0] * len(connections))
 
     # Save voltage at the beginning.
-    saveat = saveat.at[:, 0].set(init[0, rec_cell_inds, rec_inds])  # 0 = voltage
+    saveat = saveat.at[:, 0].set(init_v[rec_cell_inds, rec_inds])  # 0 = voltage
 
     t = 0.0
     init_state = (
         t,
-        init,
+        init_v,
+        membrane_states,
         init_syn_states,
-        params,
+        membrane_params,
         syn_params,
         stim_cell_inds,
         stim_inds,
@@ -163,6 +175,7 @@ def prepare_state(
 
 def find_root(
     t,
+    v,
     u,
     ss,
     params,
@@ -183,15 +196,18 @@ def find_root(
     branches_in_each_level,
     parents,
 ):
-    voltages = u[0]  # mV
-    ms = u[1]
-    hs = u[2]
-    ns = u[3]
+    voltages = v  # mV
 
     # Membrane input.
-    membrane_current_terms, states = hh_neuron_gate(voltages, ms, hs, ns, dt, params)
-    new_m, new_h, new_n = states
-    voltage_terms, constant_terms = membrane_current_terms
+    voltage_terms = jnp.zeros_like(v)
+    constant_terms = jnp.zeros_like(v)
+    new_states = []
+    for i, update_fn in enumerate(MEMBRANE_UPDATE_FNS):
+        membrane_current_terms, states = update_fn(voltages, u[i], dt, params[i])
+        voltage_terms += membrane_current_terms[0]
+        constant_terms += membrane_current_terms[1]
+
+        new_states.append(states)
 
     # External input.
     i_ext = get_external_input(
@@ -240,9 +256,7 @@ def find_root(
     )
     ncells = len(voltages)
     new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
-
-    out = jnp.stack([new_v, new_m, new_h, new_n])
-    return out, new_s
+    return new_v, new_states, new_s
 
 
 def body_fun(i, state):
@@ -251,6 +265,7 @@ def body_fun(i, state):
     """
     (
         t,
+        v,
         u_inner,
         syn_states,
         params,
@@ -275,8 +290,9 @@ def body_fun(i, state):
         saveat,
     ) = state
 
-    u_inner, syn_states = find_root(
+    v, u_inner, syn_states = find_root(
         t,
+        v,
         u_inner,
         syn_states,
         params,
@@ -299,10 +315,11 @@ def body_fun(i, state):
     )
     t += dt
 
-    saveat = saveat.at[:, i + 1].set(u_inner[0, rec_cell_inds, rec_inds])  # 0 = voltage
+    saveat = saveat.at[:, i + 1].set(v[rec_cell_inds, rec_inds])  # 0 = voltage
 
     return (
         t,
+        v,
         u_inner,
         syn_states,
         params,

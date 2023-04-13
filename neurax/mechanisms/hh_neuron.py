@@ -2,10 +2,11 @@ import jax.numpy as jnp
 from neurax.solver_gate import solve_gate_exponential
 
 
-def hh_neuron_gate(voltages, ms, hs, ns, dt, params):
+def hh_neuron_gate(voltages, states, dt, params):
     """
     Compute membrane current and update gating variables with Hodgkin-Huxley equations.
     """
+    ms, hs, ns = (states[0], states[1], states[2])
     new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
     new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages))
     new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages))
@@ -22,7 +23,7 @@ def hh_neuron_gate(voltages, ms, hs, ns, dt, params):
     e_leak = -54.3
     constant_term = na_conds * e_na + kd_conds * e_kd + leak_conds * e_leak
 
-    return (voltage_term, constant_term), (new_m, new_h, new_n)
+    return (voltage_term, constant_term), jnp.stack([new_m, new_h, new_n])
 
 
 def _m_gate(v):
