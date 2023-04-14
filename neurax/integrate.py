@@ -134,7 +134,7 @@ def prepare_state(
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
     # Save voltage at the beginning.
-    cumsum_num_branches = jnp.cumsum(jnp.asarray(NUM_BRANCHES))
+    cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
     cated_voltage = jnp.concatenate(init_v)
     saveat = saveat.at[:, 0].set(
         cated_voltage[cumsum_num_branches[rec_cell_inds] + rec_inds]
@@ -193,26 +193,19 @@ def find_root(
 ):
     voltages = v  # mV
     cated_voltages = jnp.concatenate(voltages)
-    cumsum_num_branches = jnp.cumsum(jnp.asarray(NUM_BRANCHES))
+    cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
 
     # Membrane input.
     voltage_terms = jnp.zeros_like(cated_voltages)
     constant_terms = jnp.zeros_like(cated_voltages)
     new_states = []
     for i, update_fn in enumerate(MEM_CHANNELS):
-        print(
-            "u[i]",
-            jnp.concatenate(u[i], axis=1).shape,
-        )
-        print("params[i]", jnp.concatenate(params[i], axis=1).shape)
         membrane_current_terms, states = update_fn(
             cated_voltages,
             jnp.concatenate(u[i], axis=1),
             jnp.concatenate(params[i], axis=1),
             dt,
         )
-        print("membrane_current_terms", membrane_current_terms[0].shape)
-        print("membrane_current_terms", membrane_current_terms[1].shape)
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
         # Above, we concatenated the voltages, states, and params in order to allow
@@ -233,7 +226,6 @@ def find_root(
         radius,
         length_single_compartment,
     )
-    print("i_ext", i_ext)
 
     # Synaptic input.
     syn_voltage_terms = jnp.zeros_like(cated_voltages)
@@ -258,7 +250,6 @@ def find_root(
         syn_constant_terms += synapse_current_terms[1]
         new_syn_states.append(synapse_states)
 
-    print(" === Finished synapses === ")
     v_terms = voltage_terms + syn_voltage_terms
     c_terms = i_ext + constant_terms + syn_constant_terms
 
@@ -270,9 +261,6 @@ def find_root(
         reconstructed_c_terms.append(c_terms[k : k + ind * NSEG_PER_BRANCH])
         k += ind
 
-    print("jnp.stack(voltages)", jnp.stack(voltages).shape)
-    print("jnp.stack(reconstructed_v_terms)", jnp.stack(reconstructed_v_terms).shape)
-    print("jnp.stack(reconstructed_c_terms)", jnp.stack(reconstructed_c_terms).shape)
     # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = vmap(
         define_all_tridiags, in_axes=(0, 0, 0, None, None, None, None, None)
@@ -359,7 +347,7 @@ def body_fun(i, state):
     )
     t += dt
 
-    cumsum_num_branches = jnp.cumsum(jnp.asarray(NUM_BRANCHES))
+    cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
     cated_voltage = jnp.concatenate(v)
     saveat = saveat.at[:, i + 1].set(
         cated_voltage[cumsum_num_branches[rec_cell_inds] + rec_inds]
