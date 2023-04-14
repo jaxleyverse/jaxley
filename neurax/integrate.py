@@ -11,7 +11,8 @@ from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.syn_utils import postsyn_voltage_updates
 
 
-NUM_BRANCHES = -1
+NUM_BRANCHES = []
+PARENTS = []
 NSEG_PER_BRANCH = -1
 SOLVER = ""
 MEM_CHANNELS = []
@@ -107,15 +108,14 @@ def prepare_state(
     global NUM_BRANCHES
     global NSEG_PER_BRANCH
     global SOLVER
+    global PARENTS
 
-    NUM_BRANCHES = cells[0].num_branches
+    NUM_BRANCHES = [cell.num_branches for cell in cells]
+    PARENTS = [cell.parents for cell in cells]
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
     SOLVER = solver
 
     for cell in cells:
-        assert (
-            cell.num_branches == NUM_BRANCHES
-        ), "Different num_branches between cells."
         assert (
             cell.nseg_per_branch == NSEG_PER_BRANCH
         ), "Different nseg_per_branch between cells."
@@ -134,7 +134,11 @@ def prepare_state(
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
     # Save voltage at the beginning.
-    saveat = saveat.at[:, 0].set(init_v[rec_cell_inds, rec_inds])  # 0 = voltage
+    cumsum_num_branches = jnp.cumsum(jnp.asarray(NUM_BRANCHES))
+    cated_voltage = jnp.concatenate(init_v)
+    saveat = saveat.at[:, 0].set(
+        cated_voltage[cumsum_num_branches[rec_cell_inds] + rec_inds]
+    )
 
     t = 0.0
     init_state = (
@@ -154,7 +158,6 @@ def prepare_state(
         cells[0].coupling_conds,
         cells[0].parents_in_each_level,
         cells[0].branches_in_each_level,
-        cells[0].parents,
         rec_cell_inds,
         rec_inds,
         [c.pre_syn_inds for c in connectivities],
@@ -187,40 +190,58 @@ def find_root(
     coupling_conds,
     parents_in_each_level,
     branches_in_each_level,
-    parents,
 ):
     voltages = v  # mV
+    cated_voltages = jnp.concatenate(voltages)
+    cumsum_num_branches = jnp.cumsum(jnp.asarray(NUM_BRANCHES))
 
     # Membrane input.
-    voltage_terms = jnp.zeros_like(v)
-    constant_terms = jnp.zeros_like(v)
+    voltage_terms = jnp.zeros_like(cated_voltages)
+    constant_terms = jnp.zeros_like(cated_voltages)
     new_states = []
     for i, update_fn in enumerate(MEM_CHANNELS):
-        membrane_current_terms, states = update_fn(voltages, u[i], dt, params[i])
+        membrane_current_terms, states = update_fn(
+            cated_voltages,
+            jnp.concatenate(u[i], axis=1),
+            jnp.concatenate(params[i], axis=1),
+            dt,
+        )
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
-        new_states.append(states)
+        # Above, we concatenated the voltages, states, and params in order to allow
+        # embarassingly parallel exectution. Now we have to bring the states back into
+        # the original shape.
+        reconstructed_states = []
+        k = 0
+        for ind in NUM_BRANCHES:
+            reconstructed_states.append(states[:, k : k + ind * NSEG_PER_BRANCH])
+            k += ind
+        new_states.append(reconstructed_states)
 
     # External input.
     i_ext = get_external_input(
-        voltages, i_cell_inds, i_inds, i_stim, radius, length_single_compartment
+        cated_voltages,
+        cumsum_num_branches[i_cell_inds] + i_inds,
+        i_stim,
+        radius,
+        length_single_compartment,
     )
 
     # Synaptic input.
-    syn_voltage_terms = jnp.zeros_like(v)
-    syn_constant_terms = jnp.zeros_like(v)
+    syn_voltage_terms = jnp.zeros_like(cated_voltages)
+    syn_constant_terms = jnp.zeros_like(cated_voltages)
     new_syn_states = []
     for i, update_fn in enumerate(SYN_CHANNELS):
         synapse_current_terms, synapse_states = update_fn(
-            voltages,
+            cated_voltages,
             ss[i],
-            pre_syn_inds[i],
-            pre_syn_cell_inds[i],
+            cumsum_num_branches[pre_syn_cell_inds[i]] + pre_syn_inds[i],
             dt,
             syn_params[i],
         )
         synapse_current_terms = postsyn_voltage_updates(
-            voltages,
+            cumsum_num_branches,
+            cated_voltages,
             grouped_post_syn_inds[i],
             grouped_post_syns[i],
             *synapse_current_terms
@@ -229,25 +250,29 @@ def find_root(
         syn_constant_terms += synapse_current_terms[1]
         new_syn_states.append(synapse_states)
 
+    print(" === Finished synapses === ")
+    v_terms = voltage_terms + syn_voltage_terms
+    c_terms = i_ext + constant_terms + syn_constant_terms
     # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = vmap(
         define_all_tridiags, in_axes=(0, 0, 0, None, None, None, None, None)
     )(
-        voltages,
-        voltage_terms + syn_voltage_terms,
-        i_ext + constant_terms + syn_constant_terms,
+        jnp.stack(voltages),  # TODO
+        jnp.reshape(v_terms, (2, 60, -1)),
+        jnp.reshape(c_terms, (2, 60, -1)),
         num_neighbours,
         NSEG_PER_BRANCH,
-        NUM_BRANCHES,
+        NUM_BRANCHES[0],  # TODO
         dt,
         coupling_conds,
     )
+    # lowers has shape [2, 15, 3]
 
     # Solve quasi-tridiagonal system.
     solves = vmap(solve_branched, in_axes=(None, None, None, 0, 0, 0, 0, None, None))(
         parents_in_each_level,
         branches_in_each_level,
-        parents,
+        PARENTS[0],  # TODO
         lowers,
         diags,
         uppers,
@@ -256,8 +281,8 @@ def find_root(
         SOLVER,
     )
     ncells = len(voltages)
-    new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
-    return new_v, new_states, new_syn_states
+    new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES[0] * NSEG_PER_BRANCH))  # TODO
+    return [new_v[0], new_v[1]], new_states, new_syn_states
 
 
 def body_fun(i, state):
@@ -281,7 +306,6 @@ def body_fun(i, state):
         coupling_conds,
         parents_in_each_level,
         branches_in_each_level,
-        parents,
         rec_cell_inds,
         rec_inds,
         pre_syn_inds,
@@ -312,11 +336,14 @@ def body_fun(i, state):
         coupling_conds,
         parents_in_each_level,
         branches_in_each_level,
-        parents,
     )
     t += dt
 
-    saveat = saveat.at[:, i + 1].set(v[rec_cell_inds, rec_inds])  # 0 = voltage
+    cumsum_num_branches = jnp.cumsum(jnp.asarray(NUM_BRANCHES))
+    cated_voltage = jnp.concatenate(v)
+    saveat = saveat.at[:, i + 1].set(
+        cated_voltage[cumsum_num_branches[rec_cell_inds] + rec_inds]
+    )
 
     return (
         t,
@@ -335,7 +362,6 @@ def body_fun(i, state):
         coupling_conds,
         parents_in_each_level,
         branches_in_each_level,
-        parents,
         rec_cell_inds,
         rec_inds,
         pre_syn_inds,

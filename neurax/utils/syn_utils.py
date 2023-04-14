@@ -4,7 +4,12 @@ from neurax.utils.cell_utils import index_of_loc
 
 
 def postsyn_voltage_updates(
-    voltages, grouped_inds, post_syn, non_zero_voltage_term, non_zero_constant_term
+    cum_sum_num_branches,
+    voltages,
+    grouped_inds,
+    post_syn,
+    non_zero_voltage_term,
+    non_zero_constant_term,
 ):
     voltage_term = jnp.zeros_like(voltages)
     constant_term = jnp.zeros_like(voltages)
@@ -13,8 +18,12 @@ def postsyn_voltage_updates(
         summed_volt = jnp.sum(non_zero_voltage_term[g], axis=1)
         summed_const = jnp.sum(non_zero_constant_term[g], axis=1)
 
-        voltage_term = voltage_term.at[p[:, 0], p[:, 1]].set(summed_volt)
-        constant_term = constant_term.at[p[:, 0], p[:, 1]].set(summed_const)
+        voltage_term = voltage_term.at[cum_sum_num_branches[p[:, 0]] + p[:, 1]].set(
+            summed_volt
+        )
+        constant_term = constant_term.at[cum_sum_num_branches[p[:, 0]] + p[:, 1]].set(
+            summed_const
+        )
 
     return voltage_term, constant_term
 

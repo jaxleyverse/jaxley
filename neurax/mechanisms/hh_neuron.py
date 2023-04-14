@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from neurax.solver_gate import solve_gate_exponential
 
 
-def hh_neuron_gate(voltages, states, dt, params):
+def hh_neuron_gate(voltages, states, params, dt):
     """
     Compute membrane current and update gating variables with Hodgkin-Huxley equations.
     """
