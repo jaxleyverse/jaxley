@@ -278,27 +278,16 @@ def find_root(
         k += ind
 
     # Define quasi-tridiagonal system.
-    lowers, diags, uppers, solves = [], [], [], []
-    for i in range(2):
-        l, d, u, s = define_all_tridiags(
-            voltages[i],
-            reconstructed_v_terms[i],
-            reconstructed_c_terms[i],
-            NUM_NEIGHBOURS[i],
-            NSEG_PER_BRANCH,
-            NUM_BRANCHES[i],
-            dt,
-            coupling_conds,
-        )
-        lowers.append(l)
-        diags.append(d)
-        uppers.append(u)
-        solves.append(s)
-    lowers = jnp.concatenate(lowers, axis=0)
-    diags = jnp.concatenate(diags, axis=0)
-    uppers = jnp.concatenate(uppers, axis=0)
-    solves = jnp.concatenate(solves, axis=0)
-    # lowers has shape [2, 15, 3]
+    lowers, diags, uppers, solves = define_all_tridiags(
+        cated_voltages,
+        v_terms,
+        c_terms,
+        jnp.concatenate(NUM_NEIGHBOURS),
+        NSEG_PER_BRANCH,
+        sum(NUM_BRANCHES),
+        dt,
+        coupling_conds,
+    )
 
     # Solve quasi-tridiagonal system.
     sol_tri = solve_branched(
