@@ -168,9 +168,9 @@ def prepare_state(
     init_state = (
         t,
         concat_voltage,
-        mem_states,
+        [jnp.concatenate(m, axis=1) for m in mem_states],
         syn_states,
-        mem_params,
+        [jnp.concatenate(m, axis=1) for m in mem_params],
         syn_params,
         stim_cell_inds,
         stim_inds,
@@ -214,23 +214,10 @@ def find_root(
     constant_terms = jnp.zeros_like(v)
     new_states = []
     for i, update_fn in enumerate(MEM_CHANNELS):
-        membrane_current_terms, states = update_fn(
-            v,
-            jnp.concatenate(u[i], axis=1),
-            jnp.concatenate(params[i], axis=1),
-            dt,
-        )
+        membrane_current_terms, states = update_fn(v, u[i], params[i], dt)
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
-        # Above, we concatenated the voltages, states, and params in order to allow
-        # embarassingly parallel exectution. Now we have to bring the states back into
-        # the original shape.
-        reconstructed_states = []
-        k = 0
-        for ind in NUM_BRANCHES:
-            reconstructed_states.append(states[:, k : k + ind * NSEG_PER_BRANCH])
-            k += ind
-        new_states.append(reconstructed_states)
+        new_states.append(states)
 
     # External input.
     i_ext = get_external_input(
@@ -264,22 +251,11 @@ def find_root(
         syn_constant_terms += synapse_current_terms[1]
         new_syn_states.append(synapse_states)
 
-    v_terms = voltage_terms + syn_voltage_terms
-    c_terms = i_ext + constant_terms + syn_constant_terms
-
-    reconstructed_v_terms = []
-    reconstructed_c_terms = []
-    k = 0
-    for ind in NUM_BRANCHES:
-        reconstructed_v_terms.append(v_terms[k : k + ind * NSEG_PER_BRANCH])
-        reconstructed_c_terms.append(c_terms[k : k + ind * NSEG_PER_BRANCH])
-        k += ind
-
     # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = define_all_tridiags(
         v,
-        v_terms,
-        c_terms,
+        voltage_terms + syn_voltage_terms,
+        i_ext + constant_terms + syn_constant_terms,
         jnp.concatenate(NUM_NEIGHBOURS),
         NSEG_PER_BRANCH,
         sum(NUM_BRANCHES),
