@@ -4,6 +4,7 @@ import jax
 from jax import lax, vmap
 import jax.numpy as jnp
 
+from neurax.cell import merge_cells
 from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
@@ -12,7 +13,11 @@ from neurax.utils.syn_utils import postsyn_voltage_updates
 
 
 NUM_BRANCHES = []
-PARENTS = []
+COMB_PARENTS = []
+COMB_PARENTS_IN_EACH_LEVEL = []
+COMB_BRANCHES_IN_EACH_LEVEL = []
+NUM_NEIGHBOURS = []
+
 NSEG_PER_BRANCH = -1
 SOLVER = ""
 MEM_CHANNELS = []
@@ -106,12 +111,30 @@ def prepare_state(
     solver: str = "stone",
 ):
     global NUM_BRANCHES
+    global COMB_PARENTS
+    global COMB_PARENTS_IN_EACH_LEVEL
+    global COMB_BRANCHES_IN_EACH_LEVEL
+    global NUM_NEIGHBOURS
     global NSEG_PER_BRANCH
     global SOLVER
-    global PARENTS
 
     NUM_BRANCHES = [cell.num_branches for cell in cells]
-    PARENTS = [cell.parents for cell in cells]
+    cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
+
+    parents = [cell.parents for cell in cells]
+    COMB_PARENTS = jnp.concatenate(
+        [p.at[1:].add(cumsum_num_branches[i]) for i, p in enumerate(parents)]
+    )
+    COMB_PARENTS_IN_EACH_LEVEL = merge_cells(
+        cumsum_num_branches, [cell.parents_in_each_level for cell in cells]
+    )
+    COMB_BRANCHES_IN_EACH_LEVEL = merge_cells(
+        cumsum_num_branches,
+        [cell.branches_in_each_level for cell in cells],
+        exclude_first=False,
+    )
+    NUM_NEIGHBOURS = [cell.num_neighbours for cell in cells]
+
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
     SOLVER = solver
 
@@ -134,7 +157,6 @@ def prepare_state(
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
 
     # Save voltage at the beginning.
-    cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
     cated_voltage = jnp.concatenate(init_v)
     saveat = saveat.at[:, 0].set(
         cated_voltage[cumsum_num_branches[rec_cell_inds] + rec_inds]
@@ -154,10 +176,7 @@ def prepare_state(
         dt,
         cells[0].radius,
         cells[0].length_single_compartment,
-        cells[0].num_neighbours,
         cells[0].coupling_conds,
-        cells[0].parents_in_each_level,
-        cells[0].branches_in_each_level,
         rec_cell_inds,
         rec_inds,
         [c.pre_syn_inds for c in connectivities],
@@ -186,10 +205,7 @@ def find_root(
     dt,
     radius,
     length_single_compartment,
-    num_neighbours,
     coupling_conds,
-    parents_in_each_level,
-    branches_in_each_level,
 ):
     voltages = v  # mV
     cated_voltages = jnp.concatenate(voltages)
@@ -262,25 +278,33 @@ def find_root(
         k += ind
 
     # Define quasi-tridiagonal system.
-    lowers, diags, uppers, solves = vmap(
-        define_all_tridiags, in_axes=(0, 0, 0, None, None, None, None, None)
-    )(
-        jnp.stack(voltages),  # TODO
-        jnp.stack(reconstructed_v_terms),
-        jnp.stack(reconstructed_c_terms),
-        num_neighbours,
-        NSEG_PER_BRANCH,
-        NUM_BRANCHES[0],  # TODO
-        dt,
-        coupling_conds,
-    )
+    lowers, diags, uppers, solves = [], [], [], []
+    for i in range(2):
+        l, d, u, s = define_all_tridiags(
+            voltages[i],
+            reconstructed_v_terms[i],
+            reconstructed_c_terms[i],
+            NUM_NEIGHBOURS[i],
+            NSEG_PER_BRANCH,
+            NUM_BRANCHES[i],
+            dt,
+            coupling_conds,
+        )
+        lowers.append(l)
+        diags.append(d)
+        uppers.append(u)
+        solves.append(s)
+    lowers = jnp.concatenate(lowers, axis=0)
+    diags = jnp.concatenate(diags, axis=0)
+    uppers = jnp.concatenate(uppers, axis=0)
+    solves = jnp.concatenate(solves, axis=0)
     # lowers has shape [2, 15, 3]
 
     # Solve quasi-tridiagonal system.
-    solves = vmap(solve_branched, in_axes=(None, None, None, 0, 0, 0, 0, None, None))(
-        parents_in_each_level,
-        branches_in_each_level,
-        PARENTS[0],  # TODO
+    sol_tri = solve_branched(
+        COMB_PARENTS_IN_EACH_LEVEL,
+        COMB_BRANCHES_IN_EACH_LEVEL,
+        COMB_PARENTS,
         lowers,
         diags,
         uppers,
@@ -288,8 +312,7 @@ def find_root(
         -dt * coupling_conds,
         SOLVER,
     )
-    ncells = len(voltages)
-    new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES[0] * NSEG_PER_BRANCH))  # TODO
+    new_v = jnp.reshape(sol_tri, (2, NUM_BRANCHES[0] * NSEG_PER_BRANCH))
     return [new_v[0], new_v[1]], new_states, new_syn_states
 
 
@@ -310,10 +333,7 @@ def body_fun(i, state):
         dt,
         radius,
         length_single_compartment,
-        num_neighbours,
         coupling_conds,
-        parents_in_each_level,
-        branches_in_each_level,
         rec_cell_inds,
         rec_inds,
         pre_syn_inds,
@@ -340,10 +360,7 @@ def body_fun(i, state):
         dt,
         radius,
         length_single_compartment,
-        num_neighbours,
         coupling_conds,
-        parents_in_each_level,
-        branches_in_each_level,
     )
     t += dt
 
@@ -366,10 +383,7 @@ def body_fun(i, state):
         dt,
         radius,
         length_single_compartment,
-        num_neighbours,
         coupling_conds,
-        parents_in_each_level,
-        branches_in_each_level,
         rec_cell_inds,
         rec_inds,
         pre_syn_inds,
