@@ -16,8 +16,6 @@ def define_all_tridiags(
     """
     Set up tridiagonal system for each branch.
     """
-    lowers, diags, uppers, solves = [], [], [], []
-
     voltages = jnp.reshape(voltages, (num_branches, -1))
 
     voltage_terms = jnp.reshape(voltage_terms, (num_branches, -1))

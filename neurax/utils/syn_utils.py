@@ -18,7 +18,6 @@ def postsyn_voltage_updates(
     for g, p in zip(grouped_inds, post_syn):
         summed_volt = jnp.sum(non_zero_voltage_term[g], axis=1)
         summed_const = jnp.sum(non_zero_constant_term[g], axis=1)
-        print("p", p.shape)
 
         voltage_term = voltage_term.at[
             nseg_per_branch * cum_sum_num_branches[p[:, 0]] + p[:, 1]

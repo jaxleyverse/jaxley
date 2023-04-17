@@ -32,6 +32,26 @@ class Cell:
         ]
 
 
+def merge_cells(cumsum_num_branches, attrs, exclude_first=True):
+    ps = []
+    for i, att in enumerate(attrs):
+        p = att
+        if exclude_first:
+            p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
+        else:
+            p = [p_in_level + cumsum_num_branches[i] for p_in_level in p]
+        ps.append(p)
+
+    max_len = max([len(att) for att in attrs])
+    combined_parents_in_level = []
+    for i in range(-1, -max_len - 1, -1):
+        current_ps = [p[i] for p in ps]
+        combined_parents_in_level.append(jnp.concatenate(current_ps))
+    combined_parents_in_level = list(reversed(combined_parents_in_level))
+
+    return combined_parents_in_level
+
+
 def compute_levels(parents):
     levels = np.zeros_like(parents)
 
