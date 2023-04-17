@@ -3,19 +3,30 @@ import jax.numpy as jnp
 
 
 class Cell:
-    def __init__(self, num_branches, parents, nseg_per_branch, length, radius, r_a):
+    def __init__(self, num_branches, parents, nseg_per_branch, lengths, radiuses, r_a):
         self.num_branches = num_branches
         self.parents = parents
         self.nseg_per_branch = nseg_per_branch
-        self.length_single_compartment = length / nseg_per_branch
-        self.radius = radius
+        self.lengths_single_compartment = jnp.asarray(lengths) / nseg_per_branch
         self.r_a = r_a
+
+        # Compute radiuses by linear interpolation.
+        endpoint_radiuses = jnp.asarray(radiuses)
+
+        def compute_rad(branch_ind, loc):
+            start = endpoint_radiuses[parents[branch_ind]]
+            end = endpoint_radiuses[branch_ind]
+            return (end - start) * loc + start
+
+        branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), nseg_per_branch)
+        locs_of_each_comp = jnp.linspace(0, 1, nseg_per_branch).repeat(num_branches)
+        rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
 
         # `radius`: um
         # `r_a`: ohm cm
         # `length_single_compartment`: um
         self.coupling_conds = (
-            self.radius / 2.0 / self.r_a / self.length_single_compartment**2
+            self.radiuses / 2.0 / self.r_a / self.lengths_single_compartment**2
         )  # S * um / cm / um^2 = S / cm / um
         self.coupling_conds *= 10**7  # Convert (S / cm / um) -> (mS / cm^2)
         self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
