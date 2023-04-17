@@ -12,6 +12,7 @@ from neurax.utils.syn_utils import postsyn_voltage_updates
 
 
 NUM_BRANCHES = -1
+CUMSUM_NUM_BRANCHES = []
 NSEG_PER_BRANCH = -1
 SOLVER = ""
 MEM_CHANNELS = []
@@ -105,17 +106,16 @@ def prepare_state(
     solver: str = "stone",
 ):
     global NUM_BRANCHES
+    global CUMSUM_NUM_BRANCHES
     global NSEG_PER_BRANCH
     global SOLVER
 
-    NUM_BRANCHES = cells[0].num_branches
+    NUM_BRANCHES = [c.num_branches for c in cells]
+    CUMSUM_NUM_BRANCHES = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
     SOLVER = solver
 
     for cell in cells:
-        assert (
-            cell.num_branches == NUM_BRANCHES
-        ), "Different num_branches between cells."
         assert (
             cell.nseg_per_branch == NSEG_PER_BRANCH
         ), "Different nseg_per_branch between cells."
@@ -192,35 +192,50 @@ def find_root(
     voltages = v  # mV
 
     # Membrane input.
-    voltage_terms = jnp.zeros_like(v)
-    constant_terms = jnp.zeros_like(v)
+    voltage_terms = jnp.zeros_like(jnp.concatenate(v))
+    constant_terms = jnp.zeros_like(jnp.concatenate(v))
     new_states = []
     for i, update_fn in enumerate(MEM_CHANNELS):
-        membrane_current_terms, states = update_fn(voltages, u[i], dt, params[i])
+        membrane_current_terms, states = update_fn(
+            jnp.concatenate(voltages),
+            jnp.concatenate(u[i], axis=1),
+            dt,
+            jnp.concatenate(params[i], axis=1),
+        )
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
-        new_states.append(states)
+        new_states.append(jnp.stack([states[:, :60], states[:, 60:]]))
+
+    voltage_terms = jnp.reshape(voltage_terms, (2, 60))
+    constant_terms = jnp.reshape(constant_terms, (2, 60))
 
     # External input.
     i_ext = get_external_input(
-        voltages, i_cell_inds, i_inds, i_stim, radius, length_single_compartment
+        jnp.concatenate(voltages),
+        CUMSUM_NUM_BRANCHES[i_cell_inds] * NSEG_PER_BRANCH + i_inds,
+        i_stim,
+        radius,
+        length_single_compartment,
     )
+    i_ext = jnp.reshape(i_ext, (2, 60))
 
     # Synaptic input.
-    syn_voltage_terms = jnp.zeros_like(v)
-    syn_constant_terms = jnp.zeros_like(v)
+    syn_voltage_terms = jnp.zeros_like(jnp.concatenate(voltages))
+    syn_constant_terms = jnp.zeros_like(jnp.concatenate(voltages))
     new_syn_states = []
     for i, update_fn in enumerate(SYN_CHANNELS):
         synapse_current_terms, synapse_states = update_fn(
-            voltages,
+            jnp.concatenate(voltages),
             ss[i],
-            pre_syn_inds[i],
-            pre_syn_cell_inds[i],
+            CUMSUM_NUM_BRANCHES[pre_syn_cell_inds[i]] * NSEG_PER_BRANCH
+            + pre_syn_inds[i],
             dt,
             syn_params[i],
         )
         synapse_current_terms = postsyn_voltage_updates(
-            voltages,
+            NSEG_PER_BRANCH,
+            CUMSUM_NUM_BRANCHES,
+            jnp.concatenate(voltages),
             grouped_post_syn_inds[i],
             grouped_post_syns[i],
             *synapse_current_terms
@@ -228,6 +243,9 @@ def find_root(
         syn_voltage_terms += synapse_current_terms[0]
         syn_constant_terms += synapse_current_terms[1]
         new_syn_states.append(synapse_states)
+
+    syn_voltage_terms = jnp.reshape(syn_voltage_terms, (2, 60))
+    syn_constant_terms = jnp.reshape(syn_constant_terms, (2, 60))
 
     # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = vmap(
@@ -238,7 +256,7 @@ def find_root(
         i_ext + constant_terms + syn_constant_terms,
         num_neighbours,
         NSEG_PER_BRANCH,
-        NUM_BRANCHES,
+        NUM_BRANCHES[0],
         dt,
         coupling_conds,
     )
@@ -256,7 +274,7 @@ def find_root(
         SOLVER,
     )
     ncells = len(voltages)
-    new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES * NSEG_PER_BRANCH))
+    new_v = jnp.reshape(solves, (ncells, NUM_BRANCHES[0] * NSEG_PER_BRANCH))
     return new_v, new_states, new_syn_states
 
 

@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
 
-def glutamate(voltages, ss, pre_inds, pre_cell_inds, dt, synaptic_conds):
+def glutamate(voltages, ss, pre_inds, dt, synaptic_conds):
     """
     Compute membrane current and update gating variables with Hodgkin-Huxley equations.
     """
@@ -11,7 +11,7 @@ def glutamate(voltages, ss, pre_inds, pre_cell_inds, dt, synaptic_conds):
     delta = 10.0
     k_minus = 1.0 / 40.0
 
-    s_bar = 1.0 / (1.0 + jnp.exp((v_th - voltages[pre_cell_inds, pre_inds]) / delta))
+    s_bar = 1.0 / (1.0 + jnp.exp((v_th - voltages[pre_inds]) / delta))
     tau_s = (1.0 - s_bar) / k_minus
 
     s_inf = s_bar
