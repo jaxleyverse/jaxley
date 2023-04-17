@@ -32,9 +32,28 @@ class Cell:
         ]
 
 
-def merge_cells(cumsum_num_branches, attrs, exclude_first=True):
+def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
+    """
+    Build full list of which branches are solved in which iteration.
+
+    From the branching pattern of single cells, this "merges" them into a single
+    ordering of branches.
+
+    Args:
+        cumsum_num_branches: cumulative number of branches. E.g., for three cells with
+            10, 15, and 5 branches respectively, this will should be a list containing
+            `[0, 10, 25, 30]`.
+        arrs: A list of a list of arrays that should be merged.
+        exclude_first: If `True`, the first element of each list in `arrs` will remain
+            unchanged. Useful if a `-1` (which indicates "no parent") entry should not
+            be changed.
+
+    Returns:
+        A list of arrays which contain the branch indices that are computed at each
+        level (i.e., iteration).
+    """
     ps = []
-    for i, att in enumerate(attrs):
+    for i, att in enumerate(arrs):
         p = att
         if exclude_first:
             p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
@@ -42,12 +61,14 @@ def merge_cells(cumsum_num_branches, attrs, exclude_first=True):
             p = [p_in_level + cumsum_num_branches[i] for p_in_level in p]
         ps.append(p)
 
-    max_len = max([len(att) for att in attrs])
+    max_len = max([len(att) for att in arrs])
     combined_parents_in_level = []
-    for i in range(-1, -max_len - 1, -1):
-        current_ps = [p[i] for p in ps]
+    for i in range(max_len):
+        current_ps = []
+        for p in ps:
+            if len(p) > i:
+                current_ps.append(p[i])
         combined_parents_in_level.append(jnp.concatenate(current_ps))
-    combined_parents_in_level = list(reversed(combined_parents_in_level))
 
     return combined_parents_in_level
 
