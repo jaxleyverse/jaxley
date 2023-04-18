@@ -55,6 +55,12 @@ class Cell:
         self.branch_conds_fwd *= 10**7
         self.branch_conds_bwd *= 10**7
 
+        # TODO: REMOVE
+        self.coupling_conds = (
+            radiuses[0] / 2.0 / self.r_a / lengths_single_compartment[0] ** 2
+        )  # S * um / cm / um^2 = S / cm / um
+        self.coupling_conds *= 10**7  # Convert (S / cm / um) -> (mS / cm^2)
+
         self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
         self.levels = compute_levels(self.parents)
         self.branches_in_each_level = compute_branches_in_level(self.levels)

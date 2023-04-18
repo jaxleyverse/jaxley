@@ -18,6 +18,11 @@ COMB_PARENTS = []
 COMB_PARENTS_IN_EACH_LEVEL = []
 COMB_BRANCHES_IN_EACH_LEVEL = []
 NUM_NEIGHBOURS = []
+RADIUSES = []
+LENGTHS = []
+
+I_CELL_INDS = []
+I_INDS = []
 
 NSEG_PER_BRANCH = -1
 SOLVER = ""
@@ -117,8 +122,12 @@ def prepare_state(
     global COMB_PARENTS_IN_EACH_LEVEL
     global COMB_BRANCHES_IN_EACH_LEVEL
     global NUM_NEIGHBOURS
+    global RADIUSES
+    global LENGTHS
     global NSEG_PER_BRANCH
     global SOLVER
+    global I_CELL_INDS
+    global I_INDS
 
     NUM_BRANCHES = [cell.num_branches for cell in cells]
     CUMSUM_NUM_BRANCHES = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
@@ -136,6 +145,9 @@ def prepare_state(
         exclude_first=False,
     )
     NUM_NEIGHBOURS = [cell.num_neighbours for cell in cells]
+    # Flatten because we flatten all vars.
+    RADIUSES = jnp.concatenate([c.radiuses.flatten() for c in cells])
+    LENGTHS = jnp.concatenate([c.lengths.flatten() for c in cells])
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
     SOLVER = solver
 
@@ -155,9 +167,9 @@ def prepare_state(
     rec_cell_inds = jnp.asarray([r.cell_ind for r in recordings])
 
     stim_inds = [index_of_loc(s.branch_ind, s.loc, NSEG_PER_BRANCH) for s in stimuli]
-    stim_cell_inds = jnp.asarray([s.cell_ind for s in stimuli])
-    stim_inds = jnp.asarray(stim_inds)
     stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
+    I_CELL_INDS = jnp.asarray([s.cell_ind for s in stimuli])
+    I_INDS = jnp.asarray(stim_inds)
 
     concat_voltage = jnp.concatenate(init_v)
     # Save voltage at the beginning.
@@ -173,12 +185,8 @@ def prepare_state(
         syn_states,
         [jnp.concatenate(m, axis=1) for m in mem_params],
         syn_params,
-        stim_cell_inds,
-        stim_inds,
         stim_currents,
         dt,
-        [c.radiuses.flatten() for c in cells],  # Flatten because we flatten all vars.
-        [c.lengths.flatten() for c in cells],
         cells[0].coupling_conds,
         rec_cell_inds,
         rec_inds,
@@ -198,16 +206,12 @@ def find_root(
     ss,
     params,
     syn_params,
-    i_cell_inds,
-    i_inds,
     i_stim,
     pre_syn_inds,
     pre_syn_cell_inds,
     grouped_post_syn_inds,
     grouped_post_syns,
     dt,
-    radiuses,
-    lengths,
     coupling_conds,
 ):
     voltages = v  # mV
@@ -225,10 +229,10 @@ def find_root(
     # External input.
     i_ext = get_external_input(
         voltages,
-        CUMSUM_NUM_BRANCHES[i_cell_inds] * NSEG_PER_BRANCH + i_inds,
+        CUMSUM_NUM_BRANCHES[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
         i_stim,
-        radiuses[i_cell_inds][i_inds],
-        lengths[i_cell_inds][i_inds],
+        RADIUSES[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
+        LENGTHS[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
     )
 
     # Synaptic input.
@@ -294,12 +298,8 @@ def body_fun(i, state):
         syn_states,
         params,
         syn_params,
-        i_cell_inds,
-        i_inds,
         i_stim,
         dt,
-        radius,
-        length_single_compartment,
         coupling_conds,
         rec_cell_inds,
         rec_inds,
@@ -317,16 +317,12 @@ def body_fun(i, state):
         syn_states,
         params,
         syn_params,
-        i_cell_inds,
-        i_inds,
         i_stim[:, i],
         pre_syn_inds,
         pre_syn_cell_inds,
         grouped_post_syn_inds,
         grouped_post_syns,
         dt,
-        radius,
-        length_single_compartment,
         coupling_conds,
     )
     t += dt
@@ -342,12 +338,8 @@ def body_fun(i, state):
         syn_states,
         params,
         syn_params,
-        i_cell_inds,
-        i_inds,
         i_stim,
         dt,
-        radius,
-        length_single_compartment,
         coupling_conds,
         rec_cell_inds,
         rec_inds,
