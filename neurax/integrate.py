@@ -17,7 +17,6 @@ CUMSUM_NUM_BRANCHES = []
 COMB_PARENTS = []
 COMB_PARENTS_IN_EACH_LEVEL = []
 COMB_BRANCHES_IN_EACH_LEVEL = []
-NUM_NEIGHBOURS = []
 RADIUSES = []
 LENGTHS = []
 COUPLING_CONDS_FWD = []
@@ -126,7 +125,6 @@ def prepare_state(
     global COMB_PARENTS
     global COMB_PARENTS_IN_EACH_LEVEL
     global COMB_BRANCHES_IN_EACH_LEVEL
-    global NUM_NEIGHBOURS
     global RADIUSES
     global LENGTHS
     global COUPLING_CONDS_FWD
@@ -155,7 +153,6 @@ def prepare_state(
         [cell.branches_in_each_level for cell in cells],
         exclude_first=False,
     )
-    NUM_NEIGHBOURS = [cell.num_neighbours for cell in cells]
 
     # Flatten because we flatten all vars.
     RADIUSES = jnp.concatenate([c.radiuses.flatten() for c in cells])
@@ -281,7 +278,6 @@ def find_root(
         voltages,
         voltage_terms + syn_voltage_terms,
         i_ext + constant_terms + syn_constant_terms,
-        jnp.concatenate(NUM_NEIGHBOURS),
         sum(NUM_BRANCHES),
         COUPLING_CONDS_FWD,
         COUPLING_CONDS_BWD,

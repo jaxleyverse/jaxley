@@ -7,7 +7,6 @@ def define_all_tridiags(
     voltages: jnp.ndarray,
     voltage_terms: jnp.asarray,
     i_ext: jnp.ndarray,
-    num_neighbours: jnp.ndarray,
     num_branches: int,
     coupling_conds_fwd: float,
     coupling_conds_bwd: float,
@@ -21,16 +20,14 @@ def define_all_tridiags(
 
     voltage_terms = jnp.reshape(voltage_terms, (num_branches, -1))
     i_ext = jnp.reshape(i_ext, (num_branches, -1))
-    num_neighbours = jnp.reshape(num_neighbours, (num_branches, -1))
 
     lowers, diags, uppers, solves = vmap(
-        _define_tridiag_for_branch, in_axes=(0, 0, 0, None, 0, 0, 0, 0)
+        _define_tridiag_for_branch, in_axes=(0, 0, 0, None, 0, 0, 0)
     )(
         voltages,
         voltage_terms,
         i_ext,
         dt,
-        num_neighbours,
         coupling_conds_fwd,
         coupling_conds_bwd,
         summed_coupling_conds,
@@ -44,7 +41,6 @@ def _define_tridiag_for_branch(
     voltage_terms: jnp.ndarray,
     i_ext: jnp.ndarray,
     dt: float,
-    num_neighbours: jnp.ndarray,
     coupling_conds_fwd: float,
     coupling_conds_bwd: float,
     summed_coupling_conds: float,
@@ -54,7 +50,7 @@ def _define_tridiag_for_branch(
     """
 
     # Diagonal and solve.
-    a_v = 1.0 + dt * voltage_terms + dt * num_neighbours * summed_coupling_conds
+    a_v = 1.0 + dt * voltage_terms + dt * summed_coupling_conds
     b_v = voltages + dt * i_ext
 
     # Subdiagonals.
