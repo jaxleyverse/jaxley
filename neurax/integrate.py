@@ -294,7 +294,8 @@ def find_root(
         diags,
         uppers,
         solves,
-        -dt * 8.0,  # coupling conds
+        -dt * BRANCH_CONDS_FWD,
+        -dt * BRANCH_CONDS_BWD,
         SOLVER,
     )
     return sol_tri.flatten(order="C"), new_states, new_syn_states
