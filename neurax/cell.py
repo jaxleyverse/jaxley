@@ -57,20 +57,6 @@ class Cell:
         self.branch_conds_fwd *= 10**7
         self.branch_conds_bwd *= 10**7
 
-        # TODO: REMOVE
-        self.coupling_conds = (
-            10.0 / 2.0 / self.r_a / 25.0**2
-        )  # S * um / cm / um^2 = S / cm / um
-        self.coupling_conds *= 10**7  # Convert (S / cm / um) -> (mS / cm^2)
-
-        self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
-        self.levels = compute_levels(self.parents)
-        self.branches_in_each_level = compute_branches_in_level(self.levels)
-
-        self.parents_in_each_level = [
-            jnp.unique(parents[c]) for c in self.branches_in_each_level
-        ]
-
         # Compute the summed coupling conductances of each compartment.
         self.summed_coupling_conds = jnp.zeros((num_branches, nseg_per_branch))
         self.summed_coupling_conds = self.summed_coupling_conds.at[:, 1:].add(
@@ -86,6 +72,14 @@ class Cell:
             self.summed_coupling_conds = self.summed_coupling_conds.at[
                 parents[b], 0
             ].add(self.branch_conds_bwd[b])
+
+        self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
+        self.levels = compute_levels(self.parents)
+        self.branches_in_each_level = compute_branches_in_level(self.levels)
+
+        self.parents_in_each_level = [
+            jnp.unique(parents[c]) for c in self.branches_in_each_level
+        ]
 
 
 def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
