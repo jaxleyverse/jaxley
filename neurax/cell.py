@@ -74,6 +74,9 @@ class Cell:
             jnp.unique(parents[c]) for c in self.branches_in_each_level
         ]
 
+        # Compute the summed coupling conductances of each compartment.
+        self.summed_coupling_conds = 8 * jnp.ones((num_branches, nseg_per_branch))
+
 
 def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
     """

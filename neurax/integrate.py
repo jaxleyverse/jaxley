@@ -20,6 +20,11 @@ COMB_BRANCHES_IN_EACH_LEVEL = []
 NUM_NEIGHBOURS = []
 RADIUSES = []
 LENGTHS = []
+COUPLING_CONDS_FWD = []
+COUPLING_CONDS_BWD = []
+BRANCH_CONDS_FWD = []
+BRANCH_CONDS_BWD = []
+SUMMED_COUPLING_CONDS = []
 
 I_CELL_INDS = []
 I_INDS = []
@@ -124,6 +129,12 @@ def prepare_state(
     global NUM_NEIGHBOURS
     global RADIUSES
     global LENGTHS
+    global COUPLING_CONDS_FWD
+    global COUPLING_CONDS_BWD
+    global BRANCH_CONDS_FWD
+    global BRANCH_CONDS_BWD
+    global SUMMED_COUPLING_CONDS
+
     global NSEG_PER_BRANCH
     global SOLVER
     global I_CELL_INDS
@@ -145,9 +156,16 @@ def prepare_state(
         exclude_first=False,
     )
     NUM_NEIGHBOURS = [cell.num_neighbours for cell in cells]
+
     # Flatten because we flatten all vars.
     RADIUSES = jnp.concatenate([c.radiuses.flatten() for c in cells])
     LENGTHS = jnp.concatenate([c.lengths.flatten() for c in cells])
+    COUPLING_CONDS_FWD = jnp.concatenate([c.coupling_conds_fwd for c in cells])
+    COUPLING_CONDS_BWD = jnp.concatenate([c.coupling_conds_bwd for c in cells])
+    BRANCH_CONDS_FWD = jnp.concatenate([c.branch_conds_fwd for c in cells])
+    BRANCH_CONDS_BWD = jnp.concatenate([c.branch_conds_bwd for c in cells])
+    SUMMED_COUPLING_CONDS = jnp.concatenate([c.summed_coupling_conds for c in cells])
+
     NSEG_PER_BRANCH = cells[0].nseg_per_branch
     SOLVER = solver
 
@@ -187,7 +205,6 @@ def prepare_state(
         syn_params,
         stim_currents,
         dt,
-        cells[0].coupling_conds,
         rec_cell_inds,
         rec_inds,
         [c.pre_syn_inds for c in connectivities],
@@ -212,7 +229,6 @@ def find_root(
     grouped_post_syn_inds,
     grouped_post_syns,
     dt,
-    coupling_conds,
 ):
     voltages = v  # mV
 
@@ -266,10 +282,11 @@ def find_root(
         voltage_terms + syn_voltage_terms,
         i_ext + constant_terms + syn_constant_terms,
         jnp.concatenate(NUM_NEIGHBOURS),
-        NSEG_PER_BRANCH,
         sum(NUM_BRANCHES),
+        COUPLING_CONDS_FWD,
+        COUPLING_CONDS_BWD,
+        SUMMED_COUPLING_CONDS,
         dt,
-        coupling_conds,
     )
 
     # Solve quasi-tridiagonal system.
@@ -281,7 +298,7 @@ def find_root(
         diags,
         uppers,
         solves,
-        -dt * coupling_conds,
+        -dt * 8.0,  # coupling conds
         SOLVER,
     )
     return sol_tri.flatten(order="C"), new_states, new_syn_states
@@ -300,7 +317,6 @@ def body_fun(i, state):
         syn_params,
         i_stim,
         dt,
-        coupling_conds,
         rec_cell_inds,
         rec_inds,
         pre_syn_inds,
@@ -323,7 +339,6 @@ def body_fun(i, state):
         grouped_post_syn_inds,
         grouped_post_syns,
         dt,
-        coupling_conds,
     )
     t += dt
 
@@ -340,7 +355,6 @@ def body_fun(i, state):
         syn_params,
         i_stim,
         dt,
-        coupling_conds,
         rec_cell_inds,
         rec_inds,
         pre_syn_inds,
