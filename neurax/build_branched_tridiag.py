@@ -8,10 +8,11 @@ def define_all_tridiags(
     voltage_terms: jnp.asarray,
     i_ext: jnp.ndarray,
     num_neighbours: jnp.ndarray,
-    nseg_per_branch: int,
     num_branches: int,
+    coupling_conds_fwd: float,
+    coupling_conds_bwd: float,
+    summed_coupling_conds: float,
     dt: float,
-    coupling_conds: float,
 ):
     """
     Set up tridiagonal system for each branch.
@@ -23,15 +24,16 @@ def define_all_tridiags(
     num_neighbours = jnp.reshape(num_neighbours, (num_branches, -1))
 
     lowers, diags, uppers, solves = vmap(
-        _define_tridiag_for_branch, in_axes=(0, 0, 0, None, 0, None, None)
+        _define_tridiag_for_branch, in_axes=(0, 0, 0, None, 0, 0, 0, 0)
     )(
         voltages,
         voltage_terms,
         i_ext,
         dt,
         num_neighbours,
-        coupling_conds,
-        nseg_per_branch,
+        coupling_conds_fwd,
+        coupling_conds_bwd,
+        summed_coupling_conds,
     )
 
     return (lowers, diags, uppers, solves)
@@ -43,18 +45,19 @@ def _define_tridiag_for_branch(
     i_ext: jnp.ndarray,
     dt: float,
     num_neighbours: jnp.ndarray,
-    coupling_conds: float,
-    nseg_per_branch: int,
+    coupling_conds_fwd: float,
+    coupling_conds_bwd: float,
+    summed_coupling_conds: float,
 ):
     """
     Defines the tridiagonal system to solve for a single branch.
     """
 
     # Diagonal and solve.
-    a_v = 1.0 + dt * voltage_terms + dt * num_neighbours * coupling_conds
+    a_v = 1.0 + dt * voltage_terms + dt * num_neighbours * summed_coupling_conds
     b_v = voltages + dt * i_ext
 
     # Subdiagonals.
-    upper = jnp.asarray([-dt * coupling_conds] * (nseg_per_branch - 1))
-    lower = jnp.asarray([-dt * coupling_conds] * (nseg_per_branch - 1))
+    upper = jnp.asarray(-dt * coupling_conds_fwd)
+    lower = jnp.asarray(-dt * coupling_conds_bwd)
     return lower, a_v, upper, b_v
