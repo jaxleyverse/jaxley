@@ -46,7 +46,9 @@ def get_external_input(
     # `radius`: um
     # `length_single_compartment`: um
     # `i_stim`: nA
-    current = i_stim / 2 / pi / radius / length_single_compartment  # nA / um^2
+    current = (
+        i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
+    )  # nA / um^2
     current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
     stim_at_timestep = zero_vec.at[i_inds].set(current)
     return stim_at_timestep
