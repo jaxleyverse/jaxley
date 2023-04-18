@@ -25,6 +25,8 @@ class Cell:
         # Set radiuses and lengths for each compartment.
         self.radiuses = jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
         self.lengths = jnp.stack([lengths_single_compartment] * nseg_per_branch).T
+        # TODO: should I flip the radiuses and lengths because I seem to be counting
+        # segments from 1.0 through 0.0. See for example `num_neighbours`.
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
             return rad1 * rad2**2 / r_a / l1 / (rad2**2 * l1 + rad1**2 * l2)
@@ -35,9 +37,9 @@ class Cell:
         # `length_single_compartment`: um
         # `coupling_conds`: S * um / cm / um^2 = S / cm / um
         rad1 = self.radiuses[:, 1:]
-        rad2 = self.radiuses[:, : nseg_per_branch - 1]
+        rad2 = self.radiuses[:, :-1]
         l1 = self.lengths[:, 1:]
-        l2 = self.lengths[:, : nseg_per_branch - 1]
+        l2 = self.lengths[:, :-1]
         self.coupling_conds_fwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
         self.coupling_conds_bwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
 
@@ -65,17 +67,25 @@ class Cell:
         self.levels = compute_levels(self.parents)
         self.branches_in_each_level = compute_branches_in_level(self.levels)
 
-        self.num_neighbours = get_num_neighbours(
-            num_kids=self.num_kids,
-            nseg_per_branch=self.nseg_per_branch,
-            num_branches=self.num_branches,
-        )
         self.parents_in_each_level = [
             jnp.unique(parents[c]) for c in self.branches_in_each_level
         ]
 
         # Compute the summed coupling conductances of each compartment.
-        self.summed_coupling_conds = 8 * jnp.ones((num_branches, nseg_per_branch))
+        self.summed_coupling_conds = jnp.zeros((num_branches, nseg_per_branch))
+        self.summed_coupling_conds = self.summed_coupling_conds.at[:, 1:].add(
+            self.coupling_conds_fwd
+        )
+        self.summed_coupling_conds = self.summed_coupling_conds.at[:, :-1].add(
+            self.coupling_conds_bwd
+        )
+        for b in range(1, num_branches):
+            self.summed_coupling_conds = self.summed_coupling_conds.at[b, -1].add(
+                self.branch_conds_fwd[b]
+            )
+            self.summed_coupling_conds = self.summed_coupling_conds.at[
+                parents[b], 0
+            ].add(self.branch_conds_bwd[b])
 
 
 def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
