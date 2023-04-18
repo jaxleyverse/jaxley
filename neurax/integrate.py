@@ -148,6 +148,8 @@ def prepare_state(
     num_time_steps = int(t_max / dt) + 1
     saveat = jnp.zeros((num_recordings, num_time_steps))
 
+    # TODO: do I actually need this conversion if I assume NSEG_PER_BRANCH to be const?
+    # Can I not just keep a 2D array everywhere?
     rec_inds = [index_of_loc(r.branch_ind, r.loc, NSEG_PER_BRANCH) for r in recordings]
     rec_inds = jnp.asarray(rec_inds)
     rec_cell_inds = jnp.asarray([r.cell_ind for r in recordings])
@@ -175,8 +177,8 @@ def prepare_state(
         stim_inds,
         stim_currents,
         dt,
-        cells[0].radius,
-        cells[0].length_single_compartment,
+        [c.radiuses.flatten() for c in cells],  # Flatten because we flatten all vars.
+        [c.lengths.flatten() for c in cells],
         cells[0].coupling_conds,
         rec_cell_inds,
         rec_inds,
@@ -204,8 +206,8 @@ def find_root(
     grouped_post_syn_inds,
     grouped_post_syns,
     dt,
-    radius,
-    length_single_compartment,
+    radiuses,
+    lengths,
     coupling_conds,
 ):
     voltages = v  # mV
@@ -225,8 +227,8 @@ def find_root(
         voltages,
         CUMSUM_NUM_BRANCHES[i_cell_inds] * NSEG_PER_BRANCH + i_inds,
         i_stim,
-        radius,
-        length_single_compartment,
+        radiuses[i_cell_inds][i_inds],
+        lengths[i_cell_inds][i_inds],
     )
 
     # Synaptic input.
