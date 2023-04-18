@@ -57,7 +57,7 @@ class Cell:
 
         # TODO: REMOVE
         self.coupling_conds = (
-            radiuses[0] / 2.0 / self.r_a / lengths_single_compartment[0] ** 2
+            10.0 / 2.0 / self.r_a / 25.0**2
         )  # S * um / cm / um^2 = S / cm / um
         self.coupling_conds *= 10**7  # Convert (S / cm / um) -> (mS / cm^2)
 

@@ -231,8 +231,8 @@ def find_root(
         voltages,
         CUMSUM_NUM_BRANCHES[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
         i_stim,
-        RADIUSES[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
-        LENGTHS[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
+        RADIUSES,
+        LENGTHS,
     )
 
     # Synaptic input.
