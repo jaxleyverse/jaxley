@@ -20,6 +20,7 @@ def solve_branched(
     Solve branched.
     """
     diags, uppers, solves = triang_branched(
+        parents,
         parents_in_each_level,
         branches_in_each_level,
         lowers,
@@ -42,6 +43,7 @@ def solve_branched(
 
 
 def triang_branched(
+    parents,
     parents_in_each_level,
     branches_in_each_level,
     lowers,
@@ -61,7 +63,7 @@ def triang_branched(
             bil, lowers, diags, uppers, solves, solver
         )
         diags, solves = _eliminate_parents_upper(
-            parents_in_level,
+            parents,  # parents_in_level
             bil,
             diags,
             solves,
@@ -149,13 +151,29 @@ def _eliminate_parents_upper(
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0))(
         diags[bil, -1], solves[bil, -1], branch_cond[bil]
     )
-    diags = diags.at[parents_in_level, 0].set(
-        diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
+    # diags = diags.at[parents_in_level, 0].set(
+    #     diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
+    # )
+    # solves = solves.at[parents_in_level, 0].set(
+    #     solves[parents_in_level, 0] + jnp.sum(jnp.reshape(new_solve, (-1, 2)), axis=1)
+    # )
+    result = lax.fori_loop(
+        0,
+        len(bil),
+        _body_fun_eliminate_parents_upper,
+        (diags, solves, parents_in_level, bil, new_diag, new_solve),
     )
-    solves = solves.at[parents_in_level, 0].set(
-        solves[parents_in_level, 0] + jnp.sum(jnp.reshape(new_solve, (-1, 2)), axis=1)
+    # return diags, solves
+    return result[0], result[1]
+
+
+def _body_fun_eliminate_parents_upper(i, vals):
+    diags, solves, parents, bil, new_diag, new_solve = vals
+    diags = diags.at[parents[bil[i]], 0].set(diags[parents[bil[i]], 0] + new_diag[i])
+    solves = solves.at[parents[bil[i]], 0].set(
+        solves[parents[bil[i]], 0] + new_solve[i]
     )
-    return diags, solves
+    return (diags, solves, parents, bil, new_diag, new_solve)
 
 
 def _eliminate_children_lower(
