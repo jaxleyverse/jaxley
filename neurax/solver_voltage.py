@@ -12,7 +12,8 @@ def solve_branched(
     diags,
     uppers,
     solves,
-    branch_cond,
+    branch_cond_fwd,
+    branch_cond_bwd,
     solver,
 ):
     """
@@ -25,7 +26,7 @@ def solve_branched(
         diags,
         uppers,
         solves,
-        branch_cond,
+        branch_cond_fwd,
         solver,
     )
     solves = backsub_branched(
@@ -34,7 +35,7 @@ def solve_branched(
         diags,
         uppers,
         solves,
-        branch_cond,
+        branch_cond_bwd,
         solver,
     )
     return solves
@@ -145,8 +146,8 @@ def _eliminate_parents_upper(
     branch_cond,
 ):
     bil = branches_in_level
-    new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, None))(
-        diags[bil, -1], solves[bil, -1], branch_cond
+    new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0))(
+        diags[bil, -1], solves[bil, -1], branch_cond[bil]
     )
     diags = diags.at[parents_in_level, 0].set(
         diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
@@ -165,6 +166,6 @@ def _eliminate_children_lower(
 ):
     bil = branches_in_level
     solves = solves.at[bil, -1].set(
-        solves[bil, -1] - branch_cond * solves[parents[bil], 0]
+        solves[bil, -1] - branch_cond[bil] * solves[parents[bil], 0]
     )
     return solves
