@@ -11,50 +11,15 @@ class Cell:
         lengths,
         radiuses,
         r_a,
-        single_branch,
     ):
         self.num_branches = num_branches
         self.parents = parents
-        lengths_single_compartment = jnp.asarray(lengths) / nseg_per_branch
-        if single_branch:
-            lengths_single_compartment *= 2
         self.r_a = r_a
 
         self.nseg_per_branch = nseg_per_branch
 
-        # Compute radiuses by linear interpolation.
-        endpoint_radiuses = jnp.asarray(radiuses)
-
-        def compute_rad(branch_ind, loc):
-            start = endpoint_radiuses[parents[branch_ind]]
-            end = endpoint_radiuses[branch_ind]
-            return (end - start) * loc + start
-
-        branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), nseg_per_branch)
-        locs_of_each_comp = jnp.linspace(1, 0, nseg_per_branch).repeat(num_branches)
-        rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
-
-        # Set radiuses and lengths for each compartment.
-        self.radiuses = jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
-
-        # Length
-        lengths1 = jnp.stack(
-            [lengths_single_compartment[0]] * ((nseg_per_branch // 2))
-        ).T
-        lengths2 = jnp.stack(
-            [lengths_single_compartment[1]] * ((nseg_per_branch // 2))
-        ).T
-        if single_branch:
-            self.lengths = jnp.concatenate([lengths2, lengths1])[:, None].T
-        else:
-            self.lengths = lengths_single_compartment[0] * jnp.ones(
-                (2, nseg_per_branch)
-            )
-            self.lengths = self.lengths.at[1, :nseg_per_branch].set(
-                lengths_single_compartment[1]
-            )
-
-        print("self.lengths", self.lengths)
+        self.lengths = lengths / nseg_per_branch
+        self.radiuses = radiuses
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
             return rad1 * rad2**2 / r_a / l1 / (rad2**2 * l1 + rad1**2 * l2)
@@ -108,6 +73,43 @@ class Cell:
         self.parents_in_each_level = [
             jnp.unique(parents[c]) for c in self.branches_in_each_level
         ]
+
+
+def equal_segments(branch_property: list, nseg_per_branch: int):
+    """Generates segments where some property is the same in each segment.
+
+    Args:
+        branch_property: List of values of the property in each branch. Should have
+            `len(branch_property) == num_branches`.
+    """
+    assert isinstance(branch_property, list), "branch_property must be a list."
+    return jnp.asarray([branch_property] * nseg_per_branch).T
+
+
+def linear_segments(
+    initial_val: float, endpoint_vals: list, parents: jnp.ndarray, nseg_per_branch: int
+):
+    """Generates segments where some property is linearly interpolated.
+
+    Args:
+        initial_val: The value at the tip of the soma.
+        endpoint_vals: The value at the endpoints of each branch.
+    """
+    branch_property = endpoint_vals + [initial_val]
+    num_branches = len(parents)
+    # Compute radiuses by linear interpolation.
+    endpoint_radiuses = jnp.asarray(branch_property)
+
+    def compute_rad(branch_ind, loc):
+        start = endpoint_radiuses[parents[branch_ind]]
+        end = endpoint_radiuses[branch_ind]
+        return (end - start) * loc + start
+
+    branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), nseg_per_branch)
+    locs_of_each_comp = jnp.linspace(1, 0, nseg_per_branch).repeat(num_branches)
+    rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
+
+    return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
 
 
 def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
