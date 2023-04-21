@@ -160,20 +160,20 @@ def _eliminate_parents_upper(
         branch_cond_fwd[bil],
         branch_cond_bwd[bil],
     )
-    # diags = diags.at[parents_in_level, 0].set(
-    #     diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
-    # )
-    # solves = solves.at[parents_in_level, 0].set(
-    #     solves[parents_in_level, 0] + jnp.sum(jnp.reshape(new_solve, (-1, 2)), axis=1)
-    # )
-    result = lax.fori_loop(
-        0,
-        len(bil),
-        _body_fun_eliminate_parents_upper,
-        (diags, solves, parents_in_level, bil, new_diag, new_solve),
+    diags = diags.at[parents_in_level, 0].set(
+        diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
     )
-    # return diags, solves
-    return result[0], result[1]
+    solves = solves.at[parents_in_level, 0].set(
+        solves[parents_in_level, 0] + jnp.sum(jnp.reshape(new_solve, (-1, 2)), axis=1)
+    )
+    # result = lax.fori_loop(
+    #     0,
+    #     len(bil),
+    #     _body_fun_eliminate_parents_upper,
+    #     (diags, solves, parents_in_level, bil, new_diag, new_solve),
+    # )
+    # return result[0], result[1]
+    return diags, solves
 
 
 def _body_fun_eliminate_parents_upper(i, vals):
