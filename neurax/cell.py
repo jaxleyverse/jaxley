@@ -3,12 +3,24 @@ import jax.numpy as jnp
 
 
 class Cell:
-    def __init__(self, num_branches, parents, nseg_per_branch, lengths, radiuses, r_a):
+    def __init__(
+        self,
+        num_branches,
+        parents,
+        nseg_per_branch,
+        lengths,
+        radiuses,
+        r_a,
+        single_branch,
+    ):
         self.num_branches = num_branches
         self.parents = parents
-        self.nseg_per_branch = nseg_per_branch
         lengths_single_compartment = jnp.asarray(lengths) / nseg_per_branch
+        if single_branch:
+            lengths_single_compartment *= 2
         self.r_a = r_a
+
+        self.nseg_per_branch = nseg_per_branch
 
         # Compute radiuses by linear interpolation.
         endpoint_radiuses = jnp.asarray(radiuses)
@@ -19,14 +31,30 @@ class Cell:
             return (end - start) * loc + start
 
         branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), nseg_per_branch)
-        locs_of_each_comp = jnp.linspace(0, 1, nseg_per_branch).repeat(num_branches)
+        locs_of_each_comp = jnp.linspace(1, 0, nseg_per_branch).repeat(num_branches)
         rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
 
         # Set radiuses and lengths for each compartment.
         self.radiuses = jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
-        self.lengths = jnp.stack([lengths_single_compartment] * nseg_per_branch).T
-        # TODO: should I flip the radiuses and lengths because I seem to be counting
-        # segments from 1.0 through 0.0. See for example `num_neighbours`.
+
+        # Length
+        lengths1 = jnp.stack(
+            [lengths_single_compartment[0]] * ((nseg_per_branch // 2))
+        ).T
+        lengths2 = jnp.stack(
+            [lengths_single_compartment[1]] * ((nseg_per_branch // 2))
+        ).T
+        if single_branch:
+            self.lengths = jnp.concatenate([lengths2, lengths1])[:, None].T
+        else:
+            self.lengths = lengths_single_compartment[0] * jnp.ones(
+                (2, nseg_per_branch)
+            )
+            self.lengths = self.lengths.at[1, :nseg_per_branch].set(
+                lengths_single_compartment[1]
+            )
+
+        print("self.lengths", self.lengths)
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
             return rad1 * rad2**2 / r_a / l1 / (rad2**2 * l1 + rad1**2 * l2)
@@ -44,10 +72,10 @@ class Cell:
         self.coupling_conds_bwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
 
         # Compute coupling conductance for segments at branch points.
-        rad1 = self.radiuses[jnp.arange(1, num_branches), 0]
-        rad2 = self.radiuses[parents[jnp.arange(1, num_branches)], -1]
-        l1 = self.lengths[jnp.arange(1, num_branches), 0]
-        l2 = self.lengths[parents[jnp.arange(1, num_branches)], -1]
+        rad1 = self.radiuses[jnp.arange(1, num_branches), -1]
+        rad2 = self.radiuses[parents[jnp.arange(1, num_branches)], 0]
+        l1 = self.lengths[jnp.arange(1, num_branches), -1]
+        l2 = self.lengths[parents[jnp.arange(1, num_branches)], 0]
         self.branch_conds_fwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
         self.branch_conds_bwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
 
