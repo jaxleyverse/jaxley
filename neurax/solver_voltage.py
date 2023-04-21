@@ -28,6 +28,7 @@ def solve_branched(
         uppers,
         solves,
         branch_cond_fwd,
+        branch_cond_bwd,
         solver,
     )
     solves = backsub_branched(
@@ -50,7 +51,8 @@ def triang_branched(
     diags,
     uppers,
     solves,
-    branch_cond,
+    branch_cond_fwd,
+    branch_cond_bwd,
     solver,
 ):
     """
@@ -67,7 +69,8 @@ def triang_branched(
             bil,
             diags,
             solves,
-            branch_cond,
+            branch_cond_fwd,
+            branch_cond_bwd,
         )
     # At last level, we do not want to eliminate anymore.
     diags, uppers, solves = _triang_level(
@@ -129,13 +132,15 @@ def _backsub_level(branches_in_level, diags, uppers, solves, solver):
     return solves
 
 
-def _eliminate_single_parent_upper(diag_at_branch, solve_at_branch, branch_cond):
+def _eliminate_single_parent_upper(
+    diag_at_branch, solve_at_branch, branch_cond_fwd, branch_cond_bwd
+):
     last_of_3 = diag_at_branch
     last_of_3_solve = solve_at_branch
 
-    multiplying_factor = branch_cond / last_of_3
+    multiplying_factor = branch_cond_fwd / last_of_3
 
-    update_diag = -multiplying_factor * branch_cond
+    update_diag = -multiplying_factor * branch_cond_bwd
     update_solve = -multiplying_factor * last_of_3_solve
     return update_diag, update_solve
 
@@ -145,11 +150,15 @@ def _eliminate_parents_upper(
     branches_in_level,
     diags,
     solves,
-    branch_cond,
+    branch_cond_fwd,
+    branch_cond_bwd,
 ):
     bil = branches_in_level
-    new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0))(
-        diags[bil, -1], solves[bil, -1], branch_cond[bil]
+    new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
+        diags[bil, -1],
+        solves[bil, -1],
+        branch_cond_fwd[bil],
+        branch_cond_bwd[bil],
     )
     # diags = diags.at[parents_in_level, 0].set(
     #     diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)

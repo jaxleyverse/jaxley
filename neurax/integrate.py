@@ -279,8 +279,8 @@ def find_root(
         voltage_terms + syn_voltage_terms,
         i_ext + constant_terms + syn_constant_terms,
         sum(NUM_BRANCHES),
-        COUPLING_CONDS_FWD,
         COUPLING_CONDS_BWD,
+        COUPLING_CONDS_FWD,
         SUMMED_COUPLING_CONDS,
         dt,
     )
@@ -294,8 +294,8 @@ def find_root(
         diags,
         uppers,
         solves,
-        -dt * BRANCH_CONDS_FWD,
         -dt * BRANCH_CONDS_BWD,
+        -dt * BRANCH_CONDS_FWD,
         SOLVER,
     )
     return sol_tri.flatten(order="C"), new_states, new_syn_states
