@@ -73,15 +73,7 @@ class Cell:
         self.parents_in_each_level = [
             jnp.unique(parents[c]) for c in self.branches_in_each_level
         ]
-
-        # ind_of_kids = jnp.asarray(_compute_index_of_kid(parents))
-        # ind_of_kids_in_each_level = [
-        #     ind_of_kids[bil] for bil in self.branches_in_each_level
-        # ]
         self.max_num_kids = 4
-        # self.cum_inds_in_each_level = cum_indizes_of_kids(
-        #     ind_of_kids_in_each_level, self.max_num_kids
-        # )
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):

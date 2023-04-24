@@ -73,7 +73,8 @@ def triang_branched(
             bil, lowers, diags, uppers, solves, solver
         )
         diags, solves = _eliminate_parents_upper(
-            parents,  # parents_in_level,  #
+            parents,
+            parents_in_level,
             bil,
             diags,
             solves,
@@ -156,6 +157,7 @@ def _eliminate_single_parent_upper(
 
 
 def _eliminate_parents_upper(
+    parents,
     parents_in_level,
     branches_in_level,
     diags,
@@ -172,33 +174,29 @@ def _eliminate_parents_upper(
         branch_cond_fwd[bil],
         branch_cond_bwd[bil],
     )
-    # # print("new_diag", new_diag.shape)
-    # # print("parents_in_level", parents_in_level)
-    # update_diags = jnp.zeros((max_num_kids * len(parents_in_level)))
-    # update_solves = jnp.zeros((max_num_kids * len(parents_in_level)))
-    # # print("update_diags1", update_diags.shape)
-    # # print("kid_inds_in_each_level", kid_inds_in_each_level)
-    # update_diags = update_diags.at[kid_inds_in_each_level].set(new_diag)
-    # update_solves = update_solves.at[kid_inds_in_each_level].set(new_solve)
-    # # print("update_diags2", update_diags.shape)
-
-    # diags = diags.at[parents_in_level, 0].set(
-    #     diags[parents_in_level, 0]
-    #     + jnp.sum(jnp.reshape(update_diags, (-1, max_num_kids)), axis=1)
-    # )
-    # # print("diags", diags.shape)
-    # solves = solves.at[parents_in_level, 0].set(
-    #     solves[parents_in_level, 0]
-    #     + jnp.sum(jnp.reshape(update_solves, (-1, max_num_kids)), axis=1)
-    # )
-    result = lax.fori_loop(
-        0,
-        len(bil),
-        _body_fun_eliminate_parents_upper,
-        (diags, solves, parents_in_level, bil, new_diag, new_solve),
-    )
-    return result[0], result[1]
-    # return diags, solves
+    parallel_elim = True
+    if parallel_elim:
+        update_diags = jnp.zeros((max_num_kids * len(parents_in_level)))
+        update_solves = jnp.zeros((max_num_kids * len(parents_in_level)))
+        update_diags = update_diags.at[kid_inds_in_each_level].set(new_diag)
+        update_solves = update_solves.at[kid_inds_in_each_level].set(new_solve)
+        diags = diags.at[parents_in_level, 0].set(
+            diags[parents_in_level, 0]
+            + jnp.sum(jnp.reshape(update_diags, (-1, max_num_kids)), axis=1)
+        )
+        solves = solves.at[parents_in_level, 0].set(
+            solves[parents_in_level, 0]
+            + jnp.sum(jnp.reshape(update_solves, (-1, max_num_kids)), axis=1)
+        )
+        return diags, solves
+    else:
+        result = lax.fori_loop(
+            0,
+            len(bil),
+            _body_fun_eliminate_parents_upper,
+            (diags, solves, parents, bil, new_diag, new_solve),
+        )
+        return result[0], result[1]
 
 
 def _body_fun_eliminate_parents_upper(i, vals):
