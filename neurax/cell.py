@@ -74,6 +74,15 @@ class Cell:
             jnp.unique(parents[c]) for c in self.branches_in_each_level
         ]
 
+        # ind_of_kids = jnp.asarray(_compute_index_of_kid(parents))
+        # ind_of_kids_in_each_level = [
+        #     ind_of_kids[bil] for bil in self.branches_in_each_level
+        # ]
+        self.max_num_kids = 4
+        # self.cum_inds_in_each_level = cum_indizes_of_kids(
+        #     ind_of_kids_in_each_level, self.max_num_kids
+        # )
+
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
     """Generates segments where some property is the same in each segment.
@@ -189,7 +198,7 @@ def _compute_num_kids(parents):
 def _compute_index_of_kid(parents):
     num_branches = len(parents)
     current_num_kids_for_each_branch = np.zeros((num_branches,), np.dtype("int"))
-    index_of_kid = [None]
+    index_of_kid = [-1]
     for b in range(1, num_branches):
         index_of_kid.append(current_num_kids_for_each_branch[parents[b]])
         current_num_kids_for_each_branch[parents[b]] += 1
@@ -210,3 +219,16 @@ def get_num_neighbours(
         num_kids + 1.0
     )
     return num_neighbours
+
+
+def cum_indizes_of_kids(ind_of_kids_in_each_level, max_num_kids):
+    cum_inds_in_each_level = []
+    for ind_kid in ind_of_kids_in_each_level:
+        base_ind = 0
+        cum_ind_in_level = []
+        for i, current_kid_ind in enumerate(ind_kid):
+            if current_kid_ind == 0 and i > 0:
+                base_ind += max_num_kids
+            cum_ind_in_level.append(base_ind + current_kid_ind)
+        cum_inds_in_each_level.append(jnp.asarray(cum_ind_in_level))
+    return cum_inds_in_each_level

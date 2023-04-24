@@ -14,6 +14,8 @@ def solve_branched(
     solves,
     branch_cond_fwd,
     branch_cond_bwd,
+    kid_inds_in_each_level,
+    max_num_kids,
     solver,
 ):
     """
@@ -29,6 +31,8 @@ def solve_branched(
         solves,
         branch_cond_fwd,
         branch_cond_bwd,
+        kid_inds_in_each_level,
+        max_num_kids,
         solver,
     )
     solves = backsub_branched(
@@ -53,24 +57,30 @@ def triang_branched(
     solves,
     branch_cond_fwd,
     branch_cond_bwd,
+    kid_inds_in_each_level,
+    max_num_kids,
     solver,
 ):
     """
     Triang.
     """
-    for bil, parents_in_level in zip(
-        reversed(branches_in_each_level[1:]), reversed(parents_in_each_level[1:])
+    for bil, parents_in_level, kids_in_level in zip(
+        reversed(branches_in_each_level[1:]),
+        reversed(parents_in_each_level[1:]),
+        reversed(kid_inds_in_each_level[1:]),
     ):
         diags, uppers, solves = _triang_level(
             bil, lowers, diags, uppers, solves, solver
         )
         diags, solves = _eliminate_parents_upper(
-            parents,  # parents_in_level
+            parents,  # parents_in_level,  #
             bil,
             diags,
             solves,
             branch_cond_fwd,
             branch_cond_bwd,
+            kids_in_level,
+            max_num_kids,
         )
     # At last level, we do not want to eliminate anymore.
     diags, uppers, solves = _triang_level(
@@ -152,6 +162,8 @@ def _eliminate_parents_upper(
     solves,
     branch_cond_fwd,
     branch_cond_bwd,
+    kid_inds_in_each_level,
+    max_num_kids,
 ):
     bil = branches_in_level
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
@@ -160,20 +172,33 @@ def _eliminate_parents_upper(
         branch_cond_fwd[bil],
         branch_cond_bwd[bil],
     )
-    diags = diags.at[parents_in_level, 0].set(
-        diags[parents_in_level, 0] + jnp.sum(jnp.reshape(new_diag, (-1, 2)), axis=1)
-    )
-    solves = solves.at[parents_in_level, 0].set(
-        solves[parents_in_level, 0] + jnp.sum(jnp.reshape(new_solve, (-1, 2)), axis=1)
-    )
-    # result = lax.fori_loop(
-    #     0,
-    #     len(bil),
-    #     _body_fun_eliminate_parents_upper,
-    #     (diags, solves, parents_in_level, bil, new_diag, new_solve),
+    # # print("new_diag", new_diag.shape)
+    # # print("parents_in_level", parents_in_level)
+    # update_diags = jnp.zeros((max_num_kids * len(parents_in_level)))
+    # update_solves = jnp.zeros((max_num_kids * len(parents_in_level)))
+    # # print("update_diags1", update_diags.shape)
+    # # print("kid_inds_in_each_level", kid_inds_in_each_level)
+    # update_diags = update_diags.at[kid_inds_in_each_level].set(new_diag)
+    # update_solves = update_solves.at[kid_inds_in_each_level].set(new_solve)
+    # # print("update_diags2", update_diags.shape)
+
+    # diags = diags.at[parents_in_level, 0].set(
+    #     diags[parents_in_level, 0]
+    #     + jnp.sum(jnp.reshape(update_diags, (-1, max_num_kids)), axis=1)
     # )
-    # return result[0], result[1]
-    return diags, solves
+    # # print("diags", diags.shape)
+    # solves = solves.at[parents_in_level, 0].set(
+    #     solves[parents_in_level, 0]
+    #     + jnp.sum(jnp.reshape(update_solves, (-1, max_num_kids)), axis=1)
+    # )
+    result = lax.fori_loop(
+        0,
+        len(bil),
+        _body_fun_eliminate_parents_upper,
+        (diags, solves, parents_in_level, bil, new_diag, new_solve),
+    )
+    return result[0], result[1]
+    # return diags, solves
 
 
 def _body_fun_eliminate_parents_upper(i, vals):
