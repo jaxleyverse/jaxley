@@ -60,11 +60,11 @@ class Cell:
         )
         for b in range(1, num_branches):
             self.summed_coupling_conds = self.summed_coupling_conds.at[b, -1].add(
-                self.branch_conds_fwd[b]
+                self.branch_conds_fwd[b - 1]
             )
             self.summed_coupling_conds = self.summed_coupling_conds.at[
                 parents[b], 0
-            ].add(self.branch_conds_bwd[b])
+            ].add(self.branch_conds_bwd[b - 1])
 
         self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
         self.levels = compute_levels(self.parents)
