@@ -177,7 +177,7 @@ def _eliminate_parents_upper(
         branch_cond_fwd[bil - 1],
         branch_cond_bwd[bil - 1],
     )
-    parallel_elim = False
+    parallel_elim = True
     if parallel_elim:
         update_diags = jnp.zeros((max_num_kids * len(parents_in_level)))
         update_solves = jnp.zeros((max_num_kids * len(parents_in_level)))
