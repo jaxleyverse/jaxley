@@ -22,7 +22,7 @@ class Cell:
         self.radiuses = radiuses
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
-            return rad1 * rad2**2 / r_a / l1 / (rad2**2 * l1 + rad1**2 * l2)
+            return rad1 * rad2**2 / r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
 
         # Compute coupling conductance for segments within a branch.
         # `radius`: um
@@ -33,16 +33,16 @@ class Cell:
         rad2 = self.radiuses[:, :-1]
         l1 = self.lengths[:, 1:]
         l2 = self.lengths[:, :-1]
-        self.coupling_conds_fwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
-        self.coupling_conds_bwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
+        self.coupling_conds_bwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
+        self.coupling_conds_fwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
 
         # Compute coupling conductance for segments at branch points.
         rad1 = self.radiuses[jnp.arange(1, num_branches), -1]
         rad2 = self.radiuses[parents[jnp.arange(1, num_branches)], 0]
         l1 = self.lengths[jnp.arange(1, num_branches), -1]
         l2 = self.lengths[parents[jnp.arange(1, num_branches)], 0]
-        self.branch_conds_fwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
-        self.branch_conds_bwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
+        self.branch_conds_bwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
+        self.branch_conds_fwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
 
         # Convert (S / cm / um) -> (mS / cm^2)
         self.coupling_conds_fwd *= 10**7
