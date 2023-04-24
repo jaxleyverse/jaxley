@@ -2,14 +2,45 @@ import numpy as np
 
 
 def read_swc(fname):
+    """Read an SWC file and bring morphology into `neurax` compatible formats."""
     content = np.loadtxt(fname)
 
     branches = _split_into_branches(content)
-    parents = _build_parents(branches)
-    pathlengths = _compute_pathlengths(branches, content[:, 2:5])
-    endpoint_radiuses = _extract_endpoint_radiuses(branches, content[:, 5])
+    branches = _remove_single_branch_artifacts(branches)
+
+    first_val = np.asarray([b[0] for b in branches])
+    sorting = np.argsort(first_val)
+    sorted_branches = [branches[s] for s in sorting]
+
+    parents = _build_parents(sorted_branches)
+    pathlengths = _compute_pathlengths(sorted_branches, content[:, 2:5])
+    endpoint_radiuses = _extract_endpoint_radiuses(sorted_branches, content[:, 5])
     start_radius = content[0, 5]
     return parents, pathlengths, endpoint_radiuses, start_radius
+
+
+def _remove_single_branch_artifacts(branches):
+    """Check that all parents have two children. No only childs allowed!
+
+    See GH #32. The reason this happens is that some branches (without branchings)
+    are interrupted in their tracing. Here, we fuse these interrupted branches.
+    """
+    first_val = np.asarray([b[0] for b in branches])
+    vals, counts = np.unique(first_val[1:], return_counts=True)
+    one_vals = vals[counts == 1]
+    for one_val in one_vals:
+        loc = np.where(first_val == one_val)[0][0]
+        solo_branch = branches[loc]
+        del branches[loc]
+        new_branches = []
+        for b in branches:
+            if b[-1] == one_val:
+                new_branches.append(b + solo_branch)
+            else:
+                new_branches.append(b)
+        branches = new_branches
+
+    return branches
 
 
 def _split_into_branches(content):
@@ -73,55 +104,3 @@ def _compute_pathlengths(all_branches, coords):
         )
         branch_pathlengths.append(np.sum(dists))
     return branch_pathlengths
-
-
-# def old_read_swc(fname):
-#     content = np.loadtxt(fname)
-
-#     prev_ind = None
-#     n_branches = 0
-#     branch_inds = []
-#     for c in content:
-#         current_ind = c[0]
-#         current_parent = c[-1]
-#         if current_parent != prev_ind:
-#             branch_inds.append(int(current_parent))
-#             n_branches += 1
-#         prev_ind = current_ind
-
-#     all_branches = []
-#     current_branch = []
-#     for c in content:
-#         current_ind = c[0]
-#         current_parent = c[-1]
-#         if current_parent in branch_inds:
-#             all_branches.append(current_branch)
-#             current_branch = [int(current_parent), int(current_ind)]
-#         else:
-#             current_branch.append(int(current_ind))
-
-#     parents = [0]
-#     allb = all_branches[2:]
-
-#     for loc_to_jump_back_to, parent_branch in enumerate(allb):
-#         current_endpoint_ind = parent_branch[-1]
-#         current_parent_ind = loc_to_jump_back_to
-#         for _ in range(len(allb)):
-#             for child_b_ind in allb:
-#                 if child_b_ind[0] == current_endpoint_ind:
-#                     parents.append(current_parent_ind + 1)
-#                     current_endpoint_ind = child_b_ind[-1]
-#                     break
-#             current_parent_ind = len(parents) - 1
-
-#         current_endpoint_ind = allb[loc_to_jump_back_to][-1]
-#         current_parent_ind = loc_to_jump_back_to
-#         for i in range(len(allb)):
-#             for child_b_ind in reversed(range(len(allb))):
-#                 if allb[child_b_ind][0] == current_endpoint_ind:
-#                     parents.append(current_parent_ind + 1)
-#                     current_endpoint_ind = allb[child_b_ind][-1]
-#                     break
-#             current_parent_ind = len(parents) - 1
-
-#     return parents

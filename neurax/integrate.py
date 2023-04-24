@@ -4,7 +4,7 @@ import jax
 from jax import lax, vmap
 import jax.numpy as jnp
 
-from neurax.cell import merge_cells
+from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
 from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
@@ -14,6 +14,9 @@ from neurax.utils.syn_utils import postsyn_voltage_updates
 
 NUM_BRANCHES = []
 CUMSUM_NUM_BRANCHES = []
+COMB_CUM_KID_INDS_IN_EACH_LEVEL = []
+MAX_NUM_KIDS = None
+
 COMB_PARENTS = []
 COMB_PARENTS_IN_EACH_LEVEL = []
 COMB_BRANCHES_IN_EACH_LEVEL = []
@@ -122,6 +125,9 @@ def prepare_state(
 ):
     global NUM_BRANCHES
     global CUMSUM_NUM_BRANCHES
+    global COMB_CUM_KID_INDS_IN_EACH_LEVEL
+    global MAX_NUM_KIDS
+
     global COMB_PARENTS
     global COMB_PARENTS_IN_EACH_LEVEL
     global COMB_BRANCHES_IN_EACH_LEVEL
@@ -140,6 +146,9 @@ def prepare_state(
 
     NUM_BRANCHES = [cell.num_branches for cell in cells]
     CUMSUM_NUM_BRANCHES = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
+    MAX_NUM_KIDS = cells[0].max_num_kids
+    for c in cells:
+        assert MAX_NUM_KIDS == c.max_num_kids, "Different max_num_kids between cells."
 
     parents = [cell.parents for cell in cells]
     COMB_PARENTS = jnp.concatenate(
@@ -152,6 +161,15 @@ def prepare_state(
         CUMSUM_NUM_BRANCHES,
         [cell.branches_in_each_level for cell in cells],
         exclude_first=False,
+    )
+
+    # Prepare indizes for solve
+    comb_ind_of_kids = jnp.asarray(_compute_index_of_kid(COMB_PARENTS))
+    comb_ind_of_kids_in_each_level = [
+        comb_ind_of_kids[bil] for bil in COMB_BRANCHES_IN_EACH_LEVEL
+    ]
+    COMB_CUM_KID_INDS_IN_EACH_LEVEL = cum_indizes_of_kids(
+        comb_ind_of_kids_in_each_level, MAX_NUM_KIDS
     )
 
     # Flatten because we flatten all vars.
@@ -296,6 +314,8 @@ def find_root(
         solves,
         -dt * BRANCH_CONDS_BWD,
         -dt * BRANCH_CONDS_FWD,
+        COMB_CUM_KID_INDS_IN_EACH_LEVEL,
+        MAX_NUM_KIDS,
         SOLVER,
     )
     return sol_tri.flatten(order="C"), new_states, new_syn_states
