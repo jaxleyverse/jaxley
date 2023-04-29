@@ -7,9 +7,12 @@ def read_swc(fname):
 
     branches = _split_into_branches(content)
     branches = _remove_single_branch_artifacts(branches)
+    # print("branches", branches)
 
     first_val = np.asarray([b[0] for b in branches])
-    sorting = np.argsort(first_val)
+    # print("first_val", first_val)
+    sorting = np.argsort(first_val, kind="mergesort")
+    # print("sorting", sorting)
     sorted_branches = [branches[s] for s in sorting]
 
     parents = _build_parents(sorted_branches)
