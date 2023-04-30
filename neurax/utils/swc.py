@@ -1,25 +1,73 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def read_swc(fname):
     """Read an SWC file and bring morphology into `neurax` compatible formats."""
     content = np.loadtxt(fname)
-
-    branches = _split_into_branches(content)
-    branches = _remove_single_branch_artifacts(branches)
-    # print("branches", branches)
-
-    first_val = np.asarray([b[0] for b in branches])
-    # print("first_val", first_val)
-    sorting = np.argsort(first_val, kind="mergesort")
-    # print("sorting", sorting)
-    sorted_branches = [branches[s] for s in sorting]
+    sorted_branches = _split_into_branches_and_sort(content)
 
     parents = _build_parents(sorted_branches)
     pathlengths = _compute_pathlengths(sorted_branches, content[:, 2:5])
     endpoint_radiuses = _extract_endpoint_radiuses(sorted_branches, content[:, 5])
     start_radius = content[0, 5]
     return parents, pathlengths, endpoint_radiuses, start_radius
+
+
+def plot_swc(fname, figsize=(6, 6), dims=(0, 1), cols=None, highlight_branch_inds=[]):
+    """Plot morphology given an SWC file."""
+    highlight_cols = [
+        "#1f78b4",
+        "#33a02c",
+        "#e31a1c",
+        "#ff7f00",
+        "#6a3d9a",
+        "#b15928",
+        "#a6cee3",
+        "#b2df8a",
+        "#fb9a99",
+        "#fdbf6f",
+        "#cab2d6",
+        "#ffff99",
+    ]
+    content = np.loadtxt(fname)
+    sorted_branches = _split_into_branches_and_sort(content)
+
+    if isinstance(cols, str) or cols is None:
+        cols = [cols] * len(sorted_branches)
+
+    counter_highlight_branches = 0
+    lines = []
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    for i, branch in enumerate(sorted_branches):
+        coords_of_branch = content[np.asarray(branch) - 1, 2:5]
+        coords_of_branch = coords_of_branch[:, dims]
+
+        col = cols[i]
+        if i in highlight_branch_inds:
+            col = highlight_cols[counter_highlight_branches % len(highlight_cols)]
+            counter_highlight_branches += 1
+
+        (line,) = ax.plot(
+            coords_of_branch[:, 0], coords_of_branch[:, 1], c=col, label=f"ind {i}"
+        )
+        if i in highlight_branch_inds:
+            lines.append(line)
+
+    ax.legend(handles=lines, loc="upper left", bbox_to_anchor=(1.05, 1, 0, 0))
+
+    return fig, ax
+
+
+def _split_into_branches_and_sort(content):
+    branches = _split_into_branches(content)
+    branches = _remove_single_branch_artifacts(branches)
+
+    first_val = np.asarray([b[0] for b in branches])
+    sorting = np.argsort(first_val, kind="mergesort")
+    sorted_branches = [branches[s] for s in sorting]
+    return sorted_branches
 
 
 def _remove_single_branch_artifacts(branches):
