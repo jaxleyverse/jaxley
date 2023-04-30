@@ -1,11 +1,21 @@
+from warnings import warn
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-def read_swc(fname):
-    """Read an SWC file and bring morphology into `neurax` compatible formats."""
+def read_swc(fname: str, max_branch_len: float = 100.0):
+    """Read an SWC file and bring morphology into `neurax` compatible formats.
+
+    Args:
+        fname: Path to swc file.
+        max_branch_len: Maximal length of one branch. If a branch exceeds this length,
+            it is split into equal parts such that each subbranch is below
+            `max_branch_len`.
+    """
     content = np.loadtxt(fname)
-    sorted_branches = _split_into_branches_and_sort(content)
+    sorted_branches = _split_into_branches_and_sort(
+        content, max_branch_len=max_branch_len
+    )
 
     parents = _build_parents(sorted_branches)
     pathlengths = _compute_pathlengths(sorted_branches, content[:, 2:5])
@@ -14,7 +24,14 @@ def read_swc(fname):
     return parents, pathlengths, endpoint_radiuses, start_radius
 
 
-def plot_swc(fname, figsize=(6, 6), dims=(0, 1), cols=None, highlight_branch_inds=[]):
+def plot_swc(
+    fname,
+    max_branch_len: float = 100.0,
+    figsize=(6, 6),
+    dims=(0, 1),
+    cols=None,
+    highlight_branch_inds=[],
+):
     """Plot morphology given an SWC file."""
     highlight_cols = [
         "#1f78b4",
@@ -31,7 +48,9 @@ def plot_swc(fname, figsize=(6, 6), dims=(0, 1), cols=None, highlight_branch_ind
         "#ffff99",
     ]
     content = np.loadtxt(fname)
-    sorted_branches = _split_into_branches_and_sort(content)
+    sorted_branches = _split_into_branches_and_sort(
+        content, max_branch_len=max_branch_len
+    )
 
     if isinstance(cols, str) or cols is None:
         cols = [cols] * len(sorted_branches)
@@ -60,14 +79,49 @@ def plot_swc(fname, figsize=(6, 6), dims=(0, 1), cols=None, highlight_branch_ind
     return fig, ax
 
 
-def _split_into_branches_and_sort(content):
+def _split_into_branches_and_sort(content, max_branch_len):
     branches = _split_into_branches(content)
     branches = _remove_single_branch_artifacts(branches)
+    branches = _split_long_branches(branches, content, max_branch_len)
 
     first_val = np.asarray([b[0] for b in branches])
     sorting = np.argsort(first_val, kind="mergesort")
     sorted_branches = [branches[s] for s in sorting]
     return sorted_branches
+
+
+def _split_long_branches(branches, content, max_branch_len):
+    pathlengths = _compute_pathlengths(branches, content[:, 2:5])
+    split_branches = []
+    for branch, length in zip(branches, pathlengths):
+        num_subbranches = 1
+        split_branch = [branch]
+        while length > max_branch_len:
+            num_subbranches += 1
+            split_branch = _split_branch_equally(branch, num_subbranches)
+            lengths_of_subbranches = _compute_pathlengths(
+                split_branch, coords=content[:, 2:5]
+            )
+            length = max(lengths_of_subbranches)
+            if num_subbranches > 10:
+                warn(
+                    """`num_subbranches > 10`, stopping to split. Most likely your
+                     SWC reconstruction is not dense and some neighbouring traced
+                     points are farther than `max_branch_len` apart."""
+                )
+                break
+        split_branches += split_branch
+
+    return split_branches
+
+
+def _split_branch_equally(branch, num_subbranches):
+    num_points_each = len(branch) // num_subbranches
+    branches = [branch[:num_points_each]]
+    for i in range(1, num_subbranches - 1):
+        branches.append(branch[i * num_points_each - 1 : (i + 1) * num_points_each])
+    branches.append(branch[(num_subbranches - 1) * num_points_each - 1 :])
+    return branches
 
 
 def _remove_single_branch_artifacts(branches):
