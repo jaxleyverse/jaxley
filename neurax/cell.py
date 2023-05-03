@@ -66,6 +66,13 @@ class Cell:
                 parents[b], 0
             ].add(self.branch_conds_bwd[b - 1])
 
+        self.branch_conds_fwd = jnp.concatenate(
+            [jnp.asarray([0.0]), self.branch_conds_fwd]
+        )
+        self.branch_conds_bwd = jnp.concatenate(
+            [jnp.asarray([0.0]), self.branch_conds_bwd]
+        )
+
         self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
         self.levels = compute_levels(self.parents)
         self.branches_in_each_level = compute_branches_in_level(self.levels)

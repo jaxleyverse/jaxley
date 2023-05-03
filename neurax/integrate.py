@@ -146,31 +146,45 @@ def prepare_state(
 
     NUM_BRANCHES = [cell.num_branches for cell in cells]
     CUMSUM_NUM_BRANCHES = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
+    # print("CUMSUM_NUM_BRANCHES", CUMSUM_NUM_BRANCHES)
     MAX_NUM_KIDS = cells[0].max_num_kids
     for c in cells:
         assert MAX_NUM_KIDS == c.max_num_kids, "Different max_num_kids between cells."
 
     parents = [cell.parents for cell in cells]
+    # print("parents", len(parents[0]), len(parents[1]))
     COMB_PARENTS = jnp.concatenate(
         [p.at[1:].add(CUMSUM_NUM_BRANCHES[i]) for i, p in enumerate(parents)]
     )
+    # print("parents", parents)
+    # print("COMB_PARENTS", COMB_PARENTS)
     COMB_PARENTS_IN_EACH_LEVEL = merge_cells(
         CUMSUM_NUM_BRANCHES, [cell.parents_in_each_level for cell in cells]
     )
+    # print("COMB_PARENTS_IN_EACH_LEVEL", COMB_PARENTS_IN_EACH_LEVEL)
     COMB_BRANCHES_IN_EACH_LEVEL = merge_cells(
         CUMSUM_NUM_BRANCHES,
         [cell.branches_in_each_level for cell in cells],
         exclude_first=False,
     )
+    # print("COMB_BRANCHES_IN_EACH_LEVEL", COMB_BRANCHES_IN_EACH_LEVEL)
 
     # Prepare indizes for solve
     comb_ind_of_kids = jnp.asarray(_compute_index_of_kid(COMB_PARENTS))
+    comb_ind_of_kids = jnp.concatenate(
+        [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
+    )
+    print("comb_ind_of_kids", len(comb_ind_of_kids))
+    # print("comb_ind_of_kids", comb_ind_of_kids)
+    print("COMB_BRANCHES_IN_EACH_LEVEL", COMB_BRANCHES_IN_EACH_LEVEL)
     comb_ind_of_kids_in_each_level = [
-        comb_ind_of_kids[bil] for bil in COMB_BRANCHES_IN_EACH_LEVEL
+        comb_ind_of_kids[bil] for bil in COMB_BRANCHES_IN_EACH_LEVEL  # double -1??
     ]
+    # print("comb_ind_of_kids_in_each_level", comb_ind_of_kids_in_each_level)
     COMB_CUM_KID_INDS_IN_EACH_LEVEL = cum_indizes_of_kids(
         comb_ind_of_kids_in_each_level, MAX_NUM_KIDS
     )
+    # print("COMB_CUM_KID_INDS_IN_EACH_LEVEL", COMB_CUM_KID_INDS_IN_EACH_LEVEL)
 
     # Flatten because we flatten all vars.
     RADIUSES = jnp.concatenate([c.radiuses.flatten() for c in cells])
@@ -302,6 +316,11 @@ def find_root(
         SUMMED_COUPLING_CONDS,
         dt,
     )
+
+    # print("COMB_PARENTS", COMB_PARENTS)
+    # print("COMB_PARENTS_IN_EACH_LEVEL", COMB_PARENTS_IN_EACH_LEVEL)
+    # print("COMB_BRANCHES_IN_EACH_LEVEL", COMB_BRANCHES_IN_EACH_LEVEL)
+    # print("COMB_CUM_KID_INDS_IN_EACH_LEVEL", COMB_CUM_KID_INDS_IN_EACH_LEVEL)
 
     # Solve quasi-tridiagonal system.
     sol_tri = solve_branched(
