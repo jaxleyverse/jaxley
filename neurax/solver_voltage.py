@@ -174,8 +174,8 @@ def _eliminate_parents_upper(
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
         diags[bil, -1],
         solves[bil, -1],
-        branch_cond_fwd[bil - 1],
-        branch_cond_bwd[bil - 1],
+        branch_cond_fwd[bil],
+        branch_cond_bwd[bil],
     )
     parallel_elim = True
     if parallel_elim:
@@ -220,6 +220,6 @@ def _eliminate_children_lower(
     bil = branches_in_level
     # print("children[bil]", branch_cond[bil - 1])
     solves = solves.at[bil, -1].set(
-        solves[bil, -1] - branch_cond[bil - 1] * solves[parents[bil], 0]
+        solves[bil, -1] - branch_cond[bil] * solves[parents[bil], 0]
     )
     return solves
