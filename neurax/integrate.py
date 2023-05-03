@@ -4,7 +4,6 @@ import jax
 from jax import lax, vmap
 import jax.numpy as jnp
 
-from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
 from neurax.build_branched_tridiag import define_all_tridiags
 from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
@@ -38,8 +37,7 @@ SYN_CHANNELS = []
 
 
 def solve(
-    cells,
-    connectivities,
+    network,
     init_v,
     mem_states,
     mem_params,
@@ -66,7 +64,7 @@ def solve(
     assert len(mem_params) == len(mem_states)
 
     state = prepare_state(
-        cells,
+        network,
         init_v,
         mem_states,
         mem_params,
@@ -74,7 +72,6 @@ def solve(
         syn_params,
         stimuli,
         recordings,
-        connectivities,
         t_max,
         dt,
         solver,
@@ -110,7 +107,7 @@ def solve(
 
 
 def prepare_state(
-    cells,
+    network,
     init_v,
     mem_states,
     mem_params,
@@ -118,7 +115,6 @@ def prepare_state(
     syn_params,
     stimuli,
     recordings,
-    connectivities,
     t_max,
     dt: float = 0.025,
     solver: str = "stone",
@@ -144,52 +140,25 @@ def prepare_state(
     global I_CELL_INDS
     global I_INDS
 
-    NUM_BRANCHES = [cell.num_branches for cell in cells]
-    CUMSUM_NUM_BRANCHES = jnp.cumsum(jnp.asarray([0] + NUM_BRANCHES))
-    MAX_NUM_KIDS = cells[0].max_num_kids
-    for c in cells:
-        assert MAX_NUM_KIDS == c.max_num_kids, "Different max_num_kids between cells."
+    # Define everything related to morphology as global variables.
+    NUM_BRANCHES = network.num_branches
+    CUMSUM_NUM_BRANCHES = network.cumsum_num_branches
+    MAX_NUM_KIDS = network.max_num_kids
+    COMB_PARENTS = network.comb_parents
+    COMB_PARENTS_IN_EACH_LEVEL = network.comb_parents_in_each_level
+    COMB_BRANCHES_IN_EACH_LEVEL = network.comb_branches_in_each_level
+    COMB_CUM_KID_INDS_IN_EACH_LEVEL = network.comb_cum_kid_inds_in_each_level
+    RADIUSES = network.radiuses
+    LENGTHS = network.lengths
+    COUPLING_CONDS_FWD = network.coupling_conds_fwd
+    COUPLING_CONDS_BWD = network.coupling_conds_bwd
+    BRANCH_CONDS_FWD = network.branch_conds_fwd
+    BRANCH_CONDS_BWD = network.branch_conds_bwd
+    SUMMED_COUPLING_CONDS = network.summed_coupling_conds
+    NSEG_PER_BRANCH = network.nseg_per_branch
 
-    parents = [cell.parents for cell in cells]
-    COMB_PARENTS = jnp.concatenate(
-        [p.at[1:].add(CUMSUM_NUM_BRANCHES[i]) for i, p in enumerate(parents)]
-    )
-    COMB_PARENTS_IN_EACH_LEVEL = merge_cells(
-        CUMSUM_NUM_BRANCHES, [cell.parents_in_each_level for cell in cells]
-    )
-    COMB_BRANCHES_IN_EACH_LEVEL = merge_cells(
-        CUMSUM_NUM_BRANCHES,
-        [cell.branches_in_each_level for cell in cells],
-        exclude_first=False,
-    )
-
-    # Prepare indizes for solve
-    comb_ind_of_kids = jnp.concatenate(
-        [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
-    )
-    comb_ind_of_kids_in_each_level = [
-        comb_ind_of_kids[bil] for bil in COMB_BRANCHES_IN_EACH_LEVEL
-    ]
-    COMB_CUM_KID_INDS_IN_EACH_LEVEL = cum_indizes_of_kids(
-        comb_ind_of_kids_in_each_level, MAX_NUM_KIDS
-    )
-
-    # Flatten because we flatten all vars.
-    RADIUSES = jnp.concatenate([c.radiuses.flatten() for c in cells])
-    LENGTHS = jnp.concatenate([c.lengths.flatten() for c in cells])
-    COUPLING_CONDS_FWD = jnp.concatenate([c.coupling_conds_fwd for c in cells])
-    COUPLING_CONDS_BWD = jnp.concatenate([c.coupling_conds_bwd for c in cells])
-    BRANCH_CONDS_FWD = jnp.concatenate([c.branch_conds_fwd for c in cells])
-    BRANCH_CONDS_BWD = jnp.concatenate([c.branch_conds_bwd for c in cells])
-    SUMMED_COUPLING_CONDS = jnp.concatenate([c.summed_coupling_conds for c in cells])
-
-    NSEG_PER_BRANCH = cells[0].nseg_per_branch
+    # Define the solver.
     SOLVER = solver
-
-    for cell in cells:
-        assert (
-            cell.nseg_per_branch == NSEG_PER_BRANCH
-        ), "Different nseg_per_branch between cells."
 
     num_recordings = len(recordings)
     num_time_steps = int(t_max / dt) + 1
@@ -224,10 +193,10 @@ def prepare_state(
         dt,
         rec_cell_inds,
         rec_inds,
-        [c.pre_syn_inds for c in connectivities],
-        [c.pre_syn_cell_inds for c in connectivities],
-        [c.grouped_post_syn_inds for c in connectivities],
-        [c.grouped_post_syns for c in connectivities],
+        [c.pre_syn_inds for c in network.connectivities],
+        [c.pre_syn_cell_inds for c in network.connectivities],
+        [c.grouped_post_syn_inds for c in network.connectivities],
+        [c.grouped_post_syns for c in network.connectivities],
         saveat,
     )
     return init_state
