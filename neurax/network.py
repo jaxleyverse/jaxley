@@ -68,8 +68,59 @@ class Network:
         )
 
 
+class CellCluster:
+    def __init__(self, cells):
+        self.prepare_cells(cells)
+
+    def prepare_cells(self, cells):
+        """Organize multiple cells such that they can be processed in parallel."""
+        self.num_branches = [cell.num_branches for cell in cells]
+        self.cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + self.num_branches))
+        self.max_num_kids = cells[0].max_num_kids
+        for c in cells:
+            assert (
+                self.max_num_kids == c.max_num_kids
+            ), "Different max_num_kids between cells."
+
+        parents = [cell.parents for cell in cells]
+        self.comb_parents = jnp.concatenate(
+            [p.at[1:].add(self.cumsum_num_branches[i]) for i, p in enumerate(parents)]
+        )
+        self.comb_parents_in_each_level = merge_cells(
+            self.cumsum_num_branches, [cell.parents_in_each_level for cell in cells]
+        )
+        self.comb_branches_in_each_level = merge_cells(
+            self.cumsum_num_branches,
+            [cell.branches_in_each_level for cell in cells],
+            exclude_first=False,
+        )
+
+        # Prepare indizes for solve
+        comb_ind_of_kids = jnp.concatenate(
+            [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
+        )
+        comb_ind_of_kids_in_each_level = [
+            comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
+        ]
+        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
+            comb_ind_of_kids_in_each_level, self.max_num_kids
+        )
+
+        # Flatten because we flatten all vars.
+        self.radiuses = jnp.concatenate([c.radiuses.flatten() for c in cells])
+        self.lengths = jnp.concatenate([c.lengths.flatten() for c in cells])
+        self.coupling_conds_fwd = jnp.concatenate([c.coupling_conds_fwd for c in cells])
+        self.coupling_conds_bwd = jnp.concatenate([c.coupling_conds_bwd for c in cells])
+        self.branch_conds_fwd = jnp.concatenate([c.branch_conds_fwd for c in cells])
+        self.branch_conds_bwd = jnp.concatenate([c.branch_conds_bwd for c in cells])
+        self.summed_coupling_conds = jnp.concatenate(
+            [c.summed_coupling_conds for c in cells]
+        )
+
+
 class Connectivity:
     """Given a list of all synapses, this prepares everything for simulation.
+
     There are two main functions of this class:
     (1) For presynaptic locations, we infer the index of the exact location on a
     single neuron.
