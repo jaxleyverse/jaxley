@@ -56,8 +56,7 @@ def plot_swc(
         content, max_branch_len=max_branch_len
     )
 
-    if isinstance(cols, str) or cols is None:
-        cols = [cols] * len(sorted_branches)
+    cols = [cols] * len(sorted_branches)
 
     counter_highlight_branches = 0
     lines = []
