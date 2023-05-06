@@ -168,9 +168,6 @@ def _eliminate_parents_upper(
     max_num_kids,
 ):
     bil = branches_in_level
-    # print("bil", bil)
-    # print("branch_cond_fwd", branch_cond_fwd)
-    # print("branch_cond_fwd[bil]", branch_cond_fwd[bil - 1])
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
         diags[bil, -1],
         solves[bil, -1],
@@ -218,7 +215,6 @@ def _eliminate_children_lower(
     branch_cond,
 ):
     bil = branches_in_level
-    # print("children[bil]", branch_cond[bil - 1])
     solves = solves.at[bil, -1].set(
         solves[bil, -1] - branch_cond[bil] * solves[parents[bil], 0]
     )
