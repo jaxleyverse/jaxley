@@ -5,11 +5,14 @@ from jax import lax, vmap
 import jax.numpy as jnp
 
 from neurax.build_branched_tridiag import define_all_tridiags
-from neurax.solver_voltage import solve_branched
+
+# from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.syn_utils import postsyn_voltage_updates
 
+from tridiax.thomas import thomas_triang, thomas_backsub
+from tridiax.stone import stone_triang, stone_backsub
 
 NUM_BRANCHES = []
 CUMSUM_NUM_BRANCHES = []
@@ -282,18 +285,10 @@ def find_root(
 
     # Solve quasi-tridiagonal system.
     sol_tri = solve_branched(
-        COMB_PARENTS_IN_EACH_LEVEL,
-        COMB_BRANCHES_IN_EACH_LEVEL,
-        COMB_PARENTS,
         lowers,
         diags,
         uppers,
         solves,
-        -DELTA_T * BRANCH_CONDS_BWD,
-        -DELTA_T * BRANCH_CONDS_FWD,
-        COMB_CUM_KID_INDS_IN_EACH_LEVEL,
-        MAX_NUM_KIDS,
-        SOLVER,
     )
     return sol_tri.flatten(order="C"), new_states, new_syn_states
 
@@ -338,3 +333,205 @@ def body_fun(i, state):
         rec_inds,
         saveat,
     )
+
+
+def solve_branched(
+    lowers,
+    diags,
+    uppers,
+    solves,
+):
+    """
+    Solve branched.
+    """
+
+    diags, uppers, solves = triang_branched(
+        lowers,
+        diags,
+        uppers,
+        solves,
+    )
+    solves = backsub_branched(
+        diags,
+        uppers,
+        solves,
+    )
+    return solves
+
+
+def triang_branched(
+    lowers,
+    diags,
+    uppers,
+    solves,
+):
+    """
+    Triang.
+    """
+
+    # num_iter = len(COMB_BRANCHES_IN_EACH_LEVEL) - 1
+    # state = (lowers, diags, uppers, solves)
+
+    # def triang_body_fun(i, state):
+    #     lowers, diags, uppers, solves = state
+    #     bil = list(reversed(COMB_BRANCHES_IN_EACH_LEVEL))[i]
+    #     diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
+    #     diags, solves = _eliminate_parents_upper(
+    #         list(reversed(COMB_PARENTS_IN_EACH_LEVEL))[i],
+    #         bil,
+    #         diags,
+    #         solves,
+    #         list(reversed(COMB_CUM_KID_INDS_IN_EACH_LEVEL))[i],
+    #     )
+    #     return (lowers, diags, uppers, solves)
+
+    # lowers, diags, uppers, solves = lax.fori_loop(0, num_iter, triang_body_fun, state)
+
+    for bil, parents_in_level, kids_in_level in zip(
+        reversed(COMB_BRANCHES_IN_EACH_LEVEL[1:]),
+        reversed(COMB_PARENTS_IN_EACH_LEVEL[1:]),
+        reversed(COMB_CUM_KID_INDS_IN_EACH_LEVEL[1:]),
+    ):
+        diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
+        diags, solves = _eliminate_parents_upper(
+            parents_in_level,
+            bil,
+            diags,
+            solves,
+            kids_in_level,
+        )
+    # At last level, we do not want to eliminate anymore.
+    diags, uppers, solves = _triang_level(
+        COMB_BRANCHES_IN_EACH_LEVEL[0], lowers, diags, uppers, solves
+    )
+
+    return diags, uppers, solves
+
+
+def backsub_branched(
+    diags,
+    uppers,
+    solves,
+):
+    """
+    Backsub.
+    """
+    # At first level, we do not want to eliminate.
+    solves = _backsub_level(
+        COMB_BRANCHES_IN_EACH_LEVEL[0], diags, uppers, solves, SOLVER
+    )
+    for bil in COMB_BRANCHES_IN_EACH_LEVEL[1:]:
+        solves = _eliminate_children_lower(
+            bil,
+            COMB_PARENTS,
+            solves,
+            -DELTA_T * BRANCH_CONDS_FWD,
+        )
+        solves = _backsub_level(bil, diags, uppers, solves, SOLVER)
+    return solves
+
+
+def _triang_level(branches_in_level, lowers, diags, uppers, solves):
+    bil = branches_in_level
+    if SOLVER == "stone":
+        triang_fn = stone_triang
+    elif SOLVER == "thomas":
+        triang_fn = thomas_triang
+    else:
+        raise NameError
+    new_diags, new_uppers, new_solves = vmap(triang_fn, in_axes=(0, 0, 0, 0))(
+        lowers[bil], diags[bil], uppers[bil], solves[bil]
+    )
+    diags = diags.at[bil].set(new_diags)
+    uppers = uppers.at[bil].set(new_uppers)
+    solves = solves.at[bil].set(new_solves)
+
+    return diags, uppers, solves
+
+
+def _backsub_level(branches_in_level, diags, uppers, solves, solver):
+    bil = branches_in_level
+    if solver == "stone":
+        backsub_fn = stone_backsub
+    elif solver == "thomas":
+        backsub_fn = thomas_backsub
+    else:
+        raise NameError
+    solves = solves.at[bil].set(
+        vmap(backsub_fn, in_axes=(0, 0, 0))(solves[bil], uppers[bil], diags[bil])
+    )
+    return solves
+
+
+def _eliminate_single_parent_upper(
+    diag_at_branch, solve_at_branch, branch_cond_fwd, branch_cond_bwd
+):
+    last_of_3 = diag_at_branch
+    last_of_3_solve = solve_at_branch
+
+    multiplying_factor = branch_cond_fwd / last_of_3
+
+    update_diag = -multiplying_factor * branch_cond_bwd
+    update_solve = -multiplying_factor * last_of_3_solve
+    return update_diag, update_solve
+
+
+def _eliminate_parents_upper(
+    parents_in_level,
+    branches_in_level,
+    diags,
+    solves,
+    kid_inds_in_each_level,
+):
+    bil = branches_in_level
+    new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
+        diags[bil, -1],
+        solves[bil, -1],
+        -DELTA_T * BRANCH_CONDS_BWD[bil],
+        -DELTA_T * BRANCH_CONDS_FWD[bil],
+    )
+    parallel_elim = True
+    if parallel_elim:
+        update_diags = jnp.zeros((MAX_NUM_KIDS * len(parents_in_level)))
+        update_solves = jnp.zeros((MAX_NUM_KIDS * len(parents_in_level)))
+        update_diags = update_diags.at[kid_inds_in_each_level].set(new_diag)
+        update_solves = update_solves.at[kid_inds_in_each_level].set(new_solve)
+        diags = diags.at[parents_in_level, 0].set(
+            diags[parents_in_level, 0]
+            + jnp.sum(jnp.reshape(update_diags, (-1, MAX_NUM_KIDS)), axis=1)
+        )
+        solves = solves.at[parents_in_level, 0].set(
+            solves[parents_in_level, 0]
+            + jnp.sum(jnp.reshape(update_solves, (-1, MAX_NUM_KIDS)), axis=1)
+        )
+        return diags, solves
+    else:
+        result = lax.fori_loop(
+            0,
+            len(bil),
+            _body_fun_eliminate_parents_upper,
+            (diags, solves, COMB_PARENTS, bil, new_diag, new_solve),
+        )
+        return result[0], result[1]
+
+
+def _body_fun_eliminate_parents_upper(i, vals):
+    diags, solves, parents, bil, new_diag, new_solve = vals
+    diags = diags.at[parents[bil[i]], 0].set(diags[parents[bil[i]], 0] + new_diag[i])
+    solves = solves.at[parents[bil[i]], 0].set(
+        solves[parents[bil[i]], 0] + new_solve[i]
+    )
+    return (diags, solves, parents, bil, new_diag, new_solve)
+
+
+def _eliminate_children_lower(
+    branches_in_level,
+    parents,
+    solves,
+    branch_cond,
+):
+    bil = branches_in_level
+    solves = solves.at[bil, -1].set(
+        solves[bil, -1] - branch_cond[bil] * solves[parents[bil], 0]
+    )
+    return solves
