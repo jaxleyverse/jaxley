@@ -369,24 +369,6 @@ def triang_branched(
     Triang.
     """
 
-    # num_iter = len(COMB_BRANCHES_IN_EACH_LEVEL) - 1
-    # state = (lowers, diags, uppers, solves)
-
-    # def triang_body_fun(i, state):
-    #     lowers, diags, uppers, solves = state
-    #     bil = list(reversed(COMB_BRANCHES_IN_EACH_LEVEL))[i]
-    #     diags, uppers, solves = _triang_level(bil, lowers, diags, uppers, solves)
-    #     diags, solves = _eliminate_parents_upper(
-    #         list(reversed(COMB_PARENTS_IN_EACH_LEVEL))[i],
-    #         bil,
-    #         diags,
-    #         solves,
-    #         list(reversed(COMB_CUM_KID_INDS_IN_EACH_LEVEL))[i],
-    #     )
-    #     return (lowers, diags, uppers, solves)
-
-    # lowers, diags, uppers, solves = lax.fori_loop(0, num_iter, triang_body_fun, state)
-
     for bil, parents_in_level, kids_in_level in zip(
         reversed(COMB_BRANCHES_IN_EACH_LEVEL[1:]),
         reversed(COMB_PARENTS_IN_EACH_LEVEL[1:]),
@@ -510,18 +492,20 @@ def _eliminate_parents_upper(
             0,
             len(bil),
             _body_fun_eliminate_parents_upper,
-            (diags, solves, COMB_PARENTS, bil, new_diag, new_solve),
+            (diags, solves, bil, new_diag, new_solve),
         )
         return result[0], result[1]
 
 
 def _body_fun_eliminate_parents_upper(i, vals):
-    diags, solves, parents, bil, new_diag, new_solve = vals
-    diags = diags.at[parents[bil[i]], 0].set(diags[parents[bil[i]], 0] + new_diag[i])
-    solves = solves.at[parents[bil[i]], 0].set(
-        solves[parents[bil[i]], 0] + new_solve[i]
+    diags, solves, bil, new_diag, new_solve = vals
+    diags = diags.at[COMB_PARENTS[bil[i]], 0].set(
+        diags[COMB_PARENTS[bil[i]], 0] + new_diag[i]
     )
-    return (diags, solves, parents, bil, new_diag, new_solve)
+    solves = solves.at[COMB_PARENTS[bil[i]], 0].set(
+        solves[COMB_PARENTS[bil[i]], 0] + new_solve[i]
+    )
+    return (diags, solves, bil, new_diag, new_solve)
 
 
 def _eliminate_children_lower(
