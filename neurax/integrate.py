@@ -34,6 +34,12 @@ NSEG_PER_BRANCH = -1
 SOLVER = ""
 MEM_CHANNELS = []
 SYN_CHANNELS = []
+DELTA_T = 0.0
+
+PRE_SYN_INDS = []
+PRE_SYN_CELL_INDS = []
+GROUPED_POST_SYN_INDS = []
+GROUPED_POST_SYNS = []
 
 
 def solve(
@@ -137,8 +143,14 @@ def prepare_state(
 
     global NSEG_PER_BRANCH
     global SOLVER
+    global DELTA_T
     global I_CELL_INDS
     global I_INDS
+
+    global PRE_SYN_INDS
+    global PRE_SYN_CELL_INDS
+    global GROUPED_POST_SYN_INDS
+    global GROUPED_POST_SYNS
 
     # Define everything related to morphology as global variables.
     NUM_BRANCHES = network.num_branches
@@ -157,8 +169,15 @@ def prepare_state(
     SUMMED_COUPLING_CONDS = network.summed_coupling_conds
     NSEG_PER_BRANCH = network.nseg_per_branch
 
+    # Define morphology of synapses.
+    PRE_SYN_INDS = [c.pre_syn_inds for c in network.connectivities]
+    PRE_SYN_CELL_INDS = [c.pre_syn_cell_inds for c in network.connectivities]
+    GROUPED_POST_SYN_INDS = [c.grouped_post_syn_inds for c in network.connectivities]
+    GROUPED_POST_SYNS = [c.grouped_post_syns for c in network.connectivities]
+
     # Define the solver.
     SOLVER = solver
+    DELTA_T = dt
 
     num_recordings = len(recordings)
     num_time_steps = int(t_max / dt) + 1
@@ -181,40 +200,27 @@ def prepare_state(
         concat_voltage[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
     )
 
-    t = 0.0
     init_state = (
-        t,
         concat_voltage,
         [jnp.concatenate(m, axis=1) for m in mem_states],
         syn_states,
         [jnp.concatenate(m, axis=1) for m in mem_params],
         syn_params,
         stim_currents,
-        dt,
         rec_cell_inds,
         rec_inds,
-        [c.pre_syn_inds for c in network.connectivities],
-        [c.pre_syn_cell_inds for c in network.connectivities],
-        [c.grouped_post_syn_inds for c in network.connectivities],
-        [c.grouped_post_syns for c in network.connectivities],
         saveat,
     )
     return init_state
 
 
 def find_root(
-    t,
     v,
     u,
     ss,
     params,
     syn_params,
     i_stim,
-    pre_syn_inds,
-    pre_syn_cell_inds,
-    grouped_post_syn_inds,
-    grouped_post_syns,
-    dt,
 ):
     voltages = v  # mV
 
@@ -223,7 +229,7 @@ def find_root(
     constant_terms = jnp.zeros_like(v)
     new_states = []
     for i, update_fn in enumerate(MEM_CHANNELS):
-        membrane_current_terms, states = update_fn(voltages, u[i], params[i], dt)
+        membrane_current_terms, states = update_fn(voltages, u[i], params[i], DELTA_T)
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
         new_states.append(states)
@@ -245,17 +251,17 @@ def find_root(
         synapse_current_terms, synapse_states = update_fn(
             voltages,
             ss[i],
-            CUMSUM_NUM_BRANCHES[pre_syn_cell_inds[i]] * NSEG_PER_BRANCH
-            + pre_syn_inds[i],
-            dt,
+            CUMSUM_NUM_BRANCHES[PRE_SYN_CELL_INDS[i]] * NSEG_PER_BRANCH
+            + PRE_SYN_INDS[i],
+            DELTA_T,
             syn_params[i],
         )
         synapse_current_terms = postsyn_voltage_updates(
             NSEG_PER_BRANCH,
             CUMSUM_NUM_BRANCHES,
             voltages,
-            grouped_post_syn_inds[i],
-            grouped_post_syns[i],
+            GROUPED_POST_SYN_INDS[i],
+            GROUPED_POST_SYNS[i],
             *synapse_current_terms
         )
         syn_voltage_terms += synapse_current_terms[0]
@@ -271,7 +277,7 @@ def find_root(
         COUPLING_CONDS_BWD,
         COUPLING_CONDS_FWD,
         SUMMED_COUPLING_CONDS,
-        dt,
+        DELTA_T,
     )
 
     # Solve quasi-tridiagonal system.
@@ -283,8 +289,8 @@ def find_root(
         diags,
         uppers,
         solves,
-        -dt * BRANCH_CONDS_BWD,
-        -dt * BRANCH_CONDS_FWD,
+        -DELTA_T * BRANCH_CONDS_BWD,
+        -DELTA_T * BRANCH_CONDS_FWD,
         COMB_CUM_KID_INDS_IN_EACH_LEVEL,
         MAX_NUM_KIDS,
         SOLVER,
@@ -297,57 +303,38 @@ def body_fun(i, state):
     Body for fori_loop.
     """
     (
-        t,
         v,
         u_inner,
         syn_states,
         params,
         syn_params,
         i_stim,
-        dt,
         rec_cell_inds,
         rec_inds,
-        pre_syn_inds,
-        pre_syn_cell_inds,
-        grouped_post_syn_inds,
-        grouped_post_syns,
         saveat,
     ) = state
 
     v, u_inner, syn_states = find_root(
-        t,
         v,
         u_inner,
         syn_states,
         params,
         syn_params,
         i_stim[:, i],
-        pre_syn_inds,
-        pre_syn_cell_inds,
-        grouped_post_syn_inds,
-        grouped_post_syns,
-        dt,
     )
-    t += dt
 
     saveat = saveat.at[:, i + 1].set(
         v[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
     )
 
     return (
-        t,
         v,
         u_inner,
         syn_states,
         params,
         syn_params,
         i_stim,
-        dt,
         rec_cell_inds,
         rec_inds,
-        pre_syn_inds,
-        pre_syn_cell_inds,
-        grouped_post_syn_inds,
-        grouped_post_syns,
         saveat,
     )
