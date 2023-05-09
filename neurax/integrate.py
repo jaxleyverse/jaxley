@@ -9,7 +9,7 @@ from neurax.solver_voltage import solve_branched
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.syn_utils import postsyn_voltage_updates
-
+from neurax.utils.jax_utils import nested_checkpoint_scan
 
 NUM_BRANCHES = []
 CUMSUM_NUM_BRANCHES = []
@@ -29,6 +29,7 @@ SUMMED_COUPLING_CONDS = []
 
 I_CELL_INDS = []
 I_INDS = []
+REC_INDS = []
 
 NSEG_PER_BRANCH = -1
 SOLVER = ""
@@ -53,7 +54,6 @@ def solve(
     syn_channels,
     stimuli,
     recordings,
-    t_max,
     dt: float = 0.025,
     solver: str = "stone",
     checkpoint_inds: List[int] = [],
@@ -81,36 +81,18 @@ def solve(
         dt,
         solver,
     )
-    # num_time_steps = int(t_max / dt) + 1
 
     # Initialize arrays for checkpoints.
     assert 0 not in checkpoint_inds, "Checkpoints at index 0 is not implemented."
     checkpoint_inds = [0] + checkpoint_inds  # Add 0 index for convenience later.
 
-    current_state = state
     i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
-    # Save voltage at the beginning.
-    # saveat = saveat.at[:, 0].set(
-    #     concat_voltage[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
-    # )
+    init_recording = jnp.expand_dims(state[0][REC_INDS], axis=0)
 
-    # def inner_loop(current_state, cp_ind1, cp_ind2):
-    #     current_state, recordings = lax.scan(body_fun, current_state, i_ext)
-    #     return current_state
-
-    # for cp_ind in range(len(checkpoint_inds) - 1):
-    #     current_state = jax.checkpoint(inner_loop, static_argnums=(1, 2))(
-    #         current_state,
-    #         checkpoint_inds[cp_ind],
-    #         checkpoint_inds[cp_ind + 1],
-    #     )
-    # # The trace from the last checkpoint until the end should not be checkpointed to
-    # # avoid useless recomputation.
-    # current_state = inner_loop(current_state, checkpoint_inds[-1], num_time_steps)
-
-    current_state, recordings = lax.scan(body_fun, current_state, i_ext)
-
-    return recordings
+    _, recordings = nested_checkpoint_scan(
+        body_fun, state, i_ext[:2000], length=2000, nested_lengths=[4, 500]
+    )
+    return jnp.concatenate([init_recording, recordings], axis=0)
 
 
 def prepare_state(
@@ -151,6 +133,7 @@ def prepare_state(
     global PRE_SYN_CELL_INDS
     global GROUPED_POST_SYN_INDS
     global GROUPED_POST_SYNS
+    global REC_INDS
 
     # Define everything related to morphology as global variables.
     NUM_BRANCHES = network.num_branches
@@ -184,6 +167,7 @@ def prepare_state(
     rec_inds = [index_of_loc(r.branch_ind, r.loc, NSEG_PER_BRANCH) for r in recordings]
     rec_inds = jnp.asarray(rec_inds)
     rec_cell_inds = jnp.asarray([r.cell_ind for r in recordings])
+    REC_INDS = NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds
 
     stim_inds = [index_of_loc(s.branch_ind, s.loc, NSEG_PER_BRANCH) for s in stimuli]
     I_CELL_INDS = jnp.asarray([s.cell_ind for s in stimuli])
@@ -197,8 +181,6 @@ def prepare_state(
         syn_states,
         [jnp.concatenate(m, axis=1) for m in mem_params],
         syn_params,
-        rec_cell_inds,
-        rec_inds,
     )
     return init_state
 
@@ -297,8 +279,6 @@ def body_fun(state, i_stim):
         syn_states,
         params,
         syn_params,
-        rec_cell_inds,
-        rec_inds,
     ) = state
 
     v, u_inner, syn_states = find_root(
@@ -310,14 +290,10 @@ def body_fun(state, i_stim):
         i_stim,
     )
 
-    recording = v[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
-
     return (
         v,
         u_inner,
         syn_states,
         params,
         syn_params,
-        rec_cell_inds,
-        rec_inds,
-    ), recording
+    ), v[REC_INDS]
