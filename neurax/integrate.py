@@ -1,4 +1,5 @@
 from typing import List
+from math import prod
 
 import jax
 from jax import lax, vmap
@@ -56,7 +57,7 @@ def solve(
     recordings,
     dt: float = 0.025,
     solver: str = "stone",
-    checkpoint_inds: List[int] = [],
+    checkpoint_lengths: List[int] = [],
 ):
     """
     Solve function.
@@ -82,17 +83,27 @@ def solve(
         solver,
     )
 
-    # Initialize arrays for checkpoints.
-    assert 0 not in checkpoint_inds, "Checkpoints at index 0 is not implemented."
-    checkpoint_inds = [0] + checkpoint_inds  # Add 0 index for convenience later.
-
     i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
+    nsteps_to_return = len(i_ext)
     init_recording = jnp.expand_dims(state[0][REC_INDS], axis=0)
 
+    # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
+    if checkpoint_lengths is None:
+        checkpoint_lengths = [len(i_ext)]
+        length = len(i_ext)
+    else:
+        length = prod(checkpoint_lengths)
+        assert (
+            len(i_ext) <= length
+        ), "The external current is longer than `prod(nested_length)`."
+        size_difference = length - len(i_ext)
+        dummy_stimulus = jnp.zeros((size_difference, i_ext.shape[1]))
+        i_ext = jnp.concatenate([i_ext, dummy_stimulus])
+
     _, recordings = nested_checkpoint_scan(
-        body_fun, state, i_ext[:2000], length=2000, nested_lengths=[4, 500]
+        body_fun, state, i_ext, length=length, nested_lengths=checkpoint_lengths
     )
-    return jnp.concatenate([init_recording, recordings], axis=0)
+    return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0)
 
 
 def prepare_state(
