@@ -88,6 +88,8 @@ def solve(
     init_recording = jnp.expand_dims(state[0][REC_INDS], axis=0)
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
+    # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
+    # return only the first `nsteps_to_return` elements (plus the initial state).
     if checkpoint_lengths is None:
         checkpoint_lengths = [len(i_ext)]
         length = len(i_ext)
