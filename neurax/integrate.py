@@ -78,38 +78,39 @@ def solve(
         syn_params,
         stimuli,
         recordings,
-        t_max,
         dt,
         solver,
     )
-    num_time_steps = int(t_max / dt) + 1
+    # num_time_steps = int(t_max / dt) + 1
 
     # Initialize arrays for checkpoints.
     assert 0 not in checkpoint_inds, "Checkpoints at index 0 is not implemented."
     checkpoint_inds = [0] + checkpoint_inds  # Add 0 index for convenience later.
 
     current_state = state
+    i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
+    # Save voltage at the beginning.
+    # saveat = saveat.at[:, 0].set(
+    #     concat_voltage[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
+    # )
 
-    def inner_loop(current_state, cp_ind1, cp_ind2):
-        current_state = lax.fori_loop(
-            cp_ind1,
-            cp_ind2,
-            body_fun,
-            current_state,
-        )
-        return current_state
+    # def inner_loop(current_state, cp_ind1, cp_ind2):
+    #     current_state, recordings = lax.scan(body_fun, current_state, i_ext)
+    #     return current_state
 
-    for cp_ind in range(len(checkpoint_inds) - 1):
-        current_state = jax.checkpoint(inner_loop, static_argnums=(1, 2))(
-            current_state,
-            checkpoint_inds[cp_ind],
-            checkpoint_inds[cp_ind + 1],
-        )
-    # The trace from the last checkpoint until the end should not be checkpointed to
-    # avoid useless recomputation.
-    current_state = inner_loop(current_state, checkpoint_inds[-1], num_time_steps)
+    # for cp_ind in range(len(checkpoint_inds) - 1):
+    #     current_state = jax.checkpoint(inner_loop, static_argnums=(1, 2))(
+    #         current_state,
+    #         checkpoint_inds[cp_ind],
+    #         checkpoint_inds[cp_ind + 1],
+    #     )
+    # # The trace from the last checkpoint until the end should not be checkpointed to
+    # # avoid useless recomputation.
+    # current_state = inner_loop(current_state, checkpoint_inds[-1], num_time_steps)
 
-    return current_state[-1]
+    current_state, recordings = lax.scan(body_fun, current_state, i_ext)
+
+    return recordings
 
 
 def prepare_state(
@@ -121,7 +122,6 @@ def prepare_state(
     syn_params,
     stimuli,
     recordings,
-    t_max,
     dt: float = 0.025,
     solver: str = "stone",
 ):
@@ -179,10 +179,6 @@ def prepare_state(
     SOLVER = solver
     DELTA_T = dt
 
-    num_recordings = len(recordings)
-    num_time_steps = int(t_max / dt) + 1
-    saveat = jnp.zeros((num_recordings, num_time_steps))
-
     # TODO: do I actually need this conversion if I assume NSEG_PER_BRANCH to be const?
     # Can I not just keep a 2D array everywhere?
     rec_inds = [index_of_loc(r.branch_ind, r.loc, NSEG_PER_BRANCH) for r in recordings]
@@ -190,15 +186,10 @@ def prepare_state(
     rec_cell_inds = jnp.asarray([r.cell_ind for r in recordings])
 
     stim_inds = [index_of_loc(s.branch_ind, s.loc, NSEG_PER_BRANCH) for s in stimuli]
-    stim_currents = jnp.asarray([s.current for s in stimuli])  # nA
     I_CELL_INDS = jnp.asarray([s.cell_ind for s in stimuli])
     I_INDS = jnp.asarray(stim_inds)
 
     concat_voltage = jnp.concatenate(init_v)
-    # Save voltage at the beginning.
-    saveat = saveat.at[:, 0].set(
-        concat_voltage[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
-    )
 
     init_state = (
         concat_voltage,
@@ -206,10 +197,8 @@ def prepare_state(
         syn_states,
         [jnp.concatenate(m, axis=1) for m in mem_params],
         syn_params,
-        stim_currents,
         rec_cell_inds,
         rec_inds,
-        saveat,
     )
     return init_state
 
@@ -298,7 +287,7 @@ def find_root(
     return sol_tri.flatten(order="C"), new_states, new_syn_states
 
 
-def body_fun(i, state):
+def body_fun(state, i_stim):
     """
     Body for fori_loop.
     """
@@ -308,10 +297,8 @@ def body_fun(i, state):
         syn_states,
         params,
         syn_params,
-        i_stim,
         rec_cell_inds,
         rec_inds,
-        saveat,
     ) = state
 
     v, u_inner, syn_states = find_root(
@@ -320,12 +307,10 @@ def body_fun(i, state):
         syn_states,
         params,
         syn_params,
-        i_stim[:, i],
+        i_stim,
     )
 
-    saveat = saveat.at[:, i + 1].set(
-        v[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
-    )
+    recording = v[NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds]
 
     return (
         v,
@@ -333,8 +318,6 @@ def body_fun(i, state):
         syn_states,
         params,
         syn_params,
-        i_stim,
         rec_cell_inds,
         rec_inds,
-        saveat,
-    )
+    ), recording
