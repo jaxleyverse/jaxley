@@ -105,7 +105,7 @@ def solve(
     _, recordings = nested_checkpoint_scan(
         body_fun, state, i_ext, length=length, nested_lengths=checkpoint_lengths
     )
-    return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0)
+    return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
 
 
 def prepare_state(
