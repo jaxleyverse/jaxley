@@ -3,6 +3,8 @@ import jax.numpy as jnp
 
 
 class Cell:
+    """A (multicompartment) cell."""
+
     def __init__(
         self,
         num_branches,
@@ -10,16 +12,30 @@ class Cell:
         nseg_per_branch,
         lengths,
         radiuses,
-        r_a,
     ):
         self.num_branches = num_branches
         self.parents = parents
-        self.r_a = r_a
-
         self.nseg_per_branch = nseg_per_branch
 
         self.lengths = lengths / nseg_per_branch
         self.radiuses = radiuses
+
+        self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
+        self.levels = compute_levels(self.parents)
+        self.branches_in_each_level = compute_branches_in_level(self.levels)
+
+        self.parents_in_each_level = [
+            jnp.unique(parents[c]) for c in self.branches_in_each_level
+        ]
+        self.max_num_kids = 4
+
+        # Initially, the coupling conductances are omputed by assuming `r_a = 1`.
+        # Later, we rescale them to the actual value of `r_a` by calling
+        # `network.set_axial_resistivities()`.
+        self.compute_coupling_conds(1.0)
+
+    def compute_coupling_conds(self, axial_resistivity: float):
+        """Given an axial resisitivity, set the coupling conductances."""
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
             return rad1 * rad2**2 / r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
@@ -33,16 +49,24 @@ class Cell:
         rad2 = self.radiuses[:, :-1]
         l1 = self.lengths[:, 1:]
         l2 = self.lengths[:, :-1]
-        self.coupling_conds_bwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
-        self.coupling_conds_fwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
+        self.coupling_conds_bwd = compute_coupling_cond(
+            rad2, rad1, axial_resistivity, l2, l1
+        )
+        self.coupling_conds_fwd = compute_coupling_cond(
+            rad1, rad2, axial_resistivity, l1, l2
+        )
 
         # Compute coupling conductance for segments at branch points.
-        rad1 = self.radiuses[jnp.arange(1, num_branches), -1]
-        rad2 = self.radiuses[parents[jnp.arange(1, num_branches)], 0]
-        l1 = self.lengths[jnp.arange(1, num_branches), -1]
-        l2 = self.lengths[parents[jnp.arange(1, num_branches)], 0]
-        self.branch_conds_bwd = compute_coupling_cond(rad2, rad1, self.r_a, l2, l1)
-        self.branch_conds_fwd = compute_coupling_cond(rad1, rad2, self.r_a, l1, l2)
+        rad1 = self.radiuses[jnp.arange(1, self.num_branches), -1]
+        rad2 = self.radiuses[self.parents[jnp.arange(1, self.num_branches)], 0]
+        l1 = self.lengths[jnp.arange(1, self.num_branches), -1]
+        l2 = self.lengths[self.parents[jnp.arange(1, self.num_branches)], 0]
+        self.branch_conds_bwd = compute_coupling_cond(
+            rad2, rad1, axial_resistivity, l2, l1
+        )
+        self.branch_conds_fwd = compute_coupling_cond(
+            rad1, rad2, axial_resistivity, l1, l2
+        )
 
         # Convert (S / cm / um) -> (mS / cm^2)
         self.coupling_conds_fwd *= 10**7
@@ -51,19 +75,21 @@ class Cell:
         self.branch_conds_bwd *= 10**7
 
         # Compute the summed coupling conductances of each compartment.
-        self.summed_coupling_conds = jnp.zeros((num_branches, nseg_per_branch))
+        self.summed_coupling_conds = jnp.zeros(
+            (self.num_branches, self.nseg_per_branch)
+        )
         self.summed_coupling_conds = self.summed_coupling_conds.at[:, 1:].add(
             self.coupling_conds_fwd
         )
         self.summed_coupling_conds = self.summed_coupling_conds.at[:, :-1].add(
             self.coupling_conds_bwd
         )
-        for b in range(1, num_branches):
+        for b in range(1, self.num_branches):
             self.summed_coupling_conds = self.summed_coupling_conds.at[b, -1].add(
                 self.branch_conds_fwd[b - 1]
             )
             self.summed_coupling_conds = self.summed_coupling_conds.at[
-                parents[b], 0
+                self.parents[b], 0
             ].add(self.branch_conds_bwd[b - 1])
 
         self.branch_conds_fwd = jnp.concatenate(
@@ -72,15 +98,7 @@ class Cell:
         self.branch_conds_bwd = jnp.concatenate(
             [jnp.asarray([0.0]), self.branch_conds_bwd]
         )
-
-        self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
-        self.levels = compute_levels(self.parents)
-        self.branches_in_each_level = compute_branches_in_level(self.levels)
-
-        self.parents_in_each_level = [
-            jnp.unique(parents[c]) for c in self.branches_in_each_level
-        ]
-        self.max_num_kids = 4
+        return self
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):

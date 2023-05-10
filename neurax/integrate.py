@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from math import prod
 
 import jax
@@ -67,6 +67,9 @@ def solve(
             and has shape `num_branches, nseg_per_branch`.
         mem_states: Initial values for the states of the membrane gates. List of list
             of `jnp.ndarray`.
+        axial_resistivity: The axial resistivity between any pair of segments. Unit:
+            ohm cm.
+        capacitance: The capacitance of every segment. Unit: muF / cm**2.
     """
     global MEM_CHANNELS
     global SYN_CHANNELS
@@ -164,11 +167,11 @@ def _prepare_state(
     COMB_CUM_KID_INDS_IN_EACH_LEVEL = network.comb_cum_kid_inds_in_each_level
     RADIUSES = network.radiuses
     LENGTHS = network.lengths
-    COUPLING_CONDS_FWD = network.coupling_conds_fwd
-    COUPLING_CONDS_BWD = network.coupling_conds_bwd
-    BRANCH_CONDS_FWD = network.branch_conds_fwd
-    BRANCH_CONDS_BWD = network.branch_conds_bwd
-    SUMMED_COUPLING_CONDS = network.summed_coupling_conds
+    COUPLING_CONDS_FWD = network.scaled_coupling_conds_fwd
+    COUPLING_CONDS_BWD = network.scaled_coupling_conds_bwd
+    BRANCH_CONDS_FWD = network.scaled_branch_conds_fwd
+    BRANCH_CONDS_BWD = network.scaled_branch_conds_bwd
+    SUMMED_COUPLING_CONDS = network.scaled_summed_coupling_conds
     NSEG_PER_BRANCH = network.nseg_per_branch
 
     # Define morphology of synapses.
@@ -259,7 +262,7 @@ def _find_root(
             voltages,
             GROUPED_POST_SYN_INDS[i],
             GROUPED_POST_SYNS[i],
-            *synapse_current_terms
+            *synapse_current_terms,
         )
         syn_voltage_terms += synapse_current_terms[0]
         syn_constant_terms += synapse_current_terms[1]
