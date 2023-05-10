@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from math import prod
 
 import jax
@@ -28,7 +28,6 @@ BRANCH_CONDS_FWD = []
 BRANCH_CONDS_BWD = []
 SUMMED_COUPLING_CONDS = []
 
-I_CELL_INDS = []
 I_INDS = []
 REC_INDS = []
 
@@ -55,12 +54,19 @@ def solve(
     syn_channels,
     stimuli,
     recordings,
-    dt: float = 0.025,
+    delta_t: float = 0.025,
     solver: str = "stone",
-    checkpoint_lengths: List[int] = [],
-):
+    checkpoint_lengths: Optional[List[int]] = None,
+) -> jnp.ndarray:
     """
-    Solve function.
+    Solves ODE and simulates neuron model.
+
+    Args:
+        network: Network of cells that will be simulated.
+        init_v: Initial voltage. Should be a list where each entry is a `jnp.ndarray`
+            and has shape `num_branches, nseg_per_branch`.
+        mem_states: Initial values for the states of the membrane gates. List of list
+            of `jnp.ndarray`.
     """
     global MEM_CHANNELS
     global SYN_CHANNELS
@@ -70,7 +76,7 @@ def solve(
     assert len(mem_params) == len(mem_channels)
     assert len(mem_params) == len(mem_states)
 
-    state = prepare_state(
+    state = _prepare_state(
         network,
         init_v,
         mem_states,
@@ -79,7 +85,7 @@ def solve(
         syn_params,
         stimuli,
         recordings,
-        dt,
+        delta_t,
         solver,
     )
 
@@ -103,12 +109,12 @@ def solve(
         i_ext = jnp.concatenate([i_ext, dummy_stimulus])
 
     _, recordings = nested_checkpoint_scan(
-        body_fun, state, i_ext, length=length, nested_lengths=checkpoint_lengths
+        _body_fun, state, i_ext, length=length, nested_lengths=checkpoint_lengths
     )
     return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
 
 
-def prepare_state(
+def _prepare_state(
     network,
     init_v,
     mem_states,
@@ -117,9 +123,10 @@ def prepare_state(
     syn_params,
     stimuli,
     recordings,
-    dt: float = 0.025,
+    delta_t: float = 0.025,
     solver: str = "stone",
 ):
+    """Defines all constant states (e.g., morphology) of the ODE as global variables."""
     global NUM_BRANCHES
     global CUMSUM_NUM_BRANCHES
     global COMB_CUM_KID_INDS_IN_EACH_LEVEL
@@ -139,14 +146,13 @@ def prepare_state(
     global NSEG_PER_BRANCH
     global SOLVER
     global DELTA_T
-    global I_CELL_INDS
     global I_INDS
+    global REC_INDS
 
     global PRE_SYN_INDS
     global PRE_SYN_CELL_INDS
     global GROUPED_POST_SYN_INDS
     global GROUPED_POST_SYNS
-    global REC_INDS
 
     # Define everything related to morphology as global variables.
     NUM_BRANCHES = network.num_branches
@@ -173,7 +179,7 @@ def prepare_state(
 
     # Define the solver.
     SOLVER = solver
-    DELTA_T = dt
+    DELTA_T = delta_t
 
     # TODO: do I actually need this conversion if I assume NSEG_PER_BRANCH to be const?
     # Can I not just keep a 2D array everywhere?
@@ -183,45 +189,52 @@ def prepare_state(
     REC_INDS = NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds
 
     stim_inds = [index_of_loc(s.branch_ind, s.loc, NSEG_PER_BRANCH) for s in stimuli]
-    I_CELL_INDS = jnp.asarray([s.cell_ind for s in stimuli])
-    I_INDS = jnp.asarray(stim_inds)
+    i_cell_inds = jnp.asarray([s.cell_ind for s in stimuli])
+    i_branch_inds = jnp.asarray(stim_inds)
+    I_INDS = CUMSUM_NUM_BRANCHES[i_cell_inds] * NSEG_PER_BRANCH + i_branch_inds
 
     concat_voltage = jnp.concatenate(init_v)
 
     init_state = (
         concat_voltage,
         [jnp.concatenate(m, axis=1) for m in mem_states],
-        syn_states,
         [jnp.concatenate(m, axis=1) for m in mem_params],
+        syn_states,
         syn_params,
     )
     return init_state
 
 
-def find_root(
-    v,
-    u,
-    ss,
-    params,
+def _find_root(
+    voltages,
+    mem_states,
+    mem_params,
+    syn_states,
     syn_params,
     i_stim,
 ):
-    voltages = v  # mV
+    """Performs one step of the ODE.
 
+    The voltages are solved by finding the root of a quasi-tridiagonal system (implicit
+    euler step). The membrane states and synaptic states are updated as defined in the
+    `MEM_CHANNELS` and `SYN_CHANNELS`.
+    """
     # Membrane input.
-    voltage_terms = jnp.zeros_like(v)
-    constant_terms = jnp.zeros_like(v)
-    new_states = []
+    voltage_terms = jnp.zeros_like(voltages)  # mV
+    constant_terms = jnp.zeros_like(voltages)
+    new_mem_states = []
     for i, update_fn in enumerate(MEM_CHANNELS):
-        membrane_current_terms, states = update_fn(voltages, u[i], params[i], DELTA_T)
+        membrane_current_terms, states = update_fn(
+            voltages, mem_states[i], mem_params[i], DELTA_T
+        )
         voltage_terms += membrane_current_terms[0]
         constant_terms += membrane_current_terms[1]
-        new_states.append(states)
+        new_mem_states.append(states)
 
     # External input.
     i_ext = get_external_input(
         voltages,
-        CUMSUM_NUM_BRANCHES[I_CELL_INDS] * NSEG_PER_BRANCH + I_INDS,
+        I_INDS,
         i_stim,
         RADIUSES,
         LENGTHS,
@@ -234,7 +247,7 @@ def find_root(
     for i, update_fn in enumerate(SYN_CHANNELS):
         synapse_current_terms, synapse_states = update_fn(
             voltages,
-            ss[i],
+            syn_states[i],
             CUMSUM_NUM_BRANCHES[PRE_SYN_CELL_INDS[i]] * NSEG_PER_BRANCH
             + PRE_SYN_INDS[i],
             DELTA_T,
@@ -279,34 +292,34 @@ def find_root(
         MAX_NUM_KIDS,
         SOLVER,
     )
-    return sol_tri.flatten(order="C"), new_states, new_syn_states
+    return sol_tri.flatten(order="C"), new_mem_states, new_syn_states
 
 
-def body_fun(state, i_stim):
+def _body_fun(state, i_stim):
     """
-    Body for fori_loop.
+    Body for `scan`.
     """
     (
-        v,
-        u_inner,
+        voltages,
+        mem_states,
+        mem_params,
         syn_states,
-        params,
         syn_params,
     ) = state
 
-    v, u_inner, syn_states = find_root(
-        v,
-        u_inner,
+    voltages, mem_states, syn_states = _find_root(
+        voltages,
+        mem_states,
+        mem_params,
         syn_states,
-        params,
         syn_params,
         i_stim,
     )
 
     return (
-        v,
-        u_inner,
+        voltages,
+        mem_states,
+        mem_params,
         syn_states,
-        params,
         syn_params,
-    ), v[REC_INDS]
+    ), voltages[REC_INDS]
