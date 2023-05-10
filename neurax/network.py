@@ -13,109 +13,96 @@ class Network:
             assert (
                 cell.nseg_per_branch == self.nseg_per_branch
             ), "Different nseg_per_branch between cells."
+        self.prepare_cells(cells)
+        self.scaled_coupling_conds_fwd = None
+        self.scaled_coupling_conds_bwd = None
+        self.scaled_branch_conds_fwd = None
+        self.scaled_branch_conds_bwd = None
+        self.scaled_summed_coupling_conds = None
 
+        self.reset_connectivity(conns)
+
+    def prepare_cells(self, cells):
+        """Organize multiple cells such that they can be processed in parallel."""
+        self.num_branches = [cell.num_branches for cell in cells]
+        self.cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + self.num_branches))
+        self.max_num_kids = cells[0].max_num_kids
+        for c in cells:
+            assert (
+                self.max_num_kids == c.max_num_kids
+            ), "Different max_num_kids between cells."
+
+        parents = [cell.parents for cell in cells]
+        self.comb_parents = jnp.concatenate(
+            [p.at[1:].add(self.cumsum_num_branches[i]) for i, p in enumerate(parents)]
+        )
+        self.comb_parents_in_each_level = merge_cells(
+            self.cumsum_num_branches, [cell.parents_in_each_level for cell in cells]
+        )
+        self.comb_branches_in_each_level = merge_cells(
+            self.cumsum_num_branches,
+            [cell.branches_in_each_level for cell in cells],
+            exclude_first=False,
+        )
+
+        # Prepare indizes for solve
+        comb_ind_of_kids = jnp.concatenate(
+            [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
+        )
+        comb_ind_of_kids_in_each_level = [
+            comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
+        ]
+        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
+            comb_ind_of_kids_in_each_level, self.max_num_kids
+        )
+
+        # Flatten because we flatten all vars.
+        self.radiuses = jnp.concatenate([c.radiuses.flatten() for c in cells])
+        self.lengths = jnp.concatenate([c.lengths.flatten() for c in cells])
+
+        # Initially, the coupling conductances are set to `None`. They have to be set
+        # by calling `.set_axial_resistivities()`.
+        self.coupling_conds_fwd = [c.coupling_conds_fwd for c in cells]
+        self.coupling_conds_bwd = [c.coupling_conds_bwd for c in cells]
+        self.branch_conds_fwd = [c.branch_conds_fwd for c in cells]
+        self.branch_conds_bwd = [c.branch_conds_bwd for c in cells]
+        self.summed_coupling_conds = [c.summed_coupling_conds for c in cells]
+
+    def reset_connectivity(self, conns):
+        """Updates in-place the connectivity."""
         assert isinstance(conns, list), "conns must be a list."
         for conn in conns:
             assert isinstance(conn, list), "conns must be a list of lists."
         self.connectivities = [
             Connectivity(conn, self.nseg_per_branch) for conn in conns
         ]
-        self.prepare_cells(cells)
 
-    def prepare_cells(self, cells):
-        """Organize multiple cells such that they can be processed in parallel."""
-        self.num_branches = [cell.num_branches for cell in cells]
-        self.cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + self.num_branches))
-        self.max_num_kids = cells[0].max_num_kids
-        for c in cells:
-            assert (
-                self.max_num_kids == c.max_num_kids
-            ), "Different max_num_kids between cells."
+    def set_axial_resistivities(self, axial_res: jnp.ndarray):
+        """Recompute the coupling conductances given a new axial resisitivity.
 
-        parents = [cell.parents for cell in cells]
-        self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self.cumsum_num_branches[i]) for i, p in enumerate(parents)]
+        Note: We assume a uniform axial resisitivity.
+        """
+        # Coupling conductances between any pair of segments.
+        self.scaled_coupling_conds_fwd = jnp.concatenate(
+            [ccf / r_a for ccf, r_a in zip(self.coupling_conds_fwd, axial_res)]
         )
-        self.comb_parents_in_each_level = merge_cells(
-            self.cumsum_num_branches, [cell.parents_in_each_level for cell in cells]
+        self.scaled_coupling_conds_bwd = jnp.concatenate(
+            [ccf / r_a for ccf, r_a in zip(self.coupling_conds_bwd, axial_res)]
         )
-        self.comb_branches_in_each_level = merge_cells(
-            self.cumsum_num_branches,
-            [cell.branches_in_each_level for cell in cells],
-            exclude_first=False,
+        self.scaled_branch_conds_fwd = jnp.concatenate(
+            [ccf / r_a for ccf, r_a in zip(self.branch_conds_fwd, axial_res)]
         )
+        self.scaled_branch_conds_bwd = jnp.concatenate(
+            [ccf / r_a for ccf, r_a in zip(self.branch_conds_bwd, axial_res)]
+        )
+        self.scaled_summed_coupling_conds = jnp.concatenate(
+            [ccf / r_a for ccf, r_a in zip(self.summed_coupling_conds, axial_res)]
+        )
+        return self
 
-        # Prepare indizes for solve
-        comb_ind_of_kids = jnp.concatenate(
-            [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
-        )
-        comb_ind_of_kids_in_each_level = [
-            comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
-        ]
-        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
-            comb_ind_of_kids_in_each_level, self.max_num_kids
-        )
-
-        # Flatten because we flatten all vars.
-        self.radiuses = jnp.concatenate([c.radiuses.flatten() for c in cells])
-        self.lengths = jnp.concatenate([c.lengths.flatten() for c in cells])
-        self.coupling_conds_fwd = jnp.concatenate([c.coupling_conds_fwd for c in cells])
-        self.coupling_conds_bwd = jnp.concatenate([c.coupling_conds_bwd for c in cells])
-        self.branch_conds_fwd = jnp.concatenate([c.branch_conds_fwd for c in cells])
-        self.branch_conds_bwd = jnp.concatenate([c.branch_conds_bwd for c in cells])
-        self.summed_coupling_conds = jnp.concatenate(
-            [c.summed_coupling_conds for c in cells]
-        )
-
-
-class CellCluster:
-    def __init__(self, cells):
-        self.prepare_cells(cells)
-
-    def prepare_cells(self, cells):
-        """Organize multiple cells such that they can be processed in parallel."""
-        self.num_branches = [cell.num_branches for cell in cells]
-        self.cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + self.num_branches))
-        self.max_num_kids = cells[0].max_num_kids
-        for c in cells:
-            assert (
-                self.max_num_kids == c.max_num_kids
-            ), "Different max_num_kids between cells."
-
-        parents = [cell.parents for cell in cells]
-        self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self.cumsum_num_branches[i]) for i, p in enumerate(parents)]
-        )
-        self.comb_parents_in_each_level = merge_cells(
-            self.cumsum_num_branches, [cell.parents_in_each_level for cell in cells]
-        )
-        self.comb_branches_in_each_level = merge_cells(
-            self.cumsum_num_branches,
-            [cell.branches_in_each_level for cell in cells],
-            exclude_first=False,
-        )
-
-        # Prepare indizes for solve
-        comb_ind_of_kids = jnp.concatenate(
-            [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
-        )
-        comb_ind_of_kids_in_each_level = [
-            comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
-        ]
-        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
-            comb_ind_of_kids_in_each_level, self.max_num_kids
-        )
-
-        # Flatten because we flatten all vars.
-        self.radiuses = jnp.concatenate([c.radiuses.flatten() for c in cells])
-        self.lengths = jnp.concatenate([c.lengths.flatten() for c in cells])
-        self.coupling_conds_fwd = jnp.concatenate([c.coupling_conds_fwd for c in cells])
-        self.coupling_conds_bwd = jnp.concatenate([c.coupling_conds_bwd for c in cells])
-        self.branch_conds_fwd = jnp.concatenate([c.branch_conds_fwd for c in cells])
-        self.branch_conds_bwd = jnp.concatenate([c.branch_conds_bwd for c in cells])
-        self.summed_coupling_conds = jnp.concatenate(
-            [c.summed_coupling_conds for c in cells]
-        )
+    def set_capacitance(self, capacitance: jnp.ndarray):
+        """Set the membrane capacitance of every neuron in the network."""
+        raise NotImplementedError
 
 
 class Connectivity:
