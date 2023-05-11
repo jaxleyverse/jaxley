@@ -1,5 +1,5 @@
 # neurax
-A differentiable neuron simulator in jax (by Michael)
+A differentiable simulator for networks of multicompartment neurons in JAX.
 
 ### Tutorial
 
