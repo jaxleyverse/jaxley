@@ -22,11 +22,11 @@ COMB_PARENTS_IN_EACH_LEVEL = []
 COMB_BRANCHES_IN_EACH_LEVEL = []
 RADIUSES = []
 LENGTHS = []
-COUPLING_CONDS_FWD = []
-COUPLING_CONDS_BWD = []
-BRANCH_CONDS_FWD = []
-BRANCH_CONDS_BWD = []
-SUMMED_COUPLING_CONDS = []
+# COUPLING_CONDS_FWD = []
+# COUPLING_CONDS_BWD = []
+# BRANCH_CONDS_FWD = []
+# BRANCH_CONDS_BWD = []
+# SUMMED_COUPLING_CONDS = []
 
 I_INDS = []
 REC_INDS = []
@@ -140,11 +140,6 @@ def _prepare_state(
     global COMB_BRANCHES_IN_EACH_LEVEL
     global RADIUSES
     global LENGTHS
-    global COUPLING_CONDS_FWD
-    global COUPLING_CONDS_BWD
-    global BRANCH_CONDS_FWD
-    global BRANCH_CONDS_BWD
-    global SUMMED_COUPLING_CONDS
 
     global NSEG_PER_BRANCH
     global SOLVER
@@ -167,11 +162,6 @@ def _prepare_state(
     COMB_CUM_KID_INDS_IN_EACH_LEVEL = network.comb_cum_kid_inds_in_each_level
     RADIUSES = network.radiuses
     LENGTHS = network.lengths
-    COUPLING_CONDS_FWD = network.scaled_coupling_conds_fwd
-    COUPLING_CONDS_BWD = network.scaled_coupling_conds_bwd
-    BRANCH_CONDS_FWD = network.scaled_branch_conds_fwd
-    BRANCH_CONDS_BWD = network.scaled_branch_conds_bwd
-    SUMMED_COUPLING_CONDS = network.scaled_summed_coupling_conds
     NSEG_PER_BRANCH = network.nseg_per_branch
 
     # Define morphology of synapses.
@@ -204,6 +194,11 @@ def _prepare_state(
         [jnp.concatenate(m, axis=1) for m in mem_params],
         syn_states,
         syn_params,
+        network.scaled_coupling_conds_fwd,
+        network.scaled_coupling_conds_bwd,
+        network.scaled_branch_conds_fwd,
+        network.scaled_branch_conds_bwd,
+        network.scaled_summed_coupling_conds,
     )
     return init_state
 
@@ -215,6 +210,11 @@ def _find_root(
     syn_states,
     syn_params,
     i_stim,
+    coupling_conds_fwd,
+    coupling_conds_bwd,
+    branch_conds_fwd,
+    branch_conds_bwd,
+    summed_coupling_conds,
 ):
     """Performs one step of the ODE.
 
@@ -274,9 +274,9 @@ def _find_root(
         voltage_terms + syn_voltage_terms,
         i_ext + constant_terms + syn_constant_terms,
         sum(NUM_BRANCHES),
-        COUPLING_CONDS_BWD,
-        COUPLING_CONDS_FWD,
-        SUMMED_COUPLING_CONDS,
+        coupling_conds_bwd,
+        coupling_conds_fwd,
+        summed_coupling_conds,
         DELTA_T,
     )
 
@@ -289,8 +289,8 @@ def _find_root(
         diags,
         uppers,
         solves,
-        -DELTA_T * BRANCH_CONDS_BWD,
-        -DELTA_T * BRANCH_CONDS_FWD,
+        -DELTA_T * branch_conds_bwd,
+        -DELTA_T * branch_conds_fwd,
         COMB_CUM_KID_INDS_IN_EACH_LEVEL,
         MAX_NUM_KIDS,
         SOLVER,
@@ -308,6 +308,11 @@ def _body_fun(state, i_stim):
         mem_params,
         syn_states,
         syn_params,
+        coupling_conds_fwd,
+        coupling_conds_bwd,
+        branch_conds_fwd,
+        branch_conds_bwd,
+        summed_coupling_conds,
     ) = state
 
     voltages, mem_states, syn_states = _find_root(
@@ -317,6 +322,11 @@ def _body_fun(state, i_stim):
         syn_states,
         syn_params,
         i_stim,
+        coupling_conds_fwd,
+        coupling_conds_bwd,
+        branch_conds_fwd,
+        branch_conds_bwd,
+        summed_coupling_conds,
     )
 
     return (
@@ -325,4 +335,9 @@ def _body_fun(state, i_stim):
         mem_params,
         syn_states,
         syn_params,
+        coupling_conds_fwd,
+        coupling_conds_bwd,
+        branch_conds_fwd,
+        branch_conds_bwd,
+        summed_coupling_conds,
     ), voltages[REC_INDS]
