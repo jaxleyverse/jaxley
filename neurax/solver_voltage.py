@@ -13,15 +13,13 @@ def explicit_step(
     coupling_conds_fwd,
     branch_cond_fwd,
     branch_cond_bwd,
+    num_branches,
     delta_t,
 ):
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
-    num_comp = 4
-    num_branches = 2
-    voltages = jnp.reshape(voltages, (num_branches, num_comp))
-
-    voltage_terms = jnp.reshape(voltage_terms, (num_branches, num_comp))
-    constant_terms = jnp.reshape(constant_terms, (num_branches, num_comp))
+    voltages = jnp.reshape(voltages, (num_branches, -1))
+    voltage_terms = jnp.reshape(voltage_terms, (num_branches, -1))
+    constant_terms = jnp.reshape(constant_terms, (num_branches, -1))
 
     update = vectorfield(
         parents,
@@ -90,15 +88,6 @@ def vectorfield(
     branch_cond_bwd,
 ):
     """Evaluate the vectorfield of the nerve equation."""
-    # print("voltages.shape", voltages.shape)
-    # print("voltage_terms.shape", voltage_terms.shape)
-    # print("constant_terms.shape", constant_terms.shape)
-    # print("coupling_conds_bwd.shape", coupling_conds_bwd.shape)
-    # print("coupling_conds_fwd.shape", coupling_conds_fwd.shape)
-    # print("branch_cond_fwd.shape", branch_cond_fwd.shape)
-    # print("branch_cond_bwd.shape", branch_cond_bwd.shape)
-    # print("parents", parents)
-
     # Membrane current update.
     update = -voltage_terms * voltages + constant_terms
 
