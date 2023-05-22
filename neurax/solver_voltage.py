@@ -122,9 +122,21 @@ def vectorfield(
             jnp.sum(jnp.reshape(add_to_vecfield, (-1, max_num_kids)), axis=1)
         )
     else:
-        raise NotImplementedError
+        vecfield = lax.fori_loop(
+            0,
+            len(parents),
+            _body_fun_current_from_kids,
+            (vecfield, voltages, parents, branch_cond_fwd),
+        )[0]
 
     return vecfield
+
+
+def _body_fun_current_from_kids(i, vals):
+    vecfield, voltages, parents, branch_cond_fwd = vals
+    term_to_add = (voltages[i, -1] - voltages[parents[i], 0]) * branch_cond_fwd[i]
+    vecfield = vecfield.at[parents[i], 0].add(term_to_add)
+    return (vecfield, voltages, parents, branch_cond_fwd)
 
 
 def _triang_branched(
