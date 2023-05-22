@@ -5,7 +5,7 @@ from tridiax.thomas import thomas_triang, thomas_backsub
 from tridiax.stone import stone_triang, stone_backsub
 
 
-def explicit_step(
+def step_voltage_explicit(
     voltages,
     voltage_terms,
     constant_terms,
@@ -40,7 +40,7 @@ def explicit_step(
     return new_voltates
 
 
-def implicit_step(
+def step_voltage_implicit(
     voltages,
     voltage_terms,
     constant_terms,

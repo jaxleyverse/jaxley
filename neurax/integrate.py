@@ -5,7 +5,7 @@ import jax
 from jax import lax, vmap
 import jax.numpy as jnp
 
-from neurax.solver_voltage import implicit_step, explicit_step
+from neurax.solver_voltage import step_voltage_implicit, step_voltage_explicit
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.syn_utils import postsyn_voltage_updates
@@ -228,51 +228,33 @@ def _step(
     euler step). The membrane states and synaptic states are updated as defined in the
     `MEM_CHANNELS` and `SYN_CHANNELS`.
     """
-    # Membrane input.
-    voltage_terms = jnp.zeros_like(voltages)  # mV
-    constant_terms = jnp.zeros_like(voltages)
-    new_mem_states = []
-    for i, update_fn in enumerate(MEM_CHANNELS):
-        membrane_current_terms, states = update_fn(
-            voltages, mem_states[i], mem_params[i], DELTA_T
-        )
-        voltage_terms += membrane_current_terms[0]
-        constant_terms += membrane_current_terms[1]
-        new_mem_states.append(states)
+    # Step of the membrane channels.
+    new_mem_states, mem_voltage_terms, mem_constant_terms = _step_membrane(
+        voltages, mem_states, mem_params, MEM_CHANNELS, DELTA_T
+    )
 
     # External input.
     i_ext = get_external_input(voltages, I_INDS, i_stim, RADIUSES, LENGTHS)
 
-    # Synaptic input.
-    syn_voltage_terms = jnp.zeros_like(voltages)
-    syn_constant_terms = jnp.zeros_like(voltages)
-    new_syn_states = []
-    for i, update_fn in enumerate(SYN_CHANNELS):
-        synapse_current_terms, synapse_states = update_fn(
-            voltages,
-            syn_states[i],
-            CUMSUM_NUM_BRANCHES[PRE_SYN_CELL_INDS[i]] * NSEG_PER_BRANCH
-            + PRE_SYN_INDS[i],
-            DELTA_T,
-            syn_params[i],
-        )
-        synapse_current_terms = postsyn_voltage_updates(
-            NSEG_PER_BRANCH,
-            CUMSUM_NUM_BRANCHES,
-            voltages,
-            GROUPED_POST_SYN_INDS[i],
-            GROUPED_POST_SYNS[i],
-            *synapse_current_terms,
-        )
-        syn_voltage_terms += synapse_current_terms[0]
-        syn_constant_terms += synapse_current_terms[1]
-        new_syn_states.append(synapse_states)
+    # Step of the synapse.
+    new_syn_states, syn_voltage_terms, syn_constant_terms = _step_synapse(
+        voltages,
+        syn_states,
+        syn_params,
+        DELTA_T,
+        CUMSUM_NUM_BRANCHES,
+        PRE_SYN_CELL_INDS,
+        PRE_SYN_INDS,
+        GROUPED_POST_SYN_INDS,
+        GROUPED_POST_SYNS,
+        NSEG_PER_BRANCH,
+    )
 
     if SOLVER == "bwd_euler":
-        new_voltages = implicit_step(
+        new_voltages = step_voltage_implicit(
             voltages,
-            voltage_terms + syn_voltage_terms,
-            i_ext + constant_terms + syn_constant_terms,
+            mem_voltage_terms + syn_voltage_terms,
+            i_ext + mem_constant_terms + syn_constant_terms,
             coupling_conds_bwd,
             coupling_conds_fwd,
             summed_coupling_conds,
@@ -288,10 +270,10 @@ def _step(
             DELTA_T,
         )
     elif SOLVER == "fwd_euler":
-        new_voltages = explicit_step(
+        new_voltages = step_voltage_explicit(
             voltages,
-            voltage_terms + syn_voltage_terms,
-            i_ext + constant_terms + syn_constant_terms,
+            mem_voltage_terms + syn_voltage_terms,
+            i_ext + mem_constant_terms + syn_constant_terms,
             coupling_conds_bwd,
             coupling_conds_fwd,
             branch_conds_bwd,
@@ -308,6 +290,59 @@ def _step(
         raise ValueError
 
     return new_voltages.flatten(order="C"), new_mem_states, new_syn_states
+
+
+def _step_membrane(voltages, mem_states, mem_params, mem_channels, delta_t):
+    """Perform one step of the membrane channels and obtain their currents."""
+    voltage_terms = jnp.zeros_like(voltages)  # mV
+    constant_terms = jnp.zeros_like(voltages)
+    new_mem_states = []
+    for i, update_fn in enumerate(mem_channels):
+        membrane_current_terms, states = update_fn(
+            voltages, mem_states[i], mem_params[i], delta_t
+        )
+        voltage_terms += membrane_current_terms[0]
+        constant_terms += membrane_current_terms[1]
+        new_mem_states.append(states)
+    return new_mem_states, voltage_terms, constant_terms
+
+
+def _step_synapse(
+    voltages,
+    syn_states,
+    syn_params,
+    syn_channels,
+    syn_inds,
+    delta_t,
+    cumsum_num_branches,
+    pre_syn_cell_inds,
+    pre_syn_inds,
+    grouped_post_syn_inds,
+    grouped_post_syns,
+    nseg,
+):
+    """Perform one step of the synapses and obtain their currents."""
+    syn_voltage_terms = jnp.zeros_like(voltages)
+    syn_constant_terms = jnp.zeros_like(voltages)
+    new_syn_states = []
+    for i, update_fn in enumerate(syn_channels):
+        syn_inds = cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
+        synapse_current_terms, synapse_states = update_fn(
+            voltages, syn_states[i], syn_inds, delta_t, syn_params[i],
+        )
+        synapse_current_terms = postsyn_voltage_updates(
+            nseg,
+            cumsum_num_branches,
+            voltages,
+            grouped_post_syn_inds[i],
+            grouped_post_syns[i],
+            *synapse_current_terms,
+        )
+        syn_voltage_terms += synapse_current_terms[0]
+        syn_constant_terms += synapse_current_terms[1]
+        new_syn_states.append(synapse_states)
+
+    return new_syn_states, syn_voltage_terms, syn_constant_terms
 
 
 def _body_fun(state, i_stim):
