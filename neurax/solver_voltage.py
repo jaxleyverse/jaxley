@@ -113,7 +113,7 @@ def vectorfield(
     # Several branches might have the same parent, so we have to either update these
     # entries sequentially or we have to build a matrix with width being the maximum
     # number of kids and then sum.
-    parallel_elim = True
+    parallel_elim = False
     if parallel_elim:
         term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
         add_to_vecfield = jnp.zeros((max_num_kids * len(parents)))
