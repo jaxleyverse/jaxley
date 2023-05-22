@@ -299,7 +299,7 @@ def _step(
             MAX_NUM_KIDS,
             TRIDIAG_SOLVER,
             DELTA_T,
-        ).flatten(order="C")
+        )
     elif SOLVER == "fwd_euler":
         new_voltages = explicit_step(
             COMB_PARENTS,
@@ -310,14 +310,15 @@ def _step(
             coupling_conds_fwd,
             branch_conds_bwd,
             branch_conds_fwd,
+            sum(NUM_BRANCHES),
             DELTA_T,
-        ).flatten(order="C")
+        )
     elif SOLVER == "cranck":
         raise NotImplementedError
     else:
         raise ValueError
 
-    return new_voltages, new_mem_states, new_syn_states
+    return new_voltages.flatten(order="C"), new_mem_states, new_syn_states
 
 
 def _body_fun(state, i_stim):
