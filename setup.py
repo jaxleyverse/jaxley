@@ -12,6 +12,7 @@ EXTRAS = {
         "isort",
         "jupyter",
         "mkdocs",
+        "mkdocs-material",
         "pytest",
         "pyright",
     ],
