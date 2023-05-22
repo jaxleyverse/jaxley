@@ -17,7 +17,7 @@ def explicit_step(
 ):
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
     num_comp = 4
-    num_branches = 1
+    num_branches = 2
     voltages = jnp.reshape(voltages, (num_branches, num_comp))
 
     voltage_terms = jnp.reshape(voltage_terms, (num_branches, num_comp))
@@ -97,8 +97,12 @@ def vectorfield(
     # print("coupling_conds_fwd.shape", coupling_conds_fwd.shape)
     # print("branch_cond_fwd.shape", branch_cond_fwd.shape)
     # print("branch_cond_bwd.shape", branch_cond_bwd.shape)
+    # print("parents", parents)
 
+    # Membrane current update.
     update = -voltage_terms * voltages + constant_terms
+
+    # Current through segments within the same branch.
     update = update.at[:, :-1].add(
         (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_bwd
     )
@@ -106,12 +110,13 @@ def vectorfield(
         (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_fwd
     )
 
-    # update = update.at[:, 0].add(
-    #     (voltages[parents, -1] - voltages[:, 0]) * branch_cond_bwd
-    # )
-    # update = update.at[:, -1].add(
-    #     (voltages[parents, 0] - voltages[:, -1]) * branch_cond_fwd
-    # )
+    # Current through branch points.
+    update = update.at[1:, -1].add(
+        (voltages[parents[1:], 0] - voltages[1:, -1]) * branch_cond_bwd[1:]
+    )
+    update = update.at[parents[1:], 0].add(
+        (voltages[1:, -1] - voltages[parents[1:], 0]) * branch_cond_fwd[1:]
+    )
     return update
 
 
