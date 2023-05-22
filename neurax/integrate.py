@@ -15,6 +15,7 @@ from neurax.utils.jax_utils import nested_checkpoint_scan
 NUM_BRANCHES = []
 CUMSUM_NUM_BRANCHES = []
 COMB_CUM_KID_INDS_IN_EACH_LEVEL = []
+COMB_CUM_KID_INDS = None
 MAX_NUM_KIDS = None
 
 COMB_PARENTS = []
@@ -135,6 +136,7 @@ def _prepare_state(
     global NUM_BRANCHES
     global CUMSUM_NUM_BRANCHES
     global COMB_CUM_KID_INDS_IN_EACH_LEVEL
+    global COMB_CUM_KID_INDS
     global MAX_NUM_KIDS
 
     global COMB_PARENTS
@@ -163,6 +165,7 @@ def _prepare_state(
     COMB_PARENTS_IN_EACH_LEVEL = network.comb_parents_in_each_level
     COMB_BRANCHES_IN_EACH_LEVEL = network.comb_branches_in_each_level
     COMB_CUM_KID_INDS_IN_EACH_LEVEL = network.comb_cum_kid_inds_in_each_level
+    COMB_CUM_KID_INDS = network.comb_cum_kid_inds
     RADIUSES = network.radiuses
     LENGTHS = network.lengths
     NSEG_PER_BRANCH = network.nseg_per_branch
@@ -239,13 +242,7 @@ def _step(
         new_mem_states.append(states)
 
     # External input.
-    i_ext = get_external_input(
-        voltages,
-        I_INDS,
-        i_stim,
-        RADIUSES,
-        LENGTHS,
-    )
+    i_ext = get_external_input(voltages, I_INDS, i_stim, RADIUSES, LENGTHS)
 
     # Synaptic input.
     syn_voltage_terms = jnp.zeros_like(voltages)
@@ -311,6 +308,8 @@ def _step(
             branch_conds_bwd,
             branch_conds_fwd,
             sum(NUM_BRANCHES),
+            COMB_CUM_KID_INDS,
+            MAX_NUM_KIDS,
             DELTA_T,
         )
     elif SOLVER == "cranck":
@@ -353,14 +352,18 @@ def _body_fun(state, i_stim):
     )
 
     return (
-        voltages,
-        mem_states,
-        mem_params,
-        syn_states,
-        syn_params,
-        coupling_conds_fwd,
-        coupling_conds_bwd,
-        branch_conds_fwd,
-        branch_conds_bwd,
-        summed_coupling_conds,
-    ), voltages[REC_INDS]
+        (
+            voltages,
+            mem_states,
+            mem_params,
+            syn_states,
+            syn_params,
+            coupling_conds_fwd,
+            coupling_conds_bwd,
+            branch_conds_fwd,
+            branch_conds_bwd,
+            summed_coupling_conds,
+        ),
+        voltages[REC_INDS],
+    )
+

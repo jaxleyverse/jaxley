@@ -49,6 +49,9 @@ class Network:
         comb_ind_of_kids = jnp.concatenate(
             [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
         )
+        self.comb_cum_kid_inds = cum_indizes_of_kids(
+            [comb_ind_of_kids], self.max_num_kids
+        )[0]
         comb_ind_of_kids_in_each_level = [
             comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
         ]
