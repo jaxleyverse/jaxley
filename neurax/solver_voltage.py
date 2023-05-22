@@ -4,7 +4,7 @@ from tridiax.thomas import thomas_triang, thomas_backsub
 from tridiax.stone import stone_triang, stone_backsub
 
 
-def solve_branched(
+def explicit_step(
     parents_in_each_level,
     branches_in_each_level,
     parents,
@@ -19,7 +19,27 @@ def solve_branched(
     solver,
 ):
     """
-    Solve branched.
+    Solve one timestep of branched nerve equations with explicit (=forward) Euler.
+    """
+    pass
+
+
+def implicit_step(
+    parents_in_each_level,
+    branches_in_each_level,
+    parents,
+    lowers,
+    diags,
+    uppers,
+    solves,
+    branch_cond_fwd,
+    branch_cond_bwd,
+    kid_inds_in_each_level,
+    max_num_kids,
+    tridiag_solver,
+):
+    """
+    Solve one timestep of branched nerve equations with implicit (=backward) Euler.
     """
     diags, uppers, solves = triang_branched(
         parents,
@@ -33,7 +53,7 @@ def solve_branched(
         branch_cond_bwd,
         kid_inds_in_each_level,
         max_num_kids,
-        solver,
+        tridiag_solver,
     )
     solves = backsub_branched(
         branches_in_each_level,
@@ -42,7 +62,7 @@ def solve_branched(
         uppers,
         solves,
         branch_cond_bwd,
-        solver,
+        tridiag_solver,
     )
     return solves
 
@@ -59,7 +79,7 @@ def triang_branched(
     branch_cond_bwd,
     kid_inds_in_each_level,
     max_num_kids,
-    solver,
+    tridiag_solver,
 ):
     """
     Triang.
@@ -70,7 +90,7 @@ def triang_branched(
         reversed(kid_inds_in_each_level[1:]),
     ):
         diags, uppers, solves = _triang_level(
-            bil, lowers, diags, uppers, solves, solver
+            bil, lowers, diags, uppers, solves, tridiag_solver
         )
         diags, solves = _eliminate_parents_upper(
             parents,
@@ -85,7 +105,7 @@ def triang_branched(
         )
     # At last level, we do not want to eliminate anymore.
     diags, uppers, solves = _triang_level(
-        branches_in_each_level[0], lowers, diags, uppers, solves, solver
+        branches_in_each_level[0], lowers, diags, uppers, solves, tridiag_solver
     )
 
     return diags, uppers, solves
@@ -98,24 +118,26 @@ def backsub_branched(
     uppers,
     solves,
     branch_cond,
-    solver,
+    tridiag_solver,
 ):
     """
     Backsub.
     """
     # At first level, we do not want to eliminate.
-    solves = _backsub_level(branches_in_each_level[0], diags, uppers, solves, solver)
+    solves = _backsub_level(
+        branches_in_each_level[0], diags, uppers, solves, tridiag_solver
+    )
     for bil in branches_in_each_level[1:]:
         solves = _eliminate_children_lower(bil, parents, solves, branch_cond)
-        solves = _backsub_level(bil, diags, uppers, solves, solver)
+        solves = _backsub_level(bil, diags, uppers, solves, tridiag_solver)
     return solves
 
 
-def _triang_level(branches_in_level, lowers, diags, uppers, solves, solver):
+def _triang_level(branches_in_level, lowers, diags, uppers, solves, tridiag_solver):
     bil = branches_in_level
-    if solver == "stone":
+    if tridiag_solver == "stone":
         triang_fn = stone_triang
-    elif solver == "thomas":
+    elif tridiag_solver == "thomas":
         triang_fn = thomas_triang
     else:
         raise NameError
@@ -129,11 +151,11 @@ def _triang_level(branches_in_level, lowers, diags, uppers, solves, solver):
     return diags, uppers, solves
 
 
-def _backsub_level(branches_in_level, diags, uppers, solves, solver):
+def _backsub_level(branches_in_level, diags, uppers, solves, tridiag_solver):
     bil = branches_in_level
-    if solver == "stone":
+    if tridiag_solver == "stone":
         backsub_fn = stone_backsub
-    elif solver == "thomas":
+    elif tridiag_solver == "thomas":
         backsub_fn = thomas_backsub
     else:
         raise NameError
