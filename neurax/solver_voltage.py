@@ -1,11 +1,11 @@
 import jax.numpy as jnp
 from jax import vmap, lax
+from neurax.build_branched_tridiag import define_all_tridiags
 from tridiax.thomas import thomas_triang, thomas_backsub
 from tridiax.stone import stone_triang, stone_backsub
 
 
 def explicit_step(
-    parents,
     voltages,
     voltage_terms,
     constant_terms,
@@ -14,6 +14,7 @@ def explicit_step(
     branch_cond_fwd,
     branch_cond_bwd,
     num_branches,
+    parents,
     kid_inds,
     max_num_kids,
     delta_t,
@@ -40,21 +41,37 @@ def explicit_step(
 
 
 def implicit_step(
-    parents_in_each_level,
-    branches_in_each_level,
-    parents,
-    lowers,
-    diags,
-    uppers,
-    solves,
+    voltages,
+    voltage_terms,
+    constant_terms,
+    coupling_conds_bwd,
+    coupling_conds_fwd,
+    summed_coupling_conds,
     branch_cond_fwd,
     branch_cond_bwd,
+    num_branches,
+    parents,
     kid_inds_in_each_level,
     max_num_kids,
+    parents_in_each_level,
+    branches_in_each_level,
     tridiag_solver,
     delta_t,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
+    # Define quasi-tridiagonal system.
+    lowers, diags, uppers, solves = define_all_tridiags(
+        voltages,
+        voltage_terms,
+        constant_terms,
+        num_branches,
+        coupling_conds_bwd,
+        coupling_conds_fwd,
+        summed_coupling_conds,
+        delta_t,
+    )
+
+    # Solve quasi-tridiagonal system.
     diags, uppers, solves = _triang_branched(
         parents,
         parents_in_each_level,
