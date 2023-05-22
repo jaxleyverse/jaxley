@@ -50,13 +50,13 @@ class Network:
             [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in cells]
         )
         self.comb_cum_kid_inds = cum_indizes_of_kids(
-            [comb_ind_of_kids], self.max_num_kids
+            [comb_ind_of_kids], self.max_num_kids, reset_at=[-1, 0]
         )[0]
         comb_ind_of_kids_in_each_level = [
             comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
         ]
         self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
-            comb_ind_of_kids_in_each_level, self.max_num_kids
+            comb_ind_of_kids_in_each_level, self.max_num_kids, reset_at=[0]
         )
 
         # Flatten because we flatten all vars.

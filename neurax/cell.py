@@ -6,12 +6,7 @@ class Cell:
     """A (multicompartment) cell."""
 
     def __init__(
-        self,
-        num_branches,
-        parents,
-        nseg_per_branch,
-        lengths,
-        radiuses,
+        self, num_branches, parents, nseg_per_branch, lengths, radiuses,
     ):
         self.num_branches = num_branches
         self.parents = parents
@@ -38,7 +33,7 @@ class Cell:
         """Given an axial resisitivity, set the coupling conductances."""
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
-            return rad1 * rad2**2 / r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
+            return rad1 * rad2 ** 2 / r_a / (rad2 ** 2 * l1 + rad1 ** 2 * l2) / l1
 
         # Compute coupling conductance for segments within a branch.
         # `radius`: um
@@ -69,10 +64,10 @@ class Cell:
         )
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        self.coupling_conds_fwd *= 10**7
-        self.coupling_conds_bwd *= 10**7
-        self.branch_conds_fwd *= 10**7
-        self.branch_conds_bwd *= 10**7
+        self.coupling_conds_fwd *= 10 ** 7
+        self.coupling_conds_bwd *= 10 ** 7
+        self.branch_conds_fwd *= 10 ** 7
+        self.branch_conds_bwd *= 10 ** 7
 
         # Compute the summed coupling conductances of each compartment.
         self.summed_coupling_conds = jnp.zeros(
@@ -223,9 +218,7 @@ def _compute_index_of_kid(parents):
 
 
 def get_num_neighbours(
-    num_kids: jnp.ndarray,
-    nseg_per_branch: int,
-    num_branches: int,
+    num_kids: jnp.ndarray, nseg_per_branch: int, num_branches: int,
 ):
     """
     Number of neighbours of each compartment.
@@ -238,13 +231,34 @@ def get_num_neighbours(
     return num_neighbours
 
 
-def cum_indizes_of_kids(ind_of_kids_in_each_level, max_num_kids):
+def cum_indizes_of_kids(ind_of_kids_in_each_level, max_num_kids, reset_at=[0]):
+    """Returns the index of a kid within a layer.
+    
+    This function handles every layer separately.
+
+    Example:
+    ind_of_kids_in_each_level[0] == [0, 1, 0, 1, 2]
+    max_num_kids == 8
+    Returns: [0, 1, 8, 9, 10]
+
+    The function adds `max_num_kids` whenever a `-1` or `0` is encountered. For 
+    backward Euler, adding `max_num_kids` when a `-1` is encountered makes no 
+    difference because they are all in the first layer and triangulation does not
+    affect them. However, for forward Euler, we have only a single layer, so we 
+    specifically have to add `max_num_kids` when we see a `-1`.
+
+    Args:
+        ind_of_kids_in_each_level: List where every element is one layer. Each element 
+            in the list indicates the how-many-eth child a certain branch is of its
+            parent.
+        reset_at: List of integers at which to reset.
+    """
     cum_inds_in_each_level = []
     for ind_kid in ind_of_kids_in_each_level:
         base_ind = 0
         cum_ind_in_level = []
         for i, current_kid_ind in enumerate(ind_kid):
-            if current_kid_ind == 0 and i > 0:
+            if current_kid_ind in reset_at and i > 0:
                 base_ind += max_num_kids
             cum_ind_in_level.append(base_ind + current_kid_ind)
         cum_inds_in_each_level.append(jnp.asarray(cum_ind_in_level))
