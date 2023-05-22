@@ -27,9 +27,8 @@ class ConnectivityBuilder:
     def __init__(self, cells):
         self.cells = cells
 
-    def fc(self, pre_cell_inds, post_cell_inds, seed=None):
+    def fc(self, pre_cell_inds, post_cell_inds):
         """Returns a list of `Connection`s which build a fully connected layer."""
-        np.random.seed(seed)
         conns = []
         for pre_ind in pre_cell_inds:
             for post_ind in post_cell_inds:
