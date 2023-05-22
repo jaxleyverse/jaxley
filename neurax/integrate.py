@@ -174,7 +174,7 @@ def _prepare_state(
     GROUPED_POST_SYNS = [c.grouped_post_syns for c in network.connectivities]
 
     # Define the solver.
-    SOLVER = SOLVER
+    SOLVER = solver
     TRIDIAG_SOLVER = tridiag_solver
     DELTA_T = delta_t
 
@@ -207,7 +207,7 @@ def _prepare_state(
     return init_state
 
 
-def _find_root(
+def _step(
     voltages,
     mem_states,
     mem_params,
@@ -272,7 +272,6 @@ def _find_root(
         syn_constant_terms += synapse_current_terms[1]
         new_syn_states.append(synapse_states)
 
-    # Solve quasi-tridiagonal system.
     if SOLVER == "bwd_euler":
         # Define quasi-tridiagonal system.
         lowers, diags, uppers, solves = define_all_tridiags(
@@ -303,8 +302,6 @@ def _find_root(
         ).flatten(order="C")
     elif SOLVER == "fwd_euler":
         new_voltages = explicit_step(
-            COMB_PARENTS_IN_EACH_LEVEL,
-            COMB_BRANCHES_IN_EACH_LEVEL,
             COMB_PARENTS,
             voltages,
             voltage_terms,
@@ -313,11 +310,8 @@ def _find_root(
             coupling_conds_fwd,
             branch_conds_bwd,
             branch_conds_fwd,
-            COMB_CUM_KID_INDS_IN_EACH_LEVEL,
-            MAX_NUM_KIDS,
-            TRIDIAG_SOLVER,
             DELTA_T,
-        )
+        ).flatten(order="C")
     elif SOLVER == "cranck":
         raise NotImplementedError
     else:
@@ -343,7 +337,7 @@ def _body_fun(state, i_stim):
         summed_coupling_conds,
     ) = state
 
-    voltages, mem_states, syn_states = _find_root(
+    voltages, mem_states, syn_states = _step(
         voltages,
         mem_states,
         mem_params,
