@@ -11,6 +11,7 @@ EXTRAS = {
         "black",
         "isort",
         "jupyter",
+        "markdown-include",
         "mkdocs",
         "mkdocs-material",
         "pytest",
