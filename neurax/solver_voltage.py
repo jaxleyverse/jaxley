@@ -98,20 +98,20 @@ def vectorfield(
     # print("branch_cond_fwd.shape", branch_cond_fwd.shape)
     # print("branch_cond_bwd.shape", branch_cond_bwd.shape)
 
-    update = voltage_terms * voltages + constant_terms
-    update = update.at[:, 1:].add(
+    update = -voltage_terms * voltages + constant_terms
+    update = update.at[:, :-1].add(
         (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_bwd
     )
-    update = update.at[:, :-1].add(
+    update = update.at[:, 1:].add(
         (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_fwd
     )
 
-    update = update.at[:, 0].add(
-        (voltages[parents, -1] - voltages[:, 0]) * branch_cond_bwd
-    )
-    update = update.at[:, -1].add(
-        (voltages[parents, 0] - voltages[:, -1]) * branch_cond_fwd
-    )
+    # update = update.at[:, 0].add(
+    #     (voltages[parents, -1] - voltages[:, 0]) * branch_cond_bwd
+    # )
+    # update = update.at[:, -1].add(
+    #     (voltages[parents, 0] - voltages[:, -1]) * branch_cond_fwd
+    # )
     return update
 
 

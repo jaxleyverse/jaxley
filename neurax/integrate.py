@@ -304,8 +304,8 @@ def _step(
         new_voltages = explicit_step(
             COMB_PARENTS,
             voltages,
-            voltage_terms,
-            constant_terms,
+            voltage_terms + syn_voltage_terms,
+            i_ext + constant_terms + syn_constant_terms,
             coupling_conds_bwd,
             coupling_conds_fwd,
             branch_conds_bwd,
