@@ -5,23 +5,29 @@ from tridiax.stone import stone_triang, stone_backsub
 
 
 def explicit_step(
-    parents_in_each_level,
-    branches_in_each_level,
     parents,
-    lowers,
-    diags,
-    uppers,
-    solves,
+    voltages,
+    voltage_terms,
+    constant_terms,
+    coupling_conds_bwd,
+    coupling_conds_fwd,
     branch_cond_fwd,
     branch_cond_bwd,
-    kid_inds_in_each_level,
-    max_num_kids,
-    solver,
+    delta_t,
 ):
-    """
-    Solve one timestep of branched nerve equations with explicit (=forward) Euler.
-    """
-    pass
+    """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
+    update = vectorfield(
+        parents,
+        voltages,
+        voltage_terms,
+        constant_terms,
+        coupling_conds_bwd,
+        coupling_conds_fwd,
+        branch_cond_fwd,
+        branch_cond_bwd,
+    )
+    new_voltates = voltages + delta_t * update
+    return new_voltates
 
 
 def implicit_step(
@@ -37,11 +43,10 @@ def implicit_step(
     kid_inds_in_each_level,
     max_num_kids,
     tridiag_solver,
+    delta_t,
 ):
-    """
-    Solve one timestep of branched nerve equations with implicit (=backward) Euler.
-    """
-    diags, uppers, solves = triang_branched(
+    """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
+    diags, uppers, solves = _triang_branched(
         parents,
         parents_in_each_level,
         branches_in_each_level,
@@ -49,25 +54,52 @@ def implicit_step(
         diags,
         uppers,
         solves,
-        branch_cond_fwd,
-        branch_cond_bwd,
+        -delta_t * branch_cond_fwd,
+        -delta_t * branch_cond_bwd,
         kid_inds_in_each_level,
         max_num_kids,
         tridiag_solver,
     )
-    solves = backsub_branched(
+    solves = _backsub_branched(
         branches_in_each_level,
         parents,
         diags,
         uppers,
         solves,
-        branch_cond_bwd,
+        -delta_t * branch_cond_bwd,
         tridiag_solver,
     )
     return solves
 
 
-def triang_branched(
+def vectorfield(
+    parents,
+    voltages,
+    voltage_terms,
+    constant_terms,
+    coupling_conds_bwd,
+    coupling_conds_fwd,
+    branch_cond_fwd,
+    branch_cond_bwd,
+):
+    """Evaluate the vectorfield of the nerve equation."""
+    update = (
+        voltage_terms
+        + constant_terms
+        - voltages * (coupling_conds_bwd + coupling_conds_fwd)
+        + jnp.roll(voltages) * coupling_conds_bwd
+        + jnp.roll(voltages, -1) * coupling_conds_fwd
+    )
+    update = update.at[:, 0].add(
+        (voltages[parents, -1] - voltages[:, 0]) * branch_cond_bwd
+    )
+    update = update.at[:, -1].add(
+        (voltages[parents, 0] - voltages[:, -1]) * branch_cond_fwd
+    )
+    return update
+
+
+def _triang_branched(
     parents,
     parents_in_each_level,
     branches_in_each_level,
@@ -111,7 +143,7 @@ def triang_branched(
     return diags, uppers, solves
 
 
-def backsub_branched(
+def _backsub_branched(
     branches_in_each_level,
     parents,
     diags,

@@ -272,36 +272,21 @@ def _find_root(
         syn_constant_terms += synapse_current_terms[1]
         new_syn_states.append(synapse_states)
 
-    # Define quasi-tridiagonal system.
-    lowers, diags, uppers, solves = define_all_tridiags(
-        voltages,
-        voltage_terms + syn_voltage_terms,
-        i_ext + constant_terms + syn_constant_terms,
-        sum(NUM_BRANCHES),
-        coupling_conds_bwd,
-        coupling_conds_fwd,
-        summed_coupling_conds,
-        DELTA_T,
-    )
-
     # Solve quasi-tridiagonal system.
     if SOLVER == "bwd_euler":
-        new_voltates = implicit_step(
-            COMB_PARENTS_IN_EACH_LEVEL,
-            COMB_BRANCHES_IN_EACH_LEVEL,
-            COMB_PARENTS,
-            lowers,
-            diags,
-            uppers,
-            solves,
-            -DELTA_T * branch_conds_bwd,
-            -DELTA_T * branch_conds_fwd,
-            COMB_CUM_KID_INDS_IN_EACH_LEVEL,
-            MAX_NUM_KIDS,
-            TRIDIAG_SOLVER,
-        ).flatten(order="C")
-    elif SOLVER == "fwd_euler":
-        update = explicit_step(
+        # Define quasi-tridiagonal system.
+        lowers, diags, uppers, solves = define_all_tridiags(
+            voltages,
+            voltage_terms + syn_voltage_terms,
+            i_ext + constant_terms + syn_constant_terms,
+            sum(NUM_BRANCHES),
+            coupling_conds_bwd,
+            coupling_conds_fwd,
+            summed_coupling_conds,
+            DELTA_T,
+        )
+        # Solve quasi-tridiagonal system.
+        new_voltages = implicit_step(
             COMB_PARENTS_IN_EACH_LEVEL,
             COMB_BRANCHES_IN_EACH_LEVEL,
             COMB_PARENTS,
@@ -314,14 +299,31 @@ def _find_root(
             COMB_CUM_KID_INDS_IN_EACH_LEVEL,
             MAX_NUM_KIDS,
             TRIDIAG_SOLVER,
+            DELTA_T,
+        ).flatten(order="C")
+    elif SOLVER == "fwd_euler":
+        new_voltages = explicit_step(
+            COMB_PARENTS_IN_EACH_LEVEL,
+            COMB_BRANCHES_IN_EACH_LEVEL,
+            COMB_PARENTS,
+            voltages,
+            voltage_terms,
+            constant_terms,
+            coupling_conds_bwd,
+            coupling_conds_fwd,
+            branch_conds_bwd,
+            branch_conds_fwd,
+            COMB_CUM_KID_INDS_IN_EACH_LEVEL,
+            MAX_NUM_KIDS,
+            TRIDIAG_SOLVER,
+            DELTA_T,
         )
-        new_voltates = voltages + DELTA_T * update
     elif SOLVER == "cranck":
         raise NotImplementedError
     else:
         raise ValueError
 
-    return new_voltates, new_mem_states, new_syn_states
+    return new_voltages, new_mem_states, new_syn_states
 
 
 def _body_fun(state, i_stim):
