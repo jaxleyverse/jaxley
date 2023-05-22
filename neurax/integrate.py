@@ -6,7 +6,7 @@ from jax import lax, vmap
 import jax.numpy as jnp
 
 from neurax.build_branched_tridiag import define_all_tridiags
-from neurax.solver_voltage import solve_branched
+from neurax.solver_voltage import implicit_step, explicit_step
 from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.syn_utils import postsyn_voltage_updates
@@ -28,6 +28,7 @@ REC_INDS = []
 
 NSEG_PER_BRANCH = -1
 SOLVER = ""
+TRIDIAG_SOLVER = ""
 MEM_CHANNELS = []
 SYN_CHANNELS = []
 DELTA_T = 0.0
@@ -50,7 +51,8 @@ def solve(
     stimuli,
     recordings,
     delta_t: float = 0.025,
-    solver: str = "stone",
+    solver: str = "bwd_euler",
+    tridiag_solver: str = "stone",
     checkpoint_lengths: Optional[List[int]] = None,
 ) -> jnp.ndarray:
     """
@@ -62,9 +64,12 @@ def solve(
             and has shape `num_branches, nseg_per_branch`.
         mem_states: Initial values for the states of the membrane gates. List of list
             of `jnp.ndarray`.
-        axial_resistivity: The axial resistivity between any pair of segments. Unit:
-            ohm cm.
-        capacitance: The capacitance of every segment. Unit: muF / cm**2.
+        solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
+        tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
+            only affect `bwd_euler` and `cranck` solvers. Either of ["stone",
+            "thomas"], where `stone` is much faster on GPU for long branches
+            with many compartments and `thomas` is slightly faster on CPU (`thomas` is
+            used in NEURON).
     """
     global MEM_CHANNELS
     global SYN_CHANNELS
@@ -85,6 +90,7 @@ def solve(
         recordings,
         delta_t,
         solver,
+        tridiag_solver,
     )
 
     i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
@@ -122,7 +128,8 @@ def _prepare_state(
     stimuli,
     recordings,
     delta_t: float = 0.025,
-    solver: str = "stone",
+    solver: str = "bwd_euler",
+    tridiag_solver: str = "stone",
 ):
     """Defines all constant states (e.g., morphology) of the ODE as global variables."""
     global NUM_BRANCHES
@@ -138,6 +145,7 @@ def _prepare_state(
 
     global NSEG_PER_BRANCH
     global SOLVER
+    global TRIDIAG_SOLVER
     global DELTA_T
     global I_INDS
     global REC_INDS
@@ -166,7 +174,8 @@ def _prepare_state(
     GROUPED_POST_SYNS = [c.grouped_post_syns for c in network.connectivities]
 
     # Define the solver.
-    SOLVER = solver
+    SOLVER = SOLVER
+    TRIDIAG_SOLVER = tridiag_solver
     DELTA_T = delta_t
 
     # TODO: do I actually need this conversion if I assume NSEG_PER_BRANCH to be const?
@@ -276,21 +285,43 @@ def _find_root(
     )
 
     # Solve quasi-tridiagonal system.
-    sol_tri = solve_branched(
-        COMB_PARENTS_IN_EACH_LEVEL,
-        COMB_BRANCHES_IN_EACH_LEVEL,
-        COMB_PARENTS,
-        lowers,
-        diags,
-        uppers,
-        solves,
-        -DELTA_T * branch_conds_bwd,
-        -DELTA_T * branch_conds_fwd,
-        COMB_CUM_KID_INDS_IN_EACH_LEVEL,
-        MAX_NUM_KIDS,
-        SOLVER,
-    )
-    return sol_tri.flatten(order="C"), new_mem_states, new_syn_states
+    if SOLVER == "bwd_euler":
+        new_voltates = implicit_step(
+            COMB_PARENTS_IN_EACH_LEVEL,
+            COMB_BRANCHES_IN_EACH_LEVEL,
+            COMB_PARENTS,
+            lowers,
+            diags,
+            uppers,
+            solves,
+            -DELTA_T * branch_conds_bwd,
+            -DELTA_T * branch_conds_fwd,
+            COMB_CUM_KID_INDS_IN_EACH_LEVEL,
+            MAX_NUM_KIDS,
+            TRIDIAG_SOLVER,
+        ).flatten(order="C")
+    elif SOLVER == "fwd_euler":
+        update = explicit_step(
+            COMB_PARENTS_IN_EACH_LEVEL,
+            COMB_BRANCHES_IN_EACH_LEVEL,
+            COMB_PARENTS,
+            lowers,
+            diags,
+            uppers,
+            solves,
+            branch_conds_bwd,
+            branch_conds_fwd,
+            COMB_CUM_KID_INDS_IN_EACH_LEVEL,
+            MAX_NUM_KIDS,
+            TRIDIAG_SOLVER,
+        )
+        new_voltates = voltages + DELTA_T * update
+    elif SOLVER == "cranck":
+        raise NotImplementedError
+    else:
+        raise ValueError
+
+    return new_voltates, new_mem_states, new_syn_states
 
 
 def _body_fun(state, i_stim):
