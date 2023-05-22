@@ -14,6 +14,8 @@ def explicit_step(
     branch_cond_fwd,
     branch_cond_bwd,
     num_branches,
+    kid_inds,
+    max_num_kids,
     delta_t,
 ):
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
@@ -30,6 +32,8 @@ def explicit_step(
         coupling_conds_fwd,
         branch_cond_fwd,
         branch_cond_bwd,
+        kid_inds,
+        max_num_kids,
     )
     new_voltates = voltages + delta_t * update
     return new_voltates
@@ -86,27 +90,41 @@ def vectorfield(
     coupling_conds_fwd,
     branch_cond_fwd,
     branch_cond_bwd,
+    kid_inds,
+    max_num_kids,
 ):
     """Evaluate the vectorfield of the nerve equation."""
     # Membrane current update.
-    update = -voltage_terms * voltages + constant_terms
+    vecfield = -voltage_terms * voltages + constant_terms
 
     # Current through segments within the same branch.
-    update = update.at[:, :-1].add(
+    vecfield = vecfield.at[:, :-1].add(
         (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_bwd
     )
-    update = update.at[:, 1:].add(
+    vecfield = vecfield.at[:, 1:].add(
         (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_fwd
     )
 
     # Current through branch points.
-    update = update.at[1:, -1].add(
-        (voltages[parents[1:], 0] - voltages[1:, -1]) * branch_cond_bwd[1:]
+    vecfield = vecfield.at[:, -1].add(
+        (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
     )
-    update = update.at[parents[1:], 0].add(
-        (voltages[1:, -1] - voltages[parents[1:], 0]) * branch_cond_fwd[1:]
-    )
-    return update
+
+    # Several branches might have the same parent, so we have to either update these
+    # entries sequentially or we have to build a matrix with width being the maximum
+    # number of kids and then sum.
+    parallel_elim = True
+    if parallel_elim:
+        term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
+        add_to_vecfield = jnp.zeros((max_num_kids * len(parents)))
+        add_to_vecfield = add_to_vecfield.at[kid_inds].set(term_to_add)
+        vecfield = vecfield.at[parents, 0].add(
+            jnp.sum(jnp.reshape(add_to_vecfield, (-1, max_num_kids)), axis=1)
+        )
+    else:
+        raise NotImplementedError
+
+    return vecfield
 
 
 def _triang_branched(
@@ -154,13 +172,7 @@ def _triang_branched(
 
 
 def _backsub_branched(
-    branches_in_each_level,
-    parents,
-    diags,
-    uppers,
-    solves,
-    branch_cond,
-    tridiag_solver,
+    branches_in_each_level, parents, diags, uppers, solves, branch_cond, tridiag_solver
 ):
     """
     Backsub.
@@ -233,10 +245,7 @@ def _eliminate_parents_upper(
 ):
     bil = branches_in_level
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
-        diags[bil, -1],
-        solves[bil, -1],
-        branch_cond_fwd[bil],
-        branch_cond_bwd[bil],
+        diags[bil, -1], solves[bil, -1], branch_cond_fwd[bil], branch_cond_bwd[bil],
     )
     parallel_elim = True
     if parallel_elim:
@@ -272,12 +281,7 @@ def _body_fun_eliminate_parents_upper(i, vals):
     return (diags, solves, parents, bil, new_diag, new_solve)
 
 
-def _eliminate_children_lower(
-    branches_in_level,
-    parents,
-    solves,
-    branch_cond,
-):
+def _eliminate_children_lower(branches_in_level, parents, solves, branch_cond):
     bil = branches_in_level
     solves = solves.at[bil, -1].set(
         solves[bil, -1] - branch_cond[bil] * solves[parents[bil], 0]
