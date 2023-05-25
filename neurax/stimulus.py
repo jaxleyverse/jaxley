@@ -1,11 +1,17 @@
+from typing import List, Optional
 from math import pi
 
 import jax.numpy as jnp
 from jax import lax
+from neurax.utils.cell_utils import index_of_loc
 
 
 class Stimulus:
-    def __init__(self, cell_ind, branch_ind, loc, current: jnp.ndarray):
+    """A single stimulus to the network."""
+
+    def __init__(
+        self, cell_ind, branch_ind, loc, current: Optional[jnp.ndarray] = None
+    ):
         """
         Args:
             current: Time series of the current.
@@ -14,6 +20,26 @@ class Stimulus:
         self.branch_ind = branch_ind
         self.loc = loc
         self.current = current
+
+
+class Stimuli:
+    """Several stimuli to the network.
+
+    Here, the properties of all individual stimuli already get vectorized and put
+    into arrays for speed.
+    """
+
+    def __init__(self, stims: List[Stimulus], nseg_per_branch: int):
+        self.branch_inds = jnp.asarray(
+            [index_of_loc(s.branch_ind, s.loc, nseg_per_branch) for s in stims]
+        )
+        self.cell_inds = jnp.asarray([s.cell_ind for s in stims])
+        self.currents = jnp.asarray([s.current for s in stims]).T  # nA
+
+    def set_currents(self, currents: float):
+        """Rescale the current of the stimulus with a constant value over time."""
+        self.currents = currents
+        return self
 
 
 def step_current(

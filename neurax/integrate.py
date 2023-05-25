@@ -93,7 +93,7 @@ def solve(
         tridiag_solver,
     )
 
-    i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
+    i_ext = stimuli.currents  # nA
     nsteps_to_return = len(i_ext)
     init_recording = jnp.expand_dims(state[0][REC_INDS], axis=0)
 
@@ -187,9 +187,8 @@ def _prepare_state(
     rec_cell_inds = jnp.asarray([r.cell_ind for r in recordings])
     REC_INDS = NSEG_PER_BRANCH * CUMSUM_NUM_BRANCHES[rec_cell_inds] + rec_inds
 
-    stim_inds = [index_of_loc(s.branch_ind, s.loc, NSEG_PER_BRANCH) for s in stimuli]
-    i_cell_inds = jnp.asarray([s.cell_ind for s in stimuli])
-    i_branch_inds = jnp.asarray(stim_inds)
+    i_cell_inds = stimuli.cell_inds
+    i_branch_inds = stimuli.branch_inds
     I_INDS = CUMSUM_NUM_BRANCHES[i_cell_inds] * NSEG_PER_BRANCH + i_branch_inds
 
     concat_voltage = jnp.concatenate(init_v)
@@ -241,6 +240,7 @@ def _step(
         voltages,
         syn_states,
         syn_params,
+        SYN_CHANNELS,
         DELTA_T,
         CUMSUM_NUM_BRANCHES,
         PRE_SYN_CELL_INDS,
@@ -312,7 +312,6 @@ def _step_synapse(
     syn_states,
     syn_params,
     syn_channels,
-    syn_inds,
     delta_t,
     cumsum_num_branches,
     pre_syn_cell_inds,
@@ -328,7 +327,11 @@ def _step_synapse(
     for i, update_fn in enumerate(syn_channels):
         syn_inds = cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
         synapse_current_terms, synapse_states = update_fn(
-            voltages, syn_states[i], syn_inds, delta_t, syn_params[i],
+            voltages,
+            syn_states[i],
+            syn_inds,
+            delta_t,
+            syn_params[i],
         )
         synapse_current_terms = postsyn_voltage_updates(
             nseg,
@@ -391,4 +394,3 @@ def _body_fun(state, i_stim):
         ),
         voltages[REC_INDS],
     )
-
