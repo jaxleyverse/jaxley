@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 from math import prod
 
 import jax
@@ -10,6 +10,10 @@ from neurax.stimulus import get_external_input
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.syn_utils import postsyn_voltage_updates
 from neurax.utils.jax_utils import nested_checkpoint_scan
+from neurax.recording import Recording
+from neurax.stimulus import Stimuli
+from neurax.network import Network
+
 
 NUM_BRANCHES = []
 CUMSUM_NUM_BRANCHES = []
@@ -40,16 +44,16 @@ GROUPED_POST_SYNS = []
 
 
 def solve(
-    network,
-    init_v,
-    mem_states,
-    mem_params,
-    mem_channels,
-    syn_states,
-    syn_params,
-    syn_channels,
-    stimuli,
-    recordings,
+    network: Network,
+    init_v: List[jnp.ndarray],
+    mem_states: List[List[jnp.ndarray]],
+    mem_params: List[List[jnp.ndarray]],
+    mem_channels: List[List[jnp.ndarray]],
+    syn_states: List[List[jnp.ndarray]],
+    syn_params: List[List[jnp.ndarray]],
+    syn_channels: List[List[jnp.ndarray]],
+    stimuli: Stimuli,
+    recordings: List[Recording],
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
     tridiag_solver: str = "stone",
@@ -64,12 +68,20 @@ def solve(
             and has shape `num_branches, nseg_per_branch`.
         mem_states: Initial values for the states of the membrane gates. List of list
             of `jnp.ndarray`.
+        delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
             only affect `bwd_euler` and `cranck` solvers. Either of ["stone",
             "thomas"], where `stone` is much faster on GPU for long branches
             with many compartments and `thomas` is slightly faster on CPU (`thomas` is
             used in NEURON).
+        checkpoint_lengths: Number of timesteps at every level of checkpointing. The 
+            `prod(checkpoint_lengths)` must be larger or equal to the desired number of 
+            simulated timesteps. Warning: the simulation is run for 
+            `prod(checkpoint_lengths)` timesteps, and the result is posthoc truncated 
+            to the desired simulation length (given by the length of the stimulus). 
+            Therefore, a poor choice of `checkpoint_lengths` can lead to longer 
+            simulation time. If `None`, no checkpointing is applied. 
     """
     global MEM_CHANNELS
     global SYN_CHANNELS
@@ -209,18 +221,18 @@ def _prepare_state(
 
 
 def _step(
-    voltages,
-    mem_states,
-    mem_params,
-    syn_states,
-    syn_params,
-    i_stim,
-    coupling_conds_fwd,
-    coupling_conds_bwd,
-    branch_conds_fwd,
-    branch_conds_bwd,
-    summed_coupling_conds,
-):
+    voltages: jnp.ndarray,
+    mem_states: List[jnp.ndarray],
+    mem_params: List[jnp.ndarray],
+    syn_states: List[jnp.ndarray],
+    syn_params: List[jnp.ndarray],
+    i_stim: jnp.ndarray,
+    coupling_conds_fwd: jnp.ndarray,
+    coupling_conds_bwd: jnp.ndarray,
+    branch_conds_fwd: jnp.ndarray,
+    branch_conds_bwd: jnp.ndarray,
+    summed_coupling_conds: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Performs one step of the ODE.
 
     The voltages are solved by finding the root of a quasi-tridiagonal system (implicit
@@ -327,11 +339,7 @@ def _step_synapse(
     for i, update_fn in enumerate(syn_channels):
         syn_inds = cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
         synapse_current_terms, synapse_states = update_fn(
-            voltages,
-            syn_states[i],
-            syn_inds,
-            delta_t,
-            syn_params[i],
+            voltages, syn_states[i], syn_inds, delta_t, syn_params[i],
         )
         synapse_current_terms = postsyn_voltage_updates(
             nseg,
