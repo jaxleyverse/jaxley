@@ -1,19 +1,20 @@
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, Tuple
+
 from neurax.modules.base import Module, View
+import jax.numpy as jnp
 
 
 class Channel(Module):
-    def __init__(self, nodes):
-        self.nodes = nodes
-        self.params = {
-            "g_na": np.zeros((30,)),
-            "g_k": np.zeros((30,)),
-            "g_leak": np.zeros((30,)),
-        }
+    def __init__(self, params: Optional[Dict[str, jnp.ndarray]] = None):
+        super().__init__()
+        self.params = params
 
     def set_params(self, key, val):
         self.params[key][:] = val
 
-    def step(self):
+    @abstractmethod
+    def step(self, u, dt, *args) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         pass
 
 

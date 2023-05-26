@@ -22,8 +22,6 @@ class Branch(Module):
         pass
 
 
-
-
 class BranchView(View):
     def __init__(self, pointer, view):
         super().__init__(pointer, view)
