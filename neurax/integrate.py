@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Tuple
+from typing import Callable, List, Optional, Union, Tuple
 from math import prod
 
 import jax
@@ -45,13 +45,13 @@ GROUPED_POST_SYNS = []
 
 def solve(
     network: Network,
-    init_v: List[jnp.ndarray],
-    mem_states: List[List[jnp.ndarray]],
-    mem_params: List[List[jnp.ndarray]],
-    mem_channels: List[List[jnp.ndarray]],
-    syn_states: List[List[jnp.ndarray]],
-    syn_params: List[List[jnp.ndarray]],
-    syn_channels: List[List[jnp.ndarray]],
+    init_v: jnp.ndarray,
+    mem_states: List[jnp.ndarray],
+    mem_params: List[jnp.ndarray],
+    mem_channels: List[Callable],
+    syn_states: List[jnp.ndarray],
+    syn_params: List[jnp.ndarray],
+    syn_channels: List[Callable],
     stimuli: Stimuli,
     recordings: List[Recording],
     delta_t: float = 0.025,
@@ -75,13 +75,13 @@ def solve(
             "thomas"], where `stone` is much faster on GPU for long branches
             with many compartments and `thomas` is slightly faster on CPU (`thomas` is
             used in NEURON).
-        checkpoint_lengths: Number of timesteps at every level of checkpointing. The 
-            `prod(checkpoint_lengths)` must be larger or equal to the desired number of 
-            simulated timesteps. Warning: the simulation is run for 
-            `prod(checkpoint_lengths)` timesteps, and the result is posthoc truncated 
-            to the desired simulation length (given by the length of the stimulus). 
-            Therefore, a poor choice of `checkpoint_lengths` can lead to longer 
-            simulation time. If `None`, no checkpointing is applied. 
+        checkpoint_lengths: Number of timesteps at every level of checkpointing. The
+            `prod(checkpoint_lengths)` must be larger or equal to the desired number of
+            simulated timesteps. Warning: the simulation is run for
+            `prod(checkpoint_lengths)` timesteps, and the result is posthoc truncated
+            to the desired simulation length (given by the length of the stimulus).
+            Therefore, a poor choice of `checkpoint_lengths` can lead to longer
+            simulation time. If `None`, no checkpointing is applied.
     """
     global MEM_CHANNELS
     global SYN_CHANNELS
@@ -203,12 +203,10 @@ def _prepare_state(
     i_branch_inds = stimuli.branch_inds
     I_INDS = CUMSUM_NUM_BRANCHES[i_cell_inds] * NSEG_PER_BRANCH + i_branch_inds
 
-    concat_voltage = jnp.concatenate(init_v)
-
     init_state = (
-        concat_voltage,
-        [jnp.concatenate(m, axis=1) for m in mem_states],
-        [jnp.concatenate(m, axis=1) for m in mem_params],
+        init_v,
+        mem_states,
+        mem_params,
         syn_states,
         syn_params,
         network.scaled_coupling_conds_fwd,
@@ -339,7 +337,11 @@ def _step_synapse(
     for i, update_fn in enumerate(syn_channels):
         syn_inds = cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
         synapse_current_terms, synapse_states = update_fn(
-            voltages, syn_states[i], syn_inds, delta_t, syn_params[i],
+            voltages,
+            syn_states[i],
+            syn_inds,
+            delta_t,
+            syn_params[i],
         )
         synapse_current_terms = postsyn_voltage_updates(
             nseg,
