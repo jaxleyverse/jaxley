@@ -6,7 +6,7 @@ class Module(ABC):
         pass
 
     @abstractmethod
-    def step(self):
+    def step(self, u, dt, *args):
         raise NotImplementedError
 
 
