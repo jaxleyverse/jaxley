@@ -7,9 +7,7 @@ from neurax.modules.channel import Channel, ChannelView
 
 class Compartment(Module):
     def __init__(
-        self,
-        channels: List[Channel],
-        params: Optional[Dict[str, jnp.ndarray]] = None,
+        self, channels: List[Channel], params: Optional[Dict[str, jnp.ndarray]] = None,
     ):
         self.channels = channels
         self.params = params

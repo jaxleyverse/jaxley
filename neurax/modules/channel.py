@@ -6,9 +6,8 @@ import jax.numpy as jnp
 
 
 class Channel(Module):
-    def __init__(self, params: Optional[Dict[str, jnp.ndarray]] = None):
+    def __init__(self):
         super().__init__()
-        self.params = params
 
     def set_params(self, key, val):
         self.params[key][:] = val
