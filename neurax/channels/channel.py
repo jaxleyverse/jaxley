@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
-from neurax.modules.base import Module, View
+# from neurax.modules.base import View
 import jax.numpy as jnp
 
 
-class Channel(Module):
+class Channel:
     channel_params = None
 
     def __init__(self):
@@ -21,9 +21,9 @@ class Channel(Module):
         pass
 
 
-class ChannelView(View):
-    def __init__(self, pointer, view):
-        super().__init__(pointer, view)
+# class ChannelView(View):
+#     def __init__(self, pointer, view):
+#         super().__init__(pointer, view)
 
-    def __call__(self, index):
-        return super().adjust_view("channel_index", index)
+#     def __call__(self, index):
+#         return super().adjust_view("channel_index", index)

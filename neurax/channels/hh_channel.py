@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
-from neurax.modules.channel import Channel
+from neurax.channels import Channel
 from neurax.solver_gate import solve_gate_exponential
 
 

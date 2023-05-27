@@ -1,15 +1,17 @@
+from typing import Dict, List, Optional, Callable
+
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch, BranchView
 
 
 class Cell(Module):
-    def __init__(self, nodes):
-        self.nodes = nodes
-        self.params = {
-            "g_na": np.zeros((30,)),
-            "g_k": np.zeros((30,)),
-            "g_leak": np.zeros((30,)),
-        }
+    cell_params: Dict = {}
+    cell_states: Dict = {}
+
+    def __init__(self, branches: List[Branch]):
+        self.branches = branches
+        self.branch_conds = None
+        self.num_branches = len(branches)
 
     def set_params(self, key, val):
         self.params[key][:] = val
