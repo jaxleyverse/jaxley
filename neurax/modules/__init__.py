@@ -1,4 +1,3 @@
-from neurax.modules.channel import Channel
 from neurax.modules.compartment import Compartment
 from neurax.modules.branch import Branch
 from neurax.modules.cell import Cell

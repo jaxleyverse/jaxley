@@ -2,14 +2,18 @@ from typing import Dict, List, Optional, Callable
 import jax.numpy as jnp
 
 from neurax.modules.base import Module, View
-from neurax.modules.channel import Channel, ChannelView
+from neurax.channels import Channel  # , ChannelView
 
 
 class Compartment(Module):
-    compartment_params: Dict = {}
+    compartment_params: Dict = {
+        "length": 10.0,
+        "radius": 1.0,
+        "axial_resistivity": 1_000.0,
+    }
     compartment_states: Dict = {"voltages": 70.0}
 
-    def __init__(self, channels: List[Channel] = None):
+    def __init__(self, channels: List[Channel]):
         self.channels = channels
 
         # This is where I will want to build the graph.
@@ -44,36 +48,28 @@ class Compartment(Module):
         voltages = u["voltages"]
         channel_states = u["channels"]
 
-        new_channel_states, (v_terms, const_terms) = Compartment.step_channels(
+        new_channel_states, (v_terms, const_terms) = self.step_channels(
             voltages, channel_states, dt, self.channels
         )
-        new_voltages = Compartment.step_voltages(
-            voltages, v_terms, const_terms, dt, ext_input=ext_input
+        new_voltages = self.step_voltages(
+            jnp.asarray([[voltages]]),
+            jnp.asarray([[v_terms]]),
+            jnp.asarray([[const_terms]]),
+            coupling_conds_bwd=jnp.asarray([[]]),
+            coupling_conds_fwd=jnp.asarray([[]]),
+            summed_coupling_conds=jnp.asarray([[0.0]]),
+            branch_cond_fwd=jnp.asarray([[]]),
+            branch_cond_bwd=jnp.asarray([[]]),
+            num_branches=1,
+            parents=jnp.asarray([-1]),
+            kid_inds_in_each_level=jnp.asarray([0]),
+            max_num_kids=1,
+            parents_in_each_level=[jnp.asarray([-1,])],
+            branches_in_each_level=[jnp.asarray([0,])],
+            tridiag_solver="thomas",
+            delta_t=dt,
         )
         return {"voltages": new_voltages, "channels": new_channel_states}
-
-    @staticmethod
-    def step_channels(voltages, channel_states, dt, channels: List[Channel]):
-        voltage_terms = jnp.zeros_like(voltages)  # mV
-        constant_terms = jnp.zeros_like(voltages)
-        new_channel_states = []
-        for i, channel in enumerate(channels):
-            # TODO need to pass params.
-            states, membrane_current_terms = channel.step(
-                channel_states[i], dt, voltages
-            )
-            voltage_terms += membrane_current_terms[0]
-            constant_terms += membrane_current_terms[1]
-            new_channel_states.append(states)
-
-        return new_channel_states, (voltage_terms, constant_terms)
-
-    @staticmethod
-    def step_voltages(voltages, voltage_terms, constant_terms, dt, ext_input=0):
-        """Perform a voltage update with forward Euler."""
-        voltage_vectorfield = -voltage_terms * voltages + constant_terms + ext_input
-        new_voltages = voltages + dt * voltage_vectorfield
-        return new_voltages
 
 
 class CompartmentView(View):

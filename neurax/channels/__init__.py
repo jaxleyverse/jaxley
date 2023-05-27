@@ -1,1 +1,1 @@
-from neurax.channels.hh_channel import HHChannel
+from neurax.channels.channel import Channel
