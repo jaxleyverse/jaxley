@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Callable
 import jax.numpy as jnp
+import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.channels import Channel  # , ChannelView
@@ -11,22 +12,31 @@ class Compartment(Module):
         "radius": 1.0,
         "axial_resistivity": 1_000.0,
     }
-    compartment_states: Dict = {"voltages": 70.0}
+    compartment_states: Dict = {"voltages": -70.0}
 
     def __init__(self, channels: List[Channel]):
+        # Indexing.
+        self.nodes = pd.DataFrame(
+            dict(comp_index=[0], branch_index=[0], cell_index=[0])
+        )
+
+        # Parameters.
+        self.params = {}
+        for key in self.compartment_params:
+            self.params[key] = jnp.asarray(self.compartment_params[key])
+        for channel in channels:
+            for key in channel.channel_params:
+                self.params[key] = jnp.asarray(channel.channel_params[key])
+
+        # States.
+        self.states = {}
+        for key in self.compartment_states:
+            self.states[key] = jnp.asarray(self.compartment_states[key])
+        for channel in channels:
+            for key in channel.channel_states:
+                self.states[key] = jnp.asarray(channel.channel_states[key])
+
         self.channels = channels
-
-        # This is where I will want to build the graph.
-        # I should append to params here (the ones of the compartment).
-        self.params = [channel.params for channel in channels]
-
-        # Gather initial states from gates. This is not used in `step`, but will be
-        # used in `solve`.
-        mem_states = [channel.states for channel in self.channels]
-        self.states = {
-            "voltages": self.compartment_states["voltages"],
-            "channels": mem_states,
-        }
 
     def set_params(self, key, val):
         self.params[key][:] = val
@@ -35,7 +45,7 @@ class Compartment(Module):
         assert key == "cell"
         return ChannelView(self, self.nodes)
 
-    def step(self, u: Dict[str, jnp.ndarray], dt: float, ext_input=0):
+    def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
         """Step for a single compartment.
 
         Args:
@@ -46,15 +56,17 @@ class Compartment(Module):
             Next state. Same shape as `u`.
         """
         voltages = u["voltages"]
-        channel_states = u["channels"]
 
+        # Parameters have to go in here.
         new_channel_states, (v_terms, const_terms) = self.step_channels(
-            voltages, channel_states, dt, self.channels
+            u, dt, self.channels, self.params
         )
+        nbranches = 1
+        nseg_per_branch = 1
         new_voltages = self.step_voltages(
-            jnp.asarray([[voltages]]),
-            jnp.asarray([[v_terms]]),
-            jnp.asarray([[const_terms]]),
+            jnp.reshape(voltages, (nbranches, nseg_per_branch)),
+            jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
+            jnp.reshape(const_terms, (nbranches, nseg_per_branch)) + i_ext,
             coupling_conds_bwd=jnp.asarray([[]]),
             coupling_conds_fwd=jnp.asarray([[]]),
             summed_coupling_conds=jnp.asarray([[0.0]]),
@@ -69,7 +81,9 @@ class Compartment(Module):
             tridiag_solver="thomas",
             delta_t=dt,
         )
-        return {"voltages": new_voltages, "channels": new_channel_states}
+        final_state = new_channel_states[0]
+        final_state["voltages"] = new_voltages[0]
+        return final_state
 
 
 class CompartmentView(View):
@@ -82,3 +96,11 @@ class CompartmentView(View):
     def __getattr__(self, key):
         assert key == "channel"
         return ChannelView(self.pointer, self.view)
+
+
+class ChannelView(View):
+    def __init__(self, pointer, view):
+        super().__init__(pointer, view)
+
+    def __call__(self, index):
+        return super().adjust_view("channel_index", index)

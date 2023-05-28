@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional, Callable
 
 import jax.numpy as jnp
+import pandas as pd
+import numpy as np
 
 from neurax.modules.base import Module, View
 from neurax.modules.compartment import Compartment, CompartmentView
@@ -12,15 +14,34 @@ class Branch(Module):
 
     def __init__(self, compartments: List[Compartment]):
         self.compartments = compartments
-        self.params = [comp.params for comp in compartments]
+        self.nseg = len(compartments)
 
-        voltage_states = [comp.states["voltages"] for comp in compartments]
-        mem_states = [comp.states["mem_states"] for comp in compartments]
-        self.states = {
-            "voltages": voltage_states,
-            "channels": mem_states,
-        }
         self.branch_conds = None
+
+        # Indexing.
+        self.nodes = pd.DataFrame(
+            dict(
+                comp_index=np.arange(self.nseg).tolist(),
+                branch_index=[0] * self.nseg,
+                cell_index=[0] * self.nseg,
+            )
+        )
+
+        # Parameters.
+        self.params = {}
+        for key in self.branch_params:
+            self.params[key] = jnp.asarray(self.branch_params[key])
+        for key in compartments[0].params:
+            param_vals = jnp.asarray([c.params[key] for c in compartments])
+            self.params[key] = param_vals
+
+        # States.
+        self.states = {}
+        for key in self.branch_states:
+            self.states[key] = jnp.asarray(self.branch_states[key])
+        for key in compartments[0].states:
+            states_vals = jnp.asarray([c.states[key] for c in compartments])
+            self.states[key] = states_vals
 
     def set_params(self, key, val):
         self.params[key][:] = val
@@ -29,10 +50,43 @@ class Branch(Module):
         assert key == "cell"
         return CompartmentView(self, self.nodes)
 
-    def init_branch_conds(self, compartments):
-        pass
+    def init_branch_conds(self):
+        """Given an axial resisitivity, set the coupling conductances."""
+        axial_resistivity = self.params["axial_resistivity"]
+        radiuses = self.params["radius"]
+        lengths = self.params["length"]
 
-    def step(self, u: Dict[str, jnp.ndarray], dt: float, ext_input=0):
+        def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
+            return rad1 * rad2 ** 2 / r_a / (rad2 ** 2 * l1 + rad1 ** 2 * l2) / l1
+
+        # Compute coupling conductance for segments within a branch.
+        # `radius`: um
+        # `r_a`: ohm cm
+        # `length_single_compartment`: um
+        # `coupling_conds`: S * um / cm / um^2 = S / cm / um
+        rad1 = radiuses[1:]
+        rad2 = radiuses[:-1]
+        l1 = lengths[1:]
+        l2 = lengths[:-1]
+        r_a1 = axial_resistivity[1:]
+        r_a2 = axial_resistivity[:-1]
+        self.coupling_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
+        self.coupling_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
+
+        # Convert (S / cm / um) -> (mS / cm^2)
+        self.coupling_conds_fwd *= 10 ** 7
+        self.coupling_conds_bwd *= 10 ** 7
+
+        # Compute the summed coupling conductances of each compartment.
+        self.summed_coupling_conds = jnp.zeros((self.nseg))
+        self.summed_coupling_conds = self.summed_coupling_conds.at[1:].add(
+            self.coupling_conds_fwd
+        )
+        self.summed_coupling_conds = self.summed_coupling_conds.at[:-1].add(
+            self.coupling_conds_bwd
+        )
+
+    def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
         """Step for a single compartment.
 
         Args:
@@ -46,21 +100,37 @@ class Branch(Module):
             self.init_branch_conds()
 
         voltages = u["voltages"]
-        channel_states = u["channels"]
 
-        # This will be a vmap.
-        new_channel_states, (v_terms, const_terms) = Compartment.step_channels(
-            voltages, channel_states, dt, self.compartments[0].channels
+        # Parameters have to go in here.
+        new_channel_states, (v_terms, const_terms) = self.step_channels(
+            u, dt, self.compartments[0].channels, self.params
         )
-        new_voltages = Branch.step_voltages(
-            voltages, v_terms, const_terms, dt, ext_input=ext_input
-        )
-        return {"voltages": new_voltages, "channels": new_channel_states}
 
-    @staticmethod
-    def step_voltages(voltages, branch_conds, voltage_terms, const_terms, dt):
-        solved_voltage = solve_thomas()
-        return solved_voltage
+        nbranches = 1
+        nseg_per_branch = self.nseg
+        new_voltages = self.step_voltages(
+            jnp.reshape(voltages, (nbranches, nseg_per_branch)),
+            jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
+            jnp.reshape(const_terms, (nbranches, nseg_per_branch)) + i_ext,
+            coupling_conds_bwd=jnp.reshape(self.coupling_conds_bwd, (1, self.nseg - 1)),
+            coupling_conds_fwd=jnp.reshape(self.coupling_conds_fwd, (1, self.nseg - 1)),
+            summed_coupling_conds=jnp.reshape(
+                self.summed_coupling_conds, (1, self.nseg)
+            ),
+            branch_cond_fwd=jnp.asarray([[]]),
+            branch_cond_bwd=jnp.asarray([[]]),
+            num_branches=1,
+            parents=jnp.asarray([-1]),
+            kid_inds_in_each_level=jnp.asarray([0]),
+            max_num_kids=1,
+            parents_in_each_level=[jnp.asarray([-1,])],
+            branches_in_each_level=[jnp.asarray([0,])],
+            tridiag_solver="thomas",
+            delta_t=dt,
+        )
+        final_state = new_channel_states[0]
+        final_state["voltages"] = new_voltages[0]
+        return final_state
 
 
 class BranchView(View):
