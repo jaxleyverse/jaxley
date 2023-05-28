@@ -165,7 +165,7 @@ class Cell(Module):
             delta_t=dt,
         )
         final_state = new_channel_states[0]
-        final_state["voltages"] = new_voltages[0]
+        final_state["voltages"] = new_voltages
         return final_state
 
 
