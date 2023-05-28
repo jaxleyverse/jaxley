@@ -16,7 +16,7 @@ class Branch(Module):
         self.compartments = compartments
         self.nseg = len(compartments)
 
-        self.branch_conds = None
+        self.coupling_conds_fwd = None
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -96,7 +96,7 @@ class Branch(Module):
         Returns:
             Next state. Same shape as `u`.
         """
-        if self.branch_conds is None:
+        if self.coupling_conds_fwd is None:
             self.init_branch_conds()
 
         voltages = u["voltages"]
