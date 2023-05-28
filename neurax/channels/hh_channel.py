@@ -11,7 +11,9 @@ class HHChannel(Channel):
     channel_params = {"gNa": 0.12, "gK": 0.036, "gLeak": 0.0003}
     channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
 
-    def step(self, u: Dict[str, jnp.ndarray], dt, voltages):
+    def step(
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+    ):
         """Return updated HH channel state and current."""
         ms, hs, ns = u["m"], u["h"], u["n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
@@ -19,9 +21,9 @@ class HHChannel(Channel):
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = self.params["gNa"] * (ms ** 3) * hs * 1000  # mS/cm^2
-        kd_conds = self.params["gK"] * ns ** 4 * 1000  # mS/cm^2
-        leak_conds = self.params["gLeak"] * 1000  # mS/cm^2
+        na_conds = params["gNa"] * (ms ** 3) * hs * 1000  # mS/cm^2
+        kd_conds = params["gK"] * ns ** 4 * 1000  # mS/cm^2
+        leak_conds = params["gLeak"] * 1000  # mS/cm^2
 
         voltage_term = na_conds + kd_conds + leak_conds
 

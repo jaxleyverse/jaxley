@@ -15,15 +15,16 @@ class Module(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def step_channels(voltages, channel_states, dt, channels: List[Channel]):
+    def step_channels(
+        states, dt, channels: List[Channel], params: Dict[str, jnp.ndarray]
+    ):
+        voltages = states["voltages"]
         voltage_terms = jnp.zeros_like(voltages)  # mV
         constant_terms = jnp.zeros_like(voltages)
         new_channel_states = []
-        for i, channel in enumerate(channels):
+        for channel in channels:
             # TODO need to pass params.
-            states, membrane_current_terms = channel.step(
-                channel_states[i], dt, voltages
-            )
+            states, membrane_current_terms = channel.step(states, dt, voltages, params)
             voltage_terms += membrane_current_terms[0]
             constant_terms += membrane_current_terms[1]
             new_channel_states.append(states)
