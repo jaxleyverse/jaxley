@@ -10,6 +10,33 @@ class Module(ABC):
     def __init__(self):
         pass
 
+    def _init_params_and_state(
+        self, own_params: Dict[str, List], own_states: Dict[str, List]
+    ) -> None:
+        """Sets parameters and state of the module at initialization.
+
+        Args:
+            own_params: _description_
+            own_states: _description_
+            constituent: _description_
+        """
+        self.params = {}
+        for key in own_params:
+            self.params[key] = jnp.asarray(own_params[key])
+
+        self.states = {}
+        for key in own_states:
+            self.states[key] = jnp.asarray(own_states[key])
+
+    def _append_to_params_and_state(self, constituents: List["Module"]):
+        for key in constituents[0].params:
+            param_vals = jnp.asarray([b.params[key] for b in constituents])
+            self.params[key] = param_vals
+
+        for key in constituents[0].states:
+            states_vals = jnp.asarray([b.states[key] for b in constituents])
+            self.states[key] = states_vals
+
     @abstractmethod
     def step(self, u, dt, *args):
         raise NotImplementedError

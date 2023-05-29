@@ -10,33 +10,30 @@ class Compartment(Module):
     compartment_params: Dict = {
         "length": 10.0,
         "radius": 1.0,
-        "axial_resistivity": 1_000.0,
+        "axial_resistivity": 5_000.0,
     }
     compartment_states: Dict = {"voltages": -70.0}
 
     def __init__(self, channels: List[Channel]):
-        # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(comp_index=[0], branch_index=[0], cell_index=[0])
-        )
+        super().__init__()
+        self._init_params_and_state(self.compartment_params, self.compartment_states)
 
-        # Parameters.
-        self.params = {}
-        for key in self.compartment_params:
-            self.params[key] = jnp.asarray(self.compartment_params[key])
+        # Insert channel parameters.
         for channel in channels:
             for key in channel.channel_params:
                 self.params[key] = jnp.asarray(channel.channel_params[key])
 
-        # States.
-        self.states = {}
-        for key in self.compartment_states:
-            self.states[key] = jnp.asarray(self.compartment_states[key])
+        # Insert channel states.
         for channel in channels:
             for key in channel.channel_states:
                 self.states[key] = jnp.asarray(channel.channel_states[key])
 
+        # Indexing.
+        self.nodes = pd.DataFrame(
+            dict(comp_index=[0], branch_index=[0], cell_index=[0])
+        )
         self.channels = channels
+        self.initialized = True
 
     def set_params(self, key, val):
         self.params[key][:] = val
@@ -64,9 +61,10 @@ class Compartment(Module):
         nbranches = 1
         nseg_per_branch = 1
         new_voltages = self.step_voltages(
-            jnp.reshape(voltages, (nbranches, nseg_per_branch)),
-            jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
-            jnp.reshape(const_terms, (nbranches, nseg_per_branch)) + i_ext,
+            voltages=jnp.reshape(voltages, (nbranches, nseg_per_branch)),
+            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
+            constant_terms=jnp.reshape(const_terms, (nbranches, nseg_per_branch))
+            + i_ext,
             coupling_conds_bwd=jnp.asarray([[]]),
             coupling_conds_fwd=jnp.asarray([[]]),
             summed_coupling_conds=jnp.asarray([[0.0]]),

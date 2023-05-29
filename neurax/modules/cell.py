@@ -19,12 +19,14 @@ class Cell(Module):
     cell_states: Dict = {}
 
     def __init__(self, branches: List[Branch], parents: List):
+        super().__init__()
+        self._init_params_and_state(self.cell_params, self.cell_states)
+        self._append_to_params_and_state(branches)
+
         self.branches = branches
         self.nseg = branches[0].nseg
         self.nbranches = len(branches)
         self.parents = jnp.asarray(parents)
-
-        self.branch_conds_fwd = None
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -36,28 +38,17 @@ class Cell(Module):
                 cell_index=[0] * (self.nseg * self.nbranches),
             )
         )
-
-        # Parameters.
-        self.params = {}
-        for key in self.cell_params:
-            self.params[key] = jnp.asarray(self.cell_params[key])
-        for key in branches[0].params:
-            param_vals = jnp.asarray([b.params[key] for b in branches])
-            self.params[key] = param_vals
-
-        # States.
-        self.states = {}
-        for key in self.cell_states:
-            self.states[key] = jnp.asarray(self.cell_states[key])
-        for key in branches[0].states:
-            states_vals = jnp.asarray([b.states[key] for b in branches])
-            self.states[key] = states_vals
-
         self.coupling_conds_bwd = jnp.asarray([b.coupling_conds_bwd for b in branches])
         self.coupling_conds_fwd = jnp.asarray([b.coupling_conds_fwd for b in branches])
         self.summed_coupling_conds = jnp.asarray(
             [b.summed_coupling_conds for b in branches]
         )
+        self.initialized_morph = False
+        self.initialized_conds = False
+
+    @property
+    def initialized(self):
+        return self.initialized_morph and self.initialized_conds
 
     def set_params(self, key, val):
         self.params[key][:] = val
@@ -82,6 +73,7 @@ class Cell(Module):
         self.kid_inds_in_each_level = cum_indizes_of_kids(
             ind_of_kids_in_each_level, max_num_kids=4, reset_at=[0]
         )
+        self.initialized_morph = True
 
     def init_branch_conds(self):
         """Given an axial resisitivity, set the coupling conductances."""
@@ -125,6 +117,7 @@ class Cell(Module):
         self.branch_conds_bwd = jnp.concatenate(
             [jnp.asarray([0.0]), self.branch_conds_bwd]
         )
+        self.initialized_conds = True
 
     def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
         """Step for a single compartment.

@@ -13,10 +13,14 @@ class Branch(Module):
     branch_states: Dict = {}
 
     def __init__(self, compartments: List[Compartment]):
+        super().__init__()
+        self._init_params_and_state(self.branch_params, self.branch_states)
+        self._append_to_params_and_state(compartments)
+
         self.compartments = compartments
         self.nseg = len(compartments)
 
-        self.coupling_conds_fwd = None
+        self.initialized = False
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -26,22 +30,6 @@ class Branch(Module):
                 cell_index=[0] * self.nseg,
             )
         )
-
-        # Parameters.
-        self.params = {}
-        for key in self.branch_params:
-            self.params[key] = jnp.asarray(self.branch_params[key])
-        for key in compartments[0].params:
-            param_vals = jnp.asarray([c.params[key] for c in compartments])
-            self.params[key] = param_vals
-
-        # States.
-        self.states = {}
-        for key in self.branch_states:
-            self.states[key] = jnp.asarray(self.branch_states[key])
-        for key in compartments[0].states:
-            states_vals = jnp.asarray([c.states[key] for c in compartments])
-            self.states[key] = states_vals
 
     def set_params(self, key, val):
         self.params[key][:] = val
@@ -85,6 +73,7 @@ class Branch(Module):
         self.summed_coupling_conds = self.summed_coupling_conds.at[:-1].add(
             self.coupling_conds_bwd
         )
+        self.initialized = True
 
     def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
         """Step for a single compartment.
@@ -96,8 +85,6 @@ class Branch(Module):
         Returns:
             Next state. Same shape as `u`.
         """
-        if self.coupling_conds_fwd is None:
-            self.init_branch_conds()
 
         voltages = u["voltages"]
 
@@ -109,9 +96,10 @@ class Branch(Module):
         nbranches = 1
         nseg_per_branch = self.nseg
         new_voltages = self.step_voltages(
-            jnp.reshape(voltages, (nbranches, nseg_per_branch)),
-            jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
-            jnp.reshape(const_terms, (nbranches, nseg_per_branch)) + i_ext,
+            voltages=jnp.reshape(voltages, (nbranches, nseg_per_branch)),
+            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
+            constant_terms=jnp.reshape(const_terms, (nbranches, nseg_per_branch))
+            + i_ext,
             coupling_conds_bwd=jnp.reshape(self.coupling_conds_bwd, (1, self.nseg - 1)),
             coupling_conds_fwd=jnp.reshape(self.coupling_conds_fwd, (1, self.nseg - 1)),
             summed_coupling_conds=jnp.reshape(
