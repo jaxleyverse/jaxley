@@ -6,6 +6,7 @@ import numpy as np
 
 from neurax.modules.base import Module, View
 from neurax.modules.compartment import Compartment, CompartmentView
+from neurax.stimulus import get_external_input
 
 
 class Branch(Module):
@@ -20,7 +21,8 @@ class Branch(Module):
         self.compartments = compartments
         self.nseg = len(compartments)
 
-        self.initialized = False
+        self.initialized_morph = True
+        self.initialized_conds = False
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -30,12 +32,10 @@ class Branch(Module):
                 cell_index=[0] * self.nseg,
             )
         )
-
-    def set_params(self, key, val):
-        self.params[key][:] = val
+        self.nbranches = 1
 
     def __getattr__(self, key):
-        assert key == "cell"
+        assert key == "comp"
         return CompartmentView(self, self.nodes)
 
     def init_branch_conds(self):
@@ -75,7 +75,13 @@ class Branch(Module):
         )
         self.initialized = True
 
-    def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
+    def step(
+        self,
+        u: Dict[str, jnp.ndarray],
+        dt: float,
+        i_inds: jnp.ndarray,
+        i_current: jnp.ndarray,
+    ):
         """Step for a single compartment.
 
         Args:
@@ -85,6 +91,8 @@ class Branch(Module):
         Returns:
             Next state. Same shape as `u`.
         """
+        nbranches = 1
+        nseg_per_branch = self.nseg
 
         voltages = u["voltages"]
 
@@ -93,13 +101,16 @@ class Branch(Module):
             u, dt, self.compartments[0].channels, self.params
         )
 
-        nbranches = 1
-        nseg_per_branch = self.nseg
+        # External input.
+        i_ext = get_external_input(
+            voltages, i_inds, i_current, self.params["radius"], self.params["length"]
+        )
+
         new_voltages = self.step_voltages(
             voltages=jnp.reshape(voltages, (nbranches, nseg_per_branch)),
             voltage_terms=jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
             constant_terms=jnp.reshape(const_terms, (nbranches, nseg_per_branch))
-            + i_ext,
+            + jnp.reshape(i_ext, (nbranches, nseg_per_branch)),
             coupling_conds_bwd=jnp.reshape(self.coupling_conds_bwd, (1, self.nseg - 1)),
             coupling_conds_fwd=jnp.reshape(self.coupling_conds_fwd, (1, self.nseg - 1)),
             summed_coupling_conds=jnp.reshape(

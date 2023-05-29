@@ -4,6 +4,7 @@ import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.channels import Channel  # , ChannelView
+from neurax.stimulus import get_external_input
 
 
 class Compartment(Module):
@@ -21,19 +22,27 @@ class Compartment(Module):
         # Insert channel parameters.
         for channel in channels:
             for key in channel.channel_params:
-                self.params[key] = jnp.asarray(channel.channel_params[key])
+                self.params[key] = jnp.asarray(
+                    [channel.channel_params[key]]
+                )  # should be atleast1d
 
         # Insert channel states.
         for channel in channels:
             for key in channel.channel_states:
-                self.states[key] = jnp.asarray(channel.channel_states[key])
+                self.states[key] = jnp.asarray(
+                    [channel.channel_states[key]]
+                )  # should be atleast1d
 
         # Indexing.
         self.nodes = pd.DataFrame(
             dict(comp_index=[0], branch_index=[0], cell_index=[0])
         )
         self.channels = channels
-        self.initialized = True
+        self.initialized_morph = True
+        self.initialized_conds = True
+
+        self.nseg = 1
+        self.nbranches = 1
 
     def set_params(self, key, val):
         self.params[key][:] = val
@@ -42,7 +51,13 @@ class Compartment(Module):
         assert key == "cell"
         return ChannelView(self, self.nodes)
 
-    def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
+    def step(
+        self,
+        u: Dict[str, jnp.ndarray],
+        dt: float,
+        i_inds: jnp.ndarray,
+        i_current: jnp.ndarray,
+    ):
         """Step for a single compartment.
 
         Args:
@@ -58,6 +73,12 @@ class Compartment(Module):
         new_channel_states, (v_terms, const_terms) = self.step_channels(
             u, dt, self.channels, self.params
         )
+
+        # External input.
+        i_ext = get_external_input(
+            voltages, i_inds, i_current, self.params["radius"], self.params["length"]
+        )
+
         nbranches = 1
         nseg_per_branch = 1
         new_voltages = self.step_voltages(

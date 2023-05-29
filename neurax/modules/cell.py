@@ -12,6 +12,7 @@ from neurax.cell import (
     _compute_index_of_kid,
     cum_indizes_of_kids,
 )
+from neurax.stimulus import get_external_input
 
 
 class Cell(Module):
@@ -46,15 +47,8 @@ class Cell(Module):
         self.initialized_morph = False
         self.initialized_conds = False
 
-    @property
-    def initialized(self):
-        return self.initialized_morph and self.initialized_conds
-
-    def set_params(self, key, val):
-        self.params[key][:] = val
-
     def __getattr__(self, key):
-        assert key == "cell"
+        assert key == "branch"
         return BranchView(self, self.nodes)
 
     def init_morph(self):
@@ -77,9 +71,14 @@ class Cell(Module):
 
     def init_branch_conds(self):
         """Given an axial resisitivity, set the coupling conductances."""
-        axial_resistivity = self.params["axial_resistivity"]
-        radiuses = self.params["radius"]
-        lengths = self.params["length"]
+        nbranches = self.nbranches
+        nseg = self.nseg
+
+        axial_resistivity = jnp.reshape(
+            self.params["axial_resistivity"], (nbranches, nseg)
+        )
+        radiuses = jnp.reshape(self.params["radius"], (nbranches, nseg))
+        lengths = jnp.reshape(self.params["length"], (nbranches, nseg))
 
         def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
             return rad1 * rad2 ** 2 / r_a / (rad2 ** 2 * l1 + rad1 ** 2 * l2) / l1
@@ -119,7 +118,13 @@ class Cell(Module):
         )
         self.initialized_conds = True
 
-    def step(self, u: Dict[str, jnp.ndarray], dt: float, i_ext=0):
+    def step(
+        self,
+        u: Dict[str, jnp.ndarray],
+        dt: float,
+        i_inds: jnp.ndarray,
+        i_current: jnp.ndarray,
+    ):
         """Step for a single compartment.
 
         Args:
@@ -129,6 +134,9 @@ class Cell(Module):
         Returns:
             Next state. Same shape as `u`.
         """
+        nbranches = self.nbranches
+        nseg_per_branch = self.nseg
+
         if self.branch_conds_fwd is None:
             self.init_branch_conds()
 
@@ -139,10 +147,16 @@ class Cell(Module):
             u, dt, self.branches[0].compartments[0].channels, self.params
         )
 
+        # External input.
+        i_ext = get_external_input(
+            voltages, i_inds, i_current, self.params["radius"], self.params["length"]
+        )
+
         new_voltages = self.step_voltages(
-            voltages,
-            v_terms,
-            const_terms + i_ext,
+            voltages=jnp.reshape(voltages, (nbranches, nseg_per_branch)),
+            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
+            constant_terms=jnp.reshape(const_terms, (nbranches, nseg_per_branch))
+            + jnp.reshape(i_ext, (nbranches, nseg_per_branch)),
             coupling_conds_bwd=self.coupling_conds_bwd,
             coupling_conds_fwd=self.coupling_conds_fwd,
             summed_coupling_conds=self.summed_coupling_conds,
@@ -158,7 +172,7 @@ class Cell(Module):
             delta_t=dt,
         )
         final_state = new_channel_states[0]
-        final_state["voltages"] = new_voltages
+        final_state["voltages"] = new_voltages.flatten(order="C")
         return final_state
 
 

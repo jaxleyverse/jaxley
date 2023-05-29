@@ -2,6 +2,8 @@ from typing import Dict, List, Optional, Callable
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
+import pandas as pd
+
 from neurax.channels import Channel
 from neurax.solver_voltage import step_voltage_implicit
 
@@ -22,20 +24,28 @@ class Module(ABC):
         """
         self.params = {}
         for key in own_params:
-            self.params[key] = jnp.asarray(own_params[key])
+            self.params[key] = jnp.asarray([own_params[key]])  # should be atleast1d
 
         self.states = {}
         for key in own_states:
-            self.states[key] = jnp.asarray(own_states[key])
+            self.states[key] = jnp.asarray([own_states[key]])  # should be atleast1d
 
     def _append_to_params_and_state(self, constituents: List["Module"]):
         for key in constituents[0].params:
-            param_vals = jnp.asarray([b.params[key] for b in constituents])
+            param_vals = jnp.concatenate([b.params[key] for b in constituents])
             self.params[key] = param_vals
 
         for key in constituents[0].states:
-            states_vals = jnp.asarray([b.states[key] for b in constituents])
+            states_vals = jnp.concatenate([b.states[key] for b in constituents])
             self.states[key] = states_vals
+
+    def set_params(self, key, val):
+        self.params[key][:] = val
+        self.initialized_conds = False
+
+    @property
+    def initialized(self):
+        return self.initialized_morph and self.initialized_conds
 
     @abstractmethod
     def step(self, u, dt, *args):
@@ -99,14 +109,17 @@ class Module(ABC):
 
 
 class View:
-    def __init__(self, pointer, view):
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         self.pointer = pointer
         self.view = view
 
-    def set_params(self, key, val):
-        self.pointer.params[key][self.view.index.values] = val
+    def set_params(self, key: str, val: float):
+        self.pointer.params[key] = (
+            self.pointer.params[key].at[self.view.index.values].set(val)
+        )
+        self.pointer.initialized_conds = False
 
-    def adjust_view(self, key, index):
+    def adjust_view(self, key: str, index):
         self.view = self.view[self.view[key] == index]
         self.view -= self.view.iloc[0]
         return self
