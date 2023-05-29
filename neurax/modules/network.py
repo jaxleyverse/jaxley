@@ -9,16 +9,22 @@ from neurax.modules.base import Module, View
 from neurax.modules.cell import Cell, CellView
 from neurax.connection import Connection
 from neurax.network import Connectivity
-from neurax.integrate import _step_synapse
 from neurax.stimulus import get_external_input
 from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
+from neurax.utils.syn_utils import postsyn_voltage_updates
+from neurax.synapses.synapse import Synapse
 
 
 class Network(Module):
     network_params: Dict = {}
     network_states: Dict = {}
 
-    def __init__(self, cells: List[Cell], conns: List[List[Connection]]):
+    def __init__(
+        self,
+        cells: List[Cell],
+        conns: List[List[Connection]],
+        syn_channels: List[Synapse],
+    ):
         """Initialize network of cells and synapses.
 
         Args:
@@ -44,6 +50,8 @@ class Network(Module):
             c.grouped_post_syn_inds for c in self.connectivities
         ]
         self.grouped_post_syns = [c.grouped_post_syns for c in self.connectivities]
+
+        self.syn_channels = syn_channels
 
         self.initialized_morph = False
         self.initialized_conds = True
@@ -151,7 +159,7 @@ class Network(Module):
         )
 
         # Step of the synapse.
-        new_syn_states, syn_voltage_terms, syn_constant_terms = _step_synapse(
+        new_syn_states, syn_voltage_terms, syn_constant_terms = self.step_synapse(
             u,
             self.syn_channels,
             self.params,
@@ -186,3 +194,41 @@ class Network(Module):
         final_state = new_channel_states[0]
         final_state["voltages"] = new_voltages.flatten(order="C")
         return final_state
+
+    def _step_synapse(
+        self,
+        u,
+        syn_channels,
+        params,
+        delta_t,
+        cumsum_num_branches,
+        pre_syn_cell_inds,
+        pre_syn_inds,
+        grouped_post_syn_inds,
+        grouped_post_syns,
+        nseg,
+    ):
+        """Perform one step of the synapses and obtain their currents."""
+        syn_voltage_terms = jnp.zeros_like(u["voltages"])
+        syn_constant_terms = jnp.zeros_like(u["voltages"])
+        new_syn_states = []
+        for i, update_fn in enumerate(syn_channels):
+            syn_inds = (
+                cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
+            )
+            synapse_current_terms, synapse_states = update_fn(
+                u, delta_t, u["voltages"], params, syn_inds
+            )
+            synapse_current_terms = postsyn_voltage_updates(
+                nseg,
+                cumsum_num_branches,
+                u["voltages"],
+                grouped_post_syn_inds[i],
+                grouped_post_syns[i],
+                *synapse_current_terms,
+            )
+            syn_voltage_terms += synapse_current_terms[0]
+            syn_constant_terms += synapse_current_terms[1]
+            new_syn_states.append(synapse_states)
+
+        return new_syn_states, syn_voltage_terms, syn_constant_terms
