@@ -73,7 +73,7 @@ class Branch(Module):
         self.summed_coupling_conds = self.summed_coupling_conds.at[:-1].add(
             self.coupling_conds_bwd
         )
-        self.initialized = True
+        self.initialized_conds = True
 
     def step(
         self,
