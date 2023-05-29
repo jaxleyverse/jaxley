@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Callable
+import itertools
 
 import numpy as np
 import jax.numpy as jnp
@@ -9,6 +10,8 @@ from neurax.modules.cell import Cell, CellView
 from neurax.connection import Connection
 from neurax.network import Connectivity
 from neurax.integrate import _step_synapse
+from neurax.stimulus import get_external_input
+from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
 
 
 class Network(Module):
@@ -28,104 +31,89 @@ class Network(Module):
 
         self.cells = cells
         self.nseg = cells[0].nseg
-        self.nbranches = len(branches)
-        self.parents = jnp.asarray(parents)
 
         assert isinstance(conns, list), "conns must be a list."
         for conn in conns:
             assert isinstance(conn, list), "conns must be a list of lists."
-        self.connectivities = [
-            Connectivity(conn, self.nseg_per_branch) for conn in conns
-        ]
+        self.connectivities = [Connectivity(conn, self.nseg) for conn in conns]
 
         # Define morphology of synapses.
         self.pre_syn_inds = [c.pre_syn_inds for c in self.connectivities]
         self.pre_syn_cell_inds = [c.pre_syn_cell_inds for c in self.connectivities]
-        self.grouped_post_syn_inds = [c.grouped_post_syn_inds for c in self.connectivities]
+        self.grouped_post_syn_inds = [
+            c.grouped_post_syn_inds for c in self.connectivities
+        ]
         self.grouped_post_syns = [c.grouped_post_syns for c in self.connectivities]
 
-        # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg * self.nbranches).tolist(),
-                branch_index=(
-                    np.arange(self.nseg * self.nbranches) // self.nseg
-                ).tolist(),
-                cell_index=[0] * (self.nseg * self.nbranches),
-            )
-        )
         self.initialized_morph = False
         self.initialized_conds = True
 
     def __getattr__(self, key):
-        assert key == "branch"
-        return BranchView(self, self.nodes)
+        assert key == "cell"
+        return CellView(self, self.nodes)
 
     def init_morph(self):
-        self.num_kids = jnp.asarray(_compute_num_kids(self.parents))
-        self.levels = compute_levels(self.parents)
-        self.branches_in_each_level = compute_branches_in_level(self.levels)
+        self.nbranches = [cell.nbranches for cell in self.cells]
+        self.cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + self.nbranches))
+        self.max_num_kids = 4
+        # for c in self.cells:
+        #     assert (
+        #         self.max_num_kids == c.max_num_kids
+        #     ), "Different max_num_kids between cells."
 
-        self.parents_in_each_level = [
-            jnp.unique(self.parents[c]) for c in self.branches_in_each_level
-        ]
-
-        ind_of_kids = jnp.asarray(_compute_index_of_kid(self.parents))
-        ind_of_kids_in_each_level = [
-            ind_of_kids[bil] for bil in self.branches_in_each_level
-        ]
-        self.kid_inds_in_each_level = cum_indizes_of_kids(
-            ind_of_kids_in_each_level, max_num_kids=4, reset_at=[0]
+        parents = [cell.parents for cell in self.cells]
+        self.comb_parents = jnp.concatenate(
+            [p.at[1:].add(self.cumsum_num_branches[i]) for i, p in enumerate(parents)]
         )
+        self.comb_parents_in_each_level = merge_cells(
+            self.cumsum_num_branches,
+            [cell.parents_in_each_level for cell in self.cells],
+        )
+        self.comb_branches_in_each_level = merge_cells(
+            self.cumsum_num_branches,
+            [cell.branches_in_each_level for cell in self.cells],
+            exclude_first=False,
+        )
+
+        # Prepare indizes for solve
+        comb_ind_of_kids = jnp.concatenate(
+            [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in self.cells]
+        )
+        self.comb_cum_kid_inds = cum_indizes_of_kids(
+            [comb_ind_of_kids], self.max_num_kids, reset_at=[-1, 0]
+        )[0]
+        comb_ind_of_kids_in_each_level = [
+            comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
+        ]
+        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
+            comb_ind_of_kids_in_each_level, self.max_num_kids, reset_at=[0]
+        )
+
+        # Indexing.
+        self.nodes = pd.DataFrame(
+            dict(
+                comp_index=np.arange(self.nseg * sum(self.nbranches)).tolist(),
+                branch_index=(
+                    np.arange(self.nseg * sum(self.nbranches)) // self.nseg
+                ).tolist(),
+                cell_index=list(
+                    itertools.chain(
+                        *[[i] * (self.nseg * b) for i, b in enumerate(self.nbranches)]
+                    )
+                ),
+            )
+        )
+
         self.initialized_morph = True
 
-    def init_branch_conds(self):
-        """Given an axial resisitivity, set the coupling conductances."""
-        nbranches = self.nbranches
-        nseg = self.nseg
-
-        axial_resistivity = jnp.reshape(
-            self.params["axial_resistivity"], (nbranches, nseg)
-        )
-        radiuses = jnp.reshape(self.params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(self.params["length"], (nbranches, nseg))
-
-        def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
-            return rad1 * rad2 ** 2 / r_a / (rad2 ** 2 * l1 + rad1 ** 2 * l2) / l1
-
-        # Compute coupling conductance for segments within a branch.
-        # `radius`: um
-        # `r_a`: ohm cm
-        # `length_single_compartment`: um
-        # `coupling_conds`: S * um / cm / um^2 = S / cm / um
-        # Compute coupling conductance for segments at branch points.
-        rad1 = radiuses[jnp.arange(1, self.nbranches), -1]
-        rad2 = radiuses[self.parents[jnp.arange(1, self.nbranches)], 0]
-        l1 = lengths[jnp.arange(1, self.nbranches), -1]
-        l2 = lengths[self.parents[jnp.arange(1, self.nbranches)], 0]
-        r_a1 = axial_resistivity[jnp.arange(1, self.nbranches), -1]
-        r_a2 = axial_resistivity[self.parents[jnp.arange(1, self.nbranches)], 0]
-        self.branch_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
-        self.branch_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
-
-        # Convert (S / cm / um) -> (mS / cm^2)
-        self.branch_conds_fwd *= 10 ** 7
-        self.branch_conds_bwd *= 10 ** 7
-
-        for b in range(1, self.nbranches):
-            self.summed_coupling_conds = self.summed_coupling_conds.at[b, -1].add(
-                self.branch_conds_fwd[b - 1]
-            )
-            self.summed_coupling_conds = self.summed_coupling_conds.at[
-                self.parents[b], 0
-            ].add(self.branch_conds_bwd[b - 1])
-
-        self.branch_conds_fwd = jnp.concatenate(
-            [jnp.asarray([0.0]), self.branch_conds_fwd]
-        )
-        self.branch_conds_bwd = jnp.concatenate(
-            [jnp.asarray([0.0]), self.branch_conds_bwd]
-        )
+    def init_conds(self):
+        # Initially, the coupling conductances are set to `None`. They have to be set
+        # by calling `.set_axial_resistivities()`.
+        self.coupling_conds_fwd = [c.coupling_conds_fwd for c in self.cells]
+        self.coupling_conds_bwd = [c.coupling_conds_bwd for c in self.cells]
+        self.branch_conds_fwd = [c.branch_conds_fwd for c in self.cells]
+        self.branch_conds_bwd = [c.branch_conds_bwd for c in self.cells]
+        self.summed_coupling_conds = [c.summed_coupling_conds for c in self.cells]
         self.initialized_conds = True
 
     def step(
@@ -169,11 +157,11 @@ class Network(Module):
             syn_params,
             DELTA_T,
             CUMSUM_NUM_BRANCHES,
-            PRE_SYN_CELL_INDS,
-            PRE_SYN_INDS,
-            GROUPED_POST_SYN_INDS,
-            GROUPED_POST_SYNS,
-            NSEG_PER_BRANCH,
+            self.pre_syn_cell_inds,
+            self.pre_syn_inds,
+            self.grouped_post_syn_inds,
+            self.grouped_post_syns,
+            self.nseg,
         )
 
         new_voltages = self.step_voltages(
