@@ -17,10 +17,7 @@ class Stimulus:
 
 
 def step_current(
-    i_delay: float,
-    i_dur: float,
-    i_amp: float,
-    time_vec: jnp.asarray,
+    i_delay: float, i_dur: float, i_amp: float, time_vec: jnp.asarray,
 ):
     """
     Return step current in unit nA.
