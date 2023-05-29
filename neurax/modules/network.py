@@ -152,11 +152,11 @@ class Network(Module):
 
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = _step_synapse(
-            voltages,
-            syn_states,
-            syn_params,
-            DELTA_T,
-            CUMSUM_NUM_BRANCHES,
+            u,
+            self.syn_channels,
+            self.params,
+            dt,
+            self.cumsum_num_branches,
             self.pre_syn_cell_inds,
             self.pre_syn_inds,
             self.grouped_post_syn_inds,
