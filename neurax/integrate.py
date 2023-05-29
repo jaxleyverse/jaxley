@@ -308,11 +308,9 @@ def _step_membrane(voltages, mem_states, mem_params, mem_channels, delta_t):
 
 
 def _step_synapse(
-    voltages,
-    syn_states,
-    syn_params,
+    u,
     syn_channels,
-    syn_inds,
+    params,
     delta_t,
     cumsum_num_branches,
     pre_syn_cell_inds,
@@ -322,18 +320,18 @@ def _step_synapse(
     nseg,
 ):
     """Perform one step of the synapses and obtain their currents."""
-    syn_voltage_terms = jnp.zeros_like(voltages)
-    syn_constant_terms = jnp.zeros_like(voltages)
+    syn_voltage_terms = jnp.zeros_like(u["voltages"])
+    syn_constant_terms = jnp.zeros_like(u["voltages"])
     new_syn_states = []
     for i, update_fn in enumerate(syn_channels):
         syn_inds = cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
         synapse_current_terms, synapse_states = update_fn(
-            voltages, syn_states[i], syn_inds, delta_t, syn_params[i],
+            u, delta_t, u["voltages"], params, syn_inds
         )
         synapse_current_terms = postsyn_voltage_updates(
             nseg,
             cumsum_num_branches,
-            voltages,
+            u["voltages"],
             grouped_post_syn_inds[i],
             grouped_post_syns[i],
             *synapse_current_terms,
