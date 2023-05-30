@@ -43,6 +43,7 @@ class Compartment(Module):
 
         self.nseg = 1
         self.nbranches = 1
+        self.cumsum_nbranches = jnp.asarray([0, self.nbranches])
 
     def set_params(self, key, val):
         self.params[key][:] = val

@@ -1,12 +1,10 @@
 from typing import List
+
+import jax.numpy as jnp
+from jax.lax import fori_loop
+
 from neurax.stimulus import Stimulus
 from neurax.recording import Recording
-
-import numpy as np
-import jax.numpy as jnp
-import jax
-from jax.lax import fori_loop
-from jax import jit
 from neurax.modules import Module
 from neurax.utils.cell_utils import index_of_loc
 
@@ -20,9 +18,7 @@ def solve(
 ) -> jnp.ndarray:
     """Solve the ODE and return recorded voltages."""
     nseg = module.nseg
-    nbranches = module.nbranches
-
-    cumsum_nbranches = jnp.asarray([0, nbranches])
+    cumsum_nbranches = module.cumsum_nbranches
 
     i_current, i_inds = prepare_stim(stimuli, nseg, cumsum_nbranches)
     rec_inds = prepare_recs(recordings, nseg, cumsum_nbranches)

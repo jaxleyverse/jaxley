@@ -1,8 +1,9 @@
 from typing import Dict
 import jax.numpy as jnp
+from neurax.synapses.synapse import Synapse
 
 
-class Glutamate:
+class GlutamateSynapse(Synapse):
     """
     Compute syanptic current and update syanpse state for Glutamate receptor.
     """
@@ -10,8 +11,8 @@ class Glutamate:
     synapse_params = {"gS": 0.5}
     synapse_states = {"s": 0.2}
 
+    @staticmethod
     def step(
-        self,
         u: Dict[str, jnp.ndarray],
         dt,
         voltages,
@@ -32,7 +33,7 @@ class Glutamate:
         exp_term = jnp.exp(slope * dt)
         new_s = u["s"] * exp_term + s_inf * (1.0 - exp_term)
 
-        non_zero_voltage_term = params["s"] * u["s"]
-        non_zero_constant_term = params["s"] * u["s"] * e_syn
+        non_zero_voltage_term = params["gS"] * u["s"]
+        non_zero_constant_term = params["gS"] * u["s"] * e_syn
 
         return {"s": new_s}, (non_zero_voltage_term, non_zero_constant_term)
