@@ -40,6 +40,12 @@ class Network(Module):
         self.conns = conns
         self.nseg = cells[0].nseg
 
+        self.coupling_conds_fwd = jnp.asarray([])
+        self.coupling_conds_bwd = jnp.asarray([])
+        self.branch_conds_fwd = jnp.asarray([])
+        self.branch_conds_bwd = jnp.asarray([])
+        self.summed_coupling_conds = jnp.asarray([])
+
         self.initialized_morph = False
         self.initialized_syns = False
         self.initialized_conds = True
@@ -114,11 +120,21 @@ class Network(Module):
     def init_conds(self):
         # Initially, the coupling conductances are set to `None`. They have to be set
         # by calling `.set_axial_resistivities()`.
-        self.coupling_conds_fwd = [c.coupling_conds_fwd for c in self.cells]
-        self.coupling_conds_bwd = [c.coupling_conds_bwd for c in self.cells]
-        self.branch_conds_fwd = [c.branch_conds_fwd for c in self.cells]
-        self.branch_conds_bwd = [c.branch_conds_bwd for c in self.cells]
-        self.summed_coupling_conds = [c.summed_coupling_conds for c in self.cells]
+        self.coupling_conds_fwd = jnp.concatenate(
+            [c.coupling_conds_fwd for c in self.cells]
+        )
+        self.coupling_conds_bwd = jnp.concatenate(
+            [c.coupling_conds_bwd for c in self.cells]
+        )
+        self.branch_conds_fwd = jnp.concatenate(
+            [c.branch_conds_fwd for c in self.cells]
+        )
+        self.branch_conds_bwd = jnp.concatenate(
+            [c.branch_conds_bwd for c in self.cells]
+        )
+        self.summed_coupling_conds = jnp.concatenate(
+            [c.summed_coupling_conds for c in self.cells]
+        )
         self.initialized_conds = True
 
     def init_syns(self):
@@ -171,7 +187,7 @@ class Network(Module):
             Next state. Same shape as `u`.
         """
         nbranches = sum(self.nbranches)
-        nseg_per_branch = self.nseg
+        nseg = self.nseg
 
         if self.branch_conds_fwd is None:
             self.init_branch_conds()
@@ -202,13 +218,19 @@ class Network(Module):
         )
 
         new_voltages = self.step_voltages(
-            voltages=jnp.reshape(voltages, (nbranches, nseg_per_branch)),
-            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg_per_branch)),
-            constant_terms=jnp.reshape(const_terms, (nbranches, nseg_per_branch))
-            + jnp.reshape(i_ext, (nbranches, nseg_per_branch)),
-            coupling_conds_bwd=self.coupling_conds_bwd,
-            coupling_conds_fwd=self.coupling_conds_fwd,
-            summed_coupling_conds=self.summed_coupling_conds,
+            voltages=jnp.reshape(voltages, (nbranches, nseg)),
+            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg)),
+            constant_terms=jnp.reshape(const_terms, (nbranches, nseg))
+            + jnp.reshape(i_ext, (nbranches, nseg)),
+            coupling_conds_bwd=jnp.reshape(
+                self.coupling_conds_bwd, (nbranches, nseg - 1)
+            ),
+            coupling_conds_fwd=jnp.reshape(
+                self.coupling_conds_fwd, (nbranches, nseg - 1)
+            ),
+            summed_coupling_conds=jnp.reshape(
+                self.summed_coupling_conds, (nbranches, nseg)
+            ),
             branch_cond_fwd=self.branch_conds_fwd,
             branch_cond_bwd=self.branch_conds_bwd,
             num_branches=sum(self.nbranches),
@@ -221,6 +243,9 @@ class Network(Module):
             delta_t=dt,
         )
         final_state = new_channel_states[0]
+        for s in new_syn_states:
+            for key in s:
+                final_state[key] = s[key]
         final_state["voltages"] = new_voltages.flatten(order="C")
         return final_state
 
@@ -238,8 +263,6 @@ class Network(Module):
     ):
         """Perform one step of the synapses and obtain their currents."""
         voltages = u["voltages"]
-        print(voltages.shape)
-        print("syn_inds", syn_inds)
 
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
@@ -248,7 +271,6 @@ class Network(Module):
             synapse_states, synapse_current_terms = list_of_synapses[0].step(
                 u, delta_t, voltages, params, syn_inds
             )
-            print("len", len(synapse_current_terms))
             synapse_current_terms = postsyn_voltage_updates(
                 nseg,
                 cumsum_num_branches,
