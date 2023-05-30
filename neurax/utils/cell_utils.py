@@ -22,3 +22,7 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     else:
         ind_along_branch = 0
     return branch_ind * nseg_per_branch + ind_along_branch
+
+
+def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
+            return rad1 * rad2**2 / r_a / (rad2**2 * l1 + rad1**2 * l2) / l1

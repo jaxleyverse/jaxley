@@ -37,6 +37,8 @@ class Module(ABC):
         self.comb_parents_in_each_level: List[jnp.ndarray] = [jnp.asarray([-1])]
         self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
 
+        self.comb_cum_kid_inds: jnp.ndarray = jnp.asarray([0])  # only for fwd-Euler.
+
         self.initialized_morph: bool = False
         self.initialized_conds: bool = False
         self.initialized_syns: bool = False
@@ -79,7 +81,24 @@ class Module(ABC):
     @property
     def initialized(self):
         """Whether the `Module` is ready to be solved or not."""
-        return self.initialized_morph and self.initialized_conds
+        return (
+            self.initialized_morph and self.initialized_conds and self.initialized_syns
+        )
+
+    def initialize(self):
+        self.init_morph()
+        self.init_syns()
+        self.init_conds()
+        return self
+
+    def init_syns(self):
+        self.initialized_syns = True
+
+    def init_conds(self):
+        self.initialized_conds = True
+
+    def init_morph(self):
+        self.initialized_morph = True
 
     def step(self, u, delta_t, i_inds, i_current):
         """One step of integration."""
