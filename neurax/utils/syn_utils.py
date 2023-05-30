@@ -55,7 +55,7 @@ def prepare_postsyn(conns, nseg_per_branch):
     grouped_post_syn_inds, grouped_post_syns, _ = group_by_num_occurences_and_vals(
         post_syn
     )
-    return grouped_post_syn_inds, grouped_post_syns
+    return grouped_post_syn_inds, grouped_post_syns, post_syn
 
 
 def group_by_num_occurences_and_vals(

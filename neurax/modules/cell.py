@@ -28,6 +28,7 @@ class Cell(Module):
         self.nseg = branches[0].nseg
         self.nbranches = len(branches)
         self.parents = jnp.asarray(parents)
+        self.cumsum_nbranches = jnp.asarray([0, self.nbranches])
 
         # Indexing.
         self.nodes = pd.DataFrame(

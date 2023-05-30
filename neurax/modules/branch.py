@@ -20,6 +20,8 @@ class Branch(Module):
 
         self.compartments = compartments
         self.nseg = len(compartments)
+        self.nbranches = 1
+        self.cumsum_nbranches = jnp.asarray([0, self.nbranches])
 
         self.initialized_morph = True
         self.initialized_conds = False
@@ -32,7 +34,6 @@ class Branch(Module):
                 cell_index=[0] * self.nseg,
             )
         )
-        self.nbranches = 1
 
     def __getattr__(self, key):
         assert key == "comp"

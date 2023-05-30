@@ -13,6 +13,7 @@ from neurax.stimulus import get_external_input
 from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
 from neurax.utils.syn_utils import postsyn_voltage_updates
 from neurax.synapses.synapse import Synapse
+from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
 
 
 class Network(Module):
@@ -23,7 +24,6 @@ class Network(Module):
         self,
         cells: List[Cell],
         conns: List[List[Connection]],
-        syn_channels: List[Synapse],
     ):
         """Initialize network of cells and synapses.
 
@@ -34,27 +34,24 @@ class Network(Module):
         super().__init__()
         self._init_params_and_state(self.network_params, self.network_states)
         self._append_to_params_and_state(cells)
+        self._append_synapses_to_params_and_state(conns)
 
         self.cells = cells
+        self.conns = conns
         self.nseg = cells[0].nseg
 
-        assert isinstance(conns, list), "conns must be a list."
-        for conn in conns:
-            assert isinstance(conn, list), "conns must be a list of lists."
-        self.connectivities = [Connectivity(conn, self.nseg) for conn in conns]
-
-        # Define morphology of synapses.
-        self.pre_syn_inds = [c.pre_syn_inds for c in self.connectivities]
-        self.pre_syn_cell_inds = [c.pre_syn_cell_inds for c in self.connectivities]
-        self.grouped_post_syn_inds = [
-            c.grouped_post_syn_inds for c in self.connectivities
-        ]
-        self.grouped_post_syns = [c.grouped_post_syns for c in self.connectivities]
-
-        self.syn_channels = syn_channels
-
         self.initialized_morph = False
+        self.initialized_syns = False
         self.initialized_conds = True
+
+    def _append_synapses_to_params_and_state(self, conns):
+        for conn in conns:
+            for key in conn[0].synapse_params:
+                param_vals = jnp.asarray([c.synapse_params[key] for c in conn])
+                self.params[key] = param_vals
+            for key in conn[0].synapse_states:
+                state_vals = jnp.asarray([c.synapse_states[key] for c in conn])
+                self.states[key] = state_vals
 
     def __getattr__(self, key):
         assert key == "cell"
@@ -62,7 +59,7 @@ class Network(Module):
 
     def init_morph(self):
         self.nbranches = [cell.nbranches for cell in self.cells]
-        self.cumsum_num_branches = jnp.cumsum(jnp.asarray([0] + self.nbranches))
+        self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches))
         self.max_num_kids = 4
         # for c in self.cells:
         #     assert (
@@ -71,14 +68,14 @@ class Network(Module):
 
         parents = [cell.parents for cell in self.cells]
         self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self.cumsum_num_branches[i]) for i, p in enumerate(parents)]
+            [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
         )
         self.comb_parents_in_each_level = merge_cells(
-            self.cumsum_num_branches,
+            self.cumsum_nbranches,
             [cell.parents_in_each_level for cell in self.cells],
         )
         self.comb_branches_in_each_level = merge_cells(
-            self.cumsum_num_branches,
+            self.cumsum_nbranches,
             [cell.branches_in_each_level for cell in self.cells],
             exclude_first=False,
         )
@@ -124,6 +121,39 @@ class Network(Module):
         self.summed_coupling_conds = [c.summed_coupling_conds for c in self.cells]
         self.initialized_conds = True
 
+    def init_syns(self):
+        pre_comp_inds = []
+        post_comp_inds = []
+        self.post_grouped_inds = []
+        self.post_grouped_syns = []
+        for conn in self.conns:
+            pre_syn_cell_inds, pre_syn_inds = prepare_presyn(conn, self.nseg)
+            pre_comp_inds.append(
+                self.cumsum_nbranches[pre_syn_cell_inds] * self.nseg + pre_syn_inds
+            )
+            grouped_post_inds, grouped_syns, post_syn = prepare_postsyn(conn, self.nseg)
+            post_comp_inds.append(
+                self.cumsum_nbranches[post_syn[:, 0]] * self.nseg + post_syn[:, 1]
+            )
+            self.post_grouped_inds.append(grouped_post_inds)
+            self.post_grouped_syns.append(grouped_syns)
+
+        # Prepare synapses.
+        self.edges = pd.DataFrame()
+        for i in range(len(self.conns)):
+            self.edges = pd.concat(
+                [
+                    self.edges,
+                    pd.DataFrame(
+                        dict(
+                            pre_comp_index=pre_comp_inds[i],
+                            post_comp_index=post_comp_inds[i],
+                            type="glutamate",
+                        )
+                    ),
+                ]
+            )
+
     def step(
         self,
         u: Dict[str, jnp.ndarray],
@@ -140,7 +170,7 @@ class Network(Module):
         Returns:
             Next state. Same shape as `u`.
         """
-        nbranches = self.nbranches
+        nbranches = sum(self.nbranches)
         nseg_per_branch = self.nseg
 
         if self.branch_conds_fwd is None:
@@ -150,7 +180,7 @@ class Network(Module):
 
         # Parameters have to go in here.
         new_channel_states, (v_terms, const_terms) = self.step_channels(
-            u, dt, self.branches[0].compartments[0].channels, self.params
+            u, dt, self.cells[0].branches[0].compartments[0].channels, self.params
         )
 
         # External input.
@@ -161,14 +191,13 @@ class Network(Module):
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self.step_synapse(
             u,
-            self.syn_channels,
+            self.conns,
             self.params,
             dt,
-            self.cumsum_num_branches,
-            self.pre_syn_cell_inds,
-            self.pre_syn_inds,
-            self.grouped_post_syn_inds,
-            self.grouped_post_syns,
+            self.cumsum_nbranches,
+            self.edges["pre_comp_index"].to_numpy(),
+            self.post_grouped_inds,
+            self.post_grouped_syns,
             self.nseg,
         )
 
@@ -182,12 +211,12 @@ class Network(Module):
             summed_coupling_conds=self.summed_coupling_conds,
             branch_cond_fwd=self.branch_conds_fwd,
             branch_cond_bwd=self.branch_conds_bwd,
-            num_branches=self.nbranches,
-            parents=self.parents,
-            kid_inds_in_each_level=self.kid_inds_in_each_level,
+            num_branches=sum(self.nbranches),
+            parents=self.comb_parents,
+            kid_inds_in_each_level=self.comb_cum_kid_inds_in_each_level,
             max_num_kids=4,
-            parents_in_each_level=self.parents_in_each_level,
-            branches_in_each_level=self.branches_in_each_level,
+            parents_in_each_level=self.comb_parents_in_each_level,
+            branches_in_each_level=self.comb_branches_in_each_level,
             tridiag_solver="thomas",
             delta_t=dt,
         )
@@ -195,34 +224,35 @@ class Network(Module):
         final_state["voltages"] = new_voltages.flatten(order="C")
         return final_state
 
-    def _step_synapse(
+    def step_synapse(
         self,
         u,
         syn_channels,
         params,
         delta_t,
         cumsum_num_branches,
-        pre_syn_cell_inds,
-        pre_syn_inds,
+        syn_inds,
         grouped_post_syn_inds,
         grouped_post_syns,
         nseg,
     ):
         """Perform one step of the synapses and obtain their currents."""
-        syn_voltage_terms = jnp.zeros_like(u["voltages"])
-        syn_constant_terms = jnp.zeros_like(u["voltages"])
+        voltages = u["voltages"]
+        print(voltages.shape)
+        print("syn_inds", syn_inds)
+
+        syn_voltage_terms = jnp.zeros_like(voltages)
+        syn_constant_terms = jnp.zeros_like(voltages)
         new_syn_states = []
-        for i, update_fn in enumerate(syn_channels):
-            syn_inds = (
-                cumsum_num_branches[pre_syn_cell_inds[i]] * nseg + pre_syn_inds[i]
+        for i, list_of_synapses in enumerate(syn_channels):
+            synapse_states, synapse_current_terms = list_of_synapses[0].step(
+                u, delta_t, voltages, params, syn_inds
             )
-            synapse_current_terms, synapse_states = update_fn(
-                u, delta_t, u["voltages"], params, syn_inds
-            )
+            print("len", len(synapse_current_terms))
             synapse_current_terms = postsyn_voltage_updates(
                 nseg,
                 cumsum_num_branches,
-                u["voltages"],
+                voltages,
                 grouped_post_syn_inds[i],
                 grouped_post_syns[i],
                 *synapse_current_terms,
