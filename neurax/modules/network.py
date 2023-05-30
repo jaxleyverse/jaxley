@@ -2,11 +2,13 @@ from typing import Dict, List, Optional, Callable
 import itertools
 
 import numpy as np
+from jax import vmap
 import jax.numpy as jnp
 import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.modules.cell import Cell, CellView
+from neurax.modules.branch import Branch
 from neurax.channels import Channel
 from neurax.connection import Connection
 from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
@@ -41,7 +43,7 @@ class Network(Module):
 
         self.initialized_morph = False
         self.initialized_syns = False
-        self.initialized_conds = True
+        self.initialized_conds = False
 
     def _append_synapses_to_params_and_state(self, conns):
         for conn in conns:
@@ -89,7 +91,9 @@ class Network(Module):
         )
         self.comb_cum_kid_inds = cum_indizes_of_kids(
             [comb_ind_of_kids], self.max_num_kids, reset_at=[-1, 0]
-        )[0]
+        )[
+            0
+        ]  # Defined only for forward Euler.
         comb_ind_of_kids_in_each_level = [
             comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
         ]
@@ -118,14 +122,26 @@ class Network(Module):
         self.initialized_morph = True
 
     def init_conds(self):
+        """TODO: has to recompute."""
         # Initially, the coupling conductances are set to `None`. They have to be set
         # by calling `.set_axial_resistivities()`.
-        self.coupling_conds_fwd = jnp.concatenate(
-            [c.coupling_conds_fwd for c in self.cells]
+        nbranches = self.total_nbranches
+        nseg = self.nseg
+        parents = self.comb_parents
+
+        axial_resistivity = jnp.reshape(
+            self.params["axial_resistivity"], (nbranches, nseg)
         )
-        self.coupling_conds_bwd = jnp.concatenate(
-            [c.coupling_conds_bwd for c in self.cells]
+        radiuses = jnp.reshape(self.params["radius"], (nbranches, nseg))
+        lengths = jnp.reshape(self.params["length"], (nbranches, nseg))
+
+        conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
+            axial_resistivity, radiuses, lengths, self.nseg
         )
+        self.coupling_conds_fwd = conds[0]
+        self.coupling_conds_bwd = conds[1]
+        self.summed_coupling_conds = conds[2]
+
         self.branch_conds_fwd = jnp.concatenate(
             [c.branch_conds_fwd for c in self.cells]
         )
@@ -169,6 +185,8 @@ class Network(Module):
                     ),
                 ]
             )
+
+        self.initialized_syns = True
 
     def _step_synapse(
         self,

@@ -23,18 +23,19 @@ class Compartment(Module):
             for key in channel.channel_params:
                 self.params[key] = jnp.asarray(
                     [channel.channel_params[key]]
-                )  # should be atleast1d
+                )  # should be atleast1d TODO
 
         # Insert channel states.
         for channel in channels:
             for key in channel.channel_states:
                 self.states[key] = jnp.asarray(
                     [channel.channel_states[key]]
-                )  # should be atleast1d
+                )  # should be atleast1d TODO
 
         self.channels = channels
         self.initialized_morph = True
         self.initialized_conds = True
+        self.initialized_syns = True
 
         self.nseg = 1
         self.total_nbranches = 1

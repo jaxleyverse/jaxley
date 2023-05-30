@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Callable
 import numpy as np
 import jax.numpy as jnp
+from jax import vmap
 import pandas as pd
 
 from neurax.modules.base import Module, View
@@ -12,6 +13,7 @@ from neurax.cell import (
     _compute_index_of_kid,
     cum_indizes_of_kids,
 )
+from neurax.utils.cell_utils import compute_coupling_cond
 
 
 class Cell(Module):
@@ -25,7 +27,6 @@ class Cell(Module):
         self._init_params_and_state(self.cell_params, self.cell_states)
         self._append_to_params_and_state(branches)
 
-        self.branches = branches
         self.nseg = branches[0].nseg
         self.total_nbranches = len(branches)
         self.nbranches_per_cell = [len(branches)]
@@ -46,14 +47,10 @@ class Cell(Module):
         )
         # Synapse indexing.
         self.edges = pd.DataFrame(dict(pre_comp_index=[], post_comp_index=[], type=""))
-        
-        self.coupling_conds_bwd = jnp.asarray([b.coupling_conds_bwd for b in branches])
-        self.coupling_conds_fwd = jnp.asarray([b.coupling_conds_fwd for b in branches])
-        self.summed_coupling_conds = jnp.asarray(
-            [b.summed_coupling_conds for b in branches]
-        )
+
         self.initialized_morph = False
         self.initialized_conds = False
+        self.initialized_syns = True
 
     def __getattr__(self, key):
         assert key == "branch"
@@ -79,7 +76,7 @@ class Cell(Module):
         )
         self.initialized_morph = True
 
-    def init_branch_conds(self):
+    def init_conds(self):
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
@@ -91,9 +88,32 @@ class Cell(Module):
         radiuses = jnp.reshape(self.params["radius"], (nbranches, nseg))
         lengths = jnp.reshape(self.params["length"], (nbranches, nseg))
 
-        def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
-            return rad1 * rad2**2 / r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
+        conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
+            axial_resistivity, radiuses, lengths, self.nseg
+        )
+        self.coupling_conds_fwd = conds[0]
+        self.coupling_conds_bwd = conds[1]
+        summed_coupling_conds = conds[2]
 
+        conds = self.self.init_cell_conds(
+            axial_resistivity,
+            radiuses,
+            lengths,
+            summed_coupling_conds,
+            nbranches,
+            parents,
+        )
+
+        self.branch_conds_fwd = conds[0]
+        self.branch_conds_bwd = conds[1]
+        self.summed_coupling_conds = conds[2]
+
+        self.initialized_conds = True
+
+    @staticmethod
+    def init_cell_conds(
+        axial_resistivity, radiuses, lengths, summed_coupling_conds, nbranches, parents
+    ):
         # Compute coupling conductance for segments within a branch.
         # `radius`: um
         # `r_a`: ohm cm
@@ -106,28 +126,26 @@ class Cell(Module):
         l2 = lengths[parents[jnp.arange(1, nbranches)], 0]
         r_a1 = axial_resistivity[jnp.arange(1, nbranches), -1]
         r_a2 = axial_resistivity[parents[jnp.arange(1, nbranches)], 0]
-        self.branch_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
-        self.branch_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
+        branch_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
+        branch_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        self.branch_conds_fwd *= 10**7
-        self.branch_conds_bwd *= 10**7
+        branch_conds_fwd *= 10**7
+        branch_conds_bwd *= 10**7
 
+        # TODO: get rid of for-loop?
         for b in range(1, nbranches):
-            self.summed_coupling_conds = self.summed_coupling_conds.at[b, -1].add(
-                self.branch_conds_fwd[b - 1]
+            summed_coupling_conds = summed_coupling_conds.at[b, -1].add(
+                branch_conds_fwd[b - 1]
             )
-            self.summed_coupling_conds = self.summed_coupling_conds.at[
-                parents[b], 0
-            ].add(self.branch_conds_bwd[b - 1])
+            summed_coupling_conds = summed_coupling_conds.at[parents[b], 0].add(
+                branch_conds_bwd[b - 1]
+            )
 
-        self.branch_conds_fwd = jnp.concatenate(
-            [jnp.asarray([0.0]), self.branch_conds_fwd]
-        )
-        self.branch_conds_bwd = jnp.concatenate(
-            [jnp.asarray([0.0]), self.branch_conds_bwd]
-        )
-        self.initialized_conds = True
+        branch_conds_fwd = jnp.concatenate([jnp.asarray([0.0]), branch_conds_fwd])
+        branch_conds_bwd = jnp.concatenate([jnp.asarray([0.0]), branch_conds_bwd])
+
+        return branch_conds_fwd, branch_conds_bwd, summed_coupling_conds
 
 
 class CellView(View):

@@ -17,6 +17,8 @@ def solve(
     nsteps: int = 300,
 ) -> jnp.ndarray:
     """Solve the ODE and return recorded voltages."""
+    assert module.initialized, "Module is not initialized, run `.initialize()`."
+
     nseg = module.nseg
     cumsum_nbranches = module.cumsum_nbranches
 
@@ -36,7 +38,7 @@ def solve(
     return final_state[-1]
 
 
-def prepare_recs(recordings: List[Recording], nseg, cumsum_nbranches):
+def prepare_recs(recordings: List[Recording], nseg: int, cumsum_nbranches):
     rec_comp_inds = [index_of_loc(r.branch_ind, r.loc, nseg) for r in recordings]
     rec_comp_inds = jnp.asarray(rec_comp_inds)
     rec_branch_inds = jnp.asarray([r.cell_ind for r in recordings])
@@ -44,7 +46,7 @@ def prepare_recs(recordings: List[Recording], nseg, cumsum_nbranches):
     return rec_branch_inds + rec_comp_inds
 
 
-def prepare_stim(stimuli: List[Stimulus], nseg, cumsum_nbranches):
+def prepare_stim(stimuli: List[Stimulus], nseg: int, cumsum_nbranches):
     i_comp_inds = [index_of_loc(s.branch_ind, s.loc, nseg) for s in stimuli]
     i_comp_inds = jnp.asarray(i_comp_inds)
 
