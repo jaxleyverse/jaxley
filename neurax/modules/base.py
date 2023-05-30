@@ -40,7 +40,7 @@ class Module(ABC):
             self.states[key] = states_vals
 
     def set_params(self, key, val):
-        self.params[key][:] = val
+        self.params[key] = self.params[key].at[:].set(val)
         self.initialized_conds = False
 
     @property
