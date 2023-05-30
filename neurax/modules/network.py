@@ -7,13 +7,11 @@ import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.modules.cell import Cell, CellView
+from neurax.channels import Channel
 from neurax.connection import Connection
-from neurax.network import Connectivity
-from neurax.stimulus import get_external_input
 from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
-from neurax.utils.syn_utils import postsyn_voltage_updates
-from neurax.synapses.synapse import Synapse
 from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
+from neurax.utils.syn_utils import postsyn_voltage_updates
 
 
 class Network(Module):
@@ -39,12 +37,7 @@ class Network(Module):
         self.cells = cells
         self.conns = conns
         self.nseg = cells[0].nseg
-
-        self.coupling_conds_fwd = jnp.asarray([])
-        self.coupling_conds_bwd = jnp.asarray([])
-        self.branch_conds_fwd = jnp.asarray([])
-        self.branch_conds_bwd = jnp.asarray([])
-        self.summed_coupling_conds = jnp.asarray([])
+        self.channels = cells[0].channels
 
         self.initialized_morph = False
         self.initialized_syns = False
@@ -64,31 +57,35 @@ class Network(Module):
         return CellView(self, self.nodes)
 
     def init_morph(self):
-        self.nbranches = [cell.nbranches for cell in self.cells]
-        self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches))
+        self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
+        self.total_nbranches = sum(self.nbranches_per_cell)
+        self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
         self.max_num_kids = 4
         # for c in self.cells:
         #     assert (
         #         self.max_num_kids == c.max_num_kids
         #     ), "Different max_num_kids between cells."
 
-        parents = [cell.parents for cell in self.cells]
+        parents = [cell.comb_parents for cell in self.cells]
         self.comb_parents = jnp.concatenate(
             [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
         )
         self.comb_parents_in_each_level = merge_cells(
             self.cumsum_nbranches,
-            [cell.parents_in_each_level for cell in self.cells],
+            [cell.comb_parents_in_each_level for cell in self.cells],
         )
         self.comb_branches_in_each_level = merge_cells(
             self.cumsum_nbranches,
-            [cell.branches_in_each_level for cell in self.cells],
+            [cell.comb_branches_in_each_level for cell in self.cells],
             exclude_first=False,
         )
 
         # Prepare indizes for solve
         comb_ind_of_kids = jnp.concatenate(
-            [jnp.asarray(_compute_index_of_kid(cell.parents)) for cell in self.cells]
+            [
+                jnp.asarray(_compute_index_of_kid(cell.comb_parents))
+                for cell in self.cells
+            ]
         )
         self.comb_cum_kid_inds = cum_indizes_of_kids(
             [comb_ind_of_kids], self.max_num_kids, reset_at=[-1, 0]
@@ -103,13 +100,16 @@ class Network(Module):
         # Indexing.
         self.nodes = pd.DataFrame(
             dict(
-                comp_index=np.arange(self.nseg * sum(self.nbranches)).tolist(),
+                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
                 branch_index=(
-                    np.arange(self.nseg * sum(self.nbranches)) // self.nseg
+                    np.arange(self.nseg * self.total_nbranches) // self.nseg
                 ).tolist(),
                 cell_index=list(
                     itertools.chain(
-                        *[[i] * (self.nseg * b) for i, b in enumerate(self.nbranches)]
+                        *[
+                            [i] * (self.nseg * b)
+                            for i, b in enumerate(self.nbranches_per_cell)
+                        ]
                     )
                 ),
             )
@@ -170,88 +170,7 @@ class Network(Module):
                 ]
             )
 
-    def step(
-        self,
-        u: Dict[str, jnp.ndarray],
-        dt: float,
-        i_inds: jnp.ndarray,
-        i_current: jnp.ndarray,
-    ):
-        """Step for a single compartment.
-
-        Args:
-            u: The full state vector, including states of all channels and the voltage.
-            dt: Time step.
-
-        Returns:
-            Next state. Same shape as `u`.
-        """
-        nbranches = sum(self.nbranches)
-        nseg = self.nseg
-
-        if self.branch_conds_fwd is None:
-            self.init_branch_conds()
-
-        voltages = u["voltages"]
-
-        # Parameters have to go in here.
-        new_channel_states, (v_terms, const_terms) = self.step_channels(
-            u, dt, self.cells[0].branches[0].compartments[0].channels, self.params
-        )
-
-        # External input.
-        i_ext = get_external_input(
-            voltages, i_inds, i_current, self.params["radius"], self.params["length"]
-        )
-
-        # Step of the synapse.
-        new_syn_states, syn_voltage_terms, syn_constant_terms = self.step_synapse(
-            u,
-            self.conns,
-            self.params,
-            dt,
-            self.cumsum_nbranches,
-            self.edges["pre_comp_index"].to_numpy(),
-            self.post_grouped_inds,
-            self.post_grouped_syns,
-            self.nseg,
-        )
-
-        new_voltages = self.step_voltages(
-            voltages=jnp.reshape(voltages, (nbranches, nseg)),
-            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg))
-            + jnp.reshape(syn_voltage_terms, (nbranches, nseg)),
-            constant_terms=jnp.reshape(const_terms, (nbranches, nseg))
-            + jnp.reshape(i_ext, (nbranches, nseg))
-            + jnp.reshape(syn_constant_terms, (nbranches, nseg)),
-            coupling_conds_bwd=jnp.reshape(
-                self.coupling_conds_bwd, (nbranches, nseg - 1)
-            ),
-            coupling_conds_fwd=jnp.reshape(
-                self.coupling_conds_fwd, (nbranches, nseg - 1)
-            ),
-            summed_coupling_conds=jnp.reshape(
-                self.summed_coupling_conds, (nbranches, nseg)
-            ),
-            branch_cond_fwd=self.branch_conds_fwd,
-            branch_cond_bwd=self.branch_conds_bwd,
-            num_branches=sum(self.nbranches),
-            parents=self.comb_parents,
-            kid_inds_in_each_level=self.comb_cum_kid_inds_in_each_level,
-            max_num_kids=4,
-            parents_in_each_level=self.comb_parents_in_each_level,
-            branches_in_each_level=self.comb_branches_in_each_level,
-            tridiag_solver="thomas",
-            delta_t=dt,
-        )
-        final_state = new_channel_states[0]
-        for s in new_syn_states:
-            for key in s:
-                final_state[key] = s[key]
-        final_state["voltages"] = new_voltages.flatten(order="C")
-        return final_state
-
-    def step_synapse(
+    def _step_synapse(
         self,
         u,
         syn_channels,

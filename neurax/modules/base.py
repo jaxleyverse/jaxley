@@ -5,12 +5,44 @@ import jax.numpy as jnp
 import pandas as pd
 
 from neurax.channels import Channel
+from neurax.synapses import Synapse
 from neurax.solver_voltage import step_voltage_implicit
+from neurax.stimulus import get_external_input
 
 
 class Module(ABC):
     def __init__(self):
-        pass
+        self.nseg: int = None
+        self.total_nbranches: int = 0
+        self.nbranches_per_cell: List[int] = None
+
+        self.channels: List[Channel] = None
+        self.conns: List[Synapse] = None
+
+        self.nodes: pd.DataFrame = None
+        self.edges: pd.DataFrame = None
+
+        self.cumsum_nbranches: jnp.ndarray = None
+        self.post_grouped_inds: jnp.ndarray = None
+        self.post_grouped_syns: jnp.ndarray = None
+
+        self.coupling_conds_bwd: jnp.ndarray = jnp.asarray([[]])
+        self.coupling_conds_fwd: jnp.ndarray = jnp.asarray([[]])
+        self.summed_coupling_conds: jnp.ndarray = jnp.asarray([[0.0]])
+        self.branch_conds_fwd: jnp.ndarray = jnp.asarray([[]])
+        self.branch_conds_bwd: jnp.ndarray = jnp.asarray([[]])
+        self.comb_parents: jnp.ndarray = jnp.asarray([-1])
+        self.comb_cum_kid_inds_in_each_level: jnp.ndarray = jnp.asarray([0])
+        self.max_num_kids: int = 1
+        self.comb_parents_in_each_level: List[jnp.ndarray] = [jnp.asarray([-1])]
+        self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
+
+        self.initialized_morph: bool = False
+        self.initialized_conds: bool = False
+        self.initialized_syns: bool = False
+
+        self.params: Dict[str, jnp.ndarray] = {}
+        self.states: Dict[str, jnp.ndarray] = {}
 
     def _init_params_and_state(
         self, own_params: Dict[str, List], own_states: Dict[str, List]
@@ -40,36 +72,74 @@ class Module(ABC):
             self.states[key] = states_vals
 
     def set_params(self, key, val):
+        """Set parameter for entire module."""
         self.params[key] = self.params[key].at[:].set(val)
         self.initialized_conds = False
 
     @property
     def initialized(self):
+        """Whether the `Module` is ready to be solved or not."""
         return self.initialized_morph and self.initialized_conds
 
-    @abstractmethod
-    def step(self, u, dt, *args):
-        raise NotImplementedError
+    def step(self, u, delta_t, i_inds, i_current):
+        """One step of integration."""
+        voltages = u["voltages"]
+
+        # Parameters have to go in here.
+        new_channel_states, (v_terms, const_terms) = self._step_channels(
+            u, delta_t, self.channels, self.params
+        )
+
+        # External input.
+        i_ext = get_external_input(
+            voltages, i_inds, i_current, self.params["radius"], self.params["length"]
+        )
+
+        # Step of the synapse.
+        new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
+            u,
+            self.conns,
+            self.params,
+            delta_t,
+            self.cumsum_nbranches,
+            self.edges["pre_comp_index"].to_numpy(),
+            self.post_grouped_inds,
+            self.post_grouped_syns,
+            self.nseg,
+        )
+
+        # Voltage steps.
+        new_voltages = self._reshape_and_implicit_voltage_step(
+            voltages=voltages,
+            voltage_terms=v_terms + syn_voltage_terms,
+            constant_terms=const_terms + i_ext + syn_constant_terms,
+            coupling_conds_bwd=self.coupling_conds_bwd,
+            coupling_conds_fwd=self.coupling_conds_fwd,
+            summed_coupling_conds=self.summed_coupling_conds,
+            branch_cond_fwd=self.branch_conds_fwd,
+            branch_cond_bwd=self.branch_conds_bwd,
+            nbranches=self.total_nbranches,
+            nseg=self.nseg,
+            parents=self.comb_parents,
+            kid_inds_in_each_level=self.comb_cum_kid_inds_in_each_level,
+            max_num_kids=4,
+            parents_in_each_level=self.comb_parents_in_each_level,
+            branches_in_each_level=self.comb_branches_in_each_level,
+            tridiag_solver="thomas",
+            delta_t=delta_t,
+        )
+
+        # Rebuild state.
+        final_state = new_channel_states[0]
+        for s in new_syn_states:
+            for key in s:
+                final_state[key] = s[key]
+        final_state["voltages"] = new_voltages.flatten(order="C")
+
+        return final_state
 
     @staticmethod
-    def step_channels(
-        states, dt, channels: List[Channel], params: Dict[str, jnp.ndarray]
-    ):
-        voltages = states["voltages"]
-        voltage_terms = jnp.zeros_like(voltages)  # mV
-        constant_terms = jnp.zeros_like(voltages)
-        new_channel_states = []
-        for channel in channels:
-            # TODO need to pass params.
-            states, membrane_current_terms = channel.step(states, dt, voltages, params)
-            voltage_terms += membrane_current_terms[0]
-            constant_terms += membrane_current_terms[1]
-            new_channel_states.append(states)
-
-        return new_channel_states, (voltage_terms, constant_terms)
-
-    @staticmethod
-    def step_voltages(
+    def _reshape_and_implicit_voltage_step(
         voltages,
         voltage_terms,
         constant_terms,
@@ -78,7 +148,8 @@ class Module(ABC):
         summed_coupling_conds,
         branch_cond_fwd,
         branch_cond_bwd,
-        num_branches,
+        nbranches,
+        nseg,
         parents,
         kid_inds_in_each_level,
         max_num_kids,
@@ -88,6 +159,13 @@ class Module(ABC):
         delta_t,
     ):
         """Perform a voltage update with forward Euler."""
+        voltages = jnp.reshape(voltages, (nbranches, nseg))
+        voltage_terms = jnp.reshape(voltage_terms, (nbranches, nseg))
+        constant_terms = jnp.reshape(constant_terms, (nbranches, nseg))
+        coupling_conds_bwd = jnp.reshape(coupling_conds_bwd, (nbranches, nseg - 1))
+        coupling_conds_fwd = jnp.reshape(coupling_conds_fwd, (nbranches, nseg - 1))
+        summed_coupling_conds = jnp.reshape(summed_coupling_conds, (nbranches, nseg))
+
         return step_voltage_implicit(
             voltages,
             voltage_terms,
@@ -97,7 +175,7 @@ class Module(ABC):
             summed_coupling_conds,
             branch_cond_fwd,
             branch_cond_bwd,
-            num_branches,
+            nbranches,
             parents,
             kid_inds_in_each_level,
             max_num_kids,
@@ -107,19 +185,58 @@ class Module(ABC):
             delta_t,
         )
 
+    @staticmethod
+    def _step_channels(
+        states, delta_t, channels: List[Channel], params: Dict[str, jnp.ndarray]
+    ):
+        """One step of integration of the channels."""
+        voltages = states["voltages"]
+        voltage_terms = jnp.zeros_like(voltages)  # mV
+        constant_terms = jnp.zeros_like(voltages)
+        new_channel_states = []
+        for channel in channels:
+            states, membrane_current_terms = channel.step(
+                states, delta_t, voltages, params
+            )
+            voltage_terms += membrane_current_terms[0]
+            constant_terms += membrane_current_terms[1]
+            new_channel_states.append(states)
+
+        return new_channel_states, (voltage_terms, constant_terms)
+
+    def _step_synapse(
+        self,
+        u,
+        syn_channels,
+        params,
+        delta_t,
+        cumsum_num_branches,
+        syn_inds,
+        grouped_post_syn_inds,
+        grouped_post_syns,
+        nseg,
+    ):
+        """One step of integration of the channels."""
+        voltages = u["voltages"]
+        return [{}], jnp.zeros_like(voltages), jnp.zeros_like(voltages)
+
 
 class View:
+    """View of a `Module`."""
+
     def __init__(self, pointer: Module, view: pd.DataFrame):
         self.pointer = pointer
         self.view = view
 
     def set_params(self, key: str, val: float):
+        """Set parameters of the pointer."""
         self.pointer.params[key] = (
             self.pointer.params[key].at[self.view.index.values].set(val)
         )
         self.pointer.initialized_conds = False
 
     def adjust_view(self, key: str, index):
+        """Update view."""
         self.view = self.view[self.view[key] == index]
         self.view -= self.view.iloc[0]
         return self
