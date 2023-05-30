@@ -219,9 +219,11 @@ class Network(Module):
 
         new_voltages = self.step_voltages(
             voltages=jnp.reshape(voltages, (nbranches, nseg)),
-            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg)),
+            voltage_terms=jnp.reshape(v_terms, (nbranches, nseg))
+            + jnp.reshape(syn_voltage_terms, (nbranches, nseg)),
             constant_terms=jnp.reshape(const_terms, (nbranches, nseg))
-            + jnp.reshape(i_ext, (nbranches, nseg)),
+            + jnp.reshape(i_ext, (nbranches, nseg))
+            + jnp.reshape(syn_constant_terms, (nbranches, nseg)),
             coupling_conds_bwd=jnp.reshape(
                 self.coupling_conds_bwd, (nbranches, nseg - 1)
             ),
