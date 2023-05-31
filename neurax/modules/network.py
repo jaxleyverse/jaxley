@@ -89,11 +89,10 @@ class Network(Module):
                 for cell in self.cells
             ]
         )
+        # Defined only for forward Euler:
         self.comb_cum_kid_inds = cum_indizes_of_kids(
             [comb_ind_of_kids], self.max_num_kids, reset_at=[-1, 0]
-        )[
-            0
-        ]  # Defined only for forward Euler.
+        )[0]
         comb_ind_of_kids_in_each_level = [
             comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
         ]

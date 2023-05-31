@@ -10,14 +10,32 @@ from neurax.modules import Module
 from neurax.utils.cell_utils import index_of_loc
 
 
-def solve(
+def integrate(
     module: Module,
     stimuli: List[Stimulus],
     recordings: List[Recording],
     delta_t: float = 0.025,
+    solver: str = "bwd_euler",
+    tridiag_solver: str = "stone",
     checkpoint_lengths: Optional[List[int]] = None,
 ) -> jnp.ndarray:
-    """Solve the ODE and return recorded voltages."""
+    """
+    Solves ODE and simulates neuron model.
+
+    Args:
+        network: Network of cells that will be simulated.
+        init_v: Initial voltage. Should be a list where each entry is a `jnp.ndarray`
+            and has shape `num_branches, nseg_per_branch`.
+        mem_states: Initial values for the states of the membrane gates. List of list
+            of `jnp.ndarray`.
+        solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
+        tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
+            only affect `bwd_euler` and `cranck` solvers. Either of ["stone",
+            "thomas"], where `stone` is much faster on GPU for long branches
+            with many compartments and `thomas` is slightly faster on CPU (`thomas` is
+            used in NEURON).
+    """
+
     assert module.initialized, "Module is not initialized, run `.initialize()`."
 
     nseg = module.nseg
@@ -27,7 +45,9 @@ def solve(
     rec_inds = prepare_recs(recordings, nseg, cumsum_nbranches)
 
     def _body_fun(state, i_stim):
-        state = module.step(state, delta_t, i_inds, i_stim)
+        state = module.step(
+            state, delta_t, i_inds, i_stim, solver=solver, tridiag_solver=tridiag_solver
+        )
         return state, state["voltages"][rec_inds]
 
     nsteps_to_return = len(i_current)
