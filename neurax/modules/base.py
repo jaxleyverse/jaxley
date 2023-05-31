@@ -20,7 +20,8 @@ class Module(ABC):
         self.conns: List[Synapse] = None
 
         self.nodes: pd.DataFrame = None
-        self.edges: pd.DataFrame = None
+        self.syn_edges: pd.DataFrame = None
+        self.branch_edges: pd.DataFrame = None
 
         self.cumsum_nbranches: jnp.ndarray = None
         self.post_grouped_inds: jnp.ndarray = None
@@ -121,7 +122,7 @@ class Module(ABC):
             self.params,
             delta_t,
             self.cumsum_nbranches,
-            self.edges["pre_comp_index"].to_numpy(),
+            self.syn_edges["pre_comp_index"].to_numpy(),
             self.post_grouped_inds,
             self.post_grouped_syns,
             self.nseg,
