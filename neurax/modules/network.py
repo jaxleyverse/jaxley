@@ -11,7 +11,11 @@ from neurax.modules.cell import Cell, CellView
 from neurax.modules.branch import Branch
 from neurax.channels import Channel
 from neurax.connection import Connection
-from neurax.cell import merge_cells, _compute_index_of_kid, cum_indizes_of_kids
+from neurax.utils.cell_utils import (
+    merge_cells,
+    _compute_index_of_kid,
+    cum_indizes_of_kids,
+)
 from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
 from neurax.utils.syn_utils import postsyn_voltage_updates
 

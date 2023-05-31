@@ -7,7 +7,7 @@ import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch, BranchView
-from neurax.cell import (
+from neurax.utils.cell_utils import (
     compute_levels,
     compute_branches_in_level,
     _compute_index_of_kid,
