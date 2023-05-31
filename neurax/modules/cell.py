@@ -8,7 +8,6 @@ import pandas as pd
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch, BranchView
 from neurax.cell import (
-    _compute_num_kids,
     compute_levels,
     compute_branches_in_level,
     _compute_index_of_kid,
@@ -68,9 +67,8 @@ class Cell(Module):
     def init_morph(self):
         parents = self.comb_parents
 
-        self.num_kids = jnp.asarray(_compute_num_kids(parents))
-        self.levels = compute_levels(parents)
-        self.comb_branches_in_each_level = compute_branches_in_level(self.levels)
+        levels = compute_levels(parents)
+        self.comb_branches_in_each_level = compute_branches_in_level(levels)
 
         self.comb_parents_in_each_level = [
             jnp.unique(parents[c]) for c in self.comb_branches_in_each_level

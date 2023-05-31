@@ -53,10 +53,15 @@ class Compartment(Module):
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
-        
-    def set_params(self, key, val):
-        self.params[key][:] = val
 
+    def set_params(self, key, val):
+        """Set parameter for entire module.
+        
+        Unlike `Module.set_params()`, this method does not set 
+        `initialized_conds=False`.
+        """
+        self.params[key] = self.params[key].at[:].set(val)
+    
     def __getattr__(self, key):
         assert key == "cell"
         return ChannelView(self, self.nodes)
