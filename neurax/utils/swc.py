@@ -19,8 +19,8 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
 
     parents = _build_parents(sorted_branches)
     pathlengths = _compute_pathlengths(sorted_branches, content[:, 2:5])
-    for i in range(len(pathlengths)):
-        if pathlengths[i] == 0.0:
+    for i, pathlen in enumerate(pathlengths):
+        if pathlen == 0.0:
             warn("Found a segment with length 0. Clipping it to 1.0")
             pathlengths[i] = 1.0
     endpoint_radiuses = _extract_endpoint_radiuses(sorted_branches, content[:, 5])
