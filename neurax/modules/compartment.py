@@ -56,12 +56,12 @@ class Compartment(Module):
 
     def set_params(self, key, val):
         """Set parameter for entire module.
-        
-        Unlike `Module.set_params()`, this method does not set 
+
+        Unlike `Module.set_params()`, this method does not set
         `initialized_conds=False`.
         """
         self.params[key] = self.params[key].at[:].set(val)
-    
+
     def __getattr__(self, key):
         assert key == "cell"
         return ChannelView(self, self.nodes)
@@ -73,8 +73,8 @@ class CompartmentView(View):
     def __init__(self, pointer, view):
         super().__init__(pointer, view)
 
-    def __call__(self, index):
-        return super().adjust_view("comp_index", index)
+    def __call__(self, loc: float):
+        return super().adjust_view("comp_index", loc)
 
     def __getattr__(self, key):
         assert key == "channel"
@@ -87,5 +87,5 @@ class ChannelView(View):
     def __init__(self, pointer, view):
         super().__init__(pointer, view)
 
-    def __call__(self, index):
-        return super().adjust_view("channel_index", index)
+    def __call__(self, loc: float):
+        return super().adjust_view("channel_index", loc)

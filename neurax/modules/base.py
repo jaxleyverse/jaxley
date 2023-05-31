@@ -8,6 +8,7 @@ from neurax.channels import Channel
 from neurax.synapses import Synapse
 from neurax.solver_voltage import step_voltage_implicit
 from neurax.stimulus import get_external_input
+from neurax.utils.cell_utils import index_of_loc
 
 
 class Module(ABC):
@@ -87,6 +88,7 @@ class Module(ABC):
         )
 
     def initialize(self):
+        """Initialize the module."""
         self.init_morph()
         self.init_syns()
         self.init_conds()
@@ -236,7 +238,11 @@ class Module(ABC):
         grouped_post_syns,
         nseg,
     ):
-        """One step of integration of the channels."""
+        """One step of integration of the channels.
+
+        `Network` overrides this method (because it actually has synapses), whereas
+        `Compartment`, `Branch`, and `Cell` do not override this.
+        """
         voltages = u["voltages"]
         return [{}], jnp.zeros_like(voltages), jnp.zeros_like(voltages)
 
@@ -255,8 +261,9 @@ class View:
         )
         self.pointer.initialized_conds = False
 
-    def adjust_view(self, key: str, index):
+    def adjust_view(self, key: str, loc: float):
         """Update view."""
+        index = index_of_loc(0, loc, self.pointer.nseg)
         self.view = self.view[self.view[key] == index]
         self.view -= self.view.iloc[0]
         return self
