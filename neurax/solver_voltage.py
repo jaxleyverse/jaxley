@@ -13,18 +13,18 @@ def step_voltage_explicit(
     coupling_conds_fwd,
     branch_cond_fwd,
     branch_cond_bwd,
-    num_branches,
+    nbranches,
     parents,
     kid_inds,
     max_num_kids,
     delta_t,
 ):
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
-    voltages = jnp.reshape(voltages, (num_branches, -1))
-    voltage_terms = jnp.reshape(voltage_terms, (num_branches, -1))
-    constant_terms = jnp.reshape(constant_terms, (num_branches, -1))
+    voltages = jnp.reshape(voltages, (nbranches, -1))
+    voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
+    constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
 
-    update = vectorfield(
+    update = voltage_vectorfield(
         parents,
         voltages,
         voltage_terms,
@@ -49,7 +49,7 @@ def step_voltage_implicit(
     summed_coupling_conds,
     branch_cond_fwd,
     branch_cond_bwd,
-    num_branches,
+    nbranches,
     parents,
     kid_inds_in_each_level,
     max_num_kids,
@@ -59,12 +59,19 @@ def step_voltage_implicit(
     delta_t,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
+    voltages = jnp.reshape(voltages, (nbranches, -1))
+    voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
+    constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
+    coupling_conds_bwd = jnp.reshape(coupling_conds_bwd, (nbranches, -1))
+    coupling_conds_fwd = jnp.reshape(coupling_conds_fwd, (nbranches, -1))
+    summed_coupling_conds = jnp.reshape(summed_coupling_conds, (nbranches, -1))
+
     # Define quasi-tridiagonal system.
     lowers, diags, uppers, solves = define_all_tridiags(
         voltages,
         voltage_terms,
         constant_terms,
-        num_branches,
+        nbranches,
         coupling_conds_bwd,
         coupling_conds_fwd,
         summed_coupling_conds,
@@ -98,7 +105,7 @@ def step_voltage_implicit(
     return solves
 
 
-def vectorfield(
+def voltage_vectorfield(
     parents,
     voltages,
     voltage_terms,
@@ -123,28 +130,29 @@ def vectorfield(
     )
 
     # Current through branch points.
-    vecfield = vecfield.at[:, -1].add(
-        (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
-    )
-
-    # Several branches might have the same parent, so we have to either update these
-    # entries sequentially or we have to build a matrix with width being the maximum
-    # number of kids and then sum.
-    parallel_elim = False
-    if parallel_elim:
-        term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
-        add_to_vecfield = jnp.zeros((max_num_kids * len(parents)))
-        add_to_vecfield = add_to_vecfield.at[kid_inds].set(term_to_add)
-        vecfield = vecfield.at[parents, 0].add(
-            jnp.sum(jnp.reshape(add_to_vecfield, (-1, max_num_kids)), axis=1)
+    if branch_cond_bwd.shape[1] > 0:
+        vecfield = vecfield.at[:, -1].add(
+            (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
         )
-    else:
-        vecfield = lax.fori_loop(
-            0,
-            len(parents),
-            _body_fun_current_from_kids,
-            (vecfield, voltages, parents, branch_cond_fwd),
-        )[0]
+
+        # Several branches might have the same parent, so we have to either update these
+        # entries sequentially or we have to build a matrix with width being the maximum
+        # number of kids and then sum.
+        parallel_elim = False
+        if parallel_elim:
+            term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
+            add_to_vecfield = jnp.zeros((max_num_kids * len(parents)))
+            add_to_vecfield = add_to_vecfield.at[kid_inds].set(term_to_add)
+            vecfield = vecfield.at[parents, 0].add(
+                jnp.sum(jnp.reshape(add_to_vecfield, (-1, max_num_kids)), axis=1)
+            )
+        else:
+            vecfield = lax.fori_loop(
+                0,
+                len(parents),
+                _body_fun_current_from_kids,
+                (vecfield, voltages, parents, branch_cond_fwd),
+            )[0]
 
     return vecfield
 
@@ -274,7 +282,10 @@ def _eliminate_parents_upper(
 ):
     bil = branches_in_level
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
-        diags[bil, -1], solves[bil, -1], branch_cond_fwd[bil], branch_cond_bwd[bil],
+        diags[bil, -1],
+        solves[bil, -1],
+        branch_cond_fwd[bil],
+        branch_cond_bwd[bil],
     )
     parallel_elim = True
     if parallel_elim:

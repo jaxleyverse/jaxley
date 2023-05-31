@@ -186,8 +186,8 @@ class CellView(View):
     def __init__(self, pointer, view):
         super().__init__(pointer, view)
 
-    def __call__(self, loc: float):
-        return super().adjust_view("cell_index", loc)
+    def __call__(self, index: float):
+        return super().adjust_view("cell_index", index)
 
     def __getattr__(self, key):
         assert key == "branch"

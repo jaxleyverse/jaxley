@@ -6,9 +6,8 @@ import pandas as pd
 
 from neurax.channels import Channel
 from neurax.synapses import Synapse
-from neurax.solver_voltage import step_voltage_implicit
+from neurax.solver_voltage import step_voltage_implicit, step_voltage_explicit
 from neurax.stimulus import get_external_input
-from neurax.utils.cell_utils import index_of_loc
 
 
 class Module(ABC):
@@ -103,7 +102,15 @@ class Module(ABC):
     def init_morph(self):
         self.initialized_morph = True
 
-    def step(self, u, delta_t, i_inds, i_current):
+    def step(
+        self,
+        u,
+        delta_t,
+        i_inds,
+        i_current,
+        solver: str = "bwd_euler",
+        tridiag_solver: str = "stone",
+    ):
         """One step of integration."""
         voltages = u["voltages"]
 
@@ -131,25 +138,40 @@ class Module(ABC):
         )
 
         # Voltage steps.
-        new_voltages = self._reshape_and_implicit_voltage_step(
-            voltages=voltages,
-            voltage_terms=v_terms + syn_voltage_terms,
-            constant_terms=const_terms + i_ext + syn_constant_terms,
-            coupling_conds_bwd=self.coupling_conds_bwd,
-            coupling_conds_fwd=self.coupling_conds_fwd,
-            summed_coupling_conds=self.summed_coupling_conds,
-            branch_cond_fwd=self.branch_conds_fwd,
-            branch_cond_bwd=self.branch_conds_bwd,
-            nbranches=self.total_nbranches,
-            nseg=self.nseg,
-            parents=self.comb_parents,
-            kid_inds_in_each_level=self.comb_cum_kid_inds_in_each_level,
-            max_num_kids=4,
-            parents_in_each_level=self.comb_parents_in_each_level,
-            branches_in_each_level=self.comb_branches_in_each_level,
-            tridiag_solver="thomas",
-            delta_t=delta_t,
-        )
+        if solver == "bwd_euler":
+            new_voltages = step_voltage_implicit(
+                voltages=voltages,
+                voltage_terms=v_terms + syn_voltage_terms,
+                constant_terms=const_terms + i_ext + syn_constant_terms,
+                coupling_conds_bwd=self.coupling_conds_bwd,
+                coupling_conds_fwd=self.coupling_conds_fwd,
+                summed_coupling_conds=self.summed_coupling_conds,
+                branch_cond_fwd=self.branch_conds_fwd,
+                branch_cond_bwd=self.branch_conds_bwd,
+                nbranches=self.total_nbranches,
+                parents=self.comb_parents,
+                kid_inds_in_each_level=self.comb_cum_kid_inds_in_each_level,
+                max_num_kids=self.max_num_kids,
+                parents_in_each_level=self.comb_parents_in_each_level,
+                branches_in_each_level=self.comb_branches_in_each_level,
+                tridiag_solver=tridiag_solver,
+                delta_t=delta_t,
+            )
+        else:
+            new_voltages = step_voltage_explicit(
+                voltages,
+                v_terms + syn_voltage_terms,
+                const_terms + i_ext + syn_constant_terms,
+                coupling_conds_bwd=self.coupling_conds_bwd,
+                coupling_conds_fwd=self.coupling_conds_fwd,
+                branch_cond_fwd=self.branch_conds_fwd,
+                branch_cond_bwd=self.branch_conds_bwd,
+                nbranches=self.total_nbranches,
+                parents=self.comb_parents,
+                kid_inds=self.comb_cum_kid_inds,
+                max_num_kids=self.max_num_kids,
+                delta_t=delta_t,
+            )
 
         # Rebuild state.
         final_state = new_channel_states[0]
@@ -159,53 +181,6 @@ class Module(ABC):
         final_state["voltages"] = new_voltages.flatten(order="C")
 
         return final_state
-
-    @staticmethod
-    def _reshape_and_implicit_voltage_step(
-        voltages,
-        voltage_terms,
-        constant_terms,
-        coupling_conds_bwd,
-        coupling_conds_fwd,
-        summed_coupling_conds,
-        branch_cond_fwd,
-        branch_cond_bwd,
-        nbranches,
-        nseg,
-        parents,
-        kid_inds_in_each_level,
-        max_num_kids,
-        parents_in_each_level,
-        branches_in_each_level,
-        tridiag_solver,
-        delta_t,
-    ):
-        """Perform a voltage update with forward Euler."""
-        voltages = jnp.reshape(voltages, (nbranches, nseg))
-        voltage_terms = jnp.reshape(voltage_terms, (nbranches, nseg))
-        constant_terms = jnp.reshape(constant_terms, (nbranches, nseg))
-        coupling_conds_bwd = jnp.reshape(coupling_conds_bwd, (nbranches, nseg - 1))
-        coupling_conds_fwd = jnp.reshape(coupling_conds_fwd, (nbranches, nseg - 1))
-        summed_coupling_conds = jnp.reshape(summed_coupling_conds, (nbranches, nseg))
-
-        return step_voltage_implicit(
-            voltages,
-            voltage_terms,
-            constant_terms,
-            coupling_conds_bwd,
-            coupling_conds_fwd,
-            summed_coupling_conds,
-            branch_cond_fwd,
-            branch_cond_bwd,
-            nbranches,
-            parents,
-            kid_inds_in_each_level,
-            max_num_kids,
-            parents_in_each_level,
-            branches_in_each_level,
-            tridiag_solver,
-            delta_t,
-        )
 
     @staticmethod
     def _step_channels(
@@ -261,9 +236,8 @@ class View:
         )
         self.pointer.initialized_conds = False
 
-    def adjust_view(self, key: str, loc: float):
+    def adjust_view(self, key: str, index: float):
         """Update view."""
-        index = index_of_loc(0, loc, self.pointer.nseg)
         self.view = self.view[self.view[key] == index]
         self.view -= self.view.iloc[0]
         return self

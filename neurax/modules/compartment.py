@@ -4,6 +4,7 @@ import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.channels import Channel  # , ChannelView
+from neurax.utils.cell_utils import index_of_loc
 
 
 class Compartment(Module):
@@ -62,10 +63,6 @@ class Compartment(Module):
         """
         self.params[key] = self.params[key].at[:].set(val)
 
-    def __getattr__(self, key):
-        assert key == "cell"
-        return ChannelView(self, self.nodes)
-
 
 class CompartmentView(View):
     """CompartmentView."""
@@ -74,18 +71,5 @@ class CompartmentView(View):
         super().__init__(pointer, view)
 
     def __call__(self, loc: float):
-        return super().adjust_view("comp_index", loc)
-
-    def __getattr__(self, key):
-        assert key == "channel"
-        return ChannelView(self.pointer, self.view)
-
-
-class ChannelView(View):
-    """ChannelView."""
-
-    def __init__(self, pointer, view):
-        super().__init__(pointer, view)
-
-    def __call__(self, loc: float):
-        return super().adjust_view("channel_index", loc)
+        index = index_of_loc(0, loc, self.pointer.nseg)
+        return super().adjust_view("comp_index", index)
