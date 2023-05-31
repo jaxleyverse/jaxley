@@ -8,6 +8,7 @@ from neurax.modules.base import Module, View
 from neurax.modules.compartment import Compartment, CompartmentView
 from neurax.utils.cell_utils import compute_coupling_cond
 
+
 class Branch(Module):
     branch_params: Dict = {}
     branch_states: Dict = {}
@@ -36,7 +37,12 @@ class Branch(Module):
             )
         )
         # Synapse indexing.
-        self.edges = pd.DataFrame(dict(pre_comp_index=[], post_comp_index=[], type=""))
+        self.syn_edges = pd.DataFrame(
+            dict(pre_comp_index=[], post_comp_index=[], type="")
+        )
+        self.branch_edges = pd.DataFrame(
+            dict(parent_branch_index=[], child_branch_index=[])
+        )
 
     def __getattr__(self, key):
         assert key == "comp"

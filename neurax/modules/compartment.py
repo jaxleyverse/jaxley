@@ -47,8 +47,13 @@ class Compartment(Module):
             dict(comp_index=[0], branch_index=[0], cell_index=[0])
         )
         # Synapse indexing.
-        self.edges = pd.DataFrame(dict(pre_comp_index=[], post_comp_index=[], type=""))
-
+        self.syn_edges = pd.DataFrame(
+            dict(pre_comp_index=[], post_comp_index=[], type="")
+        )
+        self.branch_edges = pd.DataFrame(
+            dict(parent_branch_index=[], child_branch_index=[])
+        )
+        
     def set_params(self, key, val):
         self.params[key][:] = val
 

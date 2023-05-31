@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Callable
 import numpy as np
 import jax.numpy as jnp
 from jax import vmap
+from jax.lax import ScatterDimensionNumbers, scatter_add
 import pandas as pd
 
 from neurax.modules.base import Module, View
@@ -46,7 +47,15 @@ class Cell(Module):
             )
         )
         # Synapse indexing.
-        self.edges = pd.DataFrame(dict(pre_comp_index=[], post_comp_index=[], type=""))
+        self.syn_edges = pd.DataFrame(
+            dict(pre_comp_index=[], post_comp_index=[], type="")
+        )
+        self.branch_edges = pd.DataFrame(
+            dict(
+                parent_branch_index=self.comb_parents[1:],
+                child_branch_index=np.arange(1, self.total_nbranches),
+            )
+        )
 
         self.initialized_morph = False
         self.initialized_conds = False
@@ -95,57 +104,82 @@ class Cell(Module):
         self.coupling_conds_bwd = conds[1]
         summed_coupling_conds = conds[2]
 
-        conds = self.self.init_cell_conds(
-            axial_resistivity,
-            radiuses,
-            lengths,
+        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
+        child_inds = self.branch_edges["child_branch_index"].to_numpy()
+
+        conds = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
+            axial_resistivity[par_inds, 0],
+            axial_resistivity[child_inds, -1],
+            radiuses[par_inds, 0],
+            radiuses[child_inds, -1],
+            lengths[par_inds, 0],
+            lengths[child_inds, -1],
+        )
+        self.summed_coupling_conds = self.update_summed_coupling_conds(
             summed_coupling_conds,
-            nbranches,
+            child_inds,
+            conds[0],
+            conds[1],
             parents,
         )
 
-        self.branch_conds_fwd = conds[0]
-        self.branch_conds_bwd = conds[1]
-        self.summed_coupling_conds = conds[2]
+        self.branch_conds_fwd = jnp.concatenate([jnp.asarray([0.0]), conds[0]])
+        self.branch_conds_bwd = jnp.concatenate([jnp.asarray([0.0]), conds[1]])
 
         self.initialized_conds = True
 
     @staticmethod
-    def init_cell_conds(
-        axial_resistivity, radiuses, lengths, summed_coupling_conds, nbranches, parents
-    ):
-        # Compute coupling conductance for segments within a branch.
-        # `radius`: um
-        # `r_a`: ohm cm
-        # `length_single_compartment`: um
-        # `coupling_conds`: S * um / cm / um^2 = S / cm / um
-        # Compute coupling conductance for segments at branch points.
-        rad1 = radiuses[jnp.arange(1, nbranches), -1]
-        rad2 = radiuses[parents[jnp.arange(1, nbranches)], 0]
-        l1 = lengths[jnp.arange(1, nbranches), -1]
-        l2 = lengths[parents[jnp.arange(1, nbranches)], 0]
-        r_a1 = axial_resistivity[jnp.arange(1, nbranches), -1]
-        r_a2 = axial_resistivity[parents[jnp.arange(1, nbranches)], 0]
-        branch_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
-        branch_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
+    def init_cell_conds(ra_parent, ra_child, r_parent, r_child, l_parent, l_child):
+        """Initializes the cell conductances, i.e., the ones at branch points.
+
+        This method is used via vmap. Inputs should be scalar.
+
+        `radius`: um
+        `r_a`: ohm cm
+        `length_single_compartment`: um
+        `coupling_conds`: S * um / cm / um^2 = S / cm / um
+        """
+        branch_conds_fwd = compute_coupling_cond(
+            r_child, r_parent, ra_parent, l_child, l_parent
+        )
+        branch_conds_bwd = compute_coupling_cond(
+            r_parent, r_child, ra_child, l_parent, l_child
+        )
 
         # Convert (S / cm / um) -> (mS / cm^2)
         branch_conds_fwd *= 10**7
         branch_conds_bwd *= 10**7
 
-        # TODO: get rid of for-loop?
-        for b in range(1, nbranches):
-            summed_coupling_conds = summed_coupling_conds.at[b, -1].add(
-                branch_conds_fwd[b - 1]
-            )
-            summed_coupling_conds = summed_coupling_conds.at[parents[b], 0].add(
-                branch_conds_bwd[b - 1]
-            )
+        return branch_conds_fwd, branch_conds_bwd
 
-        branch_conds_fwd = jnp.concatenate([jnp.asarray([0.0]), branch_conds_fwd])
-        branch_conds_bwd = jnp.concatenate([jnp.asarray([0.0]), branch_conds_bwd])
+    @staticmethod
+    def update_summed_coupling_conds(
+        summed_conds, child_inds, conds_fwd, conds_bwd, parents
+    ):
+        """Perform updates on `summed_coupling_conds`.
 
-        return branch_conds_fwd, branch_conds_bwd, summed_coupling_conds
+        Args:
+            summed_conds: shape [num_branches, nseg]
+            child_inds: shape [num_branches - 1]
+            conds_fwd: shape [num_branches - 1]
+            conds_bwd: shape [num_branches - 1]
+            parents: shape [num_branches]
+        """
+
+        summed_conds = summed_conds.at[child_inds, -1].add(conds_fwd[child_inds - 1])
+
+        dnums = ScatterDimensionNumbers(
+            update_window_dims=(),
+            inserted_window_dims=(0, 1),
+            scatter_dims_to_operand_dims=(0, 1),
+        )
+        summed_conds = scatter_add(
+            summed_conds,
+            jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
+            conds_bwd[child_inds - 1],
+            dnums,
+        )
+        return summed_conds
 
 
 class CellView(View):

@@ -122,7 +122,7 @@ class Network(Module):
         self.initialized_morph = True
 
     def init_conds(self):
-        """TODO: has to recompute."""
+        """Given an axial resisitivity, set the coupling conductances."""
         # Initially, the coupling conductances are set to `None`. They have to be set
         # by calling `.set_axial_resistivities()`.
         nbranches = self.total_nbranches
@@ -140,17 +140,29 @@ class Network(Module):
         )
         self.coupling_conds_fwd = conds[0]
         self.coupling_conds_bwd = conds[1]
-        self.summed_coupling_conds = conds[2]
+        summed_coupling_conds = conds[2]
 
-        self.branch_conds_fwd = jnp.concatenate(
-            [c.branch_conds_fwd for c in self.cells]
+        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
+        child_inds = self.branch_edges["child_branch_index"].to_numpy()
+
+        conds = vmap(Cell.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
+            axial_resistivity[par_inds, 0],
+            axial_resistivity[child_inds, -1],
+            radiuses[par_inds, 0],
+            radiuses[child_inds, -1],
+            lengths[par_inds, 0],
+            lengths[child_inds, -1],
         )
-        self.branch_conds_bwd = jnp.concatenate(
-            [c.branch_conds_bwd for c in self.cells]
+        self.summed_coupling_conds = Cell.update_summed_coupling_conds(
+            summed_coupling_conds,
+            child_inds,
+            conds[0],
+            conds[1],
+            parents,
         )
-        self.summed_coupling_conds = jnp.concatenate(
-            [c.summed_coupling_conds for c in self.cells]
-        )
+
+        self.branch_conds_fwd = jnp.concatenate([jnp.asarray([0.0]), conds[0]])
+        self.branch_conds_bwd = jnp.concatenate([jnp.asarray([0.0]), conds[1]])
         self.initialized_conds = True
 
     def init_syns(self):
