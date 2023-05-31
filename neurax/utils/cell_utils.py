@@ -1,4 +1,176 @@
 import numpy as np
+import jax.numpy as jnp
+
+
+def equal_segments(branch_property: list, nseg_per_branch: int):
+    """Generates segments where some property is the same in each segment.
+
+    Args:
+        branch_property: List of values of the property in each branch. Should have
+            `len(branch_property) == num_branches`.
+    """
+    assert isinstance(branch_property, list), "branch_property must be a list."
+    return jnp.asarray([branch_property] * nseg_per_branch).T
+
+
+def linear_segments(
+    initial_val: float, endpoint_vals: list, parents: jnp.ndarray, nseg_per_branch: int
+):
+    """Generates segments where some property is linearly interpolated.
+
+    Args:
+        initial_val: The value at the tip of the soma.
+        endpoint_vals: The value at the endpoints of each branch.
+    """
+    branch_property = endpoint_vals + [initial_val]
+    num_branches = len(parents)
+    # Compute radiuses by linear interpolation.
+    endpoint_radiuses = jnp.asarray(branch_property)
+
+    def compute_rad(branch_ind, loc):
+        start = endpoint_radiuses[parents[branch_ind]]
+        end = endpoint_radiuses[branch_ind]
+        return (end - start) * loc + start
+
+    branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), nseg_per_branch)
+    locs_of_each_comp = jnp.linspace(1, 0, nseg_per_branch).repeat(num_branches)
+    rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
+
+    return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
+
+
+def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
+    """
+    Build full list of which branches are solved in which iteration.
+
+    From the branching pattern of single cells, this "merges" them into a single
+    ordering of branches.
+
+    Args:
+        cumsum_num_branches: cumulative number of branches. E.g., for three cells with
+            10, 15, and 5 branches respectively, this will should be a list containing
+            `[0, 10, 25, 30]`.
+        arrs: A list of a list of arrays that should be merged.
+        exclude_first: If `True`, the first element of each list in `arrs` will remain
+            unchanged. Useful if a `-1` (which indicates "no parent") entry should not
+            be changed.
+
+    Returns:
+        A list of arrays which contain the branch indices that are computed at each
+        level (i.e., iteration).
+    """
+    ps = []
+    for i, att in enumerate(arrs):
+        p = att
+        if exclude_first:
+            p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
+        else:
+            p = [p_in_level + cumsum_num_branches[i] for p_in_level in p]
+        ps.append(p)
+
+    max_len = max([len(att) for att in arrs])
+    combined_parents_in_level = []
+    for i in range(max_len):
+        current_ps = []
+        for p in ps:
+            if len(p) > i:
+                current_ps.append(p[i])
+        combined_parents_in_level.append(jnp.concatenate(current_ps))
+
+    return combined_parents_in_level
+
+
+def compute_levels(parents):
+    levels = np.zeros_like(parents)
+
+    for i, p in enumerate(parents):
+        if p == -1:
+            levels[i] = 0
+        else:
+            levels[i] = levels[p] + 1
+    return levels
+
+
+def compute_branches_in_level(levels):
+    num_branches = len(levels)
+    branches_in_each_level = []
+    for l in range(np.max(levels) + 1):
+        branches_in_current_level = []
+        for b in range(num_branches):
+            if levels[b] == l:
+                branches_in_current_level.append(b)
+        branches_in_current_level = jnp.asarray(branches_in_current_level)
+        branches_in_each_level.append(branches_in_current_level)
+    return branches_in_each_level
+
+
+def _compute_num_kids(parents):
+    num_branches = len(parents)
+    num_kids = []
+    for b in range(num_branches):
+        n = np.sum(np.asarray(parents) == b)
+        num_kids.append(n)
+    return num_kids
+
+
+def _compute_index_of_kid(parents):
+    num_branches = len(parents)
+    current_num_kids_for_each_branch = np.zeros((num_branches,), np.dtype("int"))
+    index_of_kid = [-1]
+    for b in range(1, num_branches):
+        index_of_kid.append(current_num_kids_for_each_branch[parents[b]])
+        current_num_kids_for_each_branch[parents[b]] += 1
+    return index_of_kid
+
+
+def get_num_neighbours(
+    num_kids: jnp.ndarray,
+    nseg_per_branch: int,
+    num_branches: int,
+):
+    """
+    Number of neighbours of each compartment.
+    """
+    num_neighbours = 2 * jnp.ones((num_branches * nseg_per_branch))
+    num_neighbours = num_neighbours.at[nseg_per_branch - 1].set(1.0)
+    num_neighbours = num_neighbours.at[jnp.arange(num_branches) * nseg_per_branch].set(
+        num_kids + 1.0
+    )
+    return num_neighbours
+
+
+def cum_indizes_of_kids(ind_of_kids_in_each_level, max_num_kids, reset_at=[0]):
+    """Returns the index of a kid within a layer.
+
+    This function handles every layer separately.
+
+    Example:
+    ind_of_kids_in_each_level[0] == [0, 1, 0, 1, 2]
+    max_num_kids == 8
+    Returns: [0, 1, 8, 9, 10]
+
+    The function adds `max_num_kids` whenever a `-1` or `0` is encountered. For
+    backward Euler, adding `max_num_kids` when a `-1` is encountered makes no
+    difference because they are all in the first layer and triangulation does not
+    affect them. However, for forward Euler, we have only a single layer, so we
+    specifically have to add `max_num_kids` when we see a `-1`.
+
+    Args:
+        ind_of_kids_in_each_level: List where every element is one layer. Each element
+            in the list indicates the how-many-eth child a certain branch is of its
+            parent.
+        reset_at: List of integers at which to reset.
+    """
+    cum_inds_in_each_level = []
+    for ind_kid in ind_of_kids_in_each_level:
+        base_ind = 0
+        cum_ind_in_level = []
+        for i, current_kid_ind in enumerate(ind_kid):
+            if current_kid_ind in reset_at and i > 0:
+                base_ind += max_num_kids
+            cum_ind_in_level.append(base_ind + current_kid_ind)
+        cum_inds_in_each_level.append(jnp.asarray(cum_ind_in_level))
+    return cum_inds_in_each_level
 
 
 def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
