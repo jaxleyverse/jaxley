@@ -161,8 +161,11 @@ class Network(Module):
             parents,
         )
 
-        self.branch_conds_fwd = jnp.concatenate([jnp.asarray([0.0]), conds[0]])
-        self.branch_conds_bwd = jnp.concatenate([jnp.asarray([0.0]), conds[1]])
+        self.branch_conds_fwd = jnp.zeros((nbranches * nseg))
+        self.branch_conds_bwd = jnp.zeros((nbranches * nseg))
+        self.branch_conds_fwd = self.branch_conds_fwd.at[child_inds].set(conds[0])
+        self.branch_conds_bwd = self.branch_conds_bwd.at[child_inds].set(conds[1])
+
         self.initialized_conds = True
 
     def init_syns(self):
