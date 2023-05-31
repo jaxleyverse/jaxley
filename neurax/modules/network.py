@@ -183,11 +183,11 @@ class Network(Module):
             self.post_grouped_syns.append(grouped_syns)
 
         # Prepare synapses.
-        self.edges = pd.DataFrame()
+        self.syn_edges = pd.DataFrame()
         for i in range(len(self.conns)):
-            self.edges = pd.concat(
+            self.syn_edges = pd.concat(
                 [
-                    self.edges,
+                    self.syn_edges,
                     pd.DataFrame(
                         dict(
                             pre_comp_index=pre_comp_inds[i],
@@ -197,6 +197,13 @@ class Network(Module):
                     ),
                 ]
             )
+
+        self.branch_edges = pd.DataFrame(
+            dict(
+                parent_branch_index=self.comb_parents[self.comb_parents != -1],
+                child_branch_index=np.where(self.comb_parents != -1)[0],
+            )
+        )
 
         self.initialized_syns = True
 
