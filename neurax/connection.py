@@ -1,4 +1,7 @@
+from typing import List
+
 import numpy as np
+from neurax.synapses import Synapse
 
 
 class Connection:
@@ -21,18 +24,27 @@ class Connection:
         self.post_loc = post_loc
 
 
+class Connectivity:
+    def __init__(self, synapse_type: Synapse, conns: List[Connection]):
+        self.synapse_type = synapse_type
+        self.conns = conns
+
+
 class ConnectivityBuilder:
     """Helper to build layers of connectivity patterns."""
 
-    def __init__(self, cells):
-        self.cells = cells
+    def __init__(self, nbranches_per_submodule: List[int]):
+        self.nbranches_per_submodule = nbranches_per_submodule
 
     def fc(self, pre_cell_inds, post_cell_inds):
-        """Returns a list of `Connection`s which build a fully connected layer."""
+        """Returns a list of `Connection`s which build a fully connected layer.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
         conns = []
         for pre_ind in pre_cell_inds:
             for post_ind in post_cell_inds:
-                num_branches_post = self.cells[post_ind].num_branches
+                num_branches_post = self.nbranches_per_submodule[post_ind]
                 rand_branch = np.random.randint(0, num_branches_post)
                 rand_loc = np.random.rand()
                 conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))

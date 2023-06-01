@@ -16,18 +16,20 @@ from neurax.utils.cell_utils import (
     _compute_index_of_kid,
     cum_indizes_of_kids,
 )
-from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
 from neurax.utils.syn_utils import postsyn_voltage_updates
+from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
 
 
 class Network(Module):
+    """Network."""
+
     network_params: Dict = {}
     network_states: Dict = {}
 
     def __init__(
         self,
         cells: List[Cell],
-        conns: List[List[Connection]],
+        connectivities: List[List[Connection]],
     ):
         """Initialize network of cells and synapses.
 
@@ -38,10 +40,11 @@ class Network(Module):
         super().__init__()
         self._init_params_and_state(self.network_params, self.network_states)
         self._append_to_params_and_state(cells)
-        self._append_synapses_to_params_and_state(conns)
+        self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
-        self.conns = conns
+        self.connectivities = connectivities
+        self.conns = [connectivity.synapse_type for connectivity in connectivities]
         self.nseg = cells[0].nseg
         self.channels = cells[0].channels
 
@@ -49,13 +52,23 @@ class Network(Module):
         self.initialized_syns = False
         self.initialized_conds = False
 
-    def _append_synapses_to_params_and_state(self, conns):
-        for conn in conns:
-            for key in conn[0].synapse_params:
-                param_vals = jnp.asarray([c.synapse_params[key] for c in conn])
+    def _append_synapses_to_params_and_state(self, connectivities):
+        for connectivity in connectivities:
+            for key in connectivity.synapse_type.synapse_params:
+                param_vals = jnp.asarray(
+                    [
+                        connectivity.synapse_type.synapse_params[key]
+                        for _ in connectivity.conns
+                    ]
+                )
                 self.params[key] = param_vals
-            for key in conn[0].synapse_states:
-                state_vals = jnp.asarray([c.synapse_states[key] for c in conn])
+            for key in connectivity.synapse_type.synapse_states:
+                state_vals = jnp.asarray(
+                    [
+                        connectivity.synapse_type.synapse_states[key]
+                        for _ in connectivity.conns
+                    ]
+                )
                 self.states[key] = state_vals
 
     def __getattr__(self, key):
@@ -176,12 +189,16 @@ class Network(Module):
         post_comp_inds = []
         self.post_grouped_inds = []
         self.post_grouped_syns = []
-        for conn in self.conns:
-            pre_syn_cell_inds, pre_syn_inds = prepare_presyn(conn, self.nseg)
+        for connectivity in self.connectivities:
+            pre_syn_cell_inds, pre_syn_inds = prepare_presyn(
+                connectivity.conns, self.nseg
+            )
             pre_comp_inds.append(
                 self.cumsum_nbranches[pre_syn_cell_inds] * self.nseg + pre_syn_inds
             )
-            grouped_post_inds, grouped_syns, post_syn = prepare_postsyn(conn, self.nseg)
+            grouped_post_inds, grouped_syns, post_syn = prepare_postsyn(
+                connectivity.conns, self.nseg
+            )
             post_comp_inds.append(
                 self.cumsum_nbranches[post_syn[:, 0]] * self.nseg + post_syn[:, 1]
             )
@@ -190,7 +207,7 @@ class Network(Module):
 
         # Prepare synapses.
         self.syn_edges = pd.DataFrame()
-        for i in range(len(self.conns)):
+        for i, connectivity in enumerate(self.connectivities):
             self.syn_edges = pd.concat(
                 [
                     self.syn_edges,
@@ -198,7 +215,7 @@ class Network(Module):
                         dict(
                             pre_comp_index=pre_comp_inds[i],
                             post_comp_index=post_comp_inds[i],
-                            type="glutamate",
+                            type=type(connectivity.synapse_type).__name__,
                         )
                     ),
                 ]
@@ -213,8 +230,8 @@ class Network(Module):
 
         self.initialized_syns = True
 
+    @staticmethod
     def _step_synapse(
-        self,
         u,
         syn_channels,
         params,
@@ -232,7 +249,7 @@ class Network(Module):
         syn_constant_terms = jnp.zeros_like(voltages)
         new_syn_states = []
         for i, list_of_synapses in enumerate(syn_channels):
-            synapse_states, synapse_current_terms = list_of_synapses[0].step(
+            synapse_states, synapse_current_terms = list_of_synapses.step(
                 u, delta_t, voltages, params, syn_inds
             )
             synapse_current_terms = postsyn_voltage_updates(
