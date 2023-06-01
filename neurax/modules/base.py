@@ -87,12 +87,10 @@ class Module(ABC):
             for key in set_param.keys():
                 params[key] = params[key].at[inds].set(set_param[key])
 
-        # has to call `self.init_conds()`.
-        params["coupling_conds_bwd"] = self.coupling_conds_bwd
-        params["coupling_conds_fwd"] = self.coupling_conds_fwd
-        params["summed_coupling_conds"] = self.summed_coupling_conds
-        params["branch_conds_fwd"] = self.branch_conds_fwd
-        params["branch_conds_bwd"] = self.branch_conds_bwd
+        # Compute conductance params and append them.
+        cond_params = self.init_conds(params)
+        for key in cond_params:
+            params[key] = cond_params[key]
 
         return params
 
@@ -105,22 +103,20 @@ class Module(ABC):
     @property
     def initialized(self):
         """Whether the `Module` is ready to be solved or not."""
-        return (
-            self.initialized_morph and self.initialized_conds and self.initialized_syns
-        )
+        return self.initialized_morph and self.initialized_syns
 
     def initialize(self):
         """Initialize the module."""
         self.init_morph()
         self.init_syns()
-        self.init_conds()
         return self
 
     def init_syns(self):
         self.initialized_syns = True
 
-    def init_conds(self):
-        self.initialized_conds = True
+    def init_conds(self, params):
+        # TODO do we need this?
+        return self.params
 
     def init_morph(self):
         self.initialized_morph = True

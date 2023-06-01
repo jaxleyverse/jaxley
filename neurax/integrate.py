@@ -45,13 +45,18 @@ def integrate(
     i_current, i_inds = prepare_stim(stimuli, nseg, cumsum_nbranches)
     rec_inds = prepare_recs(recordings, nseg, cumsum_nbranches)
 
+    # Run `init_conds()` and return every parameter that is needed to solve the ODE.
+    # This includes conductances, radiuses, lenghts, axial_resistivities, but also
+    # coupling conductances.
+    all_params = module.get_all_parameters(params)
+
     def _body_fun(state, i_stim):
         state = module.step(
             state,
             delta_t,
             i_inds,
             i_stim,
-            params=params,
+            params=all_params,
             solver=solver,
             tridiag_solver=tridiag_solver,
         )

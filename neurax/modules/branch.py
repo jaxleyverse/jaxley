@@ -48,17 +48,18 @@ class Branch(Module):
         assert key == "comp"
         return CompartmentView(self, self.nodes)
 
-    def init_conds(self):
+    def init_conds(self, params):
         conds = self.init_branch_conds(
-            self.params["axial_resistivity"],
-            self.params["radius"],
-            self.params["length"],
-            self.nseg,
+            params["axial_resistivity"], params["radius"], params["length"], self.nseg,
         )
-        self.coupling_conds_fwd = conds[0]
-        self.coupling_conds_bwd = conds[1]
-        self.summed_coupling_conds = conds[2]
-        self.initialized_conds = True
+        cond_params = {
+            "branch_conds_fwd": self.branch_conds_fwd,
+            "branch_conds_bwd": self.branch_conds_bwd,
+        }
+        cond_params["coupling_conds_fwd"] = conds[0]
+        cond_params["coupling_conds_bwd"] = conds[1]
+        cond_params["summed_coupling_conds"] = conds[2]
+        return cond_params
 
     @staticmethod
     def init_branch_conds(axial_resistivity, radiuses, lengths, nseg):
@@ -79,8 +80,8 @@ class Branch(Module):
         coupling_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        coupling_conds_fwd *= 10**7
-        coupling_conds_bwd *= 10**7
+        coupling_conds_fwd *= 10 ** 7
+        coupling_conds_bwd *= 10 ** 7
 
         # Compute the summed coupling conductances of each compartment.
         summed_coupling_conds = jnp.zeros((nseg))
