@@ -10,6 +10,7 @@ def postsyn_voltage_updates(
     non_zero_voltage_term,
     non_zero_constant_term,
 ):
+    """Compute current at the post synapse."""
     voltage_term = jnp.zeros_like(voltages)
     constant_term = jnp.zeros_like(voltages)
 
@@ -18,12 +19,8 @@ def postsyn_voltage_updates(
         inserted_window_dims=(0,),
         scatter_dims_to_operand_dims=(0,),
     )
-
     voltage_term = scatter_add(
-        voltage_term,
-        post_syn_comp_inds[:, None],
-        non_zero_voltage_term,
-        dnums,
+        voltage_term, post_syn_comp_inds[:, None], non_zero_voltage_term, dnums
     )
     constant_term = scatter_add(
         constant_term, post_syn_comp_inds[:, None], non_zero_constant_term, dnums
