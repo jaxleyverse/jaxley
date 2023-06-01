@@ -127,8 +127,7 @@ class Module(ABC):
             self.conns,
             self.params,
             delta_t,
-            self.syn_edges["pre_comp_index"].to_numpy(),
-            self.syn_edges["post_comp_index"].to_numpy(),
+            self.syn_edges,
         )
 
         # Voltage steps.
@@ -196,8 +195,7 @@ class Module(ABC):
         syn_channels,
         params,
         delta_t,
-        pre_syn_comp_inds,
-        post_syn_comp_inds,
+        edges,
     ):
         """One step of integration of the channels.
 

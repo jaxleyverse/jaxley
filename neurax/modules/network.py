@@ -6,9 +6,8 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 
-from neurax.channels import Channel
 from neurax.connection import Connection
-from neurax.modules.base import Module, View
+from neurax.modules.base import Module
 from neurax.modules.branch import Branch
 from neurax.modules.cell import Cell, CellView
 from neurax.utils.cell_utils import merge_cells
@@ -195,23 +194,25 @@ class Network(Module):
         syn_channels,
         params,
         delta_t,
-        pre_syn_comp_inds,
-        post_syn_comp_inds,
+        edges: pd.DataFrame,
     ):
         """Perform one step of the synapses and obtain their currents."""
         voltages = u["voltages"]
+
+        pre_syn_inds = edges.groupby("type")["pre_comp_index"].apply(list)
+        post_syn_inds = edges.groupby("type")["post_comp_index"].apply(list)
 
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
         new_syn_states = []
         for i, list_of_synapses in enumerate(syn_channels):
             synapse_states, synapse_current_terms = list_of_synapses.step(
-                u, delta_t, voltages, params, pre_syn_comp_inds
+                u, delta_t, voltages, params, np.asarray(pre_syn_inds[i])
             )
             synapse_current_terms = postsyn_voltage_updates(
                 voltages,
-                post_syn_comp_inds,  # TODO: only one syn_type!
-                *synapse_current_terms,  # TODO: only one syn_type!
+                np.asarray(post_syn_inds[i]),
+                *synapse_current_terms,
             )
             syn_voltage_terms += synapse_current_terms[0]
             syn_constant_terms += synapse_current_terms[1]
