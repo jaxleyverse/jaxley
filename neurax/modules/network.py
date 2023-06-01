@@ -107,13 +107,13 @@ class Network(Module):
             ]
         )
         # Defined only for forward Euler:
-        self.comb_cum_kid_inds = cum_indizes_of_children(
+        self.comb_cum_child_inds = cum_indizes_of_children(
             [comb_ind_of_children], self.max_num_children, reset_at=[-1, 0]
         )[0]
         comb_ind_of_children_in_each_level = [
             comb_ind_of_children[bil] for bil in self.comb_branches_in_each_level
         ]
-        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_children(
+        self.comb_cum_child_inds_in_each_level = cum_indizes_of_children(
             comb_ind_of_children_in_each_level, self.max_num_children, reset_at=[0]
         )
 
