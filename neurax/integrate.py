@@ -1,5 +1,5 @@
 from math import prod
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import jax.numpy as jnp
 
@@ -14,6 +14,7 @@ def integrate(
     module: Module,
     stimuli: List[Stimulus],
     recordings: List[Recording],
+    params: Dict[str, jnp.ndarray],
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
     tridiag_solver: str = "stone",
@@ -46,7 +47,13 @@ def integrate(
 
     def _body_fun(state, i_stim):
         state = module.step(
-            state, delta_t, i_inds, i_stim, solver=solver, tridiag_solver=tridiag_solver
+            state,
+            delta_t,
+            i_inds,
+            i_stim,
+            params=params,
+            solver=solver,
+            tridiag_solver=tridiag_solver,
         )
         return state, state["voltages"][rec_inds]
 
