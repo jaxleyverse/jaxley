@@ -24,8 +24,6 @@ class Module(ABC):
         self.branch_edges: pd.DataFrame = None
 
         self.cumsum_nbranches: jnp.ndarray = None
-        self.post_grouped_inds: jnp.ndarray = None
-        self.post_grouped_syns: jnp.ndarray = None
 
         self.coupling_conds_bwd: jnp.ndarray = jnp.asarray([[]])
         self.coupling_conds_fwd: jnp.ndarray = jnp.asarray([[]])
@@ -34,8 +32,6 @@ class Module(ABC):
         self.branch_conds_bwd: jnp.ndarray = jnp.asarray([])
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
         self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
-
-        self.comb_cum_child_inds: jnp.ndarray = jnp.asarray([0])  # only for fwd-Euler.
 
         self.initialized_morph: bool = False
         self.initialized_conds: bool = False
@@ -84,6 +80,22 @@ class Module(ABC):
         """Get all trainable parameters."""
         return self.trainable_params
 
+    def get_all_parameters(self, trainable_params):
+        params = self.params
+
+        for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
+            for key in set_param.keys():
+                params[key] = params[key].at[inds].set(set_param[key])
+
+        # has to call `self.init_conds()`.
+        params["coupling_conds_bwd"] = self.coupling_conds_bwd
+        params["coupling_conds_fwd"] = self.coupling_conds_fwd
+        params["summed_coupling_conds"] = self.summed_coupling_conds
+        params["branch_conds_fwd"] = self.branch_conds_fwd
+        params["branch_conds_bwd"] = self.branch_conds_bwd
+
+        return params
+
     def set_parameters(self, parameters: List[Dict[str, jnp.ndarray]]):
         """Set all trainable parameters."""
         for inds, set_param in zip(self.indices_set_by_trainables, parameters):
@@ -119,6 +131,7 @@ class Module(ABC):
         delta_t,
         i_inds,
         i_current,
+        params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
         tridiag_solver: str = "stone",
     ):
@@ -127,21 +140,17 @@ class Module(ABC):
 
         # Parameters have to go in here.
         new_channel_states, (v_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels, self.params
+            u, delta_t, self.channels, params
         )
 
         # External input.
         i_ext = get_external_input(
-            voltages, i_inds, i_current, self.params["radius"], self.params["length"]
+            voltages, i_inds, i_current, params["radius"], params["length"]
         )
 
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
-            u,
-            self.conns,
-            self.params,
-            delta_t,
-            self.syn_edges,
+            u, self.conns, params, delta_t, self.syn_edges,
         )
 
         # Voltage steps.
@@ -150,11 +159,11 @@ class Module(ABC):
                 voltages=voltages,
                 voltage_terms=v_terms + syn_voltage_terms,
                 constant_terms=const_terms + i_ext + syn_constant_terms,
-                coupling_conds_bwd=self.coupling_conds_bwd,
-                coupling_conds_fwd=self.coupling_conds_fwd,
-                summed_coupling_conds=self.summed_coupling_conds,
-                branch_cond_fwd=self.branch_conds_fwd,
-                branch_cond_bwd=self.branch_conds_bwd,
+                coupling_conds_bwd=params["coupling_conds_bwd"],
+                coupling_conds_fwd=params["coupling_conds_fwd"],
+                summed_coupling_conds=params["summed_coupling_conds"],
+                branch_cond_fwd=params["branch_conds_fwd"],
+                branch_cond_bwd=params["branch_conds_bwd"],
                 nbranches=self.total_nbranches,
                 parents=self.comb_parents,
                 branches_in_each_level=self.comb_branches_in_each_level,
@@ -166,10 +175,10 @@ class Module(ABC):
                 voltages,
                 v_terms + syn_voltage_terms,
                 const_terms + i_ext + syn_constant_terms,
-                coupling_conds_bwd=self.coupling_conds_bwd,
-                coupling_conds_fwd=self.coupling_conds_fwd,
-                branch_cond_fwd=self.branch_conds_fwd,
-                branch_cond_bwd=self.branch_conds_bwd,
+                coupling_conds_bwd=params["coupling_conds_bwd"],
+                coupling_conds_fwd=params["coupling_conds_fwd"],
+                branch_cond_fwd=params["branch_conds_fwd"],
+                branch_cond_bwd=params["branch_conds_bwd"],
                 nbranches=self.total_nbranches,
                 parents=self.comb_parents,
                 delta_t=delta_t,
@@ -205,11 +214,7 @@ class Module(ABC):
 
     @staticmethod
     def _step_synapse(
-        u,
-        syn_channels,
-        params,
-        delta_t,
-        edges,
+        u, syn_channels, params, delta_t, edges,
     ):
         """One step of integration of the channels.
 
