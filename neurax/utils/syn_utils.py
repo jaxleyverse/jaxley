@@ -1,15 +1,18 @@
-from typing import Tuple, List
+from typing import List, Tuple
+
 import jax.numpy as jnp
-from neurax.utils.cell_utils import index_of_loc
+import numpy as np
 from jax.lax import ScatterDimensionNumbers, scatter_add
+
+from neurax.utils.cell_utils import index_of_loc
 
 
 def postsyn_voltage_updates(
-    voltages,
-    post_syn_comp_inds,
-    non_zero_voltage_term,
-    non_zero_constant_term,
-):
+    voltages: jnp.ndarray,
+    post_syn_comp_inds: np.ndarray,
+    non_zero_voltage_term: jnp.ndarray,
+    non_zero_constant_term: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute current at the post synapse."""
     voltage_term = jnp.zeros_like(voltages)
     constant_term = jnp.zeros_like(voltages)
@@ -29,7 +32,10 @@ def postsyn_voltage_updates(
     return voltage_term, constant_term
 
 
-def prepare_syn(conns, nseg_per_branch):
+def prepare_syn(
+    conns: List["nx.Connection"], nseg_per_branch: int
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Prepare synapses by computing the pre and post compartment within each cell."""
     pre_syn_inds = [
         index_of_loc(c.pre_branch_ind, c.pre_loc, nseg_per_branch) for c in conns
     ]

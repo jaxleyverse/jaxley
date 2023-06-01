@@ -4,7 +4,6 @@ from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar
 import jax
 import jax.numpy as jnp
 
-
 Carry = TypeVar("Carry")
 Input = TypeVar("Input")
 Output = TypeVar("Output")

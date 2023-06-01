@@ -1,5 +1,5 @@
-from neurax.modules import *
+from neurax.connection import Connection, Connectivity, ConnectivityBuilder
 from neurax.integrate import integrate
-from neurax.stimulus import Stimulus, step_current
+from neurax.modules import *
 from neurax.recording import Recording
-from neurax.connection import Connection, ConnectivityBuilder, Connectivity
+from neurax.stimulus import Stimulus, step_current

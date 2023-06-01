@@ -1,17 +1,15 @@
-from typing import Dict, List, Optional, Callable
-import numpy as np
+from typing import Callable, Dict, List, Optional
+
 import jax.numpy as jnp
+import numpy as np
+import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
-import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch, BranchView
-from neurax.utils.cell_utils import (
-    compute_levels,
-    compute_branches_in_level,
-)
-from neurax.utils.cell_utils import compute_coupling_cond
+from neurax.utils.cell_utils import (compute_branches_in_level,
+                                     compute_coupling_cond, compute_levels)
 
 
 class Cell(Module):
@@ -57,11 +55,12 @@ class Cell(Module):
         self.initialized_conds = False
         self.initialized_syns = True
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         assert key == "branch"
         return BranchView(self, self.nodes)
 
     def init_morph(self):
+        """Initialize morphology."""
         parents = self.comb_parents
 
         levels = compute_levels(parents)
@@ -169,8 +168,7 @@ class Cell(Module):
 
 
 class CellView(View):
-    def __init__(self, pointer, view):
-        super().__init__(pointer, view)
+    """CellView."""
 
     def __call__(self, index: float):
         return super().adjust_view("cell_index", index)

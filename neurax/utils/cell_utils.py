@@ -1,5 +1,5 @@
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):

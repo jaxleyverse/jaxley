@@ -1,18 +1,18 @@
-from typing import Dict, List, Optional, Callable
 import itertools
+from typing import Callable, Dict, List, Optional
 
-import numpy as np
-from jax import vmap
 import jax.numpy as jnp
+import numpy as np
 import pandas as pd
+from jax import vmap
 
-from neurax.modules.base import Module, View
-from neurax.modules.cell import Cell, CellView
-from neurax.modules.branch import Branch
 from neurax.channels import Channel
 from neurax.connection import Connection
+from neurax.modules.base import Module, View
+from neurax.modules.branch import Branch
+from neurax.modules.cell import Cell, CellView
 from neurax.utils.cell_utils import merge_cells
-from neurax.utils.syn_utils import prepare_syn, postsyn_voltage_updates
+from neurax.utils.syn_utils import postsyn_voltage_updates, prepare_syn
 
 
 class Network(Module):

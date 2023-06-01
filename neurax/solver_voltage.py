@@ -1,9 +1,10 @@
 import jax.numpy as jnp
-from jax import vmap, lax
-from jax.lax import scatter_add, ScatterDimensionNumbers
+from jax import vmap
+from jax.lax import ScatterDimensionNumbers, scatter_add
+from tridiax.stone import stone_backsub, stone_triang
+from tridiax.thomas import thomas_backsub, thomas_triang
+
 from neurax.build_branched_tridiag import define_all_tridiags
-from tridiax.thomas import thomas_triang, thomas_backsub
-from tridiax.stone import stone_triang, stone_backsub
 
 
 def step_voltage_explicit(
@@ -151,7 +152,7 @@ def _triang_branched(
     tridiag_solver,
 ):
     """
-    Triang.
+    Triangulation.
     """
     for bil in reversed(branches_in_each_level[1:]):
         diags, uppers, solves = _triang_level(
@@ -177,7 +178,7 @@ def _backsub_branched(
     branches_in_each_level, parents, diags, uppers, solves, branch_cond, tridiag_solver
 ):
     """
-    Backsub.
+    Backsubstitution.
     """
     # At first level, we do not want to eliminate.
     solves = _backsub_level(

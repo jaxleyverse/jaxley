@@ -1,8 +1,8 @@
-from typing import Dict, List, Optional, Callable
+from typing import Callable, Dict, List, Optional
 
 import jax.numpy as jnp
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from neurax.modules.base import Module, View
 from neurax.modules.compartment import Compartment, CompartmentView

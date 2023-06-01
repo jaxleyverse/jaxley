@@ -1,13 +1,13 @@
-from typing import List, Optional
 from math import prod
+from typing import List, Optional
 
 import jax.numpy as jnp
-from neurax.utils.jax_utils import nested_checkpoint_scan
 
-from neurax.stimulus import Stimulus
-from neurax.recording import Recording
 from neurax.modules import Module
+from neurax.recording import Recording
+from neurax.stimulus import Stimulus
 from neurax.utils.cell_utils import index_of_loc
+from neurax.utils.jax_utils import nested_checkpoint_scan
 
 
 def integrate(

@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional, Callable
+from typing import Callable, Dict, List, Optional
+
 import jax.numpy as jnp
 import pandas as pd
 
-from neurax.modules.base import Module, View
 from neurax.channels import Channel  # , ChannelView
+from neurax.modules.base import Module, View
 from neurax.utils.cell_utils import index_of_loc
 
 

@@ -1,13 +1,13 @@
-from typing import Dict, List, Optional, Callable
 from abc import ABC, abstractmethod
+from typing import Callable, Dict, List, Optional
 
 import jax.numpy as jnp
 import pandas as pd
 
 from neurax.channels import Channel
-from neurax.synapses import Synapse
-from neurax.solver_voltage import step_voltage_implicit, step_voltage_explicit
+from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
 from neurax.stimulus import get_external_input
+from neurax.synapses import Synapse
 
 
 class Module(ABC):

@@ -1,6 +1,7 @@
 from warnings import warn
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def read_swc(fname: str, max_branch_len: float = 100.0):

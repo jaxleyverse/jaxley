@@ -1,5 +1,7 @@
 from typing import Dict
+
 import jax.numpy as jnp
+
 from neurax.synapses.synapse import Synapse
 
 
