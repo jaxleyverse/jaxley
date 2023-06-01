@@ -201,8 +201,8 @@ class Module(ABC):
 
         return new_channel_states, (voltage_terms, constant_terms)
 
+    @staticmethod
     def _step_synapse(
-        self,
         u,
         syn_channels,
         params,
