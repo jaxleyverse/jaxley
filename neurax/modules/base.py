@@ -44,6 +44,10 @@ class Module(ABC):
         self.params: Dict[str, jnp.ndarray] = {}
         self.states: Dict[str, jnp.ndarray] = {}
 
+        # For trainable parameters.
+        self.indices_set_by_trainables: List[jnp.ndarray] = []
+        self.trainable_params: List[Dict[str, jnp.ndarray]] = []
+
     def _init_params_and_state(
         self, own_params: Dict[str, List], own_states: Dict[str, List]
     ) -> None:
@@ -75,6 +79,16 @@ class Module(ABC):
         """Set parameter for entire module."""
         self.params[key] = self.params[key].at[:].set(val)
         self.initialized_conds = False
+
+    def get_parameters(self):
+        """Get all trainable parameters."""
+        return self.trainable_params
+
+    def set_parameters(self, parameters: List[Dict[str, jnp.ndarray]]):
+        """Set all trainable parameters."""
+        for inds, set_param in zip(self.indices_set_by_trainables, parameters):
+            for key in set_param.keys():
+                self.params[key] = self.params[key].at[inds].set(set_param[key])
 
     @property
     def initialized(self):
@@ -219,6 +233,13 @@ class View:
             self.pointer.params[key].at[self.view.index.values].set(val)
         )
         self.pointer.initialized_conds = False
+
+    def make_trainable(self, key: str, init_val: float):
+        """Make a parameter trainable."""
+        self.pointer.indices_set_by_trainables.append(
+            jnp.asarray(self.view.index.to_numpy())
+        )
+        self.pointer.trainable_params.append({key: init_val})
 
     def adjust_view(self, key: str, index: float):
         """Update view."""
