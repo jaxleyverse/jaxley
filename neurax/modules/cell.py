@@ -10,8 +10,6 @@ from neurax.modules.branch import Branch, BranchView
 from neurax.utils.cell_utils import (
     compute_levels,
     compute_branches_in_level,
-    _compute_index_of_child,
-    cum_indizes_of_children,
 )
 from neurax.utils.cell_utils import compute_coupling_cond
 
@@ -33,7 +31,6 @@ class Cell(Module):
         self.comb_parents = jnp.asarray(parents)
         self.cumsum_nbranches = jnp.asarray([0, len(branches)])
         self.channels = branches[0].channels
-        self.max_num_children = 4
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -70,17 +67,6 @@ class Cell(Module):
         levels = compute_levels(parents)
         self.comb_branches_in_each_level = compute_branches_in_level(levels)
 
-        self.comb_parents_in_each_level = [
-            jnp.unique(parents[c]) for c in self.comb_branches_in_each_level
-        ]
-
-        ind_of_children = jnp.asarray(_compute_index_of_child(parents))
-        ind_of_children_in_each_level = [
-            ind_of_children[bil] for bil in self.comb_branches_in_each_level
-        ]
-        self.comb_cum_child_inds_in_each_level = cum_indizes_of_children(
-            ind_of_children_in_each_level, max_num_children=4, reset_at=[0]
-        )
         self.initialized_morph = True
 
     def init_conds(self):
@@ -121,8 +107,8 @@ class Cell(Module):
             parents,
         )
 
-        self.branch_conds_fwd = jnp.zeros((nbranches * nseg))
-        self.branch_conds_bwd = jnp.zeros((nbranches * nseg))
+        self.branch_conds_fwd = jnp.zeros((nbranches))
+        self.branch_conds_bwd = jnp.zeros((nbranches))
         self.branch_conds_fwd = self.branch_conds_fwd.at[child_inds].set(conds[0])
         self.branch_conds_bwd = self.branch_conds_bwd.at[child_inds].set(conds[1])
 

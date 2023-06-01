@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 from jax import vmap, lax
+from jax.lax import scatter_add, ScatterDimensionNumbers
 from neurax.build_branched_tridiag import define_all_tridiags
 from tridiax.thomas import thomas_triang, thomas_backsub
 from tridiax.stone import stone_triang, stone_backsub
@@ -15,8 +16,6 @@ def step_voltage_explicit(
     branch_cond_bwd,
     nbranches,
     parents,
-    child_inds,
-    max_num_children,
     delta_t,
 ):
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
@@ -33,8 +32,6 @@ def step_voltage_explicit(
         coupling_conds_fwd,
         branch_cond_fwd,
         branch_cond_bwd,
-        child_inds,
-        max_num_children,
     )
     new_voltates = voltages + delta_t * update
     return new_voltates
@@ -51,9 +48,6 @@ def step_voltage_implicit(
     branch_cond_bwd,
     nbranches,
     parents,
-    child_inds_in_each_level,
-    max_num_children,
-    parents_in_each_level,
     branches_in_each_level,
     tridiag_solver,
     delta_t,
@@ -81,7 +75,6 @@ def step_voltage_implicit(
     # Solve quasi-tridiagonal system.
     diags, uppers, solves = _triang_branched(
         parents,
-        parents_in_each_level,
         branches_in_each_level,
         lowers,
         diags,
@@ -89,8 +82,6 @@ def step_voltage_implicit(
         solves,
         -delta_t * branch_cond_fwd,
         -delta_t * branch_cond_bwd,
-        child_inds_in_each_level,
-        max_num_children,
         tridiag_solver,
     )
     solves = _backsub_branched(
@@ -114,8 +105,6 @@ def voltage_vectorfield(
     coupling_conds_fwd,
     branch_cond_fwd,
     branch_cond_bwd,
-    child_inds,
-    max_num_children,
 ):
     """Evaluate the vectorfield of the nerve equation."""
     # Membrane current update.
@@ -130,7 +119,7 @@ def voltage_vectorfield(
     )
 
     # Current through branch points.
-    if branch_cond_bwd.shape[1] > 0:
+    if len(branch_cond_bwd) > 0:
         vecfield = vecfield.at[:, -1].add(
             (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
         )
@@ -138,35 +127,20 @@ def voltage_vectorfield(
         # Several branches might have the same parent, so we have to either update these
         # entries sequentially or we have to build a matrix with width being the maximum
         # number of children and then sum.
-        parallel_elim = False
-        if parallel_elim:
-            term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
-            add_to_vecfield = jnp.zeros((max_num_children * len(parents)))
-            add_to_vecfield = add_to_vecfield.at[child_inds].set(term_to_add)
-            vecfield = vecfield.at[parents, 0].add(
-                jnp.sum(jnp.reshape(add_to_vecfield, (-1, max_num_children)), axis=1)
-            )
-        else:
-            vecfield = lax.fori_loop(
-                0,
-                len(parents),
-                _body_fun_current_from_children,
-                (vecfield, voltages, parents, branch_cond_fwd),
-            )[0]
+        term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
+        inds = jnp.stack([parents, jnp.zeros_like(parents)]).T
+        dnums = ScatterDimensionNumbers(
+            update_window_dims=(),
+            inserted_window_dims=(0, 1),
+            scatter_dims_to_operand_dims=(0, 1),
+        )
+        vecfield = scatter_add(vecfield, inds, term_to_add, dnums)
 
     return vecfield
 
 
-def _body_fun_current_from_children(i, vals):
-    vecfield, voltages, parents, branch_cond_fwd = vals
-    term_to_add = (voltages[i, -1] - voltages[parents[i], 0]) * branch_cond_fwd[i]
-    vecfield = vecfield.at[parents[i], 0].add(term_to_add)
-    return (vecfield, voltages, parents, branch_cond_fwd)
-
-
 def _triang_branched(
     parents,
-    parents_in_each_level,
     branches_in_each_level,
     lowers,
     diags,
@@ -174,31 +148,22 @@ def _triang_branched(
     solves,
     branch_cond_fwd,
     branch_cond_bwd,
-    child_inds_in_each_level,
-    max_num_children,
     tridiag_solver,
 ):
     """
     Triang.
     """
-    for bil, parents_in_level, children_in_level in zip(
-        reversed(branches_in_each_level[1:]),
-        reversed(parents_in_each_level[1:]),
-        reversed(child_inds_in_each_level[1:]),
-    ):
+    for bil in reversed(branches_in_each_level[1:]):
         diags, uppers, solves = _triang_level(
             bil, lowers, diags, uppers, solves, tridiag_solver
         )
         diags, solves = _eliminate_parents_upper(
             parents,
-            parents_in_level,
             bil,
             diags,
             solves,
             branch_cond_fwd,
             branch_cond_bwd,
-            children_in_level,
-            max_num_children,
         )
     # At last level, we do not want to eliminate anymore.
     diags, uppers, solves = _triang_level(
@@ -271,14 +236,11 @@ def _eliminate_single_parent_upper(
 
 def _eliminate_parents_upper(
     parents,
-    parents_in_level,
     branches_in_level,
     diags,
     solves,
     branch_cond_fwd,
     branch_cond_bwd,
-    child_inds_in_each_level,
-    max_num_children,
 ):
     bil = branches_in_level
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
@@ -287,38 +249,22 @@ def _eliminate_parents_upper(
         branch_cond_fwd[bil],
         branch_cond_bwd[bil],
     )
-    parallel_elim = True
-    if parallel_elim:
-        update_diags = jnp.zeros((max_num_children * len(parents_in_level)))
-        update_solves = jnp.zeros((max_num_children * len(parents_in_level)))
-        update_diags = update_diags.at[child_inds_in_each_level].set(new_diag)
-        update_solves = update_solves.at[child_inds_in_each_level].set(new_solve)
-        diags = diags.at[parents_in_level, 0].set(
-            diags[parents_in_level, 0]
-            + jnp.sum(jnp.reshape(update_diags, (-1, max_num_children)), axis=1)
-        )
-        solves = solves.at[parents_in_level, 0].set(
-            solves[parents_in_level, 0]
-            + jnp.sum(jnp.reshape(update_solves, (-1, max_num_children)), axis=1)
-        )
-        return diags, solves
-    else:
-        result = lax.fori_loop(
-            0,
-            len(bil),
-            _body_fun_eliminate_parents_upper,
-            (diags, solves, parents, bil, new_diag, new_solve),
-        )
-        return result[0], result[1]
-
-
-def _body_fun_eliminate_parents_upper(i, vals):
-    diags, solves, parents, bil, new_diag, new_solve = vals
-    diags = diags.at[parents[bil[i]], 0].set(diags[parents[bil[i]], 0] + new_diag[i])
-    solves = solves.at[parents[bil[i]], 0].set(
-        solves[parents[bil[i]], 0] + new_solve[i]
+    dnums = ScatterDimensionNumbers(
+        update_window_dims=(),
+        inserted_window_dims=(0, 1),
+        scatter_dims_to_operand_dims=(0, 1),
     )
-    return (diags, solves, parents, bil, new_diag, new_solve)
+
+    arr = diags
+    term_to_add = new_diag
+    inds = jnp.stack([parents[bil], jnp.zeros_like(parents[bil])]).T
+    diags = scatter_add(arr, inds, term_to_add, dnums)
+
+    arr = solves
+    term_to_add = new_solve
+    inds = jnp.stack([parents[bil], jnp.zeros_like(parents[bil])]).T
+    solves = scatter_add(arr, inds, term_to_add, dnums)
+    return diags, solves
 
 
 def _eliminate_children_lower(branches_in_level, parents, solves, branch_cond):

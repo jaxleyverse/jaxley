@@ -30,12 +30,9 @@ class Module(ABC):
         self.coupling_conds_bwd: jnp.ndarray = jnp.asarray([[]])
         self.coupling_conds_fwd: jnp.ndarray = jnp.asarray([[]])
         self.summed_coupling_conds: jnp.ndarray = jnp.asarray([[0.0]])
-        self.branch_conds_fwd: jnp.ndarray = jnp.asarray([[]])
-        self.branch_conds_bwd: jnp.ndarray = jnp.asarray([[]])
+        self.branch_conds_fwd: jnp.ndarray = jnp.asarray([])
+        self.branch_conds_bwd: jnp.ndarray = jnp.asarray([])
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
-        self.comb_cum_child_inds_in_each_level: jnp.ndarray = jnp.asarray([0])
-        self.max_num_children: int = 1
-        self.comb_parents_in_each_level: List[jnp.ndarray] = [jnp.asarray([-1])]
         self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
 
         self.comb_cum_child_inds: jnp.ndarray = jnp.asarray([0])  # only for fwd-Euler.
@@ -147,14 +144,14 @@ class Module(ABC):
                 branch_cond_bwd=self.branch_conds_bwd,
                 nbranches=self.total_nbranches,
                 parents=self.comb_parents,
-                child_inds_in_each_level=self.comb_cum_child_inds_in_each_level,
-                max_num_children=self.max_num_children,
-                parents_in_each_level=self.comb_parents_in_each_level,
                 branches_in_each_level=self.comb_branches_in_each_level,
                 tridiag_solver=tridiag_solver,
                 delta_t=delta_t,
             )
         else:
+            print("voltages", voltages.shape)
+            print("branch_conds_fwd", self.branch_conds_fwd.shape)
+
             new_voltages = step_voltage_explicit(
                 voltages,
                 v_terms + syn_voltage_terms,
@@ -165,8 +162,6 @@ class Module(ABC):
                 branch_cond_bwd=self.branch_conds_bwd,
                 nbranches=self.total_nbranches,
                 parents=self.comb_parents,
-                child_inds=self.comb_cum_child_inds,
-                max_num_children=self.max_num_children,
                 delta_t=delta_t,
             )
 
