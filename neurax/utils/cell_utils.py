@@ -104,27 +104,27 @@ def compute_branches_in_level(levels):
     return branches_in_each_level
 
 
-def _compute_num_kids(parents):
+def _compute_num_children(parents):
     num_branches = len(parents)
-    num_kids = []
+    num_children = []
     for b in range(num_branches):
         n = np.sum(np.asarray(parents) == b)
-        num_kids.append(n)
-    return num_kids
+        num_children.append(n)
+    return num_children
 
 
-def _compute_index_of_kid(parents):
+def _compute_index_of_child(parents):
     num_branches = len(parents)
-    current_num_kids_for_each_branch = np.zeros((num_branches,), np.dtype("int"))
-    index_of_kid = [-1]
+    current_num_children_for_each_branch = np.zeros((num_branches,), np.dtype("int"))
+    index_of_child = [-1]
     for b in range(1, num_branches):
-        index_of_kid.append(current_num_kids_for_each_branch[parents[b]])
-        current_num_kids_for_each_branch[parents[b]] += 1
-    return index_of_kid
+        index_of_child.append(current_num_children_for_each_branch[parents[b]])
+        current_num_children_for_each_branch[parents[b]] += 1
+    return index_of_child
 
 
 def get_num_neighbours(
-    num_kids: jnp.ndarray,
+    num_children: jnp.ndarray,
     nseg_per_branch: int,
     num_branches: int,
 ):
@@ -134,41 +134,43 @@ def get_num_neighbours(
     num_neighbours = 2 * jnp.ones((num_branches * nseg_per_branch))
     num_neighbours = num_neighbours.at[nseg_per_branch - 1].set(1.0)
     num_neighbours = num_neighbours.at[jnp.arange(num_branches) * nseg_per_branch].set(
-        num_kids + 1.0
+        num_children + 1.0
     )
     return num_neighbours
 
 
-def cum_indizes_of_kids(ind_of_kids_in_each_level, max_num_kids, reset_at=[0]):
-    """Returns the index of a kid within a layer.
+def cum_indizes_of_children(
+    ind_of_children_in_each_level, max_num_children, reset_at=[0]
+):
+    """Returns the index of a child within a layer.
 
     This function handles every layer separately.
 
     Example:
-    ind_of_kids_in_each_level[0] == [0, 1, 0, 1, 2]
-    max_num_kids == 8
+    ind_of_children_in_each_level[0] == [0, 1, 0, 1, 2]
+    max_num_children == 8
     Returns: [0, 1, 8, 9, 10]
 
-    The function adds `max_num_kids` whenever a `-1` or `0` is encountered. For
-    backward Euler, adding `max_num_kids` when a `-1` is encountered makes no
+    The function adds `max_num_children` whenever a `-1` or `0` is encountered. For
+    backward Euler, adding `max_num_children` when a `-1` is encountered makes no
     difference because they are all in the first layer and triangulation does not
     affect them. However, for forward Euler, we have only a single layer, so we
-    specifically have to add `max_num_kids` when we see a `-1`.
+    specifically have to add `max_num_children` when we see a `-1`.
 
     Args:
-        ind_of_kids_in_each_level: List where every element is one layer. Each element
+        ind_of_children_in_each_level: List where every element is one layer. Each element
             in the list indicates the how-many-eth child a certain branch is of its
             parent.
         reset_at: List of integers at which to reset.
     """
     cum_inds_in_each_level = []
-    for ind_kid in ind_of_kids_in_each_level:
+    for ind_child in ind_of_children_in_each_level:
         base_ind = 0
         cum_ind_in_level = []
-        for i, current_kid_ind in enumerate(ind_kid):
-            if current_kid_ind in reset_at and i > 0:
-                base_ind += max_num_kids
-            cum_ind_in_level.append(base_ind + current_kid_ind)
+        for i, current_child_ind in enumerate(ind_child):
+            if current_child_ind in reset_at and i > 0:
+                base_ind += max_num_children
+            cum_ind_in_level.append(base_ind + current_child_ind)
         cum_inds_in_each_level.append(jnp.asarray(cum_ind_in_level))
     return cum_inds_in_each_level
 
