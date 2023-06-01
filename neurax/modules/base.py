@@ -149,9 +149,6 @@ class Module(ABC):
                 delta_t=delta_t,
             )
         else:
-            print("voltages", voltages.shape)
-            print("branch_conds_fwd", self.branch_conds_fwd.shape)
-
             new_voltages = step_voltage_explicit(
                 voltages,
                 v_terms + syn_voltage_terms,

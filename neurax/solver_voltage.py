@@ -249,21 +249,16 @@ def _eliminate_parents_upper(
         branch_cond_fwd[bil],
         branch_cond_bwd[bil],
     )
+
+    # Update the diagonal elements and `b` in `Ax=b` (called `solves`).
     dnums = ScatterDimensionNumbers(
         update_window_dims=(),
         inserted_window_dims=(0, 1),
         scatter_dims_to_operand_dims=(0, 1),
     )
-
-    arr = diags
-    term_to_add = new_diag
     inds = jnp.stack([parents[bil], jnp.zeros_like(parents[bil])]).T
-    diags = scatter_add(arr, inds, term_to_add, dnums)
-
-    arr = solves
-    term_to_add = new_solve
-    inds = jnp.stack([parents[bil], jnp.zeros_like(parents[bil])]).T
-    solves = scatter_add(arr, inds, term_to_add, dnums)
+    diags = scatter_add(diags, inds, new_diag, dnums)
+    solves = scatter_add(solves, inds, new_solve, dnums)
     return diags, solves
 
 
