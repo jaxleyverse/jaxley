@@ -8,8 +8,11 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch, BranchView
-from neurax.utils.cell_utils import (compute_branches_in_level,
-                                     compute_coupling_cond, compute_levels)
+from neurax.utils.cell_utils import (
+    compute_branches_in_level,
+    compute_coupling_cond,
+    compute_levels,
+)
 
 
 class Cell(Module):

@@ -90,9 +90,6 @@ class Branch(Module):
 
 
 class BranchView(View):
-    def __init__(self, pointer, view):
-        super().__init__(pointer, view)
-
     def __call__(self, index: float):
         return super().adjust_view("branch_index", index)
 
