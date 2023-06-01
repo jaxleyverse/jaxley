@@ -13,8 +13,8 @@ from neurax.channels import Channel
 from neurax.connection import Connection
 from neurax.utils.cell_utils import (
     merge_cells,
-    _compute_index_of_kid,
-    cum_indizes_of_kids,
+    _compute_index_of_child,
+    cum_indizes_of_children,
 )
 from neurax.utils.syn_utils import postsyn_voltage_updates
 from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
@@ -79,11 +79,11 @@ class Network(Module):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
         self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
-        self.max_num_kids = 4
+        self.max_num_children = 4
         # for c in self.cells:
         #     assert (
-        #         self.max_num_kids == c.max_num_kids
-        #     ), "Different max_num_kids between cells."
+        #         self.max_num_children == c.max_num_children
+        #     ), "Different max_num_children between cells."
 
         parents = [cell.comb_parents for cell in self.cells]
         self.comb_parents = jnp.concatenate(
@@ -100,21 +100,21 @@ class Network(Module):
         )
 
         # Prepare indizes for solve
-        comb_ind_of_kids = jnp.concatenate(
+        comb_ind_of_children = jnp.concatenate(
             [
-                jnp.asarray(_compute_index_of_kid(cell.comb_parents))
+                jnp.asarray(_compute_index_of_child(cell.comb_parents))
                 for cell in self.cells
             ]
         )
         # Defined only for forward Euler:
-        self.comb_cum_kid_inds = cum_indizes_of_kids(
-            [comb_ind_of_kids], self.max_num_kids, reset_at=[-1, 0]
+        self.comb_cum_kid_inds = cum_indizes_of_children(
+            [comb_ind_of_children], self.max_num_children, reset_at=[-1, 0]
         )[0]
-        comb_ind_of_kids_in_each_level = [
-            comb_ind_of_kids[bil] for bil in self.comb_branches_in_each_level
+        comb_ind_of_children_in_each_level = [
+            comb_ind_of_children[bil] for bil in self.comb_branches_in_each_level
         ]
-        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_kids(
-            comb_ind_of_kids_in_each_level, self.max_num_kids, reset_at=[0]
+        self.comb_cum_kid_inds_in_each_level = cum_indizes_of_children(
+            comb_ind_of_children_in_each_level, self.max_num_children, reset_at=[0]
         )
 
         # Indexing.
