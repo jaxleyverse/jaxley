@@ -11,11 +11,7 @@ from neurax.modules.cell import Cell, CellView
 from neurax.modules.branch import Branch
 from neurax.channels import Channel
 from neurax.connection import Connection
-from neurax.utils.cell_utils import (
-    merge_cells,
-    _compute_index_of_child,
-    cum_indizes_of_children,
-)
+from neurax.utils.cell_utils import merge_cells
 from neurax.utils.syn_utils import prepare_syn, postsyn_voltage_updates
 
 
@@ -78,42 +74,15 @@ class Network(Module):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
         self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
-        self.max_num_children = 4
-        # for c in self.cells:
-        #     assert (
-        #         self.max_num_children == c.max_num_children
-        #     ), "Different max_num_children between cells."
 
         parents = [cell.comb_parents for cell in self.cells]
         self.comb_parents = jnp.concatenate(
             [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
         )
-        self.comb_parents_in_each_level = merge_cells(
-            self.cumsum_nbranches,
-            [cell.comb_parents_in_each_level for cell in self.cells],
-        )
         self.comb_branches_in_each_level = merge_cells(
             self.cumsum_nbranches,
             [cell.comb_branches_in_each_level for cell in self.cells],
             exclude_first=False,
-        )
-
-        # Prepare indizes for solve
-        comb_ind_of_children = jnp.concatenate(
-            [
-                jnp.asarray(_compute_index_of_child(cell.comb_parents))
-                for cell in self.cells
-            ]
-        )
-        # Defined only for forward Euler:
-        self.comb_cum_child_inds = cum_indizes_of_children(
-            [comb_ind_of_children], self.max_num_children, reset_at=[-1, 0]
-        )[0]
-        comb_ind_of_children_in_each_level = [
-            comb_ind_of_children[bil] for bil in self.comb_branches_in_each_level
-        ]
-        self.comb_cum_child_inds_in_each_level = cum_indizes_of_children(
-            comb_ind_of_children_in_each_level, self.max_num_children, reset_at=[0]
         )
 
         # Indexing.
@@ -174,8 +143,8 @@ class Network(Module):
             parents,
         )
 
-        self.branch_conds_fwd = jnp.zeros((nbranches * nseg))
-        self.branch_conds_bwd = jnp.zeros((nbranches * nseg))
+        self.branch_conds_fwd = jnp.zeros((nbranches))
+        self.branch_conds_bwd = jnp.zeros((nbranches))
         self.branch_conds_fwd = self.branch_conds_fwd.at[child_inds].set(conds[0])
         self.branch_conds_bwd = self.branch_conds_bwd.at[child_inds].set(conds[1])
 

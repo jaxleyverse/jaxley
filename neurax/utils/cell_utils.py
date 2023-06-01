@@ -139,42 +139,6 @@ def get_num_neighbours(
     return num_neighbours
 
 
-def cum_indizes_of_children(
-    ind_of_children_in_each_level, max_num_children, reset_at=[0]
-):
-    """Returns the index of a child within a layer.
-
-    This function handles every layer separately.
-
-    Example:
-    ind_of_children_in_each_level[0] == [0, 1, 0, 1, 2]
-    max_num_children == 8
-    Returns: [0, 1, 8, 9, 10]
-
-    The function adds `max_num_children` whenever a `-1` or `0` is encountered. For
-    backward Euler, adding `max_num_children` when a `-1` is encountered makes no
-    difference because they are all in the first layer and triangulation does not
-    affect them. However, for forward Euler, we have only a single layer, so we
-    specifically have to add `max_num_children` when we see a `-1`.
-
-    Args:
-        ind_of_children_in_each_level: List where every element is one layer. Each element
-            in the list indicates the how-many-eth child a certain branch is of its
-            parent.
-        reset_at: List of integers at which to reset.
-    """
-    cum_inds_in_each_level = []
-    for ind_child in ind_of_children_in_each_level:
-        base_ind = 0
-        cum_ind_in_level = []
-        for i, current_child_ind in enumerate(ind_child):
-            if current_child_ind in reset_at and i > 0:
-                base_ind += max_num_children
-            cum_ind_in_level.append(base_ind + current_child_ind)
-        cum_inds_in_each_level.append(jnp.asarray(cum_ind_in_level))
-    return cum_inds_in_each_level
-
-
 def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     """Returns the index of a segment given a loc in [0, 1] and the index of a branch.
 
