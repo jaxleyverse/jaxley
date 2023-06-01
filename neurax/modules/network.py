@@ -16,8 +16,7 @@ from neurax.utils.cell_utils import (
     _compute_index_of_child,
     cum_indizes_of_children,
 )
-from neurax.utils.syn_utils import postsyn_voltage_updates
-from neurax.utils.syn_utils import prepare_presyn, prepare_postsyn
+from neurax.utils.syn_utils import prepare_syn, postsyn_voltage_updates
 
 
 class Network(Module):
@@ -139,8 +138,6 @@ class Network(Module):
 
     def init_conds(self):
         """Given an axial resisitivity, set the coupling conductances."""
-        # Initially, the coupling conductances are set to `None`. They have to be set
-        # by calling `.set_axial_resistivities()`.
         nbranches = self.total_nbranches
         nseg = self.nseg
         parents = self.comb_parents
@@ -187,23 +184,16 @@ class Network(Module):
     def init_syns(self):
         pre_comp_inds = []
         post_comp_inds = []
-        self.post_grouped_inds = []
-        self.post_grouped_syns = []
         for connectivity in self.connectivities:
-            pre_syn_cell_inds, pre_syn_inds = prepare_presyn(
+            pre_cell_inds, pre_inds, post_cell_inds, post_inds = prepare_syn(
                 connectivity.conns, self.nseg
             )
             pre_comp_inds.append(
-                self.cumsum_nbranches[pre_syn_cell_inds] * self.nseg + pre_syn_inds
-            )
-            grouped_post_inds, grouped_syns, post_syn = prepare_postsyn(
-                connectivity.conns, self.nseg
+                self.cumsum_nbranches[pre_cell_inds] * self.nseg + pre_inds
             )
             post_comp_inds.append(
-                self.cumsum_nbranches[post_syn[:, 0]] * self.nseg + post_syn[:, 1]
+                self.cumsum_nbranches[post_cell_inds] * self.nseg + post_inds
             )
-            self.post_grouped_inds.append(grouped_post_inds)
-            self.post_grouped_syns.append(grouped_syns)
 
         # Prepare synapses.
         self.syn_edges = pd.DataFrame()
@@ -236,11 +226,8 @@ class Network(Module):
         syn_channels,
         params,
         delta_t,
-        cumsum_num_branches,
-        syn_inds,
-        grouped_post_syn_inds,
-        grouped_post_syns,
-        nseg,
+        pre_syn_comp_inds,
+        post_syn_comp_inds,
     ):
         """Perform one step of the synapses and obtain their currents."""
         voltages = u["voltages"]
@@ -250,15 +237,12 @@ class Network(Module):
         new_syn_states = []
         for i, list_of_synapses in enumerate(syn_channels):
             synapse_states, synapse_current_terms = list_of_synapses.step(
-                u, delta_t, voltages, params, syn_inds
+                u, delta_t, voltages, params, pre_syn_comp_inds
             )
             synapse_current_terms = postsyn_voltage_updates(
-                nseg,
-                cumsum_num_branches,
                 voltages,
-                grouped_post_syn_inds[i],
-                grouped_post_syns[i],
-                *synapse_current_terms,
+                post_syn_comp_inds,  # TODO: only one syn_type!
+                *synapse_current_terms,  # TODO: only one syn_type!
             )
             syn_voltage_terms += synapse_current_terms[0]
             syn_constant_terms += synapse_current_terms[1]
