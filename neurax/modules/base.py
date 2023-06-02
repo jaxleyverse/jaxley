@@ -25,16 +25,10 @@ class Module(ABC):
 
         self.cumsum_nbranches: jnp.ndarray = None
 
-        self.coupling_conds_bwd: jnp.ndarray = jnp.asarray([[]])
-        self.coupling_conds_fwd: jnp.ndarray = jnp.asarray([[]])
-        self.summed_coupling_conds: jnp.ndarray = jnp.asarray([[0.0]])
-        self.branch_conds_fwd: jnp.ndarray = jnp.asarray([])
-        self.branch_conds_bwd: jnp.ndarray = jnp.asarray([])
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
         self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
 
         self.initialized_morph: bool = False
-        self.initialized_conds: bool = False
         self.initialized_syns: bool = False
 
         self.params: Dict[str, jnp.ndarray] = {}
@@ -76,12 +70,20 @@ class Module(ABC):
         self.params[key] = self.params[key].at[:].set(val)
         self.initialized_conds = False
 
+    def make_trainable(self, key: str, init_val: float):
+        """Make a parameter trainable."""
+        self.indices_set_by_trainables.append(jnp.asarray([0]))
+        self.trainable_params.append({key: init_val})
+
     def get_parameters(self):
         """Get all trainable parameters."""
         return self.trainable_params
 
     def get_all_parameters(self, trainable_params):
-        params = self.params
+        """Return all parameters (and coupling conductances) needed to simulate."""
+        params = {}
+        for key in self.params:
+            params[key] = self.params[key]
 
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
@@ -113,10 +115,6 @@ class Module(ABC):
 
     def init_syns(self):
         self.initialized_syns = True
-
-    def init_conds(self, params):
-        # TODO do we need this?
-        return self.params
 
     def init_morph(self):
         self.initialized_morph = True

@@ -53,8 +53,8 @@ class Branch(Module):
             params["axial_resistivity"], params["radius"], params["length"], self.nseg,
         )
         cond_params = {
-            "branch_conds_fwd": self.branch_conds_fwd,
-            "branch_conds_bwd": self.branch_conds_bwd,
+            "branch_conds_fwd": jnp.asarray([]),
+            "branch_conds_bwd": jnp.asarray([]),
         }
         cond_params["coupling_conds_fwd"] = conds[0]
         cond_params["coupling_conds_bwd"] = conds[1]

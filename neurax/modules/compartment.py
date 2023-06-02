@@ -56,13 +56,15 @@ class Compartment(Module):
             dict(parent_branch_index=[], child_branch_index=[])
         )
 
-    def set_params(self, key, val):
-        """Set parameter for entire module.
-
-        Unlike `Module.set_params()`, this method does not set
-        `initialized_conds=False`.
-        """
-        self.params[key] = self.params[key].at[:].set(val)
+    def init_conds(self, params):
+        cond_params = {
+            "branch_conds_fwd": jnp.asarray([]),
+            "branch_conds_bwd": jnp.asarray([]),
+            "coupling_conds_fwd": jnp.asarray([[]]),
+            "coupling_conds_bwd": jnp.asarray([[]]),
+            "summed_coupling_conds": jnp.asarray([[0.0]]),
+        }
+        return cond_params
 
 
 class CompartmentView(View):
