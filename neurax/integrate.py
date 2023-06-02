@@ -24,11 +24,6 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
-        network: Network of cells that will be simulated.
-        init_v: Initial voltage. Should be a list where each entry is a `jnp.ndarray`
-            and has shape `num_branches, nseg_per_branch`.
-        mem_states: Initial values for the states of the membrane gates. List of list
-            of `jnp.ndarray`.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
             only affect `bwd_euler` and `cranck` solvers. Either of ["stone",
@@ -80,12 +75,15 @@ def integrate(
         dummy_stimulus = jnp.zeros((size_difference, i_current.shape[1]))
         i_current = jnp.concatenate([i_current, dummy_stimulus])
 
+    # Join node and edge states.
+    states = {}
+    for key in module.states:
+        states[key] = module.states[key]
+    for key in module.syn_states:
+        states[key] = module.syn_states[key]
+
     _, recordings = nested_checkpoint_scan(
-        _body_fun,
-        module.states,
-        i_current,
-        length=length,
-        nested_lengths=checkpoint_lengths,
+        _body_fun, states, i_current, length=length, nested_lengths=checkpoint_lengths
     )
     return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
 
