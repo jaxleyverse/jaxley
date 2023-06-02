@@ -74,7 +74,7 @@ class Module(ABC):
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
         self.indices_set_by_trainables.append(self.nodes.index.to_numpy())
-        self.trainable_params.append({key: init_val})
+        self.trainable_params.append({key: jnp.asarray(init_val)})
 
     def get_parameters(self):
         """Get all trainable parameters."""
