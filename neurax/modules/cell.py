@@ -71,23 +71,21 @@ class Cell(Module):
 
         self.initialized_morph = True
 
-    def init_conds(self):
+    def init_conds(self, params):
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
         parents = self.comb_parents
 
-        axial_resistivity = jnp.reshape(
-            self.params["axial_resistivity"], (nbranches, nseg)
-        )
-        radiuses = jnp.reshape(self.params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(self.params["length"], (nbranches, nseg))
+        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
+        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
+        lengths = jnp.reshape(params["length"], (nbranches, nseg))
 
         conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
             axial_resistivity, radiuses, lengths, self.nseg
         )
-        self.coupling_conds_fwd = conds[0]
-        self.coupling_conds_bwd = conds[1]
+        coupling_conds_fwd = conds[0]
+        coupling_conds_bwd = conds[1]
         summed_coupling_conds = conds[2]
 
         par_inds = self.branch_edges["parent_branch_index"].to_numpy()
@@ -101,20 +99,23 @@ class Cell(Module):
             lengths[par_inds, 0],
             lengths[child_inds, -1],
         )
-        self.summed_coupling_conds = self.update_summed_coupling_conds(
-            summed_coupling_conds,
-            child_inds,
-            conds[0],
-            conds[1],
-            parents,
+        summed_coupling_conds = self.update_summed_coupling_conds(
+            summed_coupling_conds, child_inds, conds[0], conds[1], parents,
         )
 
-        self.branch_conds_fwd = jnp.zeros((nbranches))
-        self.branch_conds_bwd = jnp.zeros((nbranches))
-        self.branch_conds_fwd = self.branch_conds_fwd.at[child_inds].set(conds[0])
-        self.branch_conds_bwd = self.branch_conds_bwd.at[child_inds].set(conds[1])
+        branch_conds_fwd = jnp.zeros((nbranches))
+        branch_conds_bwd = jnp.zeros((nbranches))
+        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
+        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
 
-        self.initialized_conds = True
+        cond_params = {
+            "coupling_conds_fwd": coupling_conds_fwd,
+            "coupling_conds_bwd": coupling_conds_bwd,
+            "summed_coupling_conds": summed_coupling_conds,
+            "branch_conds_fwd": branch_conds_fwd,
+            "branch_conds_bwd": branch_conds_bwd,
+        }
+        return cond_params
 
     @staticmethod
     def init_cell_conds(ra_parent, ra_child, r_parent, r_child, l_parent, l_child):
@@ -135,8 +136,8 @@ class Cell(Module):
         )
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10**7
-        branch_conds_bwd *= 10**7
+        branch_conds_fwd *= 10 ** 7
+        branch_conds_bwd *= 10 ** 7
 
         return branch_conds_fwd, branch_conds_bwd
 
