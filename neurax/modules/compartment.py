@@ -71,8 +71,9 @@ class CompartmentView(View):
     """CompartmentView."""
 
     def __init__(self, pointer, view):
+        view["controlled_by_param"] = view["comp_index"]
         super().__init__(pointer, view)
 
     def __call__(self, loc: float):
-        index = index_of_loc(0, loc, self.pointer.nseg)
+        index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
         return super().adjust_view("comp_index", index)

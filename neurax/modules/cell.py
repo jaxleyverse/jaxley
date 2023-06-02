@@ -174,6 +174,10 @@ class Cell(Module):
 class CellView(View):
     """CellView."""
 
+    def __init__(self, pointer, view):
+        view["controlled_by_param"] = view["cell_index"]
+        super().__init__(pointer, view)
+
     def __call__(self, index: float):
         return super().adjust_view("cell_index", index)
 

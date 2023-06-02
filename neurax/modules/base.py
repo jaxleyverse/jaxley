@@ -3,6 +3,7 @@ from typing import Callable, Dict, List, Optional
 
 import jax.numpy as jnp
 import pandas as pd
+import numpy as np
 
 from neurax.channels import Channel
 from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
@@ -72,7 +73,7 @@ class Module(ABC):
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
-        self.indices_set_by_trainables.append(jnp.asarray([0]))
+        self.indices_set_by_trainables.append(self.nodes.index.to_numpy())
         self.trainable_params.append({key: init_val})
 
     def get_parameters(self):
@@ -95,12 +96,6 @@ class Module(ABC):
             params[key] = cond_params[key]
 
         return params
-
-    def set_parameters(self, parameters: List[Dict[str, jnp.ndarray]]):
-        """Set all trainable parameters."""
-        for inds, set_param in zip(self.indices_set_by_trainables, parameters):
-            for key in set_param.keys():
-                self.params[key] = self.params[key].at[inds].set(set_param[key])
 
     @property
     def initialized(self):
@@ -235,13 +230,17 @@ class View:
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
-        self.pointer.indices_set_by_trainables.append(
-            jnp.asarray(self.view.index.to_numpy())
+        grouped_view = self.view.groupby("controlled_by_param").indices
+        indices_per_param = jnp.stack(list(grouped_view.values()))
+        self.pointer.indices_set_by_trainables.append(indices_per_param)
+        num_created_parameters = len(indices_per_param)
+        self.pointer.trainable_params.append(
+            {key: jnp.asarray([[init_val]] * num_created_parameters)}
         )
-        self.pointer.trainable_params.append({key: init_val})
 
     def adjust_view(self, key: str, index: float):
         """Update view."""
-        self.view = self.view[self.view[key] == index]
-        self.view -= self.view.iloc[0]
+        if index != "all":
+            self.view = self.view[self.view[key] == index]
+            self.view -= self.view.iloc[0]
         return self
