@@ -14,7 +14,7 @@ def integrate(
     module: Module,
     stimuli: List[Stimulus],
     recordings: List[Recording],
-    params: Dict[str, jnp.ndarray],
+    params: List[Dict[str, jnp.ndarray]] = [],
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
     tridiag_solver: str = "stone",
