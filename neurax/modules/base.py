@@ -220,6 +220,7 @@ class View:
     def __init__(self, pointer: Module, view: pd.DataFrame):
         self.pointer = pointer
         self.view = view
+        self.allow_make_trainable = True
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
@@ -230,6 +231,9 @@ class View:
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
+        assert (
+            self.allow_make_trainable
+        ), "network.cell('all') is not supported. Use a for-loop over cells."
         grouped_view = self.view.groupby("controlled_by_param").indices
         indices_per_param = jnp.stack(list(grouped_view.values()))
         self.pointer.indices_set_by_trainables.append(indices_per_param)
