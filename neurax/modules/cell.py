@@ -179,6 +179,7 @@ class CellView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
+        assert index != "all", "network.cell('all') is not supported. Use a for-loop."
         return super().adjust_view("cell_index", index)
 
     def __getattr__(self, key):
