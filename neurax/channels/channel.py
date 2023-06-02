@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
-# from neurax.modules.base import View
 import jax.numpy as jnp
 
 

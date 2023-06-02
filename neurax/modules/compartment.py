@@ -3,7 +3,7 @@ from typing import Callable, Dict, List, Optional
 import jax.numpy as jnp
 import pandas as pd
 
-from neurax.channels import Channel  # , ChannelView
+from neurax.channels import Channel
 from neurax.modules.base import Module, View
 from neurax.utils.cell_utils import index_of_loc
 
@@ -71,7 +71,7 @@ class CompartmentView(View):
     """CompartmentView."""
 
     def __init__(self, pointer, view):
-        view["controlled_by_param"] = view["comp_index"]
+        view.assign(controlled_by_param=view.comp_index)
         super().__init__(pointer, view)
 
     def __call__(self, loc: float):

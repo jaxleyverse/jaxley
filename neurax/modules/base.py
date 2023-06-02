@@ -35,6 +35,9 @@ class Module(ABC):
         self.params: Dict[str, jnp.ndarray] = {}
         self.states: Dict[str, jnp.ndarray] = {}
 
+        self.syn_params: Dict[str, jnp.ndarray] = {}
+        self.syn_states: Dict[str, jnp.ndarray] = {}
+
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
@@ -68,13 +71,29 @@ class Module(ABC):
 
     def set_params(self, key, val):
         """Set parameter for entire module."""
-        self.params[key] = self.params[key].at[:].set(val)
-        self.initialized_conds = False
+        if key in self.params.keys():
+            self.params[key] = self.params[key].at[:].set(val)
+            assert (
+                key not in self.syn_params.keys()
+            ), "Same key for synapse and node parameter."
+        elif key in self.syn_params.keys():
+            self.syn_params[key] = self.syn_params[key].at[:].set(val)
+        else:
+            raise KeyError(f"{key} not recognized.")
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
-        self.indices_set_by_trainables.append(self.nodes.index.to_numpy())
-        self.trainable_params.append({key: jnp.asarray(init_val)})
+        if key in self.params.keys():
+            self.indices_set_by_trainables.append(self.nodes.index.to_numpy())
+            self.trainable_params.append({key: jnp.asarray(init_val)})
+            assert (
+                key not in self.syn_params.keys()
+            ), "Same key for synapse and node parameter."
+        elif key in self.syn_params.keys():
+            self.indices_set_by_trainables.append(self.syn_edges.index.to_numpy())
+            self.trainable_params.append({key: jnp.asarray(init_val)})
+        else:
+            raise KeyError(f"{key} not recognized.")
 
     def get_parameters(self):
         """Get all trainable parameters."""
@@ -85,6 +104,9 @@ class Module(ABC):
         params = {}
         for key in self.params:
             params[key] = self.params[key]
+
+        for key in self.syn_params:
+            params[key] = self.syn_params[key]
 
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
@@ -227,7 +249,20 @@ class View:
         self.pointer.params[key] = (
             self.pointer.params[key].at[self.view.index.values].set(val)
         )
-        self.pointer.initialized_conds = False
+
+    def set_states(self, key: str, val: float):
+        """Set parameters of the pointer."""
+        self.pointer.states[key] = (
+            self.pointer.states[key].at[self.view.index.values].set(val)
+        )
+
+    def get_params(self, key: str):
+        """Return parameters."""
+        return self.pointer.params[key][self.view.index.values]
+
+    def get_states(self, key: str):
+        """Return states."""
+        return self.pointer.states[key][self.view.index.values]
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""

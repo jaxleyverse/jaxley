@@ -7,7 +7,7 @@ import pandas as pd
 from jax import vmap
 
 from neurax.connection import Connection
-from neurax.modules.base import Module
+from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch
 from neurax.modules.cell import Cell, CellView
 from neurax.utils.cell_utils import merge_cells
@@ -53,7 +53,7 @@ class Network(Module):
                         for _ in connectivity.conns
                     ]
                 )
-                self.params[key] = param_vals
+                self.syn_params[key] = param_vals
             for key in connectivity.synapse_type.synapse_states:
                 state_vals = jnp.asarray(
                     [
@@ -61,11 +61,15 @@ class Network(Module):
                         for _ in connectivity.conns
                     ]
                 )
-                self.states[key] = state_vals
+                self.syn_states[key] = state_vals
 
     def __getattr__(self, key):
-        assert key == "cell"
-        return CellView(self, self.nodes)
+        if key == "cell":
+            return CellView(self, self.nodes)
+        elif key == "synapse":
+            return SynapseView(self, self.syn_edges)
+        else:
+            raise KeyError("Only synapse and cell as keys allowed.")
 
     def init_morph(self):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
@@ -178,6 +182,7 @@ class Network(Module):
                     ),
                 ]
             )
+        self.syn_edges["index"] = list(self.syn_edges.index)
 
         self.branch_edges = pd.DataFrame(
             dict(
@@ -213,3 +218,17 @@ class Network(Module):
             new_syn_states.append(synapse_states)
 
         return new_syn_states, syn_voltage_terms, syn_constant_terms
+
+
+class SynapseView(View):
+    """SynapseView."""
+
+    def __init__(self, pointer, view):
+        view["controlled_by_param"] = view["index"]
+        super().__init__(pointer, view)
+
+    def __call__(self, index: int):
+        raise NotImplementedError(
+            "Not implemented to set parameters for individual synapses."
+        )  # TODO
+
