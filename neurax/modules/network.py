@@ -224,11 +224,14 @@ class SynapseView(View):
     """SynapseView."""
 
     def __init__(self, pointer, view):
-        view["controlled_by_param"] = view["index"]
+        view = view.assign(controlled_by_param=view.index)
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
-        raise NotImplementedError(
-            "Not implemented to set parameters for individual synapses."
-        )  # TODO
+        # TODO. Problem is that the `type` value of `pointer.syn_edges` is a string.
+        # Thus, in `adjust_view`, we cannot subtract entries from each other.
+        assert (
+            index == "all"
+        ), "Not implemented to set parameters for individual synapses."
+        return super().adjust_view("index", index)
 
