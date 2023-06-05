@@ -29,60 +29,6 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
     return parents, pathlengths, endpoint_radiuses, start_radius
 
 
-def plot_swc(
-    fname,
-    max_branch_len: float = 100.0,
-    figsize=(6, 6),
-    dims=(0, 1),
-    cols=None,
-    highlight_branch_inds=[],
-):
-    """Plot morphology given an SWC file."""
-    highlight_cols = [
-        "#1f78b4",
-        "#33a02c",
-        "#e31a1c",
-        "#ff7f00",
-        "#6a3d9a",
-        "#b15928",
-        "#a6cee3",
-        "#b2df8a",
-        "#fb9a99",
-        "#fdbf6f",
-        "#cab2d6",
-        "#ffff99",
-    ]
-    content = np.loadtxt(fname)
-    sorted_branches = _split_into_branches_and_sort(
-        content, max_branch_len=max_branch_len
-    )
-
-    cols = [cols] * len(sorted_branches)
-
-    counter_highlight_branches = 0
-    lines = []
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    for i, branch in enumerate(sorted_branches):
-        coords_of_branch = content[np.asarray(branch) - 1, 2:5]
-        coords_of_branch = coords_of_branch[:, dims]
-
-        col = cols[i]
-        if i in highlight_branch_inds:
-            col = highlight_cols[counter_highlight_branches % len(highlight_cols)]
-            counter_highlight_branches += 1
-
-        (line,) = ax.plot(
-            coords_of_branch[:, 0], coords_of_branch[:, 1], c=col, label=f"ind {i}"
-        )
-        if i in highlight_branch_inds:
-            lines.append(line)
-
-    ax.legend(handles=lines, loc="upper left", bbox_to_anchor=(1.05, 1, 0, 0))
-
-    return fig, ax
-
-
 def _split_into_branches_and_sort(content, max_branch_len):
     branches = _split_into_branches(content)
     branches = _remove_single_branch_artifacts(branches)
