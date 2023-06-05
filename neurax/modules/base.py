@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Optional
 import jax.numpy as jnp
 import pandas as pd
 import numpy as np
+from copy import deepcopy
 
 from neurax.channels import Channel
 from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
@@ -41,6 +42,20 @@ class Module(ABC):
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
+
+    def __repr__(self):
+        return f"{type(self).__name__} with {len(self.channels)} channels. Use `.show()` for details."
+
+    def __str__(self):
+        return f"nx.{type(self).__name__}"
+
+    def show(self):
+        printable_nodes = deepcopy(self.nodes)
+
+        for key in self.params:
+            printable_nodes[key] = self.params[key]
+
+        return printable_nodes
 
     def _init_params_and_state(
         self, own_params: Dict[str, List], own_states: Dict[str, List]
@@ -243,6 +258,21 @@ class View:
         self.pointer = pointer
         self.view = view
         self.allow_make_trainable = True
+
+    def __repr__(self):
+        return f"{type(self).__name__}. Use `.show()` for details."
+
+    def __str__(self):
+        return f"{type(self).__name__}"
+
+    def show(self):
+        inds = self.view.index.values
+        printable_nodes = deepcopy(self.view)
+
+        for key in self.pointer.params:
+            printable_nodes[key] = self.pointer.params[key][inds]
+
+        return printable_nodes
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
