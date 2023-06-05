@@ -61,13 +61,6 @@ def plot_morph(
     lines = []
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # col = cols[0]
-    # if 0 in highlight_branch_inds:
-    #     col = highlight_cols[counter_highlight_branches % len(highlight_cols)]
-    #     counter_highlight_branches += 1
-    # (line,) = ax.plot([0, branch_lens[0]], [0, 0], c=col)
-    # if 0 in highlight_branch_inds:
-    #     lines.append(line)
 
     for b in range(cell.total_nbranches):
         if parents[b] > -1:
@@ -116,7 +109,7 @@ def plot_morph(
 def plot_swc(
     fname,
     max_branch_len: float = 100.0,
-    figsize=(6, 6),
+    figsize=(4, 4),
     dims=(0, 1),
     cols="k",
     highlight_branch_inds=[],
