@@ -49,11 +49,21 @@ class Module(ABC):
     def __str__(self):
         return f"nx.{type(self).__name__}"
 
-    def show(self):
+    def show(self, indices: bool = True, params: bool = True, states: bool = True):
+
         printable_nodes = deepcopy(self.nodes)
 
-        for key in self.params:
-            printable_nodes[key] = self.params[key]
+        if not indices:
+            for key in printable_nodes:
+                printable_nodes = printable_nodes.drop(key, axis=1)
+
+        if params:
+            for key in self.params:
+                printable_nodes[key] = self.params[key]
+
+        if states:
+            for key in self.states:
+                printable_nodes[key] = self.states[key]
 
         return printable_nodes
 
@@ -265,12 +275,21 @@ class View:
     def __str__(self):
         return f"{type(self).__name__}"
 
-    def show(self):
+    def show(self, indices: bool = True, params: bool = True, states: bool = True):
         inds = self.view.index.values
         printable_nodes = deepcopy(self.view)
 
-        for key in self.pointer.params:
-            printable_nodes[key] = self.pointer.params[key][inds]
+        if not indices:
+            for key in printable_nodes:
+                printable_nodes = printable_nodes.drop(key, axis=1)
+
+        if params:
+            for key in self.pointer.params:
+                printable_nodes[key] = self.pointer.params[key][inds]
+
+        if states:
+            for key in self.pointer.states:
+                printable_nodes[key] = self.pointer.states[key][inds]
 
         return printable_nodes
 
