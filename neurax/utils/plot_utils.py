@@ -25,12 +25,17 @@ highlight_cols = [
 
 
 def plot_morph(
-    cell: "nx.Cell", figsize=(4, 4), cols="k", highlight_branch_inds=[],
+    cell: "nx.Cell",
+    figsize=(4, 4),
+    cols="k",
+    highlight_branch_inds=[],
+    max_y_multiplier: float = 5.0,
+    min_y_multiplier: float = 0.5,
 ):
     """Plot the stick representation of a morphology.
-    
-    This method operates at the branch level. It does not plot individual compartments, 
-    but only individual branches. It also ignores the radius, but it takes into account 
+
+    This method operates at the branch level. It does not plot individual compartments,
+    but only individual branches. It also ignores the radius, but it takes into account
     the lengths.
 
     Args:
@@ -54,7 +59,9 @@ def plot_morph(
     # the parents. This angle is defined by the `y_offset_multiplier`. This value
     # defines the range between y-location of the first and of the last child of a
     # parent.
-    y_offset_multiplier = np.linspace(5.0, 0.5, np.max(levels) + 1)
+    y_offset_multiplier = np.linspace(
+        max_y_multiplier, min_y_multiplier, np.max(levels) + 1
+    )
 
     cols = [cols] * len(branch_lens)
     counter_highlight_branches = 0
@@ -73,7 +80,7 @@ def plot_morph(
             start_point = [0, 0]
             y_offset = 0.0
 
-        len_of_path = np.sqrt(y_offset ** 2 + 1.0)
+        len_of_path = np.sqrt(y_offset**2 + 1.0)
 
         end_point = [
             start_point[0] + branch_lens[b] / len_of_path * 1.0,
@@ -115,9 +122,9 @@ def plot_swc(
     highlight_branch_inds=[],
 ):
     """Plot morphology given an SWC file.
-    
+
     Args:
-        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of 
+        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
             two of them.
         cols: The color for all branches except the highlighted ones.
         highlight_branch_inds: Branch indices that will be highlighted.
