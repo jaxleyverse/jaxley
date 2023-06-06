@@ -12,8 +12,8 @@ def expit(x: jnp.ndarray) -> jnp.ndarray:
     return -jnp.log(1 / x - 1)
 
 
-class MembraneParamTransform:
-    """Membrane parameter transformation utility."""
+class ParamTransform:
+    """Parameter transformation utility."""
 
     def __init__(self, lowers: Dict[str, float], uppers: Dict[str, float]) -> None:
         """Initialize."""
@@ -42,19 +42,3 @@ class MembraneParamTransform:
             )
             tf_params.append({key: tf})
         return tf_params
-
-
-class SynapseParamTransform:
-    """Synapse parameter transformation utility."""
-
-    def __init__(self, lowers: List[List[float]], uppers: List[List[float]]) -> None:
-        """Build the transformation."""
-        raise NotImplementedError
-
-    def forward(self, params: jnp.ndarray) -> jnp.ndarray:
-        """Pushes unconstrained parameters through a tf such that they fit the interval."""
-        raise NotImplementedError
-
-    def inverse(self, params: jnp.ndarray) -> jnp.ndarray:
-        """Takes parameters from within the interval and makes them unconstrained."""
-        raise NotImplementedError

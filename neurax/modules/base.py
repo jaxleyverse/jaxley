@@ -50,7 +50,6 @@ class Module(ABC):
         return f"nx.{type(self).__name__}"
 
     def show(self, indices: bool = True, params: bool = True, states: bool = True):
-
         printable_nodes = deepcopy(self.nodes)
 
         if not indices:
@@ -105,6 +104,10 @@ class Module(ABC):
             self.syn_params[key] = self.syn_params[key].at[:].set(val)
         else:
             raise KeyError(f"{key} not recognized.")
+
+    def set_states(self, key: str, val: float):
+        """Set parameters of the pointer."""
+        self.states[key] = self.states[key].at[:].set(val)
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
@@ -186,7 +189,11 @@ class Module(ABC):
 
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
-            u, self.conns, params, delta_t, self.syn_edges,
+            u,
+            self.conns,
+            params,
+            delta_t,
+            self.syn_edges,
         )
 
         # Voltage steps.
@@ -250,7 +257,11 @@ class Module(ABC):
 
     @staticmethod
     def _step_synapse(
-        u, syn_channels, params, delta_t, edges,
+        u,
+        syn_channels,
+        params,
+        delta_t,
+        edges,
     ):
         """One step of integration of the channels.
 
