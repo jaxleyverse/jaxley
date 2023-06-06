@@ -2,7 +2,7 @@ from typing import List, Optional
 from math import pi
 
 import jax.numpy as jnp
-from jax import lax
+from jax.lax import ScatterDimensionNumbers, scatter_add
 from neurax.utils.cell_utils import index_of_loc
 
 
@@ -80,5 +80,11 @@ def get_external_input(
         i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
     )  # nA / um^2
     current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
-    stim_at_timestep = zero_vec.at[i_inds].set(current)
+
+    dnums = ScatterDimensionNumbers(
+        update_window_dims=(),
+        inserted_window_dims=(0,),
+        scatter_dims_to_operand_dims=(0,),
+    )
+    stim_at_timestep = scatter_add(zero_vec, i_inds[:, None], current, dnums)
     return stim_at_timestep
