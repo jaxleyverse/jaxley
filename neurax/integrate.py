@@ -1,18 +1,18 @@
 from math import prod
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 
 from neurax.modules import Module
 from neurax.recording import Recording
-from neurax.stimulus import Stimulus
+from neurax.stimulus import Stimulus, Stimuli
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.jax_utils import nested_checkpoint_scan
 
 
 def integrate(
     module: Module,
-    stimuli: List[Stimulus],
+    stimuli: Union[List[Stimulus], Stimuli],
     recordings: List[Recording],
     params: List[Dict[str, jnp.ndarray]] = [],
     delta_t: float = 0.025,
@@ -24,12 +24,20 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
+        delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
             only affect `bwd_euler` and `cranck` solvers. Either of ["stone",
             "thomas"], where `stone` is much faster on GPU for long branches
             with many compartments and `thomas` is slightly faster on CPU (`thomas` is
             used in NEURON).
+        checkpoint_lengths: Number of timesteps at every level of checkpointing. The
+            `prod(checkpoint_lengths)` must be larger or equal to the desired number of
+            simulated timesteps. Warning: the simulation is run for
+            `prod(checkpoint_lengths)` timesteps, and the result is posthoc truncated
+            to the desired simulation length (given by the length of the stimulus).
+            Therefore, a poor choice of `checkpoint_lengths` can lead to longer
+            simulation time. If `None`, no checkpointing is applied.
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
@@ -97,12 +105,23 @@ def prepare_recs(recordings: List[Recording], nseg: int, cumsum_nbranches):
     return rec_branch_inds + rec_comp_inds
 
 
-def prepare_stim(stimuli: List[Stimulus], nseg: int, cumsum_nbranches):
+def prepare_stim(stimuli: Union[List[Stimulus], Stimuli], nseg: int, cumsum_nbranches):
     """Prepare stimuli."""
-    i_comp_inds = [index_of_loc(s.branch_ind, s.loc, nseg) for s in stimuli]
-    i_comp_inds = jnp.asarray(i_comp_inds)
+    if isinstance(stimuli, Stimuli):
+        # Indexing.
+        i_comp_inds = stimuli.comp_inds
+        i_branch_inds = stimuli.branch_inds
 
-    i_branch_inds = jnp.asarray([s.cell_ind for s in stimuli])
-    i_branch_inds = cumsum_nbranches[i_branch_inds] * nseg
-    i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
+        # Currents.
+        i_ext = stimuli.currents  # nA
+    else:
+        # Indexing.
+        i_comp_inds = [index_of_loc(s.branch_ind, s.loc, nseg) for s in stimuli]
+        i_comp_inds = jnp.asarray(i_comp_inds)
+        i_branch_inds = jnp.asarray([s.cell_ind for s in stimuli])
+        i_branch_inds = cumsum_nbranches[i_branch_inds] * nseg
+
+        # Currents.
+        i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
+
     return i_ext, i_branch_inds + i_comp_inds

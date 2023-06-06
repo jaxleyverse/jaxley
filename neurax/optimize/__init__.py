@@ -1,1 +1,1 @@
-from neurax.optimize.transforms import MembraneParamTransform
+from neurax.optimize.transforms import ParamTransform
