@@ -21,7 +21,9 @@ class Network(Module):
     network_states: Dict = {}
 
     def __init__(
-        self, cells: List[Cell], connectivities: List[List[Connection]],
+        self,
+        cells: List[Cell],
+        connectivities: List[List[Connection]],
     ):
         """Initialize network of cells and synapses.
 
@@ -39,6 +41,7 @@ class Network(Module):
         self.conns = [connectivity.synapse_type for connectivity in connectivities]
         self.nseg = cells[0].nseg
         self.channels = cells[0].channels
+        self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
 
         self.initialized_morph = False
         self.initialized_syns = False
@@ -66,10 +69,10 @@ class Network(Module):
     def __getattr__(self, key):
         if key == "cell":
             return CellView(self, self.nodes)
-        elif key == "synapse":
-            return SynapseView(self, self.syn_edges)
+        elif key in self.synapse_names:
+            return SynapseView(self, self.syn_edges, key)
         else:
-            raise KeyError("Only synapse and cell as keys allowed.")
+            raise KeyError("Only synapse name and cell as keys allowed.")
 
     def init_morph(self):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
@@ -135,7 +138,11 @@ class Network(Module):
             lengths[child_inds, -1],
         )
         summed_coupling_conds = Cell.update_summed_coupling_conds(
-            summed_coupling_conds, child_inds, conds[0], conds[1], parents,
+            summed_coupling_conds,
+            child_inds,
+            conds[0],
+            conds[1],
+            parents,
         )
 
         branch_conds_fwd = jnp.zeros((nbranches))
@@ -180,7 +187,7 @@ class Network(Module):
                             type=type(connectivity.synapse_type).__name__,
                         )
                     ),
-                ]
+                ],
             )
         self.syn_edges["index"] = list(self.syn_edges.index)
 
@@ -195,23 +202,33 @@ class Network(Module):
 
     @staticmethod
     def _step_synapse(
-        u, syn_channels, params, delta_t, edges: pd.DataFrame,
+        u,
+        syn_channels,
+        params,
+        delta_t,
+        edges: pd.DataFrame,
     ):
         """Perform one step of the synapses and obtain their currents."""
         voltages = u["voltages"]
 
         pre_syn_inds = edges.groupby("type")["pre_comp_index"].apply(list)
         post_syn_inds = edges.groupby("type")["post_comp_index"].apply(list)
+        synapse_names = list(edges.groupby("type").indices.keys())
 
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
         new_syn_states = []
-        for i, list_of_synapses in enumerate(syn_channels):
-            synapse_states, synapse_current_terms = list_of_synapses.step(
+        for i, synapse_type in enumerate(syn_channels):
+            assert (
+                synapse_names[i] == type(synapse_type).__name__
+            ), "Mixup in the ordering of synapses. Please create an issue on Github."
+            synapse_states, synapse_current_terms = synapse_type.step(
                 u, delta_t, voltages, params, np.asarray(pre_syn_inds[i])
             )
             synapse_current_terms = postsyn_voltage_updates(
-                voltages, np.asarray(post_syn_inds[i]), *synapse_current_terms,
+                voltages,
+                np.asarray(post_syn_inds[i]),
+                *synapse_current_terms,
             )
             syn_voltage_terms += synapse_current_terms[0]
             syn_constant_terms += synapse_current_terms[1]
@@ -223,15 +240,36 @@ class Network(Module):
 class SynapseView(View):
     """SynapseView."""
 
-    def __init__(self, pointer, view):
+    def __init__(self, pointer, view, key):
+        view = view[view["type"] == key]
         view = view.assign(controlled_by_param=view.index)
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
-        # TODO. Problem is that the `type` value of `pointer.syn_edges` is a string.
-        # Thus, in `adjust_view`, we cannot subtract entries from each other.
-        assert (
-            index == "all"
-        ), "Not implemented to set parameters for individual synapses."
-        return super().adjust_view("index", index)
+        return self.adjust_view("index", index)
 
+    def adjust_view(self, key: str, index: float):
+        """Update view."""
+        if index != "all":
+            self.view = self.view[self.view[key] == index]
+        return self
+
+    def set_params(self, key: str, val: float):
+        """Set parameters of the pointer."""
+        self.pointer.syn_params[key] = (
+            self.pointer.syn_params[key].at[self.view.index.values].set(val)
+        )
+
+    def set_states(self, key: str, val: float):
+        """Set parameters of the pointer."""
+        self.pointer.syn_states[key] = (
+            self.pointer.syn_states[key].at[self.view.index.values].set(val)
+        )
+
+    def get_params(self, key: str):
+        """Return parameters."""
+        return self.pointer.syn_params[key][self.view.index.values]
+
+    def get_states(self, key: str):
+        """Return states."""
+        return self.pointer.syn_states[key][self.view.index.values]
