@@ -181,7 +181,9 @@ class Network(Module):
             )
 
         # Prepare synapses.
-        self.syn_edges = pd.DataFrame()
+        self.syn_edges = pd.DataFrame(
+            columns=["pre_comp_index", "post_comp_index", "type", "type_ind"]
+        )
         for i, connectivity in enumerate(self.connectivities):
             self.syn_edges = pd.concat(
                 [
