@@ -84,6 +84,16 @@ class Module(ABC):
         for key in own_states:
             self.states[key] = jnp.asarray([own_states[key]])  # should be atleast1d
 
+    @abstractmethod
+    def init_conds(self, params):
+        """Initialize coupling conductances.
+
+        Args:
+            params: Conductances and morphology parameters, not yet including
+                coupling conductances.
+        """
+        raise NotImplementedError
+
     def _append_to_params_and_state(self, constituents: List["Module"]):
         for key in constituents[0].params:
             param_vals = jnp.concatenate([b.params[key] for b in constituents])
@@ -188,6 +198,7 @@ class Module(ABC):
         )
 
         # Step of the synapse.
+        # print("self.conns", self.conns)
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
             u,
             self.conns,

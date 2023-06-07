@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 import jax.numpy as jnp
 
@@ -16,11 +16,11 @@ class GlutamateSynapse(Synapse):
     @staticmethod
     def step(
         u: Dict[str, jnp.ndarray],
-        dt,
-        voltages,
+        delta_t: float,
+        voltages: jnp.ndarray,
         params: Dict[str, jnp.ndarray],
         pre_inds: jnp.ndarray,
-    ):
+    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         """Return updated synapse state and current."""
         e_syn = 0.0
         v_th = -35.0
@@ -32,7 +32,7 @@ class GlutamateSynapse(Synapse):
 
         s_inf = s_bar
         slope = -1.0 / tau_s
-        exp_term = jnp.exp(slope * dt)
+        exp_term = jnp.exp(slope * delta_t)
         new_s = u["s"] * exp_term + s_inf * (1.0 - exp_term)
 
         non_zero_voltage_term = params["gS"] * u["s"]
