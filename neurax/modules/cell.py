@@ -92,15 +92,19 @@ class Cell(Module):
         child_inds = self.branch_edges["child_branch_index"].to_numpy()
 
         conds = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
-            axial_resistivity[par_inds, 0],
             axial_resistivity[child_inds, -1],
-            radiuses[par_inds, 0],
+            axial_resistivity[par_inds, 0],
             radiuses[child_inds, -1],
-            lengths[par_inds, 0],
+            radiuses[par_inds, 0],
             lengths[child_inds, -1],
+            lengths[par_inds, 0],
         )
         summed_coupling_conds = self.update_summed_coupling_conds(
-            summed_coupling_conds, child_inds, conds[0], conds[1], parents,
+            summed_coupling_conds,
+            child_inds,
+            conds[0],
+            conds[1],
+            parents,
         )
 
         branch_conds_fwd = jnp.zeros((nbranches))
@@ -136,8 +140,8 @@ class Cell(Module):
         )
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10 ** 7
-        branch_conds_bwd *= 10 ** 7
+        branch_conds_fwd *= 10**7
+        branch_conds_bwd *= 10**7
 
         return branch_conds_fwd, branch_conds_bwd
 
@@ -155,7 +159,7 @@ class Cell(Module):
             parents: shape [num_branches]
         """
 
-        summed_conds = summed_conds.at[child_inds, -1].add(conds_fwd[child_inds - 1])
+        summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds - 1])
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),
@@ -165,7 +169,7 @@ class Cell(Module):
         summed_conds = scatter_add(
             summed_conds,
             jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
-            conds_bwd[child_inds - 1],
+            conds_fwd[child_inds - 1],
             dnums,
         )
         return summed_conds
