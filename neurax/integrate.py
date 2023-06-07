@@ -15,6 +15,7 @@ def integrate(
     stimuli: Union[List[Stimulus], Stimuli],
     recordings: List[Recording],
     params: List[Dict[str, jnp.ndarray]] = [],
+    t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
     tridiag_solver: str = "stone",
@@ -24,6 +25,9 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
+        t_max: Duration of the simulation in milliseconds. If `None`, the duration is
+            inferred from the duration of the stimulus. If it is larger than the
+            duration of the stimulus, the stimulus is padded with zeros at the end.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
@@ -35,9 +39,9 @@ def integrate(
             `prod(checkpoint_lengths)` must be larger or equal to the desired number of
             simulated timesteps. Warning: the simulation is run for
             `prod(checkpoint_lengths)` timesteps, and the result is posthoc truncated
-            to the desired simulation length (given by the length of the stimulus).
-            Therefore, a poor choice of `checkpoint_lengths` can lead to longer
-            simulation time. If `None`, no checkpointing is applied.
+            to the desired simulation length. Therefore, a poor choice of
+            `checkpoint_lengths` can lead to longer simulation time. If `None`, no
+            checkpointing is applied.
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
@@ -47,6 +51,14 @@ def integrate(
 
     i_current, i_inds = prepare_stim(stimuli, nseg, cumsum_nbranches)
     rec_inds = prepare_recs(recordings, nseg, cumsum_nbranches)
+
+    # Shorten or pad stimulus depending on `t_max`.
+    if t_max is not None:
+        t_max_steps = int(t_max // delta_t + 1)
+        if t_max_steps > i_current.shape[0]:
+            i_current = jnp.zeros((t_max_steps, i_current.shape[1]))
+        else:
+            i_current = i_current[:t_max_steps, :]
 
     # Run `init_conds()` and return every parameter that is needed to solve the ODE.
     # This includes conductances, radiuses, lenghts, axial_resistivities, but also
@@ -78,7 +90,7 @@ def integrate(
         length = prod(checkpoint_lengths)
         assert (
             len(i_current) <= length
-        ), "The external current is longer than `prod(nested_length)`."
+        ), "The desired simulation duration is longer than `prod(nested_length)`."
         size_difference = length - len(i_current)
         dummy_stimulus = jnp.zeros((size_difference, i_current.shape[1]))
         i_current = jnp.concatenate([i_current, dummy_stimulus])
