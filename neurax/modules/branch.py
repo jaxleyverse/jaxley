@@ -50,10 +50,7 @@ class Branch(Module):
 
     def init_conds(self, params):
         conds = self.init_branch_conds(
-            params["axial_resistivity"],
-            params["radius"],
-            params["length"],
-            self.nseg,
+            params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
         cond_params = {
             "branch_conds_fwd": jnp.asarray([]),
