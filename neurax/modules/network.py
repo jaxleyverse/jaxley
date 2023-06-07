@@ -218,9 +218,10 @@ class Network(Module):
         """Perform one step of the synapses and obtain their currents."""
         voltages = u["voltages"]
 
-        pre_syn_inds = edges.groupby("type")["pre_comp_index"].apply(list)
-        post_syn_inds = edges.groupby("type")["post_comp_index"].apply(list)
-        synapse_names = list(edges.groupby("type").indices.keys())
+        grouped_syns = edges.groupby("type", sort=False)
+        pre_syn_inds = grouped_syns["pre_comp_index"].apply(list)
+        post_syn_inds = grouped_syns["post_comp_index"].apply(list)
+        synapse_names = list(grouped_syns.indices.keys())
 
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)

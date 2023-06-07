@@ -131,7 +131,7 @@ class Module(ABC):
             self.indices_set_by_trainables.append(self.syn_edges.index.to_numpy())
             self.trainable_params.append({key: jnp.asarray(init_val)})
         else:
-            raise KeyError(f"{key} not recognized.")
+            raise KeyError(f"Parameter {key} not recognized.")
 
     def get_parameters(self):
         """Get all trainable parameters."""
@@ -339,6 +339,7 @@ class View:
         assert (
             self.allow_make_trainable
         ), "network.cell('all') is not supported. Use a for-loop over cells."
+        assert key in self.pointer.params.keys(), f"Parameter {key} not recognized."
         grouped_view = self.view.groupby("controlled_by_param").indices
         indices_per_param = jnp.stack(list(grouped_view.values()))
         self.pointer.indices_set_by_trainables.append(indices_per_param)
