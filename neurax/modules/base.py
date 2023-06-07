@@ -198,7 +198,6 @@ class Module(ABC):
         )
 
         # Step of the synapse.
-        # print("self.conns", self.conns)
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
             u,
             self.conns,
