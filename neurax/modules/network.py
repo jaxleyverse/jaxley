@@ -42,6 +42,12 @@ class Network(Module):
         self.nseg = cells[0].nseg
         self.channels = cells[0].channels
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
+        self.synapse_param_names = [
+            c.synapse_type.synapse_params.keys() for c in connectivities
+        ]
+        self.synapse_state_names = [
+            c.synapse_type.synapse_states.keys() for c in connectivities
+        ]
 
         self.initialized_morph = False
         self.initialized_syns = False
@@ -185,6 +191,7 @@ class Network(Module):
                             pre_comp_index=pre_comp_inds[i],
                             post_comp_index=post_comp_inds[i],
                             type=type(connectivity.synapse_type).__name__,
+                            type_ind=i,
                         )
                     ),
                 ],
@@ -256,20 +263,32 @@ class SynapseView(View):
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
+        assert (
+            key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
+        ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
         self.pointer.syn_params[key] = (
             self.pointer.syn_params[key].at[self.view.index.values].set(val)
         )
 
     def set_states(self, key: str, val: float):
         """Set parameters of the pointer."""
+        assert (
+            key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
+        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
         self.pointer.syn_states[key] = (
             self.pointer.syn_states[key].at[self.view.index.values].set(val)
         )
 
     def get_params(self, key: str):
         """Return parameters."""
+        assert (
+            key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
+        ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
         return self.pointer.syn_params[key][self.view.index.values]
 
     def get_states(self, key: str):
         """Return states."""
+        assert (
+            key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
+        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
         return self.pointer.syn_states[key][self.view.index.values]
