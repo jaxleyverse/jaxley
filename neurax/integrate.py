@@ -46,11 +46,8 @@ def integrate(
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
 
-    nseg = module.nseg
-    cumsum_nbranches = module.cumsum_nbranches
-
-    i_current, i_inds = prepare_stim(stimuli, nseg, cumsum_nbranches)
-    rec_inds = prepare_recs(recordings, nseg, cumsum_nbranches)
+    i_current, i_inds = prepare_stim(module, stimuli)
+    rec_inds = prepare_recs(module, recordings)
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
@@ -108,8 +105,20 @@ def integrate(
     return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
 
 
-def prepare_recs(recordings: List[Recording], nseg: int, cumsum_nbranches):
+def prepare_recs(module, recordings: List[Recording]):
     """Prepare recordings."""
+    nseg = module.nseg
+    cumsum_nbranches = module.cumsum_nbranches
+
+    for rec in recordings:
+        assert rec.cell_ind < len(
+            module.nbranches_per_cell
+        ), "recording.cell_ind is larger than the number of cells."
+        assert (
+            rec.branch_ind < module.nbranches_per_cell[rec.cell_ind]
+        ), "recording.branch_ind is larger than the number of branches in the cell."
+        assert rec.loc <= 1.0 and rec.loc >= 0.0, "recording.loc must be in [0, 1]."
+
     rec_comp_inds = [index_of_loc(r.branch_ind, r.loc, nseg) for r in recordings]
     rec_comp_inds = jnp.asarray(rec_comp_inds)
     rec_branch_inds = jnp.asarray([r.cell_ind for r in recordings])
@@ -117,8 +126,11 @@ def prepare_recs(recordings: List[Recording], nseg: int, cumsum_nbranches):
     return rec_branch_inds + rec_comp_inds
 
 
-def prepare_stim(stimuli: Union[List[Stimulus], Stimuli], nseg: int, cumsum_nbranches):
+def prepare_stim(module, stimuli: Union[List[Stimulus], Stimuli]):
     """Prepare stimuli."""
+    nseg = module.nseg
+    cumsum_nbranches = module.cumsum_nbranches
+
     if isinstance(stimuli, Stimuli):
         # Indexing.
         i_comp_inds = stimuli.comp_inds
@@ -127,6 +139,16 @@ def prepare_stim(stimuli: Union[List[Stimulus], Stimuli], nseg: int, cumsum_nbra
         # Currents.
         i_ext = stimuli.currents  # nA
     else:
+        for stim in stimuli:
+            assert stim.cell_ind < len(
+                module.nbranches_per_cell
+            ), "stimulus.cell_ind is larger than the number of cells."
+            assert (
+                stim.branch_ind < module.nbranches_per_cell[stim.cell_ind]
+            ), "stimulus.branch_ind is larger than the number of branches in the cell."
+            assert (
+                stim.loc <= 1.0 and stim.loc >= 0.0
+            ), "stimulus.loc must be in [0, 1]."
         # Indexing.
         i_comp_inds = [index_of_loc(s.branch_ind, s.loc, nseg) for s in stimuli]
         i_comp_inds = jnp.asarray(i_comp_inds)
