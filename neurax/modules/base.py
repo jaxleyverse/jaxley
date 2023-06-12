@@ -109,6 +109,25 @@ class Module(ABC):
             states_vals = jnp.concatenate([b.states[key] for b in constituents])
             self.states[key] = states_vals
 
+    def _append_to_channel_params_and_state(self, constituents: List["Module"]):
+        for comp in constituents:
+            for key in comp.channel_params:
+                if key in self.channel_params:
+                    self.channel_params[key] = jnp.concatenate(
+                        [self.channel_params[key], comp.channel_params[key]]
+                    )
+                else:
+                    self.channel_params[key] = comp.channel_params[key]
+
+        for comp in constituents:
+            for key in comp.channel_states:
+                if key in self.channel_states:
+                    self.channel_states[key] = jnp.concatenate(
+                        [self.channel_states[key], comp.channel_states[key]]
+                    )
+                else:
+                    self.channel_states[key] = comp.channel_states[key]
+
     def set_params(self, key, val):
         """Set parameter for entire module."""
         if key in self.params.keys():
@@ -365,9 +384,21 @@ class View:
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
-        self.pointer.params[key] = (
-            self.pointer.params[key].at[self.view.index.values].set(val)
-        )
+        if key in self.pointer.params:
+            self.pointer.params[key] = (
+                self.pointer.params[key].at[self.view.index.values].set(val)
+            )
+        elif key in self.pointer.channel_params:
+            ind_of_comps_to_be_set = self.view.index.values
+            frame = self.pointer.channel_nodes["HHChannel"]
+            ind_of_params = frame.loc[
+                frame["comp_index"].isin(ind_of_comps_to_be_set)
+            ].index.values
+            self.pointer.channel_params[key] = (
+                self.pointer.channel_params[key].at[ind_of_params].set(val)
+            )
+        else:
+            raise KeyError("Key not recognized.")
 
     def set_states(self, key: str, val: float):
         """Set parameters of the pointer."""
