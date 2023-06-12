@@ -1,5 +1,6 @@
 import itertools
 from typing import Callable, Dict, List, Optional
+from copy import deepcopy
 
 import jax.numpy as jnp
 import numpy as np
@@ -34,13 +35,13 @@ class Network(Module):
         super().__init__()
         self._init_params_and_state(self.network_params, self.network_states)
         self._append_to_params_and_state(cells)
+        self._append_to_channel_params_and_state(cells)
         self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
         self.connectivities = connectivities
         self.conns = [connectivity.synapse_type for connectivity in connectivities]
         self.nseg = cells[0].nseg
-        self.channels = cells[0].channels
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
         self.synapse_param_names = [
             c.synapse_type.synapse_params.keys() for c in connectivities
@@ -112,6 +113,25 @@ class Network(Module):
                 ),
             )
         )
+
+        # Channel indexing.
+        for i, cell in enumerate(self.cells):
+            for channel in cell.channels:
+                name = type(channel).__name__
+                comp_inds = deepcopy(cell.channel_nodes[name]["comp_index"].to_numpy())
+                branch_inds = deepcopy(
+                    cell.channel_nodes[name]["branch_index"].to_numpy()
+                )
+                comp_inds += self.nseg * self.cumsum_nbranches[i]
+                branch_inds += self.cumsum_nbranches[i]
+                index = pd.DataFrame.from_dict(
+                    dict(
+                        comp_index=comp_inds,
+                        branch_index=branch_inds,
+                        cell_index=[i] * len(comp_inds),
+                    )
+                )
+                self._append_to_channel_nodes(index, channel)
 
         self.initialized_morph = True
 

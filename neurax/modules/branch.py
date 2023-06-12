@@ -43,16 +43,7 @@ class Branch(Module):
                 dict(comp_index=[i], branch_index=[0], cell_index=[0])
             )
             for channel in comp.channels:
-                name = type(channel).__name__
-                if name in self.channel_nodes:
-                    self.channel_nodes[name] = pd.concat(
-                        [self.channel_nodes[name], index]
-                    ).reset_index(drop=True)
-                else:
-                    self.channel_nodes[name] = index
-                    self.channels.append(channel)
-                    self.params_per_channel.append(list(channel.channel_params.keys()))
-                    self.states_per_channel.append(list(channel.channel_states.keys()))
+                self._append_to_channel_nodes(index, channel)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
