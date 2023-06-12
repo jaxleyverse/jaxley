@@ -18,7 +18,7 @@ class Module(ABC):
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
-        self.channels: List[Channel] = None
+        self.channels: List[Channel] = []
         self.conns: List[Synapse] = None
 
         self.nodes: pd.DataFrame = None
@@ -39,17 +39,23 @@ class Module(ABC):
         self.syn_params: Dict[str, jnp.ndarray] = {}
         self.syn_states: Dict[str, jnp.ndarray] = {}
 
+        # Channel indices, parameters, and states.
+        self.channel_nodes: Dict[str, pd.DataFrame] = {}
+        self.channel_params: Dict[str, Dict[str, jnp.ndarray]] = {}
+        self.channel_states: Dict[str, Dict[str, jnp.ndarray]] = {}
+
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channels)} channels. Use `.show()` for details."
+        return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
 
     def __str__(self):
         return f"nx.{type(self).__name__}"
 
     def show(self, indices: bool = True, params: bool = True, states: bool = True):
+        """Print detailed information about the Module."""
         printable_nodes = deepcopy(self.nodes)
 
         if not indices:
@@ -57,12 +63,12 @@ class Module(ABC):
                 printable_nodes = printable_nodes.drop(key, axis=1)
 
         if params:
-            for key in self.params:
-                printable_nodes[key] = self.params[key]
+            for key, val in self.params.items():
+                printable_nodes[key] = val
 
         if states:
-            for key in self.states:
-                printable_nodes[key] = self.states[key]
+            for key, val in self.states.items():
+                printable_nodes[key] = val
 
         return printable_nodes
 
@@ -140,11 +146,15 @@ class Module(ABC):
     def get_all_parameters(self, trainable_params):
         """Return all parameters (and coupling conductances) needed to simulate."""
         params = {}
-        for key in self.params:
-            params[key] = self.params[key]
+        for key, val in self.params.items():
+            params[key] = val
 
-        for key in self.syn_params:
-            params[key] = self.syn_params[key]
+        for key, val in self.syn_params.items():
+            params[key] = val
+
+        for channel in self.channel_params.values():
+            for key in channel:
+                params[key] = channel[key]
 
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
@@ -168,6 +178,37 @@ class Module(ABC):
         self.init_syns()
         return self
 
+    def insert(self, channel):
+        """Insert a channel."""
+        new_nodes = self.nodes
+        new_p = {}
+        new_s = {}
+        for key in channel.channel_params:
+            new_p[key] = jnp.asarray([channel.channel_params[key]])  # atleast1d TODO
+        for key in channel.channel_states:
+            new_s[key] = jnp.asarray([channel.channel_states[key]])  # atleast1d TODO
+
+        name = type(channel).__name__
+        if name in self.channel_nodes:
+            self.channel_nodes[name] = pd.concat(self.channel_nodes[name], new_nodes)
+            for key in channel.channel_params:
+                self.channel_params[name][key] = jnp.concatenate(
+                    [self.channel_params[name][key], new_p[key]]
+                )
+            for key in channel.channel_states:
+                self.channel_states[name][key] = jnp.concatenate(
+                    [self.channel_states[name][key], new_s[key]]
+                )
+        else:
+            self.channel_nodes[name] = new_nodes
+            self.channel_params[name] = {}
+            for key in channel.channel_params:
+                self.channel_params[name][key] = new_p[key]
+            self.channel_states[name] = {}
+            for key in channel.channel_states:
+                self.channel_states[name][key] = new_s[key]
+            self.channels.append(channel)
+
     def init_syns(self):
         self.initialized_syns = True
 
@@ -189,7 +230,7 @@ class Module(ABC):
 
         # Parameters have to go in here.
         new_channel_states, (v_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels, params
+            u, delta_t, self.channels, self.channel_nodes, params
         )
 
         # External input.
@@ -240,15 +281,19 @@ class Module(ABC):
         # Rebuild state.
         final_state = new_channel_states[0]
         for s in new_syn_states:
-            for key in s:
-                final_state[key] = s[key]
+            for key, val in s.items():
+                final_state[key] = val
         final_state["voltages"] = new_voltages.flatten(order="C")
 
         return final_state
 
     @staticmethod
     def _step_channels(
-        states, delta_t, channels: List[Channel], params: Dict[str, jnp.ndarray]
+        states,
+        delta_t,
+        channels: List[Channel],
+        channel_nodes: List[pd.DataFrame],
+        params: Dict[str, jnp.ndarray],
     ):
         """One step of integration of the channels."""
         voltages = states["voltages"]
@@ -256,11 +301,13 @@ class Module(ABC):
         constant_terms = jnp.zeros_like(voltages)
         new_channel_states = []
         for channel in channels:
+            name = type(channel).__name__
+            indices = channel_nodes[name]["comp_index"].to_numpy()
             states, membrane_current_terms = channel.step(
-                states, delta_t, voltages, params
+                states, delta_t, voltages[indices], params
             )
-            voltage_terms += membrane_current_terms[0]
-            constant_terms += membrane_current_terms[1]
+            voltage_terms = voltage_terms.at[indices].add(membrane_current_terms[0])
+            constant_terms = constant_terms.at[indices].add(membrane_current_terms[1])
             new_channel_states.append(states)
 
         return new_channel_states, (voltage_terms, constant_terms)
