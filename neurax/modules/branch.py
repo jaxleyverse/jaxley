@@ -1,4 +1,5 @@
 from typing import Callable, Dict, List, Optional
+from copy import deepcopy
 
 import jax.numpy as jnp
 import numpy as np
@@ -17,7 +18,8 @@ class Branch(Module):
         super().__init__()
         self._init_params_and_state(self.branch_params, self.branch_states)
         self._append_to_params_and_state(compartments)
-        self._append_to_channel_params_and_state(compartments)
+        for comp in compartments:
+            self._append_to_channel_params_and_state(comp)
 
         self.nseg = len(compartments)
         self.total_nbranches = 1
@@ -55,7 +57,11 @@ class Branch(Module):
 
     def __getattr__(self, key):
         assert key == "comp"
-        return CompartmentView(self, self.nodes)
+        view = deepcopy(self.nodes)
+        view["original_comp_index"] = view["comp_index"]
+        view["original_branch_index"] = view["branch_index"]
+        view["original_cell_index"] = view["cell_index"]
+        return CompartmentView(self, view)
 
     def init_conds(self, params):
         conds = self.init_branch_conds(

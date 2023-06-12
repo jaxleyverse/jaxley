@@ -26,7 +26,8 @@ class Cell(Module):
         super().__init__()
         self._init_params_and_state(self.cell_params, self.cell_states)
         self._append_to_params_and_state(branches)
-        self._append_to_channel_params_and_state(branches)
+        for branch in branches:
+            self._append_to_channel_params_and_state(branch)
 
         self.nseg = branches[0].nseg
         self.total_nbranches = len(branches)
@@ -79,7 +80,11 @@ class Cell(Module):
 
     def __getattr__(self, key: str):
         assert key == "branch"
-        return BranchView(self, self.nodes)
+        view = deepcopy(self.nodes)
+        view["original_comp_index"] = view["comp_index"]
+        view["original_branch_index"] = view["branch_index"]
+        view["original_cell_index"] = view["cell_index"]
+        return BranchView(self, view)
 
     def init_morph(self):
         """Initialize morphology."""

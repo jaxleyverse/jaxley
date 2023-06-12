@@ -8,12 +8,6 @@ class Channel:
     channel_params = None
     channel_states = None
 
-    def __init__(self):
-        super().__init__()
-
-    def set_params(self, key, val):
-        self.params[key][:] = val
-
     @abstractmethod
     def step(
         self, u, dt, voltages, params
