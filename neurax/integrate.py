@@ -97,9 +97,8 @@ def integrate(
     states = {}
     for key in module.states:
         states[key] = module.states[key]
-    for channel in module.channel_states.values():
-        for key in channel:
-            states[key] = channel[key]
+    for key in module.channel_states:
+        states[key] = module.channel_states[key]
     for key in module.syn_states:
         states[key] = module.syn_states[key]
 
