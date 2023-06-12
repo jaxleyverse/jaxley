@@ -116,6 +116,11 @@ class Module(ABC):
             assert (
                 key not in self.syn_params.keys()
             ), "Same key for synapse and node parameter."
+            assert (
+                key not in self.channel_params.keys()
+            ), "Same key for channel and node parameter."
+        elif key in self.channel_params.keys():
+            self.channel_params[key] = self.channel_params[key].at[:].set(val)
         elif key in self.syn_params.keys():
             self.syn_params[key] = self.syn_params[key].at[:].set(val)
         else:
@@ -152,9 +157,8 @@ class Module(ABC):
         for key, val in self.syn_params.items():
             params[key] = val
 
-        for channel in self.channel_params.values():
-            for key in channel:
-                params[key] = channel[key]
+        for key, val in self.channel_params.items():
+            params[key] = val
 
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
@@ -192,21 +196,19 @@ class Module(ABC):
         if name in self.channel_nodes:
             self.channel_nodes[name] = pd.concat(self.channel_nodes[name], new_nodes)
             for key in channel.channel_params:
-                self.channel_params[name][key] = jnp.concatenate(
-                    [self.channel_params[name][key], new_p[key]]
+                self.channel_params[key] = jnp.concatenate(
+                    [self.channel_params[key], new_p[key]]
                 )
             for key in channel.channel_states:
-                self.channel_states[name][key] = jnp.concatenate(
-                    [self.channel_states[name][key], new_s[key]]
+                self.channel_states[key] = jnp.concatenate(
+                    [self.channel_states[key], new_s[key]]
                 )
         else:
             self.channel_nodes[name] = new_nodes
-            self.channel_params[name] = {}
             for key in channel.channel_params:
-                self.channel_params[name][key] = new_p[key]
-            self.channel_states[name] = {}
+                self.channel_params[key] = new_p[key]
             for key in channel.channel_states:
-                self.channel_states[name][key] = new_s[key]
+                self.channel_states[key] = new_s[key]
             self.channels.append(channel)
 
     def init_syns(self):
