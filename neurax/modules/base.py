@@ -130,13 +130,13 @@ class Module(ABC):
                 else:
                     self.channel_states[key] = comp.channel_states[key]
 
-    def _identify_channel_based_on_param_name(self, name):
+    def identify_channel_based_on_param_name(self, name):
         for i, param_names in enumerate(self.params_per_channel):
             if name in param_names:
                 return type(self.channels[i]).__name__
         raise KeyError("parameter name was not found in any channel")
 
-    def _identify_channel_based_on_state_name(self, name):
+    def identify_channel_based_on_state_name(self, name):
         for i, state_names in enumerate(self.states_per_channel):
             if name in state_names:
                 return type(self.channels[i]).__name__
@@ -405,8 +405,8 @@ class View:
                 self.pointer.params[key].at[self.view.index.values].set(val)
             )
         elif key in self.pointer.channel_params:
-            channel_name = self.pointer._identify_channel_based_on_param_name(key)
-            ind_of_params = self.channel_inds(channel_name)
+            channel_name = self.pointer.identify_channel_based_on_param_name(key)
+            ind_of_params = self.channel_inds(self.view.index.values, channel_name)
             self.pointer.channel_params[key] = (
                 self.pointer.channel_params[key].at[ind_of_params].set(val)
             )
@@ -420,8 +420,8 @@ class View:
                 self.pointer.states[key].at[self.view.index.values].set(val)
             )
         elif key in self.pointer.channel_states:
-            channel_name = self.pointer._identify_channel_based_on_state_name(key)
-            ind_of_params = self.channel_inds(channel_name)
+            channel_name = self.pointer.identify_channel_based_on_state_name(key)
+            ind_of_params = self.channel_inds(self.view.index.values, channel_name)
             self.pointer.channel_states[key] = (
                 self.pointer.channel_states[key].at[ind_of_params].set(val)
             )
@@ -433,8 +433,8 @@ class View:
         if key in self.pointer.params:
             return self.pointer.params[key][self.view.index.values]
         elif key in self.pointer.channel_params:
-            channel_name = self.pointer._identify_channel_based_on_param_name(key)
-            ind_of_params = self.channel_inds(channel_name)
+            channel_name = self.pointer.identify_channel_based_on_param_name(key)
+            ind_of_params = self.channel_inds(self.view.index.values, channel_name)
             return self.pointer.channel_params[key][ind_of_params]
         else:
             raise KeyError("Key not recognized.")
@@ -444,8 +444,8 @@ class View:
         if key in self.pointer.states:
             return self.pointer.states[key][self.view.index.values]
         elif key in self.pointer.channel_states:
-            channel_name = self.pointer._identify_channel_based_on_state_name(key)
-            ind_of_states = self.channel_inds(channel_name)
+            channel_name = self.pointer.identify_channel_based_on_state_name(key)
+            ind_of_states = self.channel_inds(self.view.index.values, channel_name)
             return self.pointer.channel_states[key][ind_of_states]
         else:
             raise KeyError("Key not recognized.")
@@ -455,10 +455,19 @@ class View:
         assert (
             self.allow_make_trainable
         ), "network.cell('all') is not supported. Use a for-loop over cells."
-        assert key in self.pointer.params.keys(), f"Parameter {key} not recognized."
-        grouped_view = self.view.groupby("controlled_by_param").indices
-        indices_per_param = jnp.stack(list(grouped_view.values()))
-        self.pointer.indices_set_by_trainables.append(indices_per_param)
+
+        grouped_view = self.view.groupby("controlled_by_param")
+        inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
+
+        if key in self.pointer.params:
+            indices_per_param = inds_of_comps
+        elif key in self.pointer.channel_params:
+            name = self.pointer.identify_channel_based_on_param_name(key)
+            indices_per_param = [self.channel_inds(ind, name) for ind in inds_of_comps]
+        else:
+            raise KeyError(f"Parameter {key} not recognized.")
+
+        self.pointer.indices_set_by_trainables.append(jnp.stack(indices_per_param))
         num_created_parameters = len(indices_per_param)
         self.pointer.trainable_params.append(
             {key: jnp.asarray([[init_val]] * num_created_parameters)}
@@ -471,7 +480,7 @@ class View:
             self.view -= self.view.iloc[0]
         return self
 
-    def channel_inds(self, channel_name: str):
+    def channel_inds(self, ind_of_comps_to_be_set, channel_name: str):
         """Not all compartments might have all channels. Thus, we have to do some
         reindexing to find the associated index of a paramter of a channel given the
         index of a compartment.
@@ -479,7 +488,6 @@ class View:
         Args:
             channel_name: For example, `HHChannel`.
         """
-        ind_of_comps_to_be_set = self.view.index.values
         frame = self.pointer.channel_nodes[channel_name]
         channel_param_or_state_ind = frame.loc[
             frame["comp_index"].isin(ind_of_comps_to_be_set)
