@@ -320,3 +320,18 @@ class SynapseView(View):
             key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
         ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
         return self.pointer.syn_states[key][self.view.index.values]
+
+    def make_trainable(self, key: str, init_val: float):
+        """Make a parameter trainable."""
+        assert (
+            key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
+        ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
+
+        grouped_view = self.view.groupby("controlled_by_param")
+        indices_per_param = list(grouped_view.apply(lambda x: x.index.values))
+
+        self.pointer.indices_set_by_trainables.append(jnp.stack(indices_per_param))
+        num_created_parameters = len(indices_per_param)
+        self.pointer.trainable_params.append(
+            {key: jnp.asarray([[init_val]] * num_created_parameters)}
+        )
