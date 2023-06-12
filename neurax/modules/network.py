@@ -35,7 +35,8 @@ class Network(Module):
         super().__init__()
         self._init_params_and_state(self.network_params, self.network_states)
         self._append_to_params_and_state(cells)
-        self._append_to_channel_params_and_state(cells)
+        for cell in cells:
+            self._append_to_channel_params_and_state(cell)
         self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
@@ -75,7 +76,11 @@ class Network(Module):
 
     def __getattr__(self, key):
         if key == "cell":
-            return CellView(self, self.nodes)
+            view = deepcopy(self.nodes)
+            view["original_comp_index"] = view["comp_index"]
+            view["original_branch_index"] = view["branch_index"]
+            view["original_cell_index"] = view["cell_index"]
+            return CellView(self, view)
         elif key in self.synapse_names:
             return SynapseView(self, self.syn_edges, key)
         else:

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import pandas as pd
@@ -135,24 +135,26 @@ class Module(ABC):
             states_vals = jnp.concatenate([b.states[key] for b in constituents])
             self.states[key] = states_vals
 
-    def _append_to_channel_params_and_state(self, constituents: List["Module"]):
-        for comp in constituents:
-            for key in comp.channel_params:
-                if key in self.channel_params:
-                    self.channel_params[key] = jnp.concatenate(
-                        [self.channel_params[key], comp.channel_params[key]]
-                    )
-                else:
-                    self.channel_params[key] = comp.channel_params[key]
+    def _append_to_channel_params_and_state(
+        self, channel: Union[Channel, "Module"], repeats: int = 1
+    ):
+        for key in channel.channel_params:
+            new_params = jnp.tile(jnp.atleast_1d(channel.channel_params[key]), repeats)
+            if key in self.channel_params:
+                self.channel_params[key] = jnp.concatenate(
+                    [self.channel_params[key], new_params]
+                )
+            else:
+                self.channel_params[key] = new_params
 
-        for comp in constituents:
-            for key in comp.channel_states:
-                if key in self.channel_states:
-                    self.channel_states[key] = jnp.concatenate(
-                        [self.channel_states[key], comp.channel_states[key]]
-                    )
-                else:
-                    self.channel_states[key] = comp.channel_states[key]
+        for key in channel.channel_states:
+            new_states = np.tile(jnp.atleast_1d(channel.channel_states[key]), repeats)
+            if key in self.channel_states:
+                self.channel_states[key] = jnp.concatenate(
+                    [self.channel_states[key], new_states]
+                )
+            else:
+                self.channel_states[key] = new_states
 
     def _append_to_channel_nodes(self, index, channel):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
@@ -260,40 +262,10 @@ class Module(ABC):
             Channel is a class, but it was not initialized. Use `.insert(Channel())` 
             instead of `.insert(Channel)`.
             """
-        new_nodes = self.nodes
-        new_p = {}
-        new_s = {}
-        for key in channel.channel_params:
-            new_p[key] = jnp.asarray(
-                [channel.channel_params[key]] * self.total_nbranches * self.nseg
-            )
-        for key in channel.channel_states:
-            new_s[key] = jnp.asarray(
-                [channel.channel_states[key]] * self.total_nbranches * self.nseg
-            )
-
-        name = type(channel).__name__
-        if name in self.channel_nodes:
-            self.channel_nodes[name] = pd.concat(
-                [self.channel_nodes[name], new_nodes]
-            ).reset_index(drop=True)
-            for key in channel.channel_params:
-                self.channel_params[key] = jnp.concatenate(
-                    [self.channel_params[key], new_p[key]]
-                )
-            for key in channel.channel_states:
-                self.channel_states[key] = jnp.concatenate(
-                    [self.channel_states[key], new_s[key]]
-                )
-        else:
-            self.channel_nodes[name] = new_nodes
-            for key in channel.channel_params:
-                self.channel_params[key] = new_p[key]
-            for key in channel.channel_states:
-                self.channel_states[key] = new_s[key]
-            self.channels.append(channel)
-            self.params_per_channel.append(list(channel.channel_params.keys()))
-            self.states_per_channel.append(list(channel.channel_states.keys()))
+        self._append_to_channel_nodes(self.nodes, channel)
+        self._append_to_channel_params_and_state(
+            channel, repeats=self.total_nbranches * self.nseg
+        )
 
     def init_syns(self):
         self.initialized_syns = True
@@ -447,6 +419,28 @@ class View:
 
         return printable_nodes
 
+    def insert(self, channel):
+        """Insert a channel."""
+        assert not inspect.isclass(
+            channel
+        ), """
+            Channel is a class, but it was not initialized. Use `.insert(Channel())` 
+            instead of `.insert(Channel)`.
+            """
+        nodes = self.view.drop("controlled_by_param", axis=1)
+        nodes = nodes.drop("comp_index", axis=1)
+        nodes = nodes.drop("branch_index", axis=1)
+        nodes = nodes.drop("cell_index", axis=1)
+        nodes = nodes.rename(
+            columns={
+                "original_comp_index": "comp_index",
+                "original_branch_index": "branch_index",
+                "original_cell_index": "cell_index",
+            }
+        )
+        self.pointer._append_to_channel_nodes(nodes, channel)
+        self.pointer._append_to_channel_params_and_state(channel)
+
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
         if key in self.pointer.params:
@@ -526,7 +520,11 @@ class View:
         """Update view."""
         if index != "all":
             self.view = self.view[self.view[key] == index]
-            self.view -= self.view.iloc[0]
+            # self.view -= self.view.iloc[0]
+            self.view["comp_index"] -= self.view["comp_index"].iloc[0]
+            self.view["branch_index"] -= self.view["branch_index"].iloc[0]
+            self.view["cell_index"] -= self.view["cell_index"].iloc[0]
+            self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
     def channel_inds(self, ind_of_comps_to_be_set, channel_name: str):
