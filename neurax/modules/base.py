@@ -402,17 +402,37 @@ class View:
 
     def set_states(self, key: str, val: float):
         """Set parameters of the pointer."""
-        self.pointer.states[key] = (
-            self.pointer.states[key].at[self.view.index.values].set(val)
-        )
+        if key in self.pointer.states:
+            self.pointer.states[key] = (
+                self.pointer.states[key].at[self.view.index.values].set(val)
+            )
+        elif key in self.pointer.channel_states:
+            ind_of_params = self.channel_inds()
+            self.pointer.channel_states[key] = (
+                self.pointer.channel_states[key].at[ind_of_params].set(val)
+            )
+        else:
+            raise KeyError("Key not recognized.")
 
     def get_params(self, key: str):
         """Return parameters."""
-        return self.pointer.params[key][self.view.index.values]
+        if key in self.pointer.params:
+            return self.pointer.params[key][self.view.index.values]
+        elif key in self.pointer.channel_params:
+            ind_of_params = self.channel_inds()
+            return self.pointer.channel_params[key][ind_of_params]
+        else:
+            raise KeyError("Key not recognized.")
 
     def get_states(self, key: str):
         """Return states."""
-        return self.pointer.states[key][self.view.index.values]
+        if key in self.pointer.states:
+            return self.pointer.states[key][self.view.index.values]
+        elif key in self.pointer.channel_states:
+            ind_of_states = self.channel_inds()
+            return self.pointer.channel_states[key][ind_of_states]
+        else:
+            raise KeyError("Key not recognized.")
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
@@ -434,3 +454,14 @@ class View:
             self.view = self.view[self.view[key] == index]
             self.view -= self.view.iloc[0]
         return self
+
+    def channel_inds(self):
+        """Not all compartments might have all channels. Thus, we have to do some
+        reindexing to find the associated index of a paramter of a channel given the
+        index of a compartment."""
+        ind_of_comps_to_be_set = self.view.index.values
+        frame = self.pointer.channel_nodes["HHChannel"]
+        channel_param_or_state_ind = frame.loc[
+            frame["comp_index"].isin(ind_of_comps_to_be_set)
+        ].index.values
+        return channel_param_or_state_ind
