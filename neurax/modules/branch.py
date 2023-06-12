@@ -51,6 +51,8 @@ class Branch(Module):
                 else:
                     self.channel_nodes[name] = index
                     self.channels.append(channel)
+                    self.params_per_channel.append(list(channel.channel_params.keys()))
+                    self.states_per_channel.append(list(channel.channel_states.keys()))
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(

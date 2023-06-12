@@ -19,6 +19,8 @@ class Module(ABC):
         self.nbranches_per_cell: List[int] = None
 
         self.channels: List[Channel] = []
+        self.params_per_channel: List[List[str]] = []
+        self.states_per_channel: List[List[str]] = []
         self.conns: List[Synapse] = None
 
         self.nodes: pd.DataFrame = None
@@ -128,6 +130,18 @@ class Module(ABC):
                 else:
                     self.channel_states[key] = comp.channel_states[key]
 
+    def _identify_channel_based_on_param_name(self, name):
+        for i, param_names in enumerate(self.params_per_channel):
+            if name in param_names:
+                return type(self.channels[i]).__name__
+        raise KeyError("parameter name was not found in any channel")
+
+    def _identify_channel_based_on_state_name(self, name):
+        for i, state_names in enumerate(self.states_per_channel):
+            if name in state_names:
+                return type(self.channels[i]).__name__
+        raise KeyError("state name was not found in any channel")
+
     def set_params(self, key, val):
         """Set parameter for entire module."""
         if key in self.params.keys():
@@ -229,6 +243,8 @@ class Module(ABC):
             for key in channel.channel_states:
                 self.channel_states[key] = new_s[key]
             self.channels.append(channel)
+            self.params_per_channel.append(list(channel.channel_params.keys()))
+            self.states_per_channel.append(list(channel.channel_states.keys()))
 
     def init_syns(self):
         self.initialized_syns = True
@@ -389,11 +405,8 @@ class View:
                 self.pointer.params[key].at[self.view.index.values].set(val)
             )
         elif key in self.pointer.channel_params:
-            ind_of_comps_to_be_set = self.view.index.values
-            frame = self.pointer.channel_nodes["HHChannel"]
-            ind_of_params = frame.loc[
-                frame["comp_index"].isin(ind_of_comps_to_be_set)
-            ].index.values
+            channel_name = self.pointer._identify_channel_based_on_param_name(key)
+            ind_of_params = self.channel_inds(channel_name)
             self.pointer.channel_params[key] = (
                 self.pointer.channel_params[key].at[ind_of_params].set(val)
             )
@@ -407,7 +420,8 @@ class View:
                 self.pointer.states[key].at[self.view.index.values].set(val)
             )
         elif key in self.pointer.channel_states:
-            ind_of_params = self.channel_inds()
+            channel_name = self.pointer._identify_channel_based_on_state_name(key)
+            ind_of_params = self.channel_inds(channel_name)
             self.pointer.channel_states[key] = (
                 self.pointer.channel_states[key].at[ind_of_params].set(val)
             )
@@ -419,7 +433,8 @@ class View:
         if key in self.pointer.params:
             return self.pointer.params[key][self.view.index.values]
         elif key in self.pointer.channel_params:
-            ind_of_params = self.channel_inds()
+            channel_name = self.pointer._identify_channel_based_on_param_name(key)
+            ind_of_params = self.channel_inds(channel_name)
             return self.pointer.channel_params[key][ind_of_params]
         else:
             raise KeyError("Key not recognized.")
@@ -429,7 +444,8 @@ class View:
         if key in self.pointer.states:
             return self.pointer.states[key][self.view.index.values]
         elif key in self.pointer.channel_states:
-            ind_of_states = self.channel_inds()
+            channel_name = self.pointer._identify_channel_based_on_state_name(key)
+            ind_of_states = self.channel_inds(channel_name)
             return self.pointer.channel_states[key][ind_of_states]
         else:
             raise KeyError("Key not recognized.")
@@ -455,12 +471,16 @@ class View:
             self.view -= self.view.iloc[0]
         return self
 
-    def channel_inds(self):
+    def channel_inds(self, channel_name: str):
         """Not all compartments might have all channels. Thus, we have to do some
         reindexing to find the associated index of a paramter of a channel given the
-        index of a compartment."""
+        index of a compartment.
+
+        Args:
+            channel_name: For example, `HHChannel`.
+        """
         ind_of_comps_to_be_set = self.view.index.values
-        frame = self.pointer.channel_nodes["HHChannel"]
+        frame = self.pointer.channel_nodes[channel_name]
         channel_param_or_state_ind = frame.loc[
             frame["comp_index"].isin(ind_of_comps_to_be_set)
         ].index.values
