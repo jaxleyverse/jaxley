@@ -555,11 +555,14 @@ class View:
 
     def adjust_view(self, key: str, index: float):
         """Update view."""
-        if index != "all":
+        if isinstance(index, int) or isinstance(index, np.int64):
             self.view = self.view[self.view[key] == index]
-            # self.view -= self.view.iloc[0]
-            self.view["comp_index"] -= self.view["comp_index"].iloc[0]
-            self.view["branch_index"] -= self.view["branch_index"].iloc[0]
-            self.view["cell_index"] -= self.view["cell_index"].iloc[0]
-            self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
+        elif isinstance(index, list):
+            self.view = self.view[self.view[key].isin(index)]
+        else:
+            assert index == "all"
+        self.view["comp_index"] -= self.view["comp_index"].iloc[0]
+        self.view["branch_index"] -= self.view["branch_index"].iloc[0]
+        self.view["cell_index"] -= self.view["cell_index"].iloc[0]
+        self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
