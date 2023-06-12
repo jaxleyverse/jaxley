@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import pandas as pd
 import numpy as np
 from copy import deepcopy
+import inspect
 
 from neurax.channels import Channel
 from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
@@ -253,6 +254,12 @@ class Module(ABC):
 
     def insert(self, channel):
         """Insert a channel."""
+        assert not inspect.isclass(
+            channel
+        ), """
+            Channel is a class, but it was not initialized. Use `.insert(Channel())` 
+            instead of `.insert(Channel)`.
+            """
         new_nodes = self.nodes
         new_p = {}
         new_s = {}
