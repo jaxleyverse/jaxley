@@ -50,6 +50,7 @@ class Module(ABC):
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
+        self.allow_make_trainable: bool = True
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
@@ -67,36 +68,60 @@ class Module(ABC):
     ):
         """Print detailed information about the Module."""
         if channel_name is None:
-            printable_nodes = deepcopy(self.nodes)
-
-            if not indices:
-                for key in printable_nodes:
-                    printable_nodes = printable_nodes.drop(key, axis=1)
-
-            if params:
-                for key, val in self.params.items():
-                    printable_nodes[key] = val
-
-            if states:
-                for key, val in self.states.items():
-                    printable_nodes[key] = val
-
+            return self._show_base(self.nodes, indices, params, states)
         else:
-            printable_nodes = deepcopy(self.channel_nodes[channel_name])
+            return self._show_channel(
+                self.nodes,
+                channel_name,
+                indices,
+                params,
+                states,
+            )
 
-            if not indices:
-                for key in printable_nodes:
-                    printable_nodes = printable_nodes.drop(key, axis=1)
+    def _show_base(
+        self,
+        view,
+        indices: bool = True,
+        params: bool = True,
+        states: bool = True,
+    ):
+        inds = view.index.values
+        printable_nodes = deepcopy(view)
 
-            if params:
-                for key, val in self.channel_params.items():
-                    printable_nodes[key] = val
+        if not indices:
+            for key in printable_nodes:
+                printable_nodes = printable_nodes.drop(key, axis=1)
 
-            if states:
-                for key, val in self.channel_states.items():
-                    printable_nodes[key] = val
+        if params:
+            for key, val in self.params.items():
+                printable_nodes[key] = val[inds]
+
+        if states:
+            for key, val in self.states.items():
+                printable_nodes[key] = val[inds]
 
         return printable_nodes
+
+    def _show_channel(self, view, channel_name, indices, params, states):
+        ind_of_params = self.channel_inds(view.index.values, channel_name)
+        nodes = deepcopy(self.channel_nodes[channel_name].loc[ind_of_params])
+        nodes["comp_index"] -= nodes["comp_index"].iloc[0]
+        nodes["branch_index"] -= nodes["branch_index"].iloc[0]
+        nodes["cell_index"] -= nodes["cell_index"].iloc[0]
+
+        if not indices:
+            for key in nodes:
+                nodes = nodes.drop(key, axis=1)
+
+        if params:
+            for key, val in self.channel_params.items():
+                nodes[key] = val[ind_of_params]
+
+        if states:
+            for key, val in self.channel_states.items():
+                nodes[key] = val[ind_of_params]
+
+        return nodes
 
     def _init_params_and_state(
         self, own_params: Dict[str, List], own_states: Dict[str, List]
@@ -181,40 +206,107 @@ class Module(ABC):
                 return type(self.channels[i]).__name__
         raise KeyError("state name was not found in any channel")
 
-    def set_params(self, key, val):
-        """Set parameter for entire module."""
-        if key in self.params.keys():
-            self.params[key] = self.params[key].at[:].set(val)
-            assert (
-                key not in self.syn_params.keys()
-            ), "Same key for synapse and node parameter."
-            assert (
-                key not in self.channel_params.keys()
-            ), "Same key for channel and node parameter."
-        elif key in self.channel_params.keys():
-            self.channel_params[key] = self.channel_params[key].at[:].set(val)
-        elif key in self.syn_params.keys():
-            self.syn_params[key] = self.syn_params[key].at[:].set(val)
-        else:
-            raise KeyError(f"{key} not recognized.")
+    def channel_inds(self, ind_of_comps_to_be_set, channel_name: str):
+        """Not all compartments might have all channels. Thus, we have to do some
+        reindexing to find the associated index of a paramter of a channel given the
+        index of a compartment.
 
-    def set_states(self, key: str, val: float):
-        """Set parameters of the pointer."""
-        self.states[key] = self.states[key].at[:].set(val)
+        Args:
+            channel_name: For example, `HHChannel`.
+        """
+        frame = self.channel_nodes[channel_name]
+        channel_param_or_state_ind = frame.loc[
+            frame["comp_index"].isin(ind_of_comps_to_be_set)
+        ].index.values
+        return channel_param_or_state_ind
+
+    def set_params(self, key, val):
+        """Set parameter."""
+        self._set_params(key, val, self.nodes)
+
+    def _set_params(self, key, val, view):
+        if key in self.params:
+            self.params[key] = self.params[key].at[view.index.values].set(val)
+        elif key in self.channel_params:
+            channel_name = self.identify_channel_based_on_param_name(key)
+            ind_of_params = self.channel_inds(view.index.values, channel_name)
+            self.channel_params[key] = (
+                self.channel_params[key].at[ind_of_params].set(val)
+            )
+        else:
+            raise KeyError("Key not recognized.")
+
+    def set_states(self, key, val):
+        """Set parameters."""
+        self._set_states(key, val, self.nodes)
+
+    def _set_states(self, key: str, val: float, view):
+        if key in self.states:
+            self.states[key] = self.states[key].at[view.index.values].set(val)
+        elif key in self.channel_states:
+            channel_name = self.identify_channel_based_on_state_name(key)
+            ind_of_params = self.channel_inds(view.index.values, channel_name)
+            self.channel_states[key] = (
+                self.channel_states[key].at[ind_of_params].set(val)
+            )
+        else:
+            raise KeyError("Key not recognized.")
+
+    def get_params(self, key: str):
+        """Return parameters."""
+        self._get_params(key, self.nodes)
+
+    def _get_params(self, key: str, view):
+        if key in self.params:
+            return self.params[key][view.index.values]
+        elif key in self.channel_params:
+            channel_name = self.identify_channel_based_on_param_name(key)
+            ind_of_params = self.channel_inds(view.index.values, channel_name)
+            return self.channel_params[key][ind_of_params]
+        else:
+            raise KeyError("Key not recognized.")
+
+    def get_states(self, key: str):
+        """Return states."""
+        self._get_states(key, self.nodes)
+
+    def _get_states(self, key: str, view):
+        if key in self.states:
+            return self.states[key][view.index.values]
+        elif key in self.channel_states:
+            channel_name = self.identify_channel_based_on_state_name(key)
+            ind_of_states = self.channel_inds(view.index.values, channel_name)
+            return self.channel_states[key][ind_of_states]
+        else:
+            raise KeyError("Key not recognized.")
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
-        if key in self.params.keys():
-            self.indices_set_by_trainables.append(self.nodes.index.to_numpy())
-            self.trainable_params.append({key: jnp.asarray(init_val)})
-            assert (
-                key not in self.syn_params.keys()
-            ), "Same key for synapse and node parameter."
-        elif key in self.syn_params.keys():
-            self.indices_set_by_trainables.append(self.syn_edges.index.to_numpy())
-            self.trainable_params.append({key: jnp.asarray(init_val)})
+        view = deepcopy(self.nodes.assign(controlled_by_param=0))
+        self._make_trainable(key, init_val, view)
+
+    def _make_trainable(self, key: str, init_val: float, view):
+        """Make a parameter trainable."""
+        assert (
+            self.allow_make_trainable
+        ), "network.cell('all') is not supported. Use a for-loop over cells."
+
+        grouped_view = view.groupby("controlled_by_param")
+        inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
+
+        if key in self.params:
+            indices_per_param = inds_of_comps
+        elif key in self.channel_params:
+            name = self.identify_channel_based_on_param_name(key)
+            indices_per_param = [self.channel_inds(ind, name) for ind in inds_of_comps]
         else:
             raise KeyError(f"Parameter {key} not recognized.")
+
+        self.indices_set_by_trainables.append(jnp.stack(indices_per_param))
+        num_created_parameters = len(indices_per_param)
+        self.trainable_params.append(
+            {key: jnp.asarray([[init_val]] * num_created_parameters)}
+        )
 
     def get_parameters(self):
         """Get all trainable parameters."""
@@ -262,10 +354,11 @@ class Module(ABC):
             Channel is a class, but it was not initialized. Use `.insert(Channel())` 
             instead of `.insert(Channel)`.
             """
-        self._append_to_channel_nodes(self.nodes, channel)
-        self._append_to_channel_params_and_state(
-            channel, repeats=self.total_nbranches * self.nseg
-        )
+        self._insert(channel, self.nodes)
+
+    def _insert(self, channel, view):
+        self._append_to_channel_nodes(view, channel)
+        self._append_to_channel_params_and_state(channel, repeats=len(view))
 
     def init_syns(self):
         self.initialized_syns = True
@@ -401,23 +494,23 @@ class View:
     def __str__(self):
         return f"{type(self).__name__}"
 
-    def show(self, indices: bool = True, params: bool = True, states: bool = True):
-        inds = self.view.index.values
-        printable_nodes = deepcopy(self.view)
-
-        if not indices:
-            for key in printable_nodes:
-                printable_nodes = printable_nodes.drop(key, axis=1)
-
-        if params:
-            for key in self.pointer.params:
-                printable_nodes[key] = self.pointer.params[key][inds]
-
-        if states:
-            for key in self.pointer.states:
-                printable_nodes[key] = self.pointer.states[key][inds]
-
-        return printable_nodes
+    def show(
+        self,
+        channel_name: Optional[str] = None,
+        *,
+        indices: bool = True,
+        params: bool = True,
+        states: bool = True,
+    ):
+        if channel_name is None:
+            self.view = self.view.drop("original_comp_index", axis=1)
+            self.view = self.view.drop("original_branch_index", axis=1)
+            self.view = self.view.drop("original_cell_index", axis=1)
+            return self.pointer._show_base(self.view, indices, params, states)
+        else:
+            return self.pointer._show_channel(
+                self.view, channel_name, indices, params, states
+            )
 
     def insert(self, channel):
         """Insert a channel."""
@@ -438,83 +531,27 @@ class View:
                 "original_cell_index": "cell_index",
             }
         )
-        self.pointer._append_to_channel_nodes(nodes, channel)
-        self.pointer._append_to_channel_params_and_state(channel, repeats=len(nodes))
+        self.pointer._insert(channel, nodes)
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
-        if key in self.pointer.params:
-            self.pointer.params[key] = (
-                self.pointer.params[key].at[self.view.index.values].set(val)
-            )
-        elif key in self.pointer.channel_params:
-            channel_name = self.pointer.identify_channel_based_on_param_name(key)
-            ind_of_params = self.channel_inds(self.view.index.values, channel_name)
-            self.pointer.channel_params[key] = (
-                self.pointer.channel_params[key].at[ind_of_params].set(val)
-            )
-        else:
-            raise KeyError("Key not recognized.")
+        self.pointer._set_params(key, val, self.view)
 
     def set_states(self, key: str, val: float):
         """Set parameters of the pointer."""
-        if key in self.pointer.states:
-            self.pointer.states[key] = (
-                self.pointer.states[key].at[self.view.index.values].set(val)
-            )
-        elif key in self.pointer.channel_states:
-            channel_name = self.pointer.identify_channel_based_on_state_name(key)
-            ind_of_params = self.channel_inds(self.view.index.values, channel_name)
-            self.pointer.channel_states[key] = (
-                self.pointer.channel_states[key].at[ind_of_params].set(val)
-            )
-        else:
-            raise KeyError("Key not recognized.")
+        self.pointer._set_states(key, val, self.view)
 
     def get_params(self, key: str):
         """Return parameters."""
-        if key in self.pointer.params:
-            return self.pointer.params[key][self.view.index.values]
-        elif key in self.pointer.channel_params:
-            channel_name = self.pointer.identify_channel_based_on_param_name(key)
-            ind_of_params = self.channel_inds(self.view.index.values, channel_name)
-            return self.pointer.channel_params[key][ind_of_params]
-        else:
-            raise KeyError("Key not recognized.")
+        self.pointer._get_params(key, self.view)
 
     def get_states(self, key: str):
         """Return states."""
-        if key in self.pointer.states:
-            return self.pointer.states[key][self.view.index.values]
-        elif key in self.pointer.channel_states:
-            channel_name = self.pointer.identify_channel_based_on_state_name(key)
-            ind_of_states = self.channel_inds(self.view.index.values, channel_name)
-            return self.pointer.channel_states[key][ind_of_states]
-        else:
-            raise KeyError("Key not recognized.")
+        self.pointer._get_states(key, self.view)
 
     def make_trainable(self, key: str, init_val: float):
         """Make a parameter trainable."""
-        assert (
-            self.allow_make_trainable
-        ), "network.cell('all') is not supported. Use a for-loop over cells."
-
-        grouped_view = self.view.groupby("controlled_by_param")
-        inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
-
-        if key in self.pointer.params:
-            indices_per_param = inds_of_comps
-        elif key in self.pointer.channel_params:
-            name = self.pointer.identify_channel_based_on_param_name(key)
-            indices_per_param = [self.channel_inds(ind, name) for ind in inds_of_comps]
-        else:
-            raise KeyError(f"Parameter {key} not recognized.")
-
-        self.pointer.indices_set_by_trainables.append(jnp.stack(indices_per_param))
-        num_created_parameters = len(indices_per_param)
-        self.pointer.trainable_params.append(
-            {key: jnp.asarray([[init_val]] * num_created_parameters)}
-        )
+        self.pointer._make_trainable(key, init_val, self.view)
 
     def adjust_view(self, key: str, index: float):
         """Update view."""
@@ -526,17 +563,3 @@ class View:
             self.view["cell_index"] -= self.view["cell_index"].iloc[0]
             self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
-
-    def channel_inds(self, ind_of_comps_to_be_set, channel_name: str):
-        """Not all compartments might have all channels. Thus, we have to do some
-        reindexing to find the associated index of a paramter of a channel given the
-        index of a compartment.
-
-        Args:
-            channel_name: For example, `HHChannel`.
-        """
-        frame = self.pointer.channel_nodes[channel_name]
-        channel_param_or_state_ind = frame.loc[
-            frame["comp_index"].isin(ind_of_comps_to_be_set)
-        ].index.values
-        return channel_param_or_state_ind
