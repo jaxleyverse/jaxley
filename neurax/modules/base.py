@@ -153,6 +153,19 @@ class Module(ABC):
                 else:
                     self.channel_states[key] = comp.channel_states[key]
 
+    def _append_to_channel_nodes(self, index, channel):
+        """Adds channel nodes from constituents to `self.channel_nodes`."""
+        name = type(channel).__name__
+        if name in self.channel_nodes:
+            self.channel_nodes[name] = pd.concat(
+                [self.channel_nodes[name], index]
+            ).reset_index(drop=True)
+        else:
+            self.channel_nodes[name] = index
+            self.channels.append(channel)
+            self.params_per_channel.append(list(channel.channel_params.keys()))
+            self.states_per_channel.append(list(channel.channel_states.keys()))
+
     def identify_channel_based_on_param_name(self, name):
         for i, param_names in enumerate(self.params_per_channel):
             if name in param_names:

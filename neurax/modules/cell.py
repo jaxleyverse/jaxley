@@ -1,4 +1,5 @@
 from typing import Callable, Dict, List, Optional
+from copy import deepcopy
 
 import jax.numpy as jnp
 import numpy as np
@@ -25,13 +26,13 @@ class Cell(Module):
         super().__init__()
         self._init_params_and_state(self.cell_params, self.cell_states)
         self._append_to_params_and_state(branches)
+        self._append_to_channel_params_and_state(branches)
 
         self.nseg = branches[0].nseg
         self.total_nbranches = len(branches)
         self.nbranches_per_cell = [len(branches)]
         self.comb_parents = jnp.asarray(parents)
         self.cumsum_nbranches = jnp.asarray([0, len(branches)])
-        self.channels = branches[0].channels
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -43,6 +44,24 @@ class Cell(Module):
                 cell_index=[0] * (self.nseg * self.total_nbranches),
             )
         )
+
+        # Channel indexing.
+        for i, branch in enumerate(branches):
+            for channel in branch.channels:
+                name = type(channel).__name__
+                comp_inds = deepcopy(
+                    branch.channel_nodes[name]["comp_index"].to_numpy()
+                )
+                comp_inds += self.nseg * i
+                index = pd.DataFrame.from_dict(
+                    dict(
+                        comp_index=comp_inds,
+                        branch_index=[i] * len(comp_inds),
+                        cell_index=[0] * len(comp_inds),
+                    )
+                )
+                self._append_to_channel_nodes(index, channel)
+
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
             dict(pre_comp_index=[], post_comp_index=[], type="")
