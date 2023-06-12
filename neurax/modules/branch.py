@@ -47,7 +47,7 @@ class Branch(Module):
                 if name in self.channel_nodes:
                     self.channel_nodes[name] = pd.concat(
                         [self.channel_nodes[name], index]
-                    ).reset_index()
+                    ).reset_index(drop=True)
                 else:
                     self.channel_nodes[name] = index
                     self.channels.append(channel)
