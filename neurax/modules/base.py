@@ -244,13 +244,19 @@ class Module(ABC):
         new_p = {}
         new_s = {}
         for key in channel.channel_params:
-            new_p[key] = jnp.asarray([channel.channel_params[key]])  # atleast1d TODO
+            new_p[key] = jnp.asarray(
+                [channel.channel_params[key]] * self.total_nbranches * self.nseg
+            )
         for key in channel.channel_states:
-            new_s[key] = jnp.asarray([channel.channel_states[key]])  # atleast1d TODO
+            new_s[key] = jnp.asarray(
+                [channel.channel_states[key]] * self.total_nbranches * self.nseg
+            )
 
         name = type(channel).__name__
         if name in self.channel_nodes:
-            self.channel_nodes[name] = pd.concat(self.channel_nodes[name], new_nodes)
+            self.channel_nodes[name] = pd.concat(
+                [self.channel_nodes[name], new_nodes]
+            ).reset_index(drop=True)
             for key in channel.channel_params:
                 self.channel_params[key] = jnp.concatenate(
                     [self.channel_params[key], new_p[key]]
@@ -430,6 +436,7 @@ class View:
         elif key in self.pointer.channel_params:
             channel_name = self.pointer.identify_channel_based_on_param_name(key)
             ind_of_params = self.channel_inds(self.view.index.values, channel_name)
+            print("ind_of_params", ind_of_params)
             self.pointer.channel_params[key] = (
                 self.pointer.channel_params[key].at[ind_of_params].set(val)
             )
