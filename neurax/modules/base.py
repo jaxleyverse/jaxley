@@ -148,7 +148,7 @@ class Module(ABC):
                 self.channel_params[key] = new_params
 
         for key in channel.channel_states:
-            new_states = np.tile(jnp.atleast_1d(channel.channel_states[key]), repeats)
+            new_states = jnp.tile(jnp.atleast_1d(channel.channel_states[key]), repeats)
             if key in self.channel_states:
                 self.channel_states[key] = jnp.concatenate(
                     [self.channel_states[key], new_states]
@@ -439,7 +439,7 @@ class View:
             }
         )
         self.pointer._append_to_channel_nodes(nodes, channel)
-        self.pointer._append_to_channel_params_and_state(channel)
+        self.pointer._append_to_channel_params_and_state(channel, repeats=len(nodes))
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
