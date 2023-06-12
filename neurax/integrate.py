@@ -61,7 +61,6 @@ def integrate(
     # This includes conductances, radiuses, lenghts, axial_resistivities, but also
     # coupling conductances.
     all_params = module.get_all_parameters(params)
-    print("all_params", all_params)
 
     def _body_fun(state, i_stim):
         state = module.step(

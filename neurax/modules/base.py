@@ -56,21 +56,44 @@ class Module(ABC):
     def __str__(self):
         return f"nx.{type(self).__name__}"
 
-    def show(self, indices: bool = True, params: bool = True, states: bool = True):
+    def show(
+        self,
+        channel_name: Optional[str] = None,
+        *,
+        indices: bool = True,
+        params: bool = True,
+        states: bool = True,
+    ):
         """Print detailed information about the Module."""
-        printable_nodes = deepcopy(self.nodes)
+        if channel_name is None:
+            printable_nodes = deepcopy(self.nodes)
 
-        if not indices:
-            for key in printable_nodes:
-                printable_nodes = printable_nodes.drop(key, axis=1)
+            if not indices:
+                for key in printable_nodes:
+                    printable_nodes = printable_nodes.drop(key, axis=1)
 
-        if params:
-            for key, val in self.params.items():
-                printable_nodes[key] = val
+            if params:
+                for key, val in self.params.items():
+                    printable_nodes[key] = val
 
-        if states:
-            for key, val in self.states.items():
-                printable_nodes[key] = val
+            if states:
+                for key, val in self.states.items():
+                    printable_nodes[key] = val
+
+        else:
+            printable_nodes = deepcopy(self.channel_nodes[channel_name])
+
+            if not indices:
+                for key in printable_nodes:
+                    printable_nodes = printable_nodes.drop(key, axis=1)
+
+            if params:
+                for key, val in self.channel_params.items():
+                    printable_nodes[key] = val
+
+            if states:
+                for key, val in self.channel_states.items():
+                    printable_nodes[key] = val
 
         return printable_nodes
 
