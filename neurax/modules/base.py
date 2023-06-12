@@ -449,7 +449,6 @@ class View:
         elif key in self.pointer.channel_params:
             channel_name = self.pointer.identify_channel_based_on_param_name(key)
             ind_of_params = self.channel_inds(self.view.index.values, channel_name)
-            print("ind_of_params", ind_of_params)
             self.pointer.channel_params[key] = (
                 self.pointer.channel_params[key].at[ind_of_params].set(val)
             )
