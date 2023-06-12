@@ -17,48 +17,12 @@ class Branch(Module):
         super().__init__()
         self._init_params_and_state(self.branch_params, self.branch_states)
         self._append_to_params_and_state(compartments)
+        self._append_to_channel_params_and_state(compartments)
 
         self.nseg = len(compartments)
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
-
-        self.channels = []
-        self.channel_nodes: Dict[str, pd.DataFrame] = {}
-        self.channel_params = {}
-        self.channel_params = {}
-
-        for i, comp in enumerate(compartments):
-            index = pd.DataFrame.from_dict(
-                dict(comp_index=[i], branch_index=[0], cell_index=[0])
-            )
-            for channel in comp.channels:
-                name = type(channel).__name__
-                if name in self.channel_nodes:
-                    self.channel_nodes[name] = pd.concat(
-                        [self.channel_nodes[name], index]
-                    )
-                else:
-                    self.channel_nodes[name] = index
-                    self.channels.append(channel)
-
-        for i, comp in enumerate(compartments):
-            for key in comp.channel_params:
-                if key in self.channel_params:
-                    self.channel_params[key] = jnp.concatenate(
-                        [self.channel_params[key], comp.channel_params[key]]
-                    )
-                else:
-                    self.channel_params[key] = comp.channel_params[key]
-
-        for i, comp in enumerate(compartments):
-            for key in comp.channel_states:
-                if key in self.channel_states:
-                    self.channel_states[key] = jnp.concatenate(
-                        [self.channel_states[key], comp.channel_states[key]]
-                    )
-                else:
-                    self.channel_states[key] = comp.channel_states[key]
 
         self.initialized_morph = True
         self.initialized_conds = False
@@ -72,6 +36,22 @@ class Branch(Module):
                 cell_index=[0] * self.nseg,
             )
         )
+
+        # Channel indexing.
+        for i, comp in enumerate(compartments):
+            index = pd.DataFrame.from_dict(
+                dict(comp_index=[i], branch_index=[0], cell_index=[0])
+            )
+            for channel in comp.channels:
+                name = type(channel).__name__
+                if name in self.channel_nodes:
+                    self.channel_nodes[name] = pd.concat(
+                        [self.channel_nodes[name], index]
+                    ).reset_index()
+                else:
+                    self.channel_nodes[name] = index
+                    self.channels.append(channel)
+
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
             dict(pre_comp_index=[], post_comp_index=[], type="")
