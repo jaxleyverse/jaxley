@@ -23,6 +23,7 @@ class Module(ABC):
         self.params_per_channel: List[List[str]] = []
         self.states_per_channel: List[List[str]] = []
         self.conns: List[Synapse] = None
+        self.group_views = {}
 
         self.nodes: pd.DataFrame = None
         self.syn_edges: pd.DataFrame = None
@@ -581,7 +582,13 @@ class View:
 
 
 class GroupView(View):
-    """GroupView (aka sectionlist)."""
+    """GroupView (aka sectionlist).
+
+    The only difference to a standard `View` is that it sets `controlled_by_param` to
+    0 for all compartments. This means that a group will always be controlled by a
+    single parameter.
+    """
 
     def __init__(self, pointer, view):
+        view["controlled_by_param"] = 0
         super().__init__(pointer, view)

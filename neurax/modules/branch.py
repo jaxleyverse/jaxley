@@ -25,7 +25,6 @@ class Branch(Module):
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
-        self.group_views = {}
 
         self.initialized_morph = True
         self.initialized_conds = False

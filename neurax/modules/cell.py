@@ -78,13 +78,17 @@ class Cell(Module):
         self.initialized_conds = False
         self.initialized_syns = True
 
-    def __getattr__(self, key: str):
-        assert key == "branch"
-        view = deepcopy(self.nodes)
-        view["original_comp_index"] = view["comp_index"]
-        view["original_branch_index"] = view["branch_index"]
-        view["original_cell_index"] = view["cell_index"]
-        return BranchView(self, view)
+    def __getattr__(self, key):
+        if key == "branch":
+            view = deepcopy(self.nodes)
+            view["original_comp_index"] = view["comp_index"]
+            view["original_branch_index"] = view["branch_index"]
+            view["original_cell_index"] = view["cell_index"]
+            return BranchView(self, view)
+        elif key in self.group_views:
+            return self.group_views[key]
+        else:
+            raise KeyError(f"Key {key} not recognized.")
 
     def init_morph(self):
         """Initialize morphology."""
