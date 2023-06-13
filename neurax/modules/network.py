@@ -83,8 +83,10 @@ class Network(Module):
             return CellView(self, view)
         elif key in self.synapse_names:
             return SynapseView(self, self.syn_edges, key)
+        elif key in self.group_views:
+            return self.group_views[key]
         else:
-            raise KeyError("Only synapse name and cell as keys allowed.")
+            raise KeyError(f"Key {key} not recognized.")
 
     def init_morph(self):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
