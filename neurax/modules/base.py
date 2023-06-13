@@ -129,9 +129,10 @@ class Module(ABC):
         """Sets parameters and state of the module at initialization.
 
         Args:
-            own_params: _description_
-            own_states: _description_
-            constituent: _description_
+            own_params: Parameters of the current module, excluding parameters of its
+                constituents.
+            own_states: States of the current module, excluding states of its
+                constituents.
         """
         self.params = {}
         for key in own_params:
@@ -307,6 +308,14 @@ class Module(ABC):
         self.trainable_params.append(
             {key: jnp.asarray([[init_val]] * num_created_parameters)}
         )
+
+    def add_to_group(self, group_name):
+        raise ValueError("`add_to_group()` makes no sense for an entire module.")
+
+    def _add_to_group(self, group_name, view):
+        if group_name in self.group_views:
+            view = pd.concat([self.group_views[group_name].view, view])
+        self.group_views[group_name] = GroupView(self, view)
 
     def get_parameters(self):
         """Get all trainable parameters."""
@@ -553,6 +562,9 @@ class View:
         """Make a parameter trainable."""
         self.pointer._make_trainable(key, init_val, self.view)
 
+    def add_to_group(self, group_name: str):
+        self.pointer._add_to_group(group_name, self.view)
+
     def adjust_view(self, key: str, index: float):
         """Update view."""
         if isinstance(index, int) or isinstance(index, np.int64):
@@ -566,3 +578,10 @@ class View:
         self.view["cell_index"] -= self.view["cell_index"].iloc[0]
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
+
+
+class GroupView(View):
+    """GroupView (aka sectionlist)."""
+
+    def __init__(self, pointer, view):
+        super().__init__(pointer, view)
