@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
-from neurax.modules.base import Module, View
+from neurax.modules.base import Module, View, GroupView
 from neurax.modules.compartment import Compartment, CompartmentView
 from neurax.utils.cell_utils import compute_coupling_cond
 
@@ -25,6 +25,7 @@ class Branch(Module):
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
+        self.group_views = {}
 
         self.initialized_morph = True
         self.initialized_conds = False
@@ -56,12 +57,16 @@ class Branch(Module):
         )
 
     def __getattr__(self, key):
-        assert key == "comp"
-        view = deepcopy(self.nodes)
-        view["original_comp_index"] = view["comp_index"]
-        view["original_branch_index"] = view["branch_index"]
-        view["original_cell_index"] = view["cell_index"]
-        return CompartmentView(self, view)
+        if key == "comp":
+            view = deepcopy(self.nodes)
+            view["original_comp_index"] = view["comp_index"]
+            view["original_branch_index"] = view["branch_index"]
+            view["original_cell_index"] = view["cell_index"]
+            return CompartmentView(self, view)
+        elif key in self.group_views:
+            return self.group_views[key]
+        else:
+            raise KeyError(f"Key {key} not recognized.")
 
     def init_conds(self, params):
         conds = self.init_branch_conds(
