@@ -235,6 +235,8 @@ class Module(ABC):
             self.channel_params[key] = (
                 self.channel_params[key].at[ind_of_params].set(val)
             )
+        elif key in self.syn_params:
+            self.syn_params[key] = self.syn_params[key].at[view.index.values].set(val)
         else:
             raise KeyError("Key not recognized.")
 
@@ -251,6 +253,8 @@ class Module(ABC):
             self.channel_states[key] = (
                 self.channel_states[key].at[ind_of_params].set(val)
             )
+        elif key in self.syn_states:
+            self.syn_states[key] = self.syn_states[key].at[view.index.values].set(val)
         else:
             raise KeyError("Key not recognized.")
 
@@ -265,6 +269,8 @@ class Module(ABC):
             channel_name = self.identify_channel_based_on_param_name(key)
             ind_of_params = self.channel_inds(view.index.values, channel_name)
             return self.channel_params[key][ind_of_params]
+        elif key in self.syn_params:
+            return self.syn_params[key][view.index.values]
         else:
             raise KeyError("Key not recognized.")
 
@@ -279,6 +285,8 @@ class Module(ABC):
             channel_name = self.identify_channel_based_on_state_name(key)
             ind_of_states = self.channel_inds(view.index.values, channel_name)
             return self.channel_states[key][ind_of_states]
+        elif key in self.syn_states:
+            return self.syn_states[key][view.index.values]
         else:
             raise KeyError("Key not recognized.")
 
@@ -315,6 +323,9 @@ class Module(ABC):
                 [self.channel_inds(ind, name) for ind in inds_of_comps]
             )
             param_vals = self.channel_params[key][indices_per_param]
+        elif key in self.syn_params:
+            indices_per_param = jnp.stack(inds_of_comps)
+            param_vals = self.syn_params[key][indices_per_param]
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
