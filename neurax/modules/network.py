@@ -75,6 +75,10 @@ class Network(Module):
                 self.syn_states[key] = state_vals
 
     def __getattr__(self, key):
+        # Ensure that hidden methods such as `__deepcopy__` still work.
+        if key.startswith("__"):
+            return super().__getattribute__(key)
+
         if key == "cell":
             view = deepcopy(self.nodes)
             view["original_comp_index"] = view["comp_index"]
