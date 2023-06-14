@@ -282,13 +282,23 @@ class Module(ABC):
         else:
             raise KeyError("Key not recognized.")
 
-    def make_trainable(self, key: str, init_val: float):
-        """Make a parameter trainable."""
-        view = deepcopy(self.nodes.assign(controlled_by_param=0))
-        self._make_trainable(key, init_val, view)
+    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+        """Make a parameter trainable.
 
-    def _make_trainable(self, key: str, init_val: float, view):
-        """Make a parameter trainable."""
+        Args:
+            key: Name of the parameter to make trainable.
+            init_val: Initial value of the parameter. If `float`, the same value is
+                used for every created parameter. If `list`, the length of the list has
+                to match the number of created parameters. If `None`, the current
+                parameter value is used and if parameter sharing is performed that the
+                current parameter value is averaged over all shared parameters.
+        """
+        view = deepcopy(self.nodes.assign(controlled_by_param=0))
+        self._make_trainable(view, key, init_val)
+
+    def _make_trainable(
+        self, view, key: str, init_val: Optional[Union[float, list]] = None
+    ):
         assert (
             self.allow_make_trainable
         ), "network.cell('all') is not supported. Use a for-loop over cells."
@@ -297,18 +307,36 @@ class Module(ABC):
         inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
 
         if key in self.params:
-            indices_per_param = inds_of_comps
+            indices_per_param = jnp.stack(inds_of_comps)
+            param_vals = self.params[key][indices_per_param]
         elif key in self.channel_params:
             name = self.identify_channel_based_on_param_name(key)
-            indices_per_param = [self.channel_inds(ind, name) for ind in inds_of_comps]
+            indices_per_param = jnp.stack(
+                [self.channel_inds(ind, name) for ind in inds_of_comps]
+            )
+            param_vals = self.channel_params[key][indices_per_param]
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
-        self.indices_set_by_trainables.append(jnp.stack(indices_per_param))
+        self.indices_set_by_trainables.append(indices_per_param)
+
         num_created_parameters = len(indices_per_param)
-        self.trainable_params.append(
-            {key: jnp.asarray([[init_val]] * num_created_parameters)}
-        )
+        if init_val is not None:
+            if isinstance(init_val, float):
+                new_params = jnp.asarray([[init_val]] * num_created_parameters)
+            elif isinstance(init_val, list):
+                assert (
+                    len(init_val) == num_created_parameters
+                ), f"len(init_val)={len(init_val)}, but trying to create {num_created_parameters} parameters."
+                new_params = jnp.asarray(init_val)[:, None]
+            else:
+                raise ValueError(
+                    f"init_val must a float, list, or None, but it is a {type(init_val).__name__}."
+                )
+        else:
+            new_params = jnp.mean(param_vals, axis=1, keepdims=True)
+
+        self.trainable_params.append({key: new_params})
 
     def add_to_group(self, group_name):
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
@@ -559,9 +587,9 @@ class View:
         """Return states."""
         self.pointer._get_states(key, self.view)
 
-    def make_trainable(self, key: str, init_val: float):
+    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""
-        self.pointer._make_trainable(key, init_val, self.view)
+        self.pointer._make_trainable(self.view, key, init_val)
 
     def add_to_group(self, group_name: str):
         self.pointer._add_to_group(group_name, self.view)
