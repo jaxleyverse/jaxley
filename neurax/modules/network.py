@@ -1,5 +1,5 @@
 import itertools
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 from copy import deepcopy
 
 import jax.numpy as jnp
@@ -289,6 +289,31 @@ class SynapseView(View):
     def __call__(self, index: int):
         return self.adjust_view("index", index)
 
+    def show(
+        self,
+        *,
+        indices: bool = True,
+        params: bool = True,
+        states: bool = True,
+    ):
+        """Show synapses."""
+        ind_of_params = self.view.index.values
+        nodes = deepcopy(self.view)
+
+        if not indices:
+            for key in nodes:
+                nodes = nodes.drop(key, axis=1)
+
+        if params:
+            for key, val in self.pointer.syn_params.items():
+                nodes[key] = val[ind_of_params]
+
+        if states:
+            for key, val in self.pointer.syn_states.items():
+                nodes[key] = val[ind_of_params]
+
+        return nodes
+
     def adjust_view(self, key: str, index: float):
         """Update view."""
         if index != "all":
@@ -300,44 +325,32 @@ class SynapseView(View):
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer.syn_params[key] = (
-            self.pointer.syn_params[key].at[self.view.index.values].set(val)
-        )
+        self.pointer._set_params(key, val, self.view)
 
     def set_states(self, key: str, val: float):
         """Set parameters of the pointer."""
         assert (
             key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
         ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer.syn_states[key] = (
-            self.pointer.syn_states[key].at[self.view.index.values].set(val)
-        )
+        self.pointer._set_states(key, val, self.view)
 
     def get_params(self, key: str):
         """Return parameters."""
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        return self.pointer.syn_params[key][self.view.index.values]
+        self.pointer._get_params(key, self.view)
 
     def get_states(self, key: str):
         """Return states."""
         assert (
             key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
         ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        return self.pointer.syn_states[key][self.view.index.values]
+        self.pointer._get_states(key, self.view)
 
-    def make_trainable(self, key: str, init_val: float):
+    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-
-        grouped_view = self.view.groupby("controlled_by_param")
-        indices_per_param = list(grouped_view.apply(lambda x: x.index.values))
-
-        self.pointer.indices_set_by_trainables.append(jnp.stack(indices_per_param))
-        num_created_parameters = len(indices_per_param)
-        self.pointer.trainable_params.append(
-            {key: jnp.asarray([[init_val]] * num_created_parameters)}
-        )
+        self.pointer._make_trainable(self.view, key, init_val)
