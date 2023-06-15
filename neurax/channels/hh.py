@@ -22,8 +22,8 @@ class HHChannel(Channel):
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["gNa"] * (ms ** 3) * hs * 1000  # mS/cm^2
-        kd_conds = params["gK"] * ns ** 4 * 1000  # mS/cm^2
+        na_conds = params["gNa"] * (new_m**3) * new_h * 1000  # mS/cm^2
+        kd_conds = params["gK"] * new_n**4 * 1000  # mS/cm^2
         leak_conds = params["gLeak"] * 1000  # mS/cm^2
 
         voltage_term = na_conds + kd_conds + leak_conds
