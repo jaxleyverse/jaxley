@@ -93,17 +93,17 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
         sec.ek = -77.0  # mV
         sec.el_hh = -54.3  # mV
 
-    stim = h.IClamp(branch1(0.0))
+    stim = h.IClamp(branch1(0.05))
     stim.delay = i_delay
     stim.dur = i_dur
     stim.amp = i_amp
 
     voltage1 = h.Vector()
-    voltage1.record(branch1(0.0)._ref_v)
+    voltage1.record(branch1(0.05)._ref_v)
     voltage2 = h.Vector()
-    voltage2.record(branch2(1.0)._ref_v)
+    voltage2.record(branch2(0.95)._ref_v)
     voltage3 = h.Vector()
-    voltage3.record(branch3(1.0)._ref_v)
+    voltage3.record(branch3(0.95)._ref_v)
 
     v_init = -62.0
 
