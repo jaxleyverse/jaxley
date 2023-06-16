@@ -98,19 +98,26 @@ class Branch(Module):
         rad2 = radiuses[:-1]
         l1 = lengths[1:]
         l2 = lengths[:-1]
+        dx = 0.5 * (l1 + l2)
         r_a1 = axial_resistivity[1:]
         r_a2 = axial_resistivity[:-1]
-        coupling_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
-        coupling_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
+        coupling_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, dx, l1)
+        coupling_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, dx, l2)
+        # print("coupling_conds_bwd", coupling_conds_bwd)
+        # print("coupling_conds_fwd", coupling_conds_fwd)
 
         # Convert (S / cm / um) -> (mS / cm^2)
         coupling_conds_fwd *= 10**7
         coupling_conds_bwd *= 10**7
 
+        coupling_conds_bwd = coupling_conds_bwd.at[0].set(coupling_conds_bwd[0] * 2.0)
+        coupling_conds_fwd = coupling_conds_fwd.at[-1].set(coupling_conds_fwd[-1] * 2.0)
+
         # Compute the summed coupling conductances of each compartment.
         summed_coupling_conds = jnp.zeros((nseg))
         summed_coupling_conds = summed_coupling_conds.at[1:].add(coupling_conds_fwd)
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
+        # print("summed_coupling_conds", summed_coupling_conds)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
 

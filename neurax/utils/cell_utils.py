@@ -124,7 +124,9 @@ def _compute_index_of_child(parents):
 
 
 def get_num_neighbours(
-    num_children: jnp.ndarray, nseg_per_branch: int, num_branches: int,
+    num_children: jnp.ndarray,
+    nseg_per_branch: int,
+    num_branches: int,
 ):
     """
     Number of neighbours of each compartment.
@@ -161,4 +163,7 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
 
 
 def compute_coupling_cond(rad1, rad2, r_a, l1, l2):
-    return rad1 * rad2 ** 2 / r_a / (rad2 ** 2 * l1 + rad1 ** 2 * l2) / l1
+    average_rad = 0.5 * (rad1 + rad2)
+    average_ra = r_a
+    return 1 * average_rad**2 / 2.0 / average_ra / rad1 / l1**2
+    # return rad1 * rad2**2 / r_a / (rad2**2 * l1 + rad1**2 * l2) / l1

@@ -427,16 +427,23 @@ class Module(ABC):
     ):
         """One step of integration."""
         voltages = u["voltages"]
+        new = voltages[1] + i_current / params["coupling_conds_bwd"][0]
+        voltages = voltages.at[0].set(new)
+        voltages = voltages.at[-1].set(voltages[-2])
 
         # Parameters have to go in here.
         new_channel_states, (v_terms, const_terms) = self._step_channels(
             u, delta_t, self.channels, self.channel_nodes, params
         )
+        v_terms = v_terms.at[0].set(0.0)
+        const_terms = const_terms.at[0].set(0.0)
+        v_terms = v_terms.at[-1].set(0.0)
+        const_terms = const_terms.at[-1].set(0.0)
 
         # External input.
-        i_ext = get_external_input(
-            voltages, i_inds, i_current, params["radius"], params["length"]
-        )
+        # i_ext = get_external_input(
+        #     voltages, i_inds, i_current, params["radius"], params["length"]
+        # )
 
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
