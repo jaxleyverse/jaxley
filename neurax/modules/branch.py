@@ -94,18 +94,18 @@ class Branch(Module):
         # `r_a`: ohm cm
         # `length_single_compartment`: um
         # `coupling_conds`: S * um / cm / um^2 = S / cm / um
-        rad1 = radiuses[1:]
-        rad2 = radiuses[:-1]
-        l1 = lengths[1:]
-        l2 = lengths[:-1]
-        r_a1 = axial_resistivity[1:]
-        r_a2 = axial_resistivity[:-1]
-        coupling_conds_bwd = compute_coupling_cond(rad2, rad1, r_a1, l2, l1)
-        coupling_conds_fwd = compute_coupling_cond(rad1, rad2, r_a2, l1, l2)
+        r1 = radiuses[:-1]
+        r2 = radiuses[1:]
+        r_a1 = axial_resistivity[:-1]
+        r_a2 = axial_resistivity[1:]
+        l1 = lengths[:-1]
+        l2 = lengths[1:]
+        coupling_conds_bwd = compute_coupling_cond(r1, r2, r_a1, r_a2, l1, l2)
+        coupling_conds_fwd = compute_coupling_cond(r2, r1, r_a2, r_a1, l2, l1)
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        coupling_conds_fwd *= 10**7
-        coupling_conds_bwd *= 10**7
+        coupling_conds_fwd *= 10 ** 7
+        coupling_conds_bwd *= 10 ** 7
 
         # Compute the summed coupling conductances of each compartment.
         summed_coupling_conds = jnp.zeros((nseg))
