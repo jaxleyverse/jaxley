@@ -152,7 +152,7 @@ def plot_swc(
         (line,) = ax.plot(
             coords_of_branch[:, 0], coords_of_branch[:, 1], c=col, label=f"ind {i}"
         )
-        if _ in highlight_branch_inds:
+        if i in highlight_branch_inds:
             lines.append(line)
 
     ax.legend(handles=lines, loc="upper left", bbox_to_anchor=(1.05, 1, 0, 0))
