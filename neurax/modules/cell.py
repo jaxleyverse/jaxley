@@ -132,11 +132,7 @@ class Cell(Module):
             lengths[par_inds, 0],
         )
         summed_coupling_conds = self.update_summed_coupling_conds(
-            summed_coupling_conds,
-            child_inds,
-            conds[0],
-            conds[1],
-            parents,
+            summed_coupling_conds, child_inds, conds[0], conds[1], parents,
         )
 
         branch_conds_fwd = jnp.zeros((nbranches))
@@ -165,15 +161,15 @@ class Cell(Module):
         `coupling_conds`: S * um / cm / um^2 = S / cm / um
         """
         branch_conds_fwd = compute_coupling_cond(
-            r_child, r_parent, ra_parent, l_child, l_parent
+            r_child, r_parent, ra_child, ra_parent, l_child, l_parent
         )
         branch_conds_bwd = compute_coupling_cond(
-            r_parent, r_child, ra_child, l_parent, l_child
+            r_parent, r_child, ra_parent, ra_child, l_parent, l_child
         )
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10**7
-        branch_conds_bwd *= 10**7
+        branch_conds_fwd *= 10 ** 7
+        branch_conds_bwd *= 10 ** 7
 
         return branch_conds_fwd, branch_conds_bwd
 
