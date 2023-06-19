@@ -161,7 +161,6 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
 
 
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
-    midpoint_radius = 0.5 * (rad1 + rad2)
-    midpoint_axial_resistivity = 0.5 * (r_a1 + r_a2)
-    dx = 0.5 * (l1 + l2)
-    return midpoint_radius ** 2 / 2.0 / midpoint_axial_resistivity / rad1 / dx ** 2
+    midpoint_r_a = 0.5 * (r_a1 + r_a2)
+    return rad1 * rad2 ** 2 / midpoint_r_a / (rad2 ** 2 * l1 + rad1 ** 2 * l2) / l1
+    # return midpoint_radius ** 2 / 2.0 / midpoint_axial_resistivity / rad1 / dx ** 2
