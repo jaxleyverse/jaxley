@@ -31,13 +31,13 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
 
 def _split_into_branches_and_sort(content, max_branch_len):
     branches = _split_into_branches(content)
-    branches = _remove_single_branch_artifacts(branches)
-    branches = _split_long_branches(branches, content, max_branch_len)
+    # branches = _remove_single_branch_artifacts(branches)
+    # branches = _split_long_branches(branches, content, max_branch_len)
 
-    first_val = np.asarray([b[0] for b in branches])
-    sorting = np.argsort(first_val, kind="mergesort")
-    sorted_branches = [branches[s] for s in sorting]
-    return sorted_branches
+    # first_val = np.asarray([b[0] for b in branches])
+    # sorting = np.argsort(first_val, kind="mergesort")
+    # sorted_branches = [branches[s] for s in sorting]
+    return branches
 
 
 def _split_long_branches(branches, content, max_branch_len):
@@ -100,15 +100,18 @@ def _remove_single_branch_artifacts(branches):
 
 def _split_into_branches(content):
     prev_ind = None
+    prev_type = None
     n_branches = 0
     branch_inds = []
     for c in content:
         current_ind = c[0]
         current_parent = c[-1]
-        if current_parent != prev_ind:
+        current_type = c[1]
+        if current_parent != prev_ind or current_type != prev_type:
             branch_inds.append(int(current_parent))
             n_branches += 1
         prev_ind = current_ind
+        prev_type = current_type
 
     all_branches = []
     current_branch = []
