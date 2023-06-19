@@ -49,7 +49,8 @@ def test_swc_reader_lengths():
 
 
 def test_swc_radius():
-    nseg = 16
+    """We expect them to match for sufficiently large nseg. See #140."""
+    nseg = 32
     non_split = 1 / nseg
     range_16 = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
 
