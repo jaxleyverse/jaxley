@@ -5,7 +5,7 @@ from neurax.utils.cell_utils import (
     _compute_index_of_child,
     compute_levels,
 )
-from neurax.utils.swc import _split_into_branches_and_sort
+from neurax.utils.swc import _split_into_branches_and_sort, _build_parents
 
 
 highlight_cols = [
@@ -133,6 +133,9 @@ def plot_swc(
     sorted_branches, _ = _split_into_branches_and_sort(
         content, max_branch_len=max_branch_len
     )
+    parents = _build_parents(sorted_branches)
+    if np.sum(np.asarray(parents) == -1) > 1.0:
+        sorted_branches = [[0]] + sorted_branches
 
     cols = [cols] * len(sorted_branches)
 

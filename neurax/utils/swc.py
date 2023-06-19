@@ -25,10 +25,18 @@ def read_swc(fname: str, max_branch_len: float = 100.0, sort: bool = True):
         if pathlen == 0.0:
             warn("Found a segment with length 0. Clipping it to 1.0")
             pathlengths[i] = 1.0
-    endpoint_radiuses = _extract_endpoint_radiuses(
-        sorted_branches, content[:, 5], each_length
+    radius_fns = _extract_endpoint_radiuses(
+        sorted_branches, content[:, 5], each_length, parents, types
     )
-    return parents, pathlengths, endpoint_radiuses, types
+
+    if np.sum(np.asarray(parents) == -1) > 1.0:
+        parents = np.asarray([-1] + parents)
+        parents[1:] += 1
+        parents = parents.tolist()
+        pathlengths = [0.1] + pathlengths
+        radius_fns = [lambda x: content[0, 5] * np.ones_like(x)] + radius_fns
+
+    return parents, pathlengths, radius_fns, types
 
 
 def _split_into_branches_and_sort(content, max_branch_len, sort=True):
@@ -127,21 +135,31 @@ def _split_into_branches(content):
 def _build_parents(all_branches):
     parents = [None] * len(all_branches)
     all_last_inds = [b[-1] for b in all_branches]
-    for i, b in enumerate(all_branches):
-        parent_ind = b[0]
+    for i, branch in enumerate(all_branches):
+        parent_ind = branch[0]
         ind = np.where(np.asarray(all_last_inds) == parent_ind)[0]
         if len(ind) > 0 and ind != i:
             parents[i] = ind[0]
         else:
+            assert (
+                parent_ind == 1
+            ), """Trying to connect a segment to the beginning of 
+            another segment. This is not allowed. Please create an issue on github."""
             parents[i] = -1
 
     return parents
 
 
-def _extract_endpoint_radiuses(all_branches, radiuses, each_length):
+def _extract_endpoint_radiuses(all_branches, radiuses, each_length, parents, types):
     radius_fns = []
-    for i in range(len(all_branches)):
-        rads_in_branch = radiuses[np.asarray(all_branches[i]) - 1]
+    for i, branch in enumerate(all_branches):
+        rads_in_branch = radiuses[np.asarray(branch) - 1]
+        if parents[i] > -1 and types[i] != types[parents[i]]:
+            # We do not want to linearly interpolate between the radius of the previous
+            # branch if a new type of neurite is found (e.g. switch from soma to
+            # apical). From looking at the SWC from n140.swc I believe that this is
+            # also what NEURON does.
+            rads_in_branch[0] = rads_in_branch[1]
         radius_fn = _radius_generating_fn(
             radiuses=rads_in_branch, each_length=each_length[i]
         )
