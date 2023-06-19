@@ -130,7 +130,7 @@ def plot_swc(
         highlight_branch_inds: Branch indices that will be highlighted.
     """
     content = np.loadtxt(fname)
-    sorted_branches = _split_into_branches_and_sort(
+    sorted_branches, _ = _split_into_branches_and_sort(
         content, max_branch_len=max_branch_len
     )
 
