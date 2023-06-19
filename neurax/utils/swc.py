@@ -14,7 +14,7 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
             `max_branch_len`.
     """
     content = np.loadtxt(fname)
-    sorted_branches = _split_into_branches_and_sort(
+    sorted_branches, types = _split_into_branches_and_sort(
         content, max_branch_len=max_branch_len
     )
 
@@ -26,18 +26,18 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
             pathlengths[i] = 1.0
     endpoint_radiuses = _extract_endpoint_radiuses(sorted_branches, content[:, 5])
     start_radius = content[0, 5]
-    return parents, pathlengths, endpoint_radiuses, start_radius
+    return parents, pathlengths, endpoint_radiuses, start_radius, types
 
 
 def _split_into_branches_and_sort(content, max_branch_len):
-    branches = _split_into_branches(content)
+    branches, types = _split_into_branches(content)
     # branches = _remove_single_branch_artifacts(branches)
     # branches = _split_long_branches(branches, content, max_branch_len)
 
     # first_val = np.asarray([b[0] for b in branches])
     # sorting = np.argsort(first_val, kind="mergesort")
     # sorted_branches = [branches[s] for s in sorting]
-    return branches
+    return branches, types
 
 
 def _split_long_branches(branches, content, max_branch_len):
@@ -115,17 +115,23 @@ def _split_into_branches(content):
 
     all_branches = []
     current_branch = []
+    all_types = []
     for c in content:
         current_ind = c[0]
         current_parent = c[-1]
+        if current_parent == -1:
+            all_types.append(c[1])
+        else:
+            current_type = content[int(current_parent), 1]
         if current_parent in branch_inds[1:]:
             all_branches.append(current_branch)
+            all_types.append(current_type)
             current_branch = [int(current_parent), int(current_ind)]
         else:
             current_branch.append(int(current_ind))
     all_branches.append(current_branch)
 
-    return all_branches
+    return all_branches, all_types
 
 
 def _build_parents(all_branches):
