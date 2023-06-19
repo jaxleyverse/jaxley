@@ -33,7 +33,7 @@ def read_swc(fname: str, max_branch_len: float = 100.0, sort: bool = True):
 
 def _split_into_branches_and_sort(content, max_branch_len, sort=True):
     branches, types = _split_into_branches(content)
-    branches = _split_long_branches(branches, content, max_branch_len)
+    branches, types = _split_long_branches(branches, types, content, max_branch_len)
 
     if sort:
         first_val = np.asarray([b[0] for b in branches])
@@ -46,11 +46,12 @@ def _split_into_branches_and_sort(content, max_branch_len, sort=True):
     return sorted_branches, sorted_types
 
 
-def _split_long_branches(branches, content, max_branch_len):
+def _split_long_branches(branches, types, content, max_branch_len):
     pathlengths = _compute_pathlengths(branches, content[:, 2:5])
     pathlengths = [np.sum(length_traced) for length_traced in pathlengths]
     split_branches = []
-    for branch, length in zip(branches, pathlengths):
+    split_types = []
+    for branch, type, length in zip(branches, types, pathlengths):
         num_subbranches = 1
         split_branch = [branch]
         while length > max_branch_len:
@@ -71,8 +72,9 @@ def _split_long_branches(branches, content, max_branch_len):
                 )
                 break
         split_branches += split_branch
+        split_types += [type] * num_subbranches
 
-    return split_branches
+    return split_branches, split_types
 
 
 def _split_branch_equally(branch, num_subbranches):
