@@ -86,30 +86,6 @@ def _split_branch_equally(branch, num_subbranches):
     return branches
 
 
-def _remove_single_branch_artifacts(branches):
-    """Check that all parents have two children. No only childs allowed!
-
-    See GH #32. The reason this happens is that some branches (without branchings)
-    are interrupted in their tracing. Here, we fuse these interrupted branches.
-    """
-    first_val = np.asarray([b[0] for b in branches])
-    vals, counts = np.unique(first_val[1:], return_counts=True)
-    one_vals = vals[counts == 1]
-    for one_val in one_vals:
-        loc = np.where(first_val == one_val)[0][0]
-        solo_branch = branches[loc]
-        del branches[loc]
-        new_branches = []
-        for b in branches:
-            if b[-1] == one_val:
-                new_branches.append(b + solo_branch)
-            else:
-                new_branches.append(b)
-        branches = new_branches
-
-    return branches
-
-
 def _split_into_branches(content):
     prev_ind = None
     prev_type = None
