@@ -122,15 +122,17 @@ def _split_into_branches(content):
         if current_parent == -1:
             all_types.append(c[1])
         else:
-            current_type = content[int(current_parent), 1]
+            # `-1` because SWC starts counting at 1.
+            current_type = content[int(current_parent) - 1, 1]
         if current_parent in branch_inds[1:]:
-            all_branches.append(current_branch)
-            all_types.append(current_type)
+            if len(current_branch) > 1:
+                all_branches.append(current_branch)
+                all_types.append(current_type)
             current_branch = [int(current_parent), int(current_ind)]
         else:
             current_branch.append(int(current_ind))
-    all_branches.append(current_branch)
 
+    all_branches.append(current_branch)
     return all_branches, all_types
 
 
