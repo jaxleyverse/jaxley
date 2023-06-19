@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def read_swc(fname: str, max_branch_len: float = 100.0):
+def read_swc(fname: str, max_branch_len: float = 100.0, sort: bool = True):
     """Read an SWC file and bring morphology into `neurax` compatible formats.
 
     Args:
@@ -15,7 +15,7 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
     """
     content = np.loadtxt(fname)
     sorted_branches, types = _split_into_branches_and_sort(
-        content, max_branch_len=max_branch_len
+        content, max_branch_len=max_branch_len, sort=sort
     )
 
     parents = _build_parents(sorted_branches)
@@ -31,14 +31,18 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
     return parents, pathlengths, endpoint_radiuses, types
 
 
-def _split_into_branches_and_sort(content, max_branch_len):
+def _split_into_branches_and_sort(content, max_branch_len, sort=True):
     branches, types = _split_into_branches(content)
     branches = _split_long_branches(branches, content, max_branch_len)
 
-    first_val = np.asarray([b[0] for b in branches])
-    sorting = np.argsort(first_val, kind="mergesort")
-    sorted_branches = [branches[s] for s in sorting]
-    sorted_types = [types[s] for s in sorting]
+    if sort:
+        first_val = np.asarray([b[0] for b in branches])
+        sorting = np.argsort(first_val, kind="mergesort")
+        sorted_branches = [branches[s] for s in sorting]
+        sorted_types = [types[s] for s in sorting]
+    else:
+        sorted_branches = branches
+        sorted_types = types
     return sorted_branches, sorted_types
 
 
