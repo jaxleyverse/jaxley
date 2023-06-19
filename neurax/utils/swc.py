@@ -19,14 +19,16 @@ def read_swc(fname: str, max_branch_len: float = 100.0):
     )
 
     parents = _build_parents(sorted_branches)
-    pathlengths = _compute_pathlengths(sorted_branches, content[:, 2:5])
+    each_length = _compute_pathlengths(sorted_branches, content[:, 2:5])
+    pathlengths = [np.sum(length_traced) for length_traced in each_length]
     for i, pathlen in enumerate(pathlengths):
         if pathlen == 0.0:
             warn("Found a segment with length 0. Clipping it to 1.0")
             pathlengths[i] = 1.0
-    endpoint_radiuses = _extract_endpoint_radiuses(sorted_branches, content[:, 5])
-    start_radius = content[0, 5]
-    return parents, pathlengths, endpoint_radiuses, start_radius, types
+    endpoint_radiuses = _extract_endpoint_radiuses(
+        sorted_branches, content[:, 5], each_length
+    )
+    return parents, pathlengths, endpoint_radiuses, types
 
 
 def _split_into_branches_and_sort(content, max_branch_len):
@@ -42,6 +44,7 @@ def _split_into_branches_and_sort(content, max_branch_len):
 
 def _split_long_branches(branches, content, max_branch_len):
     pathlengths = _compute_pathlengths(branches, content[:, 2:5])
+    pathlengths = [np.sum(length_traced) for length_traced in pathlengths]
     split_branches = []
     for branch, length in zip(branches, pathlengths):
         num_subbranches = 1
@@ -52,6 +55,9 @@ def _split_long_branches(branches, content, max_branch_len):
             lengths_of_subbranches = _compute_pathlengths(
                 split_branch, coords=content[:, 2:5]
             )
+            lengths_of_subbranches = [
+                np.sum(length_traced) for length_traced in lengths_of_subbranches
+            ]
             length = max(lengths_of_subbranches)
             if num_subbranches > 10:
                 warn(
@@ -150,14 +156,35 @@ def _build_parents(all_branches):
     return parents
 
 
-def _extract_endpoint_radiuses(all_branches, radiuses):
-    endpoint_radiuses = []
-    for b in all_branches:
-        branch_endpoint = b[-1]
+def _extract_endpoint_radiuses(all_branches, radiuses, each_length):
+    radius_fns = []
+    for i in range(len(all_branches)):
+        rads_in_branch = radiuses[np.asarray(all_branches[i]) - 1]
+        radius_fn = _radius_generating_fn(
+            radiuses=rads_in_branch, each_length=each_length[i]
+        )
         # Beause SWC starts counting at 1, but numpy counts from 0.
-        ind_of_branch_endpoint = branch_endpoint - 1
-        endpoint_radiuses.append(radiuses[ind_of_branch_endpoint])
-    return endpoint_radiuses
+        # ind_of_branch_endpoint = np.asarray(b) - 1
+        radius_fns.append(radius_fn)
+    return radius_fns
+
+
+def _radius_generating_fn(radiuses, each_length):
+    summed_len = np.sum(each_length)
+    cutoffs = np.cumsum(np.concatenate([np.asarray([0]), each_length])) / summed_len
+    cutoffs[0] -= 1e-8
+    cutoffs[-1] += 1e-8
+
+    def radius(loc):
+        index = np.digitize(loc, cutoffs, right=False)
+        left_rad = radiuses[index - 1]
+        right_rad = radiuses[index]
+        left_loc = cutoffs[index - 1]
+        right_loc = cutoffs[index]
+        loc_within_bin = (loc - left_loc) / (right_loc - left_loc)
+        return left_rad + (right_rad - left_rad) * loc_within_bin
+
+    return radius
 
 
 def _compute_pathlengths(all_branches, coords):
@@ -168,5 +195,5 @@ def _compute_pathlengths(all_branches, coords):
         dists = np.sqrt(
             point_diffs[:, 0] ** 2 + point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2
         )
-        branch_pathlengths.append(np.sum(dists))
+        branch_pathlengths.append(dists)
     return branch_pathlengths

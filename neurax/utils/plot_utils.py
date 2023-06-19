@@ -115,7 +115,7 @@ def plot_morph(
 
 def plot_swc(
     fname,
-    max_branch_len: float = 100.0,
+    max_branch_len: float = 2000.0,
     figsize=(4, 4),
     dims=(0, 1),
     cols="k",
