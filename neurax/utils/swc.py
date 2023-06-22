@@ -1,10 +1,16 @@
+from typing import Optional
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def read_swc(fname: str, max_branch_len: float = 100.0, sort: bool = True):
+def read_swc(
+    fname: str,
+    max_branch_len: float = 100.0,
+    sort: bool = True,
+    num_lines: Optional[int] = None,
+):
     """Read an SWC file and bring morphology into `neurax` compatible formats.
 
     Args:
@@ -12,8 +18,9 @@ def read_swc(fname: str, max_branch_len: float = 100.0, sort: bool = True):
         max_branch_len: Maximal length of one branch. If a branch exceeds this length,
             it is split into equal parts such that each subbranch is below
             `max_branch_len`.
+        num_lines: Number of lines of the SWC file to read.
     """
-    content = np.loadtxt(fname)
+    content = np.loadtxt(fname)[:num_lines]
     sorted_branches, types = _split_into_branches_and_sort(
         content, max_branch_len=max_branch_len, sort=sort
     )

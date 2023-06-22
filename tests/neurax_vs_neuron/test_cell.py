@@ -116,5 +116,5 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     initialize()
     integrate()
 
-    voltages = np.asarray([list(voltage1, list(voltage2), list(voltage3))])
+    voltages = np.asarray([list(voltage1), list(voltage2), list(voltage3)])
     return voltages
