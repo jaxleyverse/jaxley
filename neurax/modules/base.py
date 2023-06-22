@@ -72,11 +72,19 @@ class Module(ABC):
             return self._show_base(self.nodes, indices, params, states)
         else:
             return self._show_channel(
-                self.nodes, channel_name, indices, params, states,
+                self.nodes,
+                channel_name,
+                indices,
+                params,
+                states,
             )
 
     def _show_base(
-        self, view, indices: bool = True, params: bool = True, states: bool = True,
+        self,
+        view,
+        indices: bool = True,
+        params: bool = True,
+        states: bool = True,
     ):
         inds = view.index.values
         printable_nodes = deepcopy(view)
@@ -432,7 +440,11 @@ class Module(ABC):
 
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
-            u, self.conns, params, delta_t, self.syn_edges,
+            u,
+            self.conns,
+            params,
+            delta_t,
+            self.syn_edges,
         )
 
         # Voltage steps.
@@ -467,10 +479,15 @@ class Module(ABC):
             )
 
         # Rebuild state.
-        final_state = new_channel_states[0]
+        final_state = {}
+        for channel in new_channel_states:
+            for key, val in channel.items():
+                final_state[key] = val
+
         for s in new_syn_states:
             for key, val in s.items():
                 final_state[key] = val
+
         final_state["voltages"] = new_voltages.flatten(order="C")
 
         return final_state
@@ -502,7 +519,11 @@ class Module(ABC):
 
     @staticmethod
     def _step_synapse(
-        u, syn_channels, params, delta_t, edges,
+        u,
+        syn_channels,
+        params,
+        delta_t,
+        edges,
     ):
         """One step of integration of the channels.
 
