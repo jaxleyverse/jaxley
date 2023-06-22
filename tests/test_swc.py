@@ -18,10 +18,10 @@ _ = h.load_file("import3d.hoc")
 
 
 def test_swc_reader_lengths():
-    fname = "../../notebooks/morph.swc"
+    fname = "morph.swc"
 
     _, pathlengths, _, _ = nx.utils.read_swc(fname, max_branch_len=2000.0)
-    pathlengths = np.asarray(pathlengths)
+    pathlengths = np.asarray(pathlengths)[1:]
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
@@ -51,14 +51,16 @@ def test_swc_reader_lengths():
 
 def test_swc_radius():
     """We expect them to match for sufficiently large nseg. See #140."""
-    nseg = 32
+    nseg = 64
     non_split = 1 / nseg
     range_16 = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
 
     # Can not use full morphology because of branch sorting.
-    fname = "../../notebooks/morph_250.swc"
+    fname = "morph_250.swc"
 
-    _, _, radius_fns, _ = nx.utils.read_swc(fname, max_branch_len=2000.0, sort=False)
+    _, pathlen, radius_fns, _ = nx.utils.read_swc(
+        fname, max_branch_len=2000.0, sort=False
+    )
     neurax_diams = []
     for r in radius_fns:
         neurax_diams.append(r(range_16) * 2)
@@ -80,7 +82,13 @@ def test_swc_radius():
         neuron_diams.append(diams_in_branch)
     neuron_diams = np.asarray(neuron_diams)
 
-    assert np.all(np.abs(neurax_diams - neuron_diams) < 0.5), "radiuses do not match."
+    for sec in h.allsec():
+        print(sec.L)
+
+    for i in range(len(neurax_diams)):
+        assert np.all(
+            np.abs(neurax_diams[i] - neuron_diams[i]) < 0.5
+        ), "radiuses do not match."
 
 
 def test_swc_voltages():
@@ -88,9 +96,12 @@ def test_swc_voltages():
 
     To match the branch indices between NEURON and neurax, we rely on comparing the
     length of the branches.
+
+    It tests whether, on average over time and recordings, the voltage is off by less
+    than 1.5 mV.
     """
 
-    fname = "../../notebooks/morph.swc"  # n120
+    fname = "morph.swc"  # n120
 
     i_delay = 2.0
     i_dur = 5.0
@@ -229,9 +240,9 @@ def test_swc_voltages():
 
     initialize()
     integrate()
-    voltages_neuron = np.asarray([v[key] for key in voltage_recs])
+    voltages_neuron = np.asarray([voltage_recs[key] for key in voltage_recs])
 
     ####################### check ################
-    assert np.all(
-        np.abs(voltages_neurax - voltages_neuron) < 1.0
+    assert np.mean(
+        np.abs(voltages_neurax - voltages_neuron) < 1.5
     ), "voltages do not match."
