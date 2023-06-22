@@ -3,6 +3,7 @@ from setuptools import find_packages, setup
 REQUIRED = [
     "jax[cpu]",
     "numpy",
+    "pandas",
 ]
 
 
@@ -22,7 +23,7 @@ EXTRAS = {
 
 setup(
     name="neurax",
-    python_requires=">=3.6.0",
+    python_requires=">=3.8.0",
     packages=find_packages(),
     install_requires=REQUIRED,
     extras_require=EXTRAS,
