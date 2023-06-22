@@ -74,9 +74,8 @@ class Cell(Module):
             )
         )
 
-        self.initialized_morph = False
+        self.initialize()
         self.initialized_conds = False
-        self.initialized_syns = True
 
     def __getattr__(self, key):
         # Ensure that hidden methods such as `__deepcopy__` still work.

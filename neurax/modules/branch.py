@@ -26,10 +26,6 @@ class Branch(Module):
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
-        self.initialized_morph = True
-        self.initialized_conds = False
-        self.initialized_syns = True
-
         # Indexing.
         self.nodes = pd.DataFrame(
             dict(
@@ -54,6 +50,8 @@ class Branch(Module):
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+        self.initialize()
+        self.initialized_conds = False
 
     def __getattr__(self, key):
         # Ensure that hidden methods such as `__deepcopy__` still work.

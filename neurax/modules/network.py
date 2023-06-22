@@ -51,8 +51,7 @@ class Network(Module):
             c.synapse_type.synapse_states.keys() for c in connectivities
         ]
 
-        self.initialized_morph = False
-        self.initialized_syns = False
+        self.initialize()
         self.initialized_conds = False
 
     def _append_synapses_to_params_and_state(self, connectivities):

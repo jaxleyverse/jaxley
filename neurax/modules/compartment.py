@@ -20,10 +20,6 @@ class Compartment(Module):
         super().__init__()
         self._init_params_and_state(self.compartment_params, self.compartment_states)
 
-        self.initialized_morph = True
-        self.initialized_conds = True
-        self.initialized_syns = True
-
         self.nseg = 1
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
@@ -40,6 +36,8 @@ class Compartment(Module):
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+        self.initialize()
+        self.initialized_conds = True
 
     def init_conds(self, params):
         cond_params = {
