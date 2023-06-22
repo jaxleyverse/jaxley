@@ -14,6 +14,7 @@ EXTRAS = {
         "markdown-include",
         "mkdocs",
         "mkdocs-material",
+        "neuron",
         "pytest",
         "pyright",
     ],
