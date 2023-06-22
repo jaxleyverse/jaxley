@@ -72,19 +72,11 @@ class Module(ABC):
             return self._show_base(self.nodes, indices, params, states)
         else:
             return self._show_channel(
-                self.nodes,
-                channel_name,
-                indices,
-                params,
-                states,
+                self.nodes, channel_name, indices, params, states,
             )
 
     def _show_base(
-        self,
-        view,
-        indices: bool = True,
-        params: bool = True,
-        states: bool = True,
+        self, view, indices: bool = True, params: bool = True, states: bool = True,
     ):
         inds = view.index.values
         printable_nodes = deepcopy(view)
@@ -260,7 +252,7 @@ class Module(ABC):
 
     def get_params(self, key: str):
         """Return parameters."""
-        self._get_params(key, self.nodes)
+        return self._get_params(key, self.nodes)
 
     def _get_params(self, key: str, view):
         if key in self.params:
@@ -276,7 +268,7 @@ class Module(ABC):
 
     def get_states(self, key: str):
         """Return states."""
-        self._get_states(key, self.nodes)
+        return self._get_states(key, self.nodes)
 
     def _get_states(self, key: str, view):
         if key in self.states:
@@ -440,11 +432,7 @@ class Module(ABC):
 
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
-            u,
-            self.conns,
-            params,
-            delta_t,
-            self.syn_edges,
+            u, self.conns, params, delta_t, self.syn_edges,
         )
 
         # Voltage steps.
@@ -514,11 +502,7 @@ class Module(ABC):
 
     @staticmethod
     def _step_synapse(
-        u,
-        syn_channels,
-        params,
-        delta_t,
-        edges,
+        u, syn_channels, params, delta_t, edges,
     ):
         """One step of integration of the channels.
 
@@ -592,11 +576,11 @@ class View:
 
     def get_params(self, key: str):
         """Return parameters."""
-        self.pointer._get_params(key, self.view)
+        return self.pointer._get_params(key, self.view)
 
     def get_states(self, key: str):
         """Return states."""
-        self.pointer._get_states(key, self.view)
+        return self.pointer._get_states(key, self.view)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""
