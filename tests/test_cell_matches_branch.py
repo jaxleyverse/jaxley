@@ -15,8 +15,9 @@ from neurax.channels import HHChannel
 def _run_long_branch(time_vec):
     nseg_per_branch = 8
 
-    comp = nx.Compartment([HHChannel()]).initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = nx.Compartment()
+    branch = nx.Branch([comp for _ in range(nseg_per_branch)])
+    branch.insert(HHChannel())
 
     branch.comp("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
@@ -40,9 +41,10 @@ def _run_short_branches(time_vec):
     nseg_per_branch = 4
     parents = jnp.asarray([-1, 0])
 
-    comp = nx.Compartment([HHChannel()]).initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(2)], parents=parents).initialize()
+    comp = nx.Compartment()
+    branch = nx.Branch([comp for _ in range(nseg_per_branch)])
+    cell = nx.Cell([branch for _ in range(2)], parents=parents)
+    cell.insert(HHChannel())
 
     cell.branch("all").comp("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()
