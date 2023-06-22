@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 
-from neurax.connection import Connection
+from neurax.connection import Connectivity
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch
 from neurax.modules.cell import Cell, CellView
@@ -24,13 +24,13 @@ class Network(Module):
     def __init__(
         self,
         cells: List[Cell],
-        connectivities: List[List[Connection]],
+        connectivities: List[Connectivity] = [],
     ):
         """Initialize network of cells and synapses.
 
         Args:
-            cells (List[Cell]): _description_
-            conns (List[List[Connection]]): _description_
+            cells: _description_
+            connectivities: _description_
         """
         super().__init__()
         self._init_params_and_state(self.network_params, self.network_states)
@@ -251,7 +251,7 @@ class Network(Module):
         """Perform one step of the synapses and obtain their currents."""
         voltages = u["voltages"]
 
-        grouped_syns = edges.groupby("type", sort=False)
+        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["pre_comp_index"].apply(list)
         post_syn_inds = grouped_syns["post_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
