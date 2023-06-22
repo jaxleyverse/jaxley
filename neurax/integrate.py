@@ -5,7 +5,7 @@ import jax.numpy as jnp
 
 from neurax.modules import Module
 from neurax.recording import Recording
-from neurax.stimulus import Stimulus, Stimuli
+from neurax.stimulus import Stimuli, Stimulus
 from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.jax_utils import nested_checkpoint_scan
 

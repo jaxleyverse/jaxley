@@ -1,12 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from neurax.utils.cell_utils import (
-    _compute_num_children,
-    _compute_index_of_child,
-    compute_levels,
-)
-from neurax.utils.swc import _split_into_branches_and_sort, _build_parents
 
+from neurax.utils.cell_utils import (_compute_index_of_child,
+                                     _compute_num_children, compute_levels)
+from neurax.utils.swc import _build_parents, _split_into_branches_and_sort
 
 highlight_cols = [
     "#1f78b4",

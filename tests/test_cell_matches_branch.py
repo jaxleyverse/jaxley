@@ -5,8 +5,8 @@ config.update("jax_platform_name", "cpu")
 
 
 import jax.numpy as jnp
-from jax import jit, value_and_grad
 import numpy as np
+from jax import jit, value_and_grad
 
 import neurax as nx
 from neurax.channels import HHChannel

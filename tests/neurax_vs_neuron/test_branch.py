@@ -8,14 +8,12 @@ import os
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 
-import numpy as np
-
 import jax.numpy as jnp
+import numpy as np
+from neuron import h
 
 import neurax as nx
 from neurax.channels import HHChannel
-
-from neuron import h
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -124,9 +122,9 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
 def test_similarity_complex():
     """Test for a branch where radius varies for every seg and l and r_a varies for
     two sub-branches.
-    
-    Since NEURON enforces that all segments within a branch have the same length and 
-    the same axial resistivity, we have to create two NEURON branches. In neurax, 
+
+    Since NEURON enforces that all segments within a branch have the same length and
+    the same axial resistivity, we have to create two NEURON branches. In neurax,
     we only need one branch.
     """
     i_delay = 2.0

@@ -1,5 +1,5 @@
-from typing import Callable, Dict, List, Optional
 from copy import deepcopy
+from typing import Callable, Dict, List, Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -9,11 +9,8 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from neurax.modules.base import Module, View
 from neurax.modules.branch import Branch, BranchView
-from neurax.utils.cell_utils import (
-    compute_branches_in_level,
-    compute_coupling_cond,
-    compute_levels,
-)
+from neurax.utils.cell_utils import (compute_branches_in_level,
+                                     compute_coupling_cond, compute_levels)
 
 
 class Cell(Module):
@@ -131,7 +128,11 @@ class Cell(Module):
             lengths[par_inds, 0],
         )
         summed_coupling_conds = self.update_summed_coupling_conds(
-            summed_coupling_conds, child_inds, conds[0], conds[1], parents,
+            summed_coupling_conds,
+            child_inds,
+            conds[0],
+            conds[1],
+            parents,
         )
 
         branch_conds_fwd = jnp.zeros((nbranches))
@@ -167,8 +168,8 @@ class Cell(Module):
         )
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10 ** 7
-        branch_conds_bwd *= 10 ** 7
+        branch_conds_fwd *= 10**7
+        branch_conds_bwd *= 10**7
 
         return branch_conds_fwd, branch_conds_bwd
 

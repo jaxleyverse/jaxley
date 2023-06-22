@@ -1,8 +1,9 @@
-from typing import List, Optional
 from math import pi
+from typing import List, Optional
 
 import jax.numpy as jnp
 from jax.lax import ScatterDimensionNumbers, scatter_add
+
 from neurax.utils.cell_utils import index_of_loc
 
 

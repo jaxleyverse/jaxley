@@ -1,6 +1,6 @@
 import itertools
-from typing import Callable, Dict, List, Optional, Union
 from copy import deepcopy
+from typing import Callable, Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np

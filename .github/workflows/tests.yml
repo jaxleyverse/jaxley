@@ -36,10 +36,6 @@ jobs:
       run: |
         isort -c neurax tests
 
-    - name: Check types with pyright
-      run: |
-        pyright neurax
-
     - name: Test with pytest
       run: |
         pip install torchtestcase

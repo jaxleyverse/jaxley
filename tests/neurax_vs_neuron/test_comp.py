@@ -8,14 +8,12 @@ import os
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 
-import numpy as np
-
 import jax.numpy as jnp
+import numpy as np
+from neuron import h
 
 import neurax as nx
 from neurax.channels import HHChannel
-
-from neuron import h
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")

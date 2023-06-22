@@ -10,7 +10,7 @@ def test_make_trainable():
     nseg_per_branch = 8
 
     depth = 5
-    parents = [-1] + [b // 2 for b in range(0, 2 ** depth - 2)]
+    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
@@ -35,7 +35,7 @@ def test_make_trainable_network():
     nseg_per_branch = 8
 
     depth = 5
-    parents = [-1] + [b // 2 for b in range(0, 2 ** depth - 2)]
+    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
@@ -45,7 +45,12 @@ def test_make_trainable_network():
     cell.insert(HHChannel())
 
     conns = [
-        nx.Connectivity(GlutamateSynapse(), [nx.Connection(0, 0, 0.0, 1, 0, 0.0),],)
+        nx.Connectivity(
+            GlutamateSynapse(),
+            [
+                nx.Connection(0, 0, 0.0, 1, 0, 0.0),
+            ],
+        )
     ]
     net = nx.Network([cell, cell], conns).initialize()
 

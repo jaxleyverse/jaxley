@@ -1,11 +1,11 @@
+import inspect
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Union
 
 import jax.numpy as jnp
-import pandas as pd
 import numpy as np
-from copy import deepcopy
-import inspect
+import pandas as pd
 
 from neurax.channels import Channel
 from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
