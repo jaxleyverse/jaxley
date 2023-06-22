@@ -1,6 +1,6 @@
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mackelab/neurax/blob/main/CONTRIBUTING.md)
 [![Tests](https://github.com/mackelab/neurax/workflows/Tests/badge.svg?branch=main)](https://github.com/mackelab/neurax/actions)
-[![GitHub license](https://img.shields.io/github/license/mackelab/neurax)](https://github.com/mackelab/neurax/blob/main/LICENSE)
+[![GitHub license](https://img.shields.io/badge/license-MIT-green)](https://github.com/mackelab/neurax/blob/main/LICENSE)
 
 
 # neurax
