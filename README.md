@@ -1,7 +1,6 @@
-[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mackelab/sbi/blob/master/CONTRIBUTING.md)
-[![Tests](https://github.com/mackelab/sbi/workflows/Tests/badge.svg?branch=main)](https://github.com/mackelab/sbi/actions)
-[![codecov](https://codecov.io/gh/mackelab/sbi/branch/main/graph/badge.svg)](https://codecov.io/gh/mackelab/sbi)
-[![GitHub license](https://img.shields.io/github/license/mackelab/sbi)](https://github.com/mackelab/sbi/blob/master/LICENSE.txt)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mackelab/neurax/blob/main/CONTRIBUTING.md)
+[![Tests](https://github.com/mackelab/neurax/workflows/Tests/badge.svg?branch=main)](https://github.com/mackelab/neurax/actions)
+[![GitHub license](https://img.shields.io/github/license/mackelab/neurax)](https://github.com/mackelab/neurax/blob/main/LICENSE.txt)
 
 
 # neurax
