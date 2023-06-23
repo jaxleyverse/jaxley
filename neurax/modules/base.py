@@ -557,10 +557,10 @@ class View:
         states: bool = True,
     ):
         if channel_name is None:
-            self.view = self.view.drop("original_comp_index", axis=1)
-            self.view = self.view.drop("original_branch_index", axis=1)
-            self.view = self.view.drop("original_cell_index", axis=1)
-            return self.pointer._show_base(self.view, indices, params, states)
+            myview = self.view.drop("original_comp_index", axis=1)
+            myview = myview.drop("original_branch_index", axis=1)
+            myview = myview.drop("original_cell_index", axis=1)
+            return self.pointer._show_base(myview, indices, params, states)
         else:
             return self.pointer._show_channel(
                 self.view, channel_name, indices, params, states
