@@ -4,11 +4,16 @@
 
 
 # neurax
-A differentiable simulator for networks of multicompartment neurons in JAX.
+`neurax` is a differentiable simulator for networks of multicompartment neurons in JAX. Its key features are:
+- automatic differentiation, allowing gradient-based optimization of thousands of parameters
+- support for CPU and GPU without any changes to the code
+-`jit`-compilation, making it as fast as other packages while being written fully in python
+- backward-Euler solver for stable numerical solution of multicompartment neurons
+- elegant mechanisms for parameter sharing
 
 ### Tutorial
 
-Tutorial notebooks with some explanation lie in `tutorials`.
+Tutorial notebooks with some explanation are in `tutorials`.
 
 ### Units
 
