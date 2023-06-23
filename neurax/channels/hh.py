@@ -12,8 +12,9 @@ class HHChannel(Channel):
     channel_params = {"gNa": 0.12, "gK": 0.036, "gLeak": 0.0003}
     channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
 
+    @staticmethod
     def step(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return updated HH channel state and current."""
         ms, hs, ns = u["m"], u["h"], u["n"]

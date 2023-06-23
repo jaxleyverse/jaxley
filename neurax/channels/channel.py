@@ -8,8 +8,8 @@ class Channel:
     channel_params = None
     channel_states = None
 
-    @abstractmethod
+    @staticmethod
     def step(
-        self, u, dt, voltages, params
+        u, dt, voltages, params
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         pass

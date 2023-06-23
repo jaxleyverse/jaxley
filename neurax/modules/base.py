@@ -397,12 +397,6 @@ class Module(ABC):
 
     def insert(self, channel):
         """Insert a channel."""
-        assert not inspect.isclass(
-            channel
-        ), """
-            Channel is a class, but it was not initialized. Use `.insert(Channel())` 
-            instead of `.insert(Channel)`.
-            """
         self._insert(channel, self.nodes)
 
     def _insert(self, channel, view):
