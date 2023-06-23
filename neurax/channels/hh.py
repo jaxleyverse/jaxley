@@ -13,9 +13,7 @@ class HHChannel(Channel):
     channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
 
     @staticmethod
-    def step(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
-    ):
+    def step(u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]):
         """Return updated HH channel state and current."""
         ms, hs, ns = u["m"], u["h"], u["n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
