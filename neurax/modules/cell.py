@@ -7,14 +7,14 @@ import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
-from neurax.utils.swc import swc_to_neurax
 from neurax.modules.base import Module, View
-from neurax.modules.branch import Compartment, Branch, BranchView
+from neurax.modules.branch import Branch, BranchView, Compartment
 from neurax.utils.cell_utils import (
     compute_branches_in_level,
     compute_coupling_cond,
     compute_levels,
 )
+from neurax.utils.swc import swc_to_neurax
 
 
 class Cell(Module):
