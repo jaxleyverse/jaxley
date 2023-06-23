@@ -128,26 +128,9 @@ def test_swc_voltages():
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### neurax ##################
-    parents, pathlengths, radius_fns, _ = nx.utils.read_swc(fname, max_branch_len=2_000)
-    nbranches = len(parents)
-
-    nseg = 8
-    non_split = 1 / nseg
-    range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
-
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg)]).initialize()
-    cell = nx.Cell([branch for _ in range(nbranches)], parents=parents)
-    cell.insert(HHChannel())
-
-    for i, b in enumerate(range(len(parents))):
-        l = pathlengths[i]
-        radiuses = radius_fns[i](range_)
-        for i, loc in enumerate(np.linspace(0, 1, nseg)):
-            cell.branch(b).comp(loc).set_params("length", l / nseg)
-            cell.branch(b).comp(loc).set_params("radius", radiuses[i])
-
-    cell = cell.initialize()
+    _, pathlengths, _, _ = nx.utils.swc.swc_to_neurax(fname, max_branch_len=2_000)
+    cell = nx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
+    cell.insert(HHChannel)
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]
     tuft_inds = [6, 16, 18, 36, 38, 44, 51, 52, 53, 54]
