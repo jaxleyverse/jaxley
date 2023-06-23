@@ -1,11 +1,10 @@
 from typing import Optional
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 
-def read_swc(
+def swc_to_neurax(
     fname: str,
     max_branch_len: float = 100.0,
     sort: bool = True,

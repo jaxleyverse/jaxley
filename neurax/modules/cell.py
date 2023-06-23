@@ -7,8 +7,9 @@ import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
+from neurax.utils.swc import swc_to_neurax
 from neurax.modules.base import Module, View
-from neurax.modules.branch import Branch, BranchView
+from neurax.modules.branch import Compartment, Branch, BranchView
 from neurax.utils.cell_utils import (
     compute_branches_in_level,
     compute_coupling_cond,
@@ -221,3 +222,28 @@ class CellView(View):
     def __getattr__(self, key):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
+
+
+def read_swc(fname: str, nseg: int, max_branch_len: float = 300.0):
+    """Reads SWC file into a `nx.Cell`."""
+    parents, pathlengths, radius_fns, _ = swc_to_neurax(
+        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
+    )
+    nbranches = len(parents)
+
+    non_split = 1 / nseg
+    range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
+
+    comp = Compartment().initialize()
+    branch = Branch([comp for _ in range(nseg)]).initialize()
+    cell = Cell([branch for _ in range(nbranches)], parents=parents)
+
+    radiuses = np.flip(
+        np.asarray([radius_fns[b](range_) for b in range(len(parents))]), axis=1
+    )
+    radiuses_each = radiuses.flatten(order="C")
+    lengths_each = np.repeat(pathlengths, nseg) / nseg
+
+    cell.set_params("length", lengths_each)
+    cell.set_params("radius", radiuses_each)
+    return cell
