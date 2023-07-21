@@ -502,12 +502,12 @@ class Module(ABC):
         for channel in channels:
             name = type(channel).__name__
             indices = channel_nodes[name]["comp_index"].to_numpy()
-            states, membrane_current_terms = channel.step(
+            states_updated, membrane_current_terms = channel.step(
                 states, delta_t, voltages[indices], params
             )
             voltage_terms = voltage_terms.at[indices].add(membrane_current_terms[0])
             constant_terms = constant_terms.at[indices].add(membrane_current_terms[1])
-            new_channel_states.append(states)
+            new_channel_states.append(states_updated)
 
         return new_channel_states, (voltage_terms, constant_terms)
 
