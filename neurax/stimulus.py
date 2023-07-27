@@ -10,9 +10,7 @@ from neurax.utils.cell_utils import index_of_loc
 class Stimulus:
     """A single stimulus to the network."""
 
-    def __init__(
-        self, cell_ind, branch_ind, loc, current: Optional[jnp.ndarray] = None
-    ):
+    def __init__(self, cell_ind, branch_ind, loc, current: Optional[jnp.ndarray] = None):
         """
         Args:
             current: Time series of the current.
@@ -31,9 +29,7 @@ class Stimuli:
     of stimuli.
     """
 
-    def __init__(
-        self, stims: List[Stimulus], nseg_per_branch: int, cumsum_nbranches: jnp.ndarray
-    ):
+    def __init__(self, stims: List[Stimulus], nseg_per_branch: int, cumsum_nbranches: jnp.ndarray):
         self.comp_inds = jnp.asarray(
             [index_of_loc(s.branch_ind, s.loc, nseg_per_branch) for s in stims]
         )
@@ -47,16 +43,11 @@ class Stimuli:
         return self
 
 
-def step_current(
-    i_delay: float,
-    i_dur: float,
-    i_amp: float,
-    time_vec: jnp.asarray,
-):
+def step_current(i_delay: float, i_dur: float, i_amp: float, time_vec: jnp.asarray, i_offset=0.0):
     """
     Return step current in unit nA.
     """
-    zero_vec = jnp.zeros_like(time_vec)
+    zero_vec = jnp.zeros_like(time_vec) + i_offset
     stim_on = jnp.greater_equal(time_vec, i_delay)
     stim_off = jnp.less_equal(time_vec, i_delay + i_dur)
     protocol_on = jnp.logical_and(stim_on, stim_off)
@@ -77,9 +68,7 @@ def get_external_input(
     # `radius`: um
     # `length_single_compartment`: um
     # `i_stim`: nA
-    current = (
-        i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
-    )  # nA / um^2
+    current = i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]  # nA / um^2
     current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
 
     dnums = ScatterDimensionNumbers(
