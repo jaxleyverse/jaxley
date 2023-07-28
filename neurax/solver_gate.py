@@ -32,6 +32,18 @@ def solve_inf_gate_exponential(
     s_inf: jnp.ndarray,
     tau_s: jnp.ndarray,
 ):
+    """solves dx/dt = (s_inf - x) / tau_s
+    via exponential Euler
+
+    Args:
+        x (jnp.ndarray): gate variable
+        dt (float): time_delta
+        s_inf (jnp.ndarray): _description_
+        tau_s (jnp.ndarray): _description_
+
+    Returns:
+        _type_: updated gate
+    """
     slope = -1.0 / tau_s
 
     exp_term = jnp.exp(slope * dt)
