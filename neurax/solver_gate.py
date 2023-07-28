@@ -2,10 +2,7 @@ import jax.numpy as jnp
 
 
 def solve_gate_implicit(
-    gating_state: jnp.ndarray,
-    dt: float,
-    alpha: jnp.ndarray,
-    beta: jnp.ndarray,
+    gating_state: jnp.ndarray, dt: float, alpha: jnp.ndarray, beta: jnp.ndarray,
 ):
     a_m = gating_state + dt * alpha
     b_m = 1.0 + dt * alpha + dt * beta
@@ -14,10 +11,7 @@ def solve_gate_implicit(
 
 
 def solve_gate_exponential(
-    x: jnp.ndarray,
-    dt: float,
-    alpha: jnp.ndarray,
-    beta: jnp.ndarray,
+    x: jnp.ndarray, dt: float, alpha: jnp.ndarray, beta: jnp.ndarray,
 ):
     slope = -(alpha + beta)
     xinf = -alpha / slope
@@ -27,10 +21,7 @@ def solve_gate_exponential(
 
 
 def solve_inf_gate_exponential(
-    x: jnp.ndarray,
-    dt: float,
-    s_inf: jnp.ndarray,
-    tau_s: jnp.ndarray,
+    x: jnp.ndarray, dt: float, s_inf: jnp.ndarray, tau_s: jnp.ndarray,
 ):
     """solves dx/dt = (s_inf - x) / tau_s
     via exponential Euler

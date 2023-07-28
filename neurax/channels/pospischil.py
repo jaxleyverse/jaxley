@@ -59,7 +59,7 @@ class NaChannelPospi(Channel):
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["gNa"] * (new_m**3) * new_h * 1000  # mS/cm^2
+        na_conds = params["gNa"] * (new_m ** 3) * new_h * 1000  # mS/cm^2
 
         current = na_conds * (params["eNa"] - voltages)
 
@@ -100,7 +100,7 @@ class KChannelPospi(Channel):
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt_"]))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        k_conds = params["gK"] * (new_n**4) * 1000  # mS/cm^2
+        k_conds = params["gK"] * (new_n ** 4) * 1000  # mS/cm^2
 
         current = k_conds * (params["eK"] - voltages)
 
@@ -149,7 +149,13 @@ def _p_gate(v, taumax):
 class NaKChannelsPospi(Channel):
     """Sodium and Potassium channel"""
 
-    channel_params = {"gNa": 0.05, "eNa": 50.0, "gK": 0.005, "eK": -90.0, "vt": -60}  # 0.005,
+    channel_params = {
+        "gNa": 0.05,
+        "eNa": 50.0,
+        "gK": 0.005,
+        "eK": -90.0,
+        "vt": -60,
+    }  # 0.005,
 
     channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
 
@@ -162,10 +168,12 @@ class NaKChannelsPospi(Channel):
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["gNa"] * (new_m**3) * new_h * 1000  # mS/cm^2
-        k_conds = params["gK"] * (new_n**4) * 1000  # mS/cm^2
+        na_conds = params["gNa"] * (new_m ** 3) * new_h * 1000  # mS/cm^2
+        k_conds = params["gK"] * (new_n ** 4) * 1000  # mS/cm^2
 
-        current = na_conds * (params["eNa"] - voltages) + k_conds * (params["eK"] - voltages)
+        current = na_conds * (params["eNa"] - voltages) + k_conds * (
+            params["eK"] - voltages
+        )
 
         return {"m": new_m, "h": new_h, "n": new_n}, (jnp.zeros_like(current), current)
 
@@ -186,7 +194,7 @@ class CaLChannelPospi(Channel):
         new_r = solve_gate_exponential(rs, dt, *_r_gate(voltages))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params["gCaL"] * (new_q**2) * new_r * 1000  # mS/cm^2
+        ca_conds = params["gCaL"] * (new_q ** 2) * new_r * 1000  # mS/cm^2
 
         current = ca_conds * (params["eCa"] - voltages)
 
@@ -227,7 +235,7 @@ class CaTChannelPospi(Channel):
         s_inf = 1.0 / (1.0 + jnp.exp(-(voltages + params["vx"] + 57.0) / 6.2))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params["gCaT"] * (s_inf**2) * new_u * 1000  # mS/cm^2
+        ca_conds = params["gCaT"] * (s_inf ** 2) * new_u * 1000  # mS/cm^2
 
         current = ca_conds * (params["eCa_"] - voltages)
 
