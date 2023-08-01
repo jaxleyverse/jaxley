@@ -48,15 +48,12 @@ class Stimuli:
 
 
 def step_current(
-    i_delay: float,
-    i_dur: float,
-    i_amp: float,
-    time_vec: jnp.asarray,
+    i_delay: float, i_dur: float, i_amp: float, time_vec: jnp.asarray, i_offset=0.0
 ):
     """
     Return step current in unit nA.
     """
-    zero_vec = jnp.zeros_like(time_vec)
+    zero_vec = jnp.zeros_like(time_vec) + i_offset
     stim_on = jnp.greater_equal(time_vec, i_delay)
     stim_off = jnp.less_equal(time_vec, i_delay + i_dur)
     protocol_on = jnp.logical_and(stim_on, stim_off)
