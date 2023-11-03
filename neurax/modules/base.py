@@ -25,9 +25,9 @@ class Module(ABC):
         self.conns: List[Synapse] = None
         self.group_views = {}
 
-        self.nodes: pd.DataFrame = None
-        self.syn_edges: pd.DataFrame = None
-        self.branch_edges: pd.DataFrame = None
+        self.nodes: Optional[pd.DataFrame] = None
+        self.syn_edges: Optional[pd.DataFrame] = None
+        self.branch_edges: Optional[pd.DataFrame] = None
 
         self.cumsum_nbranches: jnp.ndarray = None
 
@@ -52,6 +52,9 @@ class Module(ABC):
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
         self.allow_make_trainable: bool = True
+
+        # For recordings.
+        self.recordings: pd.DataFrame = pd.DataFrame().from_dict({})
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
@@ -395,6 +398,16 @@ class Module(ABC):
         self.init_syns()
         return self
 
+    def record(self):
+        """Insert a recording into the given section."""
+        self._record(self.nodes)
+
+    def _record(self, view):
+        assert (
+            len(view) == 1
+        ), "Can only record from compartments, not branches, cells, or networks."
+        self.recordings = pd.concat([self.recordings, view])
+
     def insert(self, channel):
         """Insert a channel."""
         self._insert(channel, self.nodes)
@@ -551,14 +564,29 @@ class View:
         states: bool = True,
     ):
         if channel_name is None:
-            myview = self.view.drop("original_comp_index", axis=1)
-            myview = myview.drop("original_branch_index", axis=1)
-            myview = myview.drop("original_cell_index", axis=1)
+            myview = self.view.drop("global_comp_index", axis=1)
+            myview = myview.drop("global_branch_index", axis=1)
+            myview = myview.drop("global_cell_index", axis=1)
             return self.pointer._show_base(myview, indices, params, states)
         else:
             return self.pointer._show_channel(
                 self.view, channel_name, indices, params, states
             )
+
+    def set_global_index_and_index(nodes):
+        """Use the global compartment, branch, and cell index as the index."""
+        nodes = nodes.drop("controlled_by_param", axis=1)
+        nodes = nodes.drop("comp_index", axis=1)
+        nodes = nodes.drop("branch_index", axis=1)
+        nodes = nodes.drop("cell_index", axis=1)
+        nodes = nodes.rename(
+            columns={
+                "global_comp_index": "comp_index",
+                "global_branch_index": "branch_index",
+                "global_cell_index": "cell_index",
+            }
+        )
+        return nodes
 
     def insert(self, channel):
         """Insert a channel."""
@@ -568,18 +596,13 @@ class View:
             Channel is a class, but it was not initialized. Use `.insert(Channel())` 
             instead of `.insert(Channel)`.
             """
-        nodes = self.view.drop("controlled_by_param", axis=1)
-        nodes = nodes.drop("comp_index", axis=1)
-        nodes = nodes.drop("branch_index", axis=1)
-        nodes = nodes.drop("cell_index", axis=1)
-        nodes = nodes.rename(
-            columns={
-                "original_comp_index": "comp_index",
-                "original_branch_index": "branch_index",
-                "original_cell_index": "cell_index",
-            }
-        )
+        nodes = self.set_global_index_and_index(self.view)
         self.pointer._insert(channel, nodes)
+
+    def record(self):
+        """Insert a channel."""
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._record(nodes)
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
