@@ -11,7 +11,6 @@ from neurax.utils.jax_utils import nested_checkpoint_scan
 
 def integrate(
     module: Module,
-    stimuli: Union[List[Stimulus], Stimuli],
     params: List[Dict[str, jnp.ndarray]] = [],
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
@@ -42,7 +41,8 @@ def integrate(
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
 
-    i_current, i_inds = prepare_stim(module, stimuli)
+    i_current = module.currents.T
+    i_inds = module.current_inds.comp_index.to_numpy()
     rec_inds = module.recordings.comp_index.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
@@ -101,38 +101,3 @@ def integrate(
         _body_fun, states, i_current, length=length, nested_lengths=checkpoint_lengths
     )
     return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
-
-
-def prepare_stim(module, stimuli: Union[List[Stimulus], Stimuli]):
-    """Prepare stimuli."""
-    nseg = module.nseg
-    cumsum_nbranches = module.cumsum_nbranches
-
-    if isinstance(stimuli, Stimuli):
-        # Indexing.
-        i_comp_inds = stimuli.comp_inds
-        i_branch_inds = stimuli.branch_inds
-
-        # Currents.
-        i_ext = stimuli.currents  # nA
-    else:
-        for stim in stimuli:
-            assert stim.cell_ind < len(
-                module.nbranches_per_cell
-            ), "stimulus.cell_ind is larger than the number of cells."
-            assert (
-                stim.branch_ind < module.nbranches_per_cell[stim.cell_ind]
-            ), "stimulus.branch_ind is larger than the number of branches in the cell."
-            assert (
-                stim.loc <= 1.0 and stim.loc >= 0.0
-            ), "stimulus.loc must be in [0, 1]."
-        # Indexing.
-        i_comp_inds = [index_of_loc(s.branch_ind, s.loc, nseg) for s in stimuli]
-        i_comp_inds = jnp.asarray(i_comp_inds)
-        i_branch_inds = jnp.asarray([s.cell_ind for s in stimuli])
-        i_branch_inds = cumsum_nbranches[i_branch_inds] * nseg
-
-        # Currents.
-        i_ext = jnp.asarray([s.current for s in stimuli]).T  # nA
-
-    return i_ext, i_branch_inds + i_comp_inds
