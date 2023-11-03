@@ -60,10 +60,11 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     branch.set_states("n", 0.3644787002343737)
     branch.set_states("voltages", -62.0)
 
-    stims = [nx.Stimulus(0, 0, 0.0, nx.step_current(i_delay, i_dur, i_amp, time_vec))]
-    recs = [nx.Recording(0, 0, 0.0), nx.Recording(0, 0, 1.0)]
-
-    voltages = nx.integrate(branch, stims, recs, delta_t=dt)
+    branch.comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    branch.comp(0.0).record()
+    branch.comp(1.0).record()
+    
+    voltages = nx.integrate(branch, delta_t=dt)
 
     return voltages
 
@@ -191,14 +192,12 @@ def _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     branch = branch.initialize()
 
     # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for neurax.
-    stims = [nx.Stimulus(0, 0, 0.02, nx.step_current(i_delay, i_dur, i_amp, time_vec))]
-    recs = [
-        nx.Recording(0, 0, 0.02),
-        nx.Recording(0, 0, 0.52),
-        nx.Recording(0, 0, 0.98),
-    ]
+    branch.comp(0.02).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    branch.comp(0.02).record()
+    branch.comp(0.52).record()
+    branch.comp(0.98).record()
 
-    s = nx.integrate(branch, stims, recs, delta_t=dt, tridiag_solver="thomas")
+    s = nx.integrate(branch, delta_t=dt, tridiag_solver="thomas")
     return s
 
 

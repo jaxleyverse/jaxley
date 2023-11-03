@@ -55,10 +55,12 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     cell.set_states("n", 0.3644787002343737)
     cell.set_states("voltages", -62.0)
 
-    stims = [nx.Stimulus(0, 0, 0.0, nx.step_current(i_delay, i_dur, i_amp, time_vec))]
-    recs = [nx.Recording(0, 0, 0.0), nx.Recording(0, 1, 1.0), nx.Recording(0, 2, 1.0)]
-
-    voltages = nx.integrate(cell, stims, recs, delta_t=dt)
+    cell.branch(0).comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    cell.branch(0).comp(0.0).record()
+    cell.branch(1).comp(1.0).record()
+    cell.branch(2).comp(1.0).record()
+    
+    voltages = nx.integrate(cell, delta_t=dt)
     return voltages
 
 
