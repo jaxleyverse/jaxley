@@ -160,10 +160,11 @@ def test_swc_voltages():
     cell.set_states("h", 0.4889)
     cell.set_states("n", 0.3644787)
 
-    stims = [nx.Stimulus(0, 1, 0.05, nx.step_current(i_delay, i_dur, i_amp, time_vec))]
-    recs = [nx.Recording(0, i, 0.05) for i in trunk_inds + tuft_inds + basal_inds]
-
-    voltages_neurax = nx.integrate(cell, stims, recs, delta_t=dt)
+    cell.branch(1).comp(0.05).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    for i in trunk_inds + tuft_inds + basal_inds:
+        cell.branch(i).comp(0.05).record()
+    
+    voltages_neurax = nx.integrate(cell, delta_t=dt)
 
     ################### NEURON #################
     stim = h.IClamp(h.soma[0](0.1))

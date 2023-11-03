@@ -29,7 +29,7 @@ def test_similarity():
     t_max = 10.0  # ms
 
     voltages_neurax = _run_neurax(i_delay, i_dur, i_amp, dt, t_max)
-    voltages_neuron = _run_neurax(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_neuron = _run_neuron(i_delay, i_dur, i_amp, dt, t_max)
 
     assert np.mean(np.abs(voltages_neurax - voltages_neuron)) < 1.0
 
@@ -51,14 +51,14 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     comp.set_states("n", 0.3644787002343737)
     comp.set_states("voltages", -62.0)
 
-    stims = [nx.Stimulus(0, 0, 0.0, nx.step_current(i_delay, i_dur, i_amp, time_vec))]
-    recs = [nx.Recording(0, 0, 0.0)]
+    comp.stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    comp.record()
 
-    voltages = nx.integrate(comp, stims, recs, delta_t=dt)
+    voltages = nx.integrate(comp, delta_t=dt)
     return voltages
 
 
-def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
+def _run_neuron(i_delay, i_dur, i_amp, dt, t_max):
     h.dt = dt
 
     for sec in h.allsec():

@@ -22,13 +22,11 @@ def _run_long_branch(time_vec):
     branch.comp("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
 
-    stims = [
-        nx.Stimulus(0, 0, 0.0, nx.step_current(0.5, 5.0, 0.1, time_vec)),
-    ]
-    recs = [nx.Recording(0, 0, 0.0)]
+    branch.comp(0.0).record()
+    branch.comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, time_vec))
 
     def loss(params):
-        s = nx.integrate(branch, stims, recs, params=params)
+        s = nx.integrate(branch, params=params)
         return s[0, -1]
 
     jitted_loss_grad = jit(value_and_grad(loss))
@@ -49,13 +47,11 @@ def _run_short_branches(time_vec):
     cell.branch("all").comp("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()
 
-    stims = [
-        nx.Stimulus(0, 0, 0.0, nx.step_current(0.5, 5.0, 0.1, time_vec)),
-    ]
-    recs = [nx.Recording(0, 0, 0.0)]
+    cell.branch(0).comp(0.0).record()
+    cell.branch(0).comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, time_vec))
 
     def loss(params):
-        s = nx.integrate(cell, stims, recs, params=params)
+        s = nx.integrate(cell, params=params)
         return s[0, -1]
 
     jitted_loss_grad = jit(value_and_grad(loss))
