@@ -59,7 +59,7 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     cell.branch(0).comp(0.0).record()
     cell.branch(1).comp(1.0).record()
     cell.branch(2).comp(1.0).record()
-    
+
     voltages = nx.integrate(cell, delta_t=dt)
     return voltages
 

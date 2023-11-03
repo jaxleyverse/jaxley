@@ -63,7 +63,7 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     branch.comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
     branch.comp(0.0).record()
     branch.comp(1.0).record()
-    
+
     voltages = nx.integrate(branch, delta_t=dt)
 
     return voltages

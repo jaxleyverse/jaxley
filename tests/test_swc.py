@@ -160,10 +160,12 @@ def test_swc_voltages():
     cell.set_states("h", 0.4889)
     cell.set_states("n", 0.3644787)
 
-    cell.branch(1).comp(0.05).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    cell.branch(1).comp(0.05).stimulate(
+        nx.step_current(i_delay, i_dur, i_amp, time_vec)
+    )
     for i in trunk_inds + tuft_inds + basal_inds:
         cell.branch(i).comp(0.05).record()
-    
+
     voltages_neurax = nx.integrate(cell, delta_t=dt)
 
     ################### NEURON #################
