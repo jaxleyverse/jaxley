@@ -414,7 +414,7 @@ class Module(ABC):
 
     def stimulate(self, current):
         """Insert a stimulus into the compartment."""
-        self._stimulate(self, current, self.nodes)
+        self._stimulate(current, self.nodes)
 
     def _stimulate(self, current, view):
         assert (
