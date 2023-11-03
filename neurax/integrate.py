@@ -13,7 +13,6 @@ from neurax.utils.jax_utils import nested_checkpoint_scan
 def integrate(
     module: Module,
     stimuli: Union[List[Stimulus], Stimuli],
-    recordings: List[Recording],
     params: List[Dict[str, jnp.ndarray]] = [],
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
@@ -25,9 +24,7 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
-        t_max: Duration of the simulation in milliseconds. If `None`, the duration is
-            inferred from the duration of the stimulus. If it is larger than the
-            duration of the stimulus, the stimulus is padded with zeros at the end.
+        t_max: Duration of the simulation in milliseconds.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
@@ -47,7 +44,7 @@ def integrate(
     assert module.initialized, "Module is not initialized, run `.initialize()`."
 
     i_current, i_inds = prepare_stim(module, stimuli)
-    rec_inds = prepare_recs(module, recordings)
+    rec_inds = module.recordings.comp_index.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
@@ -105,27 +102,6 @@ def integrate(
         _body_fun, states, i_current, length=length, nested_lengths=checkpoint_lengths
     )
     return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
-
-
-def prepare_recs(module, recordings: List[Recording]):
-    """Prepare recordings."""
-    nseg = module.nseg
-    cumsum_nbranches = module.cumsum_nbranches
-
-    for rec in recordings:
-        assert rec.cell_ind < len(
-            module.nbranches_per_cell
-        ), "recording.cell_ind is larger than the number of cells."
-        assert (
-            rec.branch_ind < module.nbranches_per_cell[rec.cell_ind]
-        ), "recording.branch_ind is larger than the number of branches in the cell."
-        assert rec.loc <= 1.0 and rec.loc >= 0.0, "recording.loc must be in [0, 1]."
-
-    rec_comp_inds = [index_of_loc(r.branch_ind, r.loc, nseg) for r in recordings]
-    rec_comp_inds = jnp.asarray(rec_comp_inds)
-    rec_branch_inds = jnp.asarray([r.cell_ind for r in recordings])
-    rec_branch_inds = nseg * cumsum_nbranches[rec_branch_inds]
-    return rec_branch_inds + rec_comp_inds
 
 
 def prepare_stim(module, stimuli: Union[List[Stimulus], Stimuli]):
