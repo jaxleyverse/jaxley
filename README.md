@@ -23,6 +23,7 @@ Tutorial notebooks with some explanation are in [`tutorials`](https://github.com
 - [obtain a gradient and train](https://github.com/mackelab/neurax/blob/main/tutorials/03_gradient.ipynb)
 - [define groups (aka sectionlists)](https://github.com/mackelab/neurax/blob/main/tutorials/04_groups.ipynb)
 - [define your own channels and synapses](https://github.com/mackelab/neurax/blob/main/tutorials/05_new_mechanisms.ipynb)
+- [use diverse channels](https://github.com/mackelab/neurax/blob/main/tutorials/06_diverse_channels.ipynb)
 
 
 ### Units
