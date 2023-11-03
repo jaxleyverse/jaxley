@@ -80,9 +80,9 @@ class Network(Module):
 
         if key == "cell":
             view = deepcopy(self.nodes)
-            view["original_comp_index"] = view["comp_index"]
-            view["original_branch_index"] = view["branch_index"]
-            view["original_cell_index"] = view["cell_index"]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
             return CellView(self, view)
         elif key in self.synapse_names:
             return SynapseView(self, self.syn_edges, key)

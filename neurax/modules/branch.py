@@ -60,9 +60,9 @@ class Branch(Module):
 
         if key == "comp":
             view = deepcopy(self.nodes)
-            view["original_comp_index"] = view["comp_index"]
-            view["original_branch_index"] = view["branch_index"]
-            view["original_cell_index"] = view["cell_index"]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
             return CompartmentView(self, view)
         elif key in self.group_views:
             return self.group_views[key]
