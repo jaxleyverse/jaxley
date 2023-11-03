@@ -421,7 +421,9 @@ class Module(ABC):
             len(view) == 1
         ), "Can only stimulate compartments, not branches, cells, or networks."
         if self.currents is not None:
-            self.currents = jnp.concatenate([self.currents, jnp.expand_dims(current, axis=0)])
+            self.currents = jnp.concatenate(
+                [self.currents, jnp.expand_dims(current, axis=0)]
+            )
         else:
             self.currents = jnp.expand_dims(current, axis=0)
         self.current_inds = pd.concat([self.current_inds, view])

@@ -4,14 +4,14 @@ from typing import Dict, List, Optional, Union
 import jax.numpy as jnp
 
 from neurax.modules import Module
-from neurax.stimulus import Stimuli, Stimulus
-from neurax.utils.cell_utils import index_of_loc
 from neurax.utils.jax_utils import nested_checkpoint_scan
 
 
 def integrate(
     module: Module,
     params: List[Dict[str, jnp.ndarray]] = [],
+    currents: Optional[jnp.ndarray] = None,
+    *,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
@@ -41,7 +41,7 @@ def integrate(
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
 
-    i_current = module.currents.T
+    i_current = module.currents.T if currents is None else currents.T
     i_inds = module.current_inds.comp_index.to_numpy()
     rec_inds = module.recordings.comp_index.to_numpy()
 
