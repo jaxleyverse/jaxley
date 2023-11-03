@@ -29,7 +29,7 @@ class Module(ABC):
         self.syn_edges: Optional[pd.DataFrame] = None
         self.branch_edges: Optional[pd.DataFrame] = None
 
-        self.cumsum_nbranches: jnp.ndarray = None
+        self.cumsum_nbranches: Optional[jnp.ndarray] = None
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
         self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
@@ -55,6 +55,10 @@ class Module(ABC):
 
         # For recordings.
         self.recordings: pd.DataFrame = pd.DataFrame().from_dict({})
+
+        # For stimuli.
+        self.currents: Optional[jnp.ndarray] = None
+        self.current_inds: pd.DataFrame = pd.DataFrame().from_dict({})
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
@@ -399,7 +403,7 @@ class Module(ABC):
         return self
 
     def record(self):
-        """Insert a recording into the given section."""
+        """Insert a recording into the compartment."""
         self._record(self.nodes)
 
     def _record(self, view):
@@ -407,6 +411,20 @@ class Module(ABC):
             len(view) == 1
         ), "Can only record from compartments, not branches, cells, or networks."
         self.recordings = pd.concat([self.recordings, view])
+
+    def stimulate(self, current):
+        """Insert a stimulus into the compartment."""
+        self._stimulate(self, current, self.nodes)
+
+    def _stimulate(self, current, view):
+        assert (
+            len(view) == 1
+        ), "Can only stimulate compartments, not branches, cells, or networks."
+        if self.currents is not None:
+            self.currents = jnp.concatenate([self.currents, jnp.expand_dims(current, axis=0)])
+        else:
+            self.currents = jnp.expand_dims(current, axis=0)
+        self.current_inds = pd.concat([self.current_inds, view])
 
     def insert(self, channel):
         """Insert a channel."""
@@ -603,6 +621,10 @@ class View:
         """Insert a channel."""
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._record(nodes)
+
+    def stimulate(self, current):
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._stimulate(current, nodes)
 
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
