@@ -573,7 +573,7 @@ class View:
                 self.view, channel_name, indices, params, states
             )
 
-    def set_global_index_and_index(nodes):
+    def set_global_index_and_index(self, nodes):
         """Use the global compartment, branch, and cell index as the index."""
         nodes = nodes.drop("controlled_by_param", axis=1)
         nodes = nodes.drop("comp_index", axis=1)
