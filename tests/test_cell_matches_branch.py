@@ -1,7 +1,7 @@
-from jax.config import config
+import jax
 
-config.update("jax_enable_x64", True)
-config.update("jax_platform_name", "cpu")
+jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_platform_name", "cpu")
 
 
 import jax.numpy as jnp
