@@ -20,7 +20,7 @@ _ = h.load_file("import3d.hoc")
 def test_swc_reader_lengths():
     fname = "morph.swc"
 
-    _, pathlengths, _, _ = nx.utils.read_swc(fname, max_branch_len=2000.0)
+    _, pathlengths, _, _ = nx.utils.swc.swc_to_neurax(fname, max_branch_len=2000.0)
     pathlengths = np.asarray(pathlengths)[1:]
 
     for sec in h.allsec():
@@ -58,7 +58,7 @@ def test_swc_radius():
     # Can not use full morphology because of branch sorting.
     fname = "morph_250.swc"
 
-    _, pathlen, radius_fns, _ = nx.utils.read_swc(
+    _, pathlen, radius_fns, _ = nx.utils.swc.swc_to_neurax(
         fname, max_branch_len=2000.0, sort=False
     )
     neurax_diams = []

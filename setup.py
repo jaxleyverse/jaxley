@@ -4,6 +4,7 @@ REQUIRED = [
     "jax[cpu]",
     "numpy",
     "pandas",
+    "matplotlib",
 ]
 
 
