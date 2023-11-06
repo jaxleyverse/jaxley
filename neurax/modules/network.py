@@ -263,11 +263,11 @@ class Network(Module):
                 synapse_names[i] == type(synapse_type).__name__
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_states, synapse_current_terms = synapse_type.step(
-                u, delta_t, voltages, params, np.asarray(pre_syn_inds[i])
+                u, delta_t, voltages, params, np.asarray(pre_syn_inds[synapse_names[i]])
             )
             synapse_current_terms = postsyn_voltage_updates(
                 voltages,
-                np.asarray(post_syn_inds[i]),
+                np.asarray(post_syn_inds[synapse_names[i]]),
                 *synapse_current_terms,
             )
             syn_voltage_terms += synapse_current_terms[0]
