@@ -3,6 +3,14 @@ site_url: "https://mackelab.org/neurax/"
 
 nav:
   - Home: index.md
+  - Tutorials:
+    - Getting started: tutorial/01_small_network.md
+    - Run a network simulation: tutorial/01_small_network.md
+    - Set parameters: tutorial/02_setting_parameters.md
+    - Obtain gradient and train: tutorial/03_gradient.md
+    - Define groups: tutorial/04_groups.md
+    - Define your own channels: tutorial/05_new_mechanisms.md
+    - Use diverse channels: tutorial/06_diverse_channels.md
   - Installation: install.md
   - Contributing: 
     - Guide: contribute.md
@@ -49,3 +57,17 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          rendering:
+            show_source: true
+            heading_level: 3
+  
+watch:
+  - ../neurax
