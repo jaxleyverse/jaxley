@@ -166,13 +166,18 @@ class Network(Module):
         child_inds = self.branch_edges["child_branch_index"].to_numpy()
 
         conds = vmap(Cell.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
-            axial_resistivity[par_inds, 0],
             axial_resistivity[child_inds, -1],
-            radiuses[par_inds, 0],
+            axial_resistivity[par_inds, 0],
             radiuses[child_inds, -1],
-            lengths[par_inds, 0],
+            radiuses[par_inds, 0],
             lengths[child_inds, -1],
+            lengths[par_inds, 0],
         )
+        branch_conds_fwd = jnp.zeros((nbranches))
+        branch_conds_bwd = jnp.zeros((nbranches))
+        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
+        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
+        
         summed_coupling_conds = Cell.update_summed_coupling_conds(
             summed_coupling_conds,
             child_inds,
@@ -180,11 +185,6 @@ class Network(Module):
             conds[1],
             parents,
         )
-
-        branch_conds_fwd = jnp.zeros((nbranches))
-        branch_conds_bwd = jnp.zeros((nbranches))
-        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
-        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
 
         cond_params = {
             "coupling_conds_fwd": coupling_conds_fwd,

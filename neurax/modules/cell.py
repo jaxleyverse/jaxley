@@ -138,6 +138,7 @@ class Cell(Module):
             conds[1],
             parents,
         )
+        print("summed", summed_coupling_conds)
 
         branch_conds_fwd = jnp.zeros((nbranches))
         branch_conds_bwd = jnp.zeros((nbranches))
@@ -191,7 +192,11 @@ class Cell(Module):
             parents: shape [num_branches]
         """
 
+        # print("conds_bwd", conds_bwd)
+        # print("child_inds", child_inds)
+        # print("pre", summed_conds)
         summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds - 1])
+        # print("mid", summed_conds)
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),
