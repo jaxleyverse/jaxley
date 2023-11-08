@@ -8,7 +8,11 @@ from neurax.utils.cell_utils import index_of_loc
 
 
 def step_current(
-    i_delay: float, i_dur: float, i_amp: float, time_vec: jnp.asarray, i_offset=0.0
+    i_delay: float,
+    i_dur: float,
+    i_amp: float,
+    time_vec: jnp.asarray,
+    i_offset: float = 0.0,
 ):
     """
     Return step current in unit nA.
