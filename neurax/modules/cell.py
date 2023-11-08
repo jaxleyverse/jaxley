@@ -131,19 +131,18 @@ class Cell(Module):
             lengths[child_inds, -1],
             lengths[par_inds, 0],
         )
-        summed_coupling_conds = self.update_summed_coupling_conds(
-            summed_coupling_conds,
-            child_inds,
-            conds[0],
-            conds[1],
-            parents,
-        )
-        print("summed", summed_coupling_conds)
-
         branch_conds_fwd = jnp.zeros((nbranches))
         branch_conds_bwd = jnp.zeros((nbranches))
         branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
         branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
+
+        summed_coupling_conds = self.update_summed_coupling_conds(
+            summed_coupling_conds,
+            child_inds,
+            branch_conds_fwd,
+            branch_conds_bwd,
+            parents,
+        )
 
         cond_params = {
             "coupling_conds_fwd": coupling_conds_fwd,
@@ -192,11 +191,7 @@ class Cell(Module):
             parents: shape [num_branches]
         """
 
-        # print("conds_bwd", conds_bwd)
-        # print("child_inds", child_inds)
-        # print("pre", summed_conds)
-        summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds - 1])
-        # print("mid", summed_conds)
+        summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds])
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),
@@ -206,7 +201,7 @@ class Cell(Module):
         summed_conds = scatter_add(
             summed_conds,
             jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
-            conds_fwd[child_inds - 1],
+            conds_fwd[child_inds],
             dnums,
         )
         return summed_conds

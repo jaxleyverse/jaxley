@@ -177,12 +177,12 @@ class Network(Module):
         branch_conds_bwd = jnp.zeros((nbranches))
         branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
         branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
-        
+
         summed_coupling_conds = Cell.update_summed_coupling_conds(
             summed_coupling_conds,
             child_inds,
-            conds[0],
-            conds[1],
+            branch_conds_fwd,
+            branch_conds_bwd,
             parents,
         )
 
