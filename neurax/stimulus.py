@@ -11,17 +11,40 @@ def step_current(
     i_delay: float,
     i_dur: float,
     i_amp: float,
-    time_vec: jnp.asarray,
+    delta_t: float,
+    t_max: float,
     i_offset: float = 0.0,
 ):
     """
     Return step current in unit nA.
     """
-    zero_vec = jnp.zeros_like(time_vec) + i_offset
-    stim_on = jnp.greater_equal(time_vec, i_delay)
-    stim_off = jnp.less_equal(time_vec, i_delay + i_dur)
-    protocol_on = jnp.logical_and(stim_on, stim_off)
-    return zero_vec.at[protocol_on].set(i_amp)
+    dt = delta_t
+    window_start = int(i_delay / dt)
+    window_end = int((i_delay + i_dur) / dt)
+    time_steps = int(t_max // dt) + 2
+    current = jnp.zeros((time_steps,)) + i_offset
+    return current.at[window_start:window_end].set(i_amp)
+
+
+def step_dataset(
+    i_delay: float,
+    i_dur: float,
+    i_amp: jnp.asarray,
+    delta_t: float,
+    t_max: float,
+    i_offset: float = 0.0,
+):
+    """
+    Return several step currents in unit nA.
+    """
+    dim = len(i_amp)
+    dt = delta_t
+    window_start = int(i_delay / dt)
+    window_end = int((i_delay + i_dur) / dt)
+
+    time_steps = int(t_max // dt) + 2
+    current = jnp.zeros((time_steps, dim)) + i_offset
+    return current.at[window_start:window_end, :].set(i_amp).T
 
 
 def get_external_input(
