@@ -18,9 +18,7 @@ from neurax.synapses import GlutamateSynapse
 def test_compartment():
     dt = 0.025  # ms
     t_max = 5.0  # ms
-
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    current = nx.step_current(0.5, 1.0, 0.02, time_vec)
+    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     comp = nx.Compartment().initialize()
     comp.insert(HHChannel())
@@ -55,9 +53,7 @@ def test_branch():
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
-
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    current = nx.step_current(0.5, 1.0, 0.02, time_vec)
+    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     comp = nx.Compartment().initialize()
     branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
@@ -93,9 +89,7 @@ def test_cell():
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
-
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    current = nx.step_current(0.5, 1.0, 0.02, time_vec)
+    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
@@ -135,9 +129,7 @@ def test_net():
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
-
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    current = nx.step_current(0.5, 1.0, 0.02, time_vec)
+    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
