@@ -35,7 +35,6 @@ def test_similarity():
 
 
 def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
 
     comp = nx.Compartment().initialize()
     comp.insert(HHChannel())
@@ -51,7 +50,7 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     comp.set_states("n", 0.3644787002343737)
     comp.set_states("voltages", -62.0)
 
-    comp.stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    comp.stimulate(nx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     comp.record()
 
     voltages = nx.integrate(comp, delta_t=dt)

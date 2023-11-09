@@ -38,8 +38,6 @@ def test_similarity():
 
 
 def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-
     nseg_per_branch = 8
     comp = nx.Compartment().initialize()
     branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
@@ -60,7 +58,7 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     branch.set_states("n", 0.3644787002343737)
     branch.set_states("voltages", -62.0)
 
-    branch.comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    branch.comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     branch.comp(0.0).record()
     branch.comp(1.0).record()
 
@@ -159,8 +157,6 @@ def test_similarity_complex():
 
 
 def _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
-    time_vec = np.arange(0, t_max + dt, dt)
-
     nseg = 16
     comp = nx.Compartment()
     branch = nx.Branch([comp for _ in range(nseg)])
@@ -192,7 +188,7 @@ def _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     branch = branch.initialize()
 
     # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for neurax.
-    branch.comp(0.02).stimulate(nx.step_current(i_delay, i_dur, i_amp, time_vec))
+    branch.comp(0.02).stimulate(nx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     branch.comp(0.02).record()
     branch.comp(0.52).record()
     branch.comp(0.98).record()

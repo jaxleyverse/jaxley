@@ -109,8 +109,6 @@ def test_swc_voltages():
     t_max = 20.0
     dt = 0.025
 
-    time_vec = np.arange(0, t_max + dt, dt)
-
     nseg_per_branch = 8
 
     ##################### NEURON ##################
@@ -161,7 +159,7 @@ def test_swc_voltages():
     cell.set_states("n", 0.3644787)
 
     cell.branch(1).comp(0.05).stimulate(
-        nx.step_current(i_delay, i_dur, i_amp, time_vec)
+        nx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in trunk_inds + tuft_inds + basal_inds:
         cell.branch(i).comp(0.05).record()
