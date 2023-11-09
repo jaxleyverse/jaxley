@@ -20,7 +20,9 @@ def test_swc_cell():
     t_max = 5.0  # ms
     current = nx.step_current(0.5, 1.0, 0.2, dt, t_max)
 
-    cell = nx.read_swc("../morph.swc", nseg=2, max_branch_len=300.0)
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "../morph.swc")
+    cell = nx.read_swc(fname, nseg=2, max_branch_len=300.0)
     cell.insert(HHChannel())
     cell.branch(1).comp(0.0).record()
     cell.branch(1).comp(0.0).stimulate(current)
@@ -54,8 +56,10 @@ def test_swc_net():
     t_max = 5.0  # ms
     current = nx.step_current(0.5, 1.0, 0.2, dt, t_max)
 
-    cell1 = nx.read_swc("../morph.swc", nseg=2, max_branch_len=300.0)
-    cell2 = nx.read_swc("../morph.swc", nseg=2, max_branch_len=300.0)
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "../morph.swc")
+    cell1 = nx.read_swc(fname, nseg=2, max_branch_len=300.0)
+    cell2 = nx.read_swc(fname, nseg=2, max_branch_len=300.0)
 
     connectivities = [
         nx.Connectivity(GlutamateSynapse(), [nx.Connection(0, 0, 0.0, 1, 0, 0.0)])

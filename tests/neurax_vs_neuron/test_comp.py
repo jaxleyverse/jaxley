@@ -35,7 +35,6 @@ def test_similarity():
 
 
 def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
-
     comp = nx.Compartment().initialize()
     comp.insert(HHChannel())
 

@@ -35,7 +35,6 @@ def test_similarity():
 
 
 def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
-
     nseg_per_branch = 8
     comp = nx.Compartment().initialize()
     branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
@@ -54,7 +53,9 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     cell.set_states("n", 0.3644787002343737)
     cell.set_states("voltages", -62.0)
 
-    cell.branch(0).comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    cell.branch(0).comp(0.0).stimulate(
+        nx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+    )
     cell.branch(0).comp(0.0).record()
     cell.branch(1).comp(1.0).record()
     cell.branch(2).comp(1.0).record()
