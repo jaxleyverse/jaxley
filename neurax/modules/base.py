@@ -1,15 +1,16 @@
 import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from math import pi
 from typing import Callable, Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from neurax.channels import Channel
 from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
-from neurax.stimulus import get_external_input
 from neurax.synapses import Synapse
 
 
@@ -461,7 +462,7 @@ class Module(ABC):
         )
 
         # External input.
-        i_ext = get_external_input(
+        i_ext = self.get_external_input(
             voltages, i_inds, i_current, params["radius"], params["length"]
         )
 
@@ -559,6 +560,34 @@ class Module(ABC):
         """
         voltages = u["voltages"]
         return [{}], jnp.zeros_like(voltages), jnp.zeros_like(voltages)
+
+    @staticmethod
+    def get_external_input(
+        voltages: jnp.ndarray,
+        i_inds: jnp.ndarray,
+        i_stim: jnp.ndarray,
+        radius: float,
+        length_single_compartment: float,
+    ):
+        """
+        Return external input to each compartment in uA / cm^2.
+        """
+        zero_vec = jnp.zeros_like(voltages)
+        # `radius`: um
+        # `length_single_compartment`: um
+        # `i_stim`: nA
+        current = (
+            i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
+        )  # nA / um^2
+        current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
+
+        dnums = ScatterDimensionNumbers(
+            update_window_dims=(),
+            inserted_window_dims=(0,),
+            scatter_dims_to_operand_dims=(0,),
+        )
+        stim_at_timestep = scatter_add(zero_vec, i_inds[:, None], current, dnums)
+        return stim_at_timestep
 
 
 class View:
