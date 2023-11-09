@@ -18,7 +18,8 @@ _ = h.load_file("import3d.hoc")
 
 
 def test_swc_reader_lengths():
-    fname = "morph.swc"
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "morph.swc")
 
     _, pathlengths, _, _ = nx.utils.swc.swc_to_neurax(fname, max_branch_len=2000.0)
     pathlengths = np.asarray(pathlengths)[1:]
@@ -56,7 +57,8 @@ def test_swc_radius():
     range_16 = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
 
     # Can not use full morphology because of branch sorting.
-    fname = "morph_250.swc"
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "morph_250.swc")
 
     _, pathlen, radius_fns, _ = nx.utils.swc.swc_to_neurax(
         fname, max_branch_len=2000.0, sort=False
@@ -100,8 +102,8 @@ def test_swc_voltages():
     It tests whether, on average over time and recordings, the voltage is off by less
     than 1.5 mV.
     """
-
-    fname = "morph.swc"  # n120
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "morph.swc")  # n120
 
     i_delay = 2.0
     i_dur = 5.0
