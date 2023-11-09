@@ -18,8 +18,7 @@ from neurax.synapses import GlutamateSynapse
 def test_swc_cell():
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    current = nx.step_current(0.5, 1.0, 0.2, time_vec)
+    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     cell = nx.read_swc("../morph.swc", nseg=2, max_branch_len=300.0)
     cell.insert(HHChannel())
@@ -53,8 +52,7 @@ def test_swc_cell():
 def test_swc_net():
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    current = nx.step_current(0.5, 1.0, 0.2, time_vec)
+    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     cell1 = nx.read_swc("../morph.swc", nseg=2, max_branch_len=300.0)
     cell2 = nx.read_swc("../morph.swc", nseg=2, max_branch_len=300.0)
