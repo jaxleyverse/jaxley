@@ -12,7 +12,7 @@ import neurax as nx
 from neurax.channels import HHChannel
 
 
-def _run_long_branch(time_vec):
+def _run_long_branch(dt, t_max):
     nseg_per_branch = 8
 
     comp = nx.Compartment()
@@ -23,7 +23,7 @@ def _run_long_branch(time_vec):
     params = branch.get_parameters()
 
     branch.comp(0.0).record()
-    branch.comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, time_vec))
+    branch.comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, dt, t_max))
 
     def loss(params):
         s = nx.integrate(branch, params=params)
@@ -35,7 +35,7 @@ def _run_long_branch(time_vec):
     return l, g
 
 
-def _run_short_branches(time_vec):
+def _run_short_branches(dt, t_max):
     nseg_per_branch = 4
     parents = jnp.asarray([-1, 0])
 
@@ -48,7 +48,7 @@ def _run_short_branches(time_vec):
     params = cell.get_parameters()
 
     cell.branch(0).comp(0.0).record()
-    cell.branch(0).comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, time_vec))
+    cell.branch(0).comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, dt, t_max))
 
     def loss(params):
         s = nx.integrate(cell, params=params)
@@ -64,9 +64,8 @@ def test_equivalence():
     """Test whether a single long branch matches a cell of two shorter branches."""
     dt = 0.025
     t_max = 5.0  # ms
-    time_vec = jnp.arange(0.0, t_max + dt, dt)
-    l1, g1 = _run_long_branch(time_vec)
-    l2, g2 = _run_short_branches(time_vec)
+    l1, g1 = _run_long_branch(dt, t_max)
+    l2, g2 = _run_short_branches(dt, t_max)
 
     assert np.allclose(l1, l2), "Losses do not match."
 
