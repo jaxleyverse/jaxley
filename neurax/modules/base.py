@@ -413,6 +413,10 @@ class Module(ABC):
         ), "Can only record from compartments, not branches, cells, or networks."
         self.recordings = pd.concat([self.recordings, view])
 
+    def delete_recordings(self):
+        """Removes all recordings from the module."""
+        self.recordings = pd.DataFrame().from_dict({})
+
     def stimulate(self, current):
         """Insert a stimulus into the compartment."""
         self._stimulate(current, self.nodes)
@@ -428,6 +432,11 @@ class Module(ABC):
         else:
             self.currents = jnp.expand_dims(current, axis=0)
         self.current_inds = pd.concat([self.current_inds, view])
+
+    def delete_stimuli(self):
+        """Removes all stimuli from the module."""
+        self.currents = None
+        self.current_inds = pd.DataFrame().from_dict({})
 
     def insert(self, channel):
         """Insert a channel."""
