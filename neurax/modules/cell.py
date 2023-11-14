@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -23,18 +23,26 @@ class Cell(Module):
     cell_params: Dict = {}
     cell_states: Dict = {}
 
-    def __init__(self, branches: List[Branch], parents: List):
+    def __init__(self, branches: Union[Branch, List[Branch]], parents: List):
         super().__init__()
+        assert (
+            isinstance(branches, Branch) or len(parents) == len(branches) is None
+        ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
         self._init_params_and_state(self.cell_params, self.cell_states)
-        self._append_to_params_and_state(branches)
-        for branch in branches:
+        if isinstance(branches, Branch):
+            branch_list = [branches for _ in range(len(parents))]
+        else:
+            branch_list = branches
+
+        self._append_to_params_and_state(branch_list)
+        for branch in branch_list:
             self._append_to_channel_params_and_state(branch)
 
-        self.nseg = branches[0].nseg
-        self.total_nbranches = len(branches)
-        self.nbranches_per_cell = [len(branches)]
+        self.nseg = branch_list[0].nseg
+        self.total_nbranches = len(branch_list)
+        self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
-        self.cumsum_nbranches = jnp.asarray([0, len(branches)])
+        self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
         self.nodes = pd.DataFrame(
@@ -48,7 +56,7 @@ class Cell(Module):
         )
 
         # Channel indexing.
-        for i, branch in enumerate(branches):
+        for i, branch in enumerate(branch_list):
             for channel in branch.channels:
                 name = type(channel).__name__
                 comp_inds = deepcopy(
