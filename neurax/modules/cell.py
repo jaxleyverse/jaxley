@@ -25,8 +25,8 @@ class Cell(Module):
 
     def __init__(self, branches: Union[Branch, List[Branch]], parents: List):
         super().__init__()
-        assert (
-            isinstance(branches, Branch) or len(parents) == len(branches) is None
+        assert isinstance(branches, Branch) or len(parents) == len(
+            branches
         ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
         self._init_params_and_state(self.cell_params, self.cell_states)
         if isinstance(branches, Branch):

@@ -21,7 +21,9 @@ def test_api_equivalence():
     comp = nx.Compartment().initialize()
 
     branch1 = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell1 = nx.Cell([branch1 for _ in range(num_branches)], parents=parents).initialize()
+    cell1 = nx.Cell(
+        [branch1 for _ in range(num_branches)], parents=parents
+    ).initialize()
 
     branch2 = nx.Branch(comp, nseg=nseg_per_branch).initialize()
     cell2 = nx.Cell(branch2, parents=parents).initialize()
@@ -35,4 +37,6 @@ def test_api_equivalence():
 
     voltages1 = nx.integrate(cell1, delta_t=dt)
     voltages2 = nx.integrate(cell2, delta_t=dt)
-    assert jnp.max(jnp.abs(voltages1 - voltages2)) < 1e-8, "Voltages do not match between APIs."
+    assert (
+        jnp.max(jnp.abs(voltages1 - voltages2)) < 1e-8
+    ), "Voltages do not match between APIs."

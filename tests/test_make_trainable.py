@@ -17,11 +17,10 @@ def test_make_trainable():
     depth = 5
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
-    num_branches = len(parents)
 
     comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    branch = nx.Branch(comp, nseg_per_branch).initialize()
+    cell = nx.Cell(branch, parents=parents).initialize()
     cell.insert(HHChannel())
 
     cell.branch(0).comp(0.0).set_params("length", 12.0)
@@ -42,11 +41,10 @@ def test_make_trainable_network():
     depth = 5
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
-    num_branches = len(parents)
 
     comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    branch = nx.Branch(comp, nseg_per_branch).initialize()
+    cell = nx.Cell(branch, parents=parents).initialize()
     cell.insert(HHChannel())
 
     conns = [

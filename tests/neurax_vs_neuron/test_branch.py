@@ -40,7 +40,7 @@ def test_similarity():
 def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
     comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    branch = nx.Branch(comp, nseg_per_branch).initialize()
     branch.insert(HHChannel())
 
     radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
@@ -159,7 +159,7 @@ def test_similarity_complex():
 def _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     nseg = 16
     comp = nx.Compartment()
-    branch = nx.Branch([comp for _ in range(nseg)])
+    branch = nx.Branch(comp, nseg)
 
     branch.insert(HHChannel())
 

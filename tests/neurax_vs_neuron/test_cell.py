@@ -37,8 +37,8 @@ def test_similarity():
 def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
     comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(3)], parents=[-1, 0, 0]).initialize()
+    branch = nx.Branch(comp, nseg_per_branch).initialize()
+    cell = nx.Cell(branch, parents=[-1, 0, 0]).initialize()
     cell.insert(HHChannel())
 
     cell.set_params("radius", 5.0)
