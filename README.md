@@ -3,9 +3,9 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-green)](https://github.com/mackelab/neurax/blob/main/LICENSE)
 
 
-<h1 align="center">
-neurax
-</h1>
+<p align="center">
+  <img src="docs/logo.png?raw=true" width="360">
+</p>
 
 `neurax` is a differentiable simulator for networks of multicompartment neurons in [JAX](https://github.com/google/jax). Its key features are:
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
