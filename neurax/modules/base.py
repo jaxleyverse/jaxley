@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
-from neurax.channels import Channel
-from neurax.solver_voltage import step_voltage_explicit, step_voltage_implicit
-from neurax.synapses import Synapse
+from jaxley.channels import Channel
+from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
+from jaxley.synapses import Synapse
 
 
 class Module(ABC):
@@ -65,7 +65,7 @@ class Module(ABC):
         return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
 
     def __str__(self):
-        return f"nx.{type(self).__name__}"
+        return f"jx.{type(self).__name__}"
 
     def show(
         self,

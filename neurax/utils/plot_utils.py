@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from neurax.utils.cell_utils import (
+from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
 )
-from neurax.utils.swc import _build_parents, _split_into_branches_and_sort
+from jaxley.utils.swc import _build_parents, _split_into_branches_and_sort
 
 highlight_cols = [
     "#1f78b4",
@@ -25,7 +25,7 @@ highlight_cols = [
 
 
 def plot_morph(
-    cell: "nx.Cell",
+    cell: "jx.Cell",
     figsize=(4, 4),
     cols="k",
     highlight_branch_inds=[],

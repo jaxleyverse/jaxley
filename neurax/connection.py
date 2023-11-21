@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from neurax.synapses import Synapse
+from jaxley.synapses import Synapse
 
 
 class Connection:

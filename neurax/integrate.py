@@ -3,8 +3,8 @@ from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 
-from neurax.modules import Module
-from neurax.utils.jax_utils import nested_checkpoint_scan
+from jaxley.modules import Module
+from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
 def integrate(

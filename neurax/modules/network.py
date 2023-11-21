@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 
-from neurax.connection import Connectivity
-from neurax.modules.base import Module, View
-from neurax.modules.branch import Branch
-from neurax.modules.cell import Cell, CellView
-from neurax.utils.cell_utils import merge_cells
-from neurax.utils.syn_utils import postsyn_voltage_updates, prepare_syn
+from jaxley.connection import Connectivity
+from jaxley.modules.base import Module, View
+from jaxley.modules.branch import Branch
+from jaxley.modules.cell import Cell, CellView
+from jaxley.utils.cell_utils import merge_cells
+from jaxley.utils.syn_utils import postsyn_voltage_updates, prepare_syn
 
 
 class Network(Module):

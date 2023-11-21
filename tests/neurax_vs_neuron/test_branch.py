@@ -12,15 +12,15 @@ import jax.numpy as jnp
 import numpy as np
 from neuron import h
 
-import neurax as nx
-from neurax.channels import HHChannel
+import jaxley as jx
+from jaxley.channels import HHChannel
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
 
 
 def test_similarity():
-    """Test similarity of neurax vs neuron for a branch.
+    """Test similarity of jaxley vs neuron for a branch.
 
     The branch has an uneven radius.
     """
@@ -31,16 +31,16 @@ def test_similarity():
     dt = 0.025  # ms
     t_max = 10.0  # ms
 
-    voltages_neurax = _run_neurax(i_delay, i_dur, i_amp, dt, t_max)
-    voltages_neuron = _run_neurax(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_jaxley = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_neuron = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
 
-    assert np.mean(np.abs(voltages_neurax - voltages_neuron)) < 1.0
+    assert np.mean(np.abs(voltages_jaxley - voltages_neuron)) < 1.0
 
 
-def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
+def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
     branch.insert(HHChannel())
 
     radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
@@ -58,16 +58,16 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     branch.set_states("n", 0.3644787002343737)
     branch.set_states("voltages", -62.0)
 
-    branch.comp(0.0).stimulate(nx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    branch.comp(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     branch.comp(0.0).record()
     branch.comp(1.0).record()
 
-    voltages = nx.integrate(branch, delta_t=dt)
+    voltages = jx.integrate(branch, delta_t=dt)
 
     return voltages
 
 
-def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
+def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
     h.dt = dt
 
@@ -123,7 +123,7 @@ def test_similarity_complex():
     two sub-branches.
 
     Since NEURON enforces that all segments within a branch have the same length and
-    the same axial resistivity, we have to create two NEURON branches. In neurax,
+    the same axial resistivity, we have to create two NEURON branches. In jaxley,
     we only need one branch.
     """
     i_delay = 2.0
@@ -150,16 +150,16 @@ def test_similarity_complex():
         0.9684275792140471,
         0.8000000119209283,
     ]
-    voltages_neurax = _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams)
+    voltages_jaxley = _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams)
     voltages_neuron = _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams)
 
-    assert np.mean(np.abs(voltages_neurax - voltages_neuron)) < 1.0
+    assert np.mean(np.abs(voltages_jaxley - voltages_neuron)) < 1.0
 
 
-def _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
+def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     nseg = 16
-    comp = nx.Compartment()
-    branch = nx.Branch([comp for _ in range(nseg)])
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg)])
 
     branch.insert(HHChannel())
 
@@ -187,13 +187,13 @@ def _neurax_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
 
     branch = branch.initialize()
 
-    # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for neurax.
-    branch.comp(0.02).stimulate(nx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for jaxley.
+    branch.comp(0.02).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     branch.comp(0.02).record()
     branch.comp(0.52).record()
     branch.comp(0.98).record()
 
-    s = nx.integrate(branch, delta_t=dt, tridiag_solver="thomas")
+    s = jx.integrate(branch, delta_t=dt, tridiag_solver="thomas")
     return s
 
 
@@ -228,13 +228,13 @@ def _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
             seg.diam = diams[counter]
             counter += 1
 
-    # 0.05 is fine here because nseg=8, but nseg=16 for neurax.
+    # 0.05 is fine here because nseg=8, but nseg=16 for jaxley.
     stim = h.IClamp(branch1(0.05))
     stim.delay = i_delay
     stim.dur = i_dur
     stim.amp = i_amp
 
-    # 0.05 is fine here because nseg=8, but nseg=16 for neurax.
+    # 0.05 is fine here because nseg=8, but nseg=16 for jaxley.
     voltage_recs = {}
     v = h.Vector()
     v.record(branch1(0.05)._ref_v)

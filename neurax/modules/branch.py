@@ -5,9 +5,9 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
-from neurax.modules.base import GroupView, Module, View
-from neurax.modules.compartment import Compartment, CompartmentView
-from neurax.utils.cell_utils import compute_coupling_cond
+from jaxley.modules.base import GroupView, Module, View
+from jaxley.modules.compartment import Compartment, CompartmentView
+from jaxley.utils.cell_utils import compute_coupling_cond
 
 
 class Branch(Module):

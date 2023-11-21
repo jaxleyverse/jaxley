@@ -1,1 +1,1 @@
-from neurax.utils.plot_utils import plot_morph, plot_swc
+from jaxley.utils.plot_utils import plot_morph, plot_swc

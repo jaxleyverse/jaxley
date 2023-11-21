@@ -1,5 +1,5 @@
-site_name: neurax
-site_url: "https://mackelab.org/neurax/"
+site_name: jaxley
+site_url: "https://mackelab.org/jaxley/"
 
 nav:
   - Home: index.md
@@ -19,8 +19,8 @@ nav:
   - FAQ: faq.md
   - Credits: credits.md
 
-repo_name: 'mackelab/neurax'
-repo_url: http://github.com/mackelab/neurax
+repo_name: 'mackelab/jaxley'
+repo_url: http://github.com/mackelab/jaxley
 
 theme:
   name: 'material'
@@ -40,23 +40,23 @@ markdown_extensions:
       toc_depth: 3
   - markdown_include.include:
       base_path: ../
-  - pymdownx.arithmatex:
+  - pymdowjx.arithmatex:
       generic: true
-  - pymdownx.betterem:
+  - pymdowjx.betterem:
       smart_enable: all
-  - pymdownx.caret
-  - pymdownx.critic
-  - pymdownx.details
-  - pymdownx.emoji:
-      emoji_generator: !!python/name:pymdownx.emoji.to_svg
-  - pymdownx.inlinehilite
-  - pymdownx.magiclink
-  - pymdownx.mark
-  - pymdownx.smartsymbols
-  - pymdownx.superfences
-  - pymdownx.tasklist:
+  - pymdowjx.caret
+  - pymdowjx.critic
+  - pymdowjx.details
+  - pymdowjx.emoji:
+      emoji_generator: !!python/name:pymdowjx.emoji.to_svg
+  - pymdowjx.inlinehilite
+  - pymdowjx.magiclink
+  - pymdowjx.mark
+  - pymdowjx.smartsymbols
+  - pymdowjx.superfences
+  - pymdowjx.tasklist:
       custom_checkbox: true
-  - pymdownx.tilde
+  - pymdowjx.tilde
 
 
 plugins:
@@ -70,4 +70,4 @@ plugins:
             heading_level: 3
   
 watch:
-  - ../neurax
+  - ../jaxley

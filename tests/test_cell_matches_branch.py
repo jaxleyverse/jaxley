@@ -8,25 +8,25 @@ import jax.numpy as jnp
 import numpy as np
 from jax import jit, value_and_grad
 
-import neurax as nx
-from neurax.channels import HHChannel
+import jaxley as jx
+from jaxley.channels import HHChannel
 
 
 def _run_long_branch(dt, t_max):
     nseg_per_branch = 8
 
-    comp = nx.Compartment()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)])
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     branch.insert(HHChannel())
 
     branch.comp("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
 
     branch.comp(0.0).record()
-    branch.comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    branch.comp(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
 
     def loss(params):
-        s = nx.integrate(branch, params=params)
+        s = jx.integrate(branch, params=params)
         return s[0, -1]
 
     jitted_loss_grad = jit(value_and_grad(loss))
@@ -39,19 +39,19 @@ def _run_short_branches(dt, t_max):
     nseg_per_branch = 4
     parents = jnp.asarray([-1, 0])
 
-    comp = nx.Compartment()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)])
-    cell = nx.Cell([branch for _ in range(2)], parents=parents)
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
+    cell = jx.Cell([branch for _ in range(2)], parents=parents)
     cell.insert(HHChannel())
 
     cell.branch("all").comp("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()
 
     cell.branch(0).comp(0.0).record()
-    cell.branch(0).comp(0.0).stimulate(nx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    cell.branch(0).comp(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
 
     def loss(params):
-        s = nx.integrate(cell, params=params)
+        s = jx.integrate(cell, params=params)
         return s[0, -1]
 
     jitted_loss_grad = jit(value_and_grad(loss))

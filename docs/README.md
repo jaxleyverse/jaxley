@@ -1,6 +1,6 @@
 # Documentation
 
-The documentation is available at: <http://mackelab.org/neurax>
+The documentation is available at: <http://mackelab.org/jaxley>
 
 ## Building the Documentation
 

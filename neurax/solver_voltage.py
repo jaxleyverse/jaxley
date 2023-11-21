@@ -4,7 +4,7 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from tridiax.stone import stone_backsub, stone_triang
 from tridiax.thomas import thomas_backsub, thomas_triang
 
-from neurax.build_branched_tridiag import define_all_tridiags
+from jaxley.build_branched_tridiag import define_all_tridiags
 
 
 def step_voltage_explicit(

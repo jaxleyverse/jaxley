@@ -10,8 +10,8 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import numpy as np
 from neuron import h
 
-import neurax as nx
-from neurax.channels import HHChannel
+import jaxley as jx
+from jaxley.channels import HHChannel
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -21,7 +21,7 @@ def test_swc_reader_lengths():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "morph.swc")
 
-    _, pathlengths, _, _ = nx.utils.swc.swc_to_neurax(fname, max_branch_len=2000.0)
+    _, pathlengths, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
     pathlengths = np.asarray(pathlengths)[1:]
 
     for sec in h.allsec():
@@ -39,7 +39,7 @@ def test_swc_reader_lengths():
 
     for i, p in enumerate(pathlengths):
         # For index two, there is some weird behaviour of NEURON. If I exclude the
-        # first traced point from the given branch in neurax, then I can exactly
+        # first traced point from the given branch in jaxley, then I can exactly
         # reproduce NEURON, but it is unclear to me why I should do that.
         if i != 2:
             dists = np.abs(neuron_pathlengths - p)
@@ -60,12 +60,12 @@ def test_swc_radius():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "morph_250.swc")
 
-    _, pathlen, radius_fns, _ = nx.utils.swc.swc_to_neurax(
+    _, pathlen, radius_fns, _ = jx.utils.swc.swc_to_jaxley(
         fname, max_branch_len=2000.0, sort=False
     )
-    neurax_diams = []
+    jaxley_diams = []
     for r in radius_fns:
-        neurax_diams.append(r(range_16) * 2)
+        jaxley_diams.append(r(range_16) * 2)
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
@@ -87,16 +87,16 @@ def test_swc_radius():
     for sec in h.allsec():
         print(sec.L)
 
-    for i in range(len(neurax_diams)):
+    for i in range(len(jaxley_diams)):
         assert np.all(
-            np.abs(neurax_diams[i] - neuron_diams[i]) < 0.5
+            np.abs(jaxley_diams[i] - neuron_diams[i]) < 0.5
         ), "radiuses do not match."
 
 
 def test_swc_voltages():
     """Check if voltages of SWC recording match.
 
-    To match the branch indices between NEURON and neurax, we rely on comparing the
+    To match the branch indices between NEURON and jaxley, we rely on comparing the
     length of the branches.
 
     It tests whether, on average over time and recordings, the voltage is off by less
@@ -127,9 +127,9 @@ def test_swc_voltages():
 
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
-    ####################### neurax ##################
-    _, pathlengths, _, _ = nx.utils.swc.swc_to_neurax(fname, max_branch_len=2_000)
-    cell = nx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
+    ####################### jaxley ##################
+    _, pathlengths, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
+    cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
     cell.insert(HHChannel)
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]
@@ -161,12 +161,12 @@ def test_swc_voltages():
     cell.set_states("n", 0.3644787)
 
     cell.branch(1).comp(0.05).stimulate(
-        nx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+        jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in trunk_inds + tuft_inds + basal_inds:
         cell.branch(i).comp(0.05).record()
 
-    voltages_neurax = nx.integrate(cell, delta_t=dt)
+    voltages_jaxley = jx.integrate(cell, delta_t=dt)
 
     ################### NEURON #################
     stim = h.IClamp(h.soma[0](0.1))
@@ -230,5 +230,5 @@ def test_swc_voltages():
 
     ####################### check ################
     assert np.mean(
-        np.abs(voltages_neurax - voltages_neuron) < 1.5
+        np.abs(voltages_jaxley - voltages_neuron) < 1.5
     ), "voltages do not match."

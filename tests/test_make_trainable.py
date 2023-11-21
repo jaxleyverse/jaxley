@@ -5,9 +5,9 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 
-import neurax as nx
-from neurax.channels import HHChannel
-from neurax.synapses import GlutamateSynapse
+import jaxley as jx
+from jaxley.channels import HHChannel
+from jaxley.synapses import GlutamateSynapse
 
 
 def test_make_trainable():
@@ -19,9 +19,9 @@ def test_make_trainable():
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    cell = jx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
     cell.insert(HHChannel())
 
     cell.branch(0).comp(0.0).set_params("length", 12.0)
@@ -44,20 +44,20 @@ def test_make_trainable_network():
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    cell = jx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
     cell.insert(HHChannel())
 
     conns = [
-        nx.Connectivity(
+        jx.Connectivity(
             GlutamateSynapse(),
             [
-                nx.Connection(0, 0, 0.0, 1, 0, 0.0),
+                jx.Connection(0, 0, 0.0, 1, 0, 0.0),
             ],
         )
     ]
-    net = nx.Network([cell, cell], conns).initialize()
+    net = jx.Network([cell, cell], conns).initialize()
 
     cell.branch(0).comp(0.0).set_params("length", 12.0)
     cell.branch(1).comp(1.0).set_params("gNa", 0.2)

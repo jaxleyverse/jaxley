@@ -60,7 +60,7 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting `neurax` developer Michael Deistler via email (michael.deistler@uni-tuebingen.de). All
+reported by contacting `jaxley` developer Michael Deistler via email (michael.deistler@uni-tuebingen.de). All
 complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

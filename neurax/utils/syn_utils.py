@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
-from neurax.utils.cell_utils import index_of_loc
+from jaxley.utils.cell_utils import index_of_loc
 
 
 def postsyn_voltage_updates(
@@ -33,7 +33,7 @@ def postsyn_voltage_updates(
 
 
 def prepare_syn(
-    conns: List["nx.Connection"], nseg_per_branch: int
+    conns: List["jx.Connection"], nseg_per_branch: int
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Prepare synapses by computing the pre and post compartment within each cell."""
     pre_syn_inds = [

@@ -10,22 +10,22 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import jax.numpy as jnp
 import numpy as np
 
-import neurax as nx
-from neurax.channels import HHChannel
-from neurax.synapses import GlutamateSynapse
+import jaxley as jx
+from jaxley.channels import HHChannel
+from jaxley.synapses import GlutamateSynapse
 
 
 def test_compartment():
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
-    comp = nx.Compartment().initialize()
+    comp = jx.Compartment().initialize()
     comp.insert(HHChannel())
     comp.record()
     comp.stimulate(current)
 
-    voltages = nx.integrate(comp, delta_t=dt)
+    voltages = jx.integrate(comp, delta_t=dt)
 
     voltages_081123 = jnp.asarray(
         [
@@ -53,15 +53,15 @@ def test_branch():
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
     branch.insert(HHChannel())
     branch.comp(0.0).record()
     branch.comp(0.0).stimulate(current)
 
-    voltages = nx.integrate(branch, delta_t=dt)
+    voltages = jx.integrate(branch, delta_t=dt)
 
     voltages_081123 = jnp.asarray(
         [
@@ -89,19 +89,19 @@ def test_cell():
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
 
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(len(parents))], parents=parents)
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
     cell.insert(HHChannel())
     cell.branch(1).comp(0.0).record()
     cell.branch(1).comp(0.0).stimulate(current)
 
-    voltages = nx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt)
 
     voltages_081123 = jnp.asarray(
         [
@@ -129,20 +129,20 @@ def test_net():
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    current = nx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
 
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell1 = nx.Cell([branch for _ in range(len(parents))], parents=parents)
-    cell2 = nx.Cell([branch for _ in range(len(parents))], parents=parents)
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    cell1 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
+    cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     connectivities = [
-        nx.Connectivity(GlutamateSynapse(), [nx.Connection(0, 0, 0.0, 1, 0, 0.0)])
+        jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
-    network = nx.Network([cell1, cell2], connectivities)
+    network = jx.Network([cell1, cell2], connectivities)
     network.insert(HHChannel())
 
     for cell_ind in range(2):
@@ -151,7 +151,7 @@ def test_net():
     for stim_ind in range(2):
         network.cell(stim_ind).branch(1).comp(0.0).stimulate(current)
 
-    voltages = nx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt)
 
     voltages_081123 = jnp.asarray(
         [

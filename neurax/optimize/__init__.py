@@ -1,1 +1,1 @@
-from neurax.optimize.transforms import ParamTransform
+from jaxley.optimize.transforms import ParamTransform

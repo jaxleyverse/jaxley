@@ -7,14 +7,14 @@ import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
-from neurax.modules.base import Module, View
-from neurax.modules.branch import Branch, BranchView, Compartment
-from neurax.utils.cell_utils import (
+from jaxley.modules.base import Module, View
+from jaxley.modules.branch import Branch, BranchView, Compartment
+from jaxley.utils.cell_utils import (
     compute_branches_in_level,
     compute_coupling_cond,
     compute_levels,
 )
-from neurax.utils.swc import swc_to_neurax
+from jaxley.utils.swc import swc_to_jaxley
 
 
 class Cell(Module):
@@ -225,8 +225,8 @@ class CellView(View):
 
 
 def read_swc(fname: str, nseg: int, max_branch_len: float = 300.0):
-    """Reads SWC file into a `nx.Cell`."""
-    parents, pathlengths, radius_fns, _ = swc_to_neurax(
+    """Reads SWC file into a `jx.Cell`."""
+    parents, pathlengths, radius_fns, _ = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None
     )
     nbranches = len(parents)

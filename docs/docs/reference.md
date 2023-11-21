@@ -2,28 +2,28 @@
 
 ## Modules
 
-::: neurax.modules.compartment.Compartment
+::: jaxley.modules.compartment.Compartment
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.modules.branch.Branch
+::: jaxley.modules.branch.Branch
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.modules.cell.Cell
+::: jaxley.modules.cell.Cell
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.modules.network.Network
+::: jaxley.modules.network.Network
     rendering:
       show_root_heading: true
     selection:
@@ -33,49 +33,49 @@
 
 ## Channels
 
-::: neurax.channels.hh.HHChannel
+::: jaxley.channels.hh.HHChannel
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.channels.pospischil.CaLChannelPospi
+::: jaxley.channels.pospischil.CaLChannelPospi
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.channels.pospischil.CaTChannelPospi
+::: jaxley.channels.pospischil.CaTChannelPospi
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.channels.pospischil.KChannelPospi
+::: jaxley.channels.pospischil.KChannelPospi
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.channels.pospischil.KmChannelPospi
+::: jaxley.channels.pospischil.KmChannelPospi
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.channels.pospischil.Leak
+::: jaxley.channels.pospischil.Leak
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
 
-::: neurax.channels.pospischil.NaChannelPospi
+::: jaxley.channels.pospischil.NaChannelPospi
     rendering:
       show_root_heading: true
     selection:
@@ -85,7 +85,7 @@
 
 ## Synapses
 
-::: neurax.synapses.glutamate.GlutamateSynapse
+::: jaxley.synapses.glutamate.GlutamateSynapse
     rendering:
       show_root_heading: true
     selection:
@@ -95,7 +95,7 @@
 
 ## Optimization
 
-::: neurax.optimize.transforms.ParamTransform
+::: jaxley.optimize.transforms.ParamTransform
     rendering:
       show_root_heading: true
     selection:
@@ -105,6 +105,6 @@
 
 ## Utils
 
-::: neurax.read_swc
+::: jaxley.read_swc
     rendering:
       show_root_heading: true

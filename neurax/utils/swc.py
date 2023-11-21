@@ -4,13 +4,13 @@ from warnings import warn
 import numpy as np
 
 
-def swc_to_neurax(
+def swc_to_jaxley(
     fname: str,
     max_branch_len: float = 100.0,
     sort: bool = True,
     num_lines: Optional[int] = None,
 ):
-    """Read an SWC file and bring morphology into `neurax` compatible formats.
+    """Read an SWC file and bring morphology into `jaxley` compatible formats.
 
     Args:
         fname: Path to swc file.

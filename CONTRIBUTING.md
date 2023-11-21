@@ -1,7 +1,7 @@
 ## User experiences, bugs, and feature requests
 
 To report bugs and suggest features (including better documentation), please equally
-head over to [issues on GitHub](https://github.com/mackelab/neurax/issues).
+head over to [issues on GitHub](https://github.com/mackelab/jaxley/issues).
 
 ## Code contributions
 

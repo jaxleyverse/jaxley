@@ -12,15 +12,15 @@ import jax.numpy as jnp
 import numpy as np
 from neuron import h
 
-import neurax as nx
-from neurax.channels import HHChannel
+import jaxley as jx
+from jaxley.channels import HHChannel
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
 
 
 def test_similarity():
-    """Test similarity of neurax vs neuron."""
+    """Test similarity of jaxley vs neuron."""
     i_delay = 3.0  # ms
     i_dur = 2.0  # ms
     i_amp = 1.0  # nA
@@ -28,17 +28,17 @@ def test_similarity():
     dt = 0.025  # ms
     t_max = 10.0  # ms
 
-    voltages_neurax = _run_neurax(i_delay, i_dur, i_amp, dt, t_max)
-    voltages_neuron = _run_neurax(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_jaxley = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_neuron = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
 
-    assert np.mean(np.abs(voltages_neurax - voltages_neuron)) < 1.0
+    assert np.mean(np.abs(voltages_jaxley - voltages_neuron)) < 1.0
 
 
-def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
+def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
-    comp = nx.Compartment().initialize()
-    branch = nx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = nx.Cell([branch for _ in range(3)], parents=[-1, 0, 0]).initialize()
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    cell = jx.Cell([branch for _ in range(3)], parents=[-1, 0, 0]).initialize()
     cell.insert(HHChannel())
 
     cell.set_params("radius", 5.0)
@@ -54,17 +54,17 @@ def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
     cell.set_states("voltages", -62.0)
 
     cell.branch(0).comp(0.0).stimulate(
-        nx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+        jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     cell.branch(0).comp(0.0).record()
     cell.branch(1).comp(1.0).record()
     cell.branch(2).comp(1.0).record()
 
-    voltages = nx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt)
     return voltages
 
 
-def _run_neurax(i_delay, i_dur, i_amp, dt, t_max):
+def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
     h.dt = dt
 

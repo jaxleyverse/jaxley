@@ -2,8 +2,8 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 
-from neurax.channels import Channel
-from neurax.solver_gate import solve_gate_exponential, solve_inf_gate_exponential
+from jaxley.channels import Channel
+from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential
 
 # This is an implementation of Pospischil channels:
 # Leak, Na, K, Km, CaT, CaL

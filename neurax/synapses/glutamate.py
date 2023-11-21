@@ -2,7 +2,7 @@ from typing import Dict, Tuple
 
 import jax.numpy as jnp
 
-from neurax.synapses.synapse import Synapse
+from jaxley.synapses.synapse import Synapse
 
 
 class GlutamateSynapse(Synapse):

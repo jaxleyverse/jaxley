@@ -3,9 +3,9 @@ from typing import Callable, Dict, List, Optional
 import jax.numpy as jnp
 import pandas as pd
 
-from neurax.channels import Channel
-from neurax.modules.base import Module, View
-from neurax.utils.cell_utils import index_of_loc
+from jaxley.channels import Channel
+from jaxley.modules.base import Module, View
+from jaxley.utils.cell_utils import index_of_loc
 
 
 class Compartment(Module):

@@ -1,6 +1,6 @@
-from neurax.channels.channel import Channel
-from neurax.channels.hh import HHChannel
-from neurax.channels.pospischil import (
+from jaxley.channels.channel import Channel
+from jaxley.channels.hh import HHChannel
+from jaxley.channels.pospischil import (
     CaLChannelPospi,
     CaTChannelPospi,
     KChannelPospi,
