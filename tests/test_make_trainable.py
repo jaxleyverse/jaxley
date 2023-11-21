@@ -26,8 +26,10 @@ def test_make_trainable():
 
     cell.branch(0).comp(0.0).set_params("length", 12.0)
     cell.branch(1).comp(1.0).set_params("gNa", 0.2)
+    assert cell.num_trainable_params == 2
 
     cell.branch([0, 1]).make_trainable("radius", 1.0)
+    assert cell.num_trainable_params == 4
     cell.branch([0, 1]).make_trainable("length")
     cell.branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
     cell.branch([0, 1]).make_trainable("gNa")
@@ -69,3 +71,4 @@ def test_make_trainable_network():
 
     cell.get_parameters()
     net.GlutamateSynapse.set_params("gS", 0.1)
+    assert cell.num_trainable_params == 8  # `set_params()` is ignored.

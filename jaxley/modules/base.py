@@ -53,6 +53,7 @@ class Module(ABC):
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
         self.allow_make_trainable: bool = True
+        self.num_trainable_params: int = 0
 
         # For recordings.
         self.recordings: pd.DataFrame = pd.DataFrame().from_dict({})
@@ -298,7 +299,12 @@ class Module(ABC):
         else:
             raise KeyError("Key not recognized.")
 
-    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
         """Make a parameter trainable.
 
         Args:
@@ -308,16 +314,22 @@ class Module(ABC):
                 to match the number of created parameters. If `None`, the current
                 parameter value is used and if parameter sharing is performed that the
                 current parameter value is averaged over all shared parameters.
+            verbose: Whether to print the number of parameters that are added and the
+                total number of parameters.
         """
         view = deepcopy(self.nodes.assign(controlled_by_param=0))
-        self._make_trainable(view, key, init_val)
+        self._make_trainable(view, key, init_val, verbose=verbose)
 
     def _make_trainable(
-        self, view, key: str, init_val: Optional[Union[float, list]] = None
+        self,
+        view,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
     ):
         assert (
             self.allow_make_trainable
-        ), "network.cell('all') is not supported. Use a for-loop over cells."
+        ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
 
         grouped_view = view.groupby("controlled_by_param")
         inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
@@ -356,6 +368,11 @@ class Module(ABC):
             new_params = jnp.mean(param_vals, axis=1, keepdims=True)
 
         self.trainable_params.append({key: new_params})
+        self.num_trainable_params += num_created_parameters
+        if verbose:
+            print(
+                f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.num_trainable_params}"
+            )
 
     def add_to_group(self, group_name):
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
