@@ -387,7 +387,12 @@ class Module(ABC):
         return self.trainable_params
 
     def get_all_parameters(self, trainable_params):
-        """Return all parameters (and coupling conductances) needed to simulate."""
+        """Return all parameters (and coupling conductances) needed to simulate.
+
+        This is done by first obtaining the current value of every parameter (not only
+        the trainable ones) and then replacing the trainable ones with the value
+        in `trainable_params()`.
+        """
         params = {}
         for key, val in self.params.items():
             params[key] = val
