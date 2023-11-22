@@ -17,19 +17,18 @@ def test_make_trainable():
     depth = 5
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
-    num_branches = len(parents)
 
     comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = jx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    branch = jx.Branch(comp, nseg_per_branch).initialize()
+    cell = jx.Cell(branch, parents=parents).initialize()
     cell.insert(HHChannel())
 
     cell.branch(0).comp(0.0).set_params("length", 12.0)
     cell.branch(1).comp(1.0).set_params("gNa", 0.2)
-    assert cell.num_trainable_params == 2
+    assert cell.num_trainable_params == 0
 
     cell.branch([0, 1]).make_trainable("radius", 1.0)
-    assert cell.num_trainable_params == 4
+    assert cell.num_trainable_params == 2
     cell.branch([0, 1]).make_trainable("length")
     cell.branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
     cell.branch([0, 1]).make_trainable("gNa")
@@ -44,11 +43,10 @@ def test_make_trainable_network():
     depth = 5
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
-    num_branches = len(parents)
 
     comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = jx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    branch = jx.Branch(comp, nseg_per_branch).initialize()
+    cell = jx.Cell(branch, parents=parents).initialize()
     cell.insert(HHChannel())
 
     conns = [
