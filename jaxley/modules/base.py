@@ -195,6 +195,7 @@ class Module(ABC):
     def _append_to_channel_nodes(self, index, channel):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
         name = type(channel).__name__
+
         if name in self.channel_nodes:
             self.channel_nodes[name] = pd.concat(
                 [self.channel_nodes[name], index]

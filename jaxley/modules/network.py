@@ -52,6 +52,44 @@ class Network(Module):
         ]
 
         self.initialize()
+
+        # Indexing.
+        self.nodes = pd.DataFrame(
+            dict(
+                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
+                branch_index=(
+                    np.arange(self.nseg * self.total_nbranches) // self.nseg
+                ).tolist(),
+                cell_index=list(
+                    itertools.chain(
+                        *[
+                            [i] * (self.nseg * b)
+                            for i, b in enumerate(self.nbranches_per_cell)
+                        ]
+                    )
+                ),
+            )
+        )
+
+        # Channel indexing.
+        for i, cell in enumerate(self.cells):
+            for channel in cell.channels:
+                name = type(channel).__name__
+                comp_inds = deepcopy(cell.channel_nodes[name]["comp_index"].to_numpy())
+                branch_inds = deepcopy(
+                    cell.channel_nodes[name]["branch_index"].to_numpy()
+                )
+                comp_inds += self.nseg * self.cumsum_nbranches[i]
+                branch_inds += self.cumsum_nbranches[i]
+                index = pd.DataFrame.from_dict(
+                    dict(
+                        comp_index=comp_inds,
+                        branch_index=branch_inds,
+                        cell_index=[i] * len(comp_inds),
+                    )
+                )
+                self._append_to_channel_nodes(index, channel)
+
         self.initialized_conds = False
 
     def _append_synapses_to_params_and_state(self, connectivities):
@@ -105,43 +143,6 @@ class Network(Module):
             [cell.comb_branches_in_each_level for cell in self.cells],
             exclude_first=False,
         )
-
-        # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
-                branch_index=(
-                    np.arange(self.nseg * self.total_nbranches) // self.nseg
-                ).tolist(),
-                cell_index=list(
-                    itertools.chain(
-                        *[
-                            [i] * (self.nseg * b)
-                            for i, b in enumerate(self.nbranches_per_cell)
-                        ]
-                    )
-                ),
-            )
-        )
-
-        # Channel indexing.
-        for i, cell in enumerate(self.cells):
-            for channel in cell.channels:
-                name = type(channel).__name__
-                comp_inds = deepcopy(cell.channel_nodes[name]["comp_index"].to_numpy())
-                branch_inds = deepcopy(
-                    cell.channel_nodes[name]["branch_index"].to_numpy()
-                )
-                comp_inds += self.nseg * self.cumsum_nbranches[i]
-                branch_inds += self.cumsum_nbranches[i]
-                index = pd.DataFrame.from_dict(
-                    dict(
-                        comp_index=comp_inds,
-                        branch_index=branch_inds,
-                        cell_index=[i] * len(comp_inds),
-                    )
-                )
-                self._append_to_channel_nodes(index, channel)
 
         self.initialized_morph = True
 
