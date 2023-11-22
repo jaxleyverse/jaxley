@@ -31,6 +31,9 @@ class Branch(Module):
             compartment_list = [compartments for _ in range(nseg)]
         else:
             compartment_list = compartments
+        # Compartments are currently defined in reverse. See also #30. This `.reverse`
+        # is needed to make `tests/test_composability_of_modules.py` pass.
+        compartment_list.reverse()
 
         self._append_to_params_and_state(compartment_list)
         for comp in compartment_list:
