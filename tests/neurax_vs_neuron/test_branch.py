@@ -159,7 +159,7 @@ def test_similarity_complex():
 def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     nseg = 16
     comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg)])
+    branch = jx.Branch(comp, nseg)
 
     branch.insert(HHChannel())
 

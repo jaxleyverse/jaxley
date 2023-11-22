@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -14,14 +14,29 @@ class Branch(Module):
     branch_params: Dict = {}
     branch_states: Dict = {}
 
-    def __init__(self, compartments: List[Compartment]):
+    def __init__(
+        self,
+        compartments: Union[Compartment, List[Compartment]],
+        nseg: Optional[int] = None,
+    ):
         super().__init__()
+        assert (
+            isinstance(compartments, Compartment) or nseg is None
+        ), "If `compartments` is a list then you cannot set `nseg`."
+        assert (
+            isinstance(compartments, List) or nseg is not None
+        ), "If `compartments` is not a list then you have to set `nseg`."
         self._init_params_and_state(self.branch_params, self.branch_states)
-        self._append_to_params_and_state(compartments)
-        for comp in compartments:
+        if isinstance(compartments, Compartment):
+            compartment_list = [compartments for _ in range(nseg)]
+        else:
+            compartment_list = compartments
+
+        self._append_to_params_and_state(compartment_list)
+        for comp in compartment_list:
             self._append_to_channel_params_and_state(comp)
 
-        self.nseg = len(compartments)
+        self.nseg = len(compartment_list)
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -36,7 +51,7 @@ class Branch(Module):
         )
 
         # Channel indexing.
-        for i, comp in enumerate(compartments):
+        for i, comp in enumerate(compartment_list):
             index = pd.DataFrame.from_dict(
                 dict(comp_index=[i], branch_index=[0], cell_index=[0])
             )

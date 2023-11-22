@@ -16,7 +16,7 @@ def _run_long_branch(dt, t_max):
     nseg_per_branch = 8
 
     comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
+    branch = jx.Branch(comp, nseg_per_branch)
     branch.insert(HHChannel())
 
     branch.comp("all").make_trainable("radius", 1.0)
@@ -40,8 +40,8 @@ def _run_short_branches(dt, t_max):
     parents = jnp.asarray([-1, 0])
 
     comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
-    cell = jx.Cell([branch for _ in range(2)], parents=parents)
+    branch = jx.Branch(comp, nseg_per_branch)
+    cell = jx.Cell(branch, parents=parents)
     cell.insert(HHChannel())
 
     cell.branch("all").comp("all").make_trainable("radius", 1.0)

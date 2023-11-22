@@ -14,11 +14,10 @@ def test_record_and_stimulate_api():
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
-    num_branches = len(parents)
 
     comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = jx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    branch = jx.Branch(comp, nseg_per_branch).initialize()
+    cell = jx.Cell(branch, parents=parents).initialize()
 
     cell.branch(0).comp(0.0).record()
     cell.branch(1).comp(1.0).record()
@@ -36,11 +35,10 @@ def test_record_shape():
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
-    num_branches = len(parents)
 
     comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell = jx.Cell([branch for _ in range(num_branches)], parents=parents).initialize()
+    branch = jx.Branch(comp, nseg_per_branch).initialize()
+    cell = jx.Cell(branch, parents=parents).initialize()
 
     current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
     cell.branch(1).comp(1.0).stimulate(current)
