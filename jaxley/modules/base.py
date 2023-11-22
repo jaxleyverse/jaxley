@@ -479,8 +479,8 @@ class Module(ABC):
         self,
         u,
         delta_t,
-        i_inds,
-        i_current,
+        i_inds: Optional[jnp.ndarray],
+        i_current: Optional[jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
         tridiag_solver: str = "stone",
@@ -596,8 +596,8 @@ class Module(ABC):
     @staticmethod
     def get_external_input(
         voltages: jnp.ndarray,
-        i_inds: jnp.ndarray,
-        i_stim: jnp.ndarray,
+        i_inds: Optional[jnp.ndarray],
+        i_stim: Optional[jnp.ndarray],
         radius: float,
         length_single_compartment: float,
     ):
@@ -605,21 +605,23 @@ class Module(ABC):
         Return external input to each compartment in uA / cm^2.
         """
         zero_vec = jnp.zeros_like(voltages)
-        # `radius`: um
-        # `length_single_compartment`: um
-        # `i_stim`: nA
-        current = (
-            i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
-        )  # nA / um^2
-        current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
+        if i_stim is not None:
+            # `radius`: um
+            # `length_single_compartment`: um
+            # `i_stim`: nA
+            current = (
+                i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
+            )  # nA / um^2
+            current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
 
-        dnums = ScatterDimensionNumbers(
-            update_window_dims=(),
-            inserted_window_dims=(0,),
-            scatter_dims_to_operand_dims=(0,),
-        )
-        stim_at_timestep = scatter_add(zero_vec, i_inds[:, None], current, dnums)
-        return stim_at_timestep
+            dnums = ScatterDimensionNumbers(
+                update_window_dims=(),
+                inserted_window_dims=(0,),
+                scatter_dims_to_operand_dims=(0,),
+            )
+            return scatter_add(zero_vec, i_inds[:, None], current, dnums)
+        else:
+            return zero_vec
 
 
 class View:

@@ -41,17 +41,36 @@ def integrate(
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
 
-    i_current = module.currents.T if currents is None else currents.T
-    i_inds = module.current_inds.comp_index.to_numpy()
+    if module.currents is not None:
+        # At least one stimulus was inserted.
+        if currents is not None:
+            i_current = currents.T
+        else:
+            i_current = module.currents.T
+        i_inds = module.current_inds.comp_index.to_numpy()
+    else:
+        # No stimulus was inserted.
+        i_current = None
+        i_inds = None
+        assert (
+            t_max is not None
+        ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
+
+    # Deal with recording.
     rec_inds = module.recordings.comp_index.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
-        t_max_steps = int(t_max // delta_t + 1)
-        if t_max_steps > i_current.shape[0]:
-            i_current = jnp.zeros((t_max_steps, i_current.shape[1]))
-        else:
-            i_current = i_current[:t_max_steps, :]
+        nsteps_to_return = int(t_max // delta_t + 1)
+        if i_current is not None:
+            if nsteps_to_return > i_current.shape[0]:
+                num_additional_steps = nsteps_to_return - i_current.shape[0]
+                i_pad = jnp.zeros((num_additional_steps, i_current.shape[1]))
+                i_current = jnp.concatenate([i_current, i_pad], axis=0)
+            else:
+                i_current = i_current[:nsteps_to_return, :]
+    else:
+        nsteps_to_return = len(i_current)
 
     # Run `init_conds()` and return every parameter that is needed to solve the ODE.
     # This includes conductances, radiuses, lenghts, axial_resistivities, but also
@@ -70,23 +89,23 @@ def integrate(
         )
         return state, state["voltages"][rec_inds]
 
-    nsteps_to_return = len(i_current)
     init_recording = jnp.expand_dims(module.states["voltages"][rec_inds], axis=0)
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
     # return only the first `nsteps_to_return` elements (plus the initial state).
     if checkpoint_lengths is None:
-        checkpoint_lengths = [len(i_current)]
-        length = len(i_current)
+        checkpoint_lengths = [nsteps_to_return]
+        length = nsteps_to_return
     else:
         length = prod(checkpoint_lengths)
         assert (
-            len(i_current) <= length
+            nsteps_to_return <= length
         ), "The desired simulation duration is longer than `prod(nested_length)`."
-        size_difference = length - len(i_current)
-        dummy_stimulus = jnp.zeros((size_difference, i_current.shape[1]))
-        i_current = jnp.concatenate([i_current, dummy_stimulus])
+        size_difference = length - nsteps_to_return
+        if i_current is not None:
+            dummy_stimulus = jnp.zeros((size_difference, i_current.shape[1]))
+            i_current = jnp.concatenate([i_current, dummy_stimulus])
 
     # Join node and edge states.
     states = {}
