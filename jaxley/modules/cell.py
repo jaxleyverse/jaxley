@@ -232,7 +232,12 @@ class CellView(View):
         return BranchView(self.pointer, self.view)
 
 
-def read_swc(fname: str, nseg: int, max_branch_len: float = 300.0):
+def read_swc(
+    fname: str,
+    nseg: int,
+    max_branch_len: float = 300.0,
+    min_radius: Optional[float] = None,
+):
     """Reads SWC file into a `jx.Cell`."""
     parents, pathlengths, radius_fns, _ = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None
@@ -250,6 +255,13 @@ def read_swc(fname: str, nseg: int, max_branch_len: float = 300.0):
         np.asarray([radius_fns[b](range_) for b in range(len(parents))]), axis=1
     )
     radiuses_each = radiuses.flatten(order="C")
+    if min_radius is None:
+        assert np.all(
+            radiuses_each > 0.0
+        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
+    else:
+        radiuses_each[radiuses_each < min_radius] = min_radius
+
     lengths_each = np.repeat(pathlengths, nseg) / nseg
 
     cell.set_params("length", lengths_each)
