@@ -114,8 +114,7 @@ def plot_morph(
 
 
 def plot_swc(
-    fname,
-    max_branch_len: float = 100.0,
+    xyzr,
     figsize=(4, 4),
     dims=(0, 1),
     cols="k",
@@ -129,30 +128,21 @@ def plot_swc(
         cols: The color for all branches except the highlighted ones.
         highlight_branch_inds: Branch indices that will be highlighted.
     """
-    content = np.loadtxt(fname)
-    sorted_branches, _ = _split_into_branches_and_sort(
-        content, max_branch_len=max_branch_len, sort=True
-    )
-    parents = _build_parents(sorted_branches)
-    if np.sum(np.asarray(parents) == -1) > 1.0:
-        sorted_branches = [[0]] + sorted_branches
-    cols = [cols] * len(sorted_branches)
+    cols = [cols] * len(xyzr)
 
     counter_highlight_branches = 0
     lines = []
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    for i, branch in enumerate(sorted_branches):
-        coords_of_branch = content[np.asarray(branch) - 1, 2:5]
-        coords_of_branch = coords_of_branch[:, dims]
-
+    for i, coords_of_branch in enumerate(xyzr):
+        coords_to_plot = coords_of_branch[:, dims]
         col = cols[i]
         if i in highlight_branch_inds:
             col = highlight_cols[counter_highlight_branches % len(highlight_cols)]
             counter_highlight_branches += 1
 
         (line,) = ax.plot(
-            coords_of_branch[:, 0], coords_of_branch[:, 1], c=col, label=f"ind {i}"
+            coords_to_plot[:, 0], coords_to_plot[:, 1], c=col, label=f"ind {i}"
         )
         if i in highlight_branch_inds:
             lines.append(line)

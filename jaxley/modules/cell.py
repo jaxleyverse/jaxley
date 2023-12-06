@@ -15,6 +15,7 @@ from jaxley.utils.cell_utils import (
     compute_levels,
 )
 from jaxley.utils.swc import swc_to_jaxley
+from jaxley.utils.plot_utils import plot_morph, plot_swc
 
 
 class Cell(Module):
@@ -228,6 +229,40 @@ class Cell(Module):
             dnums,
         )
         return summed_conds
+
+    def vis(
+        self,
+        detail: str = "full",
+        figsize=(4, 4),
+        dims=(0, 1),
+        cols="k",
+        highlight_branch_inds=[],
+    ) -> None:
+        """Visualize the network.
+
+        Args:
+            detail: Either of [sticks, full]. `sticks` visualizes all branches of every
+                neuron, but draws branches as straight lines. `full` plots the full
+                morphology of every neuron, as read from the SWC file.
+            layers: Allows to plot the network in layers. Should provide the number of
+                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
+                neurons, 10 hidden layer neurons, and 1 output neuron.
+            options: Plotting options passed to `NetworkX.draw()`.
+        """
+        if detail == "sticks":
+            raise NotImplementedError
+        elif detail == "full":
+            fig, ax = plot_swc(
+                self.xyzr,
+                figsize=figsize,
+                dims=dims,
+                cols=cols,
+                highlight_branch_inds=highlight_branch_inds,
+            )
+        else:
+            raise ValueError("`detail must be in {sticks, full}.")
+
+        return fig, ax
 
 
 class CellView(View):
