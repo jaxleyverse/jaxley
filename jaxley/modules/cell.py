@@ -14,8 +14,8 @@ from jaxley.utils.cell_utils import (
     compute_coupling_cond,
     compute_levels,
 )
-from jaxley.utils.swc import swc_to_jaxley
 from jaxley.utils.plot_utils import plot_morph, plot_swc
+from jaxley.utils.swc import swc_to_jaxley
 
 
 class Cell(Module):
