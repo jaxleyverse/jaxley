@@ -6,6 +6,8 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 from jax import vmap
+import networkx as nx
+
 
 from jaxley.connection import Connectivity
 from jaxley.modules.base import Module, View
@@ -200,20 +202,37 @@ class Network(Module):
     def init_syns(self):
         pre_comp_inds = []
         post_comp_inds = []
+        pre_branch_inds = []
+        post_branch_inds = []
+        pre_cell_inds = []
+        post_cell_inds = []
         for connectivity in self.connectivities:
-            pre_cell_inds, pre_inds, post_cell_inds, post_inds = prepare_syn(
+            pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = prepare_syn(
                 connectivity.conns, self.nseg
             )
             pre_comp_inds.append(
-                self.cumsum_nbranches[pre_cell_inds] * self.nseg + pre_inds
+                self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
             )
             post_comp_inds.append(
-                self.cumsum_nbranches[post_cell_inds] * self.nseg + post_inds
+                self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
             )
+            pre_branch_inds.append(self.cumsum_nbranches[pre_cell_inds_])
+            post_branch_inds.append(self.cumsum_nbranches[post_cell_inds_])
+            pre_cell_inds.append(pre_cell_inds_)
+            post_cell_inds.append(post_cell_inds_)
 
         # Prepare synapses.
         self.syn_edges = pd.DataFrame(
-            columns=["pre_comp_index", "post_comp_index", "type", "type_ind"]
+            columns=[
+                "pre_comp_index",
+                "pre_branch_index",
+                "pre_cell_index",
+                "post_comp_index",
+                "post_branch_index",
+                "post_cell_index",
+                "type",
+                "type_ind",
+            ]
         )
         for i, connectivity in enumerate(self.connectivities):
             self.syn_edges = pd.concat(
@@ -222,7 +241,11 @@ class Network(Module):
                     pd.DataFrame(
                         dict(
                             pre_comp_index=pre_comp_inds[i],
+                            pre_branch_index=pre_branch_inds[i],
+                            pre_cell_index=pre_cell_inds[i],
                             post_comp_index=post_comp_inds[i],
+                            post_branch_index=post_branch_inds[i],
+                            post_cell_index=post_cell_inds[i],
                             type=type(connectivity.synapse_type).__name__,
                             type_ind=i,
                         )
@@ -277,16 +300,39 @@ class Network(Module):
 
         return new_syn_states, syn_voltage_terms, syn_constant_terms
 
-    def vis(self, detail: str = "point", **options):
+    def vis(self, detail: str = "point", layers: Optional[List] = None, **options):
         """Visualize the network.
 
         Args:
-            detail: Either of [point, sticks, full]. `point` visualizes every neuron as a
-                point. `sticks` visualizes all branches of every neuron, but draws
+            detail: Currently, only `point` is supported. In the future, either of
+                [point, sticks, full] will be supported. `point` visualizes every neuron
+                as a point. `sticks` visualizes all branches of every neuron, but draws
                 branches as straight lines. `full` plots the full morphology of every
                 neuron, as read from the SWC file.
+            layers: Allows to plot the network in layers. Should provide the number of
+                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
+                neurons, 10 hidden layer neurons, and 1 output neuron.
             options: Plotting options passed to `NetworkX.draw()`.
         """
+        G = nx.DiGraph()
+
+        def build_extents(*subset_sizes):
+            return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
+
+        if layers is not None:
+            extents = build_extents(*layers)
+            layers = [range(start, end) for start, end in extents]
+            for i, layer in enumerate(layers):
+                G.add_nodes_from(layer, layer=i)
+        else:
+            G.add_nodes_from(range(len(self.cells)))
+
+        pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
+        post_cell = self.syn_edges["post_cell_index"].to_numpy()
+
+        inds = np.stack([pre_cell, post_cell]).T
+        G.add_edges_from(inds)
+        return G
 
 
 class SynapseView(View):
