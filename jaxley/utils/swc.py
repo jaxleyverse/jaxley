@@ -41,8 +41,14 @@ def swc_to_jaxley(
         parents = parents.tolist()
         pathlengths = [0.1] + pathlengths
         radius_fns = [lambda x: content[0, 5] * np.ones_like(x)] + radius_fns
+        sorted_branches = [[0]] + sorted_branches
 
-    return parents, pathlengths, radius_fns, types
+    all_coords_of_branches = []
+    for i, branch in enumerate(sorted_branches):
+        coords_of_branch = content[np.asarray(branch) - 1, 2:5]
+        all_coords_of_branches.append(coords_of_branch)
+
+    return parents, pathlengths, radius_fns, types, all_coords_of_branches
 
 
 def _split_into_branches_and_sort(

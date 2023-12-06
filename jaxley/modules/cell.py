@@ -27,14 +27,16 @@ class Cell(Module):
         self,
         branches: Union[Branch, List[Branch]],
         parents: List,
-        xyzr: Optional[Union[np.ndarray, jnp.ndarray]],
+        xyzr: Optional[List[np.ndarray]] = None,
     ):
         """Initialize a cell.
 
         Args:
             branches:
             parents:
-            xyzr: The x, y, and z coordinates and the radius at these coordinates.
+            xyzr: For every branch, the x, y, and z coordinates and the radius at the
+                traced coordinates. Note that this is the full tracing (from SWC), not
+                the stick representation coordinates.
         """
         super().__init__()
         assert isinstance(branches, Branch) or len(parents) == len(
@@ -45,6 +47,7 @@ class Cell(Module):
             branch_list = [branches for _ in range(len(parents))]
         else:
             branch_list = branches
+        self.xyzr = xyzr
 
         self._append_to_params_and_state(branch_list)
         for branch in branch_list:
@@ -251,7 +254,7 @@ def read_swc(
     min_radius: Optional[float] = None,
 ):
     """Reads SWC file into a `jx.Cell`."""
-    parents, pathlengths, radius_fns, _ = swc_to_jaxley(
+    parents, pathlengths, radius_fns, _, coords_of_branches = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None
     )
     nbranches = len(parents)
@@ -261,7 +264,9 @@ def read_swc(
 
     comp = Compartment().initialize()
     branch = Branch([comp for _ in range(nseg)]).initialize()
-    cell = Cell([branch for _ in range(nbranches)], parents=parents, xyzr=None)
+    cell = Cell(
+        [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
+    )
 
     radiuses = np.flip(
         np.asarray([radius_fns[b](range_) for b in range(len(parents))]), axis=1
