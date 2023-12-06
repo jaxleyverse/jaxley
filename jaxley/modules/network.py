@@ -277,6 +277,17 @@ class Network(Module):
 
         return new_syn_states, syn_voltage_terms, syn_constant_terms
 
+    def vis(self, detail: str = "point", **options):
+        """Visualize the network.
+
+        Args:
+            detail: Either of [point, sticks, full]. `point` visualizes every neuron as a
+                point. `sticks` visualizes all branches of every neuron, but draws
+                branches as straight lines. `full` plots the full morphology of every
+                neuron, as read from the SWC file.
+            options: Plotting options passed to `NetworkX.draw()`.
+        """
+
 
 class SynapseView(View):
     """SynapseView."""
