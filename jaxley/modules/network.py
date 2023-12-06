@@ -290,8 +290,8 @@ class Network(Module):
         voltages = u["voltages"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
+        post_syn_inds = grouped_syns["global_post_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         syn_voltage_terms = jnp.zeros_like(voltages)
