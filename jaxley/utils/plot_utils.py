@@ -6,7 +6,6 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
 )
-from jaxley.utils.swc import _build_parents, _split_into_branches_and_sort
 
 highlight_cols = [
     "#1f78b4",

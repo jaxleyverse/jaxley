@@ -232,11 +232,13 @@ class Cell(Module):
 
     def vis(
         self,
-        detail: str = "full",
+        detail: str = "sticks",
         figsize=(4, 4),
         dims=(0, 1),
         cols="k",
         highlight_branch_inds=[],
+        max_y_multiplier: float = 5.0,
+        min_y_multiplier: float = 0.5,
     ) -> None:
         """Visualize the network.
 
@@ -248,10 +250,22 @@ class Cell(Module):
                 neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
                 neurons, 10 hidden layer neurons, and 1 output neuron.
             options: Plotting options passed to `NetworkX.draw()`.
+            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+                two of them.
+            cols: The color for all branches except the highlighted ones.
+            highlight_branch_inds: Branch indices that will be highlighted.
         """
         if detail == "sticks":
-            raise NotImplementedError
+            fig, ax = plot_morph(
+                cell=self,
+                figsize=figsize,
+                cols=cols,
+                highlight_branch_inds=highlight_branch_inds,
+                max_y_multiplier=max_y_multiplier,
+                min_y_multiplier=min_y_multiplier,
+            )
         elif detail == "full":
+            assert self.xyzr is not None
             fig, ax = plot_swc(
                 self.xyzr,
                 figsize=figsize,
