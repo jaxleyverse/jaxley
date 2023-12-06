@@ -5,6 +5,7 @@ REQUIRED = [
     "numpy",
     "pandas",
     "matplotlib",
+    "networkx",
 ]
 
 
