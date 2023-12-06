@@ -200,8 +200,10 @@ class Network(Module):
         return cond_params
 
     def init_syns(self):
-        pre_comp_inds = []
-        post_comp_inds = []
+        global_pre_comp_inds = []
+        global_post_comp_inds = []
+        pre_locs = []
+        post_locs = []
         pre_branch_inds = []
         post_branch_inds = []
         pre_cell_inds = []
@@ -211,12 +213,15 @@ class Network(Module):
                 connectivity.conns, self.nseg
             )
             # Global compartment indizes.
-            pre_comp_inds.append(
+            global_pre_comp_inds.append(
                 self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
             )
-            post_comp_inds.append(
+            global_post_comp_inds.append(
                 self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
             )
+            # Local compartment inds.
+            pre_locs.append(np.asarray([c.pre_loc for c in connectivity.conns]))
+            post_locs.append(np.asarray([c.post_loc for c in connectivity.conns]))
             # Local branch inds.
             pre_branch_inds.append(
                 np.asarray([c.pre_branch_ind for c in connectivity.conns])
@@ -230,14 +235,16 @@ class Network(Module):
         # Prepare synapses.
         self.syn_edges = pd.DataFrame(
             columns=[
-                "pre_comp_index",
+                "pre_locs",
                 "pre_branch_index",
                 "pre_cell_index",
-                "post_comp_index",
+                "post_locs",
                 "post_branch_index",
                 "post_cell_index",
                 "type",
                 "type_ind",
+                "global_pre_comp_index",
+                "global_post_comp_index",
             ]
         )
         for i, connectivity in enumerate(self.connectivities):
@@ -246,14 +253,16 @@ class Network(Module):
                     self.syn_edges,
                     pd.DataFrame(
                         dict(
-                            pre_comp_index=pre_comp_inds[i],
+                            pre_locs=pre_locs[i],
                             pre_branch_index=pre_branch_inds[i],
                             pre_cell_index=pre_cell_inds[i],
-                            post_comp_index=post_comp_inds[i],
+                            post_locs=post_locs[i],
                             post_branch_index=post_branch_inds[i],
                             post_cell_index=post_cell_inds[i],
                             type=type(connectivity.synapse_type).__name__,
                             type_ind=i,
+                            global_pre_comp_index=global_pre_comp_inds[i],
+                            global_post_comp_index=global_post_comp_inds[i],
                         )
                     ),
                 ],
@@ -351,6 +360,8 @@ class Network(Module):
                 fig, ax = cell.vis(detail="full", dims=dims, cols=col, fig=fig, ax=ax)
 
             # Plot connections (i.e. synapses).
+            pre_locs = self.syn_edges["pre_locs"].to_numpy()
+            post_locs = self.syn_edges["post_locs"].to_numpy()
             pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
             post_branch = self.syn_edges["post_branch_index"].to_numpy()
             pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
@@ -362,10 +373,10 @@ class Network(Module):
                 pre_branch, post_branch, pre_cell, post_cell
             ):
                 pre_coord = self.cells[pre_c].xyzr[pre_b]
-                middle_ind = len(pre_coord) // 2
+                middle_ind = int((len(pre_coord) - 1) * pre_locs)
                 pre_coord = pre_coord[middle_ind]
-                post_coord = self.cells[post_c].xyzr[post_b]  # first traced point.
-                middle_ind = len(post_coord) // 2
+                post_coord = self.cells[post_c].xyzr[post_b]
+                middle_ind = int((len(post_coord) - 1) * post_locs)
                 post_coord = post_coord[middle_ind]
                 coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
                 ax.plot(coords, linewidth=3.0, c="b")
