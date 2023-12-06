@@ -232,7 +232,7 @@ class Cell(Module):
 
     def vis(
         self,
-        detail: str = "sticks",
+        detail: str = "full",
         figsize=(4, 4),
         dims=(0, 1),
         cols="k",
@@ -265,7 +265,7 @@ class Cell(Module):
                 min_y_multiplier=min_y_multiplier,
             )
         elif detail == "full":
-            assert self.xyzr is not None
+            assert self.xyzr is not None, "no coordinates, use `vis(detail='sticks')`."
             fig, ax = plot_swc(
                 self.xyzr,
                 figsize=figsize,
