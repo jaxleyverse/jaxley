@@ -1,14 +1,12 @@
 import itertools
 from copy import deepcopy
-from typing import Callable, Dict, List, Tuple, Optional, Union
-
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
+import networkx as nx
 import numpy as np
 import pandas as pd
 from jax import vmap
-import networkx as nx
-
 
 from jaxley.connection import Connectivity
 from jaxley.modules.base import Module, View
