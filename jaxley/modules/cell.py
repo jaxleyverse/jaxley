@@ -23,7 +23,19 @@ class Cell(Module):
     cell_params: Dict = {}
     cell_states: Dict = {}
 
-    def __init__(self, branches: Union[Branch, List[Branch]], parents: List):
+    def __init__(
+        self,
+        branches: Union[Branch, List[Branch]],
+        parents: List,
+        xyzr: Optional[Union[np.ndarray, jnp.ndarray]],
+    ):
+        """Initialize a cell.
+
+        Args:
+            branches:
+            parents:
+            xyzr: The x, y, and z coordinates and the radius at these coordinates.
+        """
         super().__init__()
         assert isinstance(branches, Branch) or len(parents) == len(
             branches
@@ -249,7 +261,7 @@ def read_swc(
 
     comp = Compartment().initialize()
     branch = Branch([comp for _ in range(nseg)]).initialize()
-    cell = Cell([branch for _ in range(nbranches)], parents=parents)
+    cell = Cell([branch for _ in range(nbranches)], parents=parents, xyzr=None)
 
     radiuses = np.flip(
         np.asarray([radius_fns[b](range_) for b in range(len(parents))]), axis=1
