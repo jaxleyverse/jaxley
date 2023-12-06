@@ -305,7 +305,6 @@ class Network(Module):
         self,
         detail: str = "point",
         layers: Optional[List] = None,
-        figsize: Tuple = (5, 5),
         **options,
     ) -> None:
         """Visualize the network.
