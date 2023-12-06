@@ -210,14 +210,20 @@ class Network(Module):
             pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = prepare_syn(
                 connectivity.conns, self.nseg
             )
+            # Global compartment indizes.
             pre_comp_inds.append(
                 self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
             )
             post_comp_inds.append(
                 self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
             )
-            pre_branch_inds.append(self.cumsum_nbranches[pre_cell_inds_])
-            post_branch_inds.append(self.cumsum_nbranches[post_cell_inds_])
+            # Local branch inds.
+            pre_branch_inds.append(
+                np.asarray([c.pre_branch_ind for c in connectivity.conns])
+            )
+            post_branch_inds.append(
+                np.asarray([c.post_branch_ind for c in connectivity.conns])
+            )
             pre_cell_inds.append(pre_cell_inds_)
             post_cell_inds.append(post_cell_inds_)
 
@@ -320,7 +326,9 @@ class Network(Module):
                 neuron, as read from the SWC file.
             layers: Allows to plot the network in layers. Should provide the number of
                 neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-                neurons, 10 hidden layer neurons, and 1 output neuron.
+                neurons, 10 hidden layer neurons, and 1 output neuron. Please note that
+                connections always start and end in the middle of branches, no matter
+                what compartment within a branch they are connected to.
             options: Plotting options passed to `NetworkX.draw()`.
             cols: One color in total or one color per cell.
         """
@@ -341,6 +349,27 @@ class Network(Module):
 
             for cell, col in zip(self.cells, cols):
                 fig, ax = cell.vis(detail="full", dims=dims, cols=col, fig=fig, ax=ax)
+
+            # Plot connections (i.e. synapses).
+            pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
+            post_branch = self.syn_edges["post_branch_index"].to_numpy()
+            pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
+            post_cell = self.syn_edges["post_cell_index"].to_numpy()
+
+            dims_np = np.asarray(dims)
+
+            for pre_b, post_b, pre_c, post_c in zip(
+                pre_branch, post_branch, pre_cell, post_cell
+            ):
+                pre_coord = self.cells[pre_c].xyzr[pre_b]
+                middle_ind = len(pre_coord) // 2
+                pre_coord = pre_coord[middle_ind]
+                post_coord = self.cells[post_c].xyzr[post_b]  # first traced point.
+                middle_ind = len(post_coord) // 2
+                post_coord = post_coord[middle_ind]
+                coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
+                ax.plot(coords, linewidth=3.0, c="b")
+
             return fig, ax
         else:
             raise ValueError("detail must be in {point, full}")
