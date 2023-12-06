@@ -379,7 +379,8 @@ class Network(Module):
                 middle_ind = int((len(post_coord) - 1) * post_locs)
                 post_coord = post_coord[middle_ind]
                 coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
-                ax.plot(coords, linewidth=3.0, c="b")
+                ax.plot(coords[0], coords[1], linewidth=3.0, c="b")
+                ax.scatter(post_coord[dims_np[0]], post_coord[dims_np[1]], c="b")
 
             return fig, ax
         else:
