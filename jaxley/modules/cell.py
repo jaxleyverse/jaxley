@@ -237,6 +237,8 @@ class Cell(Module):
         dims=(0, 1),
         cols="k",
         highlight_branch_inds=[],
+        fig=None,
+        ax=None,
         max_y_multiplier: float = 5.0,
         min_y_multiplier: float = 0.5,
     ) -> None:
@@ -263,6 +265,8 @@ class Cell(Module):
                 highlight_branch_inds=highlight_branch_inds,
                 max_y_multiplier=max_y_multiplier,
                 min_y_multiplier=min_y_multiplier,
+                fig=fig,
+                ax=ax,
             )
         elif detail == "full":
             assert self.xyzr is not None, "no coordinates, use `vis(detail='sticks')`."
@@ -272,6 +276,8 @@ class Cell(Module):
                 dims=dims,
                 cols=cols,
                 highlight_branch_inds=highlight_branch_inds,
+                fig=fig,
+                ax=ax,
             )
         else:
             raise ValueError("`detail must be in {sticks, full}.")

@@ -1,7 +1,7 @@
 import itertools
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
-
+import matplotlib.pyplot as plt
 import jax.numpy as jnp
 import networkx as nx
 import numpy as np
@@ -303,30 +303,46 @@ class Network(Module):
         self,
         detail: str = "point",
         layers: Optional[List] = None,
+        figsize=(4, 4),
+        dims=(0, 1),
+        cols: Union[str, List[str]] = "k",
+        highlight=[],
+        fig=None,
+        ax=None,
         **options,
     ) -> None:
         """Visualize the network.
 
         Args:
-            detail: Currently, only `point` is supported. In the future, either of
-                [point, sticks, full] will be supported. `point` visualizes every neuron
-                as a point. `sticks` visualizes all branches of every neuron, but draws
-                branches as straight lines. `full` plots the full morphology of every
+            detail: Either of [point, full]. `point` visualizes every neuron
+                as a point. `full` plots the full morphology of every
                 neuron, as read from the SWC file.
             layers: Allows to plot the network in layers. Should provide the number of
                 neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
                 neurons, 10 hidden layer neurons, and 1 output neuron.
             options: Plotting options passed to `NetworkX.draw()`.
+            cols: One color in total or one color per cell.
         """
-        assert detail == "point", "Only `point` is implemented."
+        if detail == "point":
+            graph = self._build_graph(layers, **options)
 
-        graph = self._build_graph(layers, **options)
+            if layers is not None:
+                pos = nx.multipartite_layout(graph, subset_key="layer")
+                nx.draw(graph, pos, with_labels=True)
+            else:
+                nx.draw(graph, with_labels=True)
+        elif detail == "full":
+            if fig is None or ax is None:
+                fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-        if layers is not None:
-            pos = nx.multipartite_layout(graph, subset_key="layer")
-            nx.draw(graph, pos, with_labels=True)
+            if isinstance(cols, str):
+                cols = [cols] * len(self.cells)
+
+            for cell, col in zip(self.cells, cols):
+                fig, ax = cell.vis(detail="full", dims=dims, cols=col, fig=fig, ax=ax)
+            return fig, ax
         else:
-            nx.draw(graph, with_labels=True)
+            raise ValueError("detail must be in {point, full}")
 
     def _build_graph(self, layers: Optional[List] = None, **options):
         graph = nx.DiGraph()

@@ -30,6 +30,8 @@ def plot_morph(
     highlight_branch_inds=[],
     max_y_multiplier: float = 5.0,
     min_y_multiplier: float = 0.5,
+    fig=None,
+    ax=None,
 ):
     """Plot the stick representation of a morphology.
 
@@ -118,6 +120,8 @@ def plot_swc(
     dims=(0, 1),
     cols="k",
     highlight_branch_inds=[],
+    fig=None,
+    ax=None,
 ):
     """Plot morphology given an SWC file.
 
@@ -132,7 +136,8 @@ def plot_swc(
     counter_highlight_branches = 0
     lines = []
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
     for i, coords_of_branch in enumerate(xyzr):
         coords_to_plot = coords_of_branch[:, dims]
         col = cols[i]
