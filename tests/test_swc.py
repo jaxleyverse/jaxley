@@ -21,7 +21,7 @@ def test_swc_reader_lengths():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "morph.swc")
 
-    _, pathlengths, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
+    _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
     pathlengths = np.asarray(pathlengths)[1:]
 
     for sec in h.allsec():
@@ -60,7 +60,7 @@ def test_swc_radius():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "morph_250.swc")
 
-    _, pathlen, radius_fns, _ = jx.utils.swc.swc_to_jaxley(
+    _, pathlen, radius_fns, _, _ = jx.utils.swc.swc_to_jaxley(
         fname, max_branch_len=2000.0, sort=False
     )
     jaxley_diams = []
@@ -128,7 +128,7 @@ def test_swc_voltages():
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### jaxley ##################
-    _, pathlengths, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
+    _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
     cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
     cell.insert(HHChannel)
 
