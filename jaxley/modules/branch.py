@@ -63,7 +63,7 @@ class Branch(Module):
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
-            dict(pre_comp_index=[], post_comp_index=[], type="")
+            dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
         )
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
