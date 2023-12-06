@@ -68,7 +68,8 @@ def plot_morph(
     counter_highlight_branches = 0
     lines = []
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     for b in range(cell.total_nbranches):
         if parents[b] > -1:

@@ -1,8 +1,9 @@
 import itertools
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
-import matplotlib.pyplot as plt
+
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
