@@ -45,7 +45,7 @@ def swc_to_jaxley(
 
     all_coords_of_branches = []
     for i, branch in enumerate(sorted_branches):
-        coords_of_branch = content[np.asarray(branch) - 1, 2:5]
+        coords_of_branch = content[np.asarray(branch) - 1, 2:6]
         all_coords_of_branches.append(coords_of_branch)
 
     return parents, pathlengths, radius_fns, types, all_coords_of_branches
