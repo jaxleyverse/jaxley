@@ -50,3 +50,24 @@ class ConnectivityBuilder:
                 rand_loc = np.random.rand()
                 conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))
         return conns
+    
+    def sparse_random(self, pre_cell_inds, post_cell_inds, p):
+        """Returns a list of `Connection`s which build a sparse, randomly 
+         connected layer. The presence of each connection is determined by a 
+         Bernoulli trial with probability p.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch 
+        and loc.
+
+        NOTE: autapses are allowed.
+        """
+        conns = []
+        adj_mat = np.random.binomial(1, p, size=(len(pre_cell_inds), 
+                                                 len(post_cell_inds)))
+        cxn_inds = np.where(adj_mat)
+        for pre_ind, post_ind in zip(cxn_inds[0], cxn_inds[1]):
+            num_branches_post = self.nbranches_per_submodule[post_ind]
+            rand_branch = np.random.randint(0, num_branches_post)
+            rand_loc = np.random.rand()
+            conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))
+        return conns
