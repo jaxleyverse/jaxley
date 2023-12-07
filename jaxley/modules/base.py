@@ -64,7 +64,7 @@ class Module(ABC):
         self.current_inds: pd.DataFrame = pd.DataFrame().from_dict({})
 
         # x, y, z coordinates and radius.
-        self.xyzr: Optional[List[np.ndarray]] = None
+        self.xyzr: List[np.ndarray] = []
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
@@ -680,7 +680,7 @@ class Module(ABC):
         #         ax=ax,
         #     )
         if detail == "full":
-            assert self.xyzr is not None, "no coordinates available."
+            assert self.xyzr, "no coordinates available."
             fig, ax = plot_swc(
                 coords,
                 figsize=figsize,
@@ -692,6 +692,29 @@ class Module(ABC):
             )
         else:
             raise ValueError("`detail must be in {sticks, full}.")
+        
+        # Plot connections (i.e. synapses).
+        pre_locs = self.syn_edges["pre_locs"].to_numpy()
+        post_locs = self.syn_edges["post_locs"].to_numpy()
+        pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
+        post_branch = self.syn_edges["post_branch_index"].to_numpy()
+        pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
+        post_cell = self.syn_edges["post_cell_index"].to_numpy()
+
+        dims_np = np.asarray(dims)
+
+        for pre_b, post_b, pre_c, post_c in zip(
+            pre_branch, post_branch, pre_cell, post_cell
+        ):
+            pre_coord = self.cells[pre_c].xyzr[pre_b]
+            middle_ind = int((len(pre_coord) - 1) * pre_locs)
+            pre_coord = pre_coord[middle_ind]
+            post_coord = self.cells[post_c].xyzr[post_b]
+            middle_ind = int((len(post_coord) - 1) * post_locs)
+            post_coord = post_coord[middle_ind]
+            coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
+            ax.plot(coords[0], coords[1], linewidth=3.0, c="b")
+            ax.scatter(post_coord[dims_np[0]], post_coord[dims_np[1]], c="b")
 
         return fig, ax
 
