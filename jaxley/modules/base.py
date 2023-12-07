@@ -12,6 +12,7 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
 from jaxley.synapses import Synapse
+from jaxley.utils.plot_utils import plot_morph, plot_swc
 
 
 class Module(ABC):
@@ -61,6 +62,9 @@ class Module(ABC):
         # For stimuli.
         self.currents: Optional[jnp.ndarray] = None
         self.current_inds: pd.DataFrame = pd.DataFrame().from_dict({})
+
+        # x, y, z coordinates and radius.
+        self.xyzr: Optional[List[np.ndarray]] = None
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
@@ -621,6 +625,68 @@ class Module(ABC):
         stim_at_timestep = scatter_add(zero_vec, i_inds[:, None], current, dnums)
         return stim_at_timestep
 
+    def vis(
+        self,
+        detail: str = "full",
+        figsize=(4, 4),
+        dims=(0, 1),
+        cols="k",
+        highlight_branch_inds=[],
+        fig=None,
+        ax=None,
+        max_y_multiplier: float = 5.0,
+        min_y_multiplier: float = 0.5,
+    ) -> None:
+        """Visualize the network.
+
+        Args:
+            detail: Either of [sticks, full]. `sticks` visualizes all branches of every
+                neuron, but draws branches as straight lines. `full` plots the full
+                morphology of every neuron, as read from the SWC file.
+            layers: Allows to plot the network in layers. Should provide the number of
+                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
+                neurons, 10 hidden layer neurons, and 1 output neuron.
+            options: Plotting options passed to `NetworkX.draw()`.
+            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+                two of them.
+            cols: The color for all branches except the highlighted ones.
+            highlight_branch_inds: Branch indices that will be highlighted.
+        """
+        self._vis(
+            detail, figsize, dims, cols, highlight_branch_inds, fig, ax, self.nodes
+        )
+
+    def _vis(self, detail, figsize, dims, cols, highlight_branch_inds, fig, ax, view):
+        branches_inds = view["branch_index"].to_numpy()
+        coords = [self.xyzr[branch_ind] for branch_ind in branches_inds]
+
+        # if detail == "sticks":
+        #     fig, ax = plot_morph(
+        #         cell=self,
+        #         figsize=figsize,
+        #         cols=cols,
+        #         highlight_branch_inds=highlight_branch_inds,
+        #         max_y_multiplier=max_y_multiplier,
+        #         min_y_multiplier=min_y_multiplier,
+        #         fig=fig,
+        #         ax=ax,
+        #     )
+        if detail == "full":
+            assert self.xyzr is not None, "no coordinates available."
+            fig, ax = plot_swc(
+                coords,
+                figsize=figsize,
+                dims=dims,
+                cols=cols,
+                highlight_branch_inds=highlight_branch_inds,
+                fig=fig,
+                ax=ax,
+            )
+        else:
+            raise ValueError("`detail must be in {sticks, full}.")
+
+        return fig, ax
+
 
 class View:
     """View of a `Module`."""
@@ -711,6 +777,21 @@ class View:
 
     def add_to_group(self, group_name: str):
         self.pointer._add_to_group(group_name, self.view)
+
+    def vis(
+        self,
+        detail: str = "full",
+        figsize=(4, 4),
+        dims=(0, 1),
+        cols="k",
+        highlight_branch_inds=[],
+        fig=None,
+        ax=None,
+    ):
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._vis(
+            detail, figsize, dims, cols, highlight_branch_inds, fig, ax, nodes
+        )
 
     def adjust_view(self, key: str, index: float):
         """Update view."""
