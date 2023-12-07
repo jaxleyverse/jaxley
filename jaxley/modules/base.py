@@ -234,7 +234,9 @@ class Module(ABC):
 
     def set_params(self, key, val):
         """Set parameter."""
-        self._set_params(key, val, self.nodes)
+        # Alternatively, we could do `assert key not in self.syn_params`.
+        nodes = self.syn_edges if key in self.syn_params else self.nodes
+        self._set_params(key, val, nodes)
 
     def _set_params(self, key, val, view):
         if key in self.params:
@@ -252,7 +254,9 @@ class Module(ABC):
 
     def set_states(self, key, val):
         """Set parameters."""
-        self._set_states(key, val, self.nodes)
+        # Alternatively, we could do `assert key not in self.syn_states`.
+        nodes = self.syn_edges if key in self.syn_states else self.nodes
+        self._set_states(key, val, nodes)
 
     def _set_states(self, key: str, val: float, view):
         if key in self.states:
@@ -270,7 +274,9 @@ class Module(ABC):
 
     def get_params(self, key: str):
         """Return parameters."""
-        return self._get_params(key, self.nodes)
+        # Alternatively, we could do `assert key not in self.syn_params`.
+        nodes = self.syn_edges if key in self.syn_params else self.nodes
+        return self._get_params(key, nodes)
 
     def _get_params(self, key: str, view):
         if key in self.params:
@@ -286,7 +292,9 @@ class Module(ABC):
 
     def get_states(self, key: str):
         """Return states."""
-        return self._get_states(key, self.nodes)
+        # Alternatively, we could do `assert key not in self.syn_states`.
+        nodes = self.syn_edges if key in self.syn_states else self.nodes
+        return self._get_states(key, nodes)
 
     def _get_states(self, key: str, view):
         if key in self.states:
