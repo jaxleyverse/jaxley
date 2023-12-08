@@ -2,7 +2,7 @@ import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from math import pi
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import networkx as nx
@@ -630,8 +630,8 @@ class Module(ABC):
         self,
         detail: str = "full",
         ax=None,
-        col="k",
-        dims=(0, 1),
+        col: str = "k",
+        dims: Tuple[int] = (0, 1),
     ) -> None:
         """Visualize the module.
 
@@ -639,14 +639,10 @@ class Module(ABC):
             detail: Either of [sticks, full]. `sticks` visualizes all branches of every
                 neuron, but draws branches as straight lines. `full` plots the full
                 morphology of every neuron, as read from the SWC file.
-            layers: Allows to plot the network in layers. Should provide the number of
-                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-                neurons, 10 hidden layer neurons, and 1 output neuron.
-            options: Plotting options passed to `NetworkX.draw()`.
+            ax: An axis into which to plot.
+            col: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
-            cols: The color for all branches except the highlighted ones.
-            highlight_branch_inds: Branch indices that will be highlighted.
         """
         return self._vis(
             detail=detail, dims=dims, col=col, ax=ax, view=self.nodes
@@ -673,7 +669,7 @@ class Module(ABC):
         #         ax=ax,
         #     )
         else:
-            raise ValueError("`detail must be in {sticks, full}.")
+            raise ValueError("`detail must be in {point, full}.")
 
         return ax
 

@@ -28,7 +28,6 @@ def test_cell():
     ax = cell.soma.vis(detail="full")
 
 
-
 def test_network():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "morph.swc")
@@ -51,11 +50,11 @@ def test_network():
     ax = net.cell(0).branch(np.arange(10).tolist()).vis(detail="full", ax=ax, col="b")
 
     # Plot 2.
-    ax = net.vis(detail="full", ax=ax)
+    ax = net.vis(detail="full")
 
     # Plot 3.
     net.vis(detail="point")
-    
+
     # Plot 4.
     net.vis(detail="point", layers=[2, 1])
 
