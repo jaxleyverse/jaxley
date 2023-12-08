@@ -725,6 +725,19 @@ class Module(ABC):
 
             self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
 
+    def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        self._move(x, y, z, self.nodes)
+
+    def _move(self, x: float, y: float, z: float, view):
+        # Need to cast to set because this will return one columnn per compartment,
+        # not one column per branch.
+        indizes = set(view["branch_index"].to_numpy().tolist())
+        for i in indizes:
+            self.xyzr[i][:, 0] += x
+            self.xyzr[i][:, 1] += y
+            self.xyzr[i][:, 2] += z
+
+
 
 class View:
     """View of a `Module`."""
@@ -831,6 +844,10 @@ class View:
             view=nodes,
             morph_plot_kwargs=morph_plot_kwargs,
         )
+
+    def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._move(x, y, z, nodes)
 
     def adjust_view(self, key: str, index: float):
         """Update view."""

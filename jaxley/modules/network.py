@@ -39,7 +39,7 @@ class Network(Module):
         self._append_to_params_and_state(cells)
         for cell in cells:
             self._append_to_channel_params_and_state(cell)
-            self.xyzr += cell.xyzr
+            self.xyzr += deepcopy(cell.xyzr)
         self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
