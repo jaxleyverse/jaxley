@@ -1,3 +1,5 @@
+from typing import Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -84,12 +86,7 @@ def plot_morph(
     return fig, ax
 
 
-def plot_swc(
-    xyzr,
-    dims=(0, 1),
-    col="k",
-    ax=None,
-):
+def plot_swc(xyzr, dims=(0, 1), col="k", ax=None, morph_plot_kwargs: Dict = None):
     """Plot morphology given an SWC file.
 
     Args:
@@ -104,6 +101,8 @@ def plot_swc(
     for coords_of_branch in xyzr:
         coords_to_plot = coords_of_branch[:, dims]
 
-        _ = ax.plot(coords_to_plot[:, 0], coords_to_plot[:, 1], c=col)
+        _ = ax.plot(
+            coords_to_plot[:, 0], coords_to_plot[:, 1], c=col, **morph_plot_kwargs
+        )
 
     return ax

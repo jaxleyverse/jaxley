@@ -321,8 +321,12 @@ class Network(Module):
         detail: str = "full",
         ax=None,
         col="k",
+        synapse_col="b",
         dims=(0, 1),
         layers: Optional[List] = None,
+        morph_plot_kwargs: Dict = {},
+        synapse_plot_kwargs: Dict = {},
+        synapse_scatter_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
 
@@ -349,9 +353,14 @@ class Network(Module):
                 nx.draw(graph, with_labels=True)
         else:
             ax = self._vis(
-                detail=detail, dims=dims, col=col, ax=ax, view=self.nodes
+                detail=detail,
+                dims=dims,
+                col=col,
+                ax=ax,
+                view=self.nodes,
+                morph_plot_kwargs=morph_plot_kwargs,
             )
-            
+
             pre_locs = self.syn_edges["pre_locs"].to_numpy()
             post_locs = self.syn_edges["post_locs"].to_numpy()
             pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
@@ -371,8 +380,19 @@ class Network(Module):
                 middle_ind = int((len(post_coord) - 1) * post_loc)
                 post_coord = post_coord[middle_ind]
                 coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
-                ax.plot(coords[0], coords[1], linewidth=3.0, c="b")
-                ax.scatter(post_coord[dims_np[0]], post_coord[dims_np[1]], c="b")
+                ax.plot(
+                    coords[0],
+                    coords[1],
+                    linewidth=3.0,
+                    c=synapse_col,
+                    **synapse_plot_kwargs,
+                )
+                ax.scatter(
+                    post_coord[dims_np[0]],
+                    post_coord[dims_np[1]],
+                    c=synapse_col,
+                    **synapse_scatter_kwargs,
+                )
 
         return ax
 
