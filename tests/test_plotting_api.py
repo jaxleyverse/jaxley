@@ -86,4 +86,3 @@ def test_vis_networks_built_from_scartch():
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
     net.cell(0).move(0, 100)
     ax = net.vis(detail="full", ax=ax)
-

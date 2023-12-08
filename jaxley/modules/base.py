@@ -13,12 +13,12 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
 from jaxley.synapses import Synapse
-from jaxley.utils.plot_utils import plot_morph
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
 )
+from jaxley.utils.plot_utils import plot_morph
 
 
 class Module(ABC):
