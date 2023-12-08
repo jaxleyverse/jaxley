@@ -667,7 +667,7 @@ class Module(ABC):
         coords = [self.xyzr[branch_ind] for branch_ind in branches_inds]
 
         assert not np.any(
-            np.isnan(self.xyzr[:, :, dims])
+            np.isnan(np.asarray(self.xyzr)[:, :, dims])
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
         ax = plot_swc(
             coords,
@@ -723,7 +723,7 @@ class Module(ABC):
             ]
             endpoints.append(end_point)
 
-            self.xyzr[b, :, :2] = np.asarray([start_point, end_point])
+            self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
 
 
 class View:
