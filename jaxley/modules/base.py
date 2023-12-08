@@ -632,6 +632,7 @@ class Module(ABC):
         ax=None,
         col: str = "k",
         dims: Tuple[int] = (0, 1),
+        morph_plot_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
 
@@ -645,10 +646,15 @@ class Module(ABC):
                 two of them.
         """
         return self._vis(
-            detail=detail, dims=dims, col=col, ax=ax, view=self.nodes
+            detail=detail,
+            dims=dims,
+            col=col,
+            ax=ax,
+            view=self.nodes,
+            morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def _vis(self, detail, ax, col, dims, view):
+    def _vis(self, detail, ax, col, dims, view, morph_plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
         coords = [self.xyzr[branch_ind] for branch_ind in branches_inds]
 
@@ -659,6 +665,7 @@ class Module(ABC):
                 dims=dims,
                 col=col,
                 ax=ax,
+                morph_plot_kwargs=morph_plot_kwargs,
             )
         # elif detail == "sticks":
         #     fig, ax = plot_morph(
@@ -770,10 +777,16 @@ class View:
         ax=None,
         col="k",
         dims=(0, 1),
+        morph_plot_kwargs: Dict = {},
     ):
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._vis(
-            detail=detail, ax=ax, col=col, dims=dims, view=nodes
+            detail=detail,
+            ax=ax,
+            col=col,
+            dims=dims,
+            view=nodes,
+            morph_plot_kwargs=morph_plot_kwargs,
         )
 
     def adjust_view(self, key: str, index: float):
