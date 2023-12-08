@@ -57,7 +57,7 @@ class Cell(Module):
             # Since `xyzr` is only inspected at `.vis()` and because it depends on the
             # (potentially learned) length of every compartment, we only populate
             # self.xyzr at `.vis()`.
-            self.xyzr = float("NaN") * np.zeros((len(parents), 2, 4))
+            self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
         self._append_to_params_and_state(branch_list)
         for branch in branch_list:

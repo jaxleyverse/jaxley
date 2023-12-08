@@ -392,8 +392,8 @@ class Network(Module):
                     c=synapse_col,
                     **synapse_scatter_kwargs,
                 )
-            else:
-                raise ValueError("detail must be in {full, point}.")
+        else:
+            raise ValueError("detail must be in {full, point}.")
 
         return ax
 
