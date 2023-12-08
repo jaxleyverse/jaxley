@@ -47,7 +47,17 @@ class Cell(Module):
             branch_list = [branches for _ in range(len(parents))]
         else:
             branch_list = branches
-        self.xyzr = xyzr
+
+        if xyzr is not None:
+            assert len(xyzr) == len(parents)
+            self.xyzr = xyzr
+        else:
+            # For every branch (`len(parents)`), we have a start and end point (`2`) and
+            # a (x,y,z,r) coordinate for each of them (`4`).
+            # Since `xyzr` is only inspected at `.vis()` and because it depends on the
+            # (potentially learned) length of every compartment, we only populate
+            # self.xyzr at `.vis()`.
+            self.xyzr = float("NaN") * np.zeros((len(parents), 2, 4))
 
         self._append_to_params_and_state(branch_list)
         for branch in branch_list:

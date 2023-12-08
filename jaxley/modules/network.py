@@ -351,9 +351,8 @@ class Network(Module):
                 nx.draw(graph, pos, with_labels=True)
             else:
                 nx.draw(graph, with_labels=True)
-        else:
+        elif detail == "full":
             ax = self._vis(
-                detail=detail,
                 dims=dims,
                 col=col,
                 ax=ax,
@@ -393,6 +392,8 @@ class Network(Module):
                     c=synapse_col,
                     **synapse_scatter_kwargs,
                 )
+            else:
+                raise ValueError("detail must be in {full, point}.")
 
         return ax
 
