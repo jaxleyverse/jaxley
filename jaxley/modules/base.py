@@ -14,6 +14,11 @@ from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
 from jaxley.synapses import Synapse
 from jaxley.utils.plot_utils import plot_morph, plot_swc
+from jaxley.utils.cell_utils import (
+    _compute_index_of_child,
+    _compute_num_children,
+    compute_levels,
+)
 
 
 class Module(ABC):
@@ -636,7 +641,6 @@ class Module(ABC):
 
     def vis(
         self,
-        detail: str = "full",
         ax=None,
         col: str = "k",
         dims: Tuple[int] = (0, 1),
@@ -645,16 +649,12 @@ class Module(ABC):
         """Visualize the module.
 
         Args:
-            detail: Either of [sticks, full]. `sticks` visualizes all branches of every
-                neuron, but draws branches as straight lines. `full` plots the full
-                morphology of every neuron, as read from the SWC file.
             ax: An axis into which to plot.
             col: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
         """
         return self._vis(
-            detail=detail,
             dims=dims,
             col=col,
             ax=ax,
@@ -662,31 +662,68 @@ class Module(ABC):
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def _vis(self, detail, ax, col, dims, view, morph_plot_kwargs):
+    def _vis(self, ax, col, dims, view, morph_plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
         coords = [self.xyzr[branch_ind] for branch_ind in branches_inds]
 
-        if detail == "full":
-            assert self.xyzr, "no coordinates available, use `vis(detail='point')`."
-            ax = plot_swc(
-                coords,
-                dims=dims,
-                col=col,
-                ax=ax,
-                morph_plot_kwargs=morph_plot_kwargs,
-            )
-        # elif detail == "sticks":
-        #     fig, ax = plot_morph(
-        #         cell=self,
-        #         col=col,
-        #         max_y_multiplier=5.0,
-        #         min_y_multiplier=0.5,
-        #         ax=ax,
-        #     )
-        else:
-            raise ValueError("`detail must be in {point, full}.")
+        assert not np.any(
+            np.isnan(self.xyzr[:, :, dims])
+        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
+        ax = plot_swc(
+            coords,
+            dims=dims,
+            col=col,
+            ax=ax,
+            morph_plot_kwargs=morph_plot_kwargs,
+        )
 
         return ax
+
+    def compute_xyz(self):
+        """Return xyz coordinates of every branch, based on the branch length."""
+        max_y_multiplier = 5.0
+        min_y_multiplier = 0.5
+
+        parents = self.comb_parents
+        num_children = _compute_num_children(parents)
+        index_of_child = _compute_index_of_child(parents)
+        levels = compute_levels(parents)
+
+        # Extract branch.
+        inds_branch = self.nodes.groupby("branch_index")["comp_index"].apply(list)
+        branch_lens = [
+            np.sum(self.params["length"][np.asarray(i)]) for i in inds_branch
+        ]
+        endpoints = []
+
+        # Different levels will get a different "angle" at which the children emerge from
+        # the parents. This angle is defined by the `y_offset_multiplier`. This value
+        # defines the range between y-location of the first and of the last child of a
+        # parent.
+        y_offset_multiplier = np.linspace(
+            max_y_multiplier, min_y_multiplier, np.max(levels) + 1
+        )
+
+        for b in range(self.total_nbranches):
+            if parents[b] > -1:
+                start_point = endpoints[parents[b]]
+                num_children_of_parent = num_children[parents[b]]
+                y_offset = (
+                    ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                ) * y_offset_multiplier[levels[b]]
+            else:
+                start_point = [0, 0]
+                y_offset = 0.0
+
+            len_of_path = np.sqrt(y_offset**2 + 1.0)
+
+            end_point = [
+                start_point[0] + branch_lens[b] / len_of_path * 1.0,
+                start_point[1] + branch_lens[b] / len_of_path * y_offset,
+            ]
+            endpoints.append(end_point)
+
+            self.xyzr[b, :, :2] = np.asarray([start_point, end_point])
 
 
 class View:
@@ -781,7 +818,6 @@ class View:
 
     def vis(
         self,
-        detail: str = "full",
         ax=None,
         col="k",
         dims=(0, 1),
@@ -789,7 +825,6 @@ class View:
     ):
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._vis(
-            detail=detail,
             ax=ax,
             col=col,
             dims=dims,
