@@ -632,9 +632,8 @@ class Module(ABC):
         ax=None,
         col="k",
         dims=(0, 1),
-        layers: Optional[List] = None,
     ) -> None:
-        """Visualize the network.
+        """Visualize the module.
 
         Args:
             detail: Either of [sticks, full]. `sticks` visualizes all branches of every
@@ -650,25 +649,21 @@ class Module(ABC):
             highlight_branch_inds: Branch indices that will be highlighted.
         """
         return self._vis(
-            detail=detail, dims=dims, col=col, ax=ax, layers=layers, view=self.nodes
+            detail=detail, dims=dims, col=col, ax=ax, view=self.nodes
         )
 
-    def _vis(self, detail, ax, col, dims, layers, view):
+    def _vis(self, detail, ax, col, dims, view):
         branches_inds = view["branch_index"].to_numpy()
         coords = [self.xyzr[branch_ind] for branch_ind in branches_inds]
 
-        if detail == "point":
-            # Only supported for networks.
-            assert self.__repr__().startswith(
-                "Network"
-            ), "`point` is only supported for networks."
-            graph = self._build_graph(layers)
-
-            if layers is not None:
-                pos = nx.multipartite_layout(graph, subset_key="layer")
-                nx.draw(graph, pos, with_labels=True)
-            else:
-                nx.draw(graph, with_labels=True)
+        if detail == "full":
+            assert self.xyzr, "no coordinates available, use `vis(detail='point')`."
+            ax = plot_swc(
+                coords,
+                dims=dims,
+                col=col,
+                ax=ax,
+            )
         # elif detail == "sticks":
         #     fig, ax = plot_morph(
         #         cell=self,
@@ -677,39 +672,8 @@ class Module(ABC):
         #         min_y_multiplier=0.5,
         #         ax=ax,
         #     )
-        elif detail == "full":
-            assert self.xyzr, "no coordinates available, use `vis(detail='point')`."
-            ax = plot_swc(
-                coords,
-                dims=dims,
-                col=col,
-                ax=ax,
-            )
         else:
             raise ValueError("`detail must be in {sticks, full}.")
-
-        # Plot connections (i.e. synapses).
-        pre_locs = self.syn_edges["pre_locs"].to_numpy()
-        post_locs = self.syn_edges["post_locs"].to_numpy()
-        pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
-        post_branch = self.syn_edges["post_branch_index"].to_numpy()
-        pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
-        post_cell = self.syn_edges["post_cell_index"].to_numpy()
-
-        dims_np = np.asarray(dims)
-
-        for pre_b, post_b, pre_c, post_c in zip(
-            pre_branch, post_branch, pre_cell, post_cell
-        ):
-            pre_coord = self.cells[pre_c].xyzr[pre_b]
-            middle_ind = int((len(pre_coord) - 1) * pre_locs)
-            pre_coord = pre_coord[middle_ind]
-            post_coord = self.cells[post_c].xyzr[post_b]
-            middle_ind = int((len(post_coord) - 1) * post_locs)
-            post_coord = post_coord[middle_ind]
-            coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
-            ax.plot(coords[0], coords[1], linewidth=3.0, c="b")
-            ax.scatter(post_coord[dims_np[0]], post_coord[dims_np[1]], c="b")
 
         return ax
 
@@ -813,7 +777,7 @@ class View:
     ):
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._vis(
-            detail=detail, ax=ax, col=col, dims=dims, layers=None, view=nodes
+            detail=detail, ax=ax, col=col, dims=dims, view=nodes
         )
 
     def adjust_view(self, key: str, index: float):
