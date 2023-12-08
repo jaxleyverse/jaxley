@@ -62,3 +62,28 @@ def test_network():
     net.cell(0).add_to_group("excitatory")
     net.cell(1).add_to_group("excitatory")
     ax = net.excitatory.vis(detail="full")
+
+
+def test_vis_networks_built_from_scartch():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+
+    conns = [
+        jx.Connectivity(
+            GlutamateSynapse(),
+            [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 1, 2, 0.0)],
+        )
+    ]
+    net = jx.Network([cell, cell], conns)
+    net.compute_xyz()
+
+    # Plot 1.
+    _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    ax = net.vis(detail="full", ax=ax)
+
+    # Plot 2.
+    _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    net.cell(0).move(0, 100)
+    ax = net.vis(detail="full", ax=ax)
+

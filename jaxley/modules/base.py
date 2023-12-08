@@ -13,7 +13,7 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
 from jaxley.synapses import Synapse
-from jaxley.utils.plot_utils import plot_morph, plot_swc
+from jaxley.utils.plot_utils import plot_morph
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -669,7 +669,7 @@ class Module(ABC):
         assert not np.any(
             np.isnan(np.asarray(self.xyzr)[:, :, dims])
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
-        ax = plot_swc(
+        ax = plot_morph(
             coords,
             dims=dims,
             col=col,
@@ -726,6 +726,7 @@ class Module(ABC):
             self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        """Move cells or networks in the (x, y, z) plane."""
         self._move(x, y, z, self.nodes)
 
     def _move(self, x: float, y: float, z: float, view):
