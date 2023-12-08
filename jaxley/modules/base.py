@@ -652,7 +652,7 @@ class Module(ABC):
             cols: The color for all branches except the highlighted ones.
             highlight_branch_inds: Branch indices that will be highlighted.
         """
-        self._vis(
+        return self._vis(
             detail, figsize, dims, cols, highlight_branch_inds, fig, ax, self.nodes
         )
 
@@ -812,7 +812,7 @@ class View:
         ax=None,
     ):
         nodes = self.set_global_index_and_index(self.view)
-        self.pointer._vis(
+        return self.pointer._vis(
             detail, figsize, dims, cols, highlight_branch_inds, fig, ax, nodes
         )
 
