@@ -664,11 +664,13 @@ class Module(ABC):
 
     def _vis(self, ax, col, dims, view, morph_plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
-        coords = [self.xyzr[branch_ind] for branch_ind in branches_inds]
+        coords = []
+        for branch_ind in branches_inds:
+            assert not np.any(
+                np.isnan(self.xyzr[branch_ind][:, dims])
+            ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
+            coords.append(self.xyzr[branch_ind])
 
-        assert not np.any(
-            np.isnan(np.asarray(self.xyzr)[:, :, dims])
-        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
         ax = plot_morph(
             coords,
             dims=dims,
