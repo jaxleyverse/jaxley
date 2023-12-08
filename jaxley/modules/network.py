@@ -316,76 +316,65 @@ class Network(Module):
 
         return new_syn_states, syn_voltage_terms, syn_constant_terms
 
-    # def vis(
-    #     self,
-    #     detail: str = "point",
-    #     layers: Optional[List] = None,
-    #     figsize=(4, 4),
-    #     dims=(0, 1),
-    #     cols: Union[str, List[str]] = "k",
-    #     highlight=[],
-    #     fig=None,
-    #     ax=None,
-    #     **options,
-    # ) -> None:
-    #     """Visualize the network.
+    def vis(
+        self,
+        detail: str = "full",
+        ax=None,
+        col="k",
+        dims=(0, 1),
+        layers: Optional[List] = None,
+    ) -> None:
+        """Visualize the module.
 
-    #     Args:
-    #         detail: Either of [point, full]. `point` visualizes every neuron
-    #             as a point. `full` plots the full morphology of every
-    #             neuron, as read from the SWC file.
-    #         layers: Allows to plot the network in layers. Should provide the number of
-    #             neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-    #             neurons, 10 hidden layer neurons, and 1 output neuron. Please note that
-    #             connections always start and end in the middle of branches, no matter
-    #             what compartment within a branch they are connected to.
-    #         options: Plotting options passed to `NetworkX.draw()`.
-    #         cols: One color in total or one color per cell.
-    #     """
-    #     if detail == "point":
-    #         graph = self._build_graph(layers, **options)
+        Args:
+            detail: Either of [sticks, full]. `sticks` visualizes all branches of every
+                neuron, but draws branches as straight lines. `full` plots the full
+                morphology of every neuron, as read from the SWC file.
+            layers: Allows to plot the network in layers. Should provide the number of
+                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
+                neurons, 10 hidden layer neurons, and 1 output neuron.
+            options: Plotting options passed to `NetworkX.draw()`.
+            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+                two of them.
+            cols: The color for all branches except the highlighted ones.
+            highlight_branch_inds: Branch indices that will be highlighted.
+        """
+        if detail == "point":
+            graph = self._build_graph(layers)
 
-    #         if layers is not None:
-    #             pos = nx.multipartite_layout(graph, subset_key="layer")
-    #             nx.draw(graph, pos, with_labels=True)
-    #         else:
-    #             nx.draw(graph, with_labels=True)
-    #     elif detail == "full":
-    #         if fig is None or ax is None:
-    #             fig, ax = plt.subplots(1, 1, figsize=figsize)
+            if layers is not None:
+                pos = nx.multipartite_layout(graph, subset_key="layer")
+                nx.draw(graph, pos, with_labels=True)
+            else:
+                nx.draw(graph, with_labels=True)
+        else:
+            ax = self._vis(
+                detail=detail, dims=dims, col=col, ax=ax, view=self.nodes
+            )
+            
+            pre_locs = self.syn_edges["pre_locs"].to_numpy()
+            post_locs = self.syn_edges["post_locs"].to_numpy()
+            pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
+            post_branch = self.syn_edges["post_branch_index"].to_numpy()
+            pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
+            post_cell = self.syn_edges["post_cell_index"].to_numpy()
 
-    #         if isinstance(cols, str):
-    #             cols = [cols] * len(self.cells)
+            dims_np = np.asarray(dims)
 
-    #         for cell, col in zip(self.cells, cols):
-    #             fig, ax = cell.vis(detail="full", dims=dims, cols=col, fig=fig, ax=ax)
+            for pre_loc, post_loc, pre_b, post_b, pre_c, post_c in zip(
+                pre_locs, post_locs, pre_branch, post_branch, pre_cell, post_cell
+            ):
+                pre_coord = self.cells[pre_c].xyzr[pre_b]
+                middle_ind = int((len(pre_coord) - 1) * pre_loc)
+                pre_coord = pre_coord[middle_ind]
+                post_coord = self.cells[post_c].xyzr[post_b]
+                middle_ind = int((len(post_coord) - 1) * post_loc)
+                post_coord = post_coord[middle_ind]
+                coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
+                ax.plot(coords[0], coords[1], linewidth=3.0, c="b")
+                ax.scatter(post_coord[dims_np[0]], post_coord[dims_np[1]], c="b")
 
-    #         # Plot connections (i.e. synapses).
-    #         pre_locs = self.syn_edges["pre_locs"].to_numpy()
-    #         post_locs = self.syn_edges["post_locs"].to_numpy()
-    #         pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
-    #         post_branch = self.syn_edges["post_branch_index"].to_numpy()
-    #         pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
-    #         post_cell = self.syn_edges["post_cell_index"].to_numpy()
-
-    #         dims_np = np.asarray(dims)
-
-    #         for pre_b, post_b, pre_c, post_c in zip(
-    #             pre_branch, post_branch, pre_cell, post_cell
-    #         ):
-    #             pre_coord = self.cells[pre_c].xyzr[pre_b]
-    #             middle_ind = int((len(pre_coord) - 1) * pre_locs)
-    #             pre_coord = pre_coord[middle_ind]
-    #             post_coord = self.cells[post_c].xyzr[post_b]
-    #             middle_ind = int((len(post_coord) - 1) * post_locs)
-    #             post_coord = post_coord[middle_ind]
-    #             coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
-    #             ax.plot(coords[0], coords[1], linewidth=3.0, c="b")
-    #             ax.scatter(post_coord[dims_np[0]], post_coord[dims_np[1]], c="b")
-
-    #         return fig, ax
-    #     else:
-    #         raise ValueError("detail must be in {point, full}")
+        return ax
 
     def _build_graph(self, layers: Optional[List] = None, **options):
         graph = nx.DiGraph()
