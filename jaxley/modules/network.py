@@ -389,11 +389,27 @@ class Network(Module):
                 pre_locs, post_locs, pre_branch, post_branch
             ):
                 pre_coord = self.xyzr[pre_b]
-                middle_ind = int((len(pre_coord) - 1) * pre_loc)
-                pre_coord = pre_coord[middle_ind]
+                if len(pre_coord) == 2:
+                    # If only start and end point of a branch are traced, perform a
+                    # linear interpolation to get the synpase location.
+                    pre_coord = pre_coord[0] + (pre_coord[1] - pre_coord[0]) * pre_loc
+                else:
+                    # If densely traced, use intermediate trace values for synapse loc.
+                    middle_ind = int((len(pre_coord) - 1) * pre_loc)
+                    pre_coord = pre_coord[middle_ind]
+
                 post_coord = self.xyzr[post_b]
-                middle_ind = int((len(post_coord) - 1) * post_loc)
-                post_coord = post_coord[middle_ind]
+                if len(post_coord) == 2:
+                    # If only start and end point of a branch are traced, perform a
+                    # linear interpolation to get the synpase location.
+                    post_coord = (
+                        post_coord[0] + (post_coord[1] - post_coord[0]) * post_loc
+                    )
+                else:
+                    # If densely traced, use intermediate trace values for synapse loc.
+                    middle_ind = int((len(post_coord) - 1) * post_loc)
+                    post_coord = post_coord[middle_ind]
+
                 coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T
                 ax.plot(
                     coords[0],
