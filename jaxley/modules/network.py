@@ -203,6 +203,8 @@ class Network(Module):
     def init_syns(self):
         global_pre_comp_inds = []
         global_post_comp_inds = []
+        global_pre_branch_inds = []
+        global_post_branch_inds = []
         pre_locs = []
         post_locs = []
         pre_branch_inds = []
@@ -219,6 +221,18 @@ class Network(Module):
             )
             global_post_comp_inds.append(
                 self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
+            )
+            global_pre_branch_inds.append(
+                [
+                    self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
+                    for c in connectivity.conns
+                ]
+            )
+            global_post_branch_inds.append(
+                [
+                    self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
+                    for c in connectivity.conns
+                ]
             )
             # Local compartment inds.
             pre_locs.append(np.asarray([c.pre_loc for c in connectivity.conns]))
@@ -246,6 +260,8 @@ class Network(Module):
                 "type_ind",
                 "global_pre_comp_index",
                 "global_post_comp_index",
+                "global_pre_branch_index",
+                "global_post_branch_index",
             ]
         )
         for i, connectivity in enumerate(self.connectivities):
@@ -264,6 +280,8 @@ class Network(Module):
                             type_ind=i,
                             global_pre_comp_index=global_pre_comp_inds[i],
                             global_post_comp_index=global_post_comp_inds[i],
+                            global_pre_branch_index=global_pre_branch_inds[i],
+                            global_post_branch_index=global_post_branch_inds[i],
                         )
                     ),
                 ],
@@ -362,20 +380,18 @@ class Network(Module):
 
             pre_locs = self.syn_edges["pre_locs"].to_numpy()
             post_locs = self.syn_edges["post_locs"].to_numpy()
-            pre_branch = self.syn_edges["pre_branch_index"].to_numpy()
-            post_branch = self.syn_edges["post_branch_index"].to_numpy()
-            pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
-            post_cell = self.syn_edges["post_cell_index"].to_numpy()
+            pre_branch = self.syn_edges["global_pre_branch_index"].to_numpy()
+            post_branch = self.syn_edges["global_post_branch_index"].to_numpy()
 
             dims_np = np.asarray(dims)
 
-            for pre_loc, post_loc, pre_b, post_b, pre_c, post_c in zip(
-                pre_locs, post_locs, pre_branch, post_branch, pre_cell, post_cell
+            for pre_loc, post_loc, pre_b, post_b in zip(
+                pre_locs, post_locs, pre_branch, post_branch
             ):
-                pre_coord = self.cells[pre_c].xyzr[pre_b]
+                pre_coord = self.xyzr[pre_b]
                 middle_ind = int((len(pre_coord) - 1) * pre_loc)
                 pre_coord = pre_coord[middle_ind]
-                post_coord = self.cells[post_c].xyzr[post_b]
+                post_coord = self.xyzr[post_b]
                 middle_ind = int((len(post_coord) - 1) * post_loc)
                 post_coord = post_coord[middle_ind]
                 coords = np.stack([pre_coord[dims_np], post_coord[dims_np]]).T

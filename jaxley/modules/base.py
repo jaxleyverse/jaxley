@@ -739,7 +739,6 @@ class Module(ABC):
             self.xyzr[i][:, 2] += z
 
 
-
 class View:
     """View of a `Module`."""
 
