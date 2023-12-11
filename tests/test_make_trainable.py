@@ -117,4 +117,3 @@ def test_diverse_synapse_types():
     all_parameters = net.get_all_parameters(params)
     assert np.all(all_parameters["gS"][0] == 2.2)
     assert np.all(all_parameters["gS"][1] == 5.5)
-

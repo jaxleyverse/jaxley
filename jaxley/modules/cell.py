@@ -258,7 +258,7 @@ class CellView(View):
     def __getattr__(self, key):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
-    
+
     def fully_connect(self, post_cell_view, synapse_type):
         """Returns a list of `Connection`s which build a fully connected layer.
 
