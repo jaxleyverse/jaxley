@@ -500,6 +500,7 @@ class SynapseView(View):
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
+        # TODO: have to reset the pointer here.
         self.pointer._set_params(key, val, self.view)
 
     def set_states(self, key: str, val: float):
