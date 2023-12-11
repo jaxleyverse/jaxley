@@ -414,7 +414,6 @@ class Network(Module):
                 ax.plot(
                     coords[0],
                     coords[1],
-                    linewidth=3.0,
                     c=synapse_col,
                     **synapse_plot_kwargs,
                 )
