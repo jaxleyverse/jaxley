@@ -3,7 +3,6 @@ from typing import Callable, Dict, List, Optional
 import jax.numpy as jnp
 import pandas as pd
 
-from jaxley.channels import Channel
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import index_of_loc, loc_of_index
 
@@ -62,27 +61,33 @@ class CompartmentView(View):
         index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
         return super().adjust_view("comp_index", index)
 
-    def connect(self, post, synapse_type):
+    def connect(self, post: "CompartmentView", synapse_type):
+        """Connect two compartments with a chemical synapse."""
         synapse_name = type(synapse_type).__name__
-        if synapse_name not in self.pointer.synapse_names:
-            new_synapse_type = True
-        else:
-            new_synapse_type = False
+        is_new_type = True if synapse_name not in self.pointer.synapse_names else False
 
-        if new_synapse_type:
+        if is_new_type:
+            # New type: index for the synapse type is one more than the currently
+            # highest index.
             max_ind = self.pointer.syn_edges["type_ind"].max() + 1
             type_ind = 0 if jnp.isnan(max_ind) else max_ind
         else:
+            # Not a new type: search for the index that this type has previously had.
             type_ind = self.pointer.syn_edges.query(f"type == '{synapse_name}'")[
                 "type_ind"
             ].to_numpy()[0]
 
+        # The `syn_edges` dataframe expects the compartment as continuous `loc`, not
+        # as discrete compartment index (because the continuous `loc` is used for
+        # plotting). Below, we cast the compartment index to its (rough) location.
         pre_comp = loc_of_index(
             self.view["global_comp_index"].to_numpy(), self.pointer.nseg
         )
         post_comp = loc_of_index(
             post.view["global_comp_index"].to_numpy(), self.pointer.nseg
         )
+
+        # Update edges.
         self.pointer.syn_edges = pd.concat(
             [
                 self.pointer.syn_edges,
@@ -111,27 +116,33 @@ class CompartmentView(View):
             ],
             ignore_index=True,
         )
+
+        # We add a column called index which is used by `adjust_view` of the
+        # `SynapseView` (see `network.py`).
         self.pointer.syn_edges["index"] = list(self.pointer.syn_edges.index)
 
+        # Append to synaptic parameter array.
         for key in synapse_type.synapse_params:
             param_vals = jnp.asarray([synapse_type.synapse_params[key]])
-            if new_synapse_type:
+            if is_new_type:
                 self.pointer.syn_params[key] = param_vals
             else:
                 self.pointer.syn_params[key] = jnp.concatenate(
                     [self.pointer.syn_params[key], param_vals]
                 )
 
+        # Append to synaptic state array.
         for key in synapse_type.synapse_states:
             state_vals = jnp.asarray([synapse_type.synapse_states[key]])
-            if new_synapse_type:
+            if is_new_type:
                 self.pointer.syn_states[key] = state_vals
             else:
                 self.pointer.syn_states[key] = jnp.concatenate(
                     [self.pointer.syn_states[key], state_vals]
                 )
 
-        if new_synapse_type:
+        # Append to variables that track meta information about synapses.
+        if is_new_type:
             self.pointer.synapse_names.append(type(synapse_type).__name__)
             self.pointer.synapse_param_names.append(synapse_type.synapse_params.keys())
             self.pointer.synapse_state_names.append(synapse_type.synapse_states.keys())
