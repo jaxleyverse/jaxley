@@ -137,7 +137,9 @@ class BranchView(View):
 
     def __call__(self, index: float):
         self.allow_make_trainable = True
-        return super().adjust_view("branch_index", index)
+        new_view = super().adjust_view("branch_index", index)
+        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
+        return new_view
 
     def __getattr__(self, key):
         assert key == "comp"
