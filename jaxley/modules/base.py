@@ -66,6 +66,7 @@ class Module(ABC):
 
         self.syn_params: Dict[str, jnp.ndarray] = {}
         self.syn_states: Dict[str, jnp.ndarray] = {}
+        self.syn_classes: List = []
 
         # Channel indices, parameters, and states.
         self.channel_nodes: Dict[str, pd.DataFrame] = {}
@@ -535,7 +536,7 @@ class Module(ABC):
         # Step of the synapse.
         new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
             u,
-            self.conns,
+            self.syn_classes,
             params,
             delta_t,
             self.syn_edges,

@@ -44,7 +44,9 @@ class Network(Module):
 
         self.cells = cells
         self.connectivities = connectivities
-        self.conns = [connectivity.synapse_type for connectivity in connectivities]
+        self.syn_classes = [
+            connectivity.synapse_type for connectivity in connectivities
+        ]
         self.nseg = cells[0].nseg
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
         self.synapse_param_names = [
