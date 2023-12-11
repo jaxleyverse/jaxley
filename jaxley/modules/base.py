@@ -707,25 +707,31 @@ class Module(ABC):
         )
 
         for b in range(self.total_nbranches):
-            if parents[b] > -1:
-                start_point = endpoints[parents[b]]
-                num_children_of_parent = num_children[parents[b]]
-                y_offset = (
-                    ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
-                ) * y_offset_multiplier[levels[b]]
+            # For networks with mixed SWC and from-scatch neurons, only update those
+            # branches that do not have coordingates yet.
+            if np.any(np.isnan(self.xyzr[b])):
+                if parents[b] > -1:
+                    start_point = endpoints[parents[b]]
+                    num_children_of_parent = num_children[parents[b]]
+                    y_offset = (
+                        ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                    ) * y_offset_multiplier[levels[b]]
+                else:
+                    start_point = [0, 0]
+                    y_offset = 0.0
+
+                len_of_path = np.sqrt(y_offset**2 + 1.0)
+
+                end_point = [
+                    start_point[0] + branch_lens[b] / len_of_path * 1.0,
+                    start_point[1] + branch_lens[b] / len_of_path * y_offset,
+                ]
+                endpoints.append(end_point)
+
+                self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
             else:
-                start_point = [0, 0]
-                y_offset = 0.0
-
-            len_of_path = np.sqrt(y_offset**2 + 1.0)
-
-            end_point = [
-                start_point[0] + branch_lens[b] / len_of_path * 1.0,
-                start_point[1] + branch_lens[b] / len_of_path * y_offset,
-            ]
-            endpoints.append(end_point)
-
-            self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
+                # Dummy to keey the index `endpoints[parent[b]]` above working.
+                endpoints.append(np.zeros((2,)))
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         """Move cells or networks in the (x, y, z) plane."""
