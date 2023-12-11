@@ -5,7 +5,7 @@ import pandas as pd
 
 from jaxley.channels import Channel
 from jaxley.modules.base import Module, View
-from jaxley.utils.cell_utils import index_of_loc
+from jaxley.utils.cell_utils import index_of_loc, loc_of_index
 
 
 class Compartment(Module):
@@ -28,10 +28,6 @@ class Compartment(Module):
         # Indexing.
         self.nodes = pd.DataFrame(
             dict(comp_index=[0], branch_index=[0], cell_index=[0])
-        )
-        # Synapse indexing.
-        self.syn_edges = pd.DataFrame(
-            dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
         )
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
@@ -65,3 +61,76 @@ class CompartmentView(View):
 
         index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
         return super().adjust_view("comp_index", index)
+
+    def connect(self, post, synapse_type):
+        if type(synapse_type).__name__ not in self.pointer.synapse_names:
+            new_type = True
+        else:
+            new_type = False
+
+        if new_type:
+            max_ind = self.pointer.syn_edges["type_ind"].max() + 1
+            type_ind = 0 if jnp.isnan(max_ind) else max_ind
+
+        else:
+            # TODO: here, we assume that synapses are added one type after another.
+            type_ind = self.pointer.syn_edges["type_ind"].to_numpy()[-1]
+
+        pre_comp = loc_of_index(
+            self.view["global_comp_index"].to_numpy(), self.pointer.nseg
+        )
+        post_comp = loc_of_index(
+            post.view["global_comp_index"].to_numpy(), self.pointer.nseg
+        )
+        self.pointer.syn_edges = pd.concat(
+            [
+                self.pointer.syn_edges,
+                pd.DataFrame(
+                    dict(
+                        pre_locs=pre_comp,
+                        post_locs=post_comp,
+                        pre_branch_index=self.view["branch_index"].to_numpy(),
+                        post_branch_index=post.view["branch_index"].to_numpy(),
+                        pre_cell_index=self.view["cell_index"].to_numpy(),
+                        post_cell_index=post.view["cell_index"].to_numpy(),
+                        type=type(synapse_type).__name__,
+                        type_ind=type_ind,
+                        global_pre_comp_index=self.view["global_comp_index"].to_numpy(),
+                        global_post_comp_index=post.view[
+                            "global_comp_index"
+                        ].to_numpy(),
+                        global_pre_branch_index=self.view[
+                            "global_branch_index"
+                        ].to_numpy(),
+                        global_post_branch_index=post.view[
+                            "global_branch_index"
+                        ].to_numpy(),
+                    )
+                ),
+            ]
+        )
+        self.pointer.syn_edges["index"] = list(self.pointer.syn_edges.index)
+
+        for key in synapse_type.synapse_params:
+            param_vals = jnp.asarray([synapse_type.synapse_params[key]])
+            if new_type:
+                self.pointer.syn_params[key] = param_vals
+            else:
+                self.pointer.syn_params[key] = jnp.concatenate(
+                    [self.pointer.syn_params[key], param_vals]
+                )
+
+        for key in synapse_type.synapse_states:
+            state_vals = jnp.asarray([synapse_type.synapse_states[key]])
+            if new_type:
+                self.pointer.syn_states[key] = state_vals
+            else:
+                self.pointer.syn_states[key] = jnp.concatenate(
+                    [self.pointer.syn_states[key], state_vals]
+                )
+
+        if new_type:
+            self.pointer.synapse_names.append(type(synapse_type).__name__)
+            self.pointer.synapse_param_names.append(synapse_type.synapse_params.keys())
+            self.pointer.synapse_state_names.append(synapse_type.synapse_states.keys())
+            self.pointer.syn_classes.append(synapse_type)

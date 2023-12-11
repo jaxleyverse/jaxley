@@ -162,6 +162,13 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     return branch_ind * nseg_per_branch + ind_along_branch
 
 
+def loc_of_index(global_comp_index, nseg):
+    """Return location corresponding to index."""
+    index = global_comp_index % nseg
+    possible_locs = np.linspace(1, 0, nseg)
+    return possible_locs[index]
+
+
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     midpoint_r_a = 0.5 * (r_a1 + r_a2)
     return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
