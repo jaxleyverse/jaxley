@@ -80,3 +80,42 @@ def test_api_equivalence_synapses():
     assert (
         np.max(np.abs(voltages1 - voltages2)) < 1e-8
     ), "Voltages do not match between synapse APIs."
+
+
+def test_api_equivalence_layers():
+    """Test whether ways of adding synapses are equivalent for layer API."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 1)
+    cell = jx.Cell(branch, parents=[-1])
+    cells = [cell for _ in range(11)]
+
+    conn_builder = jx.ConnectivityBuilder([cell.total_nbranches for cell in cells])
+    _ = np.random.seed(0)
+    conns = [
+        jx.Connectivity(
+            GlutamateSynapse(),
+            [
+                *conn_builder.fc(range(5), range(5, 10)),
+                *conn_builder.fc(range(5, 10), range(10, 11)),
+            ]
+        )
+    ]
+    net1 = jx.Network(cells, conns)
+
+    net2 = jx.Network(cells)
+    _ = np.random.seed(0)
+    net2.cell([0, 1, 2, 3, 4]).fully_connect(net2.cell([5, 6, 7, 8, 9]), GlutamateSynapse())
+    net2.cell([5, 6, 7, 8, 9]).fully_connect(net2.cell(10), GlutamateSynapse())
+
+    current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
+    for net in [net1, net2]:
+        net.cell(0).branch(0).comp(0.0).stimulate(current)
+        net.cell(1).branch(0).comp(0.0).stimulate(current)
+        net.cell(10).branch(0).comp(0.5).record()
+        
+    voltages1 = jx.integrate(net1)
+    voltages2 = jx.integrate(net2)
+
+    assert (
+        np.max(np.abs(voltages1 - voltages2)) < 1e-8
+    ), "Voltages do not match between synapse APIs."
