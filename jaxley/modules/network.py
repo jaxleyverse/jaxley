@@ -491,12 +491,6 @@ class SynapseView(View):
 
         return nodes
 
-    def adjust_view(self, key: str, index: float):
-        """Update view."""
-        if index != "all":
-            self.view = self.view[self.view[key] == index]
-        return self
-
     def set_params(self, key: str, val: float):
         """Set parameters of the pointer."""
         assert (
