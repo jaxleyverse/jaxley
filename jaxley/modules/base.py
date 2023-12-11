@@ -34,7 +34,23 @@ class Module(ABC):
         self.group_views = {}
 
         self.nodes: Optional[pd.DataFrame] = None
-        self.syn_edges: Optional[pd.DataFrame] = None
+
+        self.syn_edges = pd.DataFrame(
+            columns=[
+                "pre_locs",
+                "post_locs",
+                "pre_branch_index",
+                "post_branch_index",
+                "pre_cell_index",
+                "post_cell_index",
+                "type",
+                "type_ind",
+                "global_pre_comp_index",
+                "global_post_comp_index",
+                "global_pre_branch_index",
+                "global_post_branch_index",
+            ]
+        )
         self.branch_edges: Optional[pd.DataFrame] = None
 
         self.cumsum_nbranches: Optional[jnp.ndarray] = None
@@ -865,9 +881,6 @@ class View:
             self.view = self.view[self.view[key].isin(index)]
         else:
             assert index == "all"
-        self.view["comp_index"] -= self.view["comp_index"].iloc[0]
-        self.view["branch_index"] -= self.view["branch_index"].iloc[0]
-        self.view["cell_index"] -= self.view["cell_index"].iloc[0]
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 

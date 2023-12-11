@@ -250,7 +250,10 @@ class CellView(View):
     def __call__(self, index: float):
         if index == "all":
             self.allow_make_trainable = False
-        return super().adjust_view("cell_index", index)
+        new_view = super().adjust_view("cell_index", index)
+        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
+        new_view.view["branch_index"] -= new_view.view["branch_index"].iloc[0]
+        return new_view
 
     def __getattr__(self, key):
         assert key == "branch"
