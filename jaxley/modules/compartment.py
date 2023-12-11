@@ -73,7 +73,9 @@ class CompartmentView(View):
             max_ind = self.pointer.syn_edges["type_ind"].max() + 1
             type_ind = 0 if jnp.isnan(max_ind) else max_ind
         else:
-            type_ind = self.pointer.syn_edges.query(f"type == '{synapse_name}'")["type_ind"].to_numpy()[0]
+            type_ind = self.pointer.syn_edges.query(f"type == '{synapse_name}'")[
+                "type_ind"
+            ].to_numpy()[0]
 
         pre_comp = loc_of_index(
             self.view["global_comp_index"].to_numpy(), self.pointer.nseg
@@ -107,7 +109,7 @@ class CompartmentView(View):
                     )
                 ),
             ],
-            ignore_index=True
+            ignore_index=True,
         )
         self.pointer.syn_edges["index"] = list(self.pointer.syn_edges.index)
 
