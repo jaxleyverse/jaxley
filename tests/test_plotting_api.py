@@ -86,3 +86,28 @@ def test_vis_networks_built_from_scartch():
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
     net.cell(0).move(0, 100)
     ax = net.vis(detail="full", ax=ax)
+
+
+def test_mixed_network():
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "morph.swc")
+    cell1 = jx.read_swc(fname, nseg=4)
+
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+
+    conns = [
+        jx.Connectivity(
+            GlutamateSynapse(),
+            [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 1, 1, 0.0)],
+        )
+    ]
+
+    net = jx.Network([cell1, cell2], conns)
+
+    net.compute_xyz()
+    net.cell(0).move(0, 800)
+    net.cell(1).move(0, -800)
+
+    _ = net.vis(detail="full")
