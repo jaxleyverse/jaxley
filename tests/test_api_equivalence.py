@@ -11,7 +11,7 @@ from jaxley.synapses import GlutamateSynapse
 
 
 def test_api_equivalence_morphology():
-    """Test the API for how one can build morphologies froms scratch."""
+    """Test the API for how one can build morphologies from scratch."""
     nseg_per_branch = 2
     depth = 2
     dt = 0.025
