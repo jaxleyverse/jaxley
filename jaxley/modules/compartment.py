@@ -62,7 +62,18 @@ class CompartmentView(View):
         return super().adjust_view("comp_index", index)
 
     def connect(self, post: "CompartmentView", synapse_type):
-        """Connect two compartments with a chemical synapse."""
+        """Connect two compartments with a chemical synapse.
+
+        High-level strategy:
+
+        We need to first check if the network already has a type of this synapse, else
+        we need to register it as a new synapse in a bunch of dictionaries which track
+        synapse parameters, state and meta information.
+
+        Next, we register the new connection in the synapse dataframe (`.syn_edges`).
+        Then, we update synapse parameter and state arrays with the new connection.
+        Finally, we update synapse meta information.
+        """
         synapse_name = type(synapse_type).__name__
         is_new_type = True if synapse_name not in self.pointer.synapse_names else False
 
@@ -121,29 +132,37 @@ class CompartmentView(View):
         # `SynapseView` (see `network.py`).
         self.pointer.syn_edges["index"] = list(self.pointer.syn_edges.index)
 
-        # Append to synaptic parameter array.
+        # Update synaptic parameter array.
         for key in synapse_type.synapse_params:
             param_vals = jnp.asarray([synapse_type.synapse_params[key]])
             if is_new_type:
+                # Register parameter array for new synapse type.
                 self.pointer.syn_params[key] = param_vals
             else:
+                # Append to synaptic parameter array.
                 self.pointer.syn_params[key] = jnp.concatenate(
                     [self.pointer.syn_params[key], param_vals]
                 )
 
-        # Append to synaptic state array.
+        # Update synaptic state array.
         for key in synapse_type.synapse_states:
             state_vals = jnp.asarray([synapse_type.synapse_states[key]])
             if is_new_type:
+                # Register parameter array for new synapse type.
                 self.pointer.syn_states[key] = state_vals
             else:
+                # Append to synaptic parameter array.
                 self.pointer.syn_states[key] = jnp.concatenate(
                     [self.pointer.syn_states[key], state_vals]
                 )
 
-        # Append to variables that track meta information about synapses.
+        # (Potentially) update variables that track meta information about synapses.
         if is_new_type:
             self.pointer.synapse_names.append(type(synapse_type).__name__)
-            self.pointer.synapse_param_names.append(synapse_type.synapse_params.keys())
-            self.pointer.synapse_state_names.append(synapse_type.synapse_states.keys())
+            self.pointer.synapse_param_names.append(
+                list(synapse_type.synapse_params.keys())
+            )
+            self.pointer.synapse_state_names.append(
+                list(synapse_type.synapse_states.keys())
+            )
             self.pointer.syn_classes.append(synapse_type)
