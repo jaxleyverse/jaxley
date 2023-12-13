@@ -47,7 +47,7 @@ class Leak(Channel):
         """Return current."""
         # Multiply with 1000 to convert Siemens to milli Siemens.
         leak_conds = params["gl"] * 1000  # mS/cm^2
-        return leak_conds * (params["el"] - voltages)
+        return leak_conds * (voltages - params["el"])
 
 
 class NaChannelPospi(Channel):
@@ -76,7 +76,7 @@ class NaChannelPospi(Channel):
         # Multiply with 1000 to convert Siemens to milli Siemens.
         na_conds = params["gNa"] * (ms**3) * hs * 1000  # mS/cm^2
 
-        current = na_conds * (params["eNa"] - voltages)
+        current = na_conds * (voltages - params["eNa"])
         return current
 
 
@@ -125,7 +125,7 @@ class KChannelPospi(Channel):
         # Multiply with 1000 to convert Siemens to milli Siemens.
         k_conds = params["gK"] * (ns**4) * 1000  # mS/cm^2
 
-        return k_conds * (params["eK"] - voltages)
+        return k_conds * (voltages - params["eK"])
 
 
 def _n_gate(v, vt):
@@ -163,7 +163,7 @@ class KmChannelPospi(Channel):
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
         m_conds = params["gM"] * ps * 1000  # mS/cm^2
-        return m_conds * (params["eM"] - voltages)
+        return m_conds * (voltages - params["eM"])
 
 
 def _p_gate(v, taumax):
@@ -210,8 +210,8 @@ class NaKChannelsPospi(Channel):
         na_conds = params["gNa"] * (ms**3) * hs * 1000  # mS/cm^2
         k_conds = params["gK"] * (ns**4) * 1000  # mS/cm^2
 
-        return na_conds * (params["eNa"] - voltages) + k_conds * (
-            params["eK"] - voltages
+        return na_conds * (voltages - params["eNa"]) + k_conds * (
+            voltages - params["eK"]
         )
 
 
@@ -243,7 +243,7 @@ class CaLChannelPospi(Channel):
         # Multiply with 1000 to convert Siemens to milli Siemens.
         ca_conds = params["gCaL"] * (qs**2) * rs * 1000  # mS/cm^2
 
-        return ca_conds * (params["eCa"] - voltages)
+        return ca_conds * (voltages - params["eCa"])
 
 
 def _q_gate(v):
@@ -292,7 +292,7 @@ class CaTChannelPospi(Channel):
         # Multiply with 1000 to convert Siemens to milli Siemens.
         ca_conds = params["gCaT"] * (s_inf**2) * us * 1000  # mS/cm^2
 
-        return ca_conds * (params["eCa_"] - voltages)
+        return ca_conds * (voltages - params["eCa_"])
 
 
 def _u_gate(v, vx):
