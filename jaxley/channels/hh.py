@@ -6,46 +6,46 @@ from jaxley.channels import Channel
 from jaxley.solver_gate import solve_gate_exponential
 
 
-class HHChannel(Channel):
+class HH(Channel):
     """Hodgkin-Huxley channel."""
 
     channel_params = {
-        "gNa": 0.12,
-        "gK": 0.036,
-        "gLeak": 0.0003,
-        "eNa": 50.0,
-        "eK": -77.0,
-        "eLeak": -54.3,
+        "hh_gNa": 0.12,
+        "hh_gK": 0.036,
+        "hh_gLeak": 0.0003,
+        "hh_eNa": 50.0,
+        "hh_eK": -77.0,
+        "hh_eLeak": -54.3,
     }
-    channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
+    channel_states = {"hh_m": 0.2, "hh_h": 0.2, "hh_n": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return updated HH channel state."""
-        ms, hs, ns = u["m"], u["h"], u["n"]
+        ms, hs, ns = u["hh_m"], u["hh_h"], u["hh_n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages))
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages))
-        return {"m": new_m, "h": new_h, "n": new_n}
+        return {"hh_m": new_m, "hh_h": new_h, "hh_n": new_n}
 
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current through HH channels."""
-        ms, hs, ns = u["m"], u["h"], u["n"]
+        ms, hs, ns = u["hh_m"], u["hh_h"], u["hh_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["gNa"] * (ms**3) * hs * 1000  # mS/cm^2
-        kd_conds = params["gK"] * ns**4 * 1000  # mS/cm^2
-        leak_conds = params["gLeak"] * 1000  # mS/cm^2
+        na_conds = params["hh_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
+        kd_conds = params["hh_gK"] * ns**4 * 1000  # mS/cm^2
+        leak_conds = params["hh_gLeak"] * 1000  # mS/cm^2
 
         return (
-            na_conds * (voltages - params["eNa"])
-            + kd_conds * (voltages - params["eK"])
-            + leak_conds * (voltages - params["eLeak"])
+            na_conds * (voltages - params["hh_eNa"])
+            + kd_conds * (voltages - params["hh_eK"])
+            + leak_conds * (voltages - params["hh_eLeak"])
         )
 
 
