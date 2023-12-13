@@ -597,18 +597,34 @@ class Module(ABC):
     ):
         """One step of integration of the channels."""
         voltages = states["voltages"]
-        voltage_terms = jnp.zeros_like(voltages)  # mV
-        constant_terms = jnp.zeros_like(voltages)
+
+        # Update states of the channels.
         new_channel_states = []
         for channel in channels:
             name = type(channel).__name__
             indices = channel_nodes[name]["comp_index"].to_numpy()
-            states_updated, membrane_current_terms = channel.step(
+            states_updated = channel.update_states(
                 states, delta_t, voltages[indices], params
             )
-            voltage_terms = voltage_terms.at[indices].add(membrane_current_terms[0])
-            constant_terms = constant_terms.at[indices].add(membrane_current_terms[1])
             new_channel_states.append(states_updated)
+
+        # Compute current through channels.
+        voltage_terms = jnp.zeros_like(voltages)
+        constant_terms = jnp.zeros_like(voltages)
+        # Run with two different voltages that are `diff` apart to infer the slope and
+        # offset.
+        diff = 1e-3
+        for channel in channels:
+            name = type(channel).__name__
+            indices = channel_nodes[name]["comp_index"].to_numpy()
+            v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
+            membrane_currents = channel.vmapped_compute_current(
+                states, v_and_perturbed, params
+            )
+            voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
+            constant_term = membrane_currents[0] - voltage_term * voltages[indices]
+            voltage_terms = voltage_terms.at[indices].add(voltage_term)
+            constant_terms = constant_terms.at[indices].add(-constant_term)
 
         return new_channel_states, (voltage_terms, constant_terms)
 
