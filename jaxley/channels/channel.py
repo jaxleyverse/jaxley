@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
-from jax import vmap
-
 import jax.numpy as jnp
+from jax import vmap
 
 
 class Channel:
@@ -11,7 +10,9 @@ class Channel:
     channel_states = None
 
     def __init__(self):
-        self.vmapped_compute_current = vmap(self.compute_current, in_axes=(None, 0, None))
+        self.vmapped_compute_current = vmap(
+            self.compute_current, in_axes=(None, 0, None)
+        )
 
     @staticmethod
     def update_states(
