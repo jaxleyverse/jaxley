@@ -24,12 +24,12 @@ def efun(x):
     return x / (jnp.exp(x) - 1.0)
 
 
-class Leak(Channel):
+class LeakPospi(Channel):
     """Leak current"""
 
     channel_params = {
-        "gl": 1e-4,
-        "el": -70.0,
+        "leakpospi_gl": 1e-4,
+        "leakpospi_el": -70.0,
     }
     channel_states = {}
 
@@ -46,25 +46,25 @@ class Leak(Channel):
     ):
         """Return current."""
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        leak_conds = params["gl"] * 1000  # mS/cm^2
-        return leak_conds * (voltages - params["el"])
+        leak_conds = params["leakpospi_gl"] * 1000  # mS/cm^2
+        return leak_conds * (voltages - params["leakpospi_el"])
 
 
-class NaChannelPospi(Channel):
+class NaPospi(Channel):
     """Sodium channel"""
 
-    channel_params = {"gNa": 50e-3, "eNa": 50.0, "vt": -60.0}
-    channel_states = {"m": 0.2, "h": 0.2}
+    channel_params = {"napospi_gNa": 50e-3, "napospi_eNa": 50.0, "pospi_vt": -60.0}
+    channel_states = {"napospi_m": 0.2, "napospi_h": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ms, hs = u["m"], u["h"]
-        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
-        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
-        return {"m": new_m, "h": new_h}
+        ms, hs = u["napospi_m"], u["napospi_h"]
+        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["pospi_vt"]))
+        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["pospi_vt"]))
+        return {"napospi_m": new_m, "napospi_h": new_h}
 
     @staticmethod
     def compute_current(
@@ -98,34 +98,32 @@ def _h_gate(v, vt):
     return alpha, beta
 
 
-class KChannelPospi(Channel):
+class KPospi(Channel):
     """Potassium channel"""
 
-    # KChannelPospi.vt_ should be set to the same value as NaChannelPospi.vt
-    # if the Na channel is also present
-    channel_params = {"gK": 5e-3, "eK": -90.0, "vt_": -60.0}
-    channel_states = {"n": 0.2}
+    channel_params = {"kpospi_gK": 5e-3, "kpospi_eK": -90.0, "pospi_vt": -60.0}
+    channel_states = {"kpospi_n": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ns = u["n"]
+        ns = u["kpospi_n"]
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt_"]))
-        return {"n": new_n}
+        return {"kpospi_n": new_n}
 
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ns = u["n"]
+        ns = u["kpospi_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        k_conds = params["gK"] * (ns**4) * 1000  # mS/cm^2
+        k_conds = params["kpospi_gK"] * (ns**4) * 1000  # mS/cm^2
 
-        return k_conds * (voltages - params["eK"])
+        return k_conds * (voltages - params["kpospi_eK"])
 
 
 def _n_gate(v, vt):
@@ -137,33 +135,37 @@ def _n_gate(v, vt):
     return alpha, beta
 
 
-class KmChannelPospi(Channel):
+class KmPospi(Channel):
     """Slow M Potassium channel"""
 
-    # `eM` is the reversal potential of K, should be set to eK if another K channel is
-    # present
-    channel_params = {"gM": 0.004e-3, "taumax": 4000.0, "eM": -90.0}  # ms
-    channel_states = {"p": 0.2}
+    channel_params = {
+        "kmpospi_gM": 0.004e-3,
+        "kmpospi_taumax": 4000.0,
+        "pospi_eM": -90.0,
+    }
+    channel_states = {"kmpospi_p": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ps = u["p"]
-        new_p = solve_inf_gate_exponential(ps, dt, *_p_gate(voltages, params["taumax"]))
-        return {"p": new_p}
+        ps = u["kmpospi_p"]
+        new_p = solve_inf_gate_exponential(
+            ps, dt, *_p_gate(voltages, params["kmpospi_taumax"])
+        )
+        return {"kmpospi_p": new_p}
 
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ps = u["p"]
+        ps = u["kmpospi_p"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        m_conds = params["gM"] * ps * 1000  # mS/cm^2
-        return m_conds * (voltages - params["eM"])
+        m_conds = params["kmpospi_gM"] * ps * 1000  # mS/cm^2
+        return m_conds * (voltages - params["kmpospi_eM"])
 
 
 def _p_gate(v, taumax):
@@ -175,75 +177,73 @@ def _p_gate(v, taumax):
     return p_inf, tau_p
 
 
-class NaKChannelsPospi(Channel):
+class NaKPospi(Channel):
     """Sodium and Potassium channel"""
 
     channel_params = {
-        "gNa": 0.05,
-        "eNa": 50.0,
-        "gK": 0.005,
-        "eK": -90.0,
-        "vt": -60,
+        "nakpospi_gNa": 0.05,
+        "nakpospi_eNa": 50.0,
+        "nakpospi_gK": 0.005,
+        "nakpospi_eK": -90.0,
+        "pospi_vt": -60,
     }
 
-    channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
+    channel_states = {"nakpospi_m": 0.2, "nakpospi_h": 0.2, "nakpospi_n": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ms, hs, ns = u["m"], u["h"], u["n"]
-        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
-        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
-        new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
-        return {"m": new_m, "h": new_h, "n": new_n}
+        ms, hs, ns = u["nakpospi_m"], u["nakpospi_h"], u["nakpospi_n"]
+        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["pospi_vt"]))
+        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["pospi_vt"]))
+        new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["pospi_vt"]))
+        return {"nakpospi_m": new_m, "nakpospi_h": new_h, "nakpospi_n": new_n}
 
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ms, hs, ns = u["m"], u["h"], u["n"]
+        ms, hs, ns = u["nakpospi_m"], u["nakpospi_h"], u["nakpospi_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["gNa"] * (ms**3) * hs * 1000  # mS/cm^2
-        k_conds = params["gK"] * (ns**4) * 1000  # mS/cm^2
+        na_conds = params["nakpospi_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
+        k_conds = params["nakpospi_gK"] * (ns**4) * 1000  # mS/cm^2
 
-        return na_conds * (voltages - params["eNa"]) + k_conds * (
-            voltages - params["eK"]
+        return na_conds * (voltages - params["nakpospi_eNa"]) + k_conds * (
+            voltages - params["nakpospi_eK"]
         )
 
 
-class CaLChannelPospi(Channel):
+class CaLPospi(Channel):
     """L-type Calcium channel"""
 
-    # `eCa` is the reversal potential of Ca, should be set to eCa if another Ca channel
-    # is present
-    channel_params = {"gCaL": 0.1e-3, "eCa": 120.0}  # S/cm^2
-    channel_states = {"q": 0.2, "r": 0.2}
+    channel_params = {"calpospi_gCaL": 0.1e-3, "pospi_eCa": 120.0}
+    channel_states = {"calpospi_q": 0.2, "calpospi_r": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        qs, rs = u["q"], u["r"]
+        qs, rs = u["calpospi_q"], u["calpospi_r"]
         new_q = solve_gate_exponential(qs, dt, *_q_gate(voltages))
         new_r = solve_gate_exponential(rs, dt, *_r_gate(voltages))
-        return {"q": new_q, "r": new_r}
+        return {"calpospi_q": new_q, "calpospi_r": new_r}
 
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        qs, rs = u["q"], u["r"]
+        qs, rs = u["calpospi_q"], u["calpospi_r"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params["gCaL"] * (qs**2) * rs * 1000  # mS/cm^2
+        ca_conds = params["calpospi_gCaL"] * (qs**2) * rs * 1000  # mS/cm^2
 
-        return ca_conds * (voltages - params["eCa"])
+        return ca_conds * (voltages - params["pospi_eCa"])
 
 
 def _q_gate(v):
@@ -264,35 +264,35 @@ def _r_gate(v):
     return alpha, beta
 
 
-class CaTChannelPospi(Channel):
+class CaTPospi(Channel):
     """T-type Calcium channel"""
 
-    channel_params = {"gCaT": 0.4e-4, "eCa_": 120.0, "vx": 2.0}  # S/cm^2
-    # eCa_ is the reversal potential of Ca, should be set to eCa if another Ca channel is present
-
-    channel_states = {"u": 0.2}
+    channel_params = {"catpospi_gCaT": 0.4e-4, "pospi_eCa": 120.0, "catpospi_vx": 2.0}
+    channel_states = {"catpospi_u": 0.2}
 
     @staticmethod
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        us = u["u"]
-        new_u = solve_inf_gate_exponential(us, dt, *_u_gate(voltages, params["vx"]))
-        return {"u": new_u}
+        us = u["catpospi_u"]
+        new_u = solve_inf_gate_exponential(
+            us, dt, *_u_gate(voltages, params["catpospi_vx"])
+        )
+        return {"catpospi_u": new_u}
 
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        us = u["u"]
-        s_inf = 1.0 / (1.0 + jnp.exp(-(voltages + params["vx"] + 57.0) / 6.2))
+        us = u["catpospi_u"]
+        s_inf = 1.0 / (1.0 + jnp.exp(-(voltages + params["catpospi_vx"] + 57.0) / 6.2))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params["gCaT"] * (s_inf**2) * us * 1000  # mS/cm^2
+        ca_conds = params["catpospi_gCaT"] * (s_inf**2) * us * 1000  # mS/cm^2
 
-        return ca_conds * (voltages - params["eCa_"])
+        return ca_conds * (voltages - params["pospi_eCa"])
 
 
 def _u_gate(v, vx):
