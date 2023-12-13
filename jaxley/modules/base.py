@@ -524,7 +524,7 @@ class Module(ABC):
         voltages = u["voltages"]
 
         # Parameters have to go in here.
-        new_channel_states, (v_terms, const_terms) = self._step_channels(
+        u, (v_terms, const_terms) = self._step_channels(
             u, delta_t, self.channels, self.channel_nodes, params
         )
 
@@ -534,7 +534,7 @@ class Module(ABC):
         )
 
         # Step of the synapse.
-        new_syn_states, syn_voltage_terms, syn_constant_terms = self._step_synapse(
+        u, syn_voltage_terms, syn_constant_terms = self._step_synapse(
             u,
             self.syn_classes,
             params,
@@ -573,19 +573,9 @@ class Module(ABC):
                 delta_t=delta_t,
             )
 
-        # Rebuild state.
-        final_state = {}
-        for channel in new_channel_states:
-            for key, val in channel.items():
-                final_state[key] = val
+        u["voltages"] = new_voltages.flatten(order="C")
 
-        for s in new_syn_states:
-            for key, val in s.items():
-                final_state[key] = val
-
-        final_state["voltages"] = new_voltages.flatten(order="C")
-
-        return final_state
+        return u
 
     @staticmethod
     def _step_channels(
@@ -608,6 +598,11 @@ class Module(ABC):
             )
             new_channel_states.append(states_updated)
 
+        # Rebuild state.
+        for channel in new_channel_states:
+            for key, val in channel.items():
+                states[key] = val
+
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
         constant_terms = jnp.zeros_like(voltages)
@@ -626,7 +621,7 @@ class Module(ABC):
             voltage_terms = voltage_terms.at[indices].add(voltage_term)
             constant_terms = constant_terms.at[indices].add(-constant_term)
 
-        return new_channel_states, (voltage_terms, constant_terms)
+        return states, (voltage_terms, constant_terms)
 
     @staticmethod
     def _step_synapse(
@@ -642,7 +637,7 @@ class Module(ABC):
         `Compartment`, `Branch`, and `Cell` do not override this.
         """
         voltages = u["voltages"]
-        return [{}], jnp.zeros_like(voltages), jnp.zeros_like(voltages)
+        return u, jnp.zeros_like(voltages), jnp.zeros_like(voltages)
 
     @staticmethod
     def get_external_input(
