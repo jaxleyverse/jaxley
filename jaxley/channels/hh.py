@@ -23,7 +23,7 @@ class HHChannel(Channel):
     def update_states(
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
-        """Return updated HH channel state and current."""
+        """Return updated HH channel state."""
         ms, hs, ns = u["m"], u["h"], u["n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages))
@@ -34,6 +34,7 @@ class HHChannel(Channel):
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
+        """Return current through HH channels."""
         ms, hs, ns = u["m"], u["h"], u["n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
