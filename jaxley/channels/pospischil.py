@@ -39,7 +39,7 @@ class Leak(Channel):
     ):
         """No state to update."""
         return {}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -65,20 +65,20 @@ class NaChannelPospi(Channel):
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
         return {"m": new_m, "h": new_h}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         ms, hs = u["m"], u["h"]
-        
+
         # Multiply with 1000 to convert Siemens to milli Siemens.
         na_conds = params["gNa"] * (ms**3) * hs * 1000  # mS/cm^2
 
         current = na_conds * (params["eNa"] - voltages)
         return current
-    
+
 
 def _m_gate(v, vt):
     v_alpha = v - vt - 13.0
@@ -114,7 +114,7 @@ class KChannelPospi(Channel):
         ns = u["n"]
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt_"]))
         return {"n": new_n}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -140,7 +140,7 @@ def _n_gate(v, vt):
 class KmChannelPospi(Channel):
     """Slow M Potassium channel"""
 
-    # `eM` is the reversal potential of K, should be set to eK if another K channel is 
+    # `eM` is the reversal potential of K, should be set to eK if another K channel is
     # present
     channel_params = {"gM": 0.004e-3, "taumax": 4000.0, "eM": -90.0}  # ms
     channel_states = {"p": 0.2}
@@ -153,7 +153,7 @@ class KmChannelPospi(Channel):
         ps = u["p"]
         new_p = solve_inf_gate_exponential(ps, dt, *_p_gate(voltages, params["taumax"]))
         return {"p": new_p}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -198,7 +198,7 @@ class NaKChannelsPospi(Channel):
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
         return {"m": new_m, "h": new_h, "n": new_n}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -218,7 +218,7 @@ class NaKChannelsPospi(Channel):
 class CaLChannelPospi(Channel):
     """L-type Calcium channel"""
 
-    # `eCa` is the reversal potential of Ca, should be set to eCa if another Ca channel 
+    # `eCa` is the reversal potential of Ca, should be set to eCa if another Ca channel
     # is present
     channel_params = {"gCaL": 0.1e-3, "eCa": 120.0}  # S/cm^2
     channel_states = {"q": 0.2, "r": 0.2}
@@ -232,7 +232,7 @@ class CaLChannelPospi(Channel):
         new_q = solve_gate_exponential(qs, dt, *_q_gate(voltages))
         new_r = solve_gate_exponential(rs, dt, *_r_gate(voltages))
         return {"q": new_q, "r": new_r}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -280,7 +280,7 @@ class CaTChannelPospi(Channel):
         us = u["u"]
         new_u = solve_inf_gate_exponential(us, dt, *_u_gate(voltages, params["vx"]))
         return {"u": new_u}
-    
+
     @staticmethod
     def compute_current(
         u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
