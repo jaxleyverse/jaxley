@@ -130,7 +130,7 @@ def test_swc_voltages():
     ####################### jaxley ##################
     _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
     cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
-    cell.insert(HHChannel)
+    cell.insert(HHChannel())
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]
     tuft_inds = [6, 16, 18, 36, 38, 44, 51, 52, 53, 54]
