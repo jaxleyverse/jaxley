@@ -334,7 +334,12 @@ class Network(Module):
             syn_constant_terms += synapse_current_terms[1]
             new_syn_states.append(synapse_states)
 
-        return new_syn_states, syn_voltage_terms, syn_constant_terms
+        # Rebuild synapse states.
+        for s in new_syn_states:
+            for key, val in s.items():
+                u[key] = val
+
+        return u, syn_voltage_terms, syn_constant_terms
 
     def vis(
         self,
