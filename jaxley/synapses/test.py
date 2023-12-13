@@ -7,7 +7,7 @@ from jaxley.synapses.synapse import Synapse
 
 class TestSynapse(Synapse):
     """
-    Compute syanptic current and update syanpse state for a test synapse.
+    Compute syanptic current and update synapse state for a test synapse.
     """
 
     synapse_params = {"gC": 0.5}
