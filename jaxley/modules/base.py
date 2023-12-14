@@ -134,28 +134,6 @@ class Module(ABC):
 
         return printable_nodes
 
-    def _show_channel(self, view, channel_name, indices, params, states):
-        ind_of_params = self.channel_inds(view.index.values, channel_name)
-        nodes = deepcopy(self.channel_nodes[channel_name].loc[ind_of_params])
-        # TODO remove the following lines?
-        nodes["comp_index"] -= nodes["comp_index"].iloc[0]
-        nodes["branch_index"] -= nodes["branch_index"].iloc[0]
-        nodes["cell_index"] -= nodes["cell_index"].iloc[0]
-
-        if not indices:
-            for key in nodes:
-                nodes = nodes.drop(key, axis=1)
-
-        if params:
-            for key, val in self.channel_params.items():
-                nodes[key] = val[ind_of_params]
-
-        if states:
-            for key, val in self.channel_states.items():
-                nodes[key] = val[ind_of_params]
-
-        return nodes
-
     @abstractmethod
     def init_conds(self, params):
         """Initialize coupling conductances.
@@ -166,7 +144,7 @@ class Module(ABC):
         """
         raise NotImplementedError
 
-    def _append_to_channel_nodes(self, view, channel: "jx.Channel"):
+    def _append_channel_to_nodes(self, view, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
         name = type(channel).__name__
 
@@ -186,43 +164,18 @@ class Module(ABC):
         for key in channel.channel_states:
             self.nodes.loc[view.index.values, key] = channel.channel_states[key]
 
-    def set_params(self, key, val):
+    def set(self, key, val):
         """Set parameter."""
         # Alternatively, we could do `assert key not in self.syn_params`.
         nodes = self.syn_edges if key in self.syn_params else self.nodes
-        self._set_params(key, val, nodes)
+        self._set(key, val, nodes)
 
-    def _set_params(self, key, val, view):
-        if key in self.params:
-            self.params[key] = self.params[key].at[view.index.values].set(val)
-        elif key in self.channel_params:
-            # TODO
-            channel_name = self.identify_channel_based_on_param_name(key)
-            ind_of_params = self.channel_inds(view.index.values, channel_name)
-            self.channel_params[key] = (
-                self.channel_params[key].at[ind_of_params].set(val)
-            )
+    def _set(self, key, val, view):
+        if key in view.columns:
+            view = view[~np.isnan(view[key])]
+            self.nodes.loc[view.index.values, key] = val
         elif key in self.syn_params:
             self.syn_params[key] = self.syn_params[key].at[view.index.values].set(val)
-        else:
-            raise KeyError("Key not recognized.")
-
-    def set_states(self, key, val):
-        """Set parameters."""
-        # Alternatively, we could do `assert key not in self.syn_states`.
-        nodes = self.syn_edges if key in self.syn_states else self.nodes
-        self._set_states(key, val, nodes)
-
-    def _set_states(self, key: str, val: float, view):
-        if key in self.states:
-            self.states[key] = self.states[key].at[view.index.values].set(val)
-        elif key in self.channel_states:
-            # TODO
-            channel_name = self.identify_channel_based_on_state_name(key)
-            ind_of_params = self.channel_inds(view.index.values, channel_name)
-            self.channel_states[key] = (
-                self.channel_states[key].at[ind_of_params].set(val)
-            )
         elif key in self.syn_states:
             self.syn_states[key] = self.syn_states[key].at[view.index.values].set(val)
         else:
@@ -439,7 +392,7 @@ class Module(ABC):
         self._insert(channel, self.nodes)
 
     def _insert(self, channel, view):
-        self._append_to_channel_nodes(view, channel)
+        self._append_channel_to_nodes(view, channel)
 
     def init_syns(self):
         self.initialized_syns = True
@@ -658,7 +611,7 @@ class Module(ABC):
         # Extract branch.
         inds_branch = self.nodes.groupby("branch_index")["comp_index"].apply(list)
         branch_lens = [
-            np.sum(self.params["length"][np.asarray(i)]) for i in inds_branch
+            np.sum(self.nodes["length"][np.asarray(i)]) for i in inds_branch
         ]
         endpoints = []
 
@@ -779,13 +732,9 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._stimulate(current, nodes)
 
-    def set_params(self, key: str, val: float):
+    def set(self, key: str, val: float):
         """Set parameters of the pointer."""
-        self.pointer._set_params(key, val, self.view)
-
-    def set_states(self, key: str, val: float):
-        """Set parameters of the pointer."""
-        self.pointer._set_states(key, val, self.view)
+        self.pointer._set(key, val, self.view)
 
     def get_params(self, key: str):
         """Return parameters."""
