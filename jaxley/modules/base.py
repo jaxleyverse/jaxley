@@ -27,9 +27,6 @@ class Module(ABC):
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
-        self.channels: List[Channel] = []
-        self.params_per_channel: List[List[str]] = []
-        self.states_per_channel: List[List[str]] = []
         self.conns: List[Synapse] = None
         self.group_views = {}
 
@@ -61,17 +58,12 @@ class Module(ABC):
         self.initialized_morph: bool = False
         self.initialized_syns: bool = False
 
-        self.params: Dict[str, jnp.ndarray] = {}
-        self.states: Dict[str, jnp.ndarray] = {}
-
         self.syn_params: Dict[str, jnp.ndarray] = {}
         self.syn_states: Dict[str, jnp.ndarray] = {}
         self.syn_classes: List = []
 
-        # Channel indices, parameters, and states.
-        self.channel_nodes: Dict[str, pd.DataFrame] = {}
-        self.channel_params: Dict[str, Dict[str, jnp.ndarray]] = {}
-        self.channel_states: Dict[str, Dict[str, jnp.ndarray]] = {}
+        # List of all `jx.Channel`s.
+        self.channels: List[Channel] = []
 
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
@@ -90,58 +82,62 @@ class Module(ABC):
         self.xyzr: List[np.ndarray] = []
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
+        return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
 
+    def _append_params_and_states(self, param_dict, state_dict):
+        for param_name, param_value in param_dict.items():
+            self.nodes[param_name] = param_value
+        for state_name, state_value in state_dict.items():
+            self.nodes[state_name] = state_value
+
     def show(
         self,
-        channel_name: Optional[str] = None,
         *,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
+        channel_names: Optional[List[str]] = None,
     ):
         """Print detailed information about the Module."""
-        if channel_name is None:
-            return self._show_base(self.nodes, indices, params, states)
-        else:
-            return self._show_channel(
-                self.nodes,
-                channel_name,
-                indices,
-                params,
-                states,
-            )
+        return self._show(self.nodes, indices, params, states, channel_names)
 
-    def _show_base(
+    def _show(
         self,
         view,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
+        channel_names: Optional[List[str]] = None,
     ):
-        inds = view.index.values
         printable_nodes = deepcopy(view)
 
+        for channel in self.channels:
+            name = type(channel).__name__
+            param_names = list(channel.channel_params.keys())
+            state_names = list(channel.channel_states.keys())
+            if channel_names is not None and name not in channel_names:
+                printable_nodes = printable_nodes.drop(name, axis=1)
+                printable_nodes = printable_nodes.drop(param_names, axis=1)
+                printable_nodes = printable_nodes.drop(state_names, axis=1)
+            else:
+                if not params:
+                    printable_nodes = printable_nodes.drop(param_names, axis=1)
+                if not states:
+                    printable_nodes = printable_nodes.drop(state_names, axis=1)
+
         if not indices:
-            for key in printable_nodes:
-                printable_nodes = printable_nodes.drop(key, axis=1)
-
-        if params:
-            for key, val in self.params.items():
-                printable_nodes[key] = val[inds]
-
-        if states:
-            for key, val in self.states.items():
-                printable_nodes[key] = val[inds]
+            for name in ["comp_index", "branch_index", "cell_index"]:
+                printable_nodes = printable_nodes.drop(name, axis=1)
 
         return printable_nodes
 
     def _show_channel(self, view, channel_name, indices, params, states):
         ind_of_params = self.channel_inds(view.index.values, channel_name)
         nodes = deepcopy(self.channel_nodes[channel_name].loc[ind_of_params])
+        # TODO remove the following lines?
         nodes["comp_index"] -= nodes["comp_index"].iloc[0]
         nodes["branch_index"] -= nodes["branch_index"].iloc[0]
         nodes["cell_index"] -= nodes["cell_index"].iloc[0]
@@ -160,25 +156,6 @@ class Module(ABC):
 
         return nodes
 
-    def _init_params_and_state(
-        self, own_params: Dict[str, List], own_states: Dict[str, List]
-    ) -> None:
-        """Sets parameters and state of the module at initialization.
-
-        Args:
-            own_params: Parameters of the current module, excluding parameters of its
-                constituents.
-            own_states: States of the current module, excluding states of its
-                constituents.
-        """
-        self.params = {}
-        for key in own_params:
-            self.params[key] = jnp.asarray([own_params[key]])  # should be atleast1d
-
-        self.states = {}
-        for key in own_states:
-            self.states[key] = jnp.asarray([own_states[key]])  # should be atleast1d
-
     @abstractmethod
     def init_conds(self, params):
         """Initialize coupling conductances.
@@ -189,75 +166,25 @@ class Module(ABC):
         """
         raise NotImplementedError
 
-    def _append_to_params_and_state(self, constituents: List["Module"]):
-        for key in constituents[0].params:
-            param_vals = jnp.concatenate([b.params[key] for b in constituents])
-            self.params[key] = param_vals
-
-        for key in constituents[0].states:
-            states_vals = jnp.concatenate([b.states[key] for b in constituents])
-            self.states[key] = states_vals
-
-    def _append_to_channel_params_and_state(
-        self, channel: Union[Channel, "Module"], repeats: int = 1
-    ):
-        for key in channel.channel_params:
-            new_params = jnp.tile(jnp.atleast_1d(channel.channel_params[key]), repeats)
-            if key in self.channel_params:
-                self.channel_params[key] = jnp.concatenate(
-                    [self.channel_params[key], new_params]
-                )
-            else:
-                self.channel_params[key] = new_params
-
-        for key in channel.channel_states:
-            new_states = jnp.tile(jnp.atleast_1d(channel.channel_states[key]), repeats)
-            if key in self.channel_states:
-                self.channel_states[key] = jnp.concatenate(
-                    [self.channel_states[key], new_states]
-                )
-            else:
-                self.channel_states[key] = new_states
-
-    def _append_to_channel_nodes(self, index, channel):
+    def _append_to_channel_nodes(self, view, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
         name = type(channel).__name__
 
-        if name in self.channel_nodes:
-            self.channel_nodes[name] = pd.concat(
-                [self.channel_nodes[name], index]
-            ).reset_index(drop=True)
-        else:
-            self.channel_nodes[name] = index
+        # Channel does not yet exist in the `jx.Module` at all.
+        if channel not in self.channels:
             self.channels.append(channel)
-            self.params_per_channel.append(list(channel.channel_params.keys()))
-            self.states_per_channel.append(list(channel.channel_states.keys()))
+            self.nodes[name] = False
 
-    def identify_channel_based_on_param_name(self, name):
-        for i, param_names in enumerate(self.params_per_channel):
-            if name in param_names:
-                return type(self.channels[i]).__name__
-        raise KeyError("parameter name was not found in any channel")
+        # Add a binary column that indicates if a channel is present.
+        self.nodes.loc[view.index.values, name] = True
 
-    def identify_channel_based_on_state_name(self, name):
-        for i, state_names in enumerate(self.states_per_channel):
-            if name in state_names:
-                return type(self.channels[i]).__name__
-        raise KeyError("state name was not found in any channel")
+        # Loop over all new parameters, e.g. gNa, eNa.
+        for key in channel.channel_params:
+            self.nodes.loc[view.index.values, key] = channel.channel_params[key]
 
-    def channel_inds(self, ind_of_comps_to_be_set, channel_name: str):
-        """Not all compartments might have all channels. Thus, we have to do some
-        reindexing to find the associated index of a paramter of a channel given the
-        index of a compartment.
-
-        Args:
-            channel_name: For example, `HHChannel`.
-        """
-        frame = self.channel_nodes[channel_name]
-        channel_param_or_state_ind = frame.loc[
-            frame["comp_index"].isin(ind_of_comps_to_be_set)
-        ].index.values
-        return channel_param_or_state_ind
+        # Loop over all new parameters, e.g. gNa, eNa.
+        for key in channel.channel_states:
+            self.nodes.loc[view.index.values, key] = channel.channel_states[key]
 
     def set_params(self, key, val):
         """Set parameter."""
@@ -269,6 +196,7 @@ class Module(ABC):
         if key in self.params:
             self.params[key] = self.params[key].at[view.index.values].set(val)
         elif key in self.channel_params:
+            # TODO
             channel_name = self.identify_channel_based_on_param_name(key)
             ind_of_params = self.channel_inds(view.index.values, channel_name)
             self.channel_params[key] = (
@@ -289,6 +217,7 @@ class Module(ABC):
         if key in self.states:
             self.states[key] = self.states[key].at[view.index.values].set(val)
         elif key in self.channel_states:
+            # TODO
             channel_name = self.identify_channel_based_on_state_name(key)
             ind_of_params = self.channel_inds(view.index.values, channel_name)
             self.channel_states[key] = (
@@ -430,14 +359,23 @@ class Module(ABC):
         in `trainable_params()`.
         """
         params = {}
-        for key, val in self.params.items():
-            params[key] = val
+        basic_param_names = ["length", "radius", "axial_resistivity"]
+        for name in basic_param_names:
+            params[name] = jnp.asarray(self.nodes[name].to_numpy())
 
         for key, val in self.syn_params.items():
             params[key] = val
 
-        for key, val in self.channel_params.items():
-            params[key] = val
+        for channel in self.channels:
+            channel_name = type(channel).__name__
+            params[channel_name] = {}
+            inds_of_channel = self.nodes.loc[self.nodes[channel_name]][
+                "comp_index"
+            ].to_numpy()
+            for key in channel.channel_params:
+                param_vals_with_nans = self.nodes[key].to_numpy()
+                param_vals = param_vals_with_nans[inds_of_channel]
+                params[channel_name][key] = param_vals
 
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
@@ -502,7 +440,6 @@ class Module(ABC):
 
     def _insert(self, channel, view):
         self._append_to_channel_nodes(view, channel)
-        self._append_to_channel_params_and_state(channel, repeats=len(view))
 
     def init_syns(self):
         self.initialized_syns = True
@@ -525,7 +462,7 @@ class Module(ABC):
 
         # Parameters have to go in here.
         u, (v_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels, self.channel_nodes, params
+            u, delta_t, self.channels, self.nodes, params
         )
 
         # External input.
@@ -589,19 +526,18 @@ class Module(ABC):
         voltages = states["voltages"]
 
         # Update states of the channels.
-        new_channel_states = []
+        new_channel_states = {}
         for channel in channels:
             name = type(channel).__name__
-            indices = channel_nodes[name]["comp_index"].to_numpy()
+            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
             states_updated = channel.update_states(
-                states, delta_t, voltages[indices], params
+                states[name], delta_t, voltages[indices], params[name]
             )
-            new_channel_states.append(states_updated)
+            new_channel_states[name] = states_updated
 
         # Rebuild state.
-        for channel in new_channel_states:
-            for key, val in channel.items():
-                states[key] = val
+        for key, val in new_channel_states.items():
+            states[key] = val
 
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
@@ -611,10 +547,10 @@ class Module(ABC):
         diff = 1e-3
         for channel in channels:
             name = type(channel).__name__
-            indices = channel_nodes[name]["comp_index"].to_numpy()
+            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
             v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
             membrane_currents = channel.vmapped_compute_current(
-                states, v_and_perturbed, params
+                states[name], v_and_perturbed, params[name]
             )
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
             constant_term = membrane_currents[0] - voltage_term * voltages[indices]
@@ -791,21 +727,22 @@ class View:
 
     def show(
         self,
-        channel_name: Optional[str] = None,
         *,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
+        channel_names: Optional[List[str]] = None,
     ):
-        if channel_name is None:
-            myview = self.view.drop("global_comp_index", axis=1)
-            myview = myview.drop("global_branch_index", axis=1)
-            myview = myview.drop("global_cell_index", axis=1)
-            return self.pointer._show_base(myview, indices, params, states)
-        else:
-            return self.pointer._show_channel(
-                self.view, channel_name, indices, params, states
-            )
+        view = self.pointer._show(self.view, indices, params, states, channel_names)
+        if not indices:
+            for name in [
+                "global_comp_index",
+                "global_branch_index",
+                "global_cell_index",
+                "controlled_by_param",
+            ]:
+                view = view.drop(name, axis=1)
+        return view
 
     def set_global_index_and_index(self, nodes):
         """Use the global compartment, branch, and cell index as the index."""
