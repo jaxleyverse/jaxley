@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 from jaxley.synapses import GlutamateSynapse, TestSynapse
 
 
@@ -22,17 +22,17 @@ def test_make_trainable():
     comp = jx.Compartment().initialize()
     branch = jx.Branch(comp, nseg_per_branch).initialize()
     cell = jx.Cell(branch, parents=parents).initialize()
-    cell.insert(HHChannel())
+    cell.insert(HH())
 
-    cell.branch(0).comp(0.0).set_params("length", 12.0)
-    cell.branch(1).comp(1.0).set_params("gNa", 0.2)
+    cell.branch(0).comp(0.0).set("length", 12.0)
+    cell.branch(1).comp(1.0).set("HH_gNa", 0.2)
     assert cell.num_trainable_params == 0
 
     cell.branch([0, 1]).make_trainable("radius", 1.0)
     assert cell.num_trainable_params == 2
     cell.branch([0, 1]).make_trainable("length")
     cell.branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
-    cell.branch([0, 1]).make_trainable("gNa")
+    cell.branch([0, 1]).make_trainable("HH_gNa")
 
     cell.get_parameters()
 
@@ -48,7 +48,7 @@ def test_make_trainable_network():
     comp = jx.Compartment().initialize()
     branch = jx.Branch(comp, nseg_per_branch).initialize()
     cell = jx.Cell(branch, parents=parents).initialize()
-    cell.insert(HHChannel())
+    cell.insert(HH())
 
     conns = [
         jx.Connectivity(
@@ -60,17 +60,17 @@ def test_make_trainable_network():
     ]
     net = jx.Network([cell, cell], conns).initialize()
 
-    cell.branch(0).comp(0.0).set_params("length", 12.0)
-    cell.branch(1).comp(1.0).set_params("gNa", 0.2)
+    cell.branch(0).comp(0.0).set("length", 12.0)
+    cell.branch(1).comp(1.0).set("HH_gNa", 0.2)
 
     cell.branch([0, 1]).make_trainable("radius", 1.0)
     cell.branch([0, 1]).make_trainable("length")
     cell.branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
-    cell.branch([0, 1]).make_trainable("gNa")
+    cell.branch([0, 1]).make_trainable("HH_gNa")
 
     cell.get_parameters()
-    net.GlutamateSynapse.set_params("gS", 0.1)
-    assert cell.num_trainable_params == 8  # `set_params()` is ignored.
+    net.GlutamateSynapse.set("gS", 0.1)
+    assert cell.num_trainable_params == 8  # `set()` is ignored.
 
 
 def test_diverse_synapse_types():

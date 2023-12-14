@@ -103,7 +103,9 @@ class Module(ABC):
         channel_names: Optional[List[str]] = None,
     ):
         """Print detailed information about the Module."""
-        return self._show(self.nodes, param_names, indices, params, states, channel_names)
+        return self._show(
+            self.nodes, param_names, indices, params, states, channel_names
+        )
 
     def _show(
         self,
@@ -573,9 +575,7 @@ class Module(ABC):
 
         # Extract branch.
         inds_branch = self.nodes.groupby("branch_index")["comp_index"].apply(list)
-        branch_lens = [
-            np.sum(self.nodes["length"][np.asarray(i)]) for i in inds_branch
-        ]
+        branch_lens = [np.sum(self.nodes["length"][np.asarray(i)]) for i in inds_branch]
         endpoints = []
 
         # Different levels will get a different "angle" at which the children emerge from
@@ -650,7 +650,9 @@ class View:
         states: bool = True,
         channel_names: Optional[List[str]] = None,
     ):
-        view = self.pointer._show(self.view, param_names, indices, params, states, channel_names)
+        view = self.pointer._show(
+            self.view, param_names, indices, params, states, channel_names
+        )
         if not indices:
             for name in [
                 "global_comp_index",

@@ -13,7 +13,7 @@ import numpy as np
 from neuron import h
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -36,18 +36,18 @@ def test_similarity():
 
 def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     comp = jx.Compartment().initialize()
-    comp.insert(HHChannel())
+    comp.insert(HH())
 
-    comp.set_params("length", 10.0)
-    comp.set_params("radius", 10.0)
+    comp.set("length", 10.0)
+    comp.set("radius", 10.0)
 
-    comp.set_params("gNa", 0.120)
-    comp.set_params("gK", 0.036)
-    comp.set_params("gLeak", 0.0003)
-    comp.set_states("m", 0.07490098835688629)
-    comp.set_states("h", 0.488947681848153)
-    comp.set_states("n", 0.3644787002343737)
-    comp.set_states("voltages", -62.0)
+    comp.set("HH_gNa", 0.120)
+    comp.set("HH_gK", 0.036)
+    comp.set("HH_gLeak", 0.0003)
+    comp.set("HH_m", 0.07490098835688629)
+    comp.set("HH_h", 0.488947681848153)
+    comp.set("HH_n", 0.3644787002343737)
+    comp.set("HH_voltages", -62.0)
 
     comp.stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     comp.record()

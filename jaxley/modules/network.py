@@ -35,10 +35,7 @@ class Network(Module):
             connectivities: _description_
         """
         super().__init__()
-        self._init_params_and_state(self.network_params, self.network_states)
-        self._append_to_params_and_state(cells)
         for cell in cells:
-            self._append_to_channel_params_and_state(cell)
             self.xyzr += deepcopy(cell.xyzr)
         self._append_synapses_to_params_and_state(connectivities)
 
@@ -58,42 +55,26 @@ class Network(Module):
 
         self.initialize()
 
-        # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
-                branch_index=(
-                    np.arange(self.nseg * self.total_nbranches) // self.nseg
-                ).tolist(),
-                cell_index=list(
-                    itertools.chain(
-                        *[
-                            [i] * (self.nseg * b)
-                            for i, b in enumerate(self.nbranches_per_cell)
-                        ]
-                    )
-                ),
+        self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
+        self._append_params_and_states(self.network_params, self.network_states)
+        self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
+        self.nodes["branch_index"] = (
+            np.arange(self.nseg * self.total_nbranches) // self.nseg
+        ).tolist()
+        self.nodes["cell_index"] = list(
+            itertools.chain(
+                *[[i] * (self.nseg * b) for i, b in enumerate(self.nbranches_per_cell)]
             )
         )
 
-        # Channel indexing.
-        for i, cell in enumerate(self.cells):
+        # Channels.
+        for cell in cells:
             for channel in cell.channels:
-                name = type(channel).__name__
-                comp_inds = deepcopy(cell.channel_nodes[name]["comp_index"].to_numpy())
-                branch_inds = deepcopy(
-                    cell.channel_nodes[name]["branch_index"].to_numpy()
-                )
-                comp_inds += self.nseg * self.cumsum_nbranches[i]
-                branch_inds += self.cumsum_nbranches[i]
-                index = pd.DataFrame.from_dict(
-                    dict(
-                        comp_index=comp_inds,
-                        branch_index=branch_inds,
-                        cell_index=[i] * len(comp_inds),
-                    )
-                )
-                self._append_to_channel_nodes(index, channel)
+                self.channels.append(channel)
+        # Setting columns of channel names to `False` instead of `NaN`.
+        for channel in self.channels:
+            name = type(channel).__name__
+            self.nodes[name] = self.nodes[name].notna()
 
         self.initialized_conds = False
 
