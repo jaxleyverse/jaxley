@@ -95,6 +95,7 @@ class Module(ABC):
 
     def show(
         self,
+        param_names: Optional[Union[str, List[str]]] = None,  # TODO.
         *,
         indices: bool = True,
         params: bool = True,
@@ -102,11 +103,12 @@ class Module(ABC):
         channel_names: Optional[List[str]] = None,
     ):
         """Print detailed information about the Module."""
-        return self._show(self.nodes, indices, params, states, channel_names)
+        return self._show(self.nodes, param_names, indices, params, states, channel_names)
 
     def _show(
         self,
         view,
+        param_names: Optional[Union[str, List[str]]] = None,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
@@ -171,49 +173,13 @@ class Module(ABC):
         self._set(key, val, nodes)
 
     def _set(self, key, val, view):
-        if key in view.columns:
-            view = view[~np.isnan(view[key])]
-            self.nodes.loc[view.index.values, key] = val
-        elif key in self.syn_params:
+        if key in self.syn_params:
             self.syn_params[key] = self.syn_params[key].at[view.index.values].set(val)
         elif key in self.syn_states:
             self.syn_states[key] = self.syn_states[key].at[view.index.values].set(val)
-        else:
-            raise KeyError("Key not recognized.")
-
-    def get_params(self, key: str):
-        """Return parameters."""
-        # Alternatively, we could do `assert key not in self.syn_params`.
-        nodes = self.syn_edges if key in self.syn_params else self.nodes
-        return self._get_params(key, nodes)
-
-    def _get_params(self, key: str, view):
-        if key in self.params:
-            return self.params[key][view.index.values]
-        elif key in self.channel_params:
-            channel_name = self.identify_channel_based_on_param_name(key)
-            ind_of_params = self.channel_inds(view.index.values, channel_name)
-            return self.channel_params[key][ind_of_params]
-        elif key in self.syn_params:
-            return self.syn_params[key][view.index.values]
-        else:
-            raise KeyError("Key not recognized.")
-
-    def get_states(self, key: str):
-        """Return states."""
-        # Alternatively, we could do `assert key not in self.syn_states`.
-        nodes = self.syn_edges if key in self.syn_states else self.nodes
-        return self._get_states(key, nodes)
-
-    def _get_states(self, key: str, view):
-        if key in self.states:
-            return self.states[key][view.index.values]
-        elif key in self.channel_states:
-            channel_name = self.identify_channel_based_on_state_name(key)
-            ind_of_states = self.channel_inds(view.index.values, channel_name)
-            return self.channel_states[key][ind_of_states]
-        elif key in self.syn_states:
-            return self.syn_states[key][view.index.values]
+        elif key in view.columns:
+            view = view[~np.isnan(view[key])]
+            self.nodes.loc[view.index.values, key] = val
         else:
             raise KeyError("Key not recognized.")
 
@@ -680,13 +646,14 @@ class View:
 
     def show(
         self,
+        param_names: Optional[Union[str, List[str]]] = None,  # TODO.
         *,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
         channel_names: Optional[List[str]] = None,
     ):
-        view = self.pointer._show(self.view, indices, params, states, channel_names)
+        view = self.pointer._show(self.view, param_names, indices, params, states, channel_names)
         if not indices:
             for name in [
                 "global_comp_index",
