@@ -60,8 +60,8 @@ class Cell(Module):
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
         self._append_to_params_and_state(branch_list)
-        for branch in branch_list:
-            self._append_to_channel_params_and_state(branch)
+        # for branch in branch_list:
+        #     self._append_to_channel_params_and_state(branch)
 
         self.nseg = branch_list[0].nseg
         self.total_nbranches = len(branch_list)

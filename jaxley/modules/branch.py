@@ -36,8 +36,8 @@ class Branch(Module):
         compartment_list.reverse()
 
         self._append_to_params_and_state(compartment_list)
-        for comp in compartment_list:
-            self._append_to_channel_params_and_state(comp)
+        # for comp in compartment_list:
+        #     self._append_to_channel_params_and_state(comp)
 
         self.nseg = len(compartment_list)
         self.total_nbranches = 1
