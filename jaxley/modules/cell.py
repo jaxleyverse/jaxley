@@ -42,7 +42,6 @@ class Cell(Module):
         assert isinstance(branches, Branch) or len(parents) == len(
             branches
         ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
-        self._init_params_and_state(self.cell_params, self.cell_states)
         if isinstance(branches, Branch):
             branch_list = [branches for _ in range(len(parents))]
         else:
@@ -59,10 +58,6 @@ class Cell(Module):
             # self.xyzr at `.vis()`.
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
-        self._append_to_params_and_state(branch_list)
-        for branch in branch_list:
-            self._append_to_channel_params_and_state(branch)
-
         self.nseg = branch_list[0].nseg
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
@@ -70,32 +65,22 @@ class Cell(Module):
         self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
-                branch_index=(
-                    np.arange(self.nseg * self.total_nbranches) // self.nseg
-                ).tolist(),
-                cell_index=[0] * (self.nseg * self.total_nbranches),
-            )
-        )
+        self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
+        self._append_params_and_states(self.cell_params, self.cell_states)
+        self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
+        self.nodes["branch_index"] = (
+            np.arange(self.nseg * self.total_nbranches) // self.nseg
+        ).tolist()
+        self.nodes["cell_index"] = [0] * (self.nseg * self.total_nbranches)
 
-        # Channel indexing.
-        for i, branch in enumerate(branch_list):
+        # Channels.
+        for branch in branch_list:
             for channel in branch.channels:
-                name = type(channel).__name__
-                comp_inds = deepcopy(
-                    branch.channel_nodes[name]["comp_index"].to_numpy()
-                )
-                comp_inds += self.nseg * i
-                index = pd.DataFrame.from_dict(
-                    dict(
-                        comp_index=comp_inds,
-                        branch_index=[i] * len(comp_inds),
-                        cell_index=[0] * len(comp_inds),
-                    )
-                )
-                self._append_to_channel_nodes(index, channel)
+                self.channels.append(channel)
+        # Setting columns of channel names to `False` instead of `NaN`.
+        for channel in self.channels:
+            name = type(channel).__name__
+            self.nodes[name] = self.nodes[name].notna()
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(

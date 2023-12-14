@@ -105,7 +105,11 @@ def _h_gate(v, vt):
 class K(Channel):
     """Potassium channel"""
 
-    channel_params = {"K_gK": 5e-3, "K_eK": -90.0, "vt": -60.0}
+    channel_params = {
+        "K_gK": 5e-3,
+        "K_eK": -90.0,
+        "vt": -60.0,  # Global parameter, not prefixed with `Na`.
+    }
     channel_states = {"K_n": 0.2}
 
     @staticmethod
@@ -139,7 +143,7 @@ def _n_gate(v, vt):
     return alpha, beta
 
 
-class KmPospi(Channel):
+class Km(Channel):
     """Slow M Potassium channel"""
 
     channel_params = {
@@ -181,14 +185,14 @@ def _p_gate(v, taumax):
     return p_inf, tau_p
 
 
-class NaKPospi(Channel):
+class NaK(Channel):
     """Sodium and Potassium channel"""
 
     channel_params = {
-        "nak_gNa": 0.05,
-        "nak_eNa": 50.0,
-        "nak_gK": 0.005,
-        "nak_eK": -90.0,
+        "NaK_gNa": 0.05,
+        "NaK_eNa": 50.0,
+        "NaK_gK": 0.005,
+        "NaK_eK": -90.0,
         "vt": -60,  # Global parameter, not prefixed with `NaK`.
     }
 
@@ -221,7 +225,7 @@ class NaKPospi(Channel):
         )
 
 
-class CaLPospi(Channel):
+class CaL(Channel):
     """L-type Calcium channel"""
 
     channel_params = {
@@ -271,7 +275,7 @@ def _r_gate(v):
     return alpha, beta
 
 
-class CaTPospi(Channel):
+class CaT(Channel):
     """T-type Calcium channel"""
 
     channel_params = {
@@ -287,9 +291,7 @@ class CaTPospi(Channel):
     ):
         """Update state."""
         us = u["CaT_u"]
-        new_u = solve_inf_gate_exponential(
-            us, dt, *_u_gate(voltages, params["CaT_vx"])
-        )
+        new_u = solve_inf_gate_exponential(us, dt, *_u_gate(voltages, params["CaT_vx"]))
         return {"CaT_u": new_u}
 
     @staticmethod

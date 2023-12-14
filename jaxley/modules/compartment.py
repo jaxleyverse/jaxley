@@ -17,20 +17,24 @@ class Compartment(Module):
 
     def __init__(self):
         super().__init__()
-        self._init_params_and_state(self.compartment_params, self.compartment_states)
 
         self.nseg = 1
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
-        # Indexing.
+        # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
             dict(comp_index=[0], branch_index=[0], cell_index=[0])
         )
+        self._append_params_and_states(self.compartment_params, self.compartment_states)
+
+        # Synapses.
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+
+        # Initialize the module.
         self.initialize()
         self.initialized_conds = True
 

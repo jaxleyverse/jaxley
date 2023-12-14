@@ -81,7 +81,9 @@ def integrate(
         return state, state["voltages"][rec_inds]
 
     nsteps_to_return = len(i_current)
-    init_recording = jnp.expand_dims(module.states["voltages"][rec_inds], axis=0)
+    init_recording = jnp.expand_dims(
+        module.nodes["voltages"][rec_inds].to_numpy(), axis=0
+    )
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
@@ -99,11 +101,17 @@ def integrate(
         i_current = jnp.concatenate([i_current, dummy_stimulus])
 
     # Join node and edge states.
-    states = {}
-    for key in module.states:
-        states[key] = module.states[key]
-    for key in module.channel_states:
-        states[key] = module.channel_states[key]
+    states = {"voltages": jnp.asarray(module.nodes["voltages"].to_numpy())}
+    for channel in module.channels:
+        channel_name = type(channel).__name__
+        states[channel_name] = {}
+        inds_of_channel = module.nodes.loc[module.nodes[channel_name]][
+            "comp_index"
+        ].to_numpy()
+        for key in channel.channel_states:
+            state_vals_with_nans = module.nodes[key].to_numpy()
+            state_vals = state_vals_with_nans[inds_of_channel]
+            states[channel_name][key] = state_vals
     for key in module.syn_states:
         states[key] = module.syn_states[key]
 

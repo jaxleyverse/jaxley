@@ -26,7 +26,6 @@ class Branch(Module):
         assert (
             isinstance(compartments, List) or nseg is not None
         ), "If `compartments` is not a list then you have to set `nseg`."
-        self._init_params_and_state(self.branch_params, self.branch_states)
         if isinstance(compartments, Compartment):
             compartment_list = [compartments for _ in range(nseg)]
         else:
@@ -35,31 +34,27 @@ class Branch(Module):
         # is needed to make `tests/test_composability_of_modules.py` pass.
         compartment_list.reverse()
 
-        self._append_to_params_and_state(compartment_list)
-        for comp in compartment_list:
-            self._append_to_channel_params_and_state(comp)
-
         self.nseg = len(compartment_list)
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
         # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg).tolist(),
-                branch_index=[0] * self.nseg,
-                cell_index=[0] * self.nseg,
-            )
-        )
+        # TODO: need to take care of setting the `HH` column to False, not NaN.
+        self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
+        self._append_params_and_states(self.branch_params, self.branch_states)
+        self.nodes["comp_index"] = np.arange(self.nseg).tolist()
+        self.nodes["branch_index"] = [0] * self.nseg
+        self.nodes["cell_index"] = [0] * self.nseg
 
-        # Channel indexing.
-        for i, comp in enumerate(compartment_list):
-            index = pd.DataFrame.from_dict(
-                dict(comp_index=[i], branch_index=[0], cell_index=[0])
-            )
+        # Channels.
+        for comp in compartment_list:
             for channel in comp.channels:
-                self._append_to_channel_nodes(index, channel)
+                self.channels.append(channel)
+        # Setting columns of channel names to `False` instead of `NaN`.
+        for channel in self.channels:
+            name = type(channel).__name__
+            self.nodes[name] = self.nodes[name].notna()
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
