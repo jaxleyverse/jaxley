@@ -6,7 +6,7 @@ jax.config.update("jax_platform_name", "cpu")
 import jax.numpy as jnp
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 
 
 def test_compose_branch():
@@ -16,7 +16,7 @@ def test_compose_branch():
     current = jx.step_current(1.0, 1.0, 0.1, dt, t_max)
 
     comp1 = jx.Compartment()
-    comp1.insert(HHChannel())
+    comp1.insert(HH())
     comp2 = jx.Compartment()
     branch1 = jx.Branch([comp1, comp2])
     branch1.comp(0.0).record()
@@ -24,7 +24,7 @@ def test_compose_branch():
 
     comp = jx.Compartment()
     branch2 = jx.Branch(comp, nseg=2)
-    branch2.comp(0.0).insert(HHChannel())
+    branch2.comp(0.0).insert(HH())
     branch2.comp(0.0).record()
     branch2.comp(0.0).stimulate(current)
 
@@ -44,7 +44,7 @@ def test_compose_cell():
     comp = jx.Compartment()
 
     branch1 = jx.Branch(comp, nseg_per_branch)
-    branch1.insert(HHChannel())
+    branch1.insert(HH())
     branch2 = jx.Branch(comp, nseg_per_branch)
     cell1 = jx.Cell([branch1, branch2], parents=[-1, 0])
     cell1.branch(0).comp(0.0).record()
@@ -52,7 +52,7 @@ def test_compose_cell():
 
     branch = jx.Branch(comp, nseg_per_branch)
     cell2 = jx.Cell(branch, parents=[-1, 0])
-    cell2.branch(0).insert(HHChannel())
+    cell2.branch(0).insert(HH())
     cell2.branch(0).comp(0.0).record()
     cell2.branch(0).comp(0.0).stimulate(current)
 
@@ -73,7 +73,7 @@ def test_compose_net():
     branch = jx.Branch(comp, nseg_per_branch)
 
     cell1 = jx.Cell(branch, parents=[-1, 0, 0])
-    cell1.insert(HHChannel())
+    cell1.insert(HH())
     cell2 = jx.Cell(branch, parents=[-1, 0, 0])
     net1 = jx.Network([cell1, cell2], [])
     net1.cell(0).branch(0).comp(0.0).record()
@@ -81,7 +81,7 @@ def test_compose_net():
 
     cell = jx.Cell(branch, parents=[-1, 0, 0])
     net2 = jx.Network([cell, cell], [])
-    net2.cell(0).insert(HHChannel())
+    net2.cell(0).insert(HH())
     net2.cell(0).branch(0).comp(0.0).record()
     net2.cell(0).branch(0).comp(0.0).stimulate(current)
 

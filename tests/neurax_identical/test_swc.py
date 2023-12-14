@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 from jaxley.synapses import GlutamateSynapse
 
 
@@ -23,7 +23,7 @@ def test_swc_cell():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../morph.swc")
     cell = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
-    cell.insert(HHChannel())
+    cell.insert(HH())
     cell.branch(1).comp(0.0).record()
     cell.branch(1).comp(0.0).stimulate(current)
 
@@ -65,7 +65,7 @@ def test_swc_net():
         jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
     network = jx.Network([cell1, cell2], connectivities)
-    network.insert(HHChannel())
+    network.insert(HH())
 
     for cell_ind in range(2):
         network.cell(cell_ind).branch(1).comp(0.0).record()

@@ -9,7 +9,7 @@ import numpy as np
 from jax import jit, value_and_grad
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 
 
 def _run_long_branch(dt, t_max):
@@ -17,7 +17,7 @@ def _run_long_branch(dt, t_max):
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg_per_branch)
-    branch.insert(HHChannel())
+    branch.insert(HH())
 
     branch.comp("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
@@ -42,7 +42,7 @@ def _run_short_branches(dt, t_max):
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg_per_branch)
     cell = jx.Cell(branch, parents=parents)
-    cell.insert(HHChannel())
+    cell.insert(HH())
 
     cell.branch("all").comp("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()

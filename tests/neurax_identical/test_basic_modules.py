@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 from jaxley.synapses import GlutamateSynapse
 
 
@@ -21,7 +21,7 @@ def test_compartment():
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
     comp = jx.Compartment().initialize()
-    comp.insert(HHChannel())
+    comp.insert(HH())
     comp.record()
     comp.stimulate(current)
 
@@ -57,7 +57,7 @@ def test_branch():
 
     comp = jx.Compartment().initialize()
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    branch.insert(HHChannel())
+    branch.insert(HH())
     branch.comp(0.0).record()
     branch.comp(0.0).stimulate(current)
 
@@ -97,7 +97,7 @@ def test_cell():
     comp = jx.Compartment().initialize()
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
-    cell.insert(HHChannel())
+    cell.insert(HH())
     cell.branch(1).comp(0.0).record()
     cell.branch(1).comp(0.0).stimulate(current)
 
@@ -143,7 +143,7 @@ def test_net():
         jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
     network = jx.Network([cell1, cell2], connectivities)
-    network.insert(HHChannel())
+    network.insert(HH())
 
     for cell_ind in range(2):
         network.cell(cell_ind).branch(1).comp(0.0).record()
