@@ -42,7 +42,6 @@ class Cell(Module):
         assert isinstance(branches, Branch) or len(parents) == len(
             branches
         ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
-        self._init_params_and_state(self.cell_params, self.cell_states)
         if isinstance(branches, Branch):
             branch_list = [branches for _ in range(len(parents))]
         else:
@@ -58,10 +57,6 @@ class Cell(Module):
             # (potentially learned) length of every compartment, we only populate
             # self.xyzr at `.vis()`.
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
-
-        self._append_to_params_and_state(branch_list)
-        # for branch in branch_list:
-        #     self._append_to_channel_params_and_state(branch)
 
         self.nseg = branch_list[0].nseg
         self.total_nbranches = len(branch_list)
@@ -79,24 +74,13 @@ class Cell(Module):
                 cell_index=[0] * (self.nseg * self.total_nbranches),
             )
         )
-        self.nodes_with_channel_info = self.nodes
-
-        # Channel indexing.
-        for i, branch in enumerate(branch_list):
-            for channel in branch.channels:
-                name = type(channel).__name__
-                comp_inds = deepcopy(
-                    branch.channel_nodes[name]["comp_index"].to_numpy()
-                )
-                comp_inds += self.nseg * i
-                index = pd.DataFrame.from_dict(
-                    dict(
-                        comp_index=comp_inds,
-                        branch_index=[i] * len(comp_inds),
-                        cell_index=[0] * len(comp_inds),
-                    )
-                )
-                self._append_to_channel_nodes(index, channel)
+        # TODO: need to take care of setting the `HH` column to False, not NaN.
+        self.nodes_with_channel_info = pd.concat(
+            [c.nodes_with_channel_info for c in branch_list], ignore_index=True
+        )
+        self.nodes_with_channel_info["comp_index"] = self.nodes["comp_index"]
+        self.nodes_with_channel_info["branch_index"] = self.nodes["branch_index"]
+        self.nodes_with_channel_info["cell_index"] = self.nodes["cell_index"]
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(

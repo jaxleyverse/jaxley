@@ -68,7 +68,7 @@ class Module(ABC):
         # Channel indices, parameters, and states.
         # Tracks the parameters and states of all channels in a single dataframe. This
         # is the same as `self.nodes` but it has additional columns for all channels.
-        self.nodes_with_channel_info: pd.DataFrame = {}
+        self.nodes_with_channel_info: pd.DataFrame = pd.DataFrame().from_dict({})
         # List of all `jx.Channel`s.
         self.channels: List[Channel] = []
 
@@ -160,25 +160,6 @@ class Module(ABC):
 
         return nodes
 
-    def _init_params_and_state(
-        self, own_params: Dict[str, List], own_states: Dict[str, List]
-    ) -> None:
-        """Sets parameters and state of the module at initialization.
-
-        Args:
-            own_params: Parameters of the current module, excluding parameters of its
-                constituents.
-            own_states: States of the current module, excluding states of its
-                constituents.
-        """
-        self.params = {}
-        for key in own_params:
-            self.params[key] = jnp.asarray([own_params[key]])  # should be atleast1d
-
-        self.states = {}
-        for key in own_states:
-            self.states[key] = jnp.asarray([own_states[key]])  # should be atleast1d
-
     @abstractmethod
     def init_conds(self, params):
         """Initialize coupling conductances.
@@ -188,15 +169,6 @@ class Module(ABC):
                 coupling conductances.
         """
         raise NotImplementedError
-
-    def _append_to_params_and_state(self, constituents: List["Module"]):
-        for key in constituents[0].params:
-            param_vals = jnp.concatenate([b.params[key] for b in constituents])
-            self.params[key] = param_vals
-
-        for key in constituents[0].states:
-            states_vals = jnp.concatenate([b.states[key] for b in constituents])
-            self.states[key] = states_vals
 
     def _append_to_channel_nodes(self, view, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
@@ -395,8 +367,9 @@ class Module(ABC):
         in `trainable_params()`.
         """
         params = {}
-        for key, val in self.params.items():
-            params[key] = val
+        basic_param_names = ["length", "radius", "axial_resistivity"]
+        for name in basic_param_names:
+            params[name] = jnp.asarray(self.nodes_with_channel_info[name].to_numpy())
 
         for key, val in self.syn_params.items():
             params[key] = val

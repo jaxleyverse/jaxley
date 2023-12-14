@@ -26,7 +26,6 @@ class Branch(Module):
         assert (
             isinstance(compartments, List) or nseg is not None
         ), "If `compartments` is not a list then you have to set `nseg`."
-        self._init_params_and_state(self.branch_params, self.branch_states)
         if isinstance(compartments, Compartment):
             compartment_list = [compartments for _ in range(nseg)]
         else:
@@ -35,7 +34,7 @@ class Branch(Module):
         # is needed to make `tests/test_composability_of_modules.py` pass.
         compartment_list.reverse()
 
-        self._append_to_params_and_state(compartment_list)
+        # self._append_to_params_and_state(compartment_list)
         # for comp in compartment_list:
         #     self._append_to_channel_params_and_state(comp)
 
@@ -52,14 +51,13 @@ class Branch(Module):
                 cell_index=[0] * self.nseg,
             )
         )
-
-        # Channel indexing.
-        for i, comp in enumerate(compartment_list):
-            index = pd.DataFrame.from_dict(
-                dict(comp_index=[i], branch_index=[0], cell_index=[0])
-            )
-            for channel in comp.channels:
-                self._append_to_channel_nodes(index, channel)
+        # TODO: need to take care of setting the `HH` column to False, not NaN.
+        self.nodes_with_channel_info = pd.concat(
+            [c.nodes_with_channel_info for c in compartment_list], ignore_index=True
+        )
+        self.nodes_with_channel_info["comp_index"] = self.nodes["comp_index"]
+        self.nodes_with_channel_info["branch_index"] = self.nodes["branch_index"]
+        self.nodes_with_channel_info["cell_index"] = self.nodes["cell_index"]
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
