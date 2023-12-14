@@ -225,7 +225,7 @@ class Module(ABC):
             grouped_view = view.groupby("controlled_by_param")
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = view[key].to_numpy()[indices_per_param]
+            param_vals = jnp.asarray(view[key].to_numpy()[indices_per_param])
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
