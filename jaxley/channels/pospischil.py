@@ -65,7 +65,6 @@ class Na(Channel):
         u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        print("u", u)
         ms, hs = u["Na_m"], u["Na_h"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))

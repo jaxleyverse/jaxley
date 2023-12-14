@@ -27,9 +27,6 @@ class Module(ABC):
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
-        self.channels: List[Channel] = []
-        self.params_per_channel: List[List[str]] = []
-        self.states_per_channel: List[List[str]] = []
         self.conns: List[Synapse] = None
         self.group_views = {}
 
@@ -72,6 +69,8 @@ class Module(ABC):
         # Tracks the parameters and states of all channels in a single dataframe. This
         # is the same as `self.nodes` but it has additional columns for all channels.
         self.nodes_with_channel_info: pd.DataFrame = {}
+        # List of all `jx.Channel`s.
+        self.channels: List[Channel] = []
 
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
@@ -203,16 +202,7 @@ class Module(ABC):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
         name = type(channel).__name__
 
-        # if name in self.channel_nodes:
-        #     self.channel_nodes[name] = pd.concat(
-        #         [self.channel_nodes[name], view]
-        #     ).reset_index(drop=True)
-        # else:
-        #     self.channel_nodes[name] = view
-        #     self.channels.append(channel)
-        #     self.params_per_channel.append(list(channel.channel_params.keys()))
-        #     self.states_per_channel.append(list(channel.channel_states.keys()))
-
+        # Channel does not yet exist in the `jx.Module` at all.
         if channel not in self.channels:
             self.channels.append(channel)
             self.nodes_with_channel_info[name] = False
@@ -232,33 +222,6 @@ class Module(ABC):
                 view.index.values, key
             ] = channel.channel_states[key]
 
-    def identify_channel_based_on_param_name(self, name):
-        for i, param_names in enumerate(self.params_per_channel):
-            if name in param_names:
-                # TODO a parameter can exist in multiple channels.
-                return type(self.channels[i]).__name__
-        raise KeyError("parameter name was not found in any channel")
-
-    def identify_channel_based_on_state_name(self, name):
-        for i, state_names in enumerate(self.states_per_channel):
-            if name in state_names:
-                return type(self.channels[i]).__name__
-        raise KeyError("state name was not found in any channel")
-
-    def channel_inds(self, ind_of_comps_to_be_set, channel_name: str):
-        """Not all compartments might have all channels. Thus, we have to do some
-        reindexing to find the associated index of a paramter of a channel given the
-        index of a compartment.
-
-        Args:
-            channel_name: For example, `HHChannel`.
-        """
-        frame = self.channel_nodes[channel_name]
-        channel_param_or_state_ind = frame.loc[
-            frame["comp_index"].isin(ind_of_comps_to_be_set)
-        ].index.values
-        return channel_param_or_state_ind
-
     def set_params(self, key, val):
         """Set parameter."""
         # Alternatively, we could do `assert key not in self.syn_params`.
@@ -269,6 +232,7 @@ class Module(ABC):
         if key in self.params:
             self.params[key] = self.params[key].at[view.index.values].set(val)
         elif key in self.channel_params:
+            # TODO
             channel_name = self.identify_channel_based_on_param_name(key)
             ind_of_params = self.channel_inds(view.index.values, channel_name)
             self.channel_params[key] = (
@@ -289,6 +253,7 @@ class Module(ABC):
         if key in self.states:
             self.states[key] = self.states[key].at[view.index.values].set(val)
         elif key in self.channel_states:
+            # TODO
             channel_name = self.identify_channel_based_on_state_name(key)
             ind_of_params = self.channel_inds(view.index.values, channel_name)
             self.channel_states[key] = (
@@ -439,7 +404,9 @@ class Module(ABC):
         for channel in self.channels:
             channel_name = type(channel).__name__
             params[channel_name] = {}
-            inds_of_channel = self.nodes_with_channel_info.loc[self.nodes_with_channel_info[channel_name]]["comp_index"].to_numpy()
+            inds_of_channel = self.nodes_with_channel_info.loc[
+                self.nodes_with_channel_info[channel_name]
+            ]["comp_index"].to_numpy()
             for key in channel.channel_params:
                 param_vals_with_nans = self.nodes_with_channel_info[key].to_numpy()
                 param_vals = param_vals_with_nans[inds_of_channel]
@@ -508,7 +475,6 @@ class Module(ABC):
 
     def _insert(self, channel, view):
         self._append_to_channel_nodes(view, channel)
-        # self._append_to_channel_params_and_state(channel, repeats=len(view))
 
     def init_syns(self):
         self.initialized_syns = True

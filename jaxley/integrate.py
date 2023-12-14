@@ -105,7 +105,9 @@ def integrate(
     for channel in module.channels:
         channel_name = type(channel).__name__
         states[channel_name] = {}
-        inds_of_channel = module.nodes_with_channel_info.loc[module.nodes_with_channel_info[channel_name]]["comp_index"].to_numpy()
+        inds_of_channel = module.nodes_with_channel_info.loc[
+            module.nodes_with_channel_info[channel_name]
+        ]["comp_index"].to_numpy()
         for key in channel.channel_states:
             state_vals_with_nans = module.nodes_with_channel_info[key].to_numpy()
             state_vals = state_vals_with_nans[inds_of_channel]
