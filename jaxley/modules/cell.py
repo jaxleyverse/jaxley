@@ -79,6 +79,7 @@ class Cell(Module):
                 cell_index=[0] * (self.nseg * self.total_nbranches),
             )
         )
+        self.nodes_with_channel_info = self.nodes
 
         # Channel indexing.
         for i, branch in enumerate(branch_list):

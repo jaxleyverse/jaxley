@@ -69,7 +69,12 @@ class Module(ABC):
         self.syn_classes: List = []
 
         # Channel indices, parameters, and states.
+
+        # Tracks for each type of channel in compartments it exists.
         self.channel_nodes: Dict[str, pd.DataFrame] = {}
+        # Tracks the parameters and states of all channels in a single dataframe. This
+        # is the same as `self.nodes` but it has additional columns for all channels.
+        self.nodes_with_channel_info: pd.DataFrame = {}
         self.channel_params: Dict[str, Dict[str, jnp.ndarray]] = {}
         self.channel_states: Dict[str, Dict[str, jnp.ndarray]] = {}
 
@@ -142,6 +147,7 @@ class Module(ABC):
     def _show_channel(self, view, channel_name, indices, params, states):
         ind_of_params = self.channel_inds(view.index.values, channel_name)
         nodes = deepcopy(self.channel_nodes[channel_name].loc[ind_of_params])
+        # TODO remove the following lines?
         nodes["comp_index"] -= nodes["comp_index"].iloc[0]
         nodes["branch_index"] -= nodes["branch_index"].iloc[0]
         nodes["cell_index"] -= nodes["cell_index"].iloc[0]
@@ -201,6 +207,7 @@ class Module(ABC):
     def _append_to_channel_params_and_state(
         self, channel: Union[Channel, "Module"], repeats: int = 1
     ):
+        # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_params:
             new_params = jnp.tile(jnp.atleast_1d(channel.channel_params[key]), repeats)
             if key in self.channel_params:
@@ -219,23 +226,28 @@ class Module(ABC):
             else:
                 self.channel_states[key] = new_states
 
-    def _append_to_channel_nodes(self, index, channel):
+    def _append_to_channel_nodes(self, view, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
         name = type(channel).__name__
 
         if name in self.channel_nodes:
             self.channel_nodes[name] = pd.concat(
-                [self.channel_nodes[name], index]
+                [self.channel_nodes[name], view]
             ).reset_index(drop=True)
         else:
-            self.channel_nodes[name] = index
+            self.channel_nodes[name] = view
             self.channels.append(channel)
             self.params_per_channel.append(list(channel.channel_params.keys()))
             self.states_per_channel.append(list(channel.channel_states.keys()))
 
+        # Loop over all new parameters, e.g. gNa, eNa.
+        for key in channel.channel_params:
+            self.nodes_with_channel_info.loc[view.index.values, key] = channel.channel_params[key]
+
     def identify_channel_based_on_param_name(self, name):
         for i, param_names in enumerate(self.params_per_channel):
             if name in param_names:
+                # TODO a parameter can exist in multiple channels.
                 return type(self.channels[i]).__name__
         raise KeyError("parameter name was not found in any channel")
 
