@@ -218,23 +218,19 @@ class Module(ABC):
         grouped_view = view.groupby("controlled_by_param")
         inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
 
-        if key in self.params:
-            indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = self.params[key][indices_per_param]
-        elif key in self.channel_params:
-            name = self.identify_channel_based_on_param_name(key)
-            indices_per_param = jnp.stack(
-                [self.channel_inds(ind, name) for ind in inds_of_comps]
-            )
-            param_vals = self.channel_params[key][indices_per_param]
-        elif key in self.syn_params:
+        if key in self.syn_params:
             indices_per_param = jnp.stack(inds_of_comps)
             param_vals = self.syn_params[key][indices_per_param]
+        elif key in view.columns:
+            # TODO: mask out the `NaN` rows in order to get the correct index.
+            indices_per_param = jnp.stack(inds_of_comps)
+            param_vals = self.nodes[key][indices_per_param]
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
         self.indices_set_by_trainables.append(indices_per_param)
 
+        # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
         if init_val is not None:
             if isinstance(init_val, float):
