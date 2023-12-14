@@ -23,17 +23,18 @@ class Compartment(Module):
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
-        # Indexing.
+        # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
             dict(comp_index=[0], branch_index=[0], cell_index=[0])
         )
-        for param_name, param_value in self.compartment_params.items():
-            self.nodes[param_name] = param_value
-        for state_name, state_value in self.compartment_states.items():
-            self.nodes[state_name] = state_value
+        self._append_params_and_states(self.compartment_params, self.compartment_states)
+
+        # Synapses.
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+
+        # Initialize the module.
         self.initialize()
         self.initialized_conds = True
 

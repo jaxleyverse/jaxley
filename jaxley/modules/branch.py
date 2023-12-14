@@ -41,12 +41,20 @@ class Branch(Module):
 
         # Indexing.
         # TODO: need to take care of setting the `HH` column to False, not NaN.
-        self.nodes = pd.concat(
-            [c.nodes for c in compartment_list], ignore_index=True
-        )
+        self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
+        self._append_params_and_states(self.branch_params, self.branch_states)
         self.nodes["comp_index"] = np.arange(self.nseg).tolist()
         self.nodes["branch_index"] = [0] * self.nseg
         self.nodes["cell_index"] = [0] * self.nseg
+
+        # Channels.
+        for comp in compartment_list:
+            for channel in comp.channels:
+                self.channels.append(channel)
+        # Setting columns of channel names to `False` instead of `NaN`.
+        for channel in self.channels:
+            name = type(channel).__name__
+            self.nodes[name] = self.nodes[name].notna()
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(

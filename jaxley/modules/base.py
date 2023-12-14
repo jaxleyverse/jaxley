@@ -58,9 +58,6 @@ class Module(ABC):
         self.initialized_morph: bool = False
         self.initialized_syns: bool = False
 
-        self.params: Dict[str, jnp.ndarray] = {}
-        self.states: Dict[str, jnp.ndarray] = {}
-
         self.syn_params: Dict[str, jnp.ndarray] = {}
         self.syn_states: Dict[str, jnp.ndarray] = {}
         self.syn_classes: List = []
@@ -90,47 +87,50 @@ class Module(ABC):
     def __str__(self):
         return f"jx.{type(self).__name__}"
 
+    def _append_params_and_states(self, param_dict, state_dict):
+        for param_name, param_value in param_dict.items():
+            self.nodes[param_name] = param_value
+        for state_name, state_value in state_dict.items():
+            self.nodes[state_name] = state_value
+
     def show(
         self,
-        channel_name: Optional[str] = None,
         *,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
+        channel_names: Optional[List[str]] = None,
     ):
         """Print detailed information about the Module."""
-        if channel_name is None:
-            return self._show_base(self.nodes, indices, params, states)
-        else:
-            return self._show_channel(
-                self.nodes,
-                channel_name,
-                indices,
-                params,
-                states,
-            )
+        return self._show(self.nodes, indices, params, states, channel_names)
 
-    def _show_base(
+    def _show(
         self,
         view,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
+        channel_names: Optional[List[str]] = None,
     ):
-        inds = view.index.values
         printable_nodes = deepcopy(view)
 
+        for channel in self.channels:
+            name = type(channel).__name__
+            param_names = list(channel.channel_params.keys())
+            state_names = list(channel.channel_states.keys())
+            if channel_names is not None and name not in channel_names:
+                printable_nodes = printable_nodes.drop(name, axis=1)
+                printable_nodes = printable_nodes.drop(param_names, axis=1)
+                printable_nodes = printable_nodes.drop(state_names, axis=1)
+            else:
+                if not params:
+                    printable_nodes = printable_nodes.drop(param_names, axis=1)
+                if not states:
+                    printable_nodes = printable_nodes.drop(state_names, axis=1)
+
         if not indices:
-            for key in printable_nodes:
-                printable_nodes = printable_nodes.drop(key, axis=1)
-
-        if params:
-            for key, val in self.params.items():
-                printable_nodes[key] = val[inds]
-
-        if states:
-            for key, val in self.states.items():
-                printable_nodes[key] = val[inds]
+            for name in ["comp_index", "branch_index", "cell_index"]:
+                printable_nodes = printable_nodes.drop(name, axis=1)
 
         return printable_nodes
 
@@ -727,21 +727,22 @@ class View:
 
     def show(
         self,
-        channel_name: Optional[str] = None,
         *,
         indices: bool = True,
         params: bool = True,
         states: bool = True,
+        channel_names: Optional[List[str]] = None,
     ):
-        if channel_name is None:
-            myview = self.view.drop("global_comp_index", axis=1)
-            myview = myview.drop("global_branch_index", axis=1)
-            myview = myview.drop("global_cell_index", axis=1)
-            return self.pointer._show_base(myview, indices, params, states)
-        else:
-            return self.pointer._show_channel(
-                self.view, channel_name, indices, params, states
-            )
+        view = self.pointer._show(self.view, indices, params, states, channel_names)
+        if not indices:
+            for name in [
+                "global_comp_index",
+                "global_branch_index",
+                "global_cell_index",
+                "controlled_by_param",
+            ]:
+                view = view.drop(name, axis=1)
+        return view
 
     def set_global_index_and_index(self, nodes):
         """Use the global compartment, branch, and cell index as the index."""
