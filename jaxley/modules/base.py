@@ -242,7 +242,15 @@ class Module(ABC):
 
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_params:
-            self.nodes_with_channel_info.loc[view.index.values, key] = channel.channel_params[key]
+            self.nodes_with_channel_info.loc[
+                view.index.values, key
+            ] = channel.channel_params[key]
+
+        # Loop over all new parameters, e.g. gNa, eNa.
+        for key in channel.channel_states:
+            self.nodes_with_channel_info.loc[
+                view.index.values, key
+            ] = channel.channel_states[key]
 
     def identify_channel_based_on_param_name(self, name):
         for i, param_names in enumerate(self.params_per_channel):
@@ -448,8 +456,22 @@ class Module(ABC):
         for key, val in self.syn_params.items():
             params[key] = val
 
-        for key, val in self.channel_params.items():
-            params[key] = val
+        # for key, val in self.channel_params.items():
+        #     params[key] = val
+
+        for channel in self.channels:
+            channel_name = type(channel).__name__
+            params[channel_name] = {}
+            inds_of_channel = self.channel_nodes[channel_name]["comp_index"].to_numpy()
+            for key in channel.channel_params:
+                param_vals_with_nans = self.nodes_with_channel_info[key].to_numpy()
+                param_vals = param_vals_with_nans[inds_of_channel]
+                params[channel_name][key] = param_vals
+
+        # for key in self.channel_params.keys():
+        #     # TODO need a way to track all channel params without self.channel_params
+        #     param_vals_with_nans = jnp.asarray(self.nodes_with_channel_info[key].to_numpy())
+        #     params[key] = param_vals_with_nans
 
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
@@ -606,7 +628,7 @@ class Module(ABC):
             name = type(channel).__name__
             indices = channel_nodes[name]["comp_index"].to_numpy()
             states_updated = channel.update_states(
-                states, delta_t, voltages[indices], params
+                states, delta_t, voltages[indices], params[name]
             )
             new_channel_states.append(states_updated)
 
@@ -626,7 +648,7 @@ class Module(ABC):
             indices = channel_nodes[name]["comp_index"].to_numpy()
             v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
             membrane_currents = channel.vmapped_compute_current(
-                states, v_and_perturbed, params
+                states, v_and_perturbed, params[name]
             )
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
             constant_term = membrane_currents[0] - voltage_term * voltages[indices]
