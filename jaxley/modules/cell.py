@@ -320,6 +320,6 @@ def read_swc(
 
     lengths_each = np.repeat(pathlengths, nseg) / nseg
 
-    cell.set_params("length", lengths_each)
-    cell.set_params("radius", radiuses_each)
+    cell.set("length", lengths_each)
+    cell.set("radius", radiuses_each)
     return cell
