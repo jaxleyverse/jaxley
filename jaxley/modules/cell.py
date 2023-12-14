@@ -65,22 +65,13 @@ class Cell(Module):
         self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
-                branch_index=(
-                    np.arange(self.nseg * self.total_nbranches) // self.nseg
-                ).tolist(),
-                cell_index=[0] * (self.nseg * self.total_nbranches),
-            )
-        )
         # TODO: need to take care of setting the `HH` column to False, not NaN.
-        self.nodes_with_channel_info = pd.concat(
-            [c.nodes_with_channel_info for c in branch_list], ignore_index=True
-        )
-        self.nodes_with_channel_info["comp_index"] = self.nodes["comp_index"]
-        self.nodes_with_channel_info["branch_index"] = self.nodes["branch_index"]
-        self.nodes_with_channel_info["cell_index"] = self.nodes["cell_index"]
+        self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
+        self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
+        self.nodes["branch_index"] = (
+            np.arange(self.nseg * self.total_nbranches) // self.nseg
+        ).tolist()
+        self.nodes["cell_index"] = [0] * (self.nseg * self.total_nbranches)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(

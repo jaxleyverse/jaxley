@@ -65,10 +65,6 @@ class Module(ABC):
         self.syn_states: Dict[str, jnp.ndarray] = {}
         self.syn_classes: List = []
 
-        # Channel indices, parameters, and states.
-        # Tracks the parameters and states of all channels in a single dataframe. This
-        # is the same as `self.nodes` but it has additional columns for all channels.
-        self.nodes_with_channel_info: pd.DataFrame = pd.DataFrame().from_dict({})
         # List of all `jx.Channel`s.
         self.channels: List[Channel] = []
 
@@ -89,7 +85,7 @@ class Module(ABC):
         self.xyzr: List[np.ndarray] = []
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channel_nodes)} different channels. Use `.show()` for details."
+        return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
@@ -177,22 +173,18 @@ class Module(ABC):
         # Channel does not yet exist in the `jx.Module` at all.
         if channel not in self.channels:
             self.channels.append(channel)
-            self.nodes_with_channel_info[name] = False
+            self.nodes[name] = False
 
         # Add a binary column that indicates if a channel is present.
-        self.nodes_with_channel_info.loc[view.index.values, name] = True
+        self.nodes.loc[view.index.values, name] = True
 
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_params:
-            self.nodes_with_channel_info.loc[
-                view.index.values, key
-            ] = channel.channel_params[key]
+            self.nodes.loc[view.index.values, key] = channel.channel_params[key]
 
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_states:
-            self.nodes_with_channel_info.loc[
-                view.index.values, key
-            ] = channel.channel_states[key]
+            self.nodes.loc[view.index.values, key] = channel.channel_states[key]
 
     def set_params(self, key, val):
         """Set parameter."""
@@ -369,7 +361,7 @@ class Module(ABC):
         params = {}
         basic_param_names = ["length", "radius", "axial_resistivity"]
         for name in basic_param_names:
-            params[name] = jnp.asarray(self.nodes_with_channel_info[name].to_numpy())
+            params[name] = jnp.asarray(self.nodes[name].to_numpy())
 
         for key, val in self.syn_params.items():
             params[key] = val
@@ -377,11 +369,11 @@ class Module(ABC):
         for channel in self.channels:
             channel_name = type(channel).__name__
             params[channel_name] = {}
-            inds_of_channel = self.nodes_with_channel_info.loc[
-                self.nodes_with_channel_info[channel_name]
-            ]["comp_index"].to_numpy()
+            inds_of_channel = self.nodes.loc[self.nodes[channel_name]][
+                "comp_index"
+            ].to_numpy()
             for key in channel.channel_params:
-                param_vals_with_nans = self.nodes_with_channel_info[key].to_numpy()
+                param_vals_with_nans = self.nodes[key].to_numpy()
                 param_vals = param_vals_with_nans[inds_of_channel]
                 params[channel_name][key] = param_vals
 
@@ -470,7 +462,7 @@ class Module(ABC):
 
         # Parameters have to go in here.
         u, (v_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels, self.nodes_with_channel_info, params
+            u, delta_t, self.channels, self.nodes, params
         )
 
         # External input.

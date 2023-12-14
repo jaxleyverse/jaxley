@@ -34,30 +34,19 @@ class Branch(Module):
         # is needed to make `tests/test_composability_of_modules.py` pass.
         compartment_list.reverse()
 
-        # self._append_to_params_and_state(compartment_list)
-        # for comp in compartment_list:
-        #     self._append_to_channel_params_and_state(comp)
-
         self.nseg = len(compartment_list)
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
         # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg).tolist(),
-                branch_index=[0] * self.nseg,
-                cell_index=[0] * self.nseg,
-            )
-        )
         # TODO: need to take care of setting the `HH` column to False, not NaN.
-        self.nodes_with_channel_info = pd.concat(
-            [c.nodes_with_channel_info for c in compartment_list], ignore_index=True
+        self.nodes = pd.concat(
+            [c.nodes for c in compartment_list], ignore_index=True
         )
-        self.nodes_with_channel_info["comp_index"] = self.nodes["comp_index"]
-        self.nodes_with_channel_info["branch_index"] = self.nodes["branch_index"]
-        self.nodes_with_channel_info["cell_index"] = self.nodes["cell_index"]
+        self.nodes["comp_index"] = np.arange(self.nseg).tolist()
+        self.nodes["branch_index"] = [0] * self.nseg
+        self.nodes["cell_index"] = [0] * self.nseg
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(

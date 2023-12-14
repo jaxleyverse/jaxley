@@ -27,11 +27,10 @@ class Compartment(Module):
         self.nodes = pd.DataFrame(
             dict(comp_index=[0], branch_index=[0], cell_index=[0])
         )
-        self.nodes_with_channel_info = self.nodes
         for param_name, param_value in self.compartment_params.items():
-            self.nodes_with_channel_info[param_name] = param_value
+            self.nodes[param_name] = param_value
         for state_name, state_value in self.compartment_states.items():
-            self.nodes_with_channel_info[state_name] = state_value
+            self.nodes[state_name] = state_value
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
