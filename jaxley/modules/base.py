@@ -215,16 +215,17 @@ class Module(ABC):
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
 
-        grouped_view = view.groupby("controlled_by_param")
-        inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
-
         if key in self.syn_params:
+            grouped_view = view.groupby("controlled_by_param")
+            inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
             param_vals = self.syn_params[key][indices_per_param]
         elif key in view.columns:
-            # TODO: mask out the `NaN` rows in order to get the correct index.
+            view = view[~np.isnan(view[key])]
+            grouped_view = view.groupby("controlled_by_param")
+            inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = self.nodes[key][indices_per_param]
+            param_vals = view[key].to_numpy()[indices_per_param]
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
