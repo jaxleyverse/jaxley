@@ -18,7 +18,6 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
 )
-import jaxley.utils.pandax as jpd
 from jaxley.utils.plot_utils import plot_morph
 
 
