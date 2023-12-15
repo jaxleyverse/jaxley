@@ -93,6 +93,17 @@ class Module(ABC):
         for state_name, state_value in state_dict.items():
             self.nodes[state_name] = state_value
 
+    def _gather_channels_from_constituents(self, constituents: List) -> None:
+        """Modifies `self.channels` and `self.nodes`."""
+        for module in constituents:
+            for channel in module.channels:
+                if type(channel).__name__ not in [type(c).__name__ for c in self.channels]:
+                    self.channels.append(channel)
+        # Setting columns of channel names to `False` instead of `NaN`.
+        for channel in self.channels:
+            name = type(channel).__name__
+            self.nodes.loc[self.nodes[name].isna(), name] = False
+
     def show(
         self,
         param_names: Optional[Union[str, List[str]]] = None,  # TODO.
@@ -153,7 +164,7 @@ class Module(ABC):
         name = type(channel).__name__
 
         # Channel does not yet exist in the `jx.Module` at all.
-        if channel not in self.channels:
+        if name not in [type(c).__name__ for c in self.channels]:
             self.channels.append(channel)
             self.nodes[name] = False
 

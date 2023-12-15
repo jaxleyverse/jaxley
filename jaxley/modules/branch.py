@@ -48,13 +48,7 @@ class Branch(Module):
         self.nodes["cell_index"] = [0] * self.nseg
 
         # Channels.
-        for comp in compartment_list:
-            for channel in comp.channels:
-                self.channels.append(channel)
-        # Setting columns of channel names to `False` instead of `NaN`.
-        for channel in self.channels:
-            name = type(channel).__name__
-            self.nodes[name] = self.nodes[name].notna()
+        self._gather_channels_from_constituents(compartment_list)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
