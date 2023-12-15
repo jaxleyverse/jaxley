@@ -82,9 +82,7 @@ def integrate(
         return state, state["voltages"][rec_inds]
 
     nsteps_to_return = len(i_current)
-    init_recording = jnp.expand_dims(
-        module.jaxnodes["voltages"][rec_inds], axis=0
-    )
+    init_recording = jnp.expand_dims(module.jaxnodes["voltages"][rec_inds], axis=0)
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we

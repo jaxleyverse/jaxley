@@ -243,11 +243,12 @@ class Module(ABC):
             param_vals = self.syn_params[key][indices_per_param]
         elif key in view.columns:
             view = view[~np.isnan(view[key])]
-            view = view.reset_index()
             grouped_view = view.groupby("controlled_by_param")
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = jnp.asarray(view[key].to_numpy()[indices_per_param])
+            param_vals = jnp.asarray(
+                [view.loc[inds, key].to_numpy() for inds in inds_of_comps]
+            )
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
@@ -299,11 +300,11 @@ class Module(ABC):
         params = {}
         for key in ["radius", "length", "axial_resistivity"]:
             params[key] = self.jaxnodes[key]
-        
+
         for channel in self.channels:
             for channel_params in list(channel.channel_params.keys()):
                 params[channel_params] = self.jaxnodes[channel_params]
-        
+
         for key, val in self.syn_params.items():
             params[key] = val
 
@@ -496,7 +497,7 @@ class Module(ABC):
             channel_states = {}
             for s in channel_state_names:
                 channel_states[s] = states[s][indices]
-            
+
             v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
             membrane_currents = channel.vmapped_compute_current(
                 channel_states, v_and_perturbed, channel_params
