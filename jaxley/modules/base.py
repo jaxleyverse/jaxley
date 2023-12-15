@@ -18,6 +18,7 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
 )
+import jaxley.utils.pandax as jpd
 from jaxley.utils.plot_utils import plot_morph
 
 
@@ -97,12 +98,17 @@ class Module(ABC):
         """Modifies `self.channels` and `self.nodes`."""
         for module in constituents:
             for channel in module.channels:
-                if type(channel).__name__ not in [type(c).__name__ for c in self.channels]:
+                if type(channel).__name__ not in [
+                    type(c).__name__ for c in self.channels
+                ]:
                     self.channels.append(channel)
         # Setting columns of channel names to `False` instead of `NaN`.
         for channel in self.channels:
             name = type(channel).__name__
             self.nodes.loc[self.nodes[name].isna(), name] = False
+
+    def _to_jax(self):
+        self.jaxnodes = jpd.DataFrame(self.nodes.to_dict(orient="list"))
 
     def show(
         self,
@@ -235,6 +241,7 @@ class Module(ABC):
             param_vals = self.syn_params[key][indices_per_param]
         elif key in view.columns:
             view = view[~np.isnan(view[key])]
+            view = view.reset_index()
             grouped_view = view.groupby("controlled_by_param")
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
@@ -306,9 +313,18 @@ class Module(ABC):
                 param_vals = param_vals_with_nans[inds_of_channel]
                 params[channel_name][key] = param_vals
 
+        # Override with those parameters set by `.make_trainable()`.
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
-                params[key] = params[key].at[inds].set(set_param[key])
+                if key in list(params.keys()):
+                    params[key] = params[key].at[inds].set(set_param[key])
+                else:
+                    for channel in self.channels:
+                        name = type(channel).__name__
+                        if key in list(params[name].keys()):
+                            params[name][key] = (
+                                params[name][key].at[inds].set(set_param[key])
+                            )
 
         # Compute conductance params and append them.
         cond_params = self.init_conds(params)
@@ -455,18 +471,18 @@ class Module(ABC):
         voltages = states["voltages"]
 
         # Update states of the channels.
-        new_channel_states = {}
         for channel in channels:
             name = type(channel).__name__
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
             states_updated = channel.update_states(
                 states[name], delta_t, voltages[indices], params[name]
             )
-            new_channel_states[name] = states_updated
-
-        # Rebuild state.
-        for key, val in new_channel_states.items():
-            states[key] = val
+            # Rebuild state. This has to be done within the loop over channels to allow
+            # multiple channels which modify the same state.
+            for name_ in [type(channel_).__name__ for channel_ in channels]:
+                for key, val in states_updated.items():
+                    if key in states[name_]:
+                        states[name_][key] = val
 
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
