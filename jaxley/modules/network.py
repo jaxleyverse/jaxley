@@ -477,33 +477,12 @@ class SynapseView(View):
 
         return nodes
 
-    def set_params(self, key: str, val: float):
+    def set(self, key: str, val: float):
         """Set parameters of the pointer."""
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer._set_params(key, val, self.view)
-
-    def set_states(self, key: str, val: float):
-        """Set parameters of the pointer."""
-        assert (
-            key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
-        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer._set_states(key, val, self.view)
-
-    def get_params(self, key: str):
-        """Return parameters."""
-        assert (
-            key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
-        ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer._get_params(key, self.view)
-
-    def get_states(self, key: str):
-        """Return states."""
-        assert (
-            key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
-        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer._get_states(key, self.view)
+        self.pointer._set(key, val, self.view)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""

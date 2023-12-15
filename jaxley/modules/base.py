@@ -702,14 +702,6 @@ class View:
         """Set parameters of the pointer."""
         self.pointer._set(key, val, self.view)
 
-    def get_params(self, key: str):
-        """Return parameters."""
-        return self.pointer._get_params(key, self.view)
-
-    def get_states(self, key: str):
-        """Return states."""
-        return self.pointer._get_states(key, self.view)
-
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""
         self.pointer._make_trainable(self.view, key, init_val)
