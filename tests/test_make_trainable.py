@@ -96,6 +96,7 @@ def test_diverse_synapse_types():
     params[0]["gS"] = params[0]["gS"].at[:].set(2.2)
     params[1]["gC"] = params[1]["gC"].at[0].set(3.3)
     params[1]["gC"] = params[1]["gC"].at[1].set(4.4)
+    net._to_jax()
     all_parameters = net.get_all_parameters(params)
 
     assert np.all(all_parameters["radius"] == 1.0)
@@ -114,6 +115,7 @@ def test_diverse_synapse_types():
 
     # Modify the trainable parameters.
     params[2]["gS"] = params[2]["gS"].at[:].set(5.5)
+    net._to_jax()
     all_parameters = net.get_all_parameters(params)
     assert np.all(all_parameters["gS"][0] == 2.2)
     assert np.all(all_parameters["gS"][1] == 5.5)
