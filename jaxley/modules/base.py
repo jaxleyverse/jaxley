@@ -18,6 +18,7 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
 )
+import jaxley.utils.pandax as jpd
 from jaxley.utils.plot_utils import plot_morph
 
 
@@ -97,12 +98,19 @@ class Module(ABC):
         """Modifies `self.channels` and `self.nodes`."""
         for module in constituents:
             for channel in module.channels:
-                if type(channel).__name__ not in [type(c).__name__ for c in self.channels]:
+                if type(channel).__name__ not in [
+                    type(c).__name__ for c in self.channels
+                ]:
                     self.channels.append(channel)
         # Setting columns of channel names to `False` instead of `NaN`.
         for channel in self.channels:
             name = type(channel).__name__
             self.nodes.loc[self.nodes[name].isna(), name] = False
+
+    def _to_jax(self):
+        self.jaxnodes = {}
+        for key, value in self.nodes.to_dict(orient="list").items():
+            self.jaxnodes[key] = jnp.asarray(value)
 
     def show(
         self,
@@ -238,7 +246,9 @@ class Module(ABC):
             grouped_view = view.groupby("controlled_by_param")
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = jnp.asarray(view[key].to_numpy()[indices_per_param])
+            param_vals = jnp.asarray(
+                [view.loc[inds, key].to_numpy() for inds in inds_of_comps]
+            )
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
@@ -288,24 +298,17 @@ class Module(ABC):
         in `trainable_params()`.
         """
         params = {}
-        basic_param_names = ["length", "radius", "axial_resistivity"]
-        for name in basic_param_names:
-            params[name] = jnp.asarray(self.nodes[name].to_numpy())
+        for key in ["radius", "length", "axial_resistivity"]:
+            params[key] = self.jaxnodes[key]
+
+        for channel in self.channels:
+            for channel_params in list(channel.channel_params.keys()):
+                params[channel_params] = self.jaxnodes[channel_params]
 
         for key, val in self.syn_params.items():
             params[key] = val
 
-        for channel in self.channels:
-            channel_name = type(channel).__name__
-            params[channel_name] = {}
-            inds_of_channel = self.nodes.loc[self.nodes[channel_name]][
-                "comp_index"
-            ].to_numpy()
-            for key in channel.channel_params:
-                param_vals_with_nans = self.nodes[key].to_numpy()
-                param_vals = param_vals_with_nans[inds_of_channel]
-                params[channel_name][key] = param_vals
-
+        # Override with those parameters set by `.make_trainable()`.
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
                 params[key] = params[key].at[inds].set(set_param[key])
@@ -455,18 +458,26 @@ class Module(ABC):
         voltages = states["voltages"]
 
         # Update states of the channels.
-        new_channel_states = {}
         for channel in channels:
             name = type(channel).__name__
+            channel_param_names = list(channel.channel_params.keys())
+            channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            states_updated = channel.update_states(
-                states[name], delta_t, voltages[indices], params[name]
-            )
-            new_channel_states[name] = states_updated
 
-        # Rebuild state.
-        for key, val in new_channel_states.items():
-            states[key] = val
+            channel_params = {}
+            for p in channel_param_names:
+                channel_params[p] = params[p][indices]
+            channel_states = {}
+            for s in channel_state_names:
+                channel_states[s] = states[s][indices]
+
+            states_updated = channel.update_states(
+                channel_states, delta_t, voltages[indices], channel_params
+            )
+            # Rebuild state. This has to be done within the loop over channels to allow
+            # multiple channels which modify the same state.
+            for key, val in states_updated.items():
+                states[key] = states[key].at[indices].set(val)
 
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
@@ -476,10 +487,20 @@ class Module(ABC):
         diff = 1e-3
         for channel in channels:
             name = type(channel).__name__
+            channel_param_names = list(channel.channel_params.keys())
+            channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+
+            channel_params = {}
+            for p in channel_param_names:
+                channel_params[p] = params[p][indices]
+            channel_states = {}
+            for s in channel_state_names:
+                channel_states[s] = states[s][indices]
+
             v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
             membrane_currents = channel.vmapped_compute_current(
-                states[name], v_and_perturbed, params[name]
+                channel_states, v_and_perturbed, channel_params
             )
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
             constant_term = membrane_currents[0] - voltage_term * voltages[indices]
