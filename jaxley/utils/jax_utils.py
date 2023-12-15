@@ -1,6 +1,7 @@
 import math
 from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar
 
+import pandas as pd
 import jax
 import jax.numpy as jnp
 
