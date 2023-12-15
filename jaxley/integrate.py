@@ -40,6 +40,7 @@ def integrate(
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
+    module._to_jax()  # TODO(michaeldeistler): hide.
 
     if module.currents is not None:
         # At least one stimulus was inserted.
@@ -103,15 +104,8 @@ def integrate(
     # Join node and edge states.
     states = {"voltages": module.jaxnodes["voltages"]}
     for channel in module.channels:
-        channel_name = type(channel).__name__
-        states[channel_name] = {}
-        inds_of_channel = module.jaxnodes.loc(module.jaxnodes[channel_name])[
-            "comp_index"
-        ]
-        for key in channel.channel_states:
-            state_vals_with_nans = module.jaxnodes[key]
-            state_vals = state_vals_with_nans[inds_of_channel]
-            states[channel_name][key] = state_vals
+        for channel_states in list(channel.channel_states.keys()):
+            states[channel_states] = module.jaxnodes[channel_states]
     for key in module.syn_states:
         states[key] = module.syn_states[key]
 
