@@ -68,14 +68,7 @@ class Network(Module):
         )
 
         # Channels.
-        for cell in cells:
-            for channel in cell.channels:
-                self.channels.append(channel)
-        # Setting columns of channel names to `False` instead of `NaN`.
-        for channel in self.channels:
-            name = type(channel).__name__
-            self.nodes[name] = self.nodes[name].notna()
-
+        self._gather_channels_from_constituents(cells)
         self.initialized_conds = False
 
     def _append_synapses_to_params_and_state(self, connectivities):
