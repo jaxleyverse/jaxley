@@ -48,8 +48,6 @@ class Module(ABC):
                 "global_post_branch_index",
             ]
         )
-        self.branch_edges: Optional[pd.DataFrame] = None
-
         self.cumsum_nbranches: Optional[jnp.ndarray] = None
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
