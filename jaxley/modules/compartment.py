@@ -102,6 +102,7 @@ class CompartmentView(View):
         post_comp = loc_of_index(
             post.view["global_comp_index"].to_numpy(), self.pointer.nseg
         )
+        index = len(self.pointer.edges)
 
         # Update edges.
         self.pointer.edges = pd.concat(
@@ -132,6 +133,14 @@ class CompartmentView(View):
             ],
             ignore_index=True,
         )
+        # Add parameters and states to the `.edges` table.
+        indices = list(range(index, index + 1))
+        for key in synapse_type.synapse_params:
+            param_val = synapse_type.synapse_params[key]
+            self.edges.loc[indices, key] = param_val
+        for key in synapse_type.synapse_states:
+            state_val = synapse_type.synapse_states[key]
+            self.edges.loc[indices, key] = state_val
 
         # We add a column called index which is used by `adjust_view` of the
         # `SynapseView` (see `network.py`).

@@ -31,10 +31,10 @@ class Module(ABC):
         self.edges = pd.DataFrame(
             columns=[
                 "pre_locs",
-                "post_locs",
                 "pre_branch_index",
-                "post_branch_index",
                 "pre_cell_index",
+                "post_locs",
+                "post_branch_index",
                 "post_cell_index",
                 "type",
                 "type_ind",

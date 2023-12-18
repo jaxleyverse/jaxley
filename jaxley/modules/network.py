@@ -3,7 +3,6 @@ from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -42,9 +41,7 @@ class Network(Module):
         self.cells = cells
         self.nseg = cells[0].nseg
 
-        self.synapses = [
-            connectivity.synapse_type for connectivity in connectivities
-        ]
+        self.synapses = [connectivity.synapse_type for connectivity in connectivities]
 
         # TODO(@michaeldeistler): should we also track this for channels?
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
@@ -58,7 +55,7 @@ class Network(Module):
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
         # branch, apart from those branches which do not have a parent (i.e.
         # -1 in parents). For every branch, tracks the global index of that branch
-        # (`child_branch_index`) and the global index of its parent 
+        # (`child_branch_index`) and the global index of its parent
         # (`parent_branch_index`). Needed at `init_syns()`.
         self.branch_edges: Optional[pd.DataFrame] = None
 
@@ -80,25 +77,6 @@ class Network(Module):
         # Channels.
         self._gather_channels_from_constituents(cells)
         self.initialized_conds = False
-
-    def _append_synapses_to_params_and_state(self, connectivities):
-        for connectivity in connectivities:
-            for key in connectivity.synapse_type.synapse_params:
-                param_vals = jnp.asarray(
-                    [
-                        connectivity.synapse_type.synapse_params[key]
-                        for _ in connectivity.conns
-                    ]
-                )
-                self.syn_params[key] = param_vals
-            for key in connectivity.synapse_type.synapse_states:
-                state_vals = jnp.asarray(
-                    [
-                        connectivity.synapse_type.synapse_states[key]
-                        for _ in connectivity.conns
-                    ]
-                )
-                self.syn_states[key] = state_vals
 
     def __getattr__(self, key):
         # Ensure that hidden methods such as `__deepcopy__` still work.
@@ -197,82 +175,77 @@ class Network(Module):
         post_branch_inds = []
         pre_cell_inds = []
         post_cell_inds = []
-        for connectivity in connectivities:
+        for i, connectivity in enumerate(connectivities):
             pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = prepare_syn(
                 connectivity.conns, self.nseg
             )
             # Global compartment indizes.
-            global_pre_comp_inds.append(
+            global_pre_comp_inds = (
                 self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
             )
-            global_post_comp_inds.append(
+            global_post_comp_inds = (
                 self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
             )
-            global_pre_branch_inds.append(
-                [
-                    self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
-                    for c in connectivity.conns
-                ]
-            )
-            global_post_branch_inds.append(
-                [
-                    self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
-                    for c in connectivity.conns
-                ]
-            )
-            # Local compartment inds.
-            pre_locs.append(np.asarray([c.pre_loc for c in connectivity.conns]))
-            post_locs.append(np.asarray([c.post_loc for c in connectivity.conns]))
-            # Local branch inds.
-            pre_branch_inds.append(
-                np.asarray([c.pre_branch_ind for c in connectivity.conns])
-            )
-            post_branch_inds.append(
-                np.asarray([c.post_branch_ind for c in connectivity.conns])
-            )
-            pre_cell_inds.append(pre_cell_inds_)
-            post_cell_inds.append(post_cell_inds_)
-
-        # Prepare synapses.
-        self.edges = pd.DataFrame(
-            columns=[
-                "pre_locs",
-                "pre_branch_index",
-                "pre_cell_index",
-                "post_locs",
-                "post_branch_index",
-                "post_cell_index",
-                "type",
-                "type_ind",
-                "global_pre_comp_index",
-                "global_post_comp_index",
-                "global_pre_branch_index",
-                "global_post_branch_index",
+            global_pre_branch_inds = [
+                self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
+                for c in connectivity.conns
             ]
-        )
-        for i, connectivity in enumerate(connectivities):
+            global_post_branch_inds = [
+                self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
+                for c in connectivity.conns
+            ]
+            # Local compartment inds.
+            pre_locs = np.asarray([c.pre_loc for c in connectivity.conns])
+            post_locs = np.asarray([c.post_loc for c in connectivity.conns])
+            # Local branch inds.
+            pre_branch_inds = np.asarray([c.pre_branch_ind for c in connectivity.conns])
+            post_branch_inds = np.asarray(
+                [c.post_branch_ind for c in connectivity.conns]
+            )
+            pre_cell_inds = pre_cell_inds_
+            post_cell_inds = post_cell_inds_
+            # for key in connectivity.synapse_type.synapse_states:
+
             self.edges = pd.concat(
                 [
                     self.edges,
                     pd.DataFrame(
                         dict(
-                            pre_locs=pre_locs[i],
-                            pre_branch_index=pre_branch_inds[i],
-                            pre_cell_index=pre_cell_inds[i],
-                            post_locs=post_locs[i],
-                            post_branch_index=post_branch_inds[i],
-                            post_cell_index=post_cell_inds[i],
+                            pre_locs=pre_locs,
+                            pre_branch_index=pre_branch_inds,
+                            pre_cell_index=pre_cell_inds,
+                            post_locs=post_locs,
+                            post_branch_index=post_branch_inds,
+                            post_cell_index=post_cell_inds,
                             type=type(connectivity.synapse_type).__name__,
                             type_ind=i,
-                            global_pre_comp_index=global_pre_comp_inds[i],
-                            global_post_comp_index=global_post_comp_inds[i],
-                            global_pre_branch_index=global_pre_branch_inds[i],
-                            global_post_branch_index=global_post_branch_inds[i],
+                            global_pre_comp_index=global_pre_comp_inds,
+                            global_post_comp_index=global_post_comp_inds,
+                            global_pre_branch_index=global_pre_branch_inds,
+                            global_post_branch_index=global_post_branch_inds,
                         )
                     ),
                 ],
             )
+
+        # Add an `index` column.
+        self.edges = self.edges.reset_index(drop=True)
         self.edges["index"] = list(self.edges.index)
+
+        # Add parameters and states to the `.edges` table.
+        index = 0
+        for i, connectivity in enumerate(connectivities):
+            for key in connectivity.synapse_type.synapse_params:
+                param_val = connectivity.synapse_type.synapse_params[key]
+                indices = np.arange(index, index + len(connectivity.conns))
+                self.edges.loc[indices, key] = param_val
+
+            for key in connectivity.synapse_type.synapse_states:
+                state_val = connectivity.synapse_type.synapse_states[key]
+                indices = np.arange(index, index + len(connectivity.conns))
+                self.edges.loc[indices, key] = state_val
+            
+            index += len(connectivity.conns)
 
         self.branch_edges = pd.DataFrame(
             dict(
