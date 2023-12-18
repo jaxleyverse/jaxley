@@ -52,10 +52,10 @@ class Module(ABC):
         self.initialized_morph: bool = False
         self.initialized_syns: bool = False
 
-        self.syn_params: Dict[str, jnp.ndarray] = {}
-        self.syn_states: Dict[str, jnp.ndarray] = {}
         # List of all types of `jx.Synapse`s.
         self.synapses: List = []
+        self.synapse_param_names = []
+        self.synapse_state_names = []
 
         # List of all types of `jx.Channel`s.
         self.channels: List[Channel] = []
@@ -193,15 +193,11 @@ class Module(ABC):
     def set(self, key, val):
         """Set parameter."""
         # Alternatively, we could do `assert key not in self.syn_params`.
-        view = self.edges if key in self.syn_params else self.nodes
+        view = self.edges if key in self.synapse_param_names or key in self.synapse_state_names else self.nodes
         self._set(key, val, view)
 
     def _set(self, key, val, view):
-        if key in self.syn_params:
-            self.syn_params[key] = self.syn_params[key].at[view.index.values].set(val)
-        elif key in self.syn_states:
-            self.syn_states[key] = self.syn_states[key].at[view.index.values].set(val)
-        elif key in view.columns:
+        if key in view.columns:
             view = view[~np.isnan(view[key])]
             self.nodes.loc[view.index.values, key] = val
         else:
@@ -225,7 +221,8 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        view = deepcopy(self.nodes.assign(controlled_by_param=0))
+        view = self.edges if key in self.synapse_param_names or key in self.synapse_state_names else self.nodes
+        view = deepcopy(view.assign(controlled_by_param=0))
         self._make_trainable(view, key, init_val, verbose=verbose)
 
     def _make_trainable(
@@ -238,13 +235,8 @@ class Module(ABC):
         assert (
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
-
-        if key in self.syn_params:
-            grouped_view = view.groupby("controlled_by_param")
-            inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
-            indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = self.syn_params[key][indices_per_param]
-        elif key in view.columns:
+        
+        if key in view.columns:
             view = view[~np.isnan(view[key])]
             grouped_view = view.groupby("controlled_by_param")
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
@@ -308,8 +300,8 @@ class Module(ABC):
             for channel_params in list(channel.channel_params.keys()):
                 params[channel_params] = self.jaxnodes[channel_params]
 
-        for key, val in self.syn_params.items():
-            params[key] = val
+        for synapse_params in self.synapse_param_names:
+            params[synapse_params] = self.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
