@@ -24,19 +24,19 @@ def test_set_and_querying_params_one_type():
             pre.connect(post, GlutamateSynapse())
 
     net.set("gS", 0.15)
-    assert np.all(net.syn_params["gS"] == 0.15)
+    assert np.all(net.edges["gS"].to_numpy() == 0.15)
 
     net.GlutamateSynapse.set("gS", 0.32)
-    assert np.all(net.syn_params["gS"] == 0.32)
+    assert np.all(net.edges["gS"].to_numpy() == 0.32)
 
     net.GlutamateSynapse(1).set("gS", 0.18)
-    assert net.syn_params["gS"][1] == 0.18
-    assert np.all(net.syn_params["gS"][np.asarray([0, 2, 3])] == 0.32)
+    assert net.edges["gS"].to_numpy()[1] == 0.18
+    assert np.all(net.edges["gS"].to_numpy()[np.asarray([0, 2, 3])] == 0.32)
 
     net.GlutamateSynapse([2, 3]).set("gS", 0.12)
-    assert net.syn_params["gS"][0] == 0.32
-    assert net.syn_params["gS"][1] == 0.18
-    assert np.all(net.syn_params["gS"][np.asarray([2, 3])] == 0.12)
+    assert net.edges["gS"][0] == 0.32
+    assert net.edges["gS"][1] == 0.18
+    assert np.all(net.edges["gS"].to_numpy()[np.asarray([2, 3])] == 0.12)
 
 
 def test_set_and_querying_params_two_types():
@@ -53,29 +53,29 @@ def test_set_and_querying_params_two_types():
             pre.connect(post, synapse)
 
     net.set("gS", 0.15)
-    assert np.all(net.syn_params["gS"] == 0.15)
-    assert np.all(net.syn_params["gC"] == 0.5)  # 0.5 is the default value.
+    assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.15)
+    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.5)  # 0.5 is the default value.
 
     net.GlutamateSynapse.set("gS", 0.32)
-    assert np.all(net.syn_params["gS"] == 0.32)
-    assert np.all(net.syn_params["gC"] == 0.5)  # 0.5 is the default value.
+    assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.32)
+    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.5)  # 0.5 is the default value.
 
     net.TestSynapse.set("gC", 0.18)
-    assert np.all(net.syn_params["gS"] == 0.32)
-    assert np.all(net.syn_params["gC"] == 0.18)
+    assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.32)
+    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.18)
 
     net.GlutamateSynapse(1).set("gS", 0.24)
-    assert net.syn_params["gS"][0] == 0.32
-    assert net.syn_params["gS"][1] == 0.24
-    assert np.all(net.syn_params["gC"] == 0.18)
+    assert net.edges["gS"][0] == 0.32
+    assert net.edges["gS"][2] == 0.24
+    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.18)
 
     net.GlutamateSynapse([0, 1]).set("gS", 0.27)
-    assert np.all(net.syn_params["gS"] == 0.27)
-    assert np.all(net.syn_params["gC"] == 0.18)
+    assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.27)
+    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.18)
 
     net.TestSynapse([0, 1]).set("gC", 0.21)
-    assert np.all(net.syn_params["gS"] == 0.27)
-    assert np.all(net.syn_params["gC"] == 0.21)
+    assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.27)
+    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.21)
 
 
 def test_shuffling_order_of_set():

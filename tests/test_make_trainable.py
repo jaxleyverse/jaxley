@@ -103,9 +103,9 @@ def test_diverse_synapse_types():
     assert np.all(all_parameters["length"] == 10.0)
     assert np.all(all_parameters["axial_resistivity"] == 5000.0)
     assert np.all(all_parameters["gS"][0] == 2.2)
-    assert np.all(all_parameters["gS"][1] == 2.2)
-    assert np.all(all_parameters["gC"][0] == 3.3)
-    assert np.all(all_parameters["gC"][1] == 4.4)
+    assert np.all(all_parameters["gS"][2] == 2.2)
+    assert np.all(all_parameters["gC"][1] == 3.3)
+    assert np.all(all_parameters["gC"][3] == 4.4)
 
     # Add another trainable parameter and test again.
     net.GlutamateSynapse(1).make_trainable("gS")
@@ -118,7 +118,7 @@ def test_diverse_synapse_types():
     net.to_jax()
     all_parameters = net.get_all_parameters(params)
     assert np.all(all_parameters["gS"][0] == 2.2)
-    assert np.all(all_parameters["gS"][1] == 5.5)
+    assert np.all(all_parameters["gS"][2] == 5.5)
 
 
 def test_make_all_trainable_corresponds_to_set():

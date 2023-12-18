@@ -235,7 +235,6 @@ class Network(Module):
 
         # Add an `index` column.
         self.edges = self.edges.reset_index(drop=True)
-        self.edges["index"] = list(self.edges.index)
 
         # Add parameters and states to the `.edges` table.
         index = 0
@@ -439,10 +438,9 @@ class SynapseView(View):
 
     def __init__(self, pointer, view, key, synapse: "jx.Synapse"):
         self.synapse = synapse
-        view = view[view["type"] == key]
-        view = view.reset_index(drop=True)
-        view["index"] = list(view.index)
-        view = view.assign(controlled_by_param=view.index)
+        view = deepcopy(view[view["type"] == key])
+        view["index"] = list(range(len(view)))
+        view = view.assign(controlled_by_param=view["index"])
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
@@ -484,7 +482,7 @@ class SynapseView(View):
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer._set(key, val, self.view)
+        self.pointer._set(key, val, self.view, self.pointer.edges)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""

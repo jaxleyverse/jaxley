@@ -111,10 +111,14 @@ class Module(ABC):
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
     def to_jax(self):
+        """Generates Dict[jnp.ndarray] from the pd.DataFrames for nodes and edges."""
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)
 
+        # TODO(@michaeldeistler): if we wanted to reduce memory footprint, we could here
+        # remove NaN from jaxedges parameters and states. Then we only have to fix
+        # step_synapse and make_trainable with corresponding index updates.
         self.jaxedges = {}
         for key, value in self.edges.to_dict(orient="list").items():
             if key != "type":
@@ -203,12 +207,12 @@ class Module(ABC):
             if key in self.synapse_param_names or key in self.synapse_state_names
             else self.nodes
         )
-        self._set(key, val, view)
+        self._set(key, val, view, view)
 
-    def _set(self, key, val, view):
+    def _set(self, key, val, view, table_to_update):
         if key in view.columns:
             view = view[~np.isnan(view[key])]
-            self.nodes.loc[view.index.values, key] = val
+            table_to_update.loc[view.index.values, key] = val
         else:
             raise KeyError("Key not recognized.")
 
@@ -740,7 +744,7 @@ class View:
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
-        self.pointer._set(key, val, self.view)
+        self.pointer._set(key, val, self.view, self.pointer.nodes)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""

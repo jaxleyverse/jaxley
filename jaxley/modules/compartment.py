@@ -142,10 +142,6 @@ class CompartmentView(View):
             state_val = synapse_type.synapse_states[key]
             self.pointer.edges.loc[indices, key] = state_val
 
-        # We add a column called index which is used by `adjust_view` of the
-        # `SynapseView` (see `network.py`).
-        self.pointer.edges["index"] = list(self.pointer.edges.index)
-
         # (Potentially) update variables that track meta information about synapses.
         if is_new_type:
             self.pointer.synapse_names.append(type(synapse_type).__name__)
