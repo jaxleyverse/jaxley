@@ -281,19 +281,19 @@ class Network(Module):
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
 
             name = type(synapse_type).__name__
-            channel_param_names = list(synapse_type.synapse_params.keys())
-            channel_state_names = list(synapse_type.synapse_states.keys())
-            indices = edges.loc[edges[name] == name].index.values.to_numpy()
+            synapse_param_names = list(synapse_type.synapse_params.keys())
+            synapse_state_names = list(synapse_type.synapse_states.keys())
+            indices = edges.loc[edges["type"] == name].index.values
 
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = params[p][indices]
-            channel_states = {}
-            for s in channel_state_names:
-                channel_states[s] = states[s][indices]
+            synapse_params = {}
+            for p in synapse_param_names:
+                synapse_params[p] = params[p][indices]
+            synapse_states = {}
+            for s in synapse_state_names:
+                synapse_states[s] = states[s][indices]
 
-            synapse_states, synapse_current_terms = synapse_type.step(
-                states, delta_t, voltages, params, np.asarray(pre_syn_inds[synapse_names[i]])
+            states_updated, synapse_current_terms = synapse_type.step(
+                synapse_states, delta_t, voltages, synapse_params, np.asarray(pre_syn_inds[synapse_names[i]])
             )
             synapse_current_terms = postsyn_voltage_updates(
                 voltages,
@@ -302,12 +302,10 @@ class Network(Module):
             )
             syn_voltage_terms += synapse_current_terms[0]
             syn_constant_terms += synapse_current_terms[1]
-            new_syn_states.append(synapse_states)
 
-        # Rebuild synapse states.
-        for s in new_syn_states:
-            for key, val in s.items():
-                states[key] = val
+            # Rebuild state.
+            for key, val in states_updated.items():
+                states[key] = states[key].at[indices].set(val)
 
         return states, syn_voltage_terms, syn_constant_terms
 
