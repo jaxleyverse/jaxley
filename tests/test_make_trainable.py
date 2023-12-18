@@ -121,10 +121,7 @@ def test_diverse_synapse_types():
     assert np.all(all_parameters["gS"][1] == 5.5)
 
 
-
-
 def test_make_all_trainable_corresponds_to_set():
-
     # Scenario 1.
     net1, net2 = build_two_networks()
     net1.insert(HH())
@@ -156,10 +153,9 @@ def test_make_all_trainable_corresponds_to_set():
     net2.cell(1).branch(0).comp(0.4).insert(HH())
     params2 = get_params_set(net2)
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-    
+
 
 def test_make_subset_trainable_corresponds_to_set():
-
     # Scenario 1.
     net1, net2 = build_two_networks()
     net1.insert(HH())
@@ -191,7 +187,7 @@ def test_make_subset_trainable_corresponds_to_set():
     net2.cell(0).branch(1).comp(0.4).insert(HH())
     params2 = get_params_set_subset(net2)
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-    
+
 
 def build_two_networks():
     comp = jx.Compartment()
@@ -216,12 +212,14 @@ def get_params_set_subset(net):
     net._to_jax()
     return net.get_all_parameters(trainable_params=params)
 
+
 def get_params_all_trainable(net):
     net.cell("all").branch("all").comp("all").make_trainable("HH_gNa")
     params = net.get_parameters()
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net._to_jax()
     return net.get_all_parameters(trainable_params=params)
+
 
 def get_params_set(net):
     net.set("HH_gNa", 0.0)

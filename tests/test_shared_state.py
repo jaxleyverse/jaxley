@@ -31,7 +31,8 @@ class Dummy1(Channel):
     def compute_current(u, voltages, params):
         """Return current."""
         return jnp.zeros_like(voltages)
-    
+
+
 class Dummy2(Channel):
     """A dummy channel which simply accumulates a state (same state as dummy1)."""
 
@@ -49,11 +50,11 @@ class Dummy2(Channel):
     def compute_current(u, voltages, params):
         """Return current."""
         return jnp.zeros_like(voltages)
-    
+
 
 def test_shared_state():
     """Test whether two channels can share a state.
-    
+
     This has to be copied into a notebook and executed with `jax.disable_jit():`."""
     comp1 = jx.Compartment()
     comp1.insert(Dummy1())
