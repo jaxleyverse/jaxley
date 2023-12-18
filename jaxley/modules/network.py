@@ -55,6 +55,13 @@ class Network(Module):
             c.synapse_type.synapse_states.keys() for c in connectivities
         ]
 
+        # Two columns: `parent_branch_index` and `child_branch_index`. One row per
+        # branch, apart from those branches which do not have a parent (i.e.
+        # -1 in parents). For every branch, tracks the global index of that branch
+        # (`child_branch_index`) and the global index of its parent 
+        # (`parent_branch_index`). Needed at `init_syns()`.
+        self.branch_edges: Optional[pd.DataFrame] = None
+
         self.initialize()
         self.init_syns(connectivities)
 
