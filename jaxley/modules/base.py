@@ -106,7 +106,7 @@ class Module(ABC):
             name = type(channel).__name__
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
-    def _to_jax(self):
+    def to_jax(self):
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)
