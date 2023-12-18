@@ -104,9 +104,18 @@ def integrate(
     for channel in module.channels:
         for channel_states in list(channel.channel_states.keys()):
             states[channel_states] = module.jaxnodes[channel_states]
+
+    # Override with the initial states set by `.make_trainable()`.
+    for inds, set_param in zip(module.indices_set_by_trainables, params):
+        for key in set_param.keys():
+            if key in list(states.keys()):  # Only initial states, not parameters.
+                states[key] = states[key].at[inds].set(set_param[key])
+
+    # Write synaptic states. TODO move above when new interface for synapses.
     for key in module.syn_states:
         states[key] = module.syn_states[key]
 
+    # Run simulation.
     _, recordings = nested_checkpoint_scan(
         _body_fun, states, i_current, length=length, nested_lengths=checkpoint_lengths
     )
