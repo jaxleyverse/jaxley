@@ -12,7 +12,6 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
-from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -333,7 +332,6 @@ class Module(ABC):
     def initialize(self):
         """Initialize the module."""
         self.init_morph()
-        self.init_syns()
         return self
 
     def record(self):
@@ -378,7 +376,7 @@ class Module(ABC):
     def _insert(self, channel, view):
         self._append_channel_to_nodes(view, channel)
 
-    def init_syns(self):
+    def init_syns(self, connectivities):
         self.initialized_syns = True
 
     def init_morph(self):

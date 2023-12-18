@@ -36,6 +36,7 @@ class Compartment(Module):
 
         # Initialize the module.
         self.initialize()
+        self.init_syns(None)
         self.initialized_conds = True
 
     def init_conds(self, params):

@@ -40,11 +40,13 @@ class Network(Module):
         self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
-        self.connectivities = connectivities
+        self.nseg = cells[0].nseg
+
         self.synapses = [
             connectivity.synapse_type for connectivity in connectivities
         ]
-        self.nseg = cells[0].nseg
+
+        # TODO(@michaeldeistler): should we also track this for channels?
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
         self.synapse_param_names = [
             c.synapse_type.synapse_params.keys() for c in connectivities
@@ -54,6 +56,7 @@ class Network(Module):
         ]
 
         self.initialize()
+        self.init_syns(connectivities)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self._append_params_and_states(self.network_params, self.network_states)
@@ -176,7 +179,7 @@ class Network(Module):
 
         return cond_params
 
-    def init_syns(self):
+    def init_syns(self, connectivities):
         global_pre_comp_inds = []
         global_post_comp_inds = []
         global_pre_branch_inds = []
@@ -187,7 +190,7 @@ class Network(Module):
         post_branch_inds = []
         pre_cell_inds = []
         post_cell_inds = []
-        for connectivity in self.connectivities:
+        for connectivity in connectivities:
             pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = prepare_syn(
                 connectivity.conns, self.nseg
             )
@@ -240,7 +243,7 @@ class Network(Module):
                 "global_post_branch_index",
             ]
         )
-        for i, connectivity in enumerate(self.connectivities):
+        for i, connectivity in enumerate(connectivities):
             self.edges = pd.concat(
                 [
                     self.edges,
