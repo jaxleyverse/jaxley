@@ -40,7 +40,7 @@ def integrate(
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
-    module._to_jax()  # TODO(michaeldeistler): hide.
+    module.to_jax()  # Creates `.jaxnodes` from `.nodes`.
 
     if module.currents is not None:
         # At least one stimulus was inserted.

@@ -88,13 +88,22 @@ class Module(ABC):
         return f"jx.{type(self).__name__}"
 
     def _append_params_and_states(self, param_dict, state_dict):
+        """Insert the default params of the module (e.g. radius, length).
+
+        This is run at `__init__()`. It does not deal with channels.
+        """
         for param_name, param_value in param_dict.items():
             self.nodes[param_name] = param_value
         for state_name, state_value in state_dict.items():
             self.nodes[state_name] = state_value
 
     def _gather_channels_from_constituents(self, constituents: List) -> None:
-        """Modifies `self.channels` and `self.nodes`."""
+        """Modify `self.channels` and `self.nodes` with channel info from constituents.
+
+        This is run at `__init__()`. It takes all branches of constituents (e.g.
+        of all branches when the are assembled into a cell) and adds columns to
+        `.nodes` for the relevant channels.
+        """
         for module in constituents:
             for channel in module.channels:
                 if type(channel).__name__ not in [
@@ -106,7 +115,7 @@ class Module(ABC):
             name = type(channel).__name__
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
-    def _to_jax(self):
+    def to_jax(self):
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)

@@ -7,11 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HH, Na, K
-
-
-import jax.numpy as jnp
-from jaxley.channels import Channel
+from jaxley.channels import HH, Channel, K, Na
 
 
 class Dummy1(Channel):
