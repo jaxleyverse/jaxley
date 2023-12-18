@@ -149,10 +149,6 @@ class CompartmentView(View):
         # (Potentially) update variables that track meta information about synapses.
         if is_new_type:
             self.pointer.synapse_names.append(type(synapse_type).__name__)
-            self.pointer.synapse_param_names.append(
-                list(synapse_type.synapse_params.keys())
-            )
-            self.pointer.synapse_state_names.append(
-                list(synapse_type.synapse_states.keys())
-            )
+            self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
+            self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
             self.pointer.synapses.append(synapse_type)

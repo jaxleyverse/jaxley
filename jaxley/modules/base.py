@@ -115,6 +115,11 @@ class Module(ABC):
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)
 
+        self.jaxedges = {}
+        for key, value in self.edges.to_dict(orient="list").items():
+            if key != "type":
+                self.jaxedges[key] = jnp.asarray(value)
+
     def show(
         self,
         param_names: Optional[Union[str, List[str]]] = None,  # TODO.
@@ -446,7 +451,7 @@ class Module(ABC):
         states,
         delta_t,
         channels: List[Channel],
-        channel_nodes: List[pd.DataFrame],
+        channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
     ):
         """One step of integration of the channels."""

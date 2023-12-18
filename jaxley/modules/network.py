@@ -1,3 +1,4 @@
+from itertools import chain
 import itertools
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -44,12 +45,12 @@ class Network(Module):
 
         # TODO(@michaeldeistler): should we also track this for channels?
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
-        self.synapse_param_names = [
-            c.synapse_type.synapse_params.keys() for c in connectivities
-        ]
-        self.synapse_state_names = [
-            c.synapse_type.synapse_states.keys() for c in connectivities
-        ]
+        self.synapse_param_names = list(chain.from_iterable([
+            list(c.synapse_type.synapse_params.keys()) for c in connectivities
+        ]))
+        self.synapse_state_names = list(chain.from_iterable([
+            list(c.synapse_type.synapse_states.keys()) for c in connectivities
+        ]))
 
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
         # branch, apart from those branches which do not have a parent (i.e.
@@ -257,14 +258,14 @@ class Network(Module):
 
     @staticmethod
     def _step_synapse(
-        u,
+        states,
         syn_channels,
         params,
         delta_t,
         edges: pd.DataFrame,
     ):
         """Perform one step of the synapses and obtain their currents."""
-        voltages = u["voltages"]
+        voltages = states["voltages"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
@@ -278,8 +279,21 @@ class Network(Module):
             assert (
                 synapse_names[i] == type(synapse_type).__name__
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
+
+            name = type(synapse_type).__name__
+            channel_param_names = list(synapse_type.synapse_params.keys())
+            channel_state_names = list(synapse_type.synapse_states.keys())
+            indices = edges.loc[edges[name] == name].index.values.to_numpy()
+
+            channel_params = {}
+            for p in channel_param_names:
+                channel_params[p] = params[p][indices]
+            channel_states = {}
+            for s in channel_state_names:
+                channel_states[s] = states[s][indices]
+
             synapse_states, synapse_current_terms = synapse_type.step(
-                u, delta_t, voltages, params, np.asarray(pre_syn_inds[synapse_names[i]])
+                states, delta_t, voltages, params, np.asarray(pre_syn_inds[synapse_names[i]])
             )
             synapse_current_terms = postsyn_voltage_updates(
                 voltages,
@@ -293,9 +307,9 @@ class Network(Module):
         # Rebuild synapse states.
         for s in new_syn_states:
             for key, val in s.items():
-                u[key] = val
+                states[key] = val
 
-        return u, syn_voltage_terms, syn_constant_terms
+        return states, syn_voltage_terms, syn_constant_terms
 
     def vis(
         self,
