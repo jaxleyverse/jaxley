@@ -74,7 +74,7 @@ class CompartmentView(View):
         we need to register it as a new synapse in a bunch of dictionaries which track
         synapse parameters, state and meta information.
 
-        Next, we register the new connection in the synapse dataframe (`.syn_edges`).
+        Next, we register the new connection in the synapse dataframe (`.edges`).
         Then, we update synapse parameter and state arrays with the new connection.
         Finally, we update synapse meta information.
         """
@@ -84,15 +84,15 @@ class CompartmentView(View):
         if is_new_type:
             # New type: index for the synapse type is one more than the currently
             # highest index.
-            max_ind = self.pointer.syn_edges["type_ind"].max() + 1
+            max_ind = self.pointer.edges["type_ind"].max() + 1
             type_ind = 0 if jnp.isnan(max_ind) else max_ind
         else:
             # Not a new type: search for the index that this type has previously had.
-            type_ind = self.pointer.syn_edges.query(f"type == '{synapse_name}'")[
+            type_ind = self.pointer.edges.query(f"type == '{synapse_name}'")[
                 "type_ind"
             ].to_numpy()[0]
 
-        # The `syn_edges` dataframe expects the compartment as continuous `loc`, not
+        # The `edges` dataframe expects the compartment as continuous `loc`, not
         # as discrete compartment index (because the continuous `loc` is used for
         # plotting). Below, we cast the compartment index to its (rough) location.
         pre_comp = loc_of_index(
@@ -103,9 +103,9 @@ class CompartmentView(View):
         )
 
         # Update edges.
-        self.pointer.syn_edges = pd.concat(
+        self.pointer.edges = pd.concat(
             [
-                self.pointer.syn_edges,
+                self.pointer.edges,
                 pd.DataFrame(
                     dict(
                         pre_locs=pre_comp,
@@ -134,7 +134,7 @@ class CompartmentView(View):
 
         # We add a column called index which is used by `adjust_view` of the
         # `SynapseView` (see `network.py`).
-        self.pointer.syn_edges["index"] = list(self.pointer.syn_edges.index)
+        self.pointer.edges["index"] = list(self.pointer.edges.index)
 
         # Update synaptic parameter array.
         for key in synapse_type.synapse_params:
@@ -169,4 +169,4 @@ class CompartmentView(View):
             self.pointer.synapse_state_names.append(
                 list(synapse_type.synapse_states.keys())
             )
-            self.pointer.syn_classes.append(synapse_type)
+            self.pointer.synapses.append(synapse_type)

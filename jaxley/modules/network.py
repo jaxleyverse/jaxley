@@ -41,7 +41,7 @@ class Network(Module):
 
         self.cells = cells
         self.connectivities = connectivities
-        self.syn_classes = [
+        self.synapses = [
             connectivity.synapse_type for connectivity in connectivities
         ]
         self.nseg = cells[0].nseg
@@ -102,7 +102,7 @@ class Network(Module):
             view["global_cell_index"] = view["cell_index"]
             return CellView(self, view)
         elif key in self.synapse_names:
-            return SynapseView(self, self.syn_edges, key)
+            return SynapseView(self, self.edges, key)
         elif key in self.group_views:
             return self.group_views[key]
         else:
@@ -224,7 +224,7 @@ class Network(Module):
             post_cell_inds.append(post_cell_inds_)
 
         # Prepare synapses.
-        self.syn_edges = pd.DataFrame(
+        self.edges = pd.DataFrame(
             columns=[
                 "pre_locs",
                 "pre_branch_index",
@@ -241,9 +241,9 @@ class Network(Module):
             ]
         )
         for i, connectivity in enumerate(self.connectivities):
-            self.syn_edges = pd.concat(
+            self.edges = pd.concat(
                 [
-                    self.syn_edges,
+                    self.edges,
                     pd.DataFrame(
                         dict(
                             pre_locs=pre_locs[i],
@@ -262,7 +262,7 @@ class Network(Module):
                     ),
                 ],
             )
-        self.syn_edges["index"] = list(self.syn_edges.index)
+        self.edges["index"] = list(self.edges.index)
 
         self.branch_edges = pd.DataFrame(
             dict(
@@ -359,10 +359,10 @@ class Network(Module):
                 morph_plot_kwargs=morph_plot_kwargs,
             )
 
-            pre_locs = self.syn_edges["pre_locs"].to_numpy()
-            post_locs = self.syn_edges["post_locs"].to_numpy()
-            pre_branch = self.syn_edges["global_pre_branch_index"].to_numpy()
-            post_branch = self.syn_edges["global_post_branch_index"].to_numpy()
+            pre_locs = self.edges["pre_locs"].to_numpy()
+            post_locs = self.edges["post_locs"].to_numpy()
+            pre_branch = self.edges["global_pre_branch_index"].to_numpy()
+            post_branch = self.edges["global_post_branch_index"].to_numpy()
 
             dims_np = np.asarray(dims)
 
@@ -423,8 +423,8 @@ class Network(Module):
         else:
             graph.add_nodes_from(range(len(self.cells)))
 
-        pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
-        post_cell = self.syn_edges["post_cell_index"].to_numpy()
+        pre_cell = self.edges["pre_cell_index"].to_numpy()
+        post_cell = self.edges["post_cell_index"].to_numpy()
 
         inds = np.stack([pre_cell, post_cell]).T
         graph.add_edges_from(inds)

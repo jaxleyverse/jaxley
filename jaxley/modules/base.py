@@ -26,13 +26,10 @@ class Module(ABC):
         self.nseg: int = None
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
-
-        self.conns: List[Synapse] = None
         self.group_views = {}
 
         self.nodes: Optional[pd.DataFrame] = None
-
-        self.syn_edges = pd.DataFrame(
+        self.edges = pd.DataFrame(
             columns=[
                 "pre_locs",
                 "post_locs",
@@ -58,9 +55,10 @@ class Module(ABC):
 
         self.syn_params: Dict[str, jnp.ndarray] = {}
         self.syn_states: Dict[str, jnp.ndarray] = {}
-        self.syn_classes: List = []
+        # List of all types of `jx.Synapse`s.
+        self.synapses: List = []
 
-        # List of all `jx.Channel`s.
+        # List of all types of `jx.Channel`s.
         self.channels: List[Channel] = []
 
         # For trainable parameters.
@@ -196,8 +194,8 @@ class Module(ABC):
     def set(self, key, val):
         """Set parameter."""
         # Alternatively, we could do `assert key not in self.syn_params`.
-        nodes = self.syn_edges if key in self.syn_params else self.nodes
-        self._set(key, val, nodes)
+        view = self.edges if key in self.syn_params else self.nodes
+        self._set(key, val, view)
 
     def _set(self, key, val, view):
         if key in self.syn_params:
@@ -412,10 +410,10 @@ class Module(ABC):
         # Step of the synapse.
         u, syn_voltage_terms, syn_constant_terms = self._step_synapse(
             u,
-            self.syn_classes,
+            self.synapses,
             params,
             delta_t,
-            self.syn_edges,
+            self.edges,
         )
 
         # Voltage steps.
