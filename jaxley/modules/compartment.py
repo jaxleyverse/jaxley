@@ -137,38 +137,14 @@ class CompartmentView(View):
         indices = list(range(index, index + 1))
         for key in synapse_type.synapse_params:
             param_val = synapse_type.synapse_params[key]
-            self.edges.loc[indices, key] = param_val
+            self.pointer.edges.loc[indices, key] = param_val
         for key in synapse_type.synapse_states:
             state_val = synapse_type.synapse_states[key]
-            self.edges.loc[indices, key] = state_val
+            self.pointer.edges.loc[indices, key] = state_val
 
         # We add a column called index which is used by `adjust_view` of the
         # `SynapseView` (see `network.py`).
         self.pointer.edges["index"] = list(self.pointer.edges.index)
-
-        # Update synaptic parameter array.
-        for key in synapse_type.synapse_params:
-            param_vals = jnp.asarray([synapse_type.synapse_params[key]])
-            if is_new_type:
-                # Register parameter array for new synapse type.
-                self.pointer.syn_params[key] = param_vals
-            else:
-                # Append to synaptic parameter array.
-                self.pointer.syn_params[key] = jnp.concatenate(
-                    [self.pointer.syn_params[key], param_vals]
-                )
-
-        # Update synaptic state array.
-        for key in synapse_type.synapse_states:
-            state_vals = jnp.asarray([synapse_type.synapse_states[key]])
-            if is_new_type:
-                # Register parameter array for new synapse type.
-                self.pointer.syn_states[key] = state_vals
-            else:
-                # Append to synaptic parameter array.
-                self.pointer.syn_states[key] = jnp.concatenate(
-                    [self.pointer.syn_states[key], state_vals]
-                )
 
         # (Potentially) update variables that track meta information about synapses.
         if is_new_type:

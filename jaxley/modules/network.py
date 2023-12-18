@@ -36,7 +36,6 @@ class Network(Module):
         super().__init__()
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
-        self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
         self.nseg = cells[0].nseg
