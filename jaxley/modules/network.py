@@ -94,7 +94,8 @@ class Network(Module):
             view["global_cell_index"] = view["cell_index"]
             return CellView(self, view)
         elif key in self.synapse_names:
-            return SynapseView(self, self.edges, key)
+            type_index = self.synapse_names.index(key)
+            return SynapseView(self, self.edges, key, self.synapses[type_index])
         elif key in self.group_views:
             return self.group_views[key]
         else:
@@ -436,7 +437,8 @@ class Network(Module):
 class SynapseView(View):
     """SynapseView."""
 
-    def __init__(self, pointer, view, key):
+    def __init__(self, pointer, view, key, synapse: "jx.Synapse"):
+        self.synapse = synapse
         view = view[view["type"] == key]
         view = view.reset_index(drop=True)
         view["index"] = list(view.index)
@@ -454,22 +456,28 @@ class SynapseView(View):
         states: bool = True,
     ):
         """Show synapses."""
-        ind_of_params = self.view.index.values
-        nodes = deepcopy(self.view)
+        printable_nodes = deepcopy(self.view[["type", "type_ind"]])
 
-        if not indices:
-            for key in nodes:
-                nodes = nodes.drop(key, axis=1)
+        if indices:
+            names = [
+                "pre_locs",
+                "pre_branch_index",
+                "pre_cell_index",
+                "post_locs",
+                "post_branch_index",
+                "post_cell_index",
+            ]
+            printable_nodes[names] = self.view[names]
 
         if params:
-            for key, val in self.pointer.syn_params.items():
-                nodes[key] = val[ind_of_params]
-
+            for key in self.synapse.synapse_params.keys():
+                printable_nodes[key] = self.view[key]
         if states:
-            for key, val in self.pointer.syn_states.items():
-                nodes[key] = val[ind_of_params]
+            for key in self.synapse.synapse_states.keys():
+                printable_nodes[key] = self.view[key]
 
-        return nodes
+        printable_nodes["controlled_by_param"] = self.view["controlled_by_param"]
+        return printable_nodes
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
