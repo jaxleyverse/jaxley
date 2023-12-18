@@ -1,6 +1,6 @@
-from itertools import chain
 import itertools
 from copy import deepcopy
+from itertools import chain
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
@@ -45,12 +45,16 @@ class Network(Module):
 
         # TODO(@michaeldeistler): should we also track this for channels?
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
-        self.synapse_param_names = list(chain.from_iterable([
-            list(c.synapse_type.synapse_params.keys()) for c in connectivities
-        ]))
-        self.synapse_state_names = list(chain.from_iterable([
-            list(c.synapse_type.synapse_states.keys()) for c in connectivities
-        ]))
+        self.synapse_param_names = list(
+            chain.from_iterable(
+                [list(c.synapse_type.synapse_params.keys()) for c in connectivities]
+            )
+        )
+        self.synapse_state_names = list(
+            chain.from_iterable(
+                [list(c.synapse_type.synapse_states.keys()) for c in connectivities]
+            )
+        )
 
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
         # branch, apart from those branches which do not have a parent (i.e.
@@ -244,7 +248,7 @@ class Network(Module):
                 state_val = connectivity.synapse_type.synapse_states[key]
                 indices = np.arange(index, index + len(connectivity.conns))
                 self.edges.loc[indices, key] = state_val
-            
+
             index += len(connectivity.conns)
 
         self.branch_edges = pd.DataFrame(
@@ -274,7 +278,6 @@ class Network(Module):
 
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
-        new_syn_states = []
         for i, synapse_type in enumerate(syn_channels):
             assert (
                 synapse_names[i] == type(synapse_type).__name__
@@ -293,7 +296,11 @@ class Network(Module):
                 synapse_states[s] = states[s][indices]
 
             states_updated, synapse_current_terms = synapse_type.step(
-                synapse_states, delta_t, voltages, synapse_params, np.asarray(pre_syn_inds[synapse_names[i]])
+                synapse_states,
+                delta_t,
+                voltages,
+                synapse_params,
+                np.asarray(pre_syn_inds[synapse_names[i]]),
             )
             synapse_current_terms = postsyn_voltage_updates(
                 voltages,

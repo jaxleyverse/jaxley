@@ -198,7 +198,11 @@ class Module(ABC):
     def set(self, key, val):
         """Set parameter."""
         # Alternatively, we could do `assert key not in self.syn_params`.
-        view = self.edges if key in self.synapse_param_names or key in self.synapse_state_names else self.nodes
+        view = (
+            self.edges
+            if key in self.synapse_param_names or key in self.synapse_state_names
+            else self.nodes
+        )
         self._set(key, val, view)
 
     def _set(self, key, val, view):
@@ -226,7 +230,11 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        view = self.edges if key in self.synapse_param_names or key in self.synapse_state_names else self.nodes
+        view = (
+            self.edges
+            if key in self.synapse_param_names or key in self.synapse_state_names
+            else self.nodes
+        )
         view = deepcopy(view.assign(controlled_by_param=0))
         self._make_trainable(view, key, init_val, verbose=verbose)
 
@@ -240,7 +248,7 @@ class Module(ABC):
         assert (
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
-        
+
         if key in view.columns:
             view = view[~np.isnan(view[key])]
             grouped_view = view.groupby("controlled_by_param")
