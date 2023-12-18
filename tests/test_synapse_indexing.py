@@ -54,11 +54,15 @@ def test_set_and_querying_params_two_types():
 
     net.set("gS", 0.15)
     assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.15)
-    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.5)  # 0.5 is the default value.
+    assert np.all(
+        net.edges["gC"].to_numpy()[[1, 3]] == 0.5
+    )  # 0.5 is the default value.
 
     net.GlutamateSynapse.set("gS", 0.32)
     assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.32)
-    assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.5)  # 0.5 is the default value.
+    assert np.all(
+        net.edges["gC"].to_numpy()[[1, 3]] == 0.5
+    )  # 0.5 is the default value.
 
     net.TestSynapse.set("gC", 0.18)
     assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.32)

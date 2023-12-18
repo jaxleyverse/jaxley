@@ -488,5 +488,6 @@ class SynapseView(View):
         """Make a parameter trainable."""
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
+            or key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
         self.pointer._make_trainable(self.view, key, init_val)
