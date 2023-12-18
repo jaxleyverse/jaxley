@@ -40,7 +40,6 @@ class Branch(Module):
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
         # Indexing.
-        # TODO: need to take care of setting the `HH` column to False, not NaN.
         self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
         self._append_params_and_states(self.branch_params, self.branch_states)
         self.nodes["comp_index"] = np.arange(self.nseg).tolist()
