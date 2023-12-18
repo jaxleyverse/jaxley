@@ -319,7 +319,8 @@ class Module(ABC):
         # Override with those parameters set by `.make_trainable()`.
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
-                params[key] = params[key].at[inds].set(set_param[key])
+                if key in list(params.keys()):  # Only parameters, not initial states.
+                    params[key] = params[key].at[inds].set(set_param[key])
 
         # Compute conductance params and append them.
         cond_params = self.init_conds(params)
