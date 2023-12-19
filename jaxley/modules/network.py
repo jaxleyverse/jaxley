@@ -427,7 +427,7 @@ class SynapseView(View):
     def __init__(self, pointer, view, key, synapse: "jx.Synapse"):
         self.synapse = synapse
         view = deepcopy(view[view["type"] == key])
-        view = view.assign(controlled_by_param=view.index)
+        view = view.assign(controlled_by_param=0)
 
         # Used for `.set()`.
         view["global_index"] = view.index.values
@@ -441,6 +441,7 @@ class SynapseView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
+        self.view["controlled_by_param"] = self.view.index.values
         return self.adjust_view("index", index)
 
     def show(
