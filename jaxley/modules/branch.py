@@ -71,8 +71,9 @@ class Branch(Module):
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
             return CompartmentView(self, view)
-        elif key in self.group_views:
-            return self.group_views[key]
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            return GroupView(self, self.nodes.loc[inds])
         else:
             raise KeyError(f"Key {key} not recognized.")
 
