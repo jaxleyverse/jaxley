@@ -118,13 +118,17 @@ class Module(ABC):
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)
 
+        # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.
         self.jaxedges = {}
-        for key, value in self.edges.to_dict(orient="list").items():
-            if key != "type":
-                val = jnp.asarray(value)
-                self.jaxedges[key] = val[~jnp.isnan(val)]
+        edges = self.edges.to_dict(orient="list")
+        for i, synapse in enumerate(self.synapses):
+            for key in synapse.synapse_params:
+                condition = jnp.asarray(edges["type_ind"]) == i
+                self.jaxedges[key] = jnp.asarray(edges[key])[condition]
+            for key in synapse.synapse_states:
+                self.jaxedges[key] = jnp.asarray(edges[key])[condition]
 
     def show(
         self,
