@@ -36,6 +36,7 @@ class Compartment(Module):
 
         # Initialize the module.
         self.initialize()
+        self.init_syns(None)
         self.initialized_conds = True
 
     def init_conds(self, params):
@@ -74,7 +75,7 @@ class CompartmentView(View):
         we need to register it as a new synapse in a bunch of dictionaries which track
         synapse parameters, state and meta information.
 
-        Next, we register the new connection in the synapse dataframe (`.syn_edges`).
+        Next, we register the new connection in the synapse dataframe (`.edges`).
         Then, we update synapse parameter and state arrays with the new connection.
         Finally, we update synapse meta information.
         """
@@ -84,15 +85,15 @@ class CompartmentView(View):
         if is_new_type:
             # New type: index for the synapse type is one more than the currently
             # highest index.
-            max_ind = self.pointer.syn_edges["type_ind"].max() + 1
+            max_ind = self.pointer.edges["type_ind"].max() + 1
             type_ind = 0 if jnp.isnan(max_ind) else max_ind
         else:
             # Not a new type: search for the index that this type has previously had.
-            type_ind = self.pointer.syn_edges.query(f"type == '{synapse_name}'")[
+            type_ind = self.pointer.edges.query(f"type == '{synapse_name}'")[
                 "type_ind"
             ].to_numpy()[0]
 
-        # The `syn_edges` dataframe expects the compartment as continuous `loc`, not
+        # The `edges` dataframe expects the compartment as continuous `loc`, not
         # as discrete compartment index (because the continuous `loc` is used for
         # plotting). Below, we cast the compartment index to its (rough) location.
         pre_comp = loc_of_index(
@@ -101,11 +102,12 @@ class CompartmentView(View):
         post_comp = loc_of_index(
             post.view["global_comp_index"].to_numpy(), self.pointer.nseg
         )
+        index = len(self.pointer.edges)
 
         # Update edges.
-        self.pointer.syn_edges = pd.concat(
+        self.pointer.edges = pd.concat(
             [
-                self.pointer.syn_edges,
+                self.pointer.edges,
                 pd.DataFrame(
                     dict(
                         pre_locs=pre_comp,
@@ -132,41 +134,20 @@ class CompartmentView(View):
             ignore_index=True,
         )
 
-        # We add a column called index which is used by `adjust_view` of the
-        # `SynapseView` (see `network.py`).
-        self.pointer.syn_edges["index"] = list(self.pointer.syn_edges.index)
-
-        # Update synaptic parameter array.
+        # Add parameters and states to the `.edges` table.
+        indices = list(range(index, index + 1))
         for key in synapse_type.synapse_params:
-            param_vals = jnp.asarray([synapse_type.synapse_params[key]])
-            if is_new_type:
-                # Register parameter array for new synapse type.
-                self.pointer.syn_params[key] = param_vals
-            else:
-                # Append to synaptic parameter array.
-                self.pointer.syn_params[key] = jnp.concatenate(
-                    [self.pointer.syn_params[key], param_vals]
-                )
+            param_val = synapse_type.synapse_params[key]
+            self.pointer.edges.loc[indices, key] = param_val
 
         # Update synaptic state array.
         for key in synapse_type.synapse_states:
-            state_vals = jnp.asarray([synapse_type.synapse_states[key]])
-            if is_new_type:
-                # Register parameter array for new synapse type.
-                self.pointer.syn_states[key] = state_vals
-            else:
-                # Append to synaptic parameter array.
-                self.pointer.syn_states[key] = jnp.concatenate(
-                    [self.pointer.syn_states[key], state_vals]
-                )
+            state_val = synapse_type.synapse_states[key]
+            self.pointer.edges.loc[indices, key] = state_val
 
         # (Potentially) update variables that track meta information about synapses.
         if is_new_type:
             self.pointer.synapse_names.append(type(synapse_type).__name__)
-            self.pointer.synapse_param_names.append(
-                list(synapse_type.synapse_params.keys())
-            )
-            self.pointer.synapse_state_names.append(
-                list(synapse_type.synapse_states.keys())
-            )
-            self.pointer.syn_classes.append(synapse_type)
+            self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
+            self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
+            self.pointer.synapses.append(synapse_type)

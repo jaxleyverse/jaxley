@@ -12,7 +12,6 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
-from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -27,18 +26,17 @@ class Module(ABC):
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
-        self.conns: List[Synapse] = None
         self.group_views = {}
 
         self.nodes: Optional[pd.DataFrame] = None
 
-        self.syn_edges = pd.DataFrame(
+        self.edges = pd.DataFrame(
             columns=[
                 "pre_locs",
-                "post_locs",
                 "pre_branch_index",
-                "post_branch_index",
                 "pre_cell_index",
+                "post_locs",
+                "post_branch_index",
                 "post_cell_index",
                 "type",
                 "type_ind",
@@ -48,7 +46,6 @@ class Module(ABC):
                 "global_post_branch_index",
             ]
         )
-        self.branch_edges: Optional[pd.DataFrame] = None
 
         self.cumsum_nbranches: Optional[jnp.ndarray] = None
 
@@ -58,11 +55,12 @@ class Module(ABC):
         self.initialized_morph: bool = False
         self.initialized_syns: bool = False
 
-        self.syn_params: Dict[str, jnp.ndarray] = {}
-        self.syn_states: Dict[str, jnp.ndarray] = {}
-        self.syn_classes: List = []
+        # List of all types of `jx.Synapse`s.
+        self.synapses: List = []
+        self.synapse_param_names = []
+        self.synapse_state_names = []
 
-        # List of all `jx.Channel`s.
+        # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
 
         # For trainable parameters.
@@ -119,6 +117,14 @@ class Module(ABC):
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)
+
+        # `jaxedges` contains only non-Nan elements. This is unlike the channels where
+        # we allow parameter sharing.
+        self.jaxedges = {}
+        for key, value in self.edges.to_dict(orient="list").items():
+            if key != "type":
+                val = jnp.asarray(value)
+                self.jaxedges[key] = val[~jnp.isnan(val)]
 
     def show(
         self,
@@ -197,18 +203,19 @@ class Module(ABC):
 
     def set(self, key, val):
         """Set parameter."""
-        # Alternatively, we could do `assert key not in self.syn_params`.
-        nodes = self.syn_edges if key in self.syn_params else self.nodes
-        self._set(key, val, nodes)
+        # TODO(@michaeldeistler) should we allow `.set()` for synaptic parameters
+        # without using the `SynapseView`, purely for consistency with `make_trainable`?
+        view = (
+            self.edges
+            if key in self.synapse_param_names or key in self.synapse_state_names
+            else self.nodes
+        )
+        self._set(key, val, view, view)
 
-    def _set(self, key, val, view):
-        if key in self.syn_params:
-            self.syn_params[key] = self.syn_params[key].at[view.index.values].set(val)
-        elif key in self.syn_states:
-            self.syn_states[key] = self.syn_states[key].at[view.index.values].set(val)
-        elif key in view.columns:
+    def _set(self, key, val, view, table_to_update):
+        if key in view.columns:
             view = view[~np.isnan(view[key])]
-            self.nodes.loc[view.index.values, key] = val
+            table_to_update.loc[view.index.values, key] = val
         else:
             raise KeyError("Key not recognized.")
 
@@ -230,7 +237,9 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        view = deepcopy(self.nodes.assign(controlled_by_param=0))
+        assert key not in self.synapse_param_names and key not in self.synapse_state_names, "Parameters of synapses can only be made trainable via the `SynapseView`."
+        view = self.nodes
+        view = deepcopy(view.assign(controlled_by_param=0))
         self._make_trainable(view, key, init_val, verbose=verbose)
 
     def _make_trainable(
@@ -244,14 +253,11 @@ class Module(ABC):
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
 
-        if key in self.syn_params:
-            grouped_view = view.groupby("controlled_by_param")
-            inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
-            indices_per_param = jnp.stack(inds_of_comps)
-            param_vals = self.syn_params[key][indices_per_param]
-        elif key in view.columns:
+        if key in view.columns:
             view = view[~np.isnan(view[key])]
             grouped_view = view.groupby("controlled_by_param")
+            # Because of this `x.index.values` we cannot support `make_trainable()` on
+            # the module level for synapse parameters (but only for `SynapseView`).
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
             indices_per_param = jnp.stack(inds_of_comps)
             param_vals = jnp.asarray(
@@ -313,8 +319,8 @@ class Module(ABC):
             for channel_params in list(channel.channel_params.keys()):
                 params[channel_params] = self.jaxnodes[channel_params]
 
-        for key, val in self.syn_params.items():
-            params[key] = val
+        for synapse_params in self.synapse_param_names:
+            params[synapse_params] = self.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
@@ -337,7 +343,6 @@ class Module(ABC):
     def initialize(self):
         """Initialize the module."""
         self.init_morph()
-        self.init_syns()
         return self
 
     def record(self):
@@ -382,7 +387,7 @@ class Module(ABC):
     def _insert(self, channel, view):
         self._append_channel_to_nodes(view, channel)
 
-    def init_syns(self):
+    def init_syns(self, connectivities):
         self.initialized_syns = True
 
     def init_morph(self):
@@ -414,10 +419,10 @@ class Module(ABC):
         # Step of the synapse.
         u, syn_voltage_terms, syn_constant_terms = self._step_synapse(
             u,
-            self.syn_classes,
+            self.synapses,
             params,
             delta_t,
-            self.syn_edges,
+            self.edges,
         )
 
         # Voltage steps.
@@ -460,7 +465,7 @@ class Module(ABC):
         states,
         delta_t,
         channels: List[Channel],
-        channel_nodes: List[pd.DataFrame],
+        channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
     ):
         """One step of integration of the channels."""
@@ -741,7 +746,7 @@ class View:
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
-        self.pointer._set(key, val, self.view)
+        self.pointer._set(key, val, self.view, self.pointer.nodes)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""

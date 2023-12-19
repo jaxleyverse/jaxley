@@ -1,9 +1,9 @@
+from itertools import chain
 import itertools
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -37,23 +37,34 @@ class Network(Module):
         super().__init__()
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
-        self._append_synapses_to_params_and_state(connectivities)
 
         self.cells = cells
-        self.connectivities = connectivities
-        self.syn_classes = [
-            connectivity.synapse_type for connectivity in connectivities
-        ]
         self.nseg = cells[0].nseg
+
+        self.synapses = [connectivity.synapse_type for connectivity in connectivities]
+        
+        # TODO(@michaeldeistler): should we also track this for channels?
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
-        self.synapse_param_names = [
-            c.synapse_type.synapse_params.keys() for c in connectivities
-        ]
-        self.synapse_state_names = [
-            c.synapse_type.synapse_states.keys() for c in connectivities
-        ]
+        self.synapse_param_names = list(
+            chain.from_iterable(
+                [list(c.synapse_type.synapse_params.keys()) for c in connectivities]
+            )
+        )
+        self.synapse_state_names = list(
+            chain.from_iterable(
+                [list(c.synapse_type.synapse_states.keys()) for c in connectivities]
+            )
+        )
+
+        # Two columns: `parent_branch_index` and `child_branch_index`. One row per
+        # branch, apart from those branches which do not have a parent (i.e.
+        # -1 in parents). For every branch, tracks the global index of that branch
+        # (`child_branch_index`) and the global index of its parent
+        # (`parent_branch_index`). Needed at `init_syns()`.
+        self.branch_edges: Optional[pd.DataFrame] = None
 
         self.initialize()
+        self.init_syns(connectivities)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self._append_params_and_states(self.network_params, self.network_states)
@@ -71,25 +82,6 @@ class Network(Module):
         self._gather_channels_from_constituents(cells)
         self.initialized_conds = False
 
-    def _append_synapses_to_params_and_state(self, connectivities):
-        for connectivity in connectivities:
-            for key in connectivity.synapse_type.synapse_params:
-                param_vals = jnp.asarray(
-                    [
-                        connectivity.synapse_type.synapse_params[key]
-                        for _ in connectivity.conns
-                    ]
-                )
-                self.syn_params[key] = param_vals
-            for key in connectivity.synapse_type.synapse_states:
-                state_vals = jnp.asarray(
-                    [
-                        connectivity.synapse_type.synapse_states[key]
-                        for _ in connectivity.conns
-                    ]
-                )
-                self.syn_states[key] = state_vals
-
     def __getattr__(self, key):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
@@ -102,7 +94,8 @@ class Network(Module):
             view["global_cell_index"] = view["cell_index"]
             return CellView(self, view)
         elif key in self.synapse_names:
-            return SynapseView(self, self.syn_edges, key)
+            type_index = self.synapse_names.index(key)
+            return SynapseView(self, self.edges, key, self.synapses[type_index])
         elif key in self.group_views:
             return self.group_views[key]
         else:
@@ -176,7 +169,7 @@ class Network(Module):
 
         return cond_params
 
-    def init_syns(self):
+    def init_syns(self, connectivities):
         global_pre_comp_inds = []
         global_post_comp_inds = []
         global_pre_branch_inds = []
@@ -187,82 +180,67 @@ class Network(Module):
         post_branch_inds = []
         pre_cell_inds = []
         post_cell_inds = []
-        for connectivity in self.connectivities:
+        for i, connectivity in enumerate(connectivities):
             pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = prepare_syn(
                 connectivity.conns, self.nseg
             )
             # Global compartment indizes.
-            global_pre_comp_inds.append(
-                self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
-            )
-            global_post_comp_inds.append(
-                self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
-            )
-            global_pre_branch_inds.append(
-                [
+            global_pre_comp_inds = self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
+            global_post_comp_inds = self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
+            global_pre_branch_inds = [
                     self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
                     for c in connectivity.conns
                 ]
-            )
-            global_post_branch_inds.append(
-                [
+            global_post_branch_inds = [
                     self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
                     for c in connectivity.conns
                 ]
-            )
             # Local compartment inds.
-            pre_locs.append(np.asarray([c.pre_loc for c in connectivity.conns]))
-            post_locs.append(np.asarray([c.post_loc for c in connectivity.conns]))
+            pre_locs = np.asarray([c.pre_loc for c in connectivity.conns])
+            post_locs = np.asarray([c.post_loc for c in connectivity.conns])
             # Local branch inds.
-            pre_branch_inds.append(
-                np.asarray([c.pre_branch_ind for c in connectivity.conns])
-            )
-            post_branch_inds.append(
-                np.asarray([c.post_branch_ind for c in connectivity.conns])
-            )
-            pre_cell_inds.append(pre_cell_inds_)
-            post_cell_inds.append(post_cell_inds_)
+            pre_branch_inds = np.asarray([c.pre_branch_ind for c in connectivity.conns])
+            post_branch_inds = np.asarray([c.post_branch_ind for c in connectivity.conns])
+            pre_cell_inds = pre_cell_inds_
+            post_cell_inds = post_cell_inds_
 
-        # Prepare synapses.
-        self.syn_edges = pd.DataFrame(
-            columns=[
-                "pre_locs",
-                "pre_branch_index",
-                "pre_cell_index",
-                "post_locs",
-                "post_branch_index",
-                "post_cell_index",
-                "type",
-                "type_ind",
-                "global_pre_comp_index",
-                "global_post_comp_index",
-                "global_pre_branch_index",
-                "global_post_branch_index",
-            ]
-        )
-        for i, connectivity in enumerate(self.connectivities):
-            self.syn_edges = pd.concat(
+            self.edges = pd.concat(
                 [
-                    self.syn_edges,
+                    self.edges,
                     pd.DataFrame(
                         dict(
-                            pre_locs=pre_locs[i],
-                            pre_branch_index=pre_branch_inds[i],
-                            pre_cell_index=pre_cell_inds[i],
-                            post_locs=post_locs[i],
-                            post_branch_index=post_branch_inds[i],
-                            post_cell_index=post_cell_inds[i],
+                            pre_locs=pre_locs,
+                            pre_branch_index=pre_branch_inds,
+                            pre_cell_index=pre_cell_inds,
+                            post_locs=post_locs,
+                            post_branch_index=post_branch_inds,
+                            post_cell_index=post_cell_inds,
                             type=type(connectivity.synapse_type).__name__,
                             type_ind=i,
-                            global_pre_comp_index=global_pre_comp_inds[i],
-                            global_post_comp_index=global_post_comp_inds[i],
-                            global_pre_branch_index=global_pre_branch_inds[i],
-                            global_post_branch_index=global_post_branch_inds[i],
+                            global_pre_comp_index=global_pre_comp_inds,
+                            global_post_comp_index=global_post_comp_inds,
+                            global_pre_branch_index=global_pre_branch_inds,
+                            global_post_branch_index=global_post_branch_inds,
                         )
                     ),
                 ],
+                ignore_index=True
             )
-        self.syn_edges["index"] = list(self.syn_edges.index)
+
+        # Add parameters and states to the `.edges` table.
+        index = 0
+        for i, connectivity in enumerate(connectivities):
+            for key in connectivity.synapse_type.synapse_params:
+                param_val = connectivity.synapse_type.synapse_params[key]
+                indices = np.arange(index, index + len(connectivity.conns))
+                self.edges.loc[indices, key] = param_val
+
+            for key in connectivity.synapse_type.synapse_states:
+                state_val = connectivity.synapse_type.synapse_states[key]
+                indices = np.arange(index, index + len(connectivity.conns))
+                self.edges.loc[indices, key] = state_val
+
+            index += len(connectivity.conns)
 
         self.branch_edges = pd.DataFrame(
             dict(
@@ -275,14 +253,14 @@ class Network(Module):
 
     @staticmethod
     def _step_synapse(
-        u,
+        states,
         syn_channels,
         params,
         delta_t,
         edges: pd.DataFrame,
     ):
         """Perform one step of the synapses and obtain their currents."""
-        voltages = u["voltages"]
+        voltages = states["voltages"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
@@ -291,13 +269,26 @@ class Network(Module):
 
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
-        new_syn_states = []
         for i, synapse_type in enumerate(syn_channels):
             assert (
                 synapse_names[i] == type(synapse_type).__name__
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_states, synapse_current_terms = synapse_type.step(
-                u, delta_t, voltages, params, np.asarray(pre_syn_inds[synapse_names[i]])
+            synapse_param_names = list(synapse_type.synapse_params.keys())
+            synapse_state_names = list(synapse_type.synapse_states.keys())
+
+            synapse_params = {}
+            for p in synapse_param_names:
+                synapse_params[p] = params[p]
+            synapse_states = {}
+            for s in synapse_state_names:
+                synapse_states[s] = states[s]
+
+            states_updated, synapse_current_terms = synapse_type.step(
+                synapse_states,
+                delta_t,
+                voltages,
+                synapse_params,
+                np.asarray(pre_syn_inds[synapse_names[i]]),
             )
             synapse_current_terms = postsyn_voltage_updates(
                 voltages,
@@ -306,14 +297,12 @@ class Network(Module):
             )
             syn_voltage_terms += synapse_current_terms[0]
             syn_constant_terms += synapse_current_terms[1]
-            new_syn_states.append(synapse_states)
 
-        # Rebuild synapse states.
-        for s in new_syn_states:
-            for key, val in s.items():
-                u[key] = val
+            # Rebuild state.
+            for key, val in states_updated.items():
+                states[key] = val
 
-        return u, syn_voltage_terms, syn_constant_terms
+        return states, syn_voltage_terms, syn_constant_terms
 
     def vis(
         self,
@@ -359,10 +348,10 @@ class Network(Module):
                 morph_plot_kwargs=morph_plot_kwargs,
             )
 
-            pre_locs = self.syn_edges["pre_locs"].to_numpy()
-            post_locs = self.syn_edges["post_locs"].to_numpy()
-            pre_branch = self.syn_edges["global_pre_branch_index"].to_numpy()
-            post_branch = self.syn_edges["global_post_branch_index"].to_numpy()
+            pre_locs = self.edges["pre_locs"].to_numpy()
+            post_locs = self.edges["post_locs"].to_numpy()
+            pre_branch = self.edges["global_pre_branch_index"].to_numpy()
+            post_branch = self.edges["global_post_branch_index"].to_numpy()
 
             dims_np = np.asarray(dims)
 
@@ -423,8 +412,8 @@ class Network(Module):
         else:
             graph.add_nodes_from(range(len(self.cells)))
 
-        pre_cell = self.syn_edges["pre_cell_index"].to_numpy()
-        post_cell = self.syn_edges["post_cell_index"].to_numpy()
+        pre_cell = self.edges["pre_cell_index"].to_numpy()
+        post_cell = self.edges["post_cell_index"].to_numpy()
 
         inds = np.stack([pre_cell, post_cell]).T
         graph.add_edges_from(inds)
@@ -435,11 +424,20 @@ class Network(Module):
 class SynapseView(View):
     """SynapseView."""
 
-    def __init__(self, pointer, view, key):
-        view = view[view["type"] == key]
-        view = view.reset_index(drop=True)
-        view["index"] = list(view.index)
+    def __init__(self, pointer, view, key, synapse: "jx.Synapse"):
+        self.synapse = synapse
+        view = deepcopy(view[view["type"] == key])
         view = view.assign(controlled_by_param=view.index)
+
+        # Used for `.set()`.
+        view["global_index"] = view.index.values
+        # Used for `__call__()`.
+        view["index"] = list(range(len(view)))
+        # Because `make_trainable` needs to access the rows of `jaxedges` (which does
+        # not contain `NaNa` rows) we need to reset the index here. We undo this for 
+        # `.set()`. `.index.values` is used for `make_trainable`.
+        view = view.reset_index(drop=True)
+
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
@@ -453,33 +451,47 @@ class SynapseView(View):
         states: bool = True,
     ):
         """Show synapses."""
-        ind_of_params = self.view.index.values
-        nodes = deepcopy(self.view)
+        printable_nodes = deepcopy(self.view[["type", "type_ind"]])
 
-        if not indices:
-            for key in nodes:
-                nodes = nodes.drop(key, axis=1)
+        if indices:
+            names = [
+                "pre_locs",
+                "pre_branch_index",
+                "pre_cell_index",
+                "post_locs",
+                "post_branch_index",
+                "post_cell_index",
+            ]
+            printable_nodes[names] = self.view[names]
 
         if params:
-            for key, val in self.pointer.syn_params.items():
-                nodes[key] = val[ind_of_params]
+            for key in self.synapse.synapse_params.keys():
+                printable_nodes[key] = self.view[key]
 
         if states:
-            for key, val in self.pointer.syn_states.items():
-                nodes[key] = val[ind_of_params]
+            for key in self.synapse.synapse_states.keys():
+                printable_nodes[key] = self.view[key]
 
-        return nodes
+        printable_nodes["controlled_by_param"] = self.view["controlled_by_param"]
+        return printable_nodes
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
-        self.pointer._set(key, val, self.view)
+
+        # Reset index to global index because we are writing to `self.edges`.
+        self.view = self.view.set_index("global_index")
+        self.pointer._set(key, val, self.view, self.pointer.edges)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""
         assert (
             key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
+            or key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
         ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
+
+        # Use `.index.values` for indexing because we are memorizing the indices for
+        # `jaxedges`.
         self.pointer._make_trainable(self.view, key, init_val)

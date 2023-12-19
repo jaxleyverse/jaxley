@@ -99,21 +99,19 @@ def integrate(
         dummy_stimulus = jnp.zeros((size_difference, i_current.shape[1]))
         i_current = jnp.concatenate([i_current, dummy_stimulus])
 
-    # Join node and edge states.
+    # Join node and edge states into a single state dictionary.
     states = {"voltages": module.jaxnodes["voltages"]}
     for channel in module.channels:
         for channel_states in list(channel.channel_states.keys()):
             states[channel_states] = module.jaxnodes[channel_states]
+    for synapse_states in module.synapse_state_names:
+        states[synapse_states] = module.jaxedges[synapse_states]
 
     # Override with the initial states set by `.make_trainable()`.
     for inds, set_param in zip(module.indices_set_by_trainables, params):
         for key in set_param.keys():
             if key in list(states.keys()):  # Only initial states, not parameters.
                 states[key] = states[key].at[inds].set(set_param[key])
-
-    # Write synaptic states. TODO move above when new interface for synapses.
-    for key in module.syn_states:
-        states[key] = module.syn_states[key]
 
     # Run simulation.
     _, recordings = nested_checkpoint_scan(
