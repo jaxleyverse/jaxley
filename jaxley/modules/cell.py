@@ -7,7 +7,7 @@ import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
-from jaxley.modules.base import Module, View
+from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.utils.cell_utils import (
     compute_branches_in_level,
@@ -102,8 +102,9 @@ class Cell(Module):
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
             return BranchView(self, view)
-        elif key in self.group_views:
-            return self.group_views[key]
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            return GroupView(self, self.nodes.loc[inds])
         else:
             raise KeyError(f"Key {key} not recognized.")
 

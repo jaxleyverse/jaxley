@@ -26,7 +26,7 @@ class Module(ABC):
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
-        self.group_views = {}
+        self.group_nodes = {}
 
         self.nodes: Optional[pd.DataFrame] = None
 
@@ -125,10 +125,10 @@ class Module(ABC):
         edges = self.edges.to_dict(orient="list")
         for i, synapse in enumerate(self.synapses):
             for key in synapse.synapse_params:
-                condition = jnp.asarray(edges["type_ind"]) == i
-                self.jaxedges[key] = jnp.asarray(edges[key])[condition]
+                condition = np.asarray(edges["type_ind"]) == i
+                self.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
             for key in synapse.synapse_states:
-                self.jaxedges[key] = jnp.asarray(edges[key])[condition]
+                self.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
 
     def show(
         self,
@@ -302,9 +302,9 @@ class Module(ABC):
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
 
     def _add_to_group(self, group_name, view):
-        if group_name in self.group_views:
-            view = pd.concat([self.group_views[group_name].view, view])
-        self.group_views[group_name] = GroupView(self, view)
+        if group_name in self.group_nodes.keys():
+            view = pd.concat([self.group_nodes[group_name], view])
+        self.group_nodes[group_name] = view
 
     def get_parameters(self):
         """Get all trainable parameters."""
@@ -712,7 +712,8 @@ class View:
                 "global_cell_index",
                 "controlled_by_param",
             ]:
-                view = view.drop(name, axis=1)
+                if name in view.columns:
+                    view = view.drop(name, axis=1)
         return view
 
     def set_global_index_and_index(self, nodes):

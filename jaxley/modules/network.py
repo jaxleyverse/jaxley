@@ -10,7 +10,7 @@ import pandas as pd
 from jax import vmap
 
 from jaxley.connection import Connectivity
-from jaxley.modules.base import Module, View
+from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import merge_cells
@@ -96,8 +96,9 @@ class Network(Module):
         elif key in self.synapse_names:
             type_index = self.synapse_names.index(key)
             return SynapseView(self, self.edges, key, self.synapses[type_index])
-        elif key in self.group_views:
-            return self.group_views[key]
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            return GroupView(self, self.nodes.loc[inds])
         else:
             raise KeyError(f"Key {key} not recognized.")
 
