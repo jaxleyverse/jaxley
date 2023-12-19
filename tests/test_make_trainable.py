@@ -86,7 +86,7 @@ def test_diverse_synapse_types():
             post = net.cell(post_ind).branch(0).comp(0.0)
             pre.connect(post, syn)
 
-    net.make_trainable("gS")
+    net.GlutamateSynapse.make_trainable("gS")
     net.TestSynapse([0, 1]).make_trainable("gC")
     assert net.num_trainable_params == 3
 
