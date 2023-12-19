@@ -241,7 +241,9 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        assert key not in self.synapse_param_names and key not in self.synapse_state_names, "Parameters of synapses can only be made trainable via the `SynapseView`."
+        assert (
+            key not in self.synapse_param_names and key not in self.synapse_state_names
+        ), "Parameters of synapses can only be made trainable via the `SynapseView`."
         view = self.nodes
         view = deepcopy(view.assign(controlled_by_param=0))
         self._make_trainable(view, key, init_val, verbose=verbose)

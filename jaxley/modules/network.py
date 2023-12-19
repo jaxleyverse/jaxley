@@ -1,6 +1,6 @@
-from itertools import chain
 import itertools
 from copy import deepcopy
+from itertools import chain
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
@@ -42,7 +42,7 @@ class Network(Module):
         self.nseg = cells[0].nseg
 
         self.synapses = [connectivity.synapse_type for connectivity in connectivities]
-        
+
         # TODO(@michaeldeistler): should we also track this for channels?
         self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
         self.synapse_param_names = list(
@@ -185,22 +185,28 @@ class Network(Module):
                 connectivity.conns, self.nseg
             )
             # Global compartment indizes.
-            global_pre_comp_inds = self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
-            global_post_comp_inds = self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
+            global_pre_comp_inds = (
+                self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
+            )
+            global_post_comp_inds = (
+                self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
+            )
             global_pre_branch_inds = [
-                    self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
-                    for c in connectivity.conns
-                ]
+                self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
+                for c in connectivity.conns
+            ]
             global_post_branch_inds = [
-                    self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
-                    for c in connectivity.conns
-                ]
+                self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
+                for c in connectivity.conns
+            ]
             # Local compartment inds.
             pre_locs = np.asarray([c.pre_loc for c in connectivity.conns])
             post_locs = np.asarray([c.post_loc for c in connectivity.conns])
             # Local branch inds.
             pre_branch_inds = np.asarray([c.pre_branch_ind for c in connectivity.conns])
-            post_branch_inds = np.asarray([c.post_branch_ind for c in connectivity.conns])
+            post_branch_inds = np.asarray(
+                [c.post_branch_ind for c in connectivity.conns]
+            )
             pre_cell_inds = pre_cell_inds_
             post_cell_inds = post_cell_inds_
 
@@ -224,7 +230,7 @@ class Network(Module):
                         )
                     ),
                 ],
-                ignore_index=True
+                ignore_index=True,
             )
 
         # Add parameters and states to the `.edges` table.
@@ -434,7 +440,7 @@ class SynapseView(View):
         # Used for `__call__()`.
         view["index"] = list(range(len(view)))
         # Because `make_trainable` needs to access the rows of `jaxedges` (which does
-        # not contain `NaNa` rows) we need to reset the index here. We undo this for 
+        # not contain `NaNa` rows) we need to reset the index here. We undo this for
         # `.set()`. `.index.values` is used for `make_trainable`.
         view = view.reset_index(drop=True)
 

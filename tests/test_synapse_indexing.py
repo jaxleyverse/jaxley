@@ -10,7 +10,6 @@ from jaxley.channels import HH
 from jaxley.synapses import GlutamateSynapse, TestSynapse
 
 
-
 def test_set_and_querying_params_one_type():
     """Test if the correct parameters are set if one type of synapses is inserted."""
     comp = jx.Compartment()
@@ -81,7 +80,6 @@ def test_set_and_querying_params_two_types():
     net.TestSynapse([0, 1]).set("gC", 0.21)
     assert np.all(net.edges["gS"].to_numpy()[[0, 2]] == 0.27)
     assert np.all(net.edges["gC"].to_numpy()[[1, 3]] == 0.21)
-
 
 
 def test_shuffling_order_of_set():
