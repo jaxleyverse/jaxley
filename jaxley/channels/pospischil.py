@@ -173,7 +173,7 @@ class Km(Channel):
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
         m_conds = params["Km_gM"] * ps * 1000  # mS/cm^2
-        return m_conds * (voltages - params["Km_eM"])
+        return m_conds * (voltages - params["eM"])
 
 
 def _p_gate(v, taumax):
