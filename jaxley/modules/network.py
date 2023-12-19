@@ -98,7 +98,11 @@ class Network(Module):
             return SynapseView(self, self.edges, key, self.synapses[type_index])
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
-            return GroupView(self, self.nodes.loc[inds])
+            view = self.nodes.loc[inds]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return GroupView(self, view)
         else:
             raise KeyError(f"Key {key} not recognized.")
 
