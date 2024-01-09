@@ -6,33 +6,47 @@ from jaxley.channels import Channel
 from jaxley.solver_gate import solve_gate_exponential
 
 
-class HHChannel(Channel):
+class HH(Channel):
     """Hodgkin-Huxley channel."""
 
-    channel_params = {"gNa": 0.12, "gK": 0.036, "gLeak": 0.0003}
-    channel_states = {"m": 0.2, "h": 0.2, "n": 0.2}
+    channel_params = {
+        "HH_gNa": 0.12,
+        "HH_gK": 0.036,
+        "HH_gLeak": 0.0003,
+        "HH_eNa": 50.0,
+        "HH_eK": -77.0,
+        "HH_eLeak": -54.3,
+    }
+    channel_states = {"HH_m": 0.2, "HH_h": 0.2, "HH_n": 0.2}
 
     @staticmethod
-    def step(u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]):
-        """Return updated HH channel state and current."""
-        ms, hs, ns = u["m"], u["h"], u["n"]
+    def update_states(
+        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+    ):
+        """Return updated HH channel state."""
+        ms, hs, ns = u["HH_m"], u["HH_h"], u["HH_n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages))
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages))
+        return {"HH_m": new_m, "HH_h": new_h, "HH_n": new_n}
+
+    @staticmethod
+    def compute_current(
+        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+    ):
+        """Return current through HH channels."""
+        ms, hs, ns = u["HH_m"], u["HH_h"], u["HH_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["gNa"] * (new_m**3) * new_h * 1000  # mS/cm^2
-        kd_conds = params["gK"] * new_n**4 * 1000  # mS/cm^2
-        leak_conds = params["gLeak"] * 1000  # mS/cm^2
+        na_conds = params["HH_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
+        kd_conds = params["HH_gK"] * ns**4 * 1000  # mS/cm^2
+        leak_conds = params["HH_gLeak"] * 1000  # mS/cm^2
 
-        voltage_term = na_conds + kd_conds + leak_conds
-
-        e_na = 50.0
-        e_kd = -77.0
-        e_leak = -54.3
-        constant_term = na_conds * e_na + kd_conds * e_kd + leak_conds * e_leak
-
-        return {"m": new_m, "h": new_h, "n": new_n}, (voltage_term, constant_term)
+        return (
+            na_conds * (voltages - params["HH_eNa"])
+            + kd_conds * (voltages - params["HH_eK"])
+            + leak_conds * (voltages - params["HH_eLeak"])
+        )
 
 
 def _m_gate(v):

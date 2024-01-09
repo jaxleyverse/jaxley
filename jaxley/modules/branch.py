@@ -26,7 +26,6 @@ class Branch(Module):
         assert (
             isinstance(compartments, List) or nseg is not None
         ), "If `compartments` is not a list then you have to set `nseg`."
-        self._init_params_and_state(self.branch_params, self.branch_states)
         if isinstance(compartments, Compartment):
             compartment_list = [compartments for _ in range(nseg)]
         else:
@@ -35,31 +34,20 @@ class Branch(Module):
         # is needed to make `tests/test_composability_of_modules.py` pass.
         compartment_list.reverse()
 
-        self._append_to_params_and_state(compartment_list)
-        for comp in compartment_list:
-            self._append_to_channel_params_and_state(comp)
-
         self.nseg = len(compartment_list)
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
 
         # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg).tolist(),
-                branch_index=[0] * self.nseg,
-                cell_index=[0] * self.nseg,
-            )
-        )
+        self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
+        self._append_params_and_states(self.branch_params, self.branch_states)
+        self.nodes["comp_index"] = np.arange(self.nseg).tolist()
+        self.nodes["branch_index"] = [0] * self.nseg
+        self.nodes["cell_index"] = [0] * self.nseg
 
-        # Channel indexing.
-        for i, comp in enumerate(compartment_list):
-            index = pd.DataFrame.from_dict(
-                dict(comp_index=[i], branch_index=[0], cell_index=[0])
-            )
-            for channel in comp.channels:
-                self._append_to_channel_nodes(index, channel)
+        # Channels.
+        self._gather_channels_from_constituents(compartment_list)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
@@ -69,6 +57,7 @@ class Branch(Module):
             dict(parent_branch_index=[], child_branch_index=[])
         )
         self.initialize()
+        self.init_syns(None)
         self.initialized_conds = False
 
     def __getattr__(self, key):
@@ -82,8 +71,13 @@ class Branch(Module):
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
             return CompartmentView(self, view)
-        elif key in self.group_views:
-            return self.group_views[key]
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            view = self.nodes.loc[inds]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return GroupView(self, view)
         else:
             raise KeyError(f"Key {key} not recognized.")
 
@@ -137,7 +131,9 @@ class BranchView(View):
 
     def __call__(self, index: float):
         self.allow_make_trainable = True
-        return super().adjust_view("branch_index", index)
+        new_view = super().adjust_view("branch_index", index)
+        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
+        return new_view
 
     def __getattr__(self, key):
         assert key == "comp"

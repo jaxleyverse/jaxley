@@ -52,11 +52,9 @@ class ConnectivityBuilder:
         return conns
 
     def sparse_random(self, pre_cell_inds, post_cell_inds, p):
-        """Returns a list of `Connection`s which build a sparse, randomly
-         connected layer.
+        """Returns a list of `Connection`s forming a sparse, randomly connected layer.
 
-        Connections are from branch 0 location 0 to a randomly chosen branch
-        and loc.
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
         num_pre = len(pre_cell_inds)
         num_post = len(post_cell_inds)

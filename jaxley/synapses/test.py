@@ -5,13 +5,13 @@ import jax.numpy as jnp
 from jaxley.synapses.synapse import Synapse
 
 
-class GlutamateSynapse(Synapse):
+class TestSynapse(Synapse):
     """
-    Compute syanptic current and update synapse state for Glutamate receptor.
+    Compute syanptic current and update synapse state for a test synapse.
     """
 
-    synapse_params = {"gS": 0.5}
-    synapse_states = {"s": 0.2}
+    synapse_params = {"gC": 0.5}
+    synapse_states = {"c": 0.2}
 
     @staticmethod
     def step(
@@ -33,9 +33,9 @@ class GlutamateSynapse(Synapse):
         s_inf = s_bar
         slope = -1.0 / tau_s
         exp_term = jnp.exp(slope * delta_t)
-        new_s = u["s"] * exp_term + s_inf * (1.0 - exp_term)
+        new_s = u["c"] * exp_term + s_inf * (1.0 - exp_term)
 
-        non_zero_voltage_term = params["gS"] * u["s"]
-        non_zero_constant_term = params["gS"] * u["s"] * e_syn
+        non_zero_voltage_term = params["gC"] * u["c"]
+        non_zero_constant_term = params["gC"] * u["c"] * e_syn
 
-        return {"s": new_s}, (non_zero_voltage_term, non_zero_constant_term)
+        return {"c": new_s}, (non_zero_voltage_term, non_zero_constant_term)

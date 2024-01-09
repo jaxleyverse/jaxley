@@ -13,7 +13,7 @@ import numpy as np
 from neuron import h
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -41,22 +41,22 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
     comp = jx.Compartment().initialize()
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    branch.insert(HHChannel())
+    branch.insert(HH())
 
     radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
     for i, loc in enumerate(np.linspace(0, 1, nseg_per_branch)):
-        branch.comp(loc).set_params("radius", radiuses[i])
+        branch.comp(loc).set("radius", radiuses[i])
 
-    branch.set_params("length", 10.0)
-    branch.set_params("axial_resistivity", 1_000.0)
+    branch.set("length", 10.0)
+    branch.set("axial_resistivity", 1_000.0)
 
-    branch.set_params("gNa", 0.120)
-    branch.set_params("gK", 0.036)
-    branch.set_params("gLeak", 0.0003)
-    branch.set_states("m", 0.07490098835688629)
-    branch.set_states("h", 0.488947681848153)
-    branch.set_states("n", 0.3644787002343737)
-    branch.set_states("voltages", -62.0)
+    branch.set("HH_gNa", 0.120)
+    branch.set("HH_gK", 0.036)
+    branch.set("HH_gLeak", 0.0003)
+    branch.set("HH_m", 0.07490098835688629)
+    branch.set("HH_h", 0.488947681848153)
+    branch.set("HH_n", 0.3644787002343737)
+    branch.set("voltages", -62.0)
 
     branch.comp(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     branch.comp(0.0).record()
@@ -161,28 +161,28 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg)
 
-    branch.insert(HHChannel())
+    branch.insert(HH())
 
-    branch.set_states("voltages", -62.0)
-    branch.set_states("m", 0.074901)
-    branch.set_states("h", 0.4889)
-    branch.set_states("n", 0.3644787)
-
-    for loc in np.linspace(0, 0.45, 8):
-        branch.comp(loc).set_params("length", 2.0)
-
-    for loc in np.linspace(0.55, 1.0, 8):
-        branch.comp(loc).set_params("length", 20.0)
+    branch.set("voltages", -62.0)
+    branch.set("HH_m", 0.074901)
+    branch.set("HH_h", 0.4889)
+    branch.set("HH_n", 0.3644787)
 
     for loc in np.linspace(0, 0.45, 8):
-        branch.comp(loc).set_params("axial_resistivity", 800.0)
+        branch.comp(loc).set("length", 2.0)
 
     for loc in np.linspace(0.55, 1.0, 8):
-        branch.comp(loc).set_params("axial_resistivity", 800.0)
+        branch.comp(loc).set("length", 20.0)
+
+    for loc in np.linspace(0, 0.45, 8):
+        branch.comp(loc).set("axial_resistivity", 800.0)
+
+    for loc in np.linspace(0.55, 1.0, 8):
+        branch.comp(loc).set("axial_resistivity", 800.0)
 
     counter = 0
     for loc in np.linspace(0, 1, nseg):
-        branch.comp(loc).set_params("radius", diams[counter] / 2)
+        branch.comp(loc).set("radius", diams[counter] / 2)
         counter += 1
 
     branch = branch.initialize()

@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 from jaxley.synapses import GlutamateSynapse
 
 
@@ -23,10 +23,10 @@ def test_radius_and_length_compartment():
     comp = jx.Compartment().initialize()
 
     np.random.seed(1)
-    comp.set_params("length", 5 * np.random.rand(1))
-    comp.set_params("radius", np.random.rand(1))
+    comp.set("length", 5 * np.random.rand(1))
+    comp.set("radius", np.random.rand(1))
 
-    comp.insert(HHChannel())
+    comp.insert(HH())
     comp.record()
     comp.stimulate(current)
 
@@ -64,10 +64,10 @@ def test_radius_and_length_branch():
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
 
     np.random.seed(1)
-    branch.set_params("length", 5 * np.random.rand(2))
-    branch.set_params("radius", np.random.rand(2))
+    branch.set("length", 5 * np.random.rand(2))
+    branch.set("radius", np.random.rand(2))
 
-    branch.insert(HHChannel())
+    branch.insert(HH())
     branch.comp(0.0).record()
     branch.comp(0.0).stimulate(current)
 
@@ -110,10 +110,10 @@ def test_radius_and_length_cell():
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)
-    cell.set_params("length", 5 * np.random.rand(2 * num_branches))
-    cell.set_params("radius", np.random.rand(2 * num_branches))
+    cell.set("length", 5 * np.random.rand(2 * num_branches))
+    cell.set("radius", np.random.rand(2 * num_branches))
 
-    cell.insert(HHChannel())
+    cell.insert(HH())
     cell.branch(1).comp(0.0).record()
     cell.branch(1).comp(0.0).stimulate(current)
 
@@ -157,18 +157,18 @@ def test_radius_and_length_net():
     cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)
-    cell1.set_params("length", 5 * np.random.rand(2 * num_branches))
-    cell1.set_params("radius", np.random.rand(2 * num_branches))
+    cell1.set("length", 5 * np.random.rand(2 * num_branches))
+    cell1.set("radius", np.random.rand(2 * num_branches))
 
     np.random.seed(2)
-    cell2.set_params("length", 5 * np.random.rand(2 * num_branches))
-    cell2.set_params("radius", np.random.rand(2 * num_branches))
+    cell2.set("length", 5 * np.random.rand(2 * num_branches))
+    cell2.set("radius", np.random.rand(2 * num_branches))
 
     connectivities = [
         jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
     network = jx.Network([cell1, cell2], connectivities)
-    network.insert(HHChannel())
+    network.insert(HH())
 
     for cell_ind in range(2):
         network.cell(cell_ind).branch(1).comp(0.0).record()

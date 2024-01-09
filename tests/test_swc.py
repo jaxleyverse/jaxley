@@ -11,7 +11,7 @@ import numpy as np
 from neuron import h
 
 import jaxley as jx
-from jaxley.channels import HHChannel
+from jaxley.channels import HH
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -130,7 +130,7 @@ def test_swc_voltages():
     ####################### jaxley ##################
     _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
     cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
-    cell.insert(HHChannel)
+    cell.insert(HH())
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]
     tuft_inds = [6, 16, 18, 36, 38, 44, 51, 52, 53, 54]
@@ -154,11 +154,11 @@ def test_swc_voltages():
             closest_match = np.argmin(np.abs(pathlengths_neuron - p))
             neuron_basal_inds.append(closest_match)
 
-    cell.set_params("axial_resistivity", 1_000.0)
-    cell.set_states("voltages", -62.0)
-    cell.set_states("m", 0.074901)
-    cell.set_states("h", 0.4889)
-    cell.set_states("n", 0.3644787)
+    cell.set("axial_resistivity", 1_000.0)
+    cell.set("voltages", -62.0)
+    cell.set("HH_m", 0.074901)
+    cell.set("HH_h", 0.4889)
+    cell.set("HH_n", 0.3644787)
 
     cell.branch(1).comp(0.05).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)

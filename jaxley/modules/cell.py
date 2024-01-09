@@ -7,14 +7,13 @@ import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
-from jaxley.modules.base import Module, View
+from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.utils.cell_utils import (
     compute_branches_in_level,
     compute_coupling_cond,
     compute_levels,
 )
-from jaxley.utils.plot_utils import plot_morph, plot_swc
 from jaxley.utils.swc import swc_to_jaxley
 
 
@@ -43,16 +42,21 @@ class Cell(Module):
         assert isinstance(branches, Branch) or len(parents) == len(
             branches
         ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
-        self._init_params_and_state(self.cell_params, self.cell_states)
         if isinstance(branches, Branch):
             branch_list = [branches for _ in range(len(parents))]
         else:
             branch_list = branches
-        self.xyzr = xyzr
 
-        self._append_to_params_and_state(branch_list)
-        for branch in branch_list:
-            self._append_to_channel_params_and_state(branch)
+        if xyzr is not None:
+            assert len(xyzr) == len(parents)
+            self.xyzr = xyzr
+        else:
+            # For every branch (`len(parents)`), we have a start and end point (`2`) and
+            # a (x,y,z,r) coordinate for each of them (`4`).
+            # Since `xyzr` is only inspected at `.vis()` and because it depends on the
+            # (potentially learned) length of every compartment, we only populate
+            # self.xyzr at `.vis()`.
+            self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
         self.nseg = branch_list[0].nseg
         self.total_nbranches = len(branch_list)
@@ -61,32 +65,16 @@ class Cell(Module):
         self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
-        self.nodes = pd.DataFrame(
-            dict(
-                comp_index=np.arange(self.nseg * self.total_nbranches).tolist(),
-                branch_index=(
-                    np.arange(self.nseg * self.total_nbranches) // self.nseg
-                ).tolist(),
-                cell_index=[0] * (self.nseg * self.total_nbranches),
-            )
-        )
+        self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
+        self._append_params_and_states(self.cell_params, self.cell_states)
+        self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
+        self.nodes["branch_index"] = (
+            np.arange(self.nseg * self.total_nbranches) // self.nseg
+        ).tolist()
+        self.nodes["cell_index"] = [0] * (self.nseg * self.total_nbranches)
 
-        # Channel indexing.
-        for i, branch in enumerate(branch_list):
-            for channel in branch.channels:
-                name = type(channel).__name__
-                comp_inds = deepcopy(
-                    branch.channel_nodes[name]["comp_index"].to_numpy()
-                )
-                comp_inds += self.nseg * i
-                index = pd.DataFrame.from_dict(
-                    dict(
-                        comp_index=comp_inds,
-                        branch_index=[i] * len(comp_inds),
-                        cell_index=[0] * len(comp_inds),
-                    )
-                )
-                self._append_to_channel_nodes(index, channel)
+        # Channels.
+        self._gather_channels_from_constituents(branch_list)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
@@ -100,6 +88,7 @@ class Cell(Module):
         )
 
         self.initialize()
+        self.init_syns(None)
         self.initialized_conds = False
 
     def __getattr__(self, key):
@@ -113,8 +102,13 @@ class Cell(Module):
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
             return BranchView(self, view)
-        elif key in self.group_views:
-            return self.group_views[key]
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            view = self.nodes.loc[inds]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return GroupView(self, view)
         else:
             raise KeyError(f"Key {key} not recognized.")
 
@@ -230,60 +224,6 @@ class Cell(Module):
         )
         return summed_conds
 
-    def vis(
-        self,
-        detail: str = "full",
-        figsize=(4, 4),
-        dims=(0, 1),
-        cols="k",
-        highlight_branch_inds=[],
-        fig=None,
-        ax=None,
-        max_y_multiplier: float = 5.0,
-        min_y_multiplier: float = 0.5,
-    ) -> None:
-        """Visualize the network.
-
-        Args:
-            detail: Either of [sticks, full]. `sticks` visualizes all branches of every
-                neuron, but draws branches as straight lines. `full` plots the full
-                morphology of every neuron, as read from the SWC file.
-            layers: Allows to plot the network in layers. Should provide the number of
-                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-                neurons, 10 hidden layer neurons, and 1 output neuron.
-            options: Plotting options passed to `NetworkX.draw()`.
-            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
-                two of them.
-            cols: The color for all branches except the highlighted ones.
-            highlight_branch_inds: Branch indices that will be highlighted.
-        """
-        if detail == "sticks":
-            fig, ax = plot_morph(
-                cell=self,
-                figsize=figsize,
-                cols=cols,
-                highlight_branch_inds=highlight_branch_inds,
-                max_y_multiplier=max_y_multiplier,
-                min_y_multiplier=min_y_multiplier,
-                fig=fig,
-                ax=ax,
-            )
-        elif detail == "full":
-            assert self.xyzr is not None, "no coordinates, use `vis(detail='sticks')`."
-            fig, ax = plot_swc(
-                self.xyzr,
-                figsize=figsize,
-                dims=dims,
-                cols=cols,
-                highlight_branch_inds=highlight_branch_inds,
-                fig=fig,
-                ax=ax,
-            )
-        else:
-            raise ValueError("`detail must be in {sticks, full}.")
-
-        return fig, ax
-
 
 class CellView(View):
     """CellView."""
@@ -295,11 +235,55 @@ class CellView(View):
     def __call__(self, index: float):
         if index == "all":
             self.allow_make_trainable = False
-        return super().adjust_view("cell_index", index)
+        new_view = super().adjust_view("cell_index", index)
+        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
+        new_view.view["branch_index"] -= new_view.view["branch_index"].iloc[0]
+        return new_view
 
     def __getattr__(self, key):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
+
+    def fully_connect(self, post_cell_view, synapse_type):
+        """Returns a list of `Connection`s which build a fully connected layer.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
+        pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
+        post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
+
+        for pre_ind in pre_cell_inds:
+            for post_ind in post_cell_inds:
+                num_branches_post = self.pointer.nbranches_per_cell[post_ind]
+                rand_branch = np.random.randint(0, num_branches_post)
+                rand_loc = np.random.rand()
+
+                pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
+                post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
+                pre.connect(post, synapse_type)
+
+    def sparse_connect(self, post_cell_view, p, synapse_type):
+        """Returns a list of `Connection`s forming a sparse, randomly connected layer.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
+        pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
+        post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
+
+        num_pre = len(pre_cell_inds)
+        num_post = len(post_cell_inds)
+        num_connections = np.random.binomial(num_pre * num_post, p)
+        pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
+        post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
+
+        for pre_ind, post_ind in zip(pre_syn_neurons, post_syn_neurons):
+            num_branches_post = self.pointer.nbranches_per_cell[post_ind]
+            rand_branch = np.random.randint(0, num_branches_post)
+            rand_loc = np.random.rand()
+
+            pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
+            post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
+            pre.connect(post, synapse_type)
 
 
 def read_swc(
@@ -336,6 +320,6 @@ def read_swc(
 
     lengths_each = np.repeat(pathlengths, nseg) / nseg
 
-    cell.set_params("length", lengths_each)
-    cell.set_params("radius", radiuses_each)
+    cell.set("length", lengths_each)
+    cell.set("radius", radiuses_each)
     return cell
