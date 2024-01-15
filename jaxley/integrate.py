@@ -55,6 +55,7 @@ def integrate(
         ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
 
     rec_inds = module.recordings.comp_index.to_numpy()
+    rec_states = module.recordings.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
@@ -79,14 +80,17 @@ def integrate(
             solver=solver,
             tridiag_solver=tridiag_solver,
         )
-        return state, state["voltages"][rec_inds]
+        recs = jnp.asarray([state[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
+        return state, recs
 
-    nsteps_to_return = len(i_current)
-    init_recording = jnp.expand_dims(module.jaxnodes["voltages"][rec_inds], axis=0)
+    # Record the initial state.
+    init_recs = jnp.asarray([module.jaxnodes[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
+    init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
     # return only the first `nsteps_to_return` elements (plus the initial state).
+    nsteps_to_return = len(i_current)
     if checkpoint_lengths is None:
         checkpoint_lengths = [len(i_current)]
         length = len(i_current)
