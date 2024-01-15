@@ -80,7 +80,12 @@ def integrate(
             solver=solver,
             tridiag_solver=tridiag_solver,
         )
-        recs = jnp.asarray([state[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
+        recs = jnp.asarray(
+            [
+                state[rec_state][rec_ind]
+                for rec_state, rec_ind in zip(rec_states, rec_inds)
+            ]
+        )
         return state, recs
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
@@ -114,7 +119,9 @@ def integrate(
                 states[key] = states[key].at[inds].set(set_param[key])
 
     # Record the initial state.
-    init_recs = jnp.asarray([states[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
+    init_recs = jnp.asarray(
+        [states[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)]
+    )
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # Run simulation.
