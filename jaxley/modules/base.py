@@ -385,12 +385,15 @@ class Module(ABC):
             self.currents = jnp.expand_dims(current, axis=0)
         self.current_inds = pd.concat([self.current_inds, view])
 
-    
-    def data_stimulate(self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]):
+    def data_stimulate(
+        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
+    ):
         """Insert a stimulus into the module within jit (or grad)."""
         return self._data_stimulate(current, self.nodes)
 
-    def _data_stimulate(self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view):
+    def _data_stimulate(
+        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view
+    ):
         assert (
             len(view) == 1
         ), "Can only stimulate compartments, not branches, cells, or networks."
@@ -404,9 +407,7 @@ class Module(ABC):
 
         # Same as in `.stimulate()`.
         if currents is not None:
-            currents = jnp.concatenate(
-                [currents, jnp.expand_dims(current, axis=0)]
-            )
+            currents = jnp.concatenate([currents, jnp.expand_dims(current, axis=0)])
         else:
             currents = jnp.expand_dims(current, axis=0)
         inds = pd.concat([inds, view])
@@ -786,6 +787,13 @@ class View:
     def stimulate(self, current: Optional[jnp.ndarray] = None):
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._stimulate(current, nodes)
+
+    def data_stimulate(
+        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
+    ):
+        """Insert a stimulus into the module within jit (or grad)."""
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._data_stimulate(current, data_stimuli, nodes)
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
