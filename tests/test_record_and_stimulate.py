@@ -58,8 +58,12 @@ def test_record_shape():
     ), f"Shape of recordings ({voltages.shape}) is not right."
 
 
-def test_record_diverse_states():
-    """Tests recording of membrane and synaptic states."""
+def test_record_synaptic_and_membrane_states():
+    """Tests recording of synaptic and membrane states.
+    
+    Tests are functional, not just API. They test whether the voltage and synaptic
+    states spike at (almost) the same times.
+    """
 
     _ = np.random.seed(0)  # Seed because connectivity is at random postsyn locs.
 
@@ -78,23 +82,37 @@ def test_record_diverse_states():
 
     net.cell(2).branch(0).comp(0.0).record("voltages")
     net.GlutamateSynapse(1).record("s")
+    net.cell(2).branch(0).comp(0.0).record("HH_m")
     net.cell(1).branch(0).comp(0.0).record("voltages")
     net.TestSynapse(0).record("c")
+    net.cell(1).branch(0).comp(0.0).record("HH_m")
 
     recs = jx.integrate(net)
 
     # Loop over first two recorings and then the second two recordings.
-    for index in [0, 2]:
+    for index in [0, 3]:
         # Local maxima of voltage trace.
         y = recs[index]
         maxima_1 = np.where((y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
         max_vals = recs[index][maxima_1]
         condition = max_vals > 10.0
         maxima_1 = maxima_1[condition]
-        
+
         # Local maxima of synaptic state.
         y = recs[index+1]
         maxima_2 = np.where((y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
 
-        offset = 10  # On average the synaptic trace spikes around 10 steps after voltage.
-        assert np.all(np.abs(maxima_2 - maxima_1 - offset)) < 5.0
+        # Local maxima of membrane channel trace.
+        y = recs[index+2]
+        maxima_3 = np.where((y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
+        max_vals = recs[index+2][maxima_3]
+        condition = max_vals > 0.3
+        maxima_3 = maxima_3[condition]
+
+        # On average the synaptic trace spikes around 10 steps after voltage.
+        offset_syn = 10 
+        assert np.all(np.abs(maxima_2 - maxima_1 - offset_syn)) < 5.0
+
+        # On average the membrane trace spikes around 0 steps after voltage.
+        offset_mem = 0
+        assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
