@@ -516,7 +516,7 @@ class SynapseView(View):
 
         view = deepcopy(self.view)
         view["state"] = state
-        
+
         recording_view = view[["state"]]
         recording_view = recording_view.assign(rec_index=view.index)
         self.pointer._record(recording_view)

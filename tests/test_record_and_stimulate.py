@@ -10,6 +10,7 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.synapses import GlutamateSynapse, TestSynapse
 
+
 def test_record_and_stimulate_api():
     """Test the API for recording and stimulating."""
     nseg_per_branch = 2
@@ -60,7 +61,7 @@ def test_record_shape():
 
 def test_record_synaptic_and_membrane_states():
     """Tests recording of synaptic and membrane states.
-    
+
     Tests are functional, not just API. They test whether the voltage and synaptic
     states spike at (almost) the same times.
     """
@@ -99,18 +100,18 @@ def test_record_synaptic_and_membrane_states():
         maxima_1 = maxima_1[condition]
 
         # Local maxima of synaptic state.
-        y = recs[index+1]
+        y = recs[index + 1]
         maxima_2 = np.where((y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
 
         # Local maxima of membrane channel trace.
-        y = recs[index+2]
+        y = recs[index + 2]
         maxima_3 = np.where((y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
-        max_vals = recs[index+2][maxima_3]
+        max_vals = recs[index + 2][maxima_3]
         condition = max_vals > 0.3
         maxima_3 = maxima_3[condition]
 
         # On average the synaptic trace spikes around 10 steps after voltage.
-        offset_syn = 10 
+        offset_syn = 10
         assert np.all(np.abs(maxima_2 - maxima_1 - offset_syn)) < 5.0
 
         # On average the membrane trace spikes around 0 steps after voltage.
