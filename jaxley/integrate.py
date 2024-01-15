@@ -10,7 +10,7 @@ from jaxley.utils.jax_utils import nested_checkpoint_scan
 def integrate(
     module: Module,
     params: List[Dict[str, jnp.ndarray]] = [],
-    currents: Optional[jnp.ndarray] = None,
+    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
     *,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
@@ -42,10 +42,20 @@ def integrate(
     assert module.initialized, "Module is not initialized, run `.initialize()`."
     module.to_jax()  # Creates `.jaxnodes` from `.nodes`.
 
-    if module.currents is not None:
-        # At least one stimulus was inserted.
-        i_current = currents.T if currents is not None else module.currents.T
-        i_inds = module.current_inds.comp_index.to_numpy()
+    # At least one stimulus was inserted.
+    if module.currents is not None or data_stimuli is not None:
+        if module.currents is not None:
+            i_current = module.currents.T
+            i_inds = module.current_inds.comp_index.to_numpy()
+
+            # Append stimuli from `data_stimuli`.
+            i_current = jnp.concatenate(
+                [i_current, jnp.expand_dims(data_stimuli[0], axis=0)]
+            )
+            i_inds = np.concatenate([i_inds, data_stimuli[1].comp_index.to_numpy()])
+        else:
+            i_current = data_stimuli[0]
+            i_inds = data_stimuli[1].comp_index.to_numpy()
     else:
         # No stimulus was inserted.
         i_current = jnp.asarray([[]]).astype("int32")
