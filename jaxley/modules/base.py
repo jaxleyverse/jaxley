@@ -377,14 +377,41 @@ class Module(ABC):
         assert (
             len(view) == 1
         ), "Can only stimulate compartments, not branches, cells, or networks."
-        if current is not None:
-            if self.currents is not None:
-                self.currents = jnp.concatenate(
-                    [self.currents, jnp.expand_dims(current, axis=0)]
-                )
-            else:
-                self.currents = jnp.expand_dims(current, axis=0)
+        if self.currents is not None:
+            self.currents = jnp.concatenate(
+                [self.currents, jnp.expand_dims(current, axis=0)]
+            )
+        else:
+            self.currents = jnp.expand_dims(current, axis=0)
         self.current_inds = pd.concat([self.current_inds, view])
+
+    
+    def data_stimulate(self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]):
+        """Insert a stimulus into the module within jit (or grad)."""
+        return self._data_stimulate(current, self.nodes)
+
+    def _data_stimulate(self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view):
+        assert (
+            len(view) == 1
+        ), "Can only stimulate compartments, not branches, cells, or networks."
+
+        if data_stimuli is not None:
+            currents = data_stimuli[0]
+            inds = data_stimuli[1]
+        else:
+            currents = None
+            inds = pd.DataFrame().from_dict({})
+
+        # Same as in `.stimulate()`.
+        if currents is not None:
+            currents = jnp.concatenate(
+                [currents, jnp.expand_dims(current, axis=0)]
+            )
+        else:
+            currents = jnp.expand_dims(current, axis=0)
+        inds = pd.concat([inds, view])
+
+        return (currents, inds)
 
     def delete_stimuli(self):
         """Removes all stimuli from the module."""
