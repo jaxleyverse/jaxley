@@ -353,14 +353,16 @@ class Module(ABC):
 
     def record(self, state: str = "voltages"):
         """Insert a recording into the compartment."""
-        self._record(self.nodes, state=state)
+        view = deepcopy(self.nodes)
+        view["state"] = state
+        recording_view = view[["comp_index", "state"]]
+        recording_view = recording_view.rename(columns={"comp_index": "rec_index"})
+        self._record(recording_view)
 
-    def _record(self, view, state: str):
+    def _record(self, view):
         assert (
             len(view) == 1
         ), "Can only record from compartments, not branches, cells, or networks."
-        view = deepcopy(view)
-        view["state"] = state
         self.recordings = pd.concat([self.recordings, view])
 
     def delete_recordings(self):
@@ -745,10 +747,13 @@ class View:
         self.pointer._insert(channel, nodes)
 
     def record(self, state: str = "voltages"):
-        """Insert a channel."""
+        """Record a state."""
         nodes = self.set_global_index_and_index(self.view)
-        nodes["state"] = state
-        self.pointer._record(nodes)
+        view = deepcopy(nodes)
+        view["state"] = state
+        recording_view = view[["comp_index", "state"]]
+        recording_view = recording_view.rename(columns={"comp_index": "rec_index"})
+        self.pointer._record(recording_view)
 
     def stimulate(self, current):
         nodes = self.set_global_index_and_index(self.view)

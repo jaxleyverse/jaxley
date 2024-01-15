@@ -54,7 +54,7 @@ def integrate(
             t_max is not None
         ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
 
-    rec_inds = module.recordings.comp_index.to_numpy()
+    rec_inds = module.recordings.rec_index.to_numpy()
     rec_states = module.recordings.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
@@ -82,10 +82,6 @@ def integrate(
         )
         recs = jnp.asarray([state[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
         return state, recs
-
-    # Record the initial state.
-    init_recs = jnp.asarray([module.jaxnodes[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
-    init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
@@ -116,6 +112,10 @@ def integrate(
         for key in set_param.keys():
             if key in list(states.keys()):  # Only initial states, not parameters.
                 states[key] = states[key].at[inds].set(set_param[key])
+
+    # Record the initial state.
+    init_recs = jnp.asarray([states[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)])
+    init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # Run simulation.
     _, recordings = nested_checkpoint_scan(

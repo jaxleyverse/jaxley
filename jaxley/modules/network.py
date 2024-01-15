@@ -507,3 +507,16 @@ class SynapseView(View):
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
         self.pointer._make_trainable(self.view, key, init_val)
+
+    def record(self, state: str = "voltages"):
+        """Record a state."""
+        assert (
+            state in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
+        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
+
+        view = deepcopy(self.view)
+        view["state"] = state
+        
+        recording_view = view[["state"]]
+        recording_view = recording_view.assign(rec_index=view.index)
+        self.pointer._record(recording_view)
