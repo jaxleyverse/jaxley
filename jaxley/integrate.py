@@ -48,8 +48,8 @@ def integrate(
         i_inds = module.current_inds.comp_index.to_numpy()
     else:
         # No stimulus was inserted.
-        i_current = jnp.asarray([[]]).astype("int")
-        i_inds = jnp.asarray([]).astype("int")
+        i_current = jnp.asarray([[]]).astype("int32")
+        i_inds = jnp.asarray([]).astype("int32")
         assert (
             t_max is not None
         ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."

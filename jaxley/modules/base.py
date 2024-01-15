@@ -365,7 +365,7 @@ class Module(ABC):
         """Removes all recordings from the module."""
         self.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(self, current):
+    def stimulate(self, current: Optional[jnp.ndarray] = None):
         """Insert a stimulus into the compartment."""
         self._stimulate(current, self.nodes)
 
@@ -373,12 +373,13 @@ class Module(ABC):
         assert (
             len(view) == 1
         ), "Can only stimulate compartments, not branches, cells, or networks."
-        if self.currents is not None:
-            self.currents = jnp.concatenate(
-                [self.currents, jnp.expand_dims(current, axis=0)]
-            )
-        else:
-            self.currents = jnp.expand_dims(current, axis=0)
+        if current is not None:
+            if self.currents is not None:
+                self.currents = jnp.concatenate(
+                    [self.currents, jnp.expand_dims(current, axis=0)]
+                )
+            else:
+                self.currents = jnp.expand_dims(current, axis=0)
         self.current_inds = pd.concat([self.current_inds, view])
 
     def delete_stimuli(self):
@@ -747,7 +748,7 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._record(nodes)
 
-    def stimulate(self, current):
+    def stimulate(self, current: Optional[jnp.ndarray] = None):
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._stimulate(current, nodes)
 
