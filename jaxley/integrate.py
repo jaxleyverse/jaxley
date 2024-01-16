@@ -46,18 +46,18 @@ def integrate(
     # At least one stimulus was inserted.
     if module.currents is not None or data_stimuli is not None:
         if module.currents is not None:
-            i_current = module.currents.T
+            i_current = module.currents  # Shape `(num_stimuli, time)`.
             i_inds = module.current_inds.comp_index.to_numpy()
 
             if data_stimuli is not None:
                 # Append stimuli from `data_stimuli`.
-                i_current = jnp.concatenate(
-                    [i_current, jnp.expand_dims(data_stimuli[0], axis=0)]
-                )
-                i_inds = np.concatenate([i_inds, data_stimuli[1].comp_index.to_numpy()])
+                i_current = jnp.concatenate([i_current, data_stimuli[0]])
+                i_inds = jnp.concatenate([i_inds, data_stimuli[1].comp_index.to_numpy()])
         else:
-            i_current = data_stimuli[0]
+            i_current = data_stimuli[0]  # Shape `(num_stimuli, time)`
             i_inds = data_stimuli[1].comp_index.to_numpy()
+        
+        i_current = i_current.T  # Shape `(time, num_stimuli)`.
     else:
         # No stimulus was inserted.
         i_current = jnp.asarray([[]]).astype("int32")

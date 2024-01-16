@@ -793,7 +793,7 @@ class View:
     ):
         """Insert a stimulus into the module within jit (or grad)."""
         nodes = self.set_global_index_and_index(self.view)
-        self.pointer._data_stimulate(current, data_stimuli, nodes)
+        return self.pointer._data_stimulate(current, data_stimuli, nodes)
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
