@@ -4,8 +4,8 @@ jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
-from jax import jit
 import numpy as np
+from jax import jit
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -46,4 +46,3 @@ def test_constant_and_data_stimulus():
 
     diff = np.abs(v_stim - v_data)
     assert np.max(diff) < 1e-8
-
