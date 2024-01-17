@@ -23,7 +23,9 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
-        t_max: Duration of the simulation in milliseconds.
+        t_max: Duration of the simulation in milliseconds. If `t_max` is greater than 
+            the length of the stimulus input, the stimulus will be padded at the end 
+            with zeros. If `t_max` is smaller, then the stimulus with be truncated.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
@@ -75,7 +77,8 @@ def integrate(
     if t_max is not None:
         t_max_steps = int(t_max // delta_t + 1)
         if t_max_steps > i_current.shape[0]:
-            i_current = jnp.zeros((t_max_steps, i_current.shape[1]))
+            pad = jnp.zeros((t_max_steps - i_current.shape[0], i_current.shape[1]))
+            i_current = jnp.concatenate((i_current, pad))
         else:
             i_current = i_current[:t_max_steps, :]
 
