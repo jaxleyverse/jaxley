@@ -23,8 +23,8 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
-        t_max: Duration of the simulation in milliseconds. If `t_max` is greater than 
-            the length of the stimulus input, the stimulus will be padded at the end 
+        t_max: Duration of the simulation in milliseconds. If `t_max` is greater than
+            the length of the stimulus input, the stimulus will be padded at the end
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
