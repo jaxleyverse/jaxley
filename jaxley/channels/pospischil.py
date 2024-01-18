@@ -27,60 +27,65 @@ def efun(x):
 class Leak(Channel):
     """Leak current"""
 
-    channel_params = {
-        "Leak_gl": 1e-4,
-        "Leak_el": -70.0,
-    }
-    channel_states = {}
+    def __init__(self, channel_name: Optional[str] = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gl": 1e-4,
+            f"{prefix}_el": -70.0,
+        }
+        self.channel_states = {}
 
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """No state to update."""
         return {}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
+        prefix = self._channel_name
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        leak_conds = params["Leak_gl"] * 1000  # mS/cm^2
-        return leak_conds * (voltages - params["Leak_el"])
+        leak_conds = params[f"{prefix}_gl"] * 1000  # mS/cm^2
+        return leak_conds * (voltages - params[f"{prefix}_el"])
 
 
 class Na(Channel):
     """Sodium channel"""
 
-    channel_params = {
-        "Na_gNa": 50e-3,
-        "Na_eNa": 50.0,
-        "vt": -60.0,  # Global parameter, not prefixed with `Na`.
-    }
-    channel_states = {"Na_m": 0.2, "Na_h": 0.2}
+    def __init__(self, channel_name: str | None = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gNa": 50e-3,
+            f"{prefix}_eNa": 50.0,
+            "vt": -60.0,  # Global parameter, not prefixed with `Na`.
+        }
+        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
 
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ms, hs = u["Na_m"], u["Na_h"]
+        prefix = self._channel_name
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
-        return {"Na_m": new_m, "Na_h": new_h}
+        return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ms, hs = u["Na_m"], u["Na_h"]
+        prefix = self._channel_name
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["Na_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
+        na_conds = params[f"{prefix}_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
 
-        current = na_conds * (voltages - params["Na_eNa"])
+        current = na_conds * (voltages - params[f"{prefix}_eNa"])
         return current
 
 
@@ -105,33 +110,36 @@ def _h_gate(v, vt):
 class K(Channel):
     """Potassium channel"""
 
-    channel_params = {
-        "K_gK": 5e-3,
-        "K_eK": -90.0,
-        "vt": -60.0,  # Global parameter, not prefixed with `Na`.
-    }
-    channel_states = {"K_n": 0.2}
+    def __init__(self, channel_name: Optional[str] = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gK": 5e-3,
+            f"{prefix}_eK": -90.0,
+            "vt": -60.0,  # Global parameter, not prefixed with `Na`.
+        }
+        self.channel_states = {f"{prefix}_n": 0.2}
 
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ns = u["K_n"]
+        prefix = self._channel_name
+        ns = u[f"{prefix}_n"]
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
-        return {"K_n": new_n}
+        return {f"{prefix}_n": new_n}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ns = u["K_n"]
+        prefix = self._channel_name
+        ns = u[f"{prefix}_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        k_conds = params["K_gK"] * (ns**4) * 1000  # mS/cm^2
+        k_conds = params[f"{prefix}_gK"] * (ns**4) * 1000  # mS/cm^2
 
-        return k_conds * (voltages - params["K_eK"])
+        return k_conds * (voltages - params[f"{prefix}_eK"])
 
 
 def _n_gate(v, vt):
@@ -146,33 +154,36 @@ def _n_gate(v, vt):
 class Km(Channel):
     """Slow M Potassium channel"""
 
-    channel_params = {
-        "Km_gM": 0.004e-3,
-        "Km_taumax": 4000.0,
-        "eM": -90.0,  # Global parameter, not prefixed with `Km`.
-    }
-    channel_states = {"Km_p": 0.2}
+    def __init__(self, channel_name: str | None = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gM": 0.004e-3,
+            f"{prefix}_taumax": 4000.0,
+            f"eM": -90.0,
+        }
+        self.channel_states = {f"{prefix}_p": 0.2}
 
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ps = u["Km_p"]
+        prefix = self._channel_name
+        ps = u[f"{prefix}_p"]
         new_p = solve_inf_gate_exponential(
-            ps, dt, *_p_gate(voltages, params["Km_taumax"])
+            ps, dt, *_p_gate(voltages, params[f"{prefix}_taumax"])
         )
-        return {"Km_p": new_p}
+        return {f"{prefix}_p": new_p}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ps = u["Km_p"]
+        prefix = self._channel_name
+        ps = u[f"{prefix}_p"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        m_conds = params["Km_gM"] * ps * 1000  # mS/cm^2
+        m_conds = params[f"{prefix}_gM"] * ps * 1000  # mS/cm^2
         return m_conds * (voltages - params["eM"])
 
 
@@ -188,71 +199,81 @@ def _p_gate(v, taumax):
 class NaK(Channel):
     """Sodium and Potassium channel"""
 
-    channel_params = {
-        "NaK_gNa": 0.05,
-        "NaK_eNa": 50.0,
-        "NaK_gK": 0.005,
-        "NaK_eK": -90.0,
-        "vt": -60,  # Global parameter, not prefixed with `NaK`.
-    }
+    def __init__(self, channel_name: Optional[str] = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gNa": 0.05,
+            f"{prefix}_eNa": 50.0,
+            f"{prefix}_gK": 0.005,
+            f"{prefix}_eK": -90.0,
+            "vt": -60,  # Global parameter, not prefixed with `NaK`.
+        }
+        self.channel_states = {
+            f"{prefix}_m": 0.2,
+            f"{prefix}_h": 0.2,
+            f"{prefix}_n": 0.2,
+        }
 
-    channel_states = {"NaK_m": 0.2, "NaK_h": 0.2, "NaK_n": 0.2}
-
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        ms, hs, ns = u["NaK_m"], u["NaK_h"], u["NaK_n"]
+
+        prefix = self._channel_name
+        ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
         new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
-        return {"NaK_m": new_m, "NaK_h": new_h, "NaK_n": new_n}
+        return {f"{prefix}_m": new_m, f"{prefix}_h": new_h, f"{prefix}_n": new_n}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        ms, hs, ns = u["NaK_m"], u["NaK_h"], u["NaK_n"]
+        prefix = self._channel_name
+        ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params["NaK_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
-        k_conds = params["NaK_gK"] * (ns**4) * 1000  # mS/cm^2
+        na_conds = params[f"{prefix}_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
+        k_conds = params[f"{prefix}_gK"] * (ns**4) * 1000  # mS/cm^2
 
-        return na_conds * (voltages - params["NaK_eNa"]) + k_conds * (
-            voltages - params["NaK_eK"]
+        return na_conds * (voltages - params[f"{prefix}_eNa"]) + k_conds * (
+            voltages - params[f"{prefix}_eK"]
         )
 
 
 class CaL(Channel):
     """L-type Calcium channel"""
 
-    channel_params = {
-        "CaL_gCaL": 0.1e-3,
-        "eCa": 120.0,  # Global parameter, not prefixed with `CaL`.
-    }
-    channel_states = {"CaL_q": 0.2, "CaL_r": 0.2}
+    def __init__(self, channel_name: Optional[str] = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gCaL": 0.1e-3,
+            "eCa": 120.0,
+        }
+        self.channel_states = {f"{prefix}_q": 0.2, f"{prefix}_r": 0.2}
 
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        qs, rs = u["CaL_q"], u["CaL_r"]
+        prefix = self._channel_name
+        qs, rs = u[f"{prefix}_q"], u[f"{prefix}_r"]
         new_q = solve_gate_exponential(qs, dt, *_q_gate(voltages))
         new_r = solve_gate_exponential(rs, dt, *_r_gate(voltages))
-        return {"CaL_q": new_q, "CaL_r": new_r}
+        return {f"{prefix}_q": new_q, f"{prefix}_r": new_r}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        qs, rs = u["CaL_q"], u["CaL_r"]
+        prefix = self._channel_name
+        qs, rs = u[f"{prefix}_q"], u[f"{prefix}_r"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params["CaL_gCaL"] * (qs**2) * rs * 1000  # mS/cm^2
+        ca_conds = params[f"{prefix}_gCaL"] * (qs**2) * rs * 1000  # mS/cm^2
 
         return ca_conds * (voltages - params["eCa"])
 
@@ -278,32 +299,37 @@ def _r_gate(v):
 class CaT(Channel):
     """T-type Calcium channel"""
 
-    channel_params = {
-        "CaT_gCaT": 0.4e-4,
-        "CaT_vx": 2.0,
-        "eCa": 120.0,  # Global parameter, not prefixed with `CaT`.
-    }
-    channel_states = {"CaT_u": 0.2}
+    def __init__(self, channel_name: Optional[str] = None):
+        super().__init__(channel_name)
+        prefix = self._channel_name
+        self.channel_params = {
+            f"{prefix}_gCaT": 0.4e-4,
+            f"{prefix}_vx": 2.0,
+            "eCa": 120.0,  # Global parameter, not prefixed with `CaT`.
+        }
+        self.channel_states = {f"{prefix}_u": 0.2}
 
-    @staticmethod
     def update_states(
-        u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        us = u["CaT_u"]
-        new_u = solve_inf_gate_exponential(us, dt, *_u_gate(voltages, params["CaT_vx"]))
-        return {"CaT_u": new_u}
+        prefix = self._channel_name
+        us = u[f"{prefix}_u"]
+        new_u = solve_inf_gate_exponential(
+            us, dt, *_u_gate(voltages, params[f"{prefix}_vx"])
+        )
+        return {f"{prefix}_u": new_u}
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        us = u["CaT_u"]
-        s_inf = 1.0 / (1.0 + jnp.exp(-(voltages + params["CaT_vx"] + 57.0) / 6.2))
+        prefix = self._channel_name
+        us = u[f"{prefix}_u"]
+        s_inf = 1.0 / (1.0 + jnp.exp(-(voltages + params[f"{prefix}_vx"] + 57.0) / 6.2))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params["CaT_gCaT"] * (s_inf**2) * us * 1000  # mS/cm^2
+        ca_conds = params[f"{prefix}_gCaT"] * (s_inf**2) * us * 1000  # mS/cm^2
 
         return ca_conds * (voltages - params["eCa"])
 

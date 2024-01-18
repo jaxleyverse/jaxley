@@ -12,8 +12,6 @@ class Channel:
 
     def __init__(self, channel_name: Optional[str] = None):
         self._channel_name = channel_name if channel_name else self.__class__.__name__
-        if channel_name:
-            self.change_name(self._channel_name)
         self.vmaped_update_states = vmap(self.update_states, in_axes=(0, None, 0, 0))
         self.vmapped_compute_current = vmap(
             self.compute_current, in_axes=(None, 0, None)
@@ -36,14 +34,12 @@ class Channel:
             if "_" in key
         }
 
-    @staticmethod
     def update_states(
-        u, dt, voltages, params
+        self, u, dt, voltages, params
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         pass
 
-    @staticmethod
     def compute_current(
-        u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         pass
