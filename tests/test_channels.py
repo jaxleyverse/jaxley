@@ -11,11 +11,11 @@ from jaxley.channels import K, Na
 
 def test_channel_set_name():
     # default name is the class name
-    assert Na().channel_name == "Na"
+    assert Na().name == "Na"
 
     # channel name can be set in the constructor
-    na = Na(channel_name="NaPospischil")
-    assert na.channel_name == "NaPospischil"
+    na = Na(name="NaPospischil")
+    assert na.name == "NaPospischil"
     assert "NaPospischil_gNa" in na.channel_params.keys()
     assert "NaPospischil_eNa" in na.channel_params.keys()
     assert "NaPospischil_h" in na.channel_states.keys()
@@ -26,7 +26,7 @@ def test_channel_set_name():
     # channel name can not be changed directly
     k = K()
     with pytest.raises(AttributeError):
-        k.channel_name = "KPospischil"
+        k.name = "KPospischil"
     assert "KPospischil_gNa" not in k.channel_params.keys()
     assert "KPospischil_eNa" not in k.channel_params.keys()
     assert "KPospischil_h" not in k.channel_states.keys()
@@ -38,7 +38,7 @@ def test_channel_change_name():
     # channel name can be changed with change_name method
     # (and only this way after initialization)
     na.change_name("NaPospischil")
-    assert na.channel_name == "NaPospischil"
+    assert na.name == "NaPospischil"
     assert "NaPospischil_gNa" in na.channel_params.keys()
     assert "NaPospischil_eNa" in na.channel_params.keys()
     assert "NaPospischil_h" in na.channel_states.keys()

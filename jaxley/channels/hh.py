@@ -9,9 +9,9 @@ from jaxley.solver_gate import solve_gate_exponential
 class HH(Channel):
     """Hodgkin-Huxley channel."""
 
-    def __init__(self, channel_name: Optional[str] = None):
-        super().__init__(channel_name)
-        prefix = self._channel_name
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        prefix = self._name
         self.channel_params = {
             f"{prefix}_gNa": 0.12,
             f"{prefix}_gK": 0.036,
@@ -30,7 +30,7 @@ class HH(Channel):
         self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return updated HH channel state."""
-        prefix = self._channel_name
+        prefix = self._name
         ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
         new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
         new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages))
@@ -41,7 +41,7 @@ class HH(Channel):
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Return current through HH channels."""
-        prefix = self._channel_name
+        prefix = self._name
         ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
