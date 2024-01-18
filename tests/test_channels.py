@@ -20,6 +20,8 @@ def test_channel_set_name():
     assert "NaPospischil_eNa" in na.channel_params.keys()
     assert "NaPospischil_h" in na.channel_states.keys()
     assert "NaPospischil_m" in na.channel_states.keys()
+    assert "NaPospischil_vt" not in na.channel_params.keys()
+    assert "vt" in na.channel_params.keys()
 
     # channel name can not be changed directly
     k = K()
@@ -41,3 +43,5 @@ def test_channel_change_name():
     assert "NaPospischil_eNa" in na.channel_params.keys()
     assert "NaPospischil_h" in na.channel_states.keys()
     assert "NaPospischil_m" in na.channel_states.keys()
+    assert "NaPospischil_vt" not in na.channel_params.keys()
+    assert "vt" in na.channel_params.keys()
