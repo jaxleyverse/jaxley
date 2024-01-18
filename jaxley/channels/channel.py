@@ -6,30 +6,35 @@ from jax import vmap
 
 
 class Channel:
-    channel_name = None
+    _channel_name = None
     channel_params = None
     channel_states = None
 
     def __init__(self, channel_name: Optional[str] = None):
-        self.channel_name = channel_name if channel_name else self.__class__.__name__
+        self._channel_name = channel_name if channel_name else self.__class__.__name__
+        if channel_name:
+            self.change_name(self._channel_name)
         self.vmaped_update_states = vmap(self.update_states, in_axes=(0, None, 0, 0))
         self.vmapped_compute_current = vmap(
             self.compute_current, in_axes=(None, 0, None)
         )
 
-    def get_name(self):
-        return self.channel_name
+    @property
+    def channel_name(self) -> Optional[str]:
+        return self._channel_name
 
-    def change_name(self, new_name):
+    def change_name(self, new_name: str):
+        self._channel_name = new_name
         self.channel_params = {
             new_name + key[key.find("_") :]: value
             for key, value in self.channel_params.items()
+            if "_" in key
         }
         self.channel_states = {
             new_name + key[key.find("_") :]: value
             for key, value in self.channel_states.items()
+            if "_" in key
         }
-        self.channel_name = new_name
 
     @staticmethod
     def update_states(
