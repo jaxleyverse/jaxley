@@ -6,6 +6,7 @@ from jax import vmap
 
 
 class Channel:
+    channel_name = None
     channel_params = None
     channel_states = None
 
@@ -14,6 +15,20 @@ class Channel:
         self.vmapped_compute_current = vmap(
             self.compute_current, in_axes=(None, 0, None)
         )
+
+    def get_name(self):
+        return self.channel_name
+
+    def change_name(self, new_name):
+        self.channel_params = {
+            new_name + key[key.find("_") :]: value
+            for key, value in self.channel_params.items()
+        }
+        self.channel_states = {
+            new_name + key[key.find("_") :]: value
+            for key, value in self.channel_states.items()
+        }
+        self.channel_name = new_name
 
     @staticmethod
     def update_states(
