@@ -22,16 +22,26 @@ class Channel:
         return self._channel_name
 
     def change_name(self, new_name: str):
+        old_prefix = self._channel_name + "_"
+        new_prefix = new_name + "_"
+
         self._channel_name = new_name
         self.channel_params = {
-            new_name + key[key.find("_") :]: value
+            (
+                new_prefix + key[len(old_prefix) :]
+                if key.startswith(old_prefix)
+                else key
+            ): value
             for key, value in self.channel_params.items()
-            if "_" in key
         }
+
         self.channel_states = {
-            new_name + key[key.find("_") :]: value
+            (
+                new_prefix + key[len(old_prefix) :]
+                if key.startswith(old_prefix)
+                else key
+            ): value
             for key, value in self.channel_states.items()
-            if "_" in key
         }
 
     def update_states(
