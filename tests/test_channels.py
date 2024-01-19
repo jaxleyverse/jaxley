@@ -3,10 +3,11 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
+import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import K, Na
+from jaxley.channels import HH, K, Na
 
 
 def test_channel_set_name():
@@ -45,3 +46,21 @@ def test_channel_change_name():
     assert "NaPospischil_m" in na.channel_states.keys()
     assert "NaPospischil_vt" not in na.channel_params.keys()
     assert "vt" in na.channel_params.keys()
+
+
+def test_integration_with_renamed_channels():
+    neuron_hh = HH()
+    neuron_hh.change_name("NeuronHH")
+    standard_hh = HH()
+
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=4)
+
+    branch.comp(0.0).insert(standard_hh)
+    branch.insert(neuron_hh)
+
+    branch.comp(1.0).record()
+    v = jx.integrate(branch, t_max=1.0)
+
+    # Test if voltage is `NaN` which happens when channels get mixed up.
+    assert np.invert(np.any(np.isnan(v)))
