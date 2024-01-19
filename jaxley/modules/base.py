@@ -104,13 +104,13 @@ class Module(ABC):
         """
         for module in constituents:
             for channel in module.channels:
-                if type(channel).__name__ not in [
-                    type(c).__name__ for c in self.channels
+                if channel._name not in [
+                    c._name for c in self.channels
                 ]:
                     self.channels.append(channel)
         # Setting columns of channel names to `False` instead of `NaN`.
         for channel in self.channels:
-            name = type(channel).__name__
+            name = channel._name
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
     def to_jax(self):
@@ -156,7 +156,7 @@ class Module(ABC):
         printable_nodes = deepcopy(view)
 
         for channel in self.channels:
-            name = type(channel).__name__
+            name = channel._name
             param_names = list(channel.channel_params.keys())
             state_names = list(channel.channel_states.keys())
             if channel_names is not None and name not in channel_names:
@@ -187,12 +187,12 @@ class Module(ABC):
 
     def _append_channel_to_nodes(self, view, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
-        name = type(channel).__name__
+        name = channel._name
 
         # Channel does not yet exist in the `jx.Module` at all.
-        if name not in [type(c).__name__ for c in self.channels]:
+        if name not in [c._name for c in self.channels]:
             self.channels.append(channel)
-            self.nodes[name] = False
+            self.nodes[name] = False  # Previous columns do not have the new channel.
 
         # Add a binary column that indicates if a channel is present.
         self.nodes.loc[view.index.values, name] = True
@@ -512,7 +512,7 @@ class Module(ABC):
 
         # Update states of the channels.
         for channel in channels:
-            name = type(channel).__name__
+            name = channel._name
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
@@ -539,7 +539,7 @@ class Module(ABC):
         # offset.
         diff = 1e-3
         for channel in channels:
-            name = type(channel).__name__
+            name = channel._name
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
