@@ -104,9 +104,7 @@ class Module(ABC):
         """
         for module in constituents:
             for channel in module.channels:
-                if channel._name not in [
-                    c._name for c in self.channels
-                ]:
+                if channel._name not in [c._name for c in self.channels]:
                     self.channels.append(channel)
         # Setting columns of channel names to `False` instead of `NaN`.
         for channel in self.channels:
