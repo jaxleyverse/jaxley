@@ -641,6 +641,36 @@ class Module(ABC):
             dims=dims,
             col=col,
             ax=ax,
+            type="plot",
+            morph_plot_kwargs=morph_plot_kwargs,
+        )
+
+        return ax
+
+    def _scatter(self, ax, col, dims, view, morph_plot_kwargs):
+        """Scatter visualization (used for compartments)."""
+        assert len(view) == 1, "Scatter only deals with compartments."
+        branch_ind = view["branch_index"].to_numpy().item()
+        comp_ind = view["comp_index"].to_numpy().item()
+        assert not np.any(
+            np.isnan(self.xyzr[branch_ind][:, dims])
+        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
+
+        comp_fraction = comp_ind / self.nseg
+        coords = self.xyzr[branch_ind]
+        interpolated_loc_x = np.interp(
+            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, dims[0]]
+        )
+        interpolated_loc_y = np.interp(
+            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, dims[1]]
+        )
+
+        ax = plot_morph(
+            np.asarray([[[interpolated_loc_x, interpolated_loc_y]]]),
+            dims=dims,
+            col=col,
+            ax=ax,
+            type="scatter",
             morph_plot_kwargs=morph_plot_kwargs,
         )
 

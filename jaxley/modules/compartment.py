@@ -151,3 +151,19 @@ class CompartmentView(View):
             self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
             self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
             self.pointer.synapses.append(synapse_type)
+
+    def vis(
+        self,
+        ax=None,
+        col="k",
+        dims=(0, 1),
+        morph_plot_kwargs: Dict = {},
+    ):
+        nodes = self.set_global_index_and_index(self.view)
+        return self.pointer._scatter(
+            ax=ax,
+            col=col,
+            dims=dims,
+            view=nodes,
+            morph_plot_kwargs=morph_plot_kwargs,
+        )
