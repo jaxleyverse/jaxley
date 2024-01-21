@@ -159,11 +159,10 @@ class CompartmentView(View):
         dims=(0, 1),
         morph_plot_kwargs: Dict = {},
     ):
-        nodes = self.set_global_index_and_index(self.view)
         return self.pointer._scatter(
             ax=ax,
             col=col,
             dims=dims,
-            view=nodes,
+            view=self.view,
             morph_plot_kwargs=morph_plot_kwargs,
         )

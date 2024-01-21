@@ -16,6 +16,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
+    loc_of_index,
 )
 from jaxley.utils.plot_utils import plot_morph
 
@@ -648,7 +649,7 @@ class Module(ABC):
         return ax
 
     def _scatter(self, ax, col, dims, view, morph_plot_kwargs):
-        """Scatter visualization (used for compartments)."""
+        """Scatter visualization (used only for compartments)."""
         assert len(view) == 1, "Scatter only deals with compartments."
         branch_ind = view["branch_index"].to_numpy().item()
         comp_ind = view["comp_index"].to_numpy().item()
@@ -656,17 +657,22 @@ class Module(ABC):
             np.isnan(self.xyzr[branch_ind][:, dims])
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
-        comp_fraction = comp_ind / self.nseg
+        comp_fraction = loc_of_index(comp_ind, self.nseg)
         coords = self.xyzr[branch_ind]
-        interpolated_loc_x = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, dims[0]]
+
+        # Perform a linear interpolation between coordinates to get the location.
+        interp_loc_x = np.interp(
+            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 0]
         )
-        interpolated_loc_y = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, dims[1]]
+        interp_loc_y = np.interp(
+            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 1]
+        )
+        interp_loc_z = np.interp(
+            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 2]
         )
 
         ax = plot_morph(
-            np.asarray([[[interpolated_loc_x, interpolated_loc_y]]]),
+            np.asarray([[[interp_loc_x, interp_loc_y, interp_loc_z]]]),
             dims=dims,
             col=col,
             ax=ax,
