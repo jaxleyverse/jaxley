@@ -297,6 +297,12 @@ class Module(ABC):
                 f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.num_trainable_params}"
             )
 
+    def delete_trainables(self):
+        """Removes all trainable parameters from the module."""
+        self.indices_set_by_trainables: List[jnp.ndarray] = []
+        self.trainable_params: List[Dict[str, jnp.ndarray]] = []
+        self.num_trainable_params: int = 0
+
     def add_to_group(self, group_name):
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
 

@@ -37,6 +37,28 @@ def test_make_trainable():
     cell.get_parameters()
 
 
+def test_delete_trainables():
+    """Test make_trainable."""
+    nseg_per_branch = 8
+
+    depth = 5
+    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
+    parents = jnp.asarray(parents)
+
+    comp = jx.Compartment().initialize()
+    branch = jx.Branch(comp, nseg_per_branch).initialize()
+    cell = jx.Cell(branch, parents=parents).initialize()
+
+    cell.branch(0).comp(0.0).make_trainable("length", 12.0)
+    assert cell.num_trainable_params == 1
+
+    cell.delete_trainables()
+    cell.branch(0).comp(0.0).make_trainable("length", 12.0)
+    assert cell.num_trainable_params == 1
+
+    cell.get_parameters()
+
+
 def test_make_trainable_network():
     """Test make_trainable."""
     nseg_per_branch = 8
