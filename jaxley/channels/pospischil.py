@@ -71,8 +71,8 @@ class Na(Channel):
         """Update state."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
-        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
+        new_m = solve_gate_exponential(ms, dt, *self.m_gate(voltages, params["vt"]))
+        new_h = solve_gate_exponential(hs, dt, *self.h_gate(voltages, params["vt"]))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
     def compute_current(
@@ -88,23 +88,23 @@ class Na(Channel):
         current = na_conds * (voltages - params[f"{prefix}_eNa"])
         return current
 
+    @staticmethod
+    def m_gate(v, vt):
+        v_alpha = v - vt - 13.0
+        alpha = 0.32 * efun(-0.25 * v_alpha) / 0.25
 
-def _m_gate(v, vt):
-    v_alpha = v - vt - 13.0
-    alpha = 0.32 * efun(-0.25 * v_alpha) / 0.25
+        v_beta = v - vt - 40.0
+        beta = 0.28 * efun(0.2 * v_beta) / 0.2
+        return alpha, beta
 
-    v_beta = v - vt - 40.0
-    beta = 0.28 * efun(0.2 * v_beta) / 0.2
-    return alpha, beta
+    @staticmethod
+    def h_gate(v, vt):
+        v_alpha = v - vt - 17.0
+        alpha = 0.128 * jnp.exp(-v_alpha / 18.0)
 
-
-def _h_gate(v, vt):
-    v_alpha = v - vt - 17.0
-    alpha = 0.128 * jnp.exp(-v_alpha / 18.0)
-
-    v_beta = v - vt - 40.0
-    beta = 4.0 / (jnp.exp(-v_beta / 5.0) + 1.0)
-    return alpha, beta
+        v_beta = v - vt - 40.0
+        beta = 4.0 / (jnp.exp(-v_beta / 5.0) + 1.0)
+        return alpha, beta
 
 
 class K(Channel):
@@ -126,7 +126,7 @@ class K(Channel):
         """Update state."""
         prefix = self._name
         ns = u[f"{prefix}_n"]
-        new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
+        new_n = solve_gate_exponential(ns, dt, self.n_gate(voltages, params["vt"]))
         return {f"{prefix}_n": new_n}
 
     def compute_current(
@@ -141,14 +141,14 @@ class K(Channel):
 
         return k_conds * (voltages - params[f"{prefix}_eK"])
 
+    @staticmethod
+    def n_gate(v, vt):
+        v_alpha = v - vt - 15.0
+        alpha = 0.032 * efun(-0.2 * v_alpha) / 0.2
 
-def _n_gate(v, vt):
-    v_alpha = v - vt - 15.0
-    alpha = 0.032 * efun(-0.2 * v_alpha) / 0.2
-
-    v_beta = v - vt - 10.0
-    beta = 0.5 * jnp.exp(-v_beta / 40.0)
-    return alpha, beta
+        v_beta = v - vt - 10.0
+        beta = 0.5 * jnp.exp(-v_beta / 40.0)
+        return alpha, beta
 
 
 class Km(Channel):
@@ -171,7 +171,7 @@ class Km(Channel):
         prefix = self._name
         ps = u[f"{prefix}_p"]
         new_p = solve_inf_gate_exponential(
-            ps, dt, *_p_gate(voltages, params[f"{prefix}_taumax"])
+            ps, dt, *self.p_gate(voltages, params[f"{prefix}_taumax"])
         )
         return {f"{prefix}_p": new_p}
 
@@ -186,14 +186,14 @@ class Km(Channel):
         m_conds = params[f"{prefix}_gM"] * ps * 1000  # mS/cm^2
         return m_conds * (voltages - params["eM"])
 
+    @staticmethod
+    def p_gate(v, taumax):
+        v_p = v + 35.0
+        p_inf = 1.0 / (1.0 + jnp.exp(-0.1 * v_p))
 
-def _p_gate(v, taumax):
-    v_p = v + 35.0
-    p_inf = 1.0 / (1.0 + jnp.exp(-0.1 * v_p))
+        tau_p = taumax / (3.3 * jnp.exp(0.05 * v_p) + jnp.exp(-0.05 * v_p))
 
-    tau_p = taumax / (3.3 * jnp.exp(0.05 * v_p) + jnp.exp(-0.05 * v_p))
-
-    return p_inf, tau_p
+        return p_inf, tau_p
 
 
 class NaK(Channel):
@@ -222,9 +222,9 @@ class NaK(Channel):
 
         prefix = self._name
         ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
-        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages, params["vt"]))
-        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages, params["vt"]))
-        new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages, params["vt"]))
+        new_m = solve_gate_exponential(ms, dt, *Na.m_gate(voltages, params["vt"]))
+        new_h = solve_gate_exponential(hs, dt, *Na.h_gate(voltages, params["vt"]))
+        new_n = solve_gate_exponential(ns, dt, *K.n_gate(voltages, params["vt"]))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h, f"{prefix}_n": new_n}
 
     def compute_current(
@@ -261,8 +261,8 @@ class CaL(Channel):
         """Update state."""
         prefix = self._name
         qs, rs = u[f"{prefix}_q"], u[f"{prefix}_r"]
-        new_q = solve_gate_exponential(qs, dt, *_q_gate(voltages))
-        new_r = solve_gate_exponential(rs, dt, *_r_gate(voltages))
+        new_q = solve_gate_exponential(qs, dt, *self.q_gate(voltages))
+        new_r = solve_gate_exponential(rs, dt, *self.r_gate(voltages))
         return {f"{prefix}_q": new_q, f"{prefix}_r": new_r}
 
     def compute_current(
@@ -277,23 +277,23 @@ class CaL(Channel):
 
         return ca_conds * (voltages - params["eCa"])
 
+    @staticmethod
+    def q_gate(v):
+        v_alpha = -v - 27.0
+        alpha = 0.055 * efun(v_alpha / 3.8) * 3.8
 
-def _q_gate(v):
-    v_alpha = -v - 27.0
-    alpha = 0.055 * efun(v_alpha / 3.8) * 3.8
+        v_beta = -v - 75.0
+        beta = 0.94 * jnp.exp(v_beta / 17.0)
+        return alpha, beta
 
-    v_beta = -v - 75.0
-    beta = 0.94 * jnp.exp(v_beta / 17.0)
-    return alpha, beta
+    @staticmethod
+    def r_gate(v):
+        v_alpha = -v - 13.0
+        alpha = 0.000457 * jnp.exp(v_alpha / 50)
 
-
-def _r_gate(v):
-    v_alpha = -v - 13.0
-    alpha = 0.000457 * jnp.exp(v_alpha / 50)
-
-    v_beta = -v - 15.0
-    beta = 0.0065 / (jnp.exp(v_beta / 28.0) + 1)
-    return alpha, beta
+        v_beta = -v - 15.0
+        beta = 0.0065 / (jnp.exp(v_beta / 28.0) + 1)
+        return alpha, beta
 
 
 class CaT(Channel):
@@ -316,7 +316,7 @@ class CaT(Channel):
         prefix = self._name
         us = u[f"{prefix}_u"]
         new_u = solve_inf_gate_exponential(
-            us, dt, *_u_gate(voltages, params[f"{prefix}_vx"])
+            us, dt, *self.u_gate(voltages, params[f"{prefix}_vx"])
         )
         return {f"{prefix}_u": new_u}
 
@@ -333,13 +333,13 @@ class CaT(Channel):
 
         return ca_conds * (voltages - params["eCa"])
 
+    @staticmethod
+    def u_gate(v, vx):
+        v_u1 = v + vx + 81.0
+        u_inf = 1.0 / (1.0 + jnp.exp(v_u1 / 4))
 
-def _u_gate(v, vx):
-    v_u1 = v + vx + 81.0
-    u_inf = 1.0 / (1.0 + jnp.exp(v_u1 / 4))
+        tau_u = (30.8 + (211.4 + jnp.exp((v + vx + 113.2) / 5.0))) / (
+            3.7 * (1 + jnp.exp((v + vx + 84.0) / 3.2))
+        )
 
-    tau_u = (30.8 + (211.4 + jnp.exp((v + vx + 113.2) / 5.0))) / (
-        3.7 * (1 + jnp.exp((v + vx + 84.0) / 3.2))
-    )
-
-    return u_inf, tau_u
+        return u_inf, tau_u
