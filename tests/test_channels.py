@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH, K, Na
+from jaxley.channels import HH, CaL, CaT, K, Km, Leak, Na
 
 
 def test_channel_set_name():
@@ -64,3 +64,35 @@ def test_integration_with_renamed_channels():
 
     # Test if voltage is `NaN` which happens when channels get mixed up.
     assert np.invert(np.any(np.isnan(v)))
+
+
+def test_init_states():
+    """Functional test for `init_states()`.
+
+    Checks whether, if everything is initialized in its steady state, the voltage
+    after 10ms is almost exactly the same as after 0ms.
+    """
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell = jx.Cell(branch, [-1, 0])
+    cell.branch(0).comp(0.0).record()
+
+    cell.branch(0).insert(Na())
+    cell.branch(1).insert(K())
+    cell.branch(1).comp(0.0).insert(Km())
+    cell.branch(0).comp(1.0).insert(CaT())
+    cell.insert(CaL())
+    cell.insert(Leak())
+
+    cell.insert(HH())
+
+    cell.set("voltages", -62.0)  # At -70.0 there is a rebound spike.
+    cell.init_states()
+    v = jx.integrate(cell, t_max=20.0)
+
+    last_voltage = v[0, -1]
+    cell.set("voltages", last_voltage)
+    cell.init_states()
+
+    v = jx.integrate(cell, t_max=10.0)
+    assert np.abs(v[0, 0] - v[0, -1]) < 0.02

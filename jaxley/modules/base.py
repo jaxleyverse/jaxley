@@ -358,7 +358,7 @@ class Module(ABC):
 
     def init_states(self) -> None:
         """Initialize all mechanisms in their steady state.
-        
+
         This considers the voltages and parameters of each compartment."""
         # Update states of the channels.
         channel_nodes = self.nodes

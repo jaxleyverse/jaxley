@@ -32,9 +32,9 @@ class HH(Channel):
         """Return updated HH channel state."""
         prefix = self._name
         ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
-        new_m = solve_gate_exponential(ms, dt, *_m_gate(voltages))
-        new_h = solve_gate_exponential(hs, dt, *_h_gate(voltages))
-        new_n = solve_gate_exponential(ns, dt, *_n_gate(voltages))
+        new_m = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
+        new_h = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
+        new_n = solve_gate_exponential(ns, dt, *self.n_gate(voltages))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h, f"{prefix}_n": new_n}
 
     def compute_current(
@@ -55,23 +55,35 @@ class HH(Channel):
             + leak_conds * (voltages - params[f"{prefix}_eLeak"])
         )
 
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_m, beta_m = self.m_gate(voltages)
+        alpha_h, beta_h = self.h_gate(voltages)
+        alpha_n, beta_n = self.n_gate(voltages)
+        return {
+            f"{prefix}_m": alpha_m / (alpha_m + beta_m),
+            f"{prefix}_h": alpha_h / (alpha_h + beta_h),
+            f"{prefix}_n": alpha_n / (alpha_n + beta_n),
+        }
 
-def _m_gate(v):
-    alpha = 0.1 * _vtrap(-(v + 40), 10)
-    beta = 4.0 * jnp.exp(-(v + 65) / 18)
-    return alpha, beta
+    @staticmethod
+    def m_gate(v):
+        alpha = 0.1 * _vtrap(-(v + 40), 10)
+        beta = 4.0 * jnp.exp(-(v + 65) / 18)
+        return alpha, beta
 
+    @staticmethod
+    def h_gate(v):
+        alpha = 0.07 * jnp.exp(-(v + 65) / 20)
+        beta = 1.0 / (jnp.exp(-(v + 35) / 10) + 1)
+        return alpha, beta
 
-def _h_gate(v):
-    alpha = 0.07 * jnp.exp(-(v + 65) / 20)
-    beta = 1.0 / (jnp.exp(-(v + 35) / 10) + 1)
-    return alpha, beta
-
-
-def _n_gate(v):
-    alpha = 0.01 * _vtrap(-(v + 55), 10)
-    beta = 0.125 * jnp.exp(-(v + 65) / 80)
-    return alpha, beta
+    @staticmethod
+    def n_gate(v):
+        alpha = 0.01 * _vtrap(-(v + 55), 10)
+        beta = 0.125 * jnp.exp(-(v + 65) / 80)
+        return alpha, beta
 
 
 def _vtrap(x, y):
