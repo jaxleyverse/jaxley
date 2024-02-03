@@ -537,28 +537,6 @@ class Module(ABC):
         """One step of integration of the channels."""
         voltages = states["voltages"]
 
-        # Update states of the channels.
-        for channel in channels:
-            name = channel._name
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
-            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = params[p][indices]
-            channel_states = {}
-            for s in channel_state_names:
-                channel_states[s] = states[s][indices]
-
-            states_updated = channel.update_states(
-                channel_states, delta_t, voltages[indices], channel_params
-            )
-            # Rebuild state. This has to be done within the loop over channels to allow
-            # multiple channels which modify the same state.
-            for key, val in states_updated.items():
-                states[key] = states[key].at[indices].set(val)
-
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
         constant_terms = jnp.zeros_like(voltages)
@@ -586,6 +564,28 @@ class Module(ABC):
             constant_term = membrane_currents[0] - voltage_term * voltages[indices]
             voltage_terms = voltage_terms.at[indices].add(voltage_term)
             constant_terms = constant_terms.at[indices].add(-constant_term)
+
+        # Update states of the channels.
+        for channel in channels:
+            name = channel._name
+            channel_param_names = list(channel.channel_params.keys())
+            channel_state_names = list(channel.channel_states.keys())
+            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+
+            channel_params = {}
+            for p in channel_param_names:
+                channel_params[p] = params[p][indices]
+            channel_states = {}
+            for s in channel_state_names:
+                channel_states[s] = states[s][indices]
+
+            states_updated = channel.update_states(
+                channel_states, delta_t, voltages[indices], channel_params
+            )
+            # Rebuild state. This has to be done within the loop over channels to allow
+            # multiple channels which modify the same state.
+            for key, val in states_updated.items():
+                states[key] = states[key].at[indices].set(val)
 
         return states, (voltage_terms, constant_terms)
 
