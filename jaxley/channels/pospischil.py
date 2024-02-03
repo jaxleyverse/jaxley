@@ -51,7 +51,7 @@ class Leak(Channel):
         leak_conds = params[f"{prefix}_gl"] * 1000  # mS/cm^2
         return leak_conds * (voltages - params[f"{prefix}_el"])
 
-    def init_state(self, voltages):
+    def init_state(self, voltages, params):
         return {}
 
 
@@ -93,6 +93,7 @@ class Na(Channel):
 
     def init_state(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
         alpha_m, beta_m = self.m_gate(voltages, params["vt"])
         alpha_h, beta_h = self.h_gate(voltages, params["vt"])
         return {
@@ -138,7 +139,7 @@ class K(Channel):
         """Update state."""
         prefix = self._name
         ns = u[f"{prefix}_n"]
-        new_n = solve_gate_exponential(ns, dt, self.n_gate(voltages, params["vt"]))
+        new_n = solve_gate_exponential(ns, dt, *self.n_gate(voltages, params["vt"]))
         return {f"{prefix}_n": new_n}
 
     def compute_current(
@@ -155,6 +156,7 @@ class K(Channel):
 
     def init_state(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
         alpha_n, beta_n = self.n_gate(voltages, params["vt"])
         return {f"{prefix}_n": alpha_n / (alpha_n + beta_n)}
 
@@ -205,6 +207,7 @@ class Km(Channel):
 
     def init_state(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
         alpha_p, beta_p = self.p_gate(voltages, params[f"{prefix}_taumax"])
         return {f"{prefix}_p": alpha_p / (alpha_p + beta_p)}
 
@@ -254,6 +257,7 @@ class CaL(Channel):
 
     def init_state(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
         alpha_q, beta_q = self.q_gate(voltages)
         alpha_r, beta_r = self.r_gate(voltages)
         return {
@@ -319,6 +323,7 @@ class CaT(Channel):
 
     def init_state(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
         alpha_u, beta_u = self.u_gate(voltages, params[f"{prefix}_vx"])
         return {f"{prefix}_u": alpha_u / (alpha_u + beta_u)}
 

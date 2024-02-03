@@ -356,6 +356,28 @@ class Module(ABC):
         self.init_morph()
         return self
 
+    def init_states(self) -> None:
+        """Initialize all mechanisms in their steady state.
+        
+        This considers the voltages and parameters of each compartment."""
+        # Update states of the channels.
+        channel_nodes = self.nodes
+
+        for channel in self.channels:
+            name = channel._name
+            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+            voltages = channel_nodes.loc[indices, "voltages"].to_numpy()
+
+            channel_param_names = list(channel.channel_params.keys())
+            channel_params = {}
+            for p in channel_param_names:
+                channel_params[p] = channel_nodes[p][indices].to_numpy()
+
+            init_state = channel.init_state(voltages, channel_params)
+
+            for key, val in init_state.items():
+                self.nodes.loc[indices, key] = val
+
     def record(self, state: str = "voltages"):
         """Insert a recording into the compartment."""
         view = deepcopy(self.nodes)
