@@ -10,26 +10,21 @@ from jaxley.utils.cell_utils import index_of_loc
 def postsyn_voltage_updates(
     voltages: jnp.ndarray,
     post_syn_comp_inds: np.ndarray,
-    non_zero_voltage_term: jnp.ndarray,
-    non_zero_constant_term: jnp.ndarray,
+    current_each_synapse: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute current at the post synapse."""
-    voltage_term = jnp.zeros_like(voltages)
-    constant_term = jnp.zeros_like(voltages)
+    incoming_currents = jnp.zeros_like(voltages)
 
     dnums = ScatterDimensionNumbers(
         update_window_dims=(),
         inserted_window_dims=(0,),
         scatter_dims_to_operand_dims=(0,),
     )
-    voltage_term = scatter_add(
-        voltage_term, post_syn_comp_inds[:, None], non_zero_voltage_term, dnums
-    )
-    constant_term = scatter_add(
-        constant_term, post_syn_comp_inds[:, None], non_zero_constant_term, dnums
+    incoming_current_at_each_comp = scatter_add(
+        incoming_currents, post_syn_comp_inds[:, None], current_each_synapse, dnums
     )
 
-    return voltage_term, constant_term
+    return incoming_current_at_each_comp
 
 
 def prepare_syn(

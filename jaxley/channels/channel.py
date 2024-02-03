@@ -12,7 +12,6 @@ class Channel:
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
-        self.vmaped_update_states = vmap(self.update_states, in_axes=(0, None, 0, 0))
         self.vmapped_compute_current = vmap(
             self.compute_current, in_axes=(None, 0, None)
         )
