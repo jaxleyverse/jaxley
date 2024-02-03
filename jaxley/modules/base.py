@@ -534,7 +534,7 @@ class Module(ABC):
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
     ):
-        """One step of integration of the channels."""
+        """One step of integration of the channels and of computing their current."""
         states = self._step_channels_state(
             states, delta_t, channels, channel_nodes, params
         )
@@ -551,6 +551,7 @@ class Module(ABC):
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
     ):
+        """One integration step of the channels."""
         voltages = states["voltages"]
 
         # Update states of the channels.
@@ -586,6 +587,10 @@ class Module(ABC):
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
     ):
+        """Return the current through each channel.
+
+        This is also updates `state` because the `state` also contains the current.
+        """
         voltages = states["voltages"]
 
         # Compute current through channels.
