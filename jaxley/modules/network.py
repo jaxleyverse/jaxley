@@ -262,8 +262,8 @@ class Network(Module):
 
         self.initialized_syns = True
 
-    @staticmethod
     def _step_synapse(
+        self,
         states,
         syn_channels,
         params,
@@ -271,15 +271,20 @@ class Network(Module):
         edges: pd.DataFrame,
     ):
         """Perform one step of the synapses and obtain their currents."""
+        states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
+        states, current_terms = self._synapse_current(
+            states, syn_channels, params, delta_t, edges
+        )
+        return states, current_terms
+
+    @staticmethod
+    def _step_synapse_state(states, syn_channels, params, delta_t, edges: pd.DataFrame):
         voltages = states["voltages"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["global_post_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
-        syn_voltage_terms = jnp.zeros_like(voltages)
-        syn_constant_terms = jnp.zeros_like(voltages)
         for i, synapse_type in enumerate(syn_channels):
             assert (
                 synapse_names[i] == type(synapse_type).__name__
@@ -294,26 +299,75 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            states_updated, synapse_current_terms = synapse_type.step(
+            # State updates.
+            states_updated = synapse_type.update_states(
                 synapse_states,
                 delta_t,
                 voltages,
                 synapse_params,
                 np.asarray(pre_syn_inds[synapse_names[i]]),
             )
-            synapse_current_terms = postsyn_voltage_updates(
-                voltages,
-                np.asarray(post_syn_inds[synapse_names[i]]),
-                *synapse_current_terms,
-            )
-            syn_voltage_terms += synapse_current_terms[0]
-            syn_constant_terms += synapse_current_terms[1]
 
             # Rebuild state.
             for key, val in states_updated.items():
                 states[key] = val
 
-        return states, syn_voltage_terms, syn_constant_terms
+        return states
+
+    @staticmethod
+    def _synapse_current(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+        voltages = states["voltages"]
+
+        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
+        pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
+        post_syn_inds = grouped_syns["global_post_comp_index"].apply(list)
+        synapse_names = list(grouped_syns.indices.keys())
+
+        syn_voltage_terms = jnp.zeros_like(voltages)
+        syn_constant_terms = jnp.zeros_like(voltages)
+        # Run with two different voltages that are `diff` apart to infer the slope and
+        # offset.
+        diff = 1e-3
+        for i, synapse_type in enumerate(syn_channels):
+            assert (
+                synapse_names[i] == type(synapse_type).__name__
+            ), "Mixup in the ordering of synapses. Please create an issue on Github."
+            synapse_param_names = list(synapse_type.synapse_params.keys())
+            synapse_state_names = list(synapse_type.synapse_states.keys())
+
+            synapse_params = {}
+            for p in synapse_param_names:
+                synapse_params[p] = params[p]
+            synapse_states = {}
+            for s in synapse_state_names:
+                synapse_states[s] = states[s]
+
+            v_and_perturbed = jnp.stack([voltages, voltages + diff])
+            synapse_currents = synapse_type.vmapped_compute_current(
+                synapse_states,
+                v_and_perturbed,
+                synapse_params,
+                np.asarray(pre_syn_inds[synapse_names[i]]),
+            )
+            # Current through synapses.
+            print("voltages", voltages.shape)
+            print("v_and_perturbed", v_and_perturbed.shape)
+            print("post_syn_inds", np.asarray(post_syn_inds[synapse_names[i]]))
+            print("synapse_currents", synapse_currents.shape)
+            
+            post_syn_currents = vmap(postsyn_voltage_updates, in_axes=(0, None, 0))(
+                v_and_perturbed,
+                np.asarray(post_syn_inds[synapse_names[i]]),
+                synapse_currents,
+            )
+            voltage_term = (post_syn_currents[1] - post_syn_currents[0]) / diff
+            constant_term = post_syn_currents[0] - voltage_term * voltages
+            syn_voltage_terms += voltage_term
+            syn_constant_terms -= constant_term
+
+            states[f"{synapse_type._name}_current"] = post_syn_currents
+
+        return states, (syn_voltage_terms, syn_constant_terms)
 
     def vis(
         self,

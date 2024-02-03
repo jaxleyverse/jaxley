@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
+from jax import vmap
 
 
 class Synapse:
@@ -10,15 +11,25 @@ class Synapse:
     synapse_states = None
 
     def __init__(self):
-        pass
+        self.vmapped_compute_current = vmap(
+            self.compute_current, in_axes=(None, 0, None, None)
+        )
 
-    @staticmethod
-    def step(
+    def update_states(
         u: Dict[str, jnp.ndarray],
         delta_t: float,
         voltages: jnp.ndarray,
         params: Dict[str, jnp.ndarray],
         pre_inds: jnp.ndarray,
-    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
+    ) -> Dict[str, jnp.ndarray]:
+        """ODE update step."""
+        raise NotImplementedError
+
+    def compute_current(
+        u: Dict[str, jnp.ndarray],
+        voltages: jnp.ndarray,
+        params: Dict[str, jnp.ndarray],
+        pre_inds: jnp.ndarray,
+    ) -> jnp.ndarray:
         """ODE update step."""
         raise NotImplementedError

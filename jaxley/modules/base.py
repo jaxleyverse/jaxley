@@ -483,7 +483,7 @@ class Module(ABC):
         )
 
         # Step of the synapse.
-        u, syn_voltage_terms, syn_constant_terms = self._step_synapse(
+        u, (syn_v_terms, syn_const_terms) = self._step_synapse(
             u,
             self.synapses,
             params,
@@ -495,8 +495,8 @@ class Module(ABC):
         if solver == "bwd_euler":
             new_voltages = step_voltage_implicit(
                 voltages=voltages,
-                voltage_terms=v_terms + syn_voltage_terms,
-                constant_terms=const_terms + i_ext + syn_constant_terms,
+                voltage_terms=v_terms + syn_v_terms,
+                constant_terms=const_terms + i_ext + syn_const_terms,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
                 summed_coupling_conds=params["summed_coupling_conds"],
@@ -511,8 +511,8 @@ class Module(ABC):
         else:
             new_voltages = step_voltage_explicit(
                 voltages,
-                v_terms + syn_voltage_terms,
-                const_terms + i_ext + syn_constant_terms,
+                v_terms + syn_v_terms,
+                const_terms + i_ext + syn_const_terms,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
                 branch_cond_fwd=params["branch_conds_fwd"],
@@ -635,8 +635,8 @@ class Module(ABC):
 
         return states, (voltage_terms, constant_terms)
 
-    @staticmethod
     def _step_synapse(
+        self,
         u,
         syn_channels,
         params,
@@ -649,7 +649,7 @@ class Module(ABC):
         `Compartment`, `Branch`, and `Cell` do not override this.
         """
         voltages = u["voltages"]
-        return u, jnp.zeros_like(voltages), jnp.zeros_like(voltages)
+        return u, (jnp.zeros_like(voltages), jnp.zeros_like(voltages))
 
     @staticmethod
     def get_external_input(
