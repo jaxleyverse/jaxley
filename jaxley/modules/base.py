@@ -564,6 +564,10 @@ class Module(ABC):
             channel_params = {}
             for p in channel_param_names:
                 channel_params[p] = params[p][indices]
+            channel_params["radius"] = params["radius"][indices]
+            channel_params["length"] = params["length"][indices]
+            channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
+
             channel_states = {}
             for s in channel_state_names:
                 channel_states[s] = states[s][indices]
@@ -608,6 +612,10 @@ class Module(ABC):
             channel_params = {}
             for p in channel_param_names:
                 channel_params[p] = params[p][indices]
+            channel_params["radius"] = params["radius"][indices]
+            channel_params["length"] = params["length"][indices]
+            channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
+
             channel_states = {}
             for s in channel_state_names:
                 channel_states[s] = states[s][indices]
