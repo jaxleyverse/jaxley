@@ -135,6 +135,11 @@ def integrate(
             if key in list(states.keys()):  # Only initial states, not parameters.
                 states[key] = states[key].at[inds].set(set_param[key])
 
+    # Add to the states the initial current through each channel.
+    states, _ = module._channel_currents(
+        states, delta_t, module.channels, module.nodes, all_params
+    )
+
     # Record the initial state.
     init_recs = jnp.asarray(
         [states[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)]
