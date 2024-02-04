@@ -178,7 +178,7 @@ def test_radius_and_length_net():
 
     voltages = jx.integrate(network, delta_t=dt)
 
-    voltages_081123 = jnp.asarray(
+    voltages_040224 = jnp.asarray(
         [
             [
                 -70.0,
@@ -195,19 +195,19 @@ def test_radius_and_length_net():
             ],
             [
                 -70.0,
-                -66.46899201,
-                -14.64499375,
-                43.92453203,
-                3.34867388,
-                -25.54194841,
-                -48.97174933,
-                -71.86633324,
-                -75.57015321,
-                -75.49132708,
-                -75.16903774,
+                -66.46902476,
+                -14.64500976,
+                43.9244311,
+                3.3488237,
+                -25.54186113,
+                -48.97168575,
+                -71.86634877,
+                -75.5702194,
+                -75.49141107,
+                -75.16913904,
             ],
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_040224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

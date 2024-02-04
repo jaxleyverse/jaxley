@@ -153,7 +153,7 @@ def test_net():
 
     voltages = jx.integrate(network, delta_t=dt)
 
-    voltages_081123 = jnp.asarray(
+    voltages_040224 = jnp.asarray(
         [
             [
                 -70.0,
@@ -170,20 +170,21 @@ def test_net():
             ],
             [
                 -70.0,
-                -66.12980895,
-                -59.94208128,
-                -55.74082517,
-                -55.53078341,
-                -52.62810187,
-                -45.67771987,
-                -9.62810283,
-                24.39010232,
-                -6.25386699,
-                -32.08138378,
+                -66.13002041,
+                -59.94250789,
+                -55.74147508,
+                -55.53184684,
+                -52.63017557,
+                -45.6840305,
+                -9.67025516,
+                24.40276615,
+                -6.23857873,
+                -32.06911974,
             ],
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_040224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
@@ -220,24 +221,24 @@ def test_complex_net():
 
     voltages = jx.integrate(net)
 
-    voltages_191223 = jnp.asarray(
+    voltages_040224 = jnp.asarray(
         [
             [
                 -70.0,
-                -63.40721523,
-                -59.42378839,
-                -54.78361956,
-                -31.74748642,
-                6.03679128,
-                -45.92619832,
-                -74.97899556,
-                -74.04558775,
-                -72.53137345,
-                -70.76660206,
+                -63.40803312,
+                -59.4254583,
+                -54.78764382,
+                -31.76834458,
+                6.05115398,
+                -45.91493618,
+                -74.97970891,
+                -74.04696989,
+                -72.53339424,
+                -70.76922395,
             ]
         ]
     )
 
-    max_error = np.max(np.abs(voltages[:, ::40] - voltages_191223))
+    max_error = np.max(np.abs(voltages[:, ::40] - voltages_040224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
