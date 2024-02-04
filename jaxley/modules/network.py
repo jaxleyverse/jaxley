@@ -14,7 +14,7 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import merge_cells
-from jaxley.utils.syn_utils import postsyn_voltage_updates, prepare_syn
+from jaxley.utils.syn_utils import vmapped_postsyn_updates, prepare_syn
 
 
 class Network(Module):
@@ -347,15 +347,9 @@ class Network(Module):
                 synapse_states,
                 v_and_perturbed,
                 synapse_params,
-                np.asarray(pre_syn_inds[synapse_names[i]]),
+                np.asarray(post_syn_inds[synapse_names[i]]),
             )
-            # Current through synapses.
-            print("voltages", voltages.shape)
-            print("v_and_perturbed", v_and_perturbed.shape)
-            print("post_syn_inds", np.asarray(post_syn_inds[synapse_names[i]]))
-            print("synapse_currents", synapse_currents.shape)
-            
-            post_syn_currents = vmap(postsyn_voltage_updates, in_axes=(0, None, 0))(
+            post_syn_currents = vmapped_postsyn_updates(
                 v_and_perturbed,
                 np.asarray(post_syn_inds[synapse_names[i]]),
                 synapse_currents,
@@ -365,7 +359,11 @@ class Network(Module):
             syn_voltage_terms += voltage_term
             syn_constant_terms -= constant_term
 
-            states[f"{synapse_type._name}_current"] = post_syn_currents
+            # Add the synaptic currents through every compartment as state.
+            # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
+            # compartments in the network.
+            # `[0]` because we only use the non-perturbed voltage.
+            states[f"{synapse_type._name}_current"] = post_syn_currents[0]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 
