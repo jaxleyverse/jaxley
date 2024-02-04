@@ -135,9 +135,14 @@ def integrate(
             if key in list(states.keys()):  # Only initial states, not parameters.
                 states[key] = states[key].at[inds].set(set_param[key])
 
-    # Add to the states the initial current through each channel.
+    # Add to the states the initial current through every channel.
     states, _ = module._channel_currents(
         states, delta_t, module.channels, module.nodes, all_params
+    )
+
+    # Add to the states the initial current through every synapse.
+    states, _ = module._synapse_currents(
+        states, module.synapses, all_params, delta_t, module.edges
     )
 
     # Record the initial state.

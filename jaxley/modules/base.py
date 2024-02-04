@@ -653,6 +653,11 @@ class Module(ABC):
         voltages = u["voltages"]
         return u, (jnp.zeros_like(voltages), jnp.zeros_like(voltages))
 
+    def _synapse_currents(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
+        return states, (None, None)
+
     @staticmethod
     def get_external_input(
         voltages: jnp.ndarray,
