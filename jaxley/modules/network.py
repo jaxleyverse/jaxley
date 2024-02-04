@@ -373,7 +373,6 @@ class Network(Module):
                 voltage_term,
                 constant_term,
             )
-
             syn_voltage_terms += gathered_syn_currents[0]
             syn_constant_terms -= gathered_syn_currents[1]
 
@@ -559,9 +558,14 @@ class SynapseView(View):
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
+        synapse_index = self.view["type_ind"].values[0]
+        synapse_type = self.pointer.synapses[synapse_index]
+        synapse_param_names = list(synapse_type.synapse_params.keys())
+        synapse_state_names = list(synapse_type.synapse_states.keys())
+        
         assert (
-            key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
-        ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
+            key in synapse_param_names or key in synapse_state_names
+        ), f"{key} does not exist in synapse of type {synapse_type._name}."
 
         # Reset index to global index because we are writing to `self.edges`.
         self.view = self.view.set_index("global_index")
@@ -569,10 +573,14 @@ class SynapseView(View):
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
         """Make a parameter trainable."""
+        synapse_index = self.view["type_ind"].values[0]
+        synapse_type = self.pointer.synapses[synapse_index]
+        synapse_param_names = list(synapse_type.synapse_params.keys())
+        synapse_state_names = list(synapse_type.synapse_states.keys())
+        
         assert (
-            key in self.pointer.synapse_param_names[self.view["type_ind"].values[0]]
-            or key in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
-        ), f"Parameter {key} does not exist in synapse of type {self.view['type'].values[0]}."
+            key in synapse_param_names or key in synapse_state_names
+        ), f"{key} does not exist in synapse of type {synapse_type._name}."
 
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
