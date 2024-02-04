@@ -562,7 +562,7 @@ class SynapseView(View):
         synapse_type = self.pointer.synapses[synapse_index]
         synapse_param_names = list(synapse_type.synapse_params.keys())
         synapse_state_names = list(synapse_type.synapse_states.keys())
-        
+
         assert (
             key in synapse_param_names or key in synapse_state_names
         ), f"{key} does not exist in synapse of type {synapse_type._name}."
@@ -577,7 +577,7 @@ class SynapseView(View):
         synapse_type = self.pointer.synapses[synapse_index]
         synapse_param_names = list(synapse_type.synapse_params.keys())
         synapse_state_names = list(synapse_type.synapse_states.keys())
-        
+
         assert (
             key in synapse_param_names or key in synapse_state_names
         ), f"{key} does not exist in synapse of type {synapse_type._name}."
