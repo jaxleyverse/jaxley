@@ -3,6 +3,7 @@ from typing import List, Tuple
 import jax.numpy as jnp
 import numpy as np
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from jax import vmap
 
 from jaxley.utils.cell_utils import index_of_loc
 
@@ -25,6 +26,9 @@ def postsyn_voltage_updates(
     )
 
     return incoming_current_at_each_comp
+
+
+vmapped_postsyn_updates = vmap(postsyn_voltage_updates, in_axes=(0, None, 0))
 
 
 def prepare_syn(
