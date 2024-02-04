@@ -14,7 +14,7 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import merge_cells
-from jaxley.utils.syn_utils import vmapped_postsyn_updates, prepare_syn
+from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
 
 class Network(Module):
@@ -272,7 +272,7 @@ class Network(Module):
     ):
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
-        states, current_terms = self._synapse_current(
+        states, current_terms = self._synapse_currents(
             states, syn_channels, params, delta_t, edges
         )
         return states, current_terms
@@ -283,6 +283,7 @@ class Network(Module):
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
+        post_syn_inds = grouped_syns["global_post_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         for i, synapse_type in enumerate(syn_channels):
@@ -299,13 +300,16 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
+            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
+            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
             # State updates.
             states_updated = synapse_type.update_states(
                 synapse_states,
                 delta_t,
-                voltages,
+                voltages[pre_inds],
+                voltages[post_inds],
                 synapse_params,
-                np.asarray(pre_syn_inds[synapse_names[i]]),
             )
 
             # Rebuild state.
@@ -315,7 +319,7 @@ class Network(Module):
         return states
 
     @staticmethod
-    def _synapse_current(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _synapse_currents(states, syn_channels, params, delta_t, edges: pd.DataFrame):
         voltages = states["voltages"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -342,28 +346,42 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            v_and_perturbed = jnp.stack([voltages, voltages + diff])
+            # Get pre and post indexes of the current synapse type.
+            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
+            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
+            # Compute slope and offset of the current through every synapse.
+            pre_v_and_perturbed = jnp.stack(
+                [voltages[pre_inds], voltages[pre_inds] + diff]
+            )
+            post_v_and_perturbed = jnp.stack(
+                [voltages[post_inds], voltages[post_inds] + diff]
+            )
             synapse_currents = synapse_type.vmapped_compute_current(
                 synapse_states,
-                v_and_perturbed,
+                pre_v_and_perturbed,
+                post_v_and_perturbed,
                 synapse_params,
-                np.asarray(post_syn_inds[synapse_names[i]]),
             )
-            post_syn_currents = vmapped_postsyn_updates(
-                v_and_perturbed,
-                np.asarray(post_syn_inds[synapse_names[i]]),
-                synapse_currents,
+            voltage_term = (synapse_currents[1] - synapse_currents[0]) / diff
+            constant_term = synapse_currents[0] - voltage_term * voltages[post_inds]
+
+            # Gather slope and offset for every postsynaptic compartment.
+            gathered_syn_currents = gather_synapes(
+                len(voltages),
+                post_inds,
+                voltage_term,
+                constant_term,
             )
-            voltage_term = (post_syn_currents[1] - post_syn_currents[0]) / diff
-            constant_term = post_syn_currents[0] - voltage_term * voltages
-            syn_voltage_terms += voltage_term
-            syn_constant_terms -= constant_term
+
+            syn_voltage_terms += gathered_syn_currents[0]
+            syn_constant_terms -= gathered_syn_currents[1]
 
             # Add the synaptic currents through every compartment as state.
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
-            states[f"{synapse_type._name}_current"] = post_syn_currents[0]
+            states[f"{synapse_type._name}_current"] = synapse_currents[0]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 

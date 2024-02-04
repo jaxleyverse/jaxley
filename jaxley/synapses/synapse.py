@@ -6,6 +6,7 @@ from jax import vmap
 
 class Synapse:
     """Base class for a synapse."""
+
     _name = None
     synapse_params = None
     synapse_states = None
@@ -13,7 +14,7 @@ class Synapse:
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
         self.vmapped_compute_current = vmap(
-            self.compute_current, in_axes=(None, 0, None, None)
+            self.compute_current, in_axes=(None, 0, 0, None)
         )
 
     @property
@@ -23,9 +24,9 @@ class Synapse:
     def update_states(
         u: Dict[str, jnp.ndarray],
         delta_t: float,
-        voltages: jnp.ndarray,
+        pre_voltage: jnp.ndarray,
+        post_voltage: jnp.ndarray,
         params: Dict[str, jnp.ndarray],
-        pre_inds: jnp.ndarray,
     ) -> Dict[str, jnp.ndarray]:
         """ODE update step."""
         raise NotImplementedError
@@ -34,7 +35,6 @@ class Synapse:
         u: Dict[str, jnp.ndarray],
         voltages: jnp.ndarray,
         params: Dict[str, jnp.ndarray],
-        pre_inds: jnp.ndarray,
     ) -> jnp.ndarray:
         """ODE update step."""
         raise NotImplementedError
