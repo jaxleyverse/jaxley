@@ -375,6 +375,8 @@ class Module(ABC):
 
             init_state = channel.init_state(voltages, channel_params)
 
+            # `init_state` might not return all channel states. Only the ones that are
+            # returned are updated here.
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
 
