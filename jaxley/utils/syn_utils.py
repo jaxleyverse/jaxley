@@ -14,7 +14,7 @@ def gather_synapes(
     current_each_synapse_constant_term: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute current at the post synapse.
-    
+
     All this does it that it sums the synaptic currents that come into a particular
     compartment. It returns an array of as many elements as there are compartments.
     """
