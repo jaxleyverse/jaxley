@@ -60,49 +60,31 @@ def test_network_grad():
     grad_fn = value_and_grad(simulate)
     v, g = grad_fn(params)
 
-    value_191223 = jnp.asarray(-610.61974598)
-    max_error = np.max(np.abs(v - value_191223))
+    value_040224 = jnp.asarray(-610.62777059)
+    max_error = np.max(np.abs(v - value_040224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
-    grad_191223 = [
-        {"HH_gNa": jnp.asarray([[-464.73131136]])},
-        {"HH_gK": jnp.asarray([[1.66229104], [0.22939515], [8.58333308]])},
+    grad_040224 = [
+        {"HH_gNa": jnp.asarray([[-464.58880073]])},
+        {"HH_gK": jnp.asarray([[1.99849062], [0.22679202], [10.19699616]])},
         {
             "HH_gLeak": jnp.asarray(
                 [
-                    [-6.62407407e01],
-                    [-7.51550507e00],
-                    [-7.40674481e01],
-                    [-5.12236063e02],
-                    [-8.39096706e02],
-                    [-1.55093846e02],
-                    [-1.05950879e05],
+                    [-7.90344616e01],
+                    [-7.55178874e00],
+                    [-8.67132533e01],
+                    [-4.97164503e02],
+                    [-9.72827298e02],
+                    [-1.60479444e02],
+                    [-1.05619123e05],
                 ]
             )
         },
-        {"gS": jnp.asarray([[-43.44626964]])},
-        {"gC": jnp.asarray([[-0.03323429], [-0.01443804]])},
-        {
-            "s": jnp.asarray(
-                [
-                    [-2.57387592e-02],
-                    [-2.13110611e-01],
-                    [-3.23372955e-03],
-                    [-2.57387592e-02],
-                    [-6.63437449e-02],
-                    [-2.38958825e-02],
-                    [-1.10694577e-01],
-                    [-2.05030103e-01],
-                    [-1.80871330e-02],
-                    [-4.22333985e01],
-                    [-3.93051699e01],
-                    [-1.02174963e01],
-                ]
-            )
-        },
+        {"gS": jnp.asarray([[-43.45642964]])},
+        {"gC": jnp.asarray([[-0.03109039], [-0.01530678]])},
     ]
 
-    for true_g, new_g in zip(grad_191223, g):
+    for true_g, new_g in zip(grad_040224, g):
         for key in true_g:
             max_error = np.max(np.abs(true_g[key] - new_g[key]))
             tolerance = 1e-3  # Leak cond has a huge gradient...

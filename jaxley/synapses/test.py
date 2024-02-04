@@ -35,7 +35,7 @@ class TestSynapse(Synapse):
         exp_term = jnp.exp(slope * delta_t)
         new_s = u["c"] * exp_term + s_inf * (1.0 - exp_term)
 
-        non_zero_voltage_term = params["gC"] * u["c"]
-        non_zero_constant_term = params["gC"] * u["c"] * e_syn
+        non_zero_voltage_term = params["gC"] * new_s
+        non_zero_constant_term = params["gC"] * new_s * e_syn
 
         return {"c": new_s}, (non_zero_voltage_term, non_zero_constant_term)

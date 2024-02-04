@@ -75,7 +75,7 @@ def test_swc_net():
 
     voltages = jx.integrate(network, delta_t=dt)
 
-    voltages_081123 = jnp.asarray(
+    voltages_040224 = jnp.asarray(
         [
             [
                 -70.0,
@@ -92,19 +92,19 @@ def test_swc_net():
             ],
             [
                 -70.0,
-                -66.52400879,
-                -57.01032453,
-                -49.72868896,
-                -46.87353462,
-                -27.60185258,
-                25.04026114,
-                4.3565282,
-                -23.50819992,
-                -46.38431714,
-                -68.28501838,
+                -66.52401241,
+                -57.01032941,
+                -49.7286954,
+                -46.8735511,
+                -27.60193351,
+                25.04011476,
+                4.35660272,
+                -23.5081408,
+                -46.38426466,
+                -68.28499428,
             ],
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_040224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
