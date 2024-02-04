@@ -2,6 +2,7 @@
 /docs/docs/tutorial/*
 /docs/docs/examples/*
 /docs/site/*
+**/.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
