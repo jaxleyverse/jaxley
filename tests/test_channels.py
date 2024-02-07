@@ -3,11 +3,12 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
+import jax.numpy as jnp
 import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH, CaL, CaT, K, Km, Leak, Na
+from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
 
 
 def test_channel_set_name():
@@ -96,3 +97,60 @@ def test_init_states():
 
     v = jx.integrate(cell, t_max=10.0)
     assert np.abs(v[0, 0] - v[0, -1]) < 0.02
+
+
+def test_multiple_channel_currents():
+    """Test whether all channels can"""
+
+    class User(Channel):
+        """The channel which uses currents of Dummy1 and Dummy2 to update its states."""
+
+        channel_params = {}
+        channel_states = {"cumulative": 0.0}
+
+        def update_states(self, u, dt, voltages, params):
+            state = u["cumulative"]
+            state += u["Dummy1_current"] * 0.001
+            state += u["Dummy2_current"] * 0.001
+            return {"cumulative": state}
+
+        def compute_current(self, u, voltages, params):
+            return 0.01 * jnp.ones_like(voltages)
+
+    class Dummy1(Channel):
+        channel_params = {}
+        channel_states = {}
+
+        def update_states(self, u, dt, voltages, params):
+            return {}
+
+        def compute_current(self, u, voltages, params):
+            return 0.01 * jnp.ones_like(voltages)
+
+    class Dummy2(Channel):
+        channel_params = {}
+        channel_states = {}
+
+        def update_states(self, u, dt, voltages, params):
+            return {}
+
+        def compute_current(self, u, voltages, params):
+            return 0.01 * jnp.ones_like(voltages)
+
+    dt = 0.025  # ms
+    t_max = 10.0  # ms
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 1)
+    cell = jx.Cell(branch, parents=[-1])
+    cell.branch(0).comp(0.0).stimulate(jx.step_current(1.0, 2.0, 0.1, dt, t_max))
+
+    cell.insert(User())
+    cell.insert(Dummy1())
+    cell.insert(Dummy2())
+    cell.branch(0).comp(0.0).record("cumulative")
+
+    s = jx.integrate(cell, delta_t=dt)
+
+    num_channels = 2
+    target = (t_max // dt + 2) * 0.001 * 0.01 * num_channels
+    assert np.abs(target - s[0, -1]) < 1e-8
