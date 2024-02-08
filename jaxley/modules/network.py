@@ -568,7 +568,7 @@ class SynapseView(View):
         ), f"{key} does not exist in synapse of type {synapse_type._name}."
 
         # Reset index to global index because we are writing to `self.edges`.
-        self.view = self.view.set_index("global_index")
+        self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
     def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
