@@ -7,7 +7,7 @@ from jaxley.synapses.synapse import Synapse
 
 class GlutamateSynapse(Synapse):
     """
-    Compute syanptic current and update synapse state for Glutamate receptor.
+    Compute synaptic current and update synapse state for Glutamate receptor.
     """
 
     synapse_params = {"gS": 0.5, "e_syn": 0.0}
