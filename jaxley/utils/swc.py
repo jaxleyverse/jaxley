@@ -9,6 +9,7 @@ def swc_to_jaxley(
     max_branch_len: float = 100.0,
     sort: bool = True,
     num_lines: Optional[int] = None,
+    asc_correction: bool = False,
 ):
     """Read an SWC file and bring morphology into `jaxley` compatible formats.
 
@@ -18,8 +19,41 @@ def swc_to_jaxley(
             it is split into equal parts such that each subbranch is below
             `max_branch_len`.
         num_lines: Number of lines of the SWC file to read.
+        asc_correction: If the SWC file was ported from a neurolucida file format
+            (.asc) then the neurites will be disconnected. By setting
+            `asc_correction=True` jaxley automatically tries to connect the
+            disconnected neurites. WARNING: THIS IS EXPERIMENTAL.
     """
     content = np.loadtxt(fname)[:num_lines]
+    if asc_correction:
+        # Find beginning of disconnected neurite.
+        content = np.concatenate([np.arange(len(content))[:, None], content], axis=1)
+        parent_nodes = content[:, 7]
+        disconnected_nodes = content[parent_nodes == -1]
+
+        # The first node is allowed to be disconnected.
+        start_ind_searchable = 0
+        end_ind_searchable = int(disconnected_nodes[1, 0])
+        disconnected_nodes = disconnected_nodes[1:]
+
+        searchable_locations = content[start_ind_searchable:end_ind_searchable]
+        searchable_locations_xyz = searchable_locations[:, 3:6]
+
+        for disconn_neurite in disconnected_nodes:
+            disconn_neurite_xyz = disconn_neurite[3:6]
+            dists = np.sqrt(
+                np.sum((searchable_locations_xyz - disconn_neurite_xyz) ** 2, axis=1)
+            )
+            argmin_dist = np.argmin(dists)
+            min_dist = dists[argmin_dist]
+            print("min_dist", min_dist)
+
+            index_of_closest = searchable_locations[argmin_dist, 1]
+            content[int(disconn_neurite[0]), -1] = index_of_closest
+
+        # Remove the artificially created index.
+        content = content[:, 1:]
+
     sorted_branches, types = _split_into_branches_and_sort(
         content, max_branch_len=max_branch_len, sort=sort
     )

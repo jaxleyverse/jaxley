@@ -266,10 +266,29 @@ def read_swc(
     nseg: int,
     max_branch_len: float = 300.0,
     min_radius: Optional[float] = None,
+    asc_correction: bool = False,
 ):
-    """Reads SWC file into a `jx.Cell`."""
+    """Reads SWC file into a `jx.Cell`.
+
+    Args:
+        nseg: The number of compartments (=segments) that every branch will have.
+        max_branch_len: If a branch exceeds this length, it is split into two branches.
+            Splitting will slow down the computation (because the branches have to
+            be treated sequentially and cannot be parallelized) but will increase
+            numerical accuracy.
+        min_radius: If the swc file specifies a radius below this value than it is
+            clamped to `min_radius`.
+        asc_correction: If the SWC file was ported from a neurolucida file format
+            (.asc) then the neurites will be disconnected. By setting
+            `asc_correction=True` jaxley automatically tries to connect the
+            disconnected neurites. WARNING: THIS IS EXPERIMENTAL.
+    """
     parents, pathlengths, radius_fns, _, coords_of_branches = swc_to_jaxley(
-        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
+        fname,
+        max_branch_len=max_branch_len,
+        sort=True,
+        num_lines=None,
+        asc_correction=asc_correction,
     )
     nbranches = len(parents)
 
