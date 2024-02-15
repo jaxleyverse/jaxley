@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
-from jax import vmap
 
 
 class Channel:
@@ -12,9 +11,6 @@ class Channel:
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
-        self.vmapped_compute_current = vmap(
-            self.compute_current, in_axes=(None, 0, None)
-        )
 
     @property
     def name(self) -> Optional[str]:
