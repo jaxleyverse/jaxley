@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
+from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from jaxley.channels import Channel
@@ -628,7 +629,7 @@ class Module(ABC):
                 channel_states[s] = states[s][indices]
 
             v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
-            membrane_currents = channel.vmapped_compute_current(
+            membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
                 channel_states, v_and_perturbed, channel_params
             )
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff

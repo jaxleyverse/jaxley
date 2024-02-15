@@ -357,7 +357,9 @@ class Network(Module):
             post_v_and_perturbed = jnp.stack(
                 [voltages[post_inds], voltages[post_inds] + diff]
             )
-            synapse_currents = synapse_type.vmapped_compute_current(
+            synapse_currents = vmap(
+                synapse_type.compute_current, in_axes=(None, 0, 0, None)
+            )(
                 synapse_states,
                 pre_v_and_perturbed,
                 post_v_and_perturbed,
