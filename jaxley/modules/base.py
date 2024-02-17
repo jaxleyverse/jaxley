@@ -24,13 +24,14 @@ from jaxley.utils.plot_utils import plot_morph
 
 class Module(ABC):
     """Module base class.
-    
+
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.
 
     This base class defines the scaffold for all jaxley modules (compartments,
     branches, cells, networks).
     """
+
     def __init__(self):
         self.nseg: int = None
         self.total_nbranches: int = 0
@@ -123,11 +124,11 @@ class Module(ABC):
 
     def to_jax(self):
         """Move `.nodes` to `.jaxnodes`.
-        
+
         Before the actual simulation is run (via `jx.integrate`), all parameters of
         the `jx.Module` are stored in `.nodes` (a `pd.DataFrame`). However, for
-        simulation, these parameters have to be moved to be `jnp.ndarrays` such that 
-        they can be processed on GPU/TPU and such that the simulation can be 
+        simulation, these parameters have to be moved to be `jnp.ndarrays` such that
+        they can be processed on GPU/TPU and such that the simulation can be
         differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
         """
         self.jaxnodes = {}
@@ -225,11 +226,11 @@ class Module(ABC):
     def set(self, key: str, val: Union[float, jnp.ndarray]):
         """Set parameter of module (or its view) to a new value.
 
-        Note that this function can not be called within `jax.jit` or `jax.grad`. 
+        Note that this function can not be called within `jax.jit` or `jax.grad`.
         Instead, it should be used set the parameters of the module **before** the
         simulation. Use `make_trainable` to set parameters during `jax.jit` or
         `jax.grad`.
-        
+
         Args:
             key: The name of the parameter to set.
             val: The value to set the parameter to. If it is `jnp.ndarray` then it
@@ -254,6 +255,8 @@ class Module(ABC):
     def make_trainable(
         self,
         key: str,
+        *,
+        share: bool = False,
         init_val: Optional[Union[float, list]] = None,
         verbose: bool = True,
     ):
@@ -264,6 +267,9 @@ class Module(ABC):
 
         Args:
             key: Name of the parameter to make trainable.
+            share: Whether or not the parameters should be shared. If `share=True`,
+                only a single parameter is created. If `share=False`, then a separate
+                parameter for every compartment (or synapse) is created.
             init_val: Initial value of the parameter. If `float`, the same value is
                 used for every created parameter. If `list`, the length of the list has
                 to match the number of created parameters. If `None`, the current
@@ -276,8 +282,13 @@ class Module(ABC):
             key not in self.synapse_param_names and key not in self.synapse_state_names
         ), "Parameters of synapses can only be made trainable via the `SynapseView`."
         view = self.nodes
-        view = deepcopy(view.assign(controlled_by_param=0))
-        self._make_trainable(view, key, init_val, verbose=verbose)
+        if share:
+            view = deepcopy(view.assign(controlled_by_param=0))
+        else:
+            view = deepcopy(
+                view.assign(controlled_by_param=np.arange(len(view)).tolist())
+            )
+        self._make_trainable(view, key, init_val=init_val, verbose=verbose)
 
     def _make_trainable(
         self,
@@ -337,13 +348,13 @@ class Module(ABC):
 
     def add_to_group(self, group_name):
         """Add a view of the module to a group.
-        
+
         Groups can then be indexed. For example:
         ```python
         net.cell(0).add_to_group("excitatory")
         net.excitatory.set("radius", 0.1)
         ```
-        
+
         Args:
             group_name: The name of the group.
         """
@@ -356,7 +367,7 @@ class Module(ABC):
 
     def get_parameters(self):
         """Get all trainable parameters.
-        
+
         The returned parameters should be passed to `jx.integrate(..., params=params).
         """
         return self.trainable_params
@@ -446,7 +457,7 @@ class Module(ABC):
 
     def stimulate(self, current: Optional[jnp.ndarray] = None):
         """Insert a stimulus into the compartment.
-        
+
         This function cannot be run during `jax.jit` and `jax.grad`. Because of this,
         it should only be used for static stimuli (i.e., stimuli that do not depend
         on the data and that should not be learned). For stimuli that depend on data
@@ -823,7 +834,7 @@ class Module(ABC):
 
     def compute_xyz(self):
         """Return xyz coordinates of every branch, based on the branch length.
-        
+
         This function should not be called if the morphology was read from an `.swc`
         file. However, for morphologies that were constructed from scratch, this
         function **must** be called before `.vis()`. The computed `xyz` coordinates
@@ -978,7 +989,13 @@ class View:
         """Set parameters of the pointer."""
         self.pointer._set(key, val, self.view, self.pointer.nodes)
 
-    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+    def make_trainable(
+        self,
+        key: str,
+        *,
+        share: bool = False,
+        init_val: Optional[Union[float, list]] = None,
+    ):
         """Make a parameter trainable."""
         self.pointer._make_trainable(self.view, key, init_val)
 
