@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 
 class Channel:
+    """Channel base class. All channels inherit from this class."""
     _name = None
     channel_params = None
     channel_states = None
@@ -14,9 +15,15 @@ class Channel:
 
     @property
     def name(self) -> Optional[str]:
+        """The name of the channel (by default, this is the class name)."""
         return self._name
 
     def change_name(self, new_name: str):
+        """Change the channel name.
+        
+        Args:
+            new_name: The new name of the channel.
+        """
         old_prefix = self._name + "_"
         new_prefix = new_name + "_"
 
@@ -42,9 +49,11 @@ class Channel:
     def update_states(
         self, u, dt, voltages, params
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
+        """Return the updated states."""
         pass
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
+        """Given channel states and voltage, return the current through the channel."""
         pass

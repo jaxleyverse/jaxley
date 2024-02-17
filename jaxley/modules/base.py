@@ -23,6 +23,14 @@ from jaxley.utils.plot_utils import plot_morph
 
 
 class Module(ABC):
+    """Module base class.
+    
+    Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
+    branches, cells, and networks.
+
+    This base class defines the scaffold for all jaxley modules (compartments,
+    branches, cells, networks).
+    """
     def __init__(self):
         self.nseg: int = None
         self.total_nbranches: int = 0
@@ -114,6 +122,14 @@ class Module(ABC):
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
     def to_jax(self):
+        """Move `.nodes` to `.jaxnodes`.
+        
+        Before the actual simulation is run (via `jx.integrate`), all parameters of
+        the `jx.Module` are stored in `.nodes` (a `pd.DataFrame`). However, for
+        simulation, these parameters have to be moved to be `jnp.ndarrays` such that 
+        they can be processed on GPU/TPU and such that the simulation can be 
+        differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
+        """
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             self.jaxnodes[key] = jnp.asarray(value)
@@ -139,7 +155,7 @@ class Module(ABC):
         states: bool = True,
         channel_names: Optional[List[str]] = None,
     ):
-        """Print detailed information about the Module."""
+        """Print detailed information about the Module or a view of it."""
         return self._show(
             self.nodes, param_names, indices, params, states, channel_names
         )
@@ -153,6 +169,7 @@ class Module(ABC):
         states: bool = True,
         channel_names: Optional[List[str]] = None,
     ):
+        """Print detailed information about the entire Module."""
         printable_nodes = deepcopy(view)
 
         for channel in self.channels:
@@ -205,8 +222,19 @@ class Module(ABC):
         for key in channel.channel_states:
             self.nodes.loc[view.index.values, key] = channel.channel_states[key]
 
-    def set(self, key, val):
-        """Set parameter."""
+    def set(self, key: str, val: Union[float, jnp.ndarray]):
+        """Set parameter of module (or its view) to a new value.
+
+        Note that this function can not be called within `jax.jit` or `jax.grad`. 
+        Instead, it should be used set the parameters of the module **before** the
+        simulation. Use `make_trainable` to set parameters during `jax.jit` or
+        `jax.grad`.
+        
+        Args:
+            key: The name of the parameter to set.
+            val: The value to set the parameter to. If it is `jnp.ndarray` then it
+                must be of shape `(len(num_compartments))`.
+        """
         # TODO(@michaeldeistler) should we allow `.set()` for synaptic parameters
         # without using the `SynapseView`, purely for consistency with `make_trainable`?
         view = (
@@ -230,6 +258,9 @@ class Module(ABC):
         verbose: bool = True,
     ):
         """Make a parameter trainable.
+
+        If a parameter is made trainable, it will be returned by `get_parameters()`
+        and should then be passed to `jx.integrate(..., params=params)`.
 
         Args:
             key: Name of the parameter to make trainable.
@@ -305,6 +336,17 @@ class Module(ABC):
         self.num_trainable_params: int = 0
 
     def add_to_group(self, group_name):
+        """Add a view of the module to a group.
+        
+        Groups can then be indexed. For example:
+        ```python
+        net.cell(0).add_to_group("excitatory")
+        net.excitatory.set("radius", 0.1)
+        ```
+        
+        Args:
+            group_name: The name of the group.
+        """
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
 
     def _add_to_group(self, group_name, view):
@@ -313,7 +355,10 @@ class Module(ABC):
         self.group_nodes[group_name] = view
 
     def get_parameters(self):
-        """Get all trainable parameters."""
+        """Get all trainable parameters.
+        
+        The returned parameters should be passed to `jx.integrate(..., params=params).
+        """
         return self.trainable_params
 
     def get_all_parameters(self, trainable_params):
@@ -321,7 +366,7 @@ class Module(ABC):
 
         This is done by first obtaining the current value of every parameter (not only
         the trainable ones) and then replacing the trainable ones with the value
-        in `trainable_params()`.
+        in `trainable_params()`. This function is run within `jx.integrate()`.
         """
         params = {}
         for key in ["radius", "length", "axial_resistivity"]:
@@ -400,7 +445,13 @@ class Module(ABC):
         self.recordings = pd.DataFrame().from_dict({})
 
     def stimulate(self, current: Optional[jnp.ndarray] = None):
-        """Insert a stimulus into the compartment."""
+        """Insert a stimulus into the compartment.
+        
+        This function cannot be run during `jax.jit` and `jax.grad`. Because of this,
+        it should only be used for static stimuli (i.e., stimuli that do not depend
+        on the data and that should not be learned). For stimuli that depend on data
+        (or that should be learned), please use `data_stimulate()`.
+        """
         self._stimulate(current, self.nodes)
 
     def _stimulate(self, current, view):
@@ -472,7 +523,7 @@ class Module(ABC):
         solver: str = "bwd_euler",
         tridiag_solver: str = "stone",
     ):
-        """One step of integration."""
+        """One step of solving the Ordinary Differential Equation."""
         voltages = u["voltages"]
 
         # Parameters have to go in here.
@@ -481,7 +532,7 @@ class Module(ABC):
         )
 
         # External input.
-        i_ext = self.get_external_input(
+        i_ext = self._get_external_input(
             voltages, i_inds, i_current, params["radius"], params["length"]
         )
 
@@ -665,7 +716,7 @@ class Module(ABC):
         return states, (None, None)
 
     @staticmethod
-    def get_external_input(
+    def _get_external_input(
         voltages: jnp.ndarray,
         i_inds: jnp.ndarray,
         i_stim: jnp.ndarray,
@@ -695,27 +746,28 @@ class Module(ABC):
     def vis(
         self,
         ax=None,
-        col: str = "k",
+        c: str = "k",
         dims: Tuple[int] = (0, 1),
-        morph_plot_kwargs: Dict = {},
+        plot_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
 
         Args:
             ax: An axis into which to plot.
-            col: The color for all branches.
+            c: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
+            plot_kwargs: Keyword arguments passed to the plotting function.
         """
         return self._vis(
             dims=dims,
-            col=col,
+            c=c,
             ax=ax,
             view=self.nodes,
-            morph_plot_kwargs=morph_plot_kwargs,
+            plot_kwargs=plot_kwargs,
         )
 
-    def _vis(self, ax, col, dims, view, morph_plot_kwargs):
+    def _vis(self, ax, c, dims, view, plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
         coords = []
         for branch_ind in branches_inds:
@@ -727,10 +779,10 @@ class Module(ABC):
         ax = plot_morph(
             coords,
             dims=dims,
-            col=col,
+            col=c,
             ax=ax,
             type="plot",
-            morph_plot_kwargs=morph_plot_kwargs,
+            morph_plot_kwargs=plot_kwargs,
         )
 
         return ax
@@ -770,7 +822,13 @@ class Module(ABC):
         return ax
 
     def compute_xyz(self):
-        """Return xyz coordinates of every branch, based on the branch length."""
+        """Return xyz coordinates of every branch, based on the branch length.
+        
+        This function should not be called if the morphology was read from an `.swc`
+        file. However, for morphologies that were constructed from scratch, this
+        function **must** be called before `.vis()`. The computed `xyz` coordinates
+        are only used for plotting.
+        """
         max_y_multiplier = 5.0
         min_y_multiplier = 0.5
 
