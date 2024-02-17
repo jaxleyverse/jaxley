@@ -255,8 +255,6 @@ class Module(ABC):
     def make_trainable(
         self,
         key: str,
-        *,
-        share: bool = False,
         init_val: Optional[Union[float, list]] = None,
         verbose: bool = True,
     ):
@@ -282,12 +280,7 @@ class Module(ABC):
             key not in self.synapse_param_names and key not in self.synapse_state_names
         ), "Parameters of synapses can only be made trainable via the `SynapseView`."
         view = self.nodes
-        if share:
-            view = deepcopy(view.assign(controlled_by_param=0))
-        else:
-            view = deepcopy(
-                view.assign(controlled_by_param=np.arange(len(view)).tolist())
-            )
+        view = deepcopy(view.assign(controlled_by_param=0))
         self._make_trainable(view, key, init_val=init_val, verbose=verbose)
 
     def _make_trainable(
@@ -992,8 +985,6 @@ class View:
     def make_trainable(
         self,
         key: str,
-        *,
-        share: bool = False,
         init_val: Optional[Union[float, list]] = None,
     ):
         """Make a parameter trainable."""

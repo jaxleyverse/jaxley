@@ -229,12 +229,17 @@ class CellView(View):
     """CellView."""
 
     def __init__(self, pointer, view):
-        view = view.assign(controlled_by_param=view.cell_index)
         super().__init__(pointer, view)
 
-    def __call__(self, index: float):
+    def __call__(self, index: Union[float, list], *, share: bool = False):
         if index == "all":
             self.allow_make_trainable = False
+        
+        if share:
+            self.view = self.view.assign(controlled_by_param=0)
+        else:
+            self.view = self.view.assign(controlled_by_param=self.view.cell_index)
+
         new_view = super().adjust_view("cell_index", index)
         new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
         new_view.view["branch_index"] -= new_view.view["branch_index"].iloc[0]
