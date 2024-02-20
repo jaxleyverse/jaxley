@@ -6,6 +6,7 @@ import jax.numpy as jnp
 
 class Channel:
     """Channel base class. All channels inherit from this class."""
+
     _name = None
     channel_params = None
     channel_states = None
@@ -20,7 +21,7 @@ class Channel:
 
     def change_name(self, new_name: str):
         """Change the channel name.
-        
+
         Args:
             new_name: The new name of the channel.
         """

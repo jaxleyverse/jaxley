@@ -24,13 +24,14 @@ from jaxley.utils.plot_utils import plot_morph
 
 class Module(ABC):
     """Module base class.
-    
+
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.
 
     This base class defines the scaffold for all jaxley modules (compartments,
     branches, cells, networks).
     """
+
     def __init__(self):
         self.nseg: int = None
         self.total_nbranches: int = 0
@@ -123,11 +124,11 @@ class Module(ABC):
 
     def to_jax(self):
         """Move `.nodes` to `.jaxnodes`.
-        
+
         Before the actual simulation is run (via `jx.integrate`), all parameters of
         the `jx.Module` are stored in `.nodes` (a `pd.DataFrame`). However, for
-        simulation, these parameters have to be moved to be `jnp.ndarrays` such that 
-        they can be processed on GPU/TPU and such that the simulation can be 
+        simulation, these parameters have to be moved to be `jnp.ndarrays` such that
+        they can be processed on GPU/TPU and such that the simulation can be
         differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
         """
         self.jaxnodes = {}
@@ -225,11 +226,11 @@ class Module(ABC):
     def set(self, key: str, val: Union[float, jnp.ndarray]):
         """Set parameter of module (or its view) to a new value.
 
-        Note that this function can not be called within `jax.jit` or `jax.grad`. 
+        Note that this function can not be called within `jax.jit` or `jax.grad`.
         Instead, it should be used set the parameters of the module **before** the
         simulation. Use `make_trainable` to set parameters during `jax.jit` or
         `jax.grad`.
-        
+
         Args:
             key: The name of the parameter to set.
             val: The value to set the parameter to. If it is `jnp.ndarray` then it
@@ -337,13 +338,13 @@ class Module(ABC):
 
     def add_to_group(self, group_name):
         """Add a view of the module to a group.
-        
+
         Groups can then be indexed. For example:
         ```python
         net.cell(0).add_to_group("excitatory")
         net.excitatory.set("radius", 0.1)
         ```
-        
+
         Args:
             group_name: The name of the group.
         """
@@ -356,7 +357,7 @@ class Module(ABC):
 
     def get_parameters(self):
         """Get all trainable parameters.
-        
+
         The returned parameters should be passed to `jx.integrate(..., params=params).
         """
         return self.trainable_params
@@ -446,7 +447,7 @@ class Module(ABC):
 
     def stimulate(self, current: Optional[jnp.ndarray] = None):
         """Insert a stimulus into the compartment.
-        
+
         This function cannot be run during `jax.jit` and `jax.grad`. Because of this,
         it should only be used for static stimuli (i.e., stimuli that do not depend
         on the data and that should not be learned). For stimuli that depend on data
@@ -746,28 +747,28 @@ class Module(ABC):
     def vis(
         self,
         ax=None,
-        c: str = "k",
+        col: str = "k",
         dims: Tuple[int] = (0, 1),
-        plot_kwargs: Dict = {},
+        morph_plot_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
 
         Args:
             ax: An axis into which to plot.
-            c: The color for all branches.
+            col: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
-            plot_kwargs: Keyword arguments passed to the plotting function.
+            morph_plot_kwargs: Keyword arguments passed to the plotting function.
         """
         return self._vis(
             dims=dims,
-            c=c,
+            col=col,
             ax=ax,
             view=self.nodes,
-            plot_kwargs=plot_kwargs,
+            morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def _vis(self, ax, c, dims, view, plot_kwargs):
+    def _vis(self, ax, col, dims, view, morph_plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
         coords = []
         for branch_ind in branches_inds:
@@ -779,10 +780,10 @@ class Module(ABC):
         ax = plot_morph(
             coords,
             dims=dims,
-            col=c,
+            col=col,
             ax=ax,
             type="plot",
-            morph_plot_kwargs=plot_kwargs,
+            morph_plot_kwargs=morph_plot_kwargs,
         )
 
         return ax
@@ -823,7 +824,7 @@ class Module(ABC):
 
     def compute_xyz(self):
         """Return xyz coordinates of every branch, based on the branch length.
-        
+
         This function should not be called if the morphology was read from an `.swc`
         file. However, for morphologies that were constructed from scratch, this
         function **must** be called before `.vis()`. The computed `xyz` coordinates
