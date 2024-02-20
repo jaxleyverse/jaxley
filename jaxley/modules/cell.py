@@ -235,10 +235,10 @@ class CellView(View):
         if index == "all":
             self.allow_make_trainable = False
         
-        if share:
-            self.view = self.view.assign(controlled_by_param=0)
-        else:
-            self.view = self.view.assign(controlled_by_param=self.view.cell_index)
+        # if share:
+        #     self.view = self.view.assign(controlled_by_param=0)
+        # else:
+        self.view = self.view.assign(controlled_by_param=self.view.cell_index)
 
         new_view = super().adjust_view("cell_index", index)
         new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
