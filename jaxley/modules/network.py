@@ -397,30 +397,43 @@ class Network(Module):
         morph_plot_kwargs: Dict = {},
         synapse_plot_kwargs: Dict = {},
         synapse_scatter_kwargs: Dict = {},
+        networkx_options: Dict = {},
     ) -> None:
         """Visualize the module.
 
         Args:
-            detail: Either of [sticks, full]. `sticks` visualizes all branches of every
-                neuron, but draws branches as straight lines. `full` plots the full
-                morphology of every neuron, as read from the SWC file.
-            layers: Allows to plot the network in layers. Should provide the number of
-                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-                neurons, 10 hidden layer neurons, and 1 output neuron.
-            options: Plotting options passed to `NetworkX.draw()`.
+            detail: Either of [point, full]. `point` visualizes every neuron in the
+                network as a dot (and it uses `networkx` to obtain cell positions).
+                `full` plots the full morphology of every neuron. It requires that
+                `compute_xyz()` has been run and allows for indivual neurons to be
+                moved with `.move()`.
+            col: The color in which cells are plotted. Only takes effect if
+                `detail='full'`.
+            synapse_col: The color in which synapses are plotted. Only takes effect if
+                `detail='full'`.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
-            cols: The color for all branches except the highlighted ones.
-            highlight_branch_inds: Branch indices that will be highlighted.
+            layers: Allows to plot the network in layers. Should provide the number of
+                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
+                neurons, 10 hidden layer neurons, and 1 output neuron. Only takes
+                effect for `detail='point'`.
+            morph_plot_kwargs: Keyword arguments passed to the plotting function for
+                cell morphologies. Only takes effect for `detail='full'`.
+            synapse_plot_kwargs: Keyword arguments passed to the plotting function for
+                syanpses. Only takes effect for `detail='full'`.
+            synapse_scatter_kwargs: Keyword arguments passed to the scatter function
+                for the end point of synapses. Only takes effect for `detail='full'`.
+            networkx_options: Options passed to `networkx.draw()`. Only takes effect if
+                `detail='point'`.
         """
         if detail == "point":
             graph = self._build_graph(layers)
 
             if layers is not None:
                 pos = nx.multipartite_layout(graph, subset_key="layer")
-                nx.draw(graph, pos, with_labels=True)
+                nx.draw(graph, pos, with_labels=True, **networkx_options)
             else:
-                nx.draw(graph, with_labels=True)
+                nx.draw(graph, with_labels=True, **networkx_options)
         elif detail == "full":
             ax = self._vis(
                 dims=dims,
