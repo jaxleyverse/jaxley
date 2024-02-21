@@ -279,7 +279,7 @@ class Network(Module):
 
     @staticmethod
     def _step_synapse_state(states, syn_channels, params, delta_t, edges: pd.DataFrame):
-        voltages = states["voltages"]
+        voltages = states["voltage"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
@@ -320,7 +320,7 @@ class Network(Module):
 
     @staticmethod
     def _synapse_currents(states, syn_channels, params, delta_t, edges: pd.DataFrame):
-        voltages = states["voltages"]
+        voltages = states["voltage"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
@@ -601,7 +601,7 @@ class SynapseView(View):
         # `jaxedges`.
         self.pointer._make_trainable(self.view, key, init_val)
 
-    def record(self, state: str = "voltages"):
+    def record(self, state: str = "voltage"):
         """Record a state."""
         assert (
             state in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]

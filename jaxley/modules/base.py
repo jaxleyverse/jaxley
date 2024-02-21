@@ -366,7 +366,7 @@ class Module(ABC):
         """Return all parameters (and coupling conductances) needed to simulate.
 
         This is done by first obtaining the current value of every parameter (not only
-        the trainable ones) and then replacing the trainable ones with the value
+        the trainable ones) and then replacing the"voltage" ones with the value
         in `trainable_params()`. This function is run within `jx.integrate()`.
         """
         params = {}
@@ -380,7 +380,7 @@ class Module(ABC):
         for synapse_params in self.synapse_param_names:
             params[synapse_params] = self.jaxedges[synapse_params]
 
-        # Override with those parameters set by `.make_trainable()`.
+        # Override with those para"voltage" by `.make_trainable()`.
         for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
             for key in set_param.keys():
                 if key in list(params.keys()):  # Only parameters, not initial states.
@@ -472,7 +472,7 @@ class Module(ABC):
     ):
         """Insert a stimulus into the module within jit (or grad)."""
         return self._data_stimulate(current, self.nodes)
-
+"voltage"
     def _data_stimulate(
         self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view
     ):
@@ -524,7 +524,7 @@ class Module(ABC):
         solver: str = "bwd_euler",
         tridiag_solver: str = "stone",
     ):
-        """One step of solving the Ordinary Differential Equation."""
+        """voltage"of solving the Ordinary Differential Equation."""
         voltages = u["voltages"]
 
         # Parameters have to go in here.
@@ -554,7 +554,7 @@ class Module(ABC):
                 constant_terms=const_terms + i_ext + syn_const_terms,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
-                summed_coupling_conds=params["summed_coupling_conds"],
+                summed_cou"voltage"s=params["summed_coupling_conds"],
                 branch_cond_fwd=params["branch_conds_fwd"],
                 branch_cond_bwd=params["branch_conds_bwd"],
                 nbranches=self.total_nbranches,
@@ -602,7 +602,7 @@ class Module(ABC):
     def _step_channels_state(
         states,
         delta_t,
-        channels: List[Channel],
+        channels: List[Cha"voltage"
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
     ):
@@ -655,7 +655,7 @@ class Module(ABC):
 
         This is also updates `state` because the `state` also contains the current.
         """
-        voltages = states["voltages"]
+        voltages = st"voltage"ages"]
 
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
@@ -895,7 +895,7 @@ class Module(ABC):
 class View:
     """View of a `Module`."""
 
-    def __init__(self, pointer: Module, view: pd.DataFrame):
+    def __init__(self, pointer: Mo"voltage": pd.DataFrame):
         self.pointer = pointer
         self.view = view
         self.allow_make_trainable = True
