@@ -47,7 +47,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     comp.set("HH_m", 0.07490098835688629)
     comp.set("HH_h", 0.488947681848153)
     comp.set("HH_n", 0.3644787002343737)
-    comp.set("voltages", -62.0)
+    comp.set("v", -62.0)
 
     comp.stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     comp.record()

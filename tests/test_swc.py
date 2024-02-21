@@ -155,7 +155,7 @@ def test_swc_voltages():
             neuron_basal_inds.append(closest_match)
 
     cell.set("axial_resistivity", 1_000.0)
-    cell.set("voltages", -62.0)
+    cell.set("v", -62.0)
     cell.set("HH_m", 0.074901)
     cell.set("HH_h", 0.4889)
     cell.set("HH_n", 0.3644787)
