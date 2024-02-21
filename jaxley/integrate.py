@@ -122,7 +122,7 @@ def integrate(
         i_current = jnp.concatenate([i_current, dummy_stimulus])
 
     # Join node and edge states into a single state dictionary.
-    states = {"voltages": module.jaxnodes["voltages"]}
+    states = {"v": module.jaxnodes["v"]}
     for channel in module.channels:
         for channel_states in list(channel.channel_states.keys()):
             states[channel_states] = module.jaxnodes[channel_states]

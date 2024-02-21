@@ -413,7 +413,7 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            voltages = channel_nodes.loc[indices, "voltages"].to_numpy()
+            voltages = channel_nodes.loc[indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
             channel_params = {}
@@ -427,7 +427,7 @@ class Module(ABC):
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
 
-    def record(self, state: str = "voltages"):
+    def record(self, state: str = "v"):
         """Insert a recording into the compartment."""
         view = deepcopy(self.nodes)
         view["state"] = state
@@ -525,7 +525,7 @@ class Module(ABC):
         tridiag_solver: str = "stone",
     ):
         """One step of solving the Ordinary Differential Equation."""
-        voltages = u["voltages"]
+        voltages = u["v"]
 
         # Parameters have to go in here.
         u, (v_terms, const_terms) = self._step_channels(
@@ -577,7 +577,7 @@ class Module(ABC):
                 delta_t=delta_t,
             )
 
-        u["voltages"] = new_voltages.flatten(order="C")
+        u["v"] = new_voltages.flatten(order="C")
 
         return u
 
@@ -607,7 +607,7 @@ class Module(ABC):
         params: Dict[str, jnp.ndarray],
     ):
         """One integration step of the channels."""
-        voltages = states["voltages"]
+        voltages = states["v"]
 
         # Update states of the channels.
         for channel in channels:
@@ -655,7 +655,7 @@ class Module(ABC):
 
         This is also updates `state` because the `state` also contains the current.
         """
-        voltages = states["voltages"]
+        voltages = states["v"]
 
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
@@ -708,7 +708,7 @@ class Module(ABC):
         `Network` overrides this method (because it actually has synapses), whereas
         `Compartment`, `Branch`, and `Cell` do not override this.
         """
-        voltages = u["voltages"]
+        voltages = u["v"]
         return u, (jnp.zeros_like(voltages), jnp.zeros_like(voltages))
 
     def _synapse_currents(
@@ -955,7 +955,7 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._insert(channel, nodes)
 
-    def record(self, state: str = "voltages"):
+    def record(self, state: str = "v"):
         """Record a state."""
         nodes = self.set_global_index_and_index(self.view)
         view = deepcopy(nodes)
