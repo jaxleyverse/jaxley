@@ -153,19 +153,17 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     Returns:
         The index of the compartment within the entire cell.
     """
-    if nseg_per_branch > 1:
-        possible_locs = np.arange(nseg_per_branch) / (nseg_per_branch - 1)
-        closest = np.argmin(np.abs(possible_locs - loc))
-        ind_along_branch = nseg_per_branch - closest - 1
-    else:
-        ind_along_branch = 0
-    return branch_ind * nseg_per_branch + ind_along_branch
+    nseg = nseg_per_branch  # only for convenience.
+    possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
+    closest = np.argmin(np.abs(possible_locs - loc))
+    ind_along_branch = nseg - closest - 1
+    return branch_ind * nseg + ind_along_branch
 
 
 def loc_of_index(global_comp_index, nseg):
     """Return location corresponding to index."""
     index = global_comp_index % nseg
-    possible_locs = np.linspace(1, 0, nseg)
+    possible_locs = np.linspace(1 - 0.5 / nseg, 0.5 / nseg, nseg)
     return possible_locs[index]
 
 
