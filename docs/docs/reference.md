@@ -2,34 +2,13 @@
 
 ## Modules
 
-::: jaxley.modules.compartment.Compartment
+::: jaxley.modules.base.Module
     rendering:
       show_root_heading: true
     selection:
       filters: [ "!^_", "^__", "!^__class__" ]
       inherited_members: true
-
-::: jaxley.modules.branch.Branch
-    rendering:
-      show_root_heading: true
-    selection:
-      filters: [ "!^_", "^__", "!^__class__" ]
-      inherited_members: true
-
-::: jaxley.modules.cell.Cell
-    rendering:
-      show_root_heading: true
-    selection:
-      filters: [ "!^_", "^__", "!^__class__" ]
-      inherited_members: true
-
-::: jaxley.modules.network.Network
-    rendering:
-      show_root_heading: true
-    selection:
-      filters: [ "!^_", "^__", "!^__class__" ]
-      inherited_members: true
-
+<!-- 
 
 ## Channels
 
@@ -107,4 +86,4 @@
 
 ::: jaxley.read_swc
     rendering:
-      show_root_heading: true
+      show_root_heading: true -->
