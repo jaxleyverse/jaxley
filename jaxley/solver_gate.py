@@ -26,6 +26,16 @@ def solve_gate_exponential(
     return x * exp_term + xinf * (1.0 - exp_term)
 
 
+def exponential_euler(
+    x: jnp.ndarray,
+    dt: float,
+    x_inf: jnp.ndarray,
+    x_tau: jnp.ndarray,
+):
+    exp_term = jnp.exp(-dt / x_tau)
+    return x * exp_term + x_inf * (1.0 - exp_term)
+
+
 def solve_inf_gate_exponential(
     x: jnp.ndarray,
     dt: float,
