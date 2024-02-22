@@ -87,12 +87,12 @@ def test_init_states():
 
     cell.insert(HH())
 
-    cell.set("voltages", -62.0)  # At -70.0 there is a rebound spike.
+    cell.set("v", -62.0)  # At -70.0 there is a rebound spike.
     cell.init_states()
     v = jx.integrate(cell, t_max=20.0)
 
     last_voltage = v[0, -1]
-    cell.set("voltages", last_voltage)
+    cell.set("v", last_voltage)
     cell.init_states()
 
     v = jx.integrate(cell, t_max=10.0)

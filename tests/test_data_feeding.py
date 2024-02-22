@@ -15,7 +15,7 @@ def test_constant_and_data_stimulus():
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=2)
     cell = jx.Cell(branch, parents=[-1, 0, 0])
-    cell.branch(0).comp(0.0).record("voltages")
+    cell.branch(0).comp(0.0).record("v")
 
     i_amp_const = 0.02
     i_amps_data = jnp.asarray([0.01, 0.005])

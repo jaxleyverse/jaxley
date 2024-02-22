@@ -13,7 +13,7 @@ class Compartment(Module):
         "radius": 1.0,
         "axial_resistivity": 5_000.0,
     }
-    compartment_states: Dict = {"voltages": -70.0}
+    compartment_states: Dict = {"v": -70.0}
 
     def __init__(self):
         super().__init__()
