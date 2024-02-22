@@ -108,34 +108,34 @@ def test_multiple_channel_currents():
         channel_params = {}
         channel_states = {"cumulative": 0.0}
 
-        def update_states(self, u, dt, voltages, params):
-            state = u["cumulative"]
-            state += u["Dummy1_current"] * 0.001
-            state += u["Dummy2_current"] * 0.001
+        def update_states(self, states, dt, v, params):
+            state = states["cumulative"]
+            state += states["Dummy1_current"] * 0.001
+            state += states["Dummy2_current"] * 0.001
             return {"cumulative": state}
 
-        def compute_current(self, u, voltages, params):
-            return 0.01 * jnp.ones_like(voltages)
+        def compute_current(self, states, v, params):
+            return 0.01 * jnp.ones_like(v)
 
     class Dummy1(Channel):
         channel_params = {}
         channel_states = {}
 
-        def update_states(self, u, dt, voltages, params):
+        def update_states(self, states, dt, v, params):
             return {}
 
-        def compute_current(self, u, voltages, params):
-            return 0.01 * jnp.ones_like(voltages)
+        def compute_current(self, states, v, params):
+            return 0.01 * jnp.ones_like(v)
 
     class Dummy2(Channel):
         channel_params = {}
         channel_states = {}
 
-        def update_states(self, u, dt, voltages, params):
+        def update_states(self, states, dt, v, params):
             return {}
 
-        def compute_current(self, u, voltages, params):
-            return 0.01 * jnp.ones_like(voltages)
+        def compute_current(self, states, v, params):
+            return 0.01 * jnp.ones_like(v)
 
     dt = 0.025  # ms
     t_max = 10.0  # ms
