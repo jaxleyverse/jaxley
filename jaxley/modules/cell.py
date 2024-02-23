@@ -260,7 +260,11 @@ class CellView(View):
                 rand_branch_post = np.random.randint(0, num_branches_post)
                 rand_loc_post = np.random.rand()
                 pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
-                post = self.pointer.cell(post_ind).branch(rand_branch_post).comp(rand_loc_post)
+                post = (
+                    self.pointer.cell(post_ind)
+                    .branch(rand_branch_post)
+                    .comp(rand_loc_post)
+                )
                 pre.connect(post, synapse_type)
 
     def sparse_connect(self, post_cell_view, p, synapse_type):
