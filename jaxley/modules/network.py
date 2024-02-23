@@ -586,7 +586,12 @@ class SynapseView(View):
         self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
-    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
         """Make a parameter trainable."""
         synapse_index = self.view["type_ind"].values[0]
         synapse_type = self.pointer.synapses[synapse_index]
@@ -599,7 +604,7 @@ class SynapseView(View):
 
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
-        self.pointer._make_trainable(self.view, key, init_val)
+        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
 
     def record(self, state: str = "v"):
         """Record a state."""

@@ -979,9 +979,14 @@ class View:
         """Set parameters of the pointer."""
         self.pointer._set(key, val, self.view, self.pointer.nodes)
 
-    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
         """Make a parameter trainable."""
-        self.pointer._make_trainable(self.view, key, init_val)
+        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
 
     def add_to_group(self, group_name: str):
         self.pointer._add_to_group(group_name, self.view)
