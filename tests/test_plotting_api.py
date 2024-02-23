@@ -60,6 +60,9 @@ def test_network():
     net.vis(detail="point", layers=[2, 1])
 
     # Plot 5.
+    net.vis(detail="full", layers=[2, 1])
+
+    # Plot 5.
     net.cell(0).add_to_group("excitatory")
     net.cell(1).add_to_group("excitatory")
     ax = net.excitatory.vis()
