@@ -19,11 +19,9 @@ def solve_gate_exponential(
     alpha: jnp.ndarray,
     beta: jnp.ndarray,
 ):
-    slope = -(alpha + beta)
-    xinf = -alpha / slope
-
-    exp_term = jnp.exp(slope * dt)
-    return x * exp_term + xinf * (1.0 - exp_term)
+    tau = 1 / (alpha + beta)
+    xinf = alpha * tau
+    return exponential_euler(x, dt, xinf, tau)
 
 
 def exponential_euler(
@@ -32,6 +30,7 @@ def exponential_euler(
     x_inf: jnp.ndarray,
     x_tau: jnp.ndarray,
 ):
+    """An exact solver for the linear dynamical system `dx = -(x - x_inf) / x_tau`."""
     exp_term = jnp.exp(-dt / x_tau)
     return x * exp_term + x_inf * (1.0 - exp_term)
 
