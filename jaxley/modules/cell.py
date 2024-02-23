@@ -283,11 +283,15 @@ class CellView(View):
 
         for pre_ind, post_ind in zip(pre_syn_neurons, post_syn_neurons):
             num_branches_post = self.pointer.nbranches_per_cell[post_ind]
-            rand_branch = np.random.randint(0, num_branches_post)
-            rand_loc = np.random.rand()
+            branch_pre = 0
+            loc_pre = 0.0
+            rand_branch_post = np.random.randint(0, num_branches_post)
+            rand_loc_post = np.random.rand()
 
-            pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
-            post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
+            pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
+            post = (
+                self.pointer.cell(post_ind).branch(rand_branch_post).comp(rand_loc_post)
+            )
             pre.connect(post, synapse_type)
 
 
