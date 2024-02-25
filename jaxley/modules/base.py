@@ -70,6 +70,7 @@ class Module(ABC):
         self.synapses: List = []
         self.synapse_param_names = []
         self.synapse_state_names = []
+        self.synapse_names = []
 
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
@@ -95,6 +96,10 @@ class Module(ABC):
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
+
+    def __dir__(self):
+        base_dir = object.__dir__(self)
+        return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
 
     def _append_params_and_states(self, param_dict, state_dict):
         """Insert the default params of the module (e.g. radius, length).
@@ -949,7 +954,7 @@ class View:
         assert not inspect.isclass(
             channel
         ), """
-            Channel is a class, but it was not initialized. Use `.insert(Channel())` 
+            Channel is a class, but it was not initialized. Use `.insert(Channel())`
             instead of `.insert(Channel)`.
             """
         nodes = self.set_global_index_and_index(self.view)
