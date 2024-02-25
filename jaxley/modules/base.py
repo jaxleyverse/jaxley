@@ -896,6 +896,31 @@ class Module(ABC):
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
 
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+        
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        degrees = degrees / 180 * np.pi
+        if rotation_axis == "xy":
+            dims = [0, 1]
+        elif rotation_axis == "xz":
+            dims = [0, 2]
+        elif rotation_axis == "yz":
+            dims = [1, 2]
+        else:
+            raise ValueError
+
+        rotation_matrix = np.asarray(
+            [[np.cos(degrees), np.sin(degrees)], [-np.sin(degrees), np.cos(degrees)]]
+        )
+        indizes = set(self.nodes["branch_index"].to_numpy().tolist())
+        for i in indizes:
+            rot = np.dot(rotation_matrix, self.xyzr[i][:, dims].T).T
+            self.xyzr[i][:, dims] = rot
+
 
 class View:
     """View of a `Module`."""
