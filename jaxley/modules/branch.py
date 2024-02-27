@@ -60,6 +60,9 @@ class Branch(Module):
         self.init_syns(None)
         self.initialized_conds = False
 
+        # Coordinates.
+        self.xyzr = [float("NaN") * np.zeros((2, 4))]
+
     def __getattr__(self, key):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
