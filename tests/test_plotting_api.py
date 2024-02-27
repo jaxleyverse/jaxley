@@ -113,5 +113,6 @@ def test_mixed_network():
     net.compute_xyz()
     net.cell(0).move(0, 800)
     net.cell(1).move(0, -800)
+    net.rotate(180)
 
     _ = net.vis(detail="full")
