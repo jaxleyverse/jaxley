@@ -12,7 +12,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 def test_radius_and_length_compartment():
@@ -165,7 +165,7 @@ def test_radius_and_length_net():
     cell2.set("radius", np.random.rand(2 * num_branches))
 
     connectivities = [
-        jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
+        jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
     network = jx.Network([cell1, cell2], connectivities)
     network.insert(HH())

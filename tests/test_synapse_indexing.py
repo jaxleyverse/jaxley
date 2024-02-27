@@ -10,7 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse, Synapse, TanhRateSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
 
 
 def test_multiparameter_setting():
@@ -26,9 +26,9 @@ def test_multiparameter_setting():
 
     pre = net.cell(0).branch(0).comp(0.0)
     post = net.cell(1).branch(0).comp(0.0)
-    pre.connect(post, GlutamateSynapse())
+    pre.connect(post, IonotropicSynapse())
 
-    syn_view = net.GlutamateSynapse
+    syn_view = net.IonotropicSynapse
     syn_params = ["gS", "e_syn"]
 
     for p in syn_params:
@@ -37,10 +37,10 @@ def test_multiparameter_setting():
 
 def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
     """Access to the synapse view"""
-    if synapse_name == "GlutamateSynapse":
-        full_syn_view = net.GlutamateSynapse
-        single_syn_view = net.GlutamateSynapse(single_idx)
-        double_syn_view = net.GlutamateSynapse(double_idxs)
+    if synapse_name == "IonotropicSynapse":
+        full_syn_view = net.IonotropicSynapse
+        single_syn_view = net.IonotropicSynapse(single_idx)
+        double_syn_view = net.IonotropicSynapse(double_idxs)
     if synapse_name == "TanhRateSynapse":
         full_syn_view = net.TanhRateSynapse
         single_syn_view = net.TanhRateSynapse(single_idx)
@@ -53,7 +53,7 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
 
 
 @pytest.mark.parametrize(
-    "synapse_type", [GlutamateSynapse, TanhRateSynapse, TestSynapse]
+    "synapse_type", [IonotropicSynapse, TanhRateSynapse, TestSynapse]
 )
 def test_set_and_querying_params_one_type(synapse_type):
     """Test if the correct parameters are set if one type of synapses is inserted."""
@@ -105,12 +105,12 @@ def test_set_and_querying_params_two_types(synapse_type):
     net = jx.Network([cell for _ in range(4)])
 
     for pre_ind in [0, 1]:
-        for post_ind, synapse in zip([2, 3], [GlutamateSynapse(), synapse_type]):
+        for post_ind, synapse in zip([2, 3], [IonotropicSynapse(), synapse_type]):
             pre = net.cell(pre_ind).branch(0).comp(0.0)
             post = net.cell(post_ind).branch(0).comp(0.0)
             pre.connect(post, synapse)
 
-    type1_params = list(GlutamateSynapse.synapse_params.keys())
+    type1_params = list(IonotropicSynapse.synapse_params.keys())
     synapse_type_params = list(synapse_type.synapse_params.keys())
 
     default_synapse_type = net.edges[synapse_type_params[0]].to_numpy()[[1, 3]]
@@ -130,7 +130,7 @@ def test_set_and_querying_params_two_types(synapse_type):
     )
 
     # Generalize to all parameters
-    net.GlutamateSynapse.set(type1_params[0], 0.32)
+    net.IonotropicSynapse.set(type1_params[0], 0.32)
     assert np.all(net.edges[type1_params[0]].to_numpy()[[0, 2]] == 0.32)
     assert np.all(
         net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == default_synapse_type
@@ -140,12 +140,12 @@ def test_set_and_querying_params_two_types(synapse_type):
     assert np.all(net.edges[type1_params[0]].to_numpy()[[0, 2]] == 0.32)
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.18)
 
-    net.GlutamateSynapse(1).set(type1_params[0], 0.24)
+    net.IonotropicSynapse(1).set(type1_params[0], 0.24)
     assert net.edges[type1_params[0]][0] == 0.32
     assert net.edges[type1_params[0]][2] == 0.24
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.18)
 
-    net.GlutamateSynapse([0, 1]).set(type1_params[0], 0.27)
+    net.IonotropicSynapse([0, 1]).set(type1_params[0], 0.27)
     assert np.all(net.edges[type1_params[0]].to_numpy()[[0, 2]] == 0.27)
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.18)
 
@@ -166,10 +166,10 @@ def test_shuffling_order_of_set(synapse_type):
     net2 = jx.Network([cell for _ in range(4)])
 
     net1.cell(0).branch(0).comp(1.0).connect(
-        net1.cell(1).branch(0).comp(0.1), GlutamateSynapse()
+        net1.cell(1).branch(0).comp(0.1), IonotropicSynapse()
     )
     net1.cell(1).branch(0).comp(0.6).connect(
-        net1.cell(2).branch(0).comp(0.7), GlutamateSynapse()
+        net1.cell(2).branch(0).comp(0.7), IonotropicSynapse()
     )
     net1.cell(2).branch(0).comp(0.4).connect(
         net1.cell(3).branch(0).comp(0.3), synapse_type
@@ -183,13 +183,13 @@ def test_shuffling_order_of_set(synapse_type):
         net2.cell(1).branch(0).comp(0.1), synapse_type
     )
     net2.cell(1).branch(0).comp(0.6).connect(
-        net2.cell(2).branch(0).comp(0.7), GlutamateSynapse()
+        net2.cell(2).branch(0).comp(0.7), IonotropicSynapse()
     )
     net2.cell(2).branch(0).comp(0.4).connect(
         net2.cell(3).branch(0).comp(0.3), synapse_type
     )
     net2.cell(0).branch(0).comp(1.0).connect(
-        net2.cell(1).branch(0).comp(0.1), GlutamateSynapse()
+        net2.cell(1).branch(0).comp(0.1), IonotropicSynapse()
     )
 
     net1.insert(HH())
