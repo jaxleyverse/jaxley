@@ -898,11 +898,14 @@ class Module(ABC):
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
-        
+
         Args:
             degrees: How many degrees to rotate the module by.
             rotation_axis: Either of {`xy` | `xz` | `yz`}.
         """
+        self._rotate(degrees=degrees, rotation_axis=rotation_axis, view=self.nodes)
+
+    def _rotate(self, degrees: float, rotation_axis: str, view: pd.DataFrame):
         degrees = degrees / 180 * np.pi
         if rotation_axis == "xy":
             dims = [0, 1]
@@ -916,7 +919,7 @@ class Module(ABC):
         rotation_matrix = np.asarray(
             [[np.cos(degrees), np.sin(degrees)], [-np.sin(degrees), np.cos(degrees)]]
         )
-        indizes = set(self.nodes["branch_index"].to_numpy().tolist())
+        indizes = set(view["branch_index"].to_numpy().tolist())
         for i in indizes:
             rot = np.dot(rotation_matrix, self.xyzr[i][:, dims].T).T
             self.xyzr[i][:, dims] = rot
@@ -1051,6 +1054,17 @@ class View:
             assert index == "all"
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
+
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        raise NotImplementedError(
+            "Only entire `jx.Module`s or entire cells within a network can be rotated."
+        )
 
 
 class GroupView(View):
