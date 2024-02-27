@@ -294,6 +294,17 @@ class CellView(View):
             )
             pre.connect(post, synapse_type)
 
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        self.pointer._rotate(
+            degrees=degrees, rotation_axis=rotation_axis, view=self.view
+        )
+
 
 def read_swc(
     fname: str,
