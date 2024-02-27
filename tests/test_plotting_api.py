@@ -91,6 +91,16 @@ def test_vis_networks_built_from_scartch():
     net.cell(0).move(0, 100)
     ax = net.vis(detail="full", ax=ax)
 
+    # Plot 3.
+    _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    comp.compute_xyz()
+    ax = comp.vis(ax=ax)
+
+    # Plot 4.
+    _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    branch.compute_xyz()
+    ax = branch.vis(ax=ax)
+
 
 def test_mixed_network():
     dirname = os.path.dirname(__file__)
