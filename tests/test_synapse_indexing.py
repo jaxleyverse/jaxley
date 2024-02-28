@@ -10,7 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse, Synapse, TanhRateSynapse, TestSynapse
+from jaxley.synapses import GlutamateSynapse, Synapse, TanhRateSynapse, TestSynapse, GapJunction
 
 
 def test_multiparameter_setting():
@@ -53,7 +53,7 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
 
 
 @pytest.mark.parametrize(
-    "synapse_type", [GlutamateSynapse, TanhRateSynapse, TestSynapse]
+    "synapse_type", [GlutamateSynapse, TanhRateSynapse, TestSynapse, GapJunction]
 )
 def test_set_and_querying_params_one_type(synapse_type):
     """Test if the correct parameters are set if one type of synapses is inserted."""
@@ -95,7 +95,7 @@ def test_set_and_querying_params_one_type(synapse_type):
         assert np.all(net.edges[p].to_numpy()[np.asarray([2, 3])] == 0.12)
 
 
-@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse])
+@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse, GapJunction])
 def test_set_and_querying_params_two_types(synapse_type):
     """Test whether the correct parameters are set."""
     synapse_type = synapse_type()
@@ -154,7 +154,7 @@ def test_set_and_querying_params_two_types(synapse_type):
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.21)
 
 
-@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse])
+@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse, GapJunction])
 def test_shuffling_order_of_set(synapse_type):
     """Test whether the result is the same if the order of synapses is changed."""
     synapse_type = synapse_type()
