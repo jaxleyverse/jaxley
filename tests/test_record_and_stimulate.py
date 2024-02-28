@@ -74,9 +74,9 @@ def test_record_synaptic_and_membrane_states():
     net = jx.Network([cell for _ in range(3)])
     net.insert(HH())
 
-    net.cell([0]).fully_connect(net.cell([1]), GlutamateSynapse())
-    net.cell([1]).fully_connect(net.cell([2]), TestSynapse())
-    net.cell([2]).fully_connect(net.cell([0]), GlutamateSynapse())
+    net.cell([0]).connect(net.cell([1]), GlutamateSynapse(), p=1)
+    net.cell([1]).connect(net.cell([2]), TestSynapse(), p=1)
+    net.cell([2]).connect(net.cell([0]), GlutamateSynapse(), p=1)
 
     current = jx.step_current(1.0, 80.0, 0.02, 0.025, 100.0)
     net.cell(0).branch(0).comp(0.0).stimulate(current)

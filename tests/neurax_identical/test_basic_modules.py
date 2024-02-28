@@ -200,13 +200,13 @@ def test_complex_net():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.fully_connect(post, GlutamateSynapse())
-    pre.fully_connect(post, TestSynapse())
+    pre.connect(post, GlutamateSynapse(), p=1)
+    pre.connect(post, TestSynapse(), p=1)
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.fully_connect(post, GlutamateSynapse())
-    pre.fully_connect(post, TestSynapse())
+    pre.connect(post, GlutamateSynapse(), p=1)
+    pre.connect(post, TestSynapse(), p=1)
 
     net.set("gS", 0.44)
     net.set("gC", 0.62)
