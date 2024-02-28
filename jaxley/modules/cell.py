@@ -244,8 +244,8 @@ class CellView(View):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
 
-    def fully_connect(self, post_cell_view, synapse_type):
-        """Returns a list of `Connection`s which build a fully connected layer.
+    def _fully_connect(self, post_cell_view, synapse_type):
+        """Builds a fully connected layer.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
@@ -262,8 +262,8 @@ class CellView(View):
                 post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
                 pre.connect(post, synapse_type)
 
-    def sparse_connect(self, post_cell_view, p, synapse_type):
-        """Returns a list of `Connection`s forming a sparse, randomly connected layer.
+    def _sparse_connect(self, post_cell_view, synapse_type, p=0.5):
+        """Builds a sparse, randomly connected layer.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
@@ -284,6 +284,13 @@ class CellView(View):
             pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
             post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
             pre.connect(post, synapse_type)
+
+    def connect(self, post_cell_view, synapse_type, p=None):
+        """Connects this cell to another cell with probability `p`."""
+        if p is None:
+            self._fully_connect(post_cell_view, synapse_type)
+        else:
+            self._sparse_connect(post_cell_view, synapse_type, p=p)
 
 
 def read_swc(
