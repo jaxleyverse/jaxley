@@ -244,39 +244,20 @@ class CellView(View):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
 
-    def _fully_connect(self, post_cell_view, synapse_type):
-        """Builds a fully connected layer.
+    def connect(self, post_cell_view, synapse_type, p=1):
+        """Builds a (sparse), randomly connected layer, with connection probability p.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
 
-        for pre_ind in pre_cell_inds:
-            for post_ind in post_cell_inds:
-                num_branches_post = self.pointer.nbranches_per_cell[post_ind]
-                rand_branch = np.random.randint(0, num_branches_post)
-                rand_loc = np.random.rand()
+        connections = [[(pre_ind, post_ind) for pre_ind in pre_cell_inds]  for post_ind in post_cell_inds]
+        connections = sum(connections, [])
+        if p != 1:
+            connections = np.random.choice(connections, size=num_connections, replace=False)
 
-                pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
-                post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
-                pre.connect(post, synapse_type)
-
-    def _sparse_connect(self, post_cell_view, synapse_type, p=0.5):
-        """Builds a sparse, randomly connected layer.
-
-        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
-        """
-        pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
-        post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-
-        num_pre = len(pre_cell_inds)
-        num_post = len(post_cell_inds)
-        num_connections = np.random.binomial(num_pre * num_post, p)
-        pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
-        post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
-
-        for pre_ind, post_ind in zip(pre_syn_neurons, post_syn_neurons):
+        for pre_ind, post_ind in zip(connections):
             num_branches_post = self.pointer.nbranches_per_cell[post_ind]
             rand_branch = np.random.randint(0, num_branches_post)
             rand_loc = np.random.rand()
@@ -284,13 +265,6 @@ class CellView(View):
             pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
             post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
             pre.connect(post, synapse_type)
-
-    def connect(self, post_cell_view, synapse_type, p=None):
-        """Connects this cell to another cell with probability `p`."""
-        if p is None:
-            self._fully_connect(post_cell_view, synapse_type)
-        else:
-            self._sparse_connect(post_cell_view, synapse_type, p=p)
 
 
 def read_swc(
