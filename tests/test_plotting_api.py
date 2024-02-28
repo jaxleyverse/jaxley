@@ -60,6 +60,9 @@ def test_network():
     net.vis(detail="point", layers=[2, 1])
 
     # Plot 5.
+    net.vis(detail="full", layers=[2, 1])
+
+    # Plot 5.
     net.cell(0).add_to_group("excitatory")
     net.cell(1).add_to_group("excitatory")
     ax = net.excitatory.vis()
@@ -88,6 +91,16 @@ def test_vis_networks_built_from_scartch():
     net.cell(0).move(0, 100)
     ax = net.vis(detail="full", ax=ax)
 
+    # Plot 3.
+    _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    comp.compute_xyz()
+    ax = comp.vis(ax=ax)
+
+    # Plot 4.
+    _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    branch.compute_xyz()
+    ax = branch.vis(ax=ax)
+
 
 def test_mixed_network():
     dirname = os.path.dirname(__file__)
@@ -110,5 +123,7 @@ def test_mixed_network():
     net.compute_xyz()
     net.cell(0).move(0, 800)
     net.cell(1).move(0, -800)
+    net.rotate(180)
+    net.cell(1).rotate(90)
 
     _ = net.vis(detail="full")

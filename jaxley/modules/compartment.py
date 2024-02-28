@@ -1,6 +1,7 @@
 from typing import Callable, Dict, List, Optional
 
 import jax.numpy as jnp
+import numpy as np
 import pandas as pd
 
 from jaxley.modules.base import Module, View
@@ -13,7 +14,7 @@ class Compartment(Module):
         "radius": 1.0,
         "axial_resistivity": 5_000.0,
     }
-    compartment_states: Dict = {"voltages": -70.0}
+    compartment_states: Dict = {"v": -70.0}
 
     def __init__(self):
         super().__init__()
@@ -38,6 +39,9 @@ class Compartment(Module):
         self.initialize()
         self.init_syns(None)
         self.initialized_conds = True
+
+        # Coordinates.
+        self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
     def init_conds(self, params):
         cond_params = {

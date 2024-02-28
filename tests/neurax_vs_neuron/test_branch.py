@@ -56,7 +56,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     branch.set("HH_m", 0.07490098835688629)
     branch.set("HH_h", 0.488947681848153)
     branch.set("HH_n", 0.3644787002343737)
-    branch.set("voltages", -62.0)
+    branch.set("v", -62.0)
 
     branch.comp(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     branch.comp(0.0).record()
@@ -163,7 +163,7 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
 
     branch.insert(HH())
 
-    branch.set("voltages", -62.0)
+    branch.set("v", -62.0)
     branch.set("HH_m", 0.074901)
     branch.set("HH_h", 0.4889)
     branch.set("HH_n", 0.3644787)

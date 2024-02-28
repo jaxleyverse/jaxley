@@ -11,7 +11,7 @@ import jaxley as jx
 from jaxley.channels import HH
 
 
-@pytest.mark.parametrize("key", ["HH_m", "voltages"])
+@pytest.mark.parametrize("key", ["HH_m", "v"])
 def test_grad_against_finite_diff_initial_state(key):
     def simulate():
         return jnp.sum(jx.integrate(comp))

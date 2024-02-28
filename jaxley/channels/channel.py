@@ -48,13 +48,13 @@ class Channel:
         }
 
     def update_states(
-        self, u, dt, voltages, params
+        self, states, dt, v, params
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Return the updated states."""
         pass
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
         pass

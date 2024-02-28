@@ -279,7 +279,7 @@ class Network(Module):
 
     @staticmethod
     def _step_synapse_state(states, syn_channels, params, delta_t, edges: pd.DataFrame):
-        voltages = states["voltages"]
+        voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
@@ -320,7 +320,7 @@ class Network(Module):
 
     @staticmethod
     def _synapse_currents(states, syn_channels, params, delta_t, edges: pd.DataFrame):
-        voltages = states["voltages"]
+        voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
@@ -398,6 +398,7 @@ class Network(Module):
         synapse_plot_kwargs: Dict = {},
         synapse_scatter_kwargs: Dict = {},
         networkx_options: Dict = {},
+        layer_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
 
@@ -415,8 +416,7 @@ class Network(Module):
                 two of them.
             layers: Allows to plot the network in layers. Should provide the number of
                 neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-                neurons, 10 hidden layer neurons, and 1 output neuron. Only takes
-                effect for `detail='point'`.
+                neurons, 10 hidden layer neurons, and 1 output neuron.
             morph_plot_kwargs: Keyword arguments passed to the plotting function for
                 cell morphologies. Only takes effect for `detail='full'`.
             synapse_plot_kwargs: Keyword arguments passed to the plotting function for
@@ -425,6 +425,9 @@ class Network(Module):
                 for the end point of synapses. Only takes effect for `detail='full'`.
             networkx_options: Options passed to `networkx.draw()`. Only takes effect if
                 `detail='point'`.
+            layer_kwargs: Only used if `layers` is specified and if `detail='full'`.
+                Can have the following entries: `within_layer_offset` (float),
+                `between_layer_offset` (float), `vertical_layers` (bool).
         """
         if detail == "point":
             graph = self._build_graph(layers)
@@ -435,6 +438,32 @@ class Network(Module):
             else:
                 nx.draw(graph, with_labels=True, **networkx_options)
         elif detail == "full":
+            if layers is not None:
+                # Assemble cells in the network into layers.
+                global_counter = 0
+                layers_config = {
+                    "within_layer_offset": 500.0,
+                    "between_layer_offset": 1500.0,
+                    "vertical_layers": False,
+                }
+                layers_config.update(layer_kwargs)
+                for layer_ind, num_in_layer in enumerate(layers):
+                    for ind_within_layer in range(num_in_layer):
+                        if layers_config["vertical_layers"]:
+                            x_offset = (
+                                ind_within_layer - (num_in_layer - 1) / 2
+                            ) * layers_config["within_layer_offset"]
+                            y_offset = (len(layers) - 1 - layer_ind) * layers_config[
+                                "between_layer_offset"
+                            ]
+                        else:
+                            x_offset = layer_ind * layers_config["between_layer_offset"]
+                            y_offset = (
+                                ind_within_layer - (num_in_layer - 1) / 2
+                            ) * layers_config["within_layer_offset"]
+
+                        self.cell(global_counter).move(x=x_offset, y=y_offset, z=0)
+                        global_counter += 1
             ax = self._vis(
                 dims=dims,
                 col=col,
@@ -586,7 +615,12 @@ class SynapseView(View):
         self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
-    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
         """Make a parameter trainable."""
         synapse_index = self.view["type_ind"].values[0]
         synapse_type = self.pointer.synapses[synapse_index]
@@ -599,9 +633,9 @@ class SynapseView(View):
 
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
-        self.pointer._make_trainable(self.view, key, init_val)
+        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
 
-    def record(self, state: str = "voltages"):
+    def record(self, state: str = "v"):
         """Record a state."""
         assert (
             state in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]

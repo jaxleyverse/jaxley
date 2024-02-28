@@ -27,40 +27,44 @@ class HH(Channel):
         }
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """Return updated HH channel state."""
         prefix = self._name
-        ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
-        new_m = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
-        new_h = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
-        new_n = solve_gate_exponential(ns, dt, *self.n_gate(voltages))
+        m, h, n = states[f"{prefix}_m"], states[f"{prefix}_h"], states[f"{prefix}_n"]
+        new_m = solve_gate_exponential(m, dt, *self.m_gate(v))
+        new_h = solve_gate_exponential(h, dt, *self.h_gate(v))
+        new_n = solve_gate_exponential(n, dt, *self.n_gate(v))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h, f"{prefix}_n": new_n}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current through HH channels."""
         prefix = self._name
-        ms, hs, ns = u[f"{prefix}_m"], u[f"{prefix}_h"], u[f"{prefix}_n"]
+        m, h, n = states[f"{prefix}_m"], states[f"{prefix}_h"], states[f"{prefix}_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params[f"{prefix}_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
-        kd_conds = params[f"{prefix}_gK"] * ns**4 * 1000  # mS/cm^2
-        leak_conds = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # mS/cm^2
+        gK = params[f"{prefix}_gK"] * n**4 * 1000  # mS/cm^2
+        gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
 
         return (
-            na_conds * (voltages - params[f"{prefix}_eNa"])
-            + kd_conds * (voltages - params[f"{prefix}_eK"])
-            + leak_conds * (voltages - params[f"{prefix}_eLeak"])
+            gNa * (v - params[f"{prefix}_eNa"])
+            + gK * (v - params[f"{prefix}_eK"])
+            + gLeak * (v - params[f"{prefix}_eLeak"])
         )
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(voltages)
-        alpha_h, beta_h = self.h_gate(voltages)
-        alpha_n, beta_n = self.n_gate(voltages)
+        alpha_m, beta_m = self.m_gate(v)
+        alpha_h, beta_h = self.h_gate(v)
+        alpha_n, beta_n = self.n_gate(v)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),

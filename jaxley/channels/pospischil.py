@@ -9,6 +9,8 @@ from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponentia
 # Leak, Na, K, Km, CaT, CaL
 # [Pospischil et al. Biological Cybernetics (2008)]
 
+__all__ = ["Leak", "Na", "K", "Km", "CaT", "CaL"]
+
 
 # Helper function
 def efun(x):
@@ -31,27 +33,31 @@ class Leak(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gl": 1e-4,
-            f"{prefix}_el": -70.0,
+            f"{prefix}_gLeak": 1e-4,
+            f"{prefix}_eLeak": -70.0,
         }
         self.channel_states = {}
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """No state to update."""
         return {}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         prefix = self._name
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        leak_conds = params[f"{prefix}_gl"] * 1000  # mS/cm^2
-        return leak_conds * (voltages - params[f"{prefix}_el"])
+        gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
+        return gLeak * (v - params[f"{prefix}_eLeak"])
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         return {}
 
 
@@ -69,33 +75,37 @@ class Na(Channel):
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
         prefix = self._name
-        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        new_m = solve_gate_exponential(ms, dt, *self.m_gate(voltages, params["vt"]))
-        new_h = solve_gate_exponential(hs, dt, *self.h_gate(voltages, params["vt"]))
+        m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
+        new_m = solve_gate_exponential(m, dt, *self.m_gate(v, params["vt"]))
+        new_h = solve_gate_exponential(h, dt, *self.h_gate(v, params["vt"]))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         prefix = self._name
-        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        na_conds = params[f"{prefix}_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # mS/cm^2
 
-        current = na_conds * (voltages - params[f"{prefix}_eNa"])
+        current = gNa * (v - params[f"{prefix}_eNa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(voltages, params["vt"])
-        alpha_h, beta_h = self.h_gate(voltages, params["vt"])
+        alpha_m, beta_m = self.m_gate(v, params["vt"])
+        alpha_h, beta_h = self.h_gate(v, params["vt"])
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
@@ -134,30 +144,34 @@ class K(Channel):
         self.channel_states = {f"{prefix}_n": 0.2}
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
         prefix = self._name
-        ns = u[f"{prefix}_n"]
-        new_n = solve_gate_exponential(ns, dt, *self.n_gate(voltages, params["vt"]))
+        n = states[f"{prefix}_n"]
+        new_n = solve_gate_exponential(n, dt, *self.n_gate(v, params["vt"]))
         return {f"{prefix}_n": new_n}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         prefix = self._name
-        ns = u[f"{prefix}_n"]
+        n = states[f"{prefix}_n"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        k_conds = params[f"{prefix}_gK"] * (ns**4) * 1000  # mS/cm^2
+        gK = params[f"{prefix}_gK"] * (n**4) * 1000  # mS/cm^2
 
-        return k_conds * (voltages - params[f"{prefix}_eK"])
+        return gK * (v - params[f"{prefix}_eK"])
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_n, beta_n = self.n_gate(voltages, params["vt"])
+        alpha_n, beta_n = self.n_gate(v, params["vt"])
         return {f"{prefix}_n": alpha_n / (alpha_n + beta_n)}
 
     @staticmethod
@@ -177,38 +191,42 @@ class Km(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gM": 0.004e-3,
+            f"{prefix}_gKm": 0.004e-3,
             f"{prefix}_taumax": 4000.0,
-            f"eM": -90.0,
+            f"eKm": -90.0,
         }
         self.channel_states = {f"{prefix}_p": 0.2}
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
         prefix = self._name
-        ps = u[f"{prefix}_p"]
+        p = states[f"{prefix}_p"]
         new_p = solve_inf_gate_exponential(
-            ps, dt, *self.p_gate(voltages, params[f"{prefix}_taumax"])
+            p, dt, *self.p_gate(v, params[f"{prefix}_taumax"])
         )
         return {f"{prefix}_p": new_p}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         prefix = self._name
-        ps = u[f"{prefix}_p"]
+        p = states[f"{prefix}_p"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        m_conds = params[f"{prefix}_gM"] * ps * 1000  # mS/cm^2
-        return m_conds * (voltages - params["eM"])
+        gKm = params[f"{prefix}_gKm"] * p * 1000  # mS/cm^2
+        return gKm * (v - params["eKm"])
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_p, beta_p = self.p_gate(voltages, params[f"{prefix}_taumax"])
+        alpha_p, beta_p = self.p_gate(v, params[f"{prefix}_taumax"])
         return {f"{prefix}_p": alpha_p / (alpha_p + beta_p)}
 
     @staticmethod
@@ -234,32 +252,36 @@ class CaL(Channel):
         self.channel_states = {f"{prefix}_q": 0.2, f"{prefix}_r": 0.2}
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
         prefix = self._name
-        qs, rs = u[f"{prefix}_q"], u[f"{prefix}_r"]
-        new_q = solve_gate_exponential(qs, dt, *self.q_gate(voltages))
-        new_r = solve_gate_exponential(rs, dt, *self.r_gate(voltages))
+        q, r = states[f"{prefix}_q"], states[f"{prefix}_r"]
+        new_q = solve_gate_exponential(q, dt, *self.q_gate(v))
+        new_r = solve_gate_exponential(r, dt, *self.r_gate(v))
         return {f"{prefix}_q": new_q, f"{prefix}_r": new_r}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         prefix = self._name
-        qs, rs = u[f"{prefix}_q"], u[f"{prefix}_r"]
+        q, r = states[f"{prefix}_q"], states[f"{prefix}_r"]
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params[f"{prefix}_gCaL"] * (qs**2) * rs * 1000  # mS/cm^2
+        gCaL = params[f"{prefix}_gCaL"] * (q**2) * r * 1000  # mS/cm^2
 
-        return ca_conds * (voltages - params["eCa"])
+        return gCaL * (v - params["eCa"])
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_q, beta_q = self.q_gate(voltages)
-        alpha_r, beta_r = self.r_gate(voltages)
+        alpha_q, beta_q = self.q_gate(v)
+        alpha_r, beta_r = self.r_gate(v)
         return {
             f"{prefix}_q": alpha_q / (alpha_q + beta_q),
             f"{prefix}_r": alpha_r / (alpha_r + beta_r),
@@ -298,33 +320,37 @@ class CaT(Channel):
         self.channel_states = {f"{prefix}_u": 0.2}
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
         prefix = self._name
-        us = u[f"{prefix}_u"]
+        u = states[f"{prefix}_u"]
         new_u = solve_inf_gate_exponential(
-            us, dt, *self.u_gate(voltages, params[f"{prefix}_vx"])
+            u, dt, *self.u_gate(v, params[f"{prefix}_vx"])
         )
         return {f"{prefix}_u": new_u}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
         prefix = self._name
-        us = u[f"{prefix}_u"]
-        s_inf = 1.0 / (1.0 + jnp.exp(-(voltages + params[f"{prefix}_vx"] + 57.0) / 6.2))
+        u = states[f"{prefix}_u"]
+        s_inf = 1.0 / (1.0 + jnp.exp(-(v + params[f"{prefix}_vx"] + 57.0) / 6.2))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        ca_conds = params[f"{prefix}_gCaT"] * (s_inf**2) * us * 1000  # mS/cm^2
+        gCaT = params[f"{prefix}_gCaT"] * (s_inf**2) * u * 1000  # mS/cm^2
 
-        return ca_conds * (voltages - params["eCa"])
+        return gCaT * (v - params["eCa"])
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_u, beta_u = self.u_gate(voltages, params[f"{prefix}_vx"])
+        alpha_u, beta_u = self.u_gate(v, params[f"{prefix}_vx"])
         return {f"{prefix}_u": alpha_u / (alpha_u + beta_u)}
 
     @staticmethod

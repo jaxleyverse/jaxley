@@ -251,7 +251,7 @@ class CellView(View):
         """
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-
+        
         connections = [[(pre_ind, post_ind) for pre_ind in pre_cell_inds]  for post_ind in post_cell_inds]
         connections = np.array(sum(connections, []))
         num_connections = np.random.binomial(connections.shape[0], p)
@@ -262,12 +262,27 @@ class CellView(View):
 
         for pre_ind, post_ind in connections:
             num_branches_post = self.pointer.nbranches_per_cell[post_ind]
-            rand_branch = np.random.randint(0, num_branches_post)
-            rand_loc = np.random.rand()
+            branch_pre = 0
+            loc_pre = 0.0
+            rand_branch_post = np.random.randint(0, num_branches_post)
+            rand_loc_post = np.random.rand()
 
-            pre = self.pointer.cell(pre_ind).branch(rand_branch).comp(rand_loc)
-            post = self.pointer.cell(post_ind).branch(rand_branch).comp(rand_loc)
+            pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
+            post = (
+                self.pointer.cell(post_ind).branch(rand_branch_post).comp(rand_loc_post)
+            )
             pre.connect(post, synapse_type)
+
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        self.pointer._rotate(
+            degrees=degrees, rotation_axis=rotation_axis, view=self.view
+        )
 
 
 def read_swc(

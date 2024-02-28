@@ -70,6 +70,7 @@ class Module(ABC):
         self.synapses: List = []
         self.synapse_param_names = []
         self.synapse_state_names = []
+        self.synapse_names = []
 
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
@@ -95,6 +96,10 @@ class Module(ABC):
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
+
+    def __dir__(self):
+        base_dir = object.__dir__(self)
+        return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
 
     def _append_params_and_states(self, param_dict, state_dict):
         """Insert the default params of the module (e.g. radius, length).
@@ -413,7 +418,7 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            voltages = channel_nodes.loc[indices, "voltages"].to_numpy()
+            voltages = channel_nodes.loc[indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
             channel_params = {}
@@ -427,7 +432,7 @@ class Module(ABC):
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
 
-    def record(self, state: str = "voltages"):
+    def record(self, state: str = "v"):
         """Insert a recording into the compartment."""
         view = deepcopy(self.nodes)
         view["state"] = state
@@ -525,7 +530,7 @@ class Module(ABC):
         tridiag_solver: str = "stone",
     ):
         """One step of solving the Ordinary Differential Equation."""
-        voltages = u["voltages"]
+        voltages = u["v"]
 
         # Parameters have to go in here.
         u, (v_terms, const_terms) = self._step_channels(
@@ -577,7 +582,7 @@ class Module(ABC):
                 delta_t=delta_t,
             )
 
-        u["voltages"] = new_voltages.flatten(order="C")
+        u["v"] = new_voltages.flatten(order="C")
 
         return u
 
@@ -607,7 +612,7 @@ class Module(ABC):
         params: Dict[str, jnp.ndarray],
     ):
         """One integration step of the channels."""
-        voltages = states["voltages"]
+        voltages = states["v"]
 
         # Update states of the channels.
         for channel in channels:
@@ -655,7 +660,7 @@ class Module(ABC):
 
         This is also updates `state` because the `state` also contains the current.
         """
-        voltages = states["voltages"]
+        voltages = states["v"]
 
         # Compute current through channels.
         voltage_terms = jnp.zeros_like(voltages)
@@ -708,7 +713,7 @@ class Module(ABC):
         `Network` overrides this method (because it actually has synapses), whereas
         `Compartment`, `Branch`, and `Cell` do not override this.
         """
-        voltages = u["voltages"]
+        voltages = u["v"]
         return u, (jnp.zeros_like(voltages), jnp.zeros_like(voltages))
 
     def _synapse_currents(
@@ -891,6 +896,34 @@ class Module(ABC):
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
 
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        self._rotate(degrees=degrees, rotation_axis=rotation_axis, view=self.nodes)
+
+    def _rotate(self, degrees: float, rotation_axis: str, view: pd.DataFrame):
+        degrees = degrees / 180 * np.pi
+        if rotation_axis == "xy":
+            dims = [0, 1]
+        elif rotation_axis == "xz":
+            dims = [0, 2]
+        elif rotation_axis == "yz":
+            dims = [1, 2]
+        else:
+            raise ValueError
+
+        rotation_matrix = np.asarray(
+            [[np.cos(degrees), np.sin(degrees)], [-np.sin(degrees), np.cos(degrees)]]
+        )
+        indizes = set(view["branch_index"].to_numpy().tolist())
+        for i in indizes:
+            rot = np.dot(rotation_matrix, self.xyzr[i][:, dims].T).T
+            self.xyzr[i][:, dims] = rot
+
 
 class View:
     """View of a `Module`."""
@@ -949,13 +982,13 @@ class View:
         assert not inspect.isclass(
             channel
         ), """
-            Channel is a class, but it was not initialized. Use `.insert(Channel())` 
+            Channel is a class, but it was not initialized. Use `.insert(Channel())`
             instead of `.insert(Channel)`.
             """
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._insert(channel, nodes)
 
-    def record(self, state: str = "voltages"):
+    def record(self, state: str = "v"):
         """Record a state."""
         nodes = self.set_global_index_and_index(self.view)
         view = deepcopy(nodes)
@@ -979,9 +1012,14 @@ class View:
         """Set parameters of the pointer."""
         self.pointer._set(key, val, self.view, self.pointer.nodes)
 
-    def make_trainable(self, key: str, init_val: Optional[Union[float, list]] = None):
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
         """Make a parameter trainable."""
-        self.pointer._make_trainable(self.view, key, init_val)
+        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
 
     def add_to_group(self, group_name: str):
         self.pointer._add_to_group(group_name, self.view)
@@ -1016,6 +1054,17 @@ class View:
             assert index == "all"
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
+
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        raise NotImplementedError(
+            "Only entire `jx.Module`s or entire cells within a network can be rotated."
+        )
 
 
 class GroupView(View):

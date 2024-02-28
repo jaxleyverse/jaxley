@@ -81,10 +81,10 @@ def test_record_synaptic_and_membrane_states():
     current = jx.step_current(1.0, 80.0, 0.02, 0.025, 100.0)
     net.cell(0).branch(0).comp(0.0).stimulate(current)
 
-    net.cell(2).branch(0).comp(0.0).record("voltages")
+    net.cell(2).branch(0).comp(0.0).record("v")
     net.GlutamateSynapse(1).record("s")
     net.cell(2).branch(0).comp(0.0).record("HH_m")
-    net.cell(1).branch(0).comp(0.0).record("voltages")
+    net.cell(1).branch(0).comp(0.0).record("v")
     net.TestSynapse(0).record("c")
     net.cell(1).branch(0).comp(0.0).record("HH_m")
 
