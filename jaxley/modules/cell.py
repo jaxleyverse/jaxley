@@ -252,16 +252,15 @@ class CellView(View):
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
 
-        num_pre = len(pre_cell_inds)
-        num_post = len(post_cell_inds)
-        num_connections = np.random.binomial(num_pre * num_post, p)
-
         connections = [[(pre_ind, post_ind) for pre_ind in pre_cell_inds]  for post_ind in post_cell_inds]
-        connections = sum(connections, [])
-        if p != 1:
-            connections = np.random.choice(connections, size=num_connections, replace=False)
+        connections = np.array(sum(connections, []))
+        num_connections = np.random.binomial(connections.shape[0], p)
 
-        for pre_ind, post_ind in zip(connections):
+        if p != 1:
+            idcs = np.random.choice(range(num_connections), size=num_connections, replace=False)
+            connections = connections[idcs]
+
+        for pre_ind, post_ind in connections:
             num_branches_post = self.pointer.nbranches_per_cell[post_ind]
             rand_branch = np.random.randint(0, num_branches_post)
             rand_loc = np.random.rand()
