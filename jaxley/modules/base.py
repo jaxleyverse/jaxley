@@ -891,6 +891,10 @@ class Module(ABC):
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
 
+    def copy(self):
+        """Return a copy of the module."""
+        return deepcopy(self)
+
 
 class View:
     """View of a `Module`."""
