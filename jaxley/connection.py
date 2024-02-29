@@ -69,3 +69,19 @@ class ConnectivityBuilder:
             rand_loc = np.random.rand()
             conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))
         return conns
+
+    def from_adj_mat(self, pre_cell_inds, post_cell_inds, adj_mat):        
+        """Returns a list of `Connection`s based on an adjacency matrix.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
+        pre_inds, post_inds = np.where(adj_mat > 0)
+        
+        conns = []
+        for pre_ind in np.array(pre_cell_inds)[pre_inds]:
+            for post_ind in np.array(post_cell_inds)[post_inds]:
+                num_branches_post = self.nbranches_per_submodule[post_ind]
+                rand_branch = np.random.randint(0, num_branches_post)
+                rand_loc = np.random.rand()
+                conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))
+        return conns
