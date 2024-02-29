@@ -257,9 +257,9 @@ class CellView(View):
             for post_ind in post_cell_inds
         ]
         connections = np.array(sum(connections, []))
-        num_connections = np.random.binomial(connections.shape[0], p)
 
         if p != 1:
+            num_connections = np.random.binomial(connections.shape[0], p)
             idcs = np.random.choice(
                 range(num_connections), size=num_connections, replace=False
             )
