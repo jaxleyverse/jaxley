@@ -249,7 +249,6 @@ class CellView(View):
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
-        p = 1 - sparsity
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
 
@@ -259,8 +258,8 @@ class CellView(View):
         ]
         connections = np.array(sum(connections, []))
 
-        if p != 0:
-            num_connections = np.random.binomial(connections.shape[0], p)
+        if sparsity != 0:
+            num_connections = np.random.binomial(connections.shape[0], 1 - sparsity)
             idcs = np.random.choice(
                 range(num_connections), size=num_connections, replace=False
             )
