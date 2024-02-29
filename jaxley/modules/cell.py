@@ -251,7 +251,7 @@ class CellView(View):
         """
         pre_inds = np.unique(self.view["cell_index"].to_numpy())
         post_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-        total = len(pre_inds)*len(post_inds)
+        total = len(pre_inds) * len(post_inds)
 
         if sparsity != 0:
             num_connections = np.random.binomial(total, 1 - sparsity)
@@ -267,7 +267,7 @@ class CellView(View):
             connection_idcs = range(total)
 
         connections = (divmod(i, len(post_inds)) for i in connection_idcs)
-        for i,j in connections:
+        for i, j in connections:
             pre_ind, post_ind = pre_inds[i], post_inds[j]
             num_branches_post = self.pointer.nbranches_per_cell[post_ind]
             branch_pre = 0
