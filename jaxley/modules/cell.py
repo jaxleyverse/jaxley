@@ -244,11 +244,12 @@ class CellView(View):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
 
-    def connect(self, post_cell_view, synapse_type, p=1):
-        """Builds a (sparse), randomly connected layer, with connection probability p.
+    def connect(self, post_cell_view, synapse_type, sparsity=0):
+        """Builds a (sparse), randomly connected layer.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
+        p = 1 - sparsity
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
 
@@ -258,7 +259,7 @@ class CellView(View):
         ]
         connections = np.array(sum(connections, []))
 
-        if p != 1:
+        if p != 0:
             num_connections = np.random.binomial(connections.shape[0], p)
             idcs = np.random.choice(
                 range(num_connections), size=num_connections, replace=False

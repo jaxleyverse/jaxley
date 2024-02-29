@@ -27,13 +27,13 @@ def test_network_grad():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.connect(post, GlutamateSynapse(), p=1)
-    pre.connect(post, TestSynapse(), p=1)
+    pre.connect(post, GlutamateSynapse(), sparsity=0)
+    pre.connect(post, TestSynapse(), sparsity=0)
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.connect(post, GlutamateSynapse(), p=1)
-    pre.connect(post, TestSynapse(), p=1)
+    pre.connect(post, GlutamateSynapse(), sparsity=0)
+    pre.connect(post, TestSynapse(), sparsity=0)
 
     net.set("gS", 0.44)
     net.set("gC", 0.62)

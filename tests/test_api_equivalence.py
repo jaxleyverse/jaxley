@@ -107,7 +107,7 @@ def test_api_equivalence_layers():
     net2.cell([0, 1, 2, 3, 4]).connect(
         net2.cell([5, 6, 7, 8, 9]), GlutamateSynapse(), p=1
     )
-    net2.cell([5, 6, 7, 8, 9]).connect(net2.cell(10), GlutamateSynapse(), p=1)
+    net2.cell([5, 6, 7, 8, 9]).connect(net2.cell(10), GlutamateSynapse(), sparsity=0)
 
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     for net in [net1, net2]:
