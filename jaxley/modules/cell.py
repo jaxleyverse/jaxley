@@ -251,20 +251,17 @@ class CellView(View):
         """
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-
-        connections = [
-            [(pre_ind, post_ind) for pre_ind in pre_cell_inds]
-            for post_ind in post_cell_inds
-        ]
-        connections = np.array(sum(connections, []))
+        shape = len(pre_cell_inds), len(post_cell_inds)
+        total_connections = np.prod(shape)
 
         if sparsity != 0:
-            num_connections = np.random.binomial(connections.shape[0], 1 - sparsity)
-            idcs = np.random.choice(
-                range(num_connections), size=num_connections, replace=False
-            )
-            connections = connections[idcs]
+            num_connections = np.random.binomial(total_connections, 1 - sparsity)                
+            connection_idcs = np.random.randint(total_connections, size=num_connections)
+            # TODO: enforce unique samples?.
+        else:
+            connection_idcs = range(total_connections)
 
+        connections = (divmod(i, shape[1]) for i in connection_idcs)
         for pre_ind, post_ind in connections:
             num_branches_post = self.pointer.nbranches_per_cell[post_ind]
             branch_pre = 0
