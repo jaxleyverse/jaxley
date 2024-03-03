@@ -8,6 +8,7 @@ from jaxley.synapses.synapse import Synapse
 class IonotropicSynapse(Synapse):
     """
     Compute synaptic current and update synapse state for a generic ionotropic synapse.
+
     The synapse state "s" is the probability that a postsynaptic receptor channel is
     open, and this depends on the amount of neurotransmitter released, which is in turn
     dependent on the presynaptic voltage.
