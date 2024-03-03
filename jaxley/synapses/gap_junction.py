@@ -7,7 +7,10 @@ from jaxley.synapses.synapse import Synapse
 
 class GapJunction(Synapse):
     """
-    Compute synaptic current and update synapse state for Glutamate receptor.
+    Compute synaptic current for a gap junction.
+
+    The synaptic parameters are:
+        - gE: the conductance across the gap junction
     """
 
     synapse_params = {"gE": 0.5}

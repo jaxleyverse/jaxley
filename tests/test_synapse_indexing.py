@@ -10,7 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse, GapJunction
+from jaxley.synapses import IonotropicSynapse, TanhRateSynapse, TestSynapse, GapJunction
 
 
 def test_multiparameter_setting():
@@ -49,6 +49,10 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
         full_syn_view = net.TestSynapse
         single_syn_view = net.TestSynapse(single_idx)
         double_syn_view = net.TestSynapse(double_idxs)
+    if synapse_name == "GapJunction":
+        full_syn_view = net.GapJunction
+        single_syn_view = net.GapJunction(single_idx)
+        double_syn_view = net.GapJunction(double_idxs)
     return full_syn_view, single_syn_view, double_syn_view
 
 
