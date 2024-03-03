@@ -9,7 +9,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse, Synapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 
 def test_set_and_querying_params_one_type():
@@ -23,17 +23,17 @@ def test_set_and_querying_params_one_type():
         for post_ind in [2, 3]:
             pre = net.cell(pre_ind).branch(0).comp(0.0)
             post = net.cell(post_ind).branch(0).comp(0.0)
-            pre.connect(post, GlutamateSynapse())
+            pre.connect(post, IonotropicSynapse())
 
     # Get the synapse parameters to test setting
-    syn_params = list(GlutamateSynapse().synapse_params.keys())
+    syn_params = list(IonotropicSynapse().synapse_params.keys())
     for p in syn_params:
         net.set(p, 0.15)
         assert np.all(net.edges[p].to_numpy() == 0.15)
 
-    full_syn_view = net.GlutamateSynapse
-    single_syn_view = net.GlutamateSynapse(1)
-    double_syn_view = net.GlutamateSynapse([2, 3])
+    full_syn_view = net.IonotropicSynapse
+    single_syn_view = net.IonotropicSynapse(1)
+    double_syn_view = net.IonotropicSynapse([2, 3])
 
     # There shouldn't be too many synapse_params otherwise this will take a long time
     for p in syn_params:

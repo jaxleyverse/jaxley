@@ -13,7 +13,7 @@ from jax import value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
 def test_network_grad():
@@ -27,17 +27,17 @@ def test_network_grad():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.fully_connect(post, GlutamateSynapse())
+    pre.fully_connect(post, IonotropicSynapse())
     pre.fully_connect(post, TestSynapse())
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.fully_connect(post, GlutamateSynapse())
+    pre.fully_connect(post, IonotropicSynapse())
     pre.fully_connect(post, TestSynapse())
 
     net.set("gS", 0.44)
     net.set("gC", 0.62)
-    net.GlutamateSynapse([0, 2, 4]).set("gS", 0.32)
+    net.IonotropicSynapse([0, 2, 4]).set("gS", 0.32)
     net.TestSynapse([0, 3, 5]).set("gC", 0.24)
 
     current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
@@ -53,7 +53,7 @@ def test_network_grad():
     net.cell([0, 1, 4]).make_trainable("HH_gK")
     net.cell("all").make_trainable("HH_gLeak")
 
-    net.GlutamateSynapse.make_trainable("gS")
+    net.IonotropicSynapse.make_trainable("gS")
     net.TestSynapse([0, 2]).make_trainable("gC")
 
     params = net.get_parameters()

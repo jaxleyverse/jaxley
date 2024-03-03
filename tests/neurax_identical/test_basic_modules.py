@@ -12,7 +12,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
 def test_compartment():
@@ -140,7 +140,7 @@ def test_net():
     cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     connectivities = [
-        jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
+        jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
     network = jx.Network([cell1, cell2], connectivities)
     network.insert(HH())
@@ -200,17 +200,17 @@ def test_complex_net():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.fully_connect(post, GlutamateSynapse())
+    pre.fully_connect(post, IonotropicSynapse())
     pre.fully_connect(post, TestSynapse())
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.fully_connect(post, GlutamateSynapse())
+    pre.fully_connect(post, IonotropicSynapse())
     pre.fully_connect(post, TestSynapse())
 
     net.set("gS", 0.44)
     net.set("gC", 0.62)
-    net.GlutamateSynapse([0, 2, 4]).set("gS", 0.32)
+    net.IonotropicSynapse([0, 2, 4]).set("gS", 0.32)
     net.TestSynapse([0, 3, 5]).set("gC", 0.24)
 
     current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)

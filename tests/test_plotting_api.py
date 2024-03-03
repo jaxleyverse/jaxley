@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import jaxley as jx
-from jaxley.synapses import GlutamateSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 def test_cell():
@@ -38,7 +38,7 @@ def test_network():
 
     conns = [
         jx.Connectivity(
-            GlutamateSynapse(),
+            IonotropicSynapse(),
             [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 2, 0, 0.0)],
         )
     ]
@@ -75,7 +75,7 @@ def test_vis_networks_built_from_scartch():
 
     conns = [
         jx.Connectivity(
-            GlutamateSynapse(),
+            IonotropicSynapse(),
             [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 1, 2, 0.0)],
         )
     ]
@@ -113,7 +113,7 @@ def test_mixed_network():
 
     conns = [
         jx.Connectivity(
-            GlutamateSynapse(),
+            IonotropicSynapse(),
             [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 1, 1, 0.0)],
         )
     ]
