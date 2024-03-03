@@ -12,7 +12,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import GlutamateSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 def test_swc_cell():
@@ -62,7 +62,7 @@ def test_swc_net():
     cell2 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
 
     connectivities = [
-        jx.Connectivity(GlutamateSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
+        jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
     ]
     network = jx.Network([cell1, cell2], connectivities)
     network.insert(HH())

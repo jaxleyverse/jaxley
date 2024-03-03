@@ -8,7 +8,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
-from jaxley.synapses import GlutamateSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
 def test_make_trainable():
@@ -74,7 +74,7 @@ def test_make_trainable_network():
 
     conns = [
         jx.Connectivity(
-            GlutamateSynapse(),
+            IonotropicSynapse(),
             [
                 jx.Connection(0, 0, 0.0, 1, 0, 0.0),
             ],
@@ -91,7 +91,7 @@ def test_make_trainable_network():
     cell.branch([0, 1]).make_trainable("HH_gNa")
 
     cell.get_parameters()
-    net.GlutamateSynapse.set("gS", 0.1)
+    net.IonotropicSynapse.set("gS", 0.1)
     assert cell.num_trainable_params == 8  # `set()` is ignored.
 
 
@@ -103,12 +103,12 @@ def test_diverse_synapse_types():
 
     net = jx.Network([cell for _ in range(4)])
     for pre_ind in [0, 1]:
-        for post_ind, syn in zip([2, 3], [GlutamateSynapse(), TestSynapse()]):
+        for post_ind, syn in zip([2, 3], [IonotropicSynapse(), TestSynapse()]):
             pre = net.cell(pre_ind).branch(0).comp(0.0)
             post = net.cell(post_ind).branch(0).comp(0.0)
             pre.connect(post, syn)
 
-    net.GlutamateSynapse.make_trainable("gS")
+    net.IonotropicSynapse.make_trainable("gS")
     net.TestSynapse([0, 1]).make_trainable("gC")
     assert net.num_trainable_params == 3
 
@@ -130,7 +130,7 @@ def test_diverse_synapse_types():
     assert np.all(all_parameters["gC"][1] == 4.4)
 
     # Add another trainable parameter and test again.
-    net.GlutamateSynapse(1).make_trainable("gS")
+    net.IonotropicSynapse(1).make_trainable("gS")
     assert net.num_trainable_params == 4
 
     params = net.get_parameters()
