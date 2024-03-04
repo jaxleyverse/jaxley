@@ -24,8 +24,6 @@ def plot_morph(
         _, ax = plt.subplots(1, 1, figsize=(3, 3))
     for coords_of_branch in xyzr:
         coords_to_plot = coords_of_branch[:, dims]
-        x_coords = coords_to_plot[:, 0]
-        y_coords = coords_to_plot[:, 1]
 
         if "line" in type.lower():
             _ = ax.plot(
