@@ -22,11 +22,11 @@ def plot_morph(
     """
 
     if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(3, 3)) 
-    col = [col]*len(xyzr) if len(col) < len(xyzr) else col
-    
+        _, ax = plt.subplots(1, 1, figsize=(3, 3))
+    col = [col] * len(xyzr) if len(col) < len(xyzr) else col
+
     for coords_of_branch, c in zip(xyzr, col):
-        x1,x2 = coords_of_branch[:, dims].T
+        x1, x2 = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
             _ = ax.plot(x1, x2, c=c, **morph_plot_kwargs)
