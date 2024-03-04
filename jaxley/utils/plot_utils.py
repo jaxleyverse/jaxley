@@ -1,6 +1,7 @@
 from typing import Dict
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def plot_morph(
@@ -21,18 +22,16 @@ def plot_morph(
     """
 
     if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(3, 3))
-    for coords_of_branch in xyzr:
-        coords_to_plot = coords_of_branch[:, dims]
+        _, ax = plt.subplots(1, 1, figsize=(3, 3)) 
+    col = [col]*len(xyzr) if isinstance(col, str) else col
+    col = [col]*len(xyzr) if np.ndim(col) == 1 or len(col) == 1 else col
+    for coords_of_branch, c in zip(xyzr, col):
+        x1,x2 = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
-            _ = ax.plot(
-                coords_to_plot[:, 0], coords_to_plot[:, 1], c=col, **morph_plot_kwargs
-            )
+            _ = ax.plot(x1, x2, c=c, **morph_plot_kwargs)
         elif "scatter" in type.lower():
-            _ = ax.scatter(
-                coords_to_plot[:, 0], coords_to_plot[:, 1], c=col, **morph_plot_kwargs
-            )
+            _ = ax.scatter(x1, x2, c=c, **morph_plot_kwargs)
         else:
             raise NotImplementedError
 
