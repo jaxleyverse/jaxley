@@ -8,7 +8,7 @@ def plot_morph(
     dims=(0, 1),
     col="k",
     ax=None,
-    type: str = "plot",
+    type: str = "line",
     morph_plot_kwargs: Dict = None,
 ):
     """Plot morphology.
@@ -16,7 +16,7 @@ def plot_morph(
     Args:
         dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
             two of them.
-        type: Either `plot` or `scatter`.
+        type: Either `line` or `scatter`.
         col: The color for all branches.
     """
 
@@ -27,11 +27,11 @@ def plot_morph(
         x_coords = coords_to_plot[:, 0]
         y_coords = coords_to_plot[:, 1]
 
-        if type == "plot":
+        if "line" in type.lower():
             _ = ax.plot(
                 coords_to_plot[:, 0], coords_to_plot[:, 1], c=col, **morph_plot_kwargs
             )
-        elif type == "scatter":
+        elif "scatter" in type.lower():
             _ = ax.scatter(
                 coords_to_plot[:, 0], coords_to_plot[:, 1], c=col, **morph_plot_kwargs
             )
