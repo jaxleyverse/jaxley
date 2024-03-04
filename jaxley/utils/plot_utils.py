@@ -24,7 +24,9 @@ def plot_morph(
 
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(3, 3))
-    col = [col] * len(xyzr) if len(col) < len(xyzr) else col
+    is_str = isinstance(col, str)
+    is_rgb = isinstance(col, (list, np.ndarray)) and len(col) in [3, 4]
+    col = [col] * len(xyzr) if is_str or is_rgb else col
 
     for coords_of_branch, c in zip(xyzr, col):
         x1, x2 = coords_of_branch[:, dims].T
