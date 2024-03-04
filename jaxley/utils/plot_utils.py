@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +7,7 @@ import numpy as np
 def plot_morph(
     xyzr,
     dims=(0, 1),
-    col="k",
+    col: Union[str, List] = "k",
     ax=None,
     type: str = "line",
     morph_plot_kwargs: Dict = None,
@@ -18,7 +18,8 @@ def plot_morph(
         dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
             two of them.
         type: Either `line` or `scatter`.
-        col: The color for all branches.
+        col: The color for branches / nodes. Accepts single color, one color per node
+            or one color per branch.
     """
 
     if ax is None:

@@ -752,7 +752,7 @@ class Module(ABC):
     def vis(
         self,
         ax=None,
-        col: str = "k",
+        col: Union[str, List] = "k",
         dims: Tuple[int] = (0, 1),
         type="line",
         morph_plot_kwargs: Dict = {},
@@ -761,7 +761,8 @@ class Module(ABC):
 
         Args:
             ax: An axis into which to plot.
-            col: The color for all branches.
+            col: The color for branches / nodes. Accepts single color, one color per node
+            or one color per branch.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
