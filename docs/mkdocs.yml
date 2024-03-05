@@ -40,23 +40,23 @@ markdown_extensions:
       toc_depth: 3
   - markdown_include.include:
       base_path: ../
-  - pymdowjx.arithmatex:
+  - pymdownx.arithmatex:
       generic: true
-  - pymdowjx.betterem:
+  - pymdownx.betterem:
       smart_enable: all
-  - pymdowjx.caret
-  - pymdowjx.critic
-  - pymdowjx.details
-  - pymdowjx.emoji:
-      emoji_generator: !!python/name:pymdowjx.emoji.to_svg
-  - pymdowjx.inlinehilite
-  - pymdowjx.magiclink
-  - pymdowjx.mark
-  - pymdowjx.smartsymbols
-  - pymdowjx.superfences
-  - pymdowjx.tasklist:
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tasklist:
       custom_checkbox: true
-  - pymdowjx.tilde
+  - pymdownx.tilde
 
 
 plugins:
