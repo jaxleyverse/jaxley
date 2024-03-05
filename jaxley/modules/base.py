@@ -1041,6 +1041,7 @@ class View:
             col=col,
             dims=dims,
             view=nodes,
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
