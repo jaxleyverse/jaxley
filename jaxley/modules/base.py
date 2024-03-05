@@ -97,6 +97,8 @@ class Module(ABC):
         def seg_interp(x, nseg):
             if nseg == 1:
                 return x[0, :]
+            elif nseg == x.shape[0]:
+                return x
             x1, x2 = x[[0, -1], :]
             H = (x2 - x1) / (nseg - 1)
             return np.array([x1 + H * i for i in range(nseg)])
