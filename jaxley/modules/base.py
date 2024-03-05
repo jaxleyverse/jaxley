@@ -1029,9 +1029,10 @@ class View:
 
     def vis(
         self,
-        ax=None,
-        col="k",
-        dims=(0, 1),
+        ax: Optional[Axes] = None,
+        col: str = "k",
+        dims: Tuple[int] = (0, 1),
+        type: str = "line",
         morph_plot_kwargs: Dict = {},
     ):
         nodes = self.set_global_index_and_index(self.view)
