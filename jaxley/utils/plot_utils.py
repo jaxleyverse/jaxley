@@ -18,8 +18,7 @@ def plot_morph(
         dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
             two of them.
         type: Either `line` or `scatter`.
-        col: The color for branches / nodes. Accepts single color, one color per node
-            or one color per branch.
+        col: The color for all branches.
     """
 
     if ax is None:

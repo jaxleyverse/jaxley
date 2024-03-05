@@ -762,8 +762,7 @@ class Module(ABC):
 
         Args:
             ax: An axis into which to plot.
-            col: The color for branches / nodes. Accepts single color, one color per node
-            or one color per branch.
+            col: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
