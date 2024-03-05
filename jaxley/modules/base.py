@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
@@ -751,10 +752,10 @@ class Module(ABC):
 
     def vis(
         self,
-        ax=None,
-        col: Union[str, List] = "k",
+        ax: Optional[Axes] = None,
+        col: str = "k",
         dims: Tuple[int] = (0, 1),
-        type="line",
+        type: str = "line",
         morph_plot_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
