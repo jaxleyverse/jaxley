@@ -464,15 +464,17 @@ class Module(ABC):
         self._stimulate(current, self.nodes)
 
     def _stimulate(self, current, view):
-        assert (
-            len(view) == 1
-        ), "Can only stimulate compartments, not branches, cells, or networks."
-        if self.currents is not None:
-            self.currents = jnp.concatenate(
-                [self.currents, jnp.expand_dims(current, axis=0)]
+        print(f"Added {len(view)} stimuli. See `.currents` for details.")
+        if len(view) == len(self.nodes):
+            warnings.warn(
+                "Stimulating all compartments. If this was not intended, run `delete_stimuli`."
             )
+        is_multiple = len(view) != current.shape[0] and current.ndim == 2
+        current = current if is_multiple else jnp.stack([current] * len(view))
+        if self.currents is not None:
+            self.currents = jnp.concatenate([self.currents, current])
         else:
-            self.currents = jnp.expand_dims(current, axis=0)
+            self.currents = current
         self.current_inds = pd.concat([self.current_inds, view])
 
     def data_stimulate(
