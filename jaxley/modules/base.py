@@ -929,6 +929,13 @@ class Module(ABC):
             rot = np.dot(rotation_matrix, self.xyzr[i][:, dims].T).T
             self.xyzr[i][:, dims] = rot
 
+    def shape(self):
+        """Return the shape of the module."""
+        idcs = self.nodes[["comp_index", "branch_index", "cell_index"]]
+        unique_idcs = idcs.nunique()
+        unique_idcs = [i for i in unique_idcs if i > 1]
+        return tuple(reversed(unique_idcs))
+
 
 class View:
     """View of a `Module`."""
@@ -1092,6 +1099,12 @@ class View:
         raise NotImplementedError(
             "Only entire `jx.Module`s or entire cells within a network can be rotated."
         )
+
+    def shape(self):
+        idcs = self.view[["comp_index", "branch_index", "cell_index"]]
+        unique_idcs = idcs.nunique()
+        unique_idcs = [i for i in unique_idcs if i > 1]
+        return tuple(reversed(unique_idcs))
 
 
 class GroupView(View):
