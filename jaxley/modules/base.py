@@ -1062,16 +1062,19 @@ class View:
             self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
-    def __getitem__(self, index):
-        lvl_names = ["comp", "branch", "cell"]
+    def at(self):
         view_name = self.__class__.__name__
         name = view_name.lower().replace("view", "")
         name = "comp" if name == "compartment" else name
-        lvl = lvl_names.index(name)
+        return name
+
+    def __getitem__(self, index):
+        view_order = ["comp", "branch", "cell", "synapse"]
+        name = self.at()
+        lvl = view_order.index(name)
         index_by = f"{name}_index"
         if isinstance(index, tuple):
-            index_by = tuple(f"{lvl_names[lvl-i]}_index" for i in range(len(index)))
-            index_by = index_by
+            index_by = tuple(f"{view_order[lvl-i]}_index" for i in range(len(index)))
         return self.adjust_view(index_by, index)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
