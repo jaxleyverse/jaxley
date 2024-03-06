@@ -129,6 +129,9 @@ class Branch(Module):
     def __getitem__(self, index):
         return self.__getattr__("comp")[index]
 
+    def __len__(self):
+        return self.nseg
+
 
 class BranchView(View):
     def __init__(self, pointer, view):
