@@ -1,4 +1,5 @@
 import inspect
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from math import pi
@@ -441,7 +442,12 @@ class Module(ABC):
         self._record(recording_view)
 
     def _record(self, view):
-        self.recordings = pd.concat([self.recordings, view])
+        print(f"Added {len(view)} recordings. See `.recordings` for details.")
+        if len(view) == len(self.nodes):
+            warnings.warn(
+                "Recording all compartments. If this was not intended, run `delete_recordings`."
+            )
+        self.recordings = pd.concat([self.recordings, view], ignore_index=True)
 
     def delete_recordings(self):
         """Removes all recordings from the module."""
