@@ -1066,6 +1066,7 @@ class View:
         lvl_names = ["comp", "branch", "cell"]
         view_name = self.__class__.__name__
         name = view_name.lower().replace("view", "")
+        name = "comp" if name == "compartment" else name
         lvl = lvl_names.index(name)
         index_by = f"{name}_index"
         if isinstance(index, tuple):

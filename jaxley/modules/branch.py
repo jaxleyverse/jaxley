@@ -126,6 +126,9 @@ class Branch(Module):
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
+    def __getitem__(self, index):
+        return self.__getattr__("comp")[index]
+
 
 class BranchView(View):
     def __init__(self, pointer, view):
