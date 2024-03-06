@@ -441,9 +441,6 @@ class Module(ABC):
         self._record(recording_view)
 
     def _record(self, view):
-        assert (
-            len(view) == 1
-        ), "Can only record from compartments, not branches, cells, or networks."
         self.recordings = pd.concat([self.recordings, view])
 
     def delete_recordings(self):
