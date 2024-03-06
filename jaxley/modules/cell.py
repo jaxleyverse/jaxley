@@ -231,6 +231,7 @@ class CellView(View):
     def __init__(self, pointer, view):
         view = view.assign(controlled_by_param=view.cell_index)
         super().__init__(pointer, view)
+        self.level = "cell"
 
     def __call__(self, index: float):
         if index == "all":

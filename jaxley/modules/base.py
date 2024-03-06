@@ -932,6 +932,7 @@ class View:
         self.pointer = pointer
         self.view = view
         self.allow_make_trainable = True
+        self.level = "base"
 
     def __repr__(self):
         return f"{type(self).__name__}. Use `.show()` for details."
@@ -1044,16 +1045,22 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move(x, y, z, nodes)
 
-    def adjust_view(self, key: str, index: float):
+    def adjust_view(self, key: str, index: Union[int, str, list, range, slice]):
         """Update view."""
         if isinstance(index, int) or isinstance(index, np.int64):
             self.view = self.view[self.view[key] == index]
-        elif isinstance(index, list):
+        elif isinstance(index, list) or isinstance(index, range):
+            self.view = self.view[self.view[key].isin(index)]
+        elif isinstance(index, slice):
+            index = list(range(self.view[key].max()))[index]
             self.view = self.view[self.view[key].isin(index)]
         else:
             assert index == "all"
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
+
+    def __getitem__(self, index):
+        return self.adjust_view(f"{self.level}_index", index)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.

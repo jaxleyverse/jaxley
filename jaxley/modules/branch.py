@@ -131,6 +131,7 @@ class BranchView(View):
     def __init__(self, pointer, view):
         view = view.assign(controlled_by_param=view.branch_index)
         super().__init__(pointer, view)
+        self.level = "branch"
 
     def __call__(self, index: float):
         self.allow_make_trainable = True
