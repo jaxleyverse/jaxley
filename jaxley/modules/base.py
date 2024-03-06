@@ -932,7 +932,6 @@ class View:
         self.pointer = pointer
         self.view = view
         self.allow_make_trainable = True
-        self.level = "base"
 
     def __repr__(self):
         return f"{type(self).__name__}. Use `.show()` for details."
@@ -1054,13 +1053,25 @@ class View:
         elif isinstance(index, slice):
             index = list(range(self.view[key].max()))[index]
             self.view = self.view[self.view[key].isin(index)]
+        elif isinstance(index, tuple):
+            for k, i in zip(key, index):
+                self.adjust_view(k, i)
         else:
             assert index == "all"
-        self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
+        if not self.view.empty and not isinstance(index, tuple):
+            self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
     def __getitem__(self, index):
-        return self.adjust_view(f"{self.level}_index", index)
+        lvl_names = ["comp", "branch", "cell"]
+        view_name = self.__class__.__name__
+        name = view_name.lower().replace("view", "")
+        lvl = lvl_names.index(name)
+        index_by = f"{name}_index"
+        if isinstance(index, tuple):
+            index_by = tuple(f"{lvl_names[lvl-i]}_index" for i in range(len(index)))
+            index_by = index_by
+        return self.adjust_view(index_by, index)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.

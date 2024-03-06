@@ -60,7 +60,6 @@ class CompartmentView(View):
     def __init__(self, pointer, view):
         view = view.assign(controlled_by_param=view.comp_index)
         super().__init__(pointer, view)
-        self.level = "comp"
 
     def __call__(self, loc: float):
         if loc != "all":
