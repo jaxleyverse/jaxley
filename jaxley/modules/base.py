@@ -18,6 +18,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
+    interpolate_xyz,
     loc_of_index,
 )
 from jaxley.utils.plot_utils import plot_morph
@@ -808,20 +809,10 @@ class Module(ABC):
 
         comp_fraction = loc_of_index(comp_ind, self.nseg)
         coords = self.xyzr[branch_ind]
-
-        # Perform a linear interpolation between coordinates to get the location.
-        interp_loc_x = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 0]
-        )
-        interp_loc_y = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 1]
-        )
-        interp_loc_z = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 2]
-        )
+        interpolated_xyz = interpolate_xyz(comp_fraction, coords)
 
         ax = plot_morph(
-            np.asarray([[[interp_loc_x, interp_loc_y, interp_loc_z]]]),
+            np.asarray([[interpolated_xyz]]),
             dims=dims,
             col=col,
             ax=ax,

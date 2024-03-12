@@ -171,3 +171,11 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     midpoint_r_a = 0.5 * (r_a1 + r_a2)
     return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
     # return midpoint_radius ** 2 / 2.0 / midpoint_axial_resistivity / rad1 / dx ** 2
+
+
+def interpolate_xyz(loc: float, coords: np.ndarray):
+    """Perform a linear interpolation between xyz-coordinates."""
+    interp_loc_x = np.interp(loc, np.linspace(0, 1, len(coords)), coords[:, 0])
+    interp_loc_y = np.interp(loc, np.linspace(0, 1, len(coords)), coords[:, 1])
+    interp_loc_z = np.interp(loc, np.linspace(0, 1, len(coords)), coords[:, 2])
+    return np.stack([interp_loc_x, interp_loc_y, interp_loc_z])
