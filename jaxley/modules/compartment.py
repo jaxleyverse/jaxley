@@ -11,9 +11,10 @@ from jaxley.utils.cell_utils import index_of_loc, loc_of_index
 
 class Compartment(Module):
     compartment_params: Dict = {
-        "length": 10.0,
-        "radius": 1.0,
-        "axial_resistivity": 5_000.0,
+        "length": 10.0,  # um
+        "radius": 1.0,  # um
+        "axial_resistivity": 5_000.0,  # ohm cm
+        "capacitance": 1.0,  # uF/cm^2
     }
     compartment_states: Dict = {"v": -70.0}
 

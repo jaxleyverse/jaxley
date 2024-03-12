@@ -48,6 +48,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     comp.set("HH_h", 0.488947681848153)
     comp.set("HH_n", 0.3644787002343737)
     comp.set("v", -62.0)
+    comp.set("capacitance", 5.0)
 
     comp.stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
     comp.record()
@@ -68,6 +69,7 @@ def _run_neuron(i_delay, i_dur, i_amp, dt, t_max):
     comp.Ra = 1_000.0
     comp.L = 10.0
     comp.diam = 20.0
+    comp.cm = 5.0
 
     comp.insert("hh")
     comp.gnabar_hh = 0.120  # S/cm2
