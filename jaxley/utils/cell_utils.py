@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 import numpy as np
+from jax import vmap
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
@@ -174,8 +175,15 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
 
 
 def interpolate_xyz(loc: float, coords: np.ndarray):
-    """Perform a linear interpolation between xyz-coordinates."""
-    interp_loc_x = np.interp(loc, np.linspace(0, 1, len(coords)), coords[:, 0])
-    interp_loc_y = np.interp(loc, np.linspace(0, 1, len(coords)), coords[:, 1])
-    interp_loc_z = np.interp(loc, np.linspace(0, 1, len(coords)), coords[:, 2])
-    return np.stack([interp_loc_x, interp_loc_y, interp_loc_z])
+    """Perform a linear interpolation between xyz-coordinates.
+
+    Args:
+        loc: The location in [0,1] along the branch.
+        coords: Array containing the reconstructed xyzr points of the branch.
+
+    Return:
+        Interpolated xyz coordinate at `loc`, shape `(3,).
+    """
+    return vmap(lambda x: jnp.interp(loc, jnp.linspace(0, 1, len(x)), x), in_axes=(1,))(
+        coords[:, :3]
+    )
