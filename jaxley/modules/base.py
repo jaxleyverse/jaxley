@@ -858,9 +858,12 @@ class Module(ABC):
                 if parents[b] > -1:
                     start_point = endpoints[parents[b]]
                     num_children_of_parent = num_children[parents[b]]
-                    y_offset = (
-                        ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
-                    ) * y_offset_multiplier[levels[b]]
+                    if num_children_of_parent > 1:
+                        y_offset = (
+                            ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                        ) * y_offset_multiplier[levels[b]]
+                    else:
+                        y_offset = 0.0
                 else:
                     start_point = [0, 0, 0]
                     y_offset = 0.0
