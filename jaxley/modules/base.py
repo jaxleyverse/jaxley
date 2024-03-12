@@ -375,7 +375,7 @@ class Module(ABC):
         in `trainable_params()`. This function is run within `jx.integrate()`.
         """
         params = {}
-        for key in ["radius", "length", "axial_resistivity"]:
+        for key in ["radius", "length", "axial_resistivity", "capacitance"]:
             params[key] = self.jaxnodes[key]
 
         for channel in self.channels:
@@ -552,11 +552,12 @@ class Module(ABC):
         )
 
         # Voltage steps.
+        cm = params["capacitance"]  # Abbreviation.
         if solver == "bwd_euler":
             new_voltages = step_voltage_implicit(
                 voltages=voltages,
-                voltage_terms=v_terms + syn_v_terms,
-                constant_terms=const_terms + i_ext + syn_const_terms,
+                voltage_terms=(v_terms + syn_v_terms) / cm,
+                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
                 summed_coupling_conds=params["summed_coupling_conds"],
@@ -571,8 +572,8 @@ class Module(ABC):
         else:
             new_voltages = step_voltage_explicit(
                 voltages,
-                v_terms + syn_v_terms,
-                const_terms + i_ext + syn_const_terms,
+                (v_terms + syn_v_terms) / cm,
+                (const_terms + i_ext + syn_const_terms) / cm,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
                 branch_cond_fwd=params["branch_conds_fwd"],
