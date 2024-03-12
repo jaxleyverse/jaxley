@@ -867,7 +867,7 @@ class Module(ABC):
                         ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
                     ) * y_offset_multiplier[levels[b]]
                 else:
-                    start_point = [0, 0]
+                    start_point = [0, 0, 0]
                     y_offset = 0.0
 
                 len_of_path = np.sqrt(y_offset**2 + 1.0)
@@ -875,10 +875,11 @@ class Module(ABC):
                 end_point = [
                     start_point[0] + branch_lens[b] / len_of_path * 1.0,
                     start_point[1] + branch_lens[b] / len_of_path * y_offset,
+                    start_point[2],
                 ]
                 endpoints.append(end_point)
 
-                self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
+                self.xyzr[b][:, :3] = np.asarray([start_point, end_point])
             else:
                 # Dummy to keey the index `endpoints[parent[b]]` above working.
                 endpoints.append(np.zeros((2,)))
