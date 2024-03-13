@@ -281,6 +281,16 @@ class CellView(View):
             )
             pre.connect(post, synapse_type)
 
+    def _vectorized_connect(self, connections, synapse_type, sparsity=0):
+        """Builds a (sparse), randomly connected layer.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
+
+        # pre_cell_idx, pre_branch_idx, pre_comp_idx, post_cell_idx, post_branch_idx, post_comp_idx, type, params
+        synapse_type.synapse_params, synapse_type.synapse_states
+            
+
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
 
