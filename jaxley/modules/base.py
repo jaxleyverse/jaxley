@@ -96,7 +96,7 @@ class Module(ABC):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(1 - 0.5 / self.nseg, 0.5 / self.nseg, self.nseg)
         xyz = [interpolate_xyz(loc, xyzr[::-1]).T for xyzr in self.xyzr] if len(loc) > 0 else [self.xyzr]
-        idcs = self.nodes["comp_index"].argsort()
+        idcs = self.nodes["comp_index"]
         self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
 
     def __repr__(self):
