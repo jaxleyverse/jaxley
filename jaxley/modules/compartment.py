@@ -1,8 +1,9 @@
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import index_of_loc, loc_of_index
@@ -158,9 +159,9 @@ class CompartmentView(View):
 
     def vis(
         self,
-        ax=None,
-        col="k",
-        dims=(0, 1),
+        ax: Optional[Axes] = None,
+        col: str = "k",
+        dims: Tuple[int] = (0, 1),
         morph_plot_kwargs: Dict = {},
     ):
         return self.pointer._scatter(

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
@@ -751,9 +752,10 @@ class Module(ABC):
 
     def vis(
         self,
-        ax=None,
+        ax: Optional[Axes] = None,
         col: str = "k",
         dims: Tuple[int] = (0, 1),
+        type: str = "line",
         morph_plot_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
@@ -770,10 +772,11 @@ class Module(ABC):
             col=col,
             ax=ax,
             view=self.nodes,
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def _vis(self, ax, col, dims, view, morph_plot_kwargs):
+    def _vis(self, ax, col, dims, view, type, morph_plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
         coords = []
         for branch_ind in branches_inds:
@@ -787,7 +790,7 @@ class Module(ABC):
             dims=dims,
             col=col,
             ax=ax,
-            type="plot",
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
@@ -1027,9 +1030,10 @@ class View:
 
     def vis(
         self,
-        ax=None,
-        col="k",
-        dims=(0, 1),
+        ax: Optional[Axes] = None,
+        col: str = "k",
+        dims: Tuple[int] = (0, 1),
+        type: str = "line",
         morph_plot_kwargs: Dict = {},
     ):
         nodes = self.set_global_index_and_index(self.view)
@@ -1038,6 +1042,7 @@ class View:
             col=col,
             dims=dims,
             view=nodes,
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 

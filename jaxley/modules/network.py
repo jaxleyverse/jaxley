@@ -8,6 +8,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from jax import vmap
+from matplotlib.axes import Axes
 
 from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
@@ -389,10 +390,11 @@ class Network(Module):
     def vis(
         self,
         detail: str = "full",
-        ax=None,
-        col="k",
-        synapse_col="b",
-        dims=(0, 1),
+        ax: Optional[Axes] = None,
+        col: str = "k",
+        synapse_col: str = "b",
+        dims: Tuple[int] = (0, 1),
+        type: str = "line",
         layers: Optional[List] = None,
         morph_plot_kwargs: Dict = {},
         synapse_plot_kwargs: Dict = {},
@@ -410,6 +412,7 @@ class Network(Module):
                 moved with `.move()`.
             col: The color in which cells are plotted. Only takes effect if
                 `detail='full'`.
+            type: Either `line` or `scatter`. Only takes effect if `detail='full'`.
             synapse_col: The color in which synapses are plotted. Only takes effect if
                 `detail='full'`.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
@@ -468,6 +471,7 @@ class Network(Module):
                 dims=dims,
                 col=col,
                 ax=ax,
+                type=type,
                 view=self.nodes,
                 morph_plot_kwargs=morph_plot_kwargs,
             )
