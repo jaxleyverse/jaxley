@@ -18,6 +18,7 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
     loc_of_index,
+    interpolate_xyz,
 )
 from jaxley.utils.plot_utils import plot_morph
 
@@ -93,13 +94,8 @@ class Module(ABC):
 
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
-
-        def seg_interp(x, nseg):
-            x1, x2 = x[[0, -1], :]
-            Dx = (x2 - x1)
-            return np.array([x1 + Dx * i/nseg for i in range(1, nseg+1)])
-
-        xyz = [seg_interp(xyzr[:, :3], self.nseg) for xyzr in self.xyzr]
+        loc = np.linspace(1 - 0.5 / self.nseg, 0.5 / self.nseg, self.nseg)
+        xyz = [interpolate_xyz(loc, xyzr[::-1]).T for xyzr in self.xyzr] if len(loc) > 0 else [self.xyzr]
         idcs = self.nodes["comp_index"].argsort()
         self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
 
