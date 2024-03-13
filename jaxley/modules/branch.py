@@ -7,7 +7,7 @@ import pandas as pd
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import compute_coupling_cond
+from jaxley.utils.cell_utils import compute_coupling_cond, get_local_indices
 
 
 class Branch(Module):
@@ -139,9 +139,10 @@ class BranchView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
+        local_idcs = get_local_indices(self.view)
+        self.view[local_idcs.columns] = local_idcs
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
-        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
         return new_view
 
     def __getattr__(self, key):

@@ -1071,30 +1071,26 @@ class View:
             self.view = self.view[self.view[key].isin(index)]
         elif isinstance(index, slice):
             index = list(range(self.view[key].max()))[index]
-            self.view = self.view[self.view[key].isin(index)]
-        elif isinstance(index, tuple):
-            for k, i in zip(key, index):
-                self.adjust_view(k, i)
+            return self.adjust_view(key, index)
         else:
             assert index == "all"
-        if not self.view.empty and not isinstance(index, tuple):
-            self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
+        self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
-    def at(self):
-        view_name = self.__class__.__name__
-        name = view_name.lower().replace("view", "")
-        name = "comp" if name == "compartment" else name
-        return name
+    def _local_view(self, index):
+        views = ["comp", "branch", "cell", "synapse"]
+        view = self.__class__.__name__.lower().replace("view", "")
+        view = "comp" if view == "compartment" else view
+        view_idx = views.index(view)
+        return self.__getattr__(views[view_idx - 1])(index)
 
     def __getitem__(self, index):
-        view_order = ["comp", "branch", "cell", "synapse"]
-        name = self.at()
-        lvl = view_order.index(name)
-        index_by = f"{name}_index"
         if isinstance(index, tuple):
-            index_by = tuple(f"{view_order[lvl-i]}_index" for i in range(len(index)))
-        return self.adjust_view(index_by, index)
+            self = self(index[0])
+            for idx in index[1:]:
+                self = self._local_view(idx)
+            return self
+        return self(index)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
