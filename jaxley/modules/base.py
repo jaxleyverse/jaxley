@@ -22,6 +22,7 @@ from jaxley.utils.cell_utils import (
 )
 from jaxley.utils.plot_utils import plot_morph
 
+
 def interpolate_xyz(loc: float, coords: np.ndarray):
     """Perform a linear interpolation between xyz-coordinates.
     Args:
@@ -33,6 +34,7 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
     return vmap(lambda x: jnp.interp(loc, jnp.linspace(0, 1, len(x)), x), in_axes=(1,))(
         coords[:, :3]
     )
+
 
 class Module(ABC):
     """Module base class.
