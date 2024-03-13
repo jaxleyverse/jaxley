@@ -17,11 +17,22 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
-    interpolate_xyz,
+    # interpolate_xyz,
     loc_of_index,
 )
 from jaxley.utils.plot_utils import plot_morph
 
+def interpolate_xyz(loc: float, coords: np.ndarray):
+    """Perform a linear interpolation between xyz-coordinates.
+    Args:
+        loc: The location in [0,1] along the branch.
+        coords: Array containing the reconstructed xyzr points of the branch.
+    Return:
+        Interpolated xyz coordinate at `loc`, shape `(3,).
+    """
+    return vmap(lambda x: jnp.interp(loc, jnp.linspace(0, 1, len(x)), x), in_axes=(1,))(
+        coords[:, :3]
+    )
 
 class Module(ABC):
     """Module base class.
@@ -96,7 +107,7 @@ class Module(ABC):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(1 - 0.5 / self.nseg, 0.5 / self.nseg, self.nseg)
         xyz = (
-            [interpolate_xyz(loc, xyzr[::-1]).T for xyzr in self.xyzr]
+            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
             if len(loc) > 0
             else [self.xyzr]
         )
