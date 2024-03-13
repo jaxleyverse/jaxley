@@ -91,17 +91,13 @@ class Module(ABC):
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
 
-    def update_nodes_with_xyz(self):
+    def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
 
         def seg_interp(x, nseg):
-            if nseg == 1:
-                return x[0, :]
-            elif nseg == x.shape[0]:
-                return x
             x1, x2 = x[[0, -1], :]
-            H = (x2 - x1) / (nseg - 1)
-            return np.array([x1 + H * i for i in range(nseg)])
+            Dx = (x2 - x1)
+            return np.array([x1 + Dx * i/nseg for i in range(1, nseg+1)])
 
         xyz = [seg_interp(xyzr[:, :3], self.nseg) for xyzr in self.xyzr]
         idcs = self.nodes["comp_index"].argsort()
