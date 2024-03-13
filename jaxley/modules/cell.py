@@ -13,7 +13,6 @@ from jaxley.utils.cell_utils import (
     compute_branches_in_level,
     compute_coupling_cond,
     compute_levels,
-    get_local_indices,
 )
 from jaxley.utils.swc import swc_to_jaxley
 
@@ -237,7 +236,7 @@ class CellView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
-        local_idcs = get_local_indices(self.view)
+        local_idcs = self._get_local_indices()
         self.view[local_idcs.columns] = local_idcs
         if index == "all":
             self.allow_make_trainable = False

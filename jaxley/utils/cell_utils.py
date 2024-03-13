@@ -171,13 +171,3 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     midpoint_r_a = 0.5 * (r_a1 + r_a2)
     return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
     # return midpoint_radius ** 2 / 2.0 / midpoint_axial_resistivity / rad1 / dx ** 2
-
-
-def get_local_indices(view):
-    cols = ["cell_index", "branch_index", "comp_index"]
-    local_idcs = (
-        view.groupby("cell_index")
-        .apply(lambda x: x - x.min(), include_groups=False)
-        .reset_index()
-    )[cols].astype(int)
-    return local_idcs

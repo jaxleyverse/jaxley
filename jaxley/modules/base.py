@@ -1077,6 +1077,18 @@ class View:
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
+    def _get_local_indices(self):
+        cols = ["cell_index", "branch_index", "comp_index"]
+        reset_counts = (
+            lambda df, col: df.groupby(col)
+            .apply(lambda x: x - x.min(), include_groups=False)
+            .reset_index()
+        )
+        local_idcs = self.view[cols]
+        for parent, col in zip(cols[:-1], cols[1:]):
+            local_idcs.at[:, col] = reset_counts(self.view, parent)[col]
+        return local_idcs
+
     def _local_view(self, index):
         views = ["comp", "branch", "cell", "synapse"]
         view = self.__class__.__name__.lower().replace("view", "")
