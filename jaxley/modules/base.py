@@ -1078,16 +1078,18 @@ class View:
         return self
 
     def _get_local_indices(self):
-        cols = ["cell_index", "branch_index", "comp_index"]
+        local_idcs = ["cell_index", "branch_index", "comp_index"]
+        global_idcs = [f"global_{id}" for id in local_idcs]
+        all_idcs = global_idcs + local_idcs
         reset_counts = (
             lambda df, col: df.groupby(col)
             .apply(lambda x: x - x.min(), include_groups=False)
             .reset_index()
         )
-        local_idcs = self.view[cols]
-        for parent, col in zip(cols[:-1], cols[1:]):
-            local_idcs.at[:, col] = reset_counts(self.view, parent)[col]
-        return local_idcs
+        idcs_df = self.view[all_idcs]
+        for parent, col in zip(global_idcs[:-1], local_idcs[1:]):
+            idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col]
+        return idcs_df[local_idcs]
 
     def _local_view(self, index):
         views = ["comp", "branch", "cell", "synapse"]
