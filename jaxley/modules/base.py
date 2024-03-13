@@ -464,7 +464,6 @@ class Module(ABC):
         self._stimulate(current, self.nodes)
 
     def _stimulate(self, current, view):
-        self.recordings = pd.concat([self.recordings, view], ignore_index=True)
         num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
         warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
 
