@@ -442,12 +442,12 @@ class Module(ABC):
         self._record(recording_view)
 
     def _record(self, view):
-        print(f"Added {len(view)} recordings. See `.recordings` for details.")
-        if len(view) == len(self.nodes):
-            warnings.warn(
-                "Recording all compartments. If this was not intended, run `delete_recordings`."
-            )
         self.recordings = pd.concat([self.recordings, view], ignore_index=True)
+        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+        warning = f"Added {num_comps} compartments to recordings. If this was not intended, run `delete_recordings`."
+        if len(view) > 1:
+            warnings.warn(warning)
+        print(f"Added {len(view)} recordings. See `.recordings` for details.")
 
     def delete_recordings(self):
         """Removes all recordings from the module."""
@@ -464,11 +464,10 @@ class Module(ABC):
         self._stimulate(current, self.nodes)
 
     def _stimulate(self, current, view):
-        print(f"Added {len(view)} stimuli. See `.currents` for details.")
-        if len(view) == len(self.nodes):
-            warnings.warn(
-                "Stimulating all compartments. If this was not intended, run `delete_stimuli`."
-            )
+        self.recordings = pd.concat([self.recordings, view], ignore_index=True)
+        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+        warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
+
         is_multiple = len(view) != current.shape[0] and current.ndim == 2
         current = current if is_multiple else jnp.stack([current] * len(view))
         if self.currents is not None:
@@ -476,6 +475,9 @@ class Module(ABC):
         else:
             self.currents = current
         self.current_inds = pd.concat([self.current_inds, view])
+        if len(view) > 1:
+            warnings.warn(warning)
+        print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
     def data_stimulate(
         self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
