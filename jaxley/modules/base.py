@@ -932,7 +932,12 @@ class Module(ABC):
             self.xyzr[i][:, dims] = rot
 
     def shape(self):
-        """Return the shape of the module."""
+        """Returns the number of submodules contained in a module.
+        ```
+        network.shape = (num_cells, num_branches, num_compartments)
+        cell.shape = (num_branches, num_compartments)
+        branch.shape = (num_compartments,)
+        ```"""
         idcs = self.nodes[["comp_index", "branch_index", "cell_index"]]
         unique_idcs = idcs.nunique()
         unique_idcs = [i for i in unique_idcs if i > 1]
