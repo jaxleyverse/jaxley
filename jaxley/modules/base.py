@@ -1088,7 +1088,7 @@ class View:
         )
         idcs_df = self.view[all_idcs]
         for parent, col in zip(global_idcs[:-1], local_idcs[1:]):
-            idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col]
+            idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col].values
         return idcs_df[local_idcs]
 
     def _local_view(self, index):
