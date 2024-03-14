@@ -63,18 +63,44 @@ class Branch(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
+    def _compartment_view(self) -> CompartmentView:
+        view = deepcopy(self.nodes)
+        view["global_comp_index"] = view["comp_index"]
+        view["global_branch_index"] = view["branch_index"]
+        view["global_cell_index"] = view["cell_index"]
+        return CompartmentView(self, view)
+
+    @property
+    def comp(self) -> CompartmentView:
+        """Return a compartment of the discretized branch.
+        
+        Args:
+            index: integer or float between 0 to 1 for
+                legacy.
+        """
+        return self._compartment_view()
+
+    def loc(self, loc: float) -> CompartmentView:
+        """Return compartment of the discretized branch that is 
+        closest to the provided location.
+        
+        Args:
+            loc: float between 0 and 1
+        """
+        return self.comp.loc(loc)
+
     def __getattr__(self, key):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
 
-        if key == "comp":
-            view = deepcopy(self.nodes)
-            view["global_comp_index"] = view["comp_index"]
-            view["global_branch_index"] = view["branch_index"]
-            view["global_cell_index"] = view["cell_index"]
-            return CompartmentView(self, view)
-        elif key in self.group_nodes:
+        # if key == "comp":
+        #     view = deepcopy(self.nodes)
+        #     view["global_comp_index"] = view["comp_index"]
+        #     view["global_branch_index"] = view["branch_index"]
+        #     view["global_cell_index"] = view["cell_index"]
+        #     return CompartmentView(self, view)
+        if key in self.group_nodes:
             inds = self.group_nodes[key].index.values
             view = self.nodes.loc[inds]
             view["global_comp_index"] = view["comp_index"]
@@ -138,6 +164,28 @@ class BranchView(View):
         new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
         return new_view
 
-    def __getattr__(self, key):
-        assert key == "comp"
+    def _compartment_view(self) -> CompartmentView:
         return CompartmentView(self.pointer, self.view)
+
+    @property
+    def comp(self):
+        """Return a compartment of the discretized branch.
+        
+        Args:
+            index: integer or float between 0 to 1 for
+                legacy.
+        """        
+        return self._compartment_view()
+    
+    def loc(self, loc: float):
+        """Return compartment of the branch that is 
+        closest to the continuous float location between 0 and 1.
+        
+        Args:
+            loc: float between 0 and 1
+        """        
+        return self.comp.loc(loc)
+
+    # def __getattr__(self, key):
+    #     assert key == "comp"
+    #     return CompartmentView(self.pointer, self.view)

@@ -8,6 +8,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.synapses import IonotropicSynapse
+from jaxley.utils.cell_utils import index_of_loc
 
 
 def test_api_equivalence_morphology():
@@ -42,6 +43,41 @@ def test_api_equivalence_morphology():
     assert (
         jnp.max(jnp.abs(voltages1 - voltages2)) < 1e-8
     ), "Voltages do not match between morphology APIs."
+
+def test_api_equivalence_comp_loc():
+    """Test the API for comp and loc indexing."""
+    nseg_per_branch = 10
+    depth = 2
+    dt = 0.025
+
+    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
+    parents = jnp.asarray(parents)
+    num_branches = len(parents)
+
+    comp = jx.Compartment().initialize()
+
+    branch1 = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    cell1 = jx.Cell(
+        [branch1 for _ in range(num_branches)], parents=parents
+    ).initialize()
+
+    branch2 = jx.Branch(comp, nseg=nseg_per_branch).initialize()
+    cell2 = jx.Cell(branch2, parents=parents).initialize()
+
+    loc_record = 0.4
+    cell1.branch(2).loc(loc_record).record()
+    cell2.branch(2).comp(int(index_of_loc(0, loc_record, cell2.branch(2).comp.pointer.nseg))).record()
+
+    loc_stimulate = 1.0
+    current = jx.step_current(0.5, 1.0, 1.0, dt, 3.0)
+    cell1.branch(1).comp(int(index_of_loc(0, loc_stimulate, cell1.branch(1).comp.pointer.nseg))).stimulate(current)
+    cell2.branch(1).loc(loc_stimulate).stimulate(current)
+
+    voltages1 = jx.integrate(cell1, delta_t=dt)
+    voltages2 = jx.integrate(cell2, delta_t=dt)
+    assert (
+        jnp.max(jnp.abs(voltages1 - voltages2)) < 1e-8
+    ), "Voltages do not match between morphology APIs."    
 
 
 def test_api_equivalence_synapses():

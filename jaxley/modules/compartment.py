@@ -1,4 +1,5 @@
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
+import warnings
 
 import jax.numpy as jnp
 import numpy as np
@@ -63,7 +64,34 @@ class CompartmentView(View):
         view = view.assign(controlled_by_param=view.comp_index)
         super().__init__(pointer, view)
 
-    def __call__(self, loc: float):
+    def __call__(self, index: Union[float, int]) -> "CompartmentView":
+        """Selects a specific compartment with integer indexing from a view onto all compartments.
+        
+        The resulting object will also be a CompartmentView.
+        """
+        if index == "all":
+            pass
+        else:
+            # support for legacy code
+            if isinstance(index, float) and 0 <= index <= 1:
+                # map the float to an int index
+                # i.e. the range [0, 1] to [0, N-1] where N is the number of segments
+                mapped_index = index_of_loc(0, index, self.pointer.nseg)  
+                warnings.warn("Float values for 'index' are deprecated and will be removed in future versions. "
+                                "Use an integer index instead.", DeprecationWarning)
+                index = mapped_index
+            elif not isinstance(index, int):
+                raise ValueError("Index must be an integer or a float between 0 and 1.")
+            assert (
+                index >= 0 and index < self.pointer.nseg
+            ), f"Compartments must be indexed by a discrete value between 0 and {self.pointer.nseg - 1}. Provided was {index}."
+        return super().adjust_view("comp_index", index)
+    
+    def loc(self, loc: float) -> "CompartmentView":
+        """Selects a specific compartment with relative location indexing from a view onto all compartments.
+        
+        The resulting object will also be a CompartmentView.
+        """
         if loc != "all":
             assert (
                 loc >= 0.0 and loc <= 1.0
