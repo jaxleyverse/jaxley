@@ -456,6 +456,9 @@ class Module(ABC):
     def stimulate(self, current: Optional[jnp.ndarray] = None):
         """Insert a stimulus into the compartment.
 
+        current must be a 1d array or have batch dimension of size `(num_compartments, )`
+        or `(1, )`. If 1d, the same stimulus is added to all compartments.
+
         This function cannot be run during `jax.jit` and `jax.grad`. Because of this,
         it should only be used for static stimuli (i.e., stimuli that do not depend
         on the data and that should not be learned). For stimuli that depend on data
@@ -467,8 +470,14 @@ class Module(ABC):
         num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
         warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
 
-        is_multiple = len(view) != current.shape[0] and current.ndim == 2
-        current = current if is_multiple else jnp.stack([current] * len(view))
+        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
+        batch_size = current.shape[0]
+        is_multiple = len(view) == batch_size
+        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
+        assert batch_size in [
+            1,
+            len(view),
+        ], "Number of compartments and number of stimuli do not match."
         if self.currents is not None:
             self.currents = jnp.concatenate([self.currents, current])
         else:
@@ -932,6 +941,7 @@ class Module(ABC):
 
     def shape(self):
         """Returns the number of submodules contained in a module.
+
         ```
         network.shape = (num_cells, num_branches, num_compartments)
         cell.shape = (num_branches, num_compartments)
@@ -1077,6 +1087,18 @@ class View:
         return self
 
     def _get_local_indices(self):
+        """Computes local from global indices.
+
+        #cell_index, branch_index, comp_index
+        0, 0, 0     -->     0, 0, 0 # 1st compartment of 1st branch of 1st cell
+        0, 0, 1     -->     0, 0, 1 # 2nd compartment of 1st branch of 1st cell
+        0, 1, 2     -->     0, 1, 0 # 1st compartment of 2nd branch of 1st cell
+        0, 1, 3     -->     0, 1, 1 # 2nd compartment of 2nd branch of 1st cell
+        1, 2, 4     -->     1, 0, 0 # 1st compartment of 1st branch of 2nd cell
+        1, 2, 5     -->     1, 0, 1 # 2nd compartment of 1st branch of 2nd cell
+        1, 3, 6     -->     1, 1, 0 # 1st compartment of 2nd branch of 2nd cell
+        1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
+        """
         local_idcs = ["cell_index", "branch_index", "comp_index"]
         global_idcs = [f"global_{id}" for id in local_idcs]
         all_idcs = global_idcs + local_idcs
@@ -1090,7 +1112,12 @@ class View:
             idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col].values
         return idcs_df[local_idcs]
 
-    def _local_view(self, index):
+    def _local_view(self, index: Union[int, str, list, range, slice]):
+        """Return the current view of the module.
+
+        network.cell(index) at network level.
+        cell.branch(index) at cell level.
+        branch.comp(index) at branch level."""
         views = ["comp", "branch", "cell", "synapse"]
         view = self.__class__.__name__.lower().replace("view", "")
         view = "comp" if view == "compartment" else view
