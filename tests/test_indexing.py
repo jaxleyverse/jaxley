@@ -176,7 +176,6 @@ def test_child_view():
     )
 
 
-
 # Qs:
 # - how to handle local indexing?
 # - move local indexing to init of View?
