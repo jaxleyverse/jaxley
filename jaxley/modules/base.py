@@ -93,6 +93,17 @@ class Module(ABC):
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
 
+    def _update_nodes_with_xyz(self):
+        """Add xyz coordinates to nodes."""
+        loc = np.linspace(1 - 0.5 / self.nseg, 0.5 / self.nseg, self.nseg)
+        xyz = (
+            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
+            if len(loc) > 0
+            else [self.xyzr]
+        )
+        idcs = self.nodes["comp_index"]
+        self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
+
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
 
