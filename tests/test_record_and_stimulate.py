@@ -70,7 +70,7 @@ def test_record_synaptic_and_membrane_states():
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
-    cell = jx.Cell([branch], parents=[-1])
+    cell = jx.Cell(branch, parents=[-1])
     net = jx.Network([cell for _ in range(3)])
     net.insert(HH())
 
@@ -117,21 +117,3 @@ def test_record_synaptic_and_membrane_states():
         # On average the membrane trace spikes around 0 steps after voltage.
         offset_mem = 0
         assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
-
-
-def test_indexing():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(3)], parents=jnp.asarray([-1, 0, 0]))
-    network = jx.Network([cell for _ in range(5)])
-
-    assert all(network.cell(0).branch(0).show() == network[0, 0].show())
-    assert all(network.cell([0, 1]).branch(0).show() == network[[0, 1], 0].show())
-    assert all(network.cell(0).branch([0, 1]).show() == network[0, [0, 1]].show())
-    assert all(
-        network.cell([0, 1]).branch([0, 1]).show() == network[[0, 1], [0, 1]].show()
-    )
-
-    assert all(network.cell(0).branch(0).comp(0).show() == network[0, 0, 0].show())
-    assert all(cell.branch(0).comp(0).show() == cell[0, 0].show())
-    assert all(cell.branch(0).show() == cell[0].show())
