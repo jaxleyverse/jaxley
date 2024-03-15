@@ -964,13 +964,15 @@ class Module(ABC):
     def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current module.
 
-        network.branch(index) at network level.
+        network.cell(index) at network level.
         cell.branch(index) at cell level.
         branch.comp(index) at branch level."""
-        views = np.array(["net", "cell", "branch", "comp", "/"])
-        parent_name = self.__class__.__name__.lower()
-        child_idx = np.roll([v in parent_name for v in views], 1)
-        child_view = views[child_idx][0]
+        views = ["net", "cell", "branch", "comp", "/"]
+        parent_name = self.__class__.__name__.lower()  # name of current view
+        child_idx = (
+            np.where([v in parent_name for v in views])[0][0] + 1
+        )  # idx of child view
+        child_view = views[child_idx]  # name of child view
         if child_view != "/":
             return self.__getattr__(child_view)(index)
         raise AttributeError("Compartment does not support indexing")
@@ -981,7 +983,7 @@ class Module(ABC):
         return self._childview(index)
 
     def __iter__(self):
-        for i in range(self.shape()[0]):
+        for i in range(self.shape[0]):
             yield self[i]
 
 
@@ -1165,7 +1167,7 @@ class View:
         return self._childview(index)
 
     def __iter__(self):
-        for i in range(self.shape()[0]):
+        for i in range(self.shape[0]):
             yield self[i]
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
