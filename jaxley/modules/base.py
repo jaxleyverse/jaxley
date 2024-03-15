@@ -486,7 +486,7 @@ class Module(ABC):
         print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
     def data_stimulate(
-        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
+        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None
     ):
         """Insert a stimulus into the module within jit (or grad)."""
         return self._data_stimulate(current, data_stimuli, self.nodes)
