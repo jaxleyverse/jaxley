@@ -952,7 +952,7 @@ class Module(ABC):
         unique_idcs = [i for i in unique_idcs if i > 1]
         return tuple(reversed(unique_idcs))
 
-    def _child_view(self, index: Union[int, str, list, range, slice]):
+    def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current module.
 
         network.branch(index) at network level.
@@ -968,8 +968,8 @@ class Module(ABC):
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
-            return self._child_view(index[0])[index[1:]]
-        return self._child_view(index)
+            return self._childview(index[0])[index[1:]]
+        return self._childview(index)
 
     def __iter__(self):
         for i in range(self.shape()[0]):
@@ -1135,7 +1135,7 @@ class View:
             idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col].values
         return idcs_df[local_idcs]
 
-    def _child_view(self, index: Union[int, str, list, range, slice]):
+    def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current view.
 
         cell(0).branch(index) at cell level.
@@ -1151,9 +1151,9 @@ class View:
     def __getitem__(self, index):
         if isinstance(index, tuple):
             if len(index) > 1:
-                return self._child_view(index[0])[index[1:]]
-            return self._child_view(index[0])
-        return self._child_view(index)
+                return self._childview(index[0])[index[1:]]
+            return self._childview(index[0])
+        return self._childview(index)
 
     def __iter__(self):
         for i in range(self.shape()[0]):
