@@ -11,6 +11,7 @@ from jax import jit, value_and_grad
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.optimize import TypeOptimizer
+from jaxley.optimize.utils import l2_norm
 
 
 def test_type_optimizer():
@@ -75,3 +76,14 @@ def test_type_optimizer():
         opt_params = optax.apply_updates(opt_params, updates)
 
     assert l > 30.0, "Loss should be high if a uniformly high lr is used."
+
+
+def test_l2_norm_utility():
+    true_norm = np.sqrt(np.sum(np.asarray([0.01, 0.003, 0.05, 0.006, 0.07, 0.04]) ** 2))
+    pytree = [
+        {"a": 0.01},
+        {"b": jnp.asarray([[0.003, 0.05]])},
+        {"c": jnp.asarray([[0.006, 0.07]])},
+        0.04,
+    ]
+    assert l2_norm(pytree).item() == true_norm
