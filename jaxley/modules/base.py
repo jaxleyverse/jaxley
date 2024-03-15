@@ -474,10 +474,8 @@ class Module(ABC):
         batch_size = current.shape[0]
         is_multiple = len(view) == batch_size
         current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
-        assert batch_size in [
-            1,
-            len(view),
-        ], "Number of compartments and number of stimuli do not match."
+        assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
+
         if self.currents is not None:
             self.currents = jnp.concatenate([self.currents, current])
         else:
@@ -491,14 +489,19 @@ class Module(ABC):
         self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
     ):
         """Insert a stimulus into the module within jit (or grad)."""
-        return self._data_stimulate(current, self.nodes)
+        return self._data_stimulate(current, data_stimuli, self.nodes)
 
     def _data_stimulate(
         self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view
     ):
-        assert (
-            len(view) == 1
-        ), "Can only stimulate compartments, not branches, cells, or networks."
+        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+        warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
+
+        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
+        batch_size = current.shape[0]
+        is_multiple = len(view) == batch_size
+        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
+        assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
 
         if data_stimuli is not None:
             currents = data_stimuli[0]
@@ -509,10 +512,13 @@ class Module(ABC):
 
         # Same as in `.stimulate()`.
         if currents is not None:
-            currents = jnp.concatenate([currents, jnp.expand_dims(current, axis=0)])
+            currents = jnp.concatenate([currents, current])
         else:
-            currents = jnp.expand_dims(current, axis=0)
+            currents = current
         inds = pd.concat([inds, view])
+        if len(view) > 1:
+            warnings.warn(warning)
+        print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
         return (currents, inds)
 
