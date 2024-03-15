@@ -68,12 +68,15 @@ class Branch(Module):
         if key.startswith("__"):
             return super().__getattribute__(key)
 
-        if key == "comp":
+        if key in ["comp", "loc"]:
             view = deepcopy(self.nodes)
             view["global_comp_index"] = view["comp_index"]
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
-            return CompartmentView(self, view)
+            if key == "comp":
+                return CompartmentView(self, view)
+            else:
+                return CompartmentView(self, view).loc
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
             view = self.nodes.loc[inds]
@@ -145,5 +148,5 @@ class BranchView(View):
         return new_view
 
     def __getattr__(self, key):
-        assert key == "comp"
+        assert key in ["comp", "loc"]
         return CompartmentView(self.pointer, self.view)
