@@ -157,7 +157,24 @@ def test_local_indexing():
                 )
                 global_index += 1
 
-    # incl local view
+
+def test_child_view():
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(4)])
+    cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 0, 1, 1]))
+    net = jx.Network([cell for _ in range(2)])
+
+    assert np.all(net._childview(0).show() == net.cell(0).show())
+    assert np.all(cell._childview(0).show() == cell.branch(0).show())
+    assert np.all(branch._childview(0).show() == branch.comp(0).show())
+
+    assert np.all(
+        net._childview(0)._childview(0).show() == net.cell(0).branch(0).show()
+    )
+    assert np.all(
+        cell._childview(0)._childview(0).show() == cell.branch(0).comp(0).show()
+    )
+
 
 
 # Qs:
