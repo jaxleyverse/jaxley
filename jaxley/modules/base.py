@@ -945,6 +945,7 @@ class Module(ABC):
             rot = np.dot(rotation_matrix, self.xyzr[i][:, dims].T).T
             self.xyzr[i][:, dims] = rot
 
+    @property
     def shape(self):
         """Returns the number of submodules contained in a module.
 
@@ -953,10 +954,12 @@ class Module(ABC):
         cell.shape = (num_branches, num_compartments)
         branch.shape = (num_compartments,)
         ```"""
-        idcs = self.nodes[["comp_index", "branch_index", "cell_index"]]
-        unique_idcs = idcs.nunique()
-        unique_idcs = [i for i in unique_idcs if i > 1]
-        return tuple(reversed(unique_idcs))
+        mod_name = self.__class__.__name__.lower()
+        if "comp" in mod_name:
+            return (1,)
+        elif "branch" in mod_name:
+            return self[:].shape[1:]
+        return self[:].shape
 
     def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current module.
@@ -1176,11 +1179,10 @@ class View:
             "Only entire `jx.Module`s or entire cells within a network can be rotated."
         )
 
+    @property
     def shape(self):
-        idcs = self.view[["comp_index", "branch_index", "cell_index"]]
-        unique_idcs = idcs.nunique()
-        unique_idcs = [i for i in unique_idcs if i > 1]
-        return tuple(reversed(unique_idcs))
+        local_idcs = self._get_local_indices()
+        return tuple(local_idcs.nunique())
 
 
 class GroupView(View):

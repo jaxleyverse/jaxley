@@ -47,6 +47,29 @@ def test_getitem():
         pass
 
 
+def test_shape():
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(4)])
+    cell = jx.Cell([branch for _ in range(3)], parents=jnp.asarray([-1, 0, 0]))
+    net = jx.Network([cell for _ in range(3)])
+
+    assert net.shape == (3, 3, 4)
+    assert cell.shape == (1, 3, 4)
+    assert branch.shape == (1, 4)
+    assert comp.shape == (1,)
+
+    assert net.cell.shape == net.shape
+    assert cell.branch.shape == cell.shape
+
+    assert net.cell.shape == (3, 3, 4)
+    assert net.cell.branch.shape == (3, 3, 4)
+    assert net.cell.branch.comp.shape == (3, 3, 4)
+
+    assert net.cell(0).shape == (1, 3, 4)
+    assert net.cell(0).branch(0).shape == (1, 1, 4)
+    assert net.cell(0).branch(0).comp(0).shape == (1, 1, 1)
+
+
 def test_set_and_insert():
     comp = jx.Compartment()
     branch = jx.Branch([comp for _ in range(4)])
