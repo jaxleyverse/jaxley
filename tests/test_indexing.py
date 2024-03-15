@@ -10,7 +10,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.utils.cell_utils import index_of_loc, loc_of_index
 
 
 def test_getitem():
@@ -45,6 +45,17 @@ def test_getitem():
 
     for comp in net[0, 0]:
         pass
+
+
+def test_loc_v_comp():
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(4)])
+
+    assert np.all(branch.comp(0).show() == branch.loc(1.0).show())
+    assert np.all(branch.comp(3).show() == branch.loc(0.0).show())
+
+    assert np.all(branch.loc(loc_of_index(2, 4)).show() == branch.comp(2).show())
+    assert np.all(branch.comp(index_of_loc(0, 0.4, 4)).show() == branch.loc(0.4).show())
 
 
 def test_shape():
