@@ -174,8 +174,3 @@ def test_child_view():
     assert np.all(
         cell._childview(0)._childview(0).show() == cell.branch(0).comp(0).show()
     )
-
-
-# Qs:
-# - how to handle local indexing?
-# - move local indexing to init of View?
