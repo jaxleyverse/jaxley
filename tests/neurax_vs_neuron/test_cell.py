@@ -53,12 +53,12 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     cell.set("HH_n", 0.3644787002343737)
     cell.set("HH_voltages", -62.0)
 
-    cell.branch(0).comp(0.0).stimulate(
+    cell.branch(0).loc(0.0).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
-    cell.branch(0).comp(0.0).record()
-    cell.branch(1).comp(1.0).record()
-    cell.branch(2).comp(1.0).record()
+    cell.branch(0).loc(0.0).record()
+    cell.branch(1).loc(1.0).record()
+    cell.branch(2).loc(1.0).record()
 
     voltages = jx.integrate(cell, delta_t=dt)
     return voltages

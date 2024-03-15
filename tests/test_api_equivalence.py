@@ -30,12 +30,12 @@ def test_api_equivalence_morphology():
     branch2 = jx.Branch(comp, nseg=nseg_per_branch).initialize()
     cell2 = jx.Cell(branch2, parents=parents).initialize()
 
-    cell1.branch(2).comp(0.4).record()
-    cell2.branch(2).comp(0.4).record()
+    cell1.branch(2).loc(0.4).record()
+    cell2.branch(2).loc(0.4).record()
 
     current = jx.step_current(0.5, 1.0, 1.0, dt, 3.0)
-    cell1.branch(1).comp(1.0).stimulate(current)
-    cell2.branch(1).comp(1.0).stimulate(current)
+    cell1.branch(1).loc(1.0).stimulate(current)
+    cell2.branch(1).loc(1.0).stimulate(current)
 
     voltages1 = jx.integrate(cell1, delta_t=dt)
     voltages2 = jx.integrate(cell2, delta_t=dt)
@@ -60,19 +60,19 @@ def test_api_equivalence_synapses():
     net1 = jx.Network([cell1, cell2], conns)
 
     net2 = jx.Network([cell1, cell2])
-    pre = net2.cell(0).branch(0).comp(1.0)
-    post = net2.cell(1).branch(4).comp(1.0)
+    pre = net2.cell(0).branch(0).loc(1.0)
+    post = net2.cell(1).branch(4).loc(1.0)
     pre.connect(post, IonotropicSynapse())
 
-    pre = net2.cell(1).branch(1).comp(0.8)
-    post = net2.cell(0).branch(4).comp(0.1)
+    pre = net2.cell(1).branch(1).loc(0.8)
+    post = net2.cell(0).branch(4).loc(0.1)
     pre.connect(post, IonotropicSynapse())
 
     for net in [net1, net2]:
         current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
-        net.cell(0).branch(0).comp(0.0).stimulate(current)
-        net.cell(0).branch(0).comp(0.5).record()
-        net.cell(1).branch(4).comp(0.5).record()
+        net.cell(0).branch(0).loc(0.0).stimulate(current)
+        net.cell(0).branch(0).loc(0.5).record()
+        net.cell(1).branch(4).loc(0.5).record()
 
     voltages1 = jx.integrate(net1)
     voltages2 = jx.integrate(net2)
@@ -111,9 +111,9 @@ def test_api_equivalence_layers():
 
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     for net in [net1, net2]:
-        net.cell(0).branch(0).comp(0.0).stimulate(current)
-        net.cell(1).branch(0).comp(0.0).stimulate(current)
-        net.cell(10).branch(0).comp(0.5).record()
+        net.cell(0).branch(0).loc(0.0).stimulate(current)
+        net.cell(1).branch(0).loc(0.0).stimulate(current)
+        net.cell(10).branch(0).loc(0.5).record()
 
     voltages1 = jx.integrate(net1)
     voltages2 = jx.integrate(net2)
