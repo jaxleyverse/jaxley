@@ -952,6 +952,29 @@ class Module(ABC):
         unique_idcs = [i for i in unique_idcs if i > 1]
         return tuple(reversed(unique_idcs))
 
+    def _child_view(self, index: Union[int, str, list, range, slice]):
+        """Return the child view of the current module.
+
+        network.branch(index) at network level.
+        cell.branch(index) at cell level.
+        branch.comp(index) at branch level."""
+        views = np.array(["net", "cell", "branch", "comp", "/"])
+        parent_name = self.__class__.__name__.lower()
+        child_idx = np.roll([v in parent_name for v in views], 1)
+        child_view = views[child_idx][0]
+        if child_view != "/":
+            return self.__getattr__(child_view)(index)
+        raise AttributeError("Compartment does not support indexing")
+
+    def __getitem__(self, index):
+        if isinstance(index, tuple):
+            return self._child_view(index[0])[index[1:]]
+        return self._child_view(index)
+
+    def __iter__(self):
+        for i in range(self.shape()[0]):
+            yield self[i]
+
 
 class View:
     """View of a `Module`."""
@@ -1112,25 +1135,29 @@ class View:
             idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col].values
         return idcs_df[local_idcs]
 
-    def _local_view(self, index: Union[int, str, list, range, slice]):
-        """Return the current view of the module.
+    def _child_view(self, index: Union[int, str, list, range, slice]):
+        """Return the child view of the current view.
 
-        network.cell(index) at network level.
-        cell.branch(index) at cell level.
-        branch.comp(index) at branch level."""
-        views = ["comp", "branch", "cell", "synapse"]
-        view = self.__class__.__name__.lower().replace("view", "")
-        view = "comp" if view == "compartment" else view
-        view_idx = views.index(view)
-        return self.__getattr__(views[view_idx - 1])(index)
+        cell(0).branch(index) at cell level.
+        branch(0).comp(index) at branch level."""
+        views = np.array(["net", "cell", "branch", "comp", "/"])
+        parent_name = self.__class__.__name__.lower()
+        child_idx = np.roll([v in parent_name for v in views], 1)
+        child_view = views[child_idx][0]
+        if child_view != "/":
+            return self.__getattr__(child_view)(index)
+        raise AttributeError("Compartment does not support indexing")
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
-            self = self(index[0])
-            for idx in index[1:]:
-                self = self._local_view(idx)
-            return self
-        return self(index)
+            if len(index) > 1:
+                return self._child_view(index[0])[index[1:]]
+            return self._child_view(index[0])
+        return self._child_view(index)
+
+    def __iter__(self):
+        for i in range(self.shape()[0]):
+            yield self[i]
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.

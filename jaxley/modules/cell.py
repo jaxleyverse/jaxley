@@ -224,9 +224,6 @@ class Cell(Module):
         )
         return summed_conds
 
-    def __getitem__(self, index):
-        return self.__getattr__("branch")[index]
-
 
 class CellView(View):
     """CellView."""

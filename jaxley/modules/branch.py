@@ -126,9 +126,6 @@ class Branch(Module):
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
-    def __getitem__(self, index):
-        return self.__getattr__("comp")[index]
-
     def __len__(self):
         return self.nseg
 
@@ -141,7 +138,7 @@ class BranchView(View):
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
         self.view[local_idcs.columns] = (
-            local_idcs  # set indexes locally. enables cell[0:2,:]
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
         )
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)

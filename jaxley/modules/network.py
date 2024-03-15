@@ -544,9 +544,6 @@ class Network(Module):
 
         return graph
 
-    def __getitem__(self, index):
-        return self.__getattr__("cell")[index]
-
 
 class SynapseView(View):
     """SynapseView."""
