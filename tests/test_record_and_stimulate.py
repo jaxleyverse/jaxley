@@ -135,17 +135,3 @@ def test_indexing():
     assert all(network.cell(0).branch(0).comp(0).show() == network[0, 0, 0].show())
     assert all(cell.branch(0).comp(0).show() == cell[0, 0].show())
     assert all(cell.branch(0).show() == cell[0].show())
-
-    # TODO: add more tests for indexing.
-    # assert network[:2, :2, :]
-    # assert cell[:2, :]
-
-    # test insert multiple stimuli
-    # test insert multiple recordings
-    # test insert multiple channels
-    # test compare indexing to ground truth
-
-    # Qs:
-    # - seperate test file?
-    # - how to handle local indexing?
-    # - move local indexing to init of View?

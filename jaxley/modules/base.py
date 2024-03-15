@@ -1102,7 +1102,7 @@ class View:
         elif isinstance(index, list) or isinstance(index, range):
             self.view = self.view[self.view[key].isin(index)]
         elif isinstance(index, slice):
-            index = list(range(self.view[key].max()))[index]
+            index = list(range(self.view[key].max() + 1))[index]
             return self.adjust_view(key, index)
         else:
             assert index == "all"
