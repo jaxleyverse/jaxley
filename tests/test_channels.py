@@ -57,10 +57,10 @@ def test_integration_with_renamed_channels():
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=4)
 
-    branch.comp(0.0).insert(standard_hh)
+    branch.loc(0.0).insert(standard_hh)
     branch.insert(neuron_hh)
 
-    branch.comp(1.0).record()
+    branch.loc(1.0).record()
     v = jx.integrate(branch, t_max=1.0)
 
     # Test if voltage is `NaN` which happens when channels get mixed up.
@@ -76,12 +76,12 @@ def test_init_states():
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
     cell = jx.Cell(branch, [-1, 0])
-    cell.branch(0).comp(0.0).record()
+    cell.branch(0).loc(0.0).record()
 
     cell.branch(0).insert(Na())
     cell.branch(1).insert(K())
-    cell.branch(1).comp(0.0).insert(Km())
-    cell.branch(0).comp(1.0).insert(CaT())
+    cell.branch(1).loc(0.0).insert(Km())
+    cell.branch(0).loc(1.0).insert(CaT())
     cell.insert(CaL())
     cell.insert(Leak())
 
@@ -142,12 +142,12 @@ def test_multiple_channel_currents():
     comp = jx.Compartment()
     branch = jx.Branch(comp, 1)
     cell = jx.Cell(branch, parents=[-1])
-    cell.branch(0).comp(0.0).stimulate(jx.step_current(1.0, 2.0, 0.1, dt, t_max))
+    cell.branch(0).loc(0.0).stimulate(jx.step_current(1.0, 2.0, 0.1, dt, t_max))
 
     cell.insert(User())
     cell.insert(Dummy1())
     cell.insert(Dummy2())
-    cell.branch(0).comp(0.0).record("cumulative")
+    cell.branch(0).loc(0.0).record("cumulative")
 
     s = jx.integrate(cell, delta_t=dt)
 

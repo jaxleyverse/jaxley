@@ -22,11 +22,11 @@ def test_record_and_stimulate_api():
     branch = jx.Branch(comp, nseg_per_branch).initialize()
     cell = jx.Cell(branch, parents=parents).initialize()
 
-    cell.branch(0).comp(0.0).record()
-    cell.branch(1).comp(1.0).record()
+    cell.branch(0).loc(0.0).record()
+    cell.branch(1).loc(1.0).record()
 
     current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
-    cell.branch(1).comp(1.0).stimulate(current)
+    cell.branch(1).loc(1.0).stimulate(current)
 
     cell.delete_recordings()
     cell.delete_stimuli()
@@ -44,14 +44,14 @@ def test_record_shape():
     cell = jx.Cell(branch, parents=parents).initialize()
 
     current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
-    cell.branch(1).comp(1.0).stimulate(current)
+    cell.branch(1).loc(1.0).stimulate(current)
 
-    cell.branch(0).comp(0.0).record()
-    cell.branch(1).comp(1.0).record()
-    cell.branch(0).comp(1.0).record()
+    cell.branch(0).loc(0.0).record()
+    cell.branch(1).loc(1.0).record()
+    cell.branch(0).loc(1.0).record()
     cell.delete_recordings()
-    cell.branch(2).comp(0.5).record()
-    cell.branch(1).comp(0.1).record()
+    cell.branch(2).loc(0.5).record()
+    cell.branch(1).loc(0.1).record()
 
     voltages = jx.integrate(cell)
     assert (
@@ -79,14 +79,14 @@ def test_record_synaptic_and_membrane_states():
     net.cell([2]).fully_connect(net.cell([0]), IonotropicSynapse())
 
     current = jx.step_current(1.0, 80.0, 0.02, 0.025, 100.0)
-    net.cell(0).branch(0).comp(0.0).stimulate(current)
+    net.cell(0).branch(0).loc(0.0).stimulate(current)
 
-    net.cell(2).branch(0).comp(0.0).record("v")
+    net.cell(2).branch(0).loc(0.0).record("v")
     net.IonotropicSynapse(1).record("s")
-    net.cell(2).branch(0).comp(0.0).record("HH_m")
-    net.cell(1).branch(0).comp(0.0).record("v")
+    net.cell(2).branch(0).loc(0.0).record("HH_m")
+    net.cell(1).branch(0).loc(0.0).record("v")
     net.TestSynapse(0).record("c")
-    net.cell(1).branch(0).comp(0.0).record("HH_m")
+    net.cell(1).branch(0).loc(0.0).record("HH_m")
 
     recs = jx.integrate(net)
 

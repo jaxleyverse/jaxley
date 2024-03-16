@@ -63,7 +63,10 @@ class CompartmentView(View):
         view = view.assign(controlled_by_param=view.comp_index)
         super().__init__(pointer, view)
 
-    def __call__(self, loc: float):
+    def __call__(self, index: int):
+        return super().adjust_view("comp_index", index)
+
+    def loc(self, loc: float):
         if loc != "all":
             assert (
                 loc >= 0.0 and loc <= 1.0
