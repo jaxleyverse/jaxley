@@ -36,10 +36,9 @@ def test_channel_set_name():
 
 
 def test_channel_change_name():
-    na = Na()
     # channel name can be changed with change_name method
     # (and only this way after initialization)
-    na.change_name("NaPospischil")
+    na = Na().change_name("NaPospischil")
     assert na.name == "NaPospischil"
     assert "NaPospischil_gNa" in na.channel_params.keys()
     assert "NaPospischil_eNa" in na.channel_params.keys()
@@ -50,8 +49,7 @@ def test_channel_change_name():
 
 
 def test_integration_with_renamed_channels():
-    neuron_hh = HH()
-    neuron_hh.change_name("NeuronHH")
+    neuron_hh = HH().change_name("NeuronHH")
     standard_hh = HH()
 
     comp = jx.Compartment()
