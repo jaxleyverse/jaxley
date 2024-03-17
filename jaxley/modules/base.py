@@ -309,12 +309,14 @@ class Module(ABC):
     ):
         if key in view.columns:
             view = view[~np.isnan(view[key])]
-            added_param_state = [{
-                "indices": view.index.values,
-                "key": key,
-                "val": val,
-                "table": table_to_update,
-            }]
+            added_param_state = [
+                {
+                    "indices": view.index.values,
+                    "key": key,
+                    "val": jnp.asarray(val),
+                    "table": table_to_update,
+                }
+            ]
             if param_state is not None:
                 param_state += added_param_state
             else:
@@ -375,26 +377,31 @@ class Module(ABC):
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
-        self.indices_set_by_trainables.append(indices_per_param)
-
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
         if init_val is not None:
             if isinstance(init_val, float):
-                new_params = jnp.asarray([[init_val]] * num_created_parameters)
+                new_params = jnp.asarray([init_val] * num_created_parameters)
             elif isinstance(init_val, list):
                 assert (
                     len(init_val) == num_created_parameters
                 ), f"len(init_val)={len(init_val)}, but trying to create {num_created_parameters} parameters."
-                new_params = jnp.asarray(init_val)[:, None]
+                new_params = jnp.asarray(init_val)
             else:
                 raise ValueError(
                     f"init_val must a float, list, or None, but it is a {type(init_val).__name__}."
                 )
         else:
-            new_params = jnp.mean(param_vals, axis=1, keepdims=True)
+            new_params = jnp.mean(param_vals, axis=1)
 
-        self.trainable_params.append({key: new_params})
+        self.trainable_params.append(
+            {
+                "key": key,
+                "val": new_params,
+                "indices": indices_per_param,
+                "table": "nodes",
+            }
+        )  # TODO nodes vs edges
         self.num_trainable_params += num_created_parameters
         if verbose:
             print(
@@ -452,10 +459,12 @@ class Module(ABC):
             params[synapse_params] = self.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
-        for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
-            for key in set_param.keys():
-                if key in list(params.keys()):  # Only parameters, not initial states.
-                    params[key] = params[key].at[inds].set(set_param[key])
+        for parameter in trainable_params:
+            inds = parameter["indices"]
+            set_param = parameter["val"]
+            key = parameter["key"]
+            if key in list(params.keys()):  # Only parameters, not initial states.
+                params[key] = params[key].at[inds].set(set_param[key])
 
         # Compute conductance params and append them.
         cond_params = self.init_conds(params)
