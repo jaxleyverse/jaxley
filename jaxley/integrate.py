@@ -11,8 +11,9 @@ from jaxley.utils.jax_utils import nested_checkpoint_scan
 def integrate(
     module: Module,
     params: List[Dict[str, jnp.ndarray]] = [],
-    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
     *,
+    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+    data_params: Optional[List[Dict]] = None,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
@@ -23,6 +24,11 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
+        params: Trainable parameters returned by `get_parameters()`.
+        data_stimuli: Outputs of `.data_stimulate()`, only needed if stimuli change
+            across function calls.
+        data_params: Outputs of `.data_set()`, only needed if parameters change
+            across function calls and parameters are not defined with `make_trainable`.
         t_max: Duration of the simulation in milliseconds. If `t_max` is greater than
             the length of the stimulus input, the stimulus will be padded at the end
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
@@ -43,7 +49,7 @@ def integrate(
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
-    module.to_jax()  # Creates `.jaxnodes` from `.nodes`.
+    module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
     # At least one stimulus was inserted.
     if module.currents is not None or data_stimuli is not None:
@@ -81,6 +87,16 @@ def integrate(
             i_current = jnp.concatenate((i_current, pad))
         else:
             i_current = i_current[:t_max_steps, :]
+
+    # If `data_params` was passed, override the corresponding values of `jaxnodes`
+    # or `jaxedges`.
+    for entry in data_params:
+        table = module.jaxnodes if entry["table"] == "nodes" else module.jaxedges
+        table_update = table[entry["key"]].at[entry["indices"]].set(entry["val"])
+        if entry["table"] == "nodes":
+            module.jaxnodes[entry["key"]] = table_update
+        else:
+            module.jaxedges[entry["key"]] = table_update
 
     # Run `init_conds()` and return every parameter that is needed to solve the ODE.
     # This includes conductances, radiuses, lenghts, axial_resistivities, but also

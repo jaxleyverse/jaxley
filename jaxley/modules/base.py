@@ -247,7 +247,7 @@ class Module(ABC):
 
         Note that this function can not be called within `jax.jit` or `jax.grad`.
         Instead, it should be used set the parameters of the module **before** the
-        simulation. Use `make_trainable` to set parameters during `jax.jit` or
+        simulation. Use `.data_set()` to set parameters during `jax.jit` or
         `jax.grad`.
 
         Args:
@@ -264,12 +264,64 @@ class Module(ABC):
         )
         self._set(key, val, view, view)
 
-    def _set(self, key, val, view, table_to_update):
+    def _set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        view: pd.DataFrame,
+        table_to_update: pd.DataFrame,
+    ):
         if key in view.columns:
             view = view[~np.isnan(view[key])]
             table_to_update.loc[view.index.values, key] = val
         else:
             raise KeyError("Key not recognized.")
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]] = None,
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`.
+
+        Args:
+            key: The name of the parameter to set.
+            val: The value to set the parameter to. If it is `jnp.ndarray` then it
+                must be of shape `(len(num_compartments))`.
+            param_state: State of the setted parameters, internally used such that this
+                function does not modify global state.
+        """
+        view = (
+            (self.edges, "edges")
+            if key in self.synapse_param_names or key in self.synapse_state_names
+            else (self.nodes, "nodes")
+        )
+        return self._data_set(key, val, view[0], view[1], param_state)
+
+    def _data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        view: pd.DataFrame,
+        table_to_update: str,
+        param_state: Optional[List[Dict]] = None,
+    ):
+        if key in view.columns:
+            view = view[~np.isnan(view[key])]
+            added_param_state = [{
+                "indices": view.index.values,
+                "key": key,
+                "val": val,
+                "table": table_to_update,
+            }]
+            if param_state is not None:
+                param_state += added_param_state
+            else:
+                param_state = added_param_state
+        else:
+            raise KeyError("Key not recognized.")
+        return param_state
 
     def make_trainable(
         self,
