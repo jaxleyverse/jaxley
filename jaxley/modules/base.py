@@ -399,9 +399,9 @@ class Module(ABC):
                 "key": key,
                 "val": new_params,
                 "indices": indices_per_param,
-                "table": "nodes",
+                "table": None,
             }
-        )  # TODO nodes vs edges
+        )
         self.num_trainable_params += num_created_parameters
         if verbose:
             print(
@@ -464,7 +464,8 @@ class Module(ABC):
             set_param = parameter["val"]
             key = parameter["key"]
             if key in list(params.keys()):  # Only parameters, not initial states.
-                params[key] = params[key].at[inds].set(set_param[key])
+                # TODO remove the ugly `[:, None]`.
+                params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
         cond_params = self.init_conds(params)
