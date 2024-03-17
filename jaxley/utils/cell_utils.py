@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 import jax.numpy as jnp
 import numpy as np
 from jax import vmap
@@ -187,3 +189,20 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
     return vmap(lambda x: jnp.interp(loc, jnp.linspace(0, 1, len(x)), x), in_axes=(1,))(
         coords[:, :3]
     )
+
+
+def params_to_pstate(
+    params: List[Dict[str, jnp.ndarray]],
+    indices_set_by_trainables: List[jnp.ndarray],
+):
+    """Make outputs `get_parameters()` conform with outputs of `.data_set()`.
+
+    `make_trainable()` followed by `params=get_parameters()` does not return indices
+    because these indices would also be differentiated by `jax.grad` (as soon as
+    the `params` are passed to `def simulate(params)`. Therefore, in `jx.integrate`,
+    we run the function to add indices to the dict. The outputs of `params_to_pstate`
+    are of the same shape as the outputs of `.data_set()`."""
+    return [
+        {"key": list(p.keys())[0], "val": list(p.values())[0], "indices": i}
+        for p, i in zip(params, indices_set_by_trainables)
+    ]

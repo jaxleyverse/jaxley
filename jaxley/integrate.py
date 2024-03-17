@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import pandas as pd
 
 from jaxley.modules import Module
+from jaxley.utils.cell_utils import params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
@@ -12,6 +13,7 @@ def integrate(
     module: Module,
     params: List[Dict[str, jnp.ndarray]] = [],
     *,
+    param_state: Optional[List[Dict]] = None,
     data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
@@ -24,6 +26,7 @@ def integrate(
 
     Args:
         params: Trainable parameters returned by `get_parameters()`.
+        param_state: Parameters returned by `data_set`.
         data_stimuli: Outputs of `.data_stimulate()`, only needed if stimuli change
             across function calls.
         t_max: Duration of the simulation in milliseconds. If `t_max` is greater than
@@ -85,19 +88,18 @@ def integrate(
         else:
             i_current = i_current[:t_max_steps, :]
 
-    # TODO: remove if sure that not needed
-    # for entry in data_params:
-    #     table = module.jaxnodes if entry["table"] == "nodes" else module.jaxedges
-    #     table_update = table[entry["key"]].at[entry["indices"]].set(entry["val"])
-    #     if entry["table"] == "nodes":
-    #         module.jaxnodes[entry["key"]] = table_update
-    #     else:
-    #         module.jaxedges[entry["key"]] = table_update
+    # Make the `trainable_params` of the same shape as the `param_state`, such that they
+    # can be processed together by `get_all_parameters`.
+    pstate = params_to_pstate(params, module.indices_set_by_trainables)
+
+    # Gather parameters from `make_trainable` and `data_set` into a single list.
+    if param_state is not None:
+        pstate += param_state
 
     # Run `init_conds()` and return every parameter that is needed to solve the ODE.
     # This includes conductances, radiuses, lenghts, axial_resistivities, but also
     # coupling conductances.
-    all_params = module.get_all_parameters(params)
+    all_params = module.get_all_parameters(pstate)
 
     def _body_fun(state, i_stim):
         state = module.step(

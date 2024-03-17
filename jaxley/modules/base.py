@@ -281,7 +281,7 @@ class Module(ABC):
         self,
         key: str,
         val: Union[float, jnp.ndarray],
-        param_state: Optional[List[Dict]] = None,
+        param_state: Optional[List[Dict]],
     ):
         """Set parameter of module (or its view) to a new value within `jit`.
 
@@ -293,28 +293,27 @@ class Module(ABC):
                 function does not modify global state.
         """
         view = (
-            (self.edges, "edges")
+            self.edges
             if key in self.synapse_param_names or key in self.synapse_state_names
-            else (self.nodes, "nodes")
+            else self.nodes
         )
-        return self._data_set(key, val, view[0], view[1], param_state)
+        return self._data_set(key, val, view, param_state)
 
     def _data_set(
         self,
         key: str,
-        val: Union[float, jnp.ndarray],
+        val: Tuple[float, jnp.ndarray],
         view: pd.DataFrame,
-        table_to_update: str,
         param_state: Optional[List[Dict]] = None,
     ):
+        # Note: `data_set` does not support arrays for `val`.
         if key in view.columns:
             view = view[~np.isnan(view[key])]
             added_param_state = [
                 {
-                    "indices": view.index.values,
+                    "indices": np.atleast_2d(view.index.values),
                     "key": key,
-                    "val": jnp.asarray(val),
-                    "table": table_to_update,
+                    "val": jnp.atleast_1d(jnp.asarray(val)),
                 }
             ]
             if param_state is not None:
@@ -377,6 +376,8 @@ class Module(ABC):
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
+        self.indices_set_by_trainables.append(indices_per_param)
+
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
         if init_val is not None:
@@ -394,14 +395,7 @@ class Module(ABC):
         else:
             new_params = jnp.mean(param_vals, axis=1)
 
-        self.trainable_params.append(
-            {
-                "key": key,
-                "val": new_params,
-                "indices": indices_per_param,
-                "table": None,
-            }
-        )
+        self.trainable_params.append({key: new_params})
         self.num_trainable_params += num_created_parameters
         if verbose:
             print(
@@ -464,7 +458,6 @@ class Module(ABC):
             set_param = parameter["val"]
             key = parameter["key"]
             if key in list(params.keys()):  # Only parameters, not initial states.
-                # TODO remove the ugly `[:, None]`.
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
@@ -1145,6 +1138,15 @@ class View:
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
         self.pointer._set(key, val, self.view, self.pointer.nodes)
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]] = None,
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`."""
+        return self.pointer._data_set(key, val, self.view, param_state)
 
     def make_trainable(
         self,
