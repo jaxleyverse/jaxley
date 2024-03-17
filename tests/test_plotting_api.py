@@ -21,7 +21,7 @@ def test_cell():
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
     ax = cell.vis(ax=ax)
     ax = cell.branch([0, 1, 2]).vis(ax=ax, col="r")
-    ax = cell.branch(1).loc(0.9).vis(ax=ax, col="b")
+    ax = cell.branch(1).comp(0.9).vis(ax=ax, col="b")
 
     # Plot 2.
     cell.branch(0).add_to_group("soma")

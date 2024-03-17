@@ -42,9 +42,9 @@ def test_network_grad():
 
     current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
     for i in range(3):
-        net.cell(i).branch(0).loc(0.0).stimulate(current)
+        net.cell(i).branch(0).comp(0.0).stimulate(current)
 
-    net.cell(6).branch(0).loc(0.0).record()
+    net.cell(6).branch(0).comp(0.0).record()
 
     def simulate(params):
         return jnp.sum(jx.integrate(net, params=params)[0, ::40])

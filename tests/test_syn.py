@@ -21,8 +21,8 @@ def test_set_and_querying_params_one_type():
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:
-            pre = net.cell(pre_ind).branch(0).loc(0.0)
-            post = net.cell(post_ind).branch(0).loc(0.0)
+            pre = net.cell(pre_ind).branch(0).comp(0.0)
+            post = net.cell(post_ind).branch(0).comp(0.0)
             pre.connect(post, IonotropicSynapse())
 
     # Get the synapse parameters to test setting

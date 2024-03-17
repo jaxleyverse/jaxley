@@ -45,7 +45,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
 
     radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
     for i, loc in enumerate(np.linspace(0, 1, nseg_per_branch)):
-        branch.loc(loc).set("radius", radiuses[i])
+        branch.comp(loc).set("radius", radiuses[i])
 
     branch.set("length", 10.0)
     branch.set("axial_resistivity", 1_000.0)
@@ -58,9 +58,9 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     branch.set("HH_n", 0.3644787002343737)
     branch.set("v", -62.0)
 
-    branch.loc(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
-    branch.loc(0.0).record()
-    branch.loc(1.0).record()
+    branch.comp(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    branch.comp(0.0).record()
+    branch.comp(1.0).record()
 
     voltages = jx.integrate(branch, delta_t=dt)
 
@@ -169,29 +169,29 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
     branch.set("HH_n", 0.3644787)
 
     for loc in np.linspace(0, 0.45, 8):
-        branch.loc(loc).set("length", 2.0)
+        branch.comp(loc).set("length", 2.0)
 
     for loc in np.linspace(0.55, 1.0, 8):
-        branch.loc(loc).set("length", 20.0)
+        branch.comp(loc).set("length", 20.0)
 
     for loc in np.linspace(0, 0.45, 8):
-        branch.loc(loc).set("axial_resistivity", 800.0)
+        branch.comp(loc).set("axial_resistivity", 800.0)
 
     for loc in np.linspace(0.55, 1.0, 8):
-        branch.loc(loc).set("axial_resistivity", 800.0)
+        branch.comp(loc).set("axial_resistivity", 800.0)
 
     counter = 0
     for loc in np.linspace(0, 1, nseg):
-        branch.loc(loc).set("radius", diams[counter] / 2)
+        branch.comp(loc).set("radius", diams[counter] / 2)
         counter += 1
 
     branch = branch.initialize()
 
     # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for jaxley.
-    branch.loc(0.02).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
-    branch.loc(0.02).record()
-    branch.loc(0.52).record()
-    branch.loc(0.98).record()
+    branch.comp(0.02).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    branch.comp(0.02).record()
+    branch.comp(0.52).record()
+    branch.comp(0.98).record()
 
     s = jx.integrate(branch, delta_t=dt, tridiag_solver="thomas")
     return s

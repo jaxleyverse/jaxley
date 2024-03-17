@@ -68,15 +68,12 @@ class Branch(Module):
         if key.startswith("__"):
             return super().__getattribute__(key)
 
-        if key in ["comp", "loc"]:
+        if key == "comp":
             view = deepcopy(self.nodes)
             view["global_comp_index"] = view["comp_index"]
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
-            if key == "comp":
-                return CompartmentView(self, view)
-            else:
-                return CompartmentView(self, view).loc
+            return CompartmentView(self, view)
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
             view = self.nodes.loc[inds]
@@ -129,9 +126,6 @@ class Branch(Module):
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
-    def __len__(self):
-        return self.nseg
-
 
 class BranchView(View):
     def __init__(self, pointer, view):
@@ -139,14 +133,11 @@ class BranchView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
-        local_idcs = self._get_local_indices()
-        self.view[local_idcs.columns] = (
-            local_idcs  # set indexes locally. enables net[0:2,0:2]
-        )
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
+        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
         return new_view
 
     def __getattr__(self, key):
-        assert key in ["comp", "loc"]
+        assert key == "comp"
         return CompartmentView(self.pointer, self.view)

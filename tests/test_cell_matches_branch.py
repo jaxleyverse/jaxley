@@ -19,11 +19,11 @@ def _run_long_branch(dt, t_max):
     branch = jx.Branch(comp, nseg_per_branch)
     branch.insert(HH())
 
-    branch.loc("all").make_trainable("radius", 1.0)
+    branch.comp("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
 
-    branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    branch.comp(0.0).record()
+    branch.comp(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
 
     def loss(params):
         s = jx.integrate(branch, params=params)
@@ -44,11 +44,11 @@ def _run_short_branches(dt, t_max):
     cell = jx.Cell(branch, parents=parents)
     cell.insert(HH())
 
-    cell.branch("all").loc("all").make_trainable("radius", 1.0)
+    cell.branch("all").comp("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()
 
-    cell.branch(0).loc(0.0).record()
-    cell.branch(0).loc(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    cell.branch(0).comp(0.0).record()
+    cell.branch(0).comp(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
 
     def loss(params):
         s = jx.integrate(cell, params=params)
