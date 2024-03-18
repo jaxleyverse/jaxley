@@ -58,7 +58,7 @@ class CompartmentView(View):
     """CompartmentView."""
 
     def __init__(self, pointer, view):
-        view = view.assign(controlled_by_param=view.comp_index)
+        view = view.assign(controlled_by_param=view.global_comp_index)
         super().__init__(pointer, view)
 
     def __call__(self, index: int):

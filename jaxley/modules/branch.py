@@ -133,7 +133,7 @@ class Branch(Module):
 
 class BranchView(View):
     def __init__(self, pointer, view):
-        view = view.assign(controlled_by_param=view.branch_index)
+        view = view.assign(controlled_by_param=view.global_branch_index)
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
