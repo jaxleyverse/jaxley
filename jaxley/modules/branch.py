@@ -73,7 +73,7 @@ class Branch(Module):
             view["global_comp_index"] = view["comp_index"]
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
-            compview = CompartmentView(self, self.view)
+            compview = CompartmentView(self, view)
             return compview if key == "comp" else compview.loc
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
