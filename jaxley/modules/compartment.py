@@ -69,9 +69,8 @@ class CompartmentView(View):
             assert (
                 loc >= 0.0 and loc <= 1.0
             ), "Compartments must be indexed by a continuous value between 0 and 1."
-
         index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
-        return super().adjust_view("comp_index", index)
+        return self(index)
 
     def connect(self, post: "CompartmentView", synapse_type):
         """Connect two compartments with a chemical synapse.

@@ -73,10 +73,8 @@ class Branch(Module):
             view["global_comp_index"] = view["comp_index"]
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
-            if key == "comp":
-                return CompartmentView(self, view)
-            else:
-                return CompartmentView(self, view).loc
+            compview = CompartmentView(self, self.view)
+            return compview if key == "comp" else compview.loc
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
             view = self.nodes.loc[inds]
@@ -149,4 +147,5 @@ class BranchView(View):
 
     def __getattr__(self, key):
         assert key in ["comp", "loc"]
-        return CompartmentView(self.pointer, self.view)
+        compview = CompartmentView(self.pointer, self.view)
+        return compview if key == "comp" else compview.loc
