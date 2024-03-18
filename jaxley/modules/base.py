@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
@@ -18,6 +19,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
+    interpolate_xyz,
     loc_of_index,
 )
 from jaxley.utils.plot_utils import plot_morph
@@ -91,6 +93,17 @@ class Module(ABC):
 
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
+
+    def _update_nodes_with_xyz(self):
+        """Add xyz coordinates to nodes."""
+        loc = np.linspace(1 - 0.5 / self.nseg, 0.5 / self.nseg, self.nseg)
+        xyz = (
+            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
+            if len(loc) > 0
+            else [self.xyzr]
+        )
+        idcs = self.nodes["comp_index"]
+        self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
@@ -376,7 +389,7 @@ class Module(ABC):
         in `trainable_params()`. This function is run within `jx.integrate()`.
         """
         params = {}
-        for key in ["radius", "length", "axial_resistivity"]:
+        for key in ["radius", "length", "axial_resistivity", "capacitance"]:
             params[key] = self.jaxnodes[key]
 
         for channel in self.channels:
@@ -573,11 +586,12 @@ class Module(ABC):
         )
 
         # Voltage steps.
+        cm = params["capacitance"]  # Abbreviation.
         if solver == "bwd_euler":
             new_voltages = step_voltage_implicit(
                 voltages=voltages,
-                voltage_terms=v_terms + syn_v_terms,
-                constant_terms=const_terms + i_ext + syn_const_terms,
+                voltage_terms=(v_terms + syn_v_terms) / cm,
+                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
                 summed_coupling_conds=params["summed_coupling_conds"],
@@ -592,8 +606,8 @@ class Module(ABC):
         else:
             new_voltages = step_voltage_explicit(
                 voltages,
-                v_terms + syn_v_terms,
-                const_terms + i_ext + syn_const_terms,
+                (v_terms + syn_v_terms) / cm,
+                (const_terms + i_ext + syn_const_terms) / cm,
                 coupling_conds_bwd=params["coupling_conds_bwd"],
                 coupling_conds_fwd=params["coupling_conds_fwd"],
                 branch_cond_fwd=params["branch_conds_fwd"],
@@ -772,9 +786,10 @@ class Module(ABC):
 
     def vis(
         self,
-        ax=None,
+        ax: Optional[Axes] = None,
         col: str = "k",
         dims: Tuple[int] = (0, 1),
+        type: str = "line",
         morph_plot_kwargs: Dict = {},
     ) -> None:
         """Visualize the module.
@@ -791,10 +806,11 @@ class Module(ABC):
             col=col,
             ax=ax,
             view=self.nodes,
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def _vis(self, ax, col, dims, view, morph_plot_kwargs):
+    def _vis(self, ax, col, dims, view, type, morph_plot_kwargs):
         branches_inds = view["branch_index"].to_numpy()
         coords = []
         for branch_ind in branches_inds:
@@ -808,7 +824,7 @@ class Module(ABC):
             dims=dims,
             col=col,
             ax=ax,
-            type="plot",
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
@@ -825,20 +841,10 @@ class Module(ABC):
 
         comp_fraction = loc_of_index(comp_ind, self.nseg)
         coords = self.xyzr[branch_ind]
-
-        # Perform a linear interpolation between coordinates to get the location.
-        interp_loc_x = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 0]
-        )
-        interp_loc_y = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 1]
-        )
-        interp_loc_z = np.interp(
-            comp_fraction, np.linspace(0, 1, len(coords)), coords[:, 2]
-        )
+        interpolated_xyz = interpolate_xyz(comp_fraction, coords)
 
         ax = plot_morph(
-            np.asarray([[[interp_loc_x, interp_loc_y, interp_loc_z]]]),
+            np.asarray([[interpolated_xyz]]),
             dims=dims,
             col=col,
             ax=ax,
@@ -884,11 +890,14 @@ class Module(ABC):
                 if parents[b] > -1:
                     start_point = endpoints[parents[b]]
                     num_children_of_parent = num_children[parents[b]]
-                    y_offset = (
-                        ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
-                    ) * y_offset_multiplier[levels[b]]
+                    if num_children_of_parent > 1:
+                        y_offset = (
+                            ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                        ) * y_offset_multiplier[levels[b]]
+                    else:
+                        y_offset = 0.0
                 else:
-                    start_point = [0, 0]
+                    start_point = [0, 0, 0]
                     y_offset = 0.0
 
                 len_of_path = np.sqrt(y_offset**2 + 1.0)
@@ -896,10 +905,11 @@ class Module(ABC):
                 end_point = [
                     start_point[0] + branch_lens[b] / len_of_path * 1.0,
                     start_point[1] + branch_lens[b] / len_of_path * y_offset,
+                    start_point[2],
                 ]
                 endpoints.append(end_point)
 
-                self.xyzr[b][:, :2] = np.asarray([start_point, end_point])
+                self.xyzr[b][:, :3] = np.asarray([start_point, end_point])
             else:
                 # Dummy to keey the index `endpoints[parent[b]]` above working.
                 endpoints.append(np.zeros((2,)))
@@ -1088,9 +1098,10 @@ class View:
 
     def vis(
         self,
-        ax=None,
-        col="k",
-        dims=(0, 1),
+        ax: Optional[Axes] = None,
+        col: str = "k",
+        dims: Tuple[int] = (0, 1),
+        type: str = "line",
         morph_plot_kwargs: Dict = {},
     ):
         nodes = self.set_global_index_and_index(self.view)
@@ -1099,6 +1110,7 @@ class View:
             col=col,
             dims=dims,
             view=nodes,
+            type=type,
             morph_plot_kwargs=morph_plot_kwargs,
         )
 

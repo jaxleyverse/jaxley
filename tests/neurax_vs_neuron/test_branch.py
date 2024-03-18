@@ -32,7 +32,7 @@ def test_similarity():
     t_max = 10.0  # ms
 
     voltages_jaxley = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
-    voltages_neuron = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_neuron = _run_neuron(i_delay, i_dur, i_amp, dt, t_max)
 
     assert np.mean(np.abs(voltages_jaxley - voltages_neuron)) < 1.0
 
@@ -67,7 +67,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     return voltages
 
 
-def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
+def _run_neuron(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
     h.dt = dt
 

@@ -29,9 +29,7 @@ repository, which will format all files.
 imports. You can run isort manually from the console using `isort` in the top
 directory.
 
-**[pyright](https://github.com/Microsoft/pyright)**: Used for static type checking.
-
-`black` and `isort` and `pyright` are checked as part of our CI actions. If these
+`black` and `isort` are checked as part of our CI actions. If these
 checks fail please make sure you have installed the latest versions for each of them
 and run them locally.
 

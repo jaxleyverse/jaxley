@@ -1,18 +1,20 @@
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
-from jaxley.utils.cell_utils import index_of_loc, loc_of_index
+from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
 
 
 class Compartment(Module):
     compartment_params: Dict = {
-        "length": 10.0,
-        "radius": 1.0,
-        "axial_resistivity": 5_000.0,
+        "length": 10.0,  # um
+        "radius": 1.0,  # um
+        "axial_resistivity": 5_000.0,  # ohm cm
+        "capacitance": 1.0,  # uF/cm^2
     }
     compartment_states: Dict = {"v": -70.0}
 
@@ -158,11 +160,34 @@ class CompartmentView(View):
             self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
             self.pointer.synapses.append(synapse_type)
 
+    def distance(self, endpoint: "CompartmentView"):
+        """Return the direct distance between two compartments.
+
+        This does not compute the pathwise distance (which is currently not
+        implemented).
+
+        Args:
+            endpoint: The compartment to which to compute the distance to.
+        """
+        start_branch = self.view["global_branch_index"].item()
+        start_comp = self.view["comp_index"].item()
+        start_xyz = interpolate_xyz(
+            loc_of_index(start_comp, self.pointer.nseg), self.pointer.xyzr[start_branch]
+        )
+
+        end_branch = endpoint.view["global_branch_index"].item()
+        end_comp = endpoint.view["comp_index"].item()
+        end_xyz = interpolate_xyz(
+            loc_of_index(end_comp, self.pointer.nseg), self.pointer.xyzr[end_branch]
+        )
+
+        return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
+
     def vis(
         self,
-        ax=None,
-        col="k",
-        dims=(0, 1),
+        ax: Optional[Axes] = None,
+        col: str = "k",
+        dims: Tuple[int] = (0, 1),
         morph_plot_kwargs: Dict = {},
     ):
         return self.pointer._scatter(

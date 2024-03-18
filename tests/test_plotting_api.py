@@ -47,11 +47,13 @@ def test_network():
     # Plot 1.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
     ax = net.cell([0, 1]).vis(ax=ax)
-    ax = net.cell(2).vis(ax=ax, col="r")
+    ax = net.cell(2).vis(ax=ax, col="r", type="line")
+    ax = net.cell(2).vis(ax=ax, col="r", type="scatter")
     ax = net.cell(0).branch(np.arange(10).tolist()).vis(ax=ax, col="b")
 
     # Plot 2.
-    ax = net.vis(detail="full")
+    ax = net.vis(detail="full", type="line")
+    ax = net.vis(detail="full", type="scatter")
 
     # Plot 3.
     net.vis(detail="point")
