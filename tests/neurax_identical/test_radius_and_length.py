@@ -68,8 +68,8 @@ def test_radius_and_length_branch():
     branch.set("radius", np.random.rand(2))
 
     branch.insert(HH())
-    branch.comp(0.0).record()
-    branch.comp(0.0).stimulate(current)
+    branch.loc(0.0).record()
+    branch.loc(0.0).stimulate(current)
 
     voltages = jx.integrate(branch, delta_t=dt)
 
@@ -114,8 +114,8 @@ def test_radius_and_length_cell():
     cell.set("radius", np.random.rand(2 * num_branches))
 
     cell.insert(HH())
-    cell.branch(1).comp(0.0).record()
-    cell.branch(1).comp(0.0).stimulate(current)
+    cell.branch(1).loc(0.0).record()
+    cell.branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(cell, delta_t=dt)
 
@@ -171,10 +171,10 @@ def test_radius_and_length_net():
     network.insert(HH())
 
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).comp(0.0).record()
+        network.cell(cell_ind).branch(1).loc(0.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).comp(0.0).stimulate(current)
+        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(network, delta_t=dt)
 
