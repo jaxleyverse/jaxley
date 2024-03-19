@@ -229,15 +229,17 @@ class CellView(View):
     """CellView."""
 
     def __init__(self, pointer, view):
-        view = view.assign(controlled_by_param=view.cell_index)
+        view = view.assign(controlled_by_param=view.global_cell_index)
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
+        local_idcs = self._get_local_indices()
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         if index == "all":
             self.allow_make_trainable = False
         new_view = super().adjust_view("cell_index", index)
-        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
-        new_view.view["branch_index"] -= new_view.view["branch_index"].iloc[0]
         return new_view
 
     def __getattr__(self, key):
@@ -259,11 +261,11 @@ class CellView(View):
                 loc_pre = 0.0
                 rand_branch_post = np.random.randint(0, num_branches_post)
                 rand_loc_post = np.random.rand()
-                pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
+                pre = self.pointer.cell(pre_ind).branch(branch_pre).loc(loc_pre)
                 post = (
                     self.pointer.cell(post_ind)
                     .branch(rand_branch_post)
-                    .comp(rand_loc_post)
+                    .loc(rand_loc_post)
                 )
                 pre.connect(post, synapse_type)
 
@@ -288,9 +290,9 @@ class CellView(View):
             rand_branch_post = np.random.randint(0, num_branches_post)
             rand_loc_post = np.random.rand()
 
-            pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
+            pre = self.pointer.cell(pre_ind).branch(branch_pre).loc(loc_pre)
             post = (
-                self.pointer.cell(post_ind).branch(rand_branch_post).comp(rand_loc_post)
+                self.pointer.cell(post_ind).branch(rand_branch_post).loc(rand_loc_post)
             )
             pre.connect(post, synapse_type)
 

@@ -24,8 +24,8 @@ def test_swc_cell():
     fname = os.path.join(dirname, "../morph.swc")
     cell = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
     cell.insert(HH())
-    cell.branch(1).comp(0.0).record()
-    cell.branch(1).comp(0.0).stimulate(current)
+    cell.branch(1).loc(0.0).record()
+    cell.branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(cell, delta_t=dt)
 
@@ -68,10 +68,10 @@ def test_swc_net():
     network.insert(HH())
 
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).comp(0.0).record()
+        network.cell(cell_ind).branch(1).loc(0.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).comp(0.0).stimulate(current)
+        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(network, delta_t=dt)
 

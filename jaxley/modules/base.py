@@ -1,4 +1,5 @@
 import inspect
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from math import pi
@@ -454,10 +455,12 @@ class Module(ABC):
         self._record(recording_view)
 
     def _record(self, view):
-        assert (
-            len(view) == 1
-        ), "Can only record from compartments, not branches, cells, or networks."
-        self.recordings = pd.concat([self.recordings, view])
+        self.recordings = pd.concat([self.recordings, view], ignore_index=True)
+        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+        warning = f"Added {num_comps} compartments to recordings. If this was not intended, run `delete_recordings`."
+        if len(view) > 1:
+            warnings.warn(warning)
+        print(f"Added {len(view)} recordings. See `.recordings` for details.")
 
     def delete_recordings(self):
         """Removes all recordings from the module."""
@@ -465,6 +468,9 @@ class Module(ABC):
 
     def stimulate(self, current: Optional[jnp.ndarray] = None):
         """Insert a stimulus into the compartment.
+
+        current must be a 1d array or have batch dimension of size `(num_compartments, )`
+        or `(1, )`. If 1d, the same stimulus is added to all compartments.
 
         This function cannot be run during `jax.jit` and `jax.grad`. Because of this,
         it should only be used for static stimuli (i.e., stimuli that do not depend
@@ -474,29 +480,41 @@ class Module(ABC):
         self._stimulate(current, self.nodes)
 
     def _stimulate(self, current, view):
-        assert (
-            len(view) == 1
-        ), "Can only stimulate compartments, not branches, cells, or networks."
+        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+        warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
+
+        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
+        batch_size = current.shape[0]
+        is_multiple = len(view) == batch_size
+        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
+        assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
+
         if self.currents is not None:
-            self.currents = jnp.concatenate(
-                [self.currents, jnp.expand_dims(current, axis=0)]
-            )
+            self.currents = jnp.concatenate([self.currents, current])
         else:
-            self.currents = jnp.expand_dims(current, axis=0)
+            self.currents = current
         self.current_inds = pd.concat([self.current_inds, view])
+        if len(view) > 1:
+            warnings.warn(warning)
+        print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
     def data_stimulate(
-        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
+        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None
     ):
         """Insert a stimulus into the module within jit (or grad)."""
-        return self._data_stimulate(current, self.nodes)
+        return self._data_stimulate(current, data_stimuli, self.nodes)
 
     def _data_stimulate(
         self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view
     ):
-        assert (
-            len(view) == 1
-        ), "Can only stimulate compartments, not branches, cells, or networks."
+        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+        warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
+
+        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
+        batch_size = current.shape[0]
+        is_multiple = len(view) == batch_size
+        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
+        assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
 
         if data_stimuli is not None:
             currents = data_stimuli[0]
@@ -507,10 +525,13 @@ class Module(ABC):
 
         # Same as in `.stimulate()`.
         if currents is not None:
-            currents = jnp.concatenate([currents, jnp.expand_dims(current, axis=0)])
+            currents = jnp.concatenate([currents, current])
         else:
-            currents = jnp.expand_dims(current, axis=0)
+            currents = current
         inds = pd.concat([inds, view])
+        if len(view) > 1:
+            warnings.warn(warning)
+        print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
         return (currents, inds)
 
@@ -934,6 +955,47 @@ class Module(ABC):
             rot = np.dot(rotation_matrix, self.xyzr[i][:, dims].T).T
             self.xyzr[i][:, dims] = rot
 
+    @property
+    def shape(self):
+        """Returns the number of submodules contained in a module.
+
+        ```
+        network.shape = (num_cells, num_branches, num_compartments)
+        cell.shape = (num_branches, num_compartments)
+        branch.shape = (num_compartments,)
+        ```"""
+        mod_name = self.__class__.__name__.lower()
+        if "comp" in mod_name:
+            return (1,)
+        elif "branch" in mod_name:
+            return self[:].shape[1:]
+        return self[:].shape
+
+    def _childview(self, index: Union[int, str, list, range, slice]):
+        """Return the child view of the current module.
+
+        network.cell(index) at network level.
+        cell.branch(index) at cell level.
+        branch.comp(index) at branch level."""
+        views = ["net", "cell", "branch", "comp", "/"]
+        parent_name = self.__class__.__name__.lower()  # name of current view
+        child_idx = (
+            np.where([v in parent_name for v in views])[0][0] + 1
+        )  # idx of child view
+        child_view = views[child_idx]  # name of child view
+        if child_view != "/":
+            return self.__getattr__(child_view)(index)
+        raise AttributeError("Compartment does not support indexing")
+
+    def __getitem__(self, index):
+        if isinstance(index, tuple):
+            return self._childview(index[0])[index[1:]]
+        return self._childview(index)
+
+    def __iter__(self):
+        for i in range(self.shape[0]):
+            yield self[i]
+
 
 class View:
     """View of a `Module`."""
@@ -1056,16 +1118,73 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move(x, y, z, nodes)
 
-    def adjust_view(self, key: str, index: float):
+    def adjust_view(self, key: str, index: Union[int, str, list, range, slice]):
         """Update view."""
         if isinstance(index, int) or isinstance(index, np.int64):
             self.view = self.view[self.view[key] == index]
-        elif isinstance(index, list):
+        elif isinstance(index, list) or isinstance(index, range):
             self.view = self.view[self.view[key].isin(index)]
+        elif isinstance(index, slice):
+            index = list(range(self.view[key].max() + 1))[index]
+            return self.adjust_view(key, index)
         else:
             assert index == "all"
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
+
+    def _get_local_indices(self):
+        """Computes local from global indices.
+
+        #cell_index, branch_index, comp_index
+        0, 0, 0     -->     0, 0, 0 # 1st compartment of 1st branch of 1st cell
+        0, 0, 1     -->     0, 0, 1 # 2nd compartment of 1st branch of 1st cell
+        0, 1, 2     -->     0, 1, 0 # 1st compartment of 2nd branch of 1st cell
+        0, 1, 3     -->     0, 1, 1 # 2nd compartment of 2nd branch of 1st cell
+        1, 2, 4     -->     1, 0, 0 # 1st compartment of 1st branch of 2nd cell
+        1, 2, 5     -->     1, 0, 1 # 2nd compartment of 1st branch of 2nd cell
+        1, 3, 6     -->     1, 1, 0 # 1st compartment of 2nd branch of 2nd cell
+        1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
+        """
+        local_idcs = ["cell_index", "branch_index", "comp_index"]
+        global_idcs = [f"global_{id}" for id in local_idcs]
+        all_idcs = global_idcs + local_idcs
+
+        # resets the index based on the parent index.
+        # i.e. if cell_index increments, branch_index and comp_index are reset.
+        reset_counts = (
+            lambda df, col: df.groupby(col)
+            .apply(lambda x: x - x.min(), include_groups=False)
+            .reset_index()
+        )
+
+        idcs_df = self.view[all_idcs]
+        for parent, col in zip(global_idcs[:-1], local_idcs[1:]):
+            idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col].values
+        return idcs_df[local_idcs]
+
+    def _childview(self, index: Union[int, str, list, range, slice]):
+        """Return the child view of the current view.
+
+        cell(0).branch(index) at cell level.
+        branch(0).comp(index) at branch level."""
+        views = np.array(["net", "cell", "branch", "comp", "/"])
+        parent_name = self.__class__.__name__.lower()
+        child_idx = np.roll([v in parent_name for v in views], 1)
+        child_view = views[child_idx][0]
+        if child_view != "/":
+            return self.__getattr__(child_view)(index)
+        raise AttributeError("Compartment does not support indexing")
+
+    def __getitem__(self, index):
+        if isinstance(index, tuple):
+            if len(index) > 1:
+                return self._childview(index[0])[index[1:]]
+            return self._childview(index[0])
+        return self._childview(index)
+
+    def __iter__(self):
+        for i in range(self.shape[0]):
+            yield self[i]
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -1077,6 +1196,11 @@ class View:
         raise NotImplementedError(
             "Only entire `jx.Module`s or entire cells within a network can be rotated."
         )
+
+    @property
+    def shape(self):
+        local_idcs = self._get_local_indices()
+        return tuple(local_idcs.nunique())
 
 
 class GroupView(View):
