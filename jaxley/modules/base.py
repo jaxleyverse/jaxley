@@ -915,7 +915,7 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
-        """Move cells or networks in the (x, y, z) plane."""
+        """Move cells or networks by adding to their (x, y, z) coordinates."""
         self._move(x, y, z, self.nodes)
 
     def _move(self, x: float, y: float, z: float, view):
@@ -926,6 +926,19 @@ class Module(ABC):
             self.xyzr[i][:, 0] += x
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
+
+    def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        """Move cells or networks to a location (x, y, z)."""
+        self._move_to(x, y, z, self.nodes)
+
+    def _move_to(self, x: float, y: float, z: float, view):
+        # Need to cast to set because this will return one columnn per compartment,
+        # not one column per branch.
+        indizes = set(view["branch_index"].to_numpy().tolist())
+        for i in indizes:
+            self.xyzr[i][:, 0] = x
+            self.xyzr[i][:, 1] = y
+            self.xyzr[i][:, 2] = z
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -1153,7 +1166,7 @@ class View:
         # i.e. if cell_index increments, branch_index and comp_index are reset.
         reset_counts = (
             lambda df, col: df.groupby(col)
-            .apply(lambda x: x - x.min(), include_groups=False)
+            .apply(lambda x: x - x.min()) # , include_groups=False
             .reset_index()
         )
 
