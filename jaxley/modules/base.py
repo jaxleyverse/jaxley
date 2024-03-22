@@ -1165,9 +1165,7 @@ class View:
         # resets the index based on the parent index.
         # i.e. if cell_index increments, branch_index and comp_index are reset.
         reset_counts = (
-            lambda df, col: df.groupby(col)
-            .apply(lambda x: x - x.min()) # , include_groups=False
-            .reset_index()
+            lambda df, col: df.groupby(col).apply(lambda x: x - x.min()).reset_index()
         )
 
         idcs_df = self.view[all_idcs]
