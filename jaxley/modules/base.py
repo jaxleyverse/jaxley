@@ -1166,11 +1166,7 @@ class View:
         # i.e. if cell_index increments, branch_index and comp_index are reset.
         reset_counts = (
             lambda df, col: df.groupby(col)
-<<<<<<< HEAD
-            .apply(lambda x: x - x.min()) # , include_groups=False
-=======
             .apply(lambda x: x - x.min(), include_groups=False)
->>>>>>> parent of 5ebf460 (Removed invalid include_groups argument from _get_local_indices and black formatted)
             .reset_index()
         )
 
