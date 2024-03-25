@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 REQUIRED = [
     "jax[cpu]",
     "numpy",
-    "pandas",
+    "pandas>=2.2.0",
     "matplotlib",
     "networkx",
 ]
