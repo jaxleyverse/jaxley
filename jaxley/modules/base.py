@@ -247,7 +247,7 @@ class Module(ABC):
 
         Note that this function can not be called within `jax.jit` or `jax.grad`.
         Instead, it should be used set the parameters of the module **before** the
-        simulation. Use `make_trainable` to set parameters during `jax.jit` or
+        simulation. Use `.data_set()` to set parameters during `jax.jit` or
         `jax.grad`.
 
         Args:
@@ -264,12 +264,65 @@ class Module(ABC):
         )
         self._set(key, val, view, view)
 
-    def _set(self, key, val, view, table_to_update):
+    def _set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        view: pd.DataFrame,
+        table_to_update: pd.DataFrame,
+    ):
         if key in view.columns:
             view = view[~np.isnan(view[key])]
             table_to_update.loc[view.index.values, key] = val
         else:
             raise KeyError("Key not recognized.")
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]],
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`.
+
+        Args:
+            key: The name of the parameter to set.
+            val: The value to set the parameter to. If it is `jnp.ndarray` then it
+                must be of shape `(len(num_compartments))`.
+            param_state: State of the setted parameters, internally used such that this
+                function does not modify global state.
+        """
+        view = (
+            self.edges
+            if key in self.synapse_param_names or key in self.synapse_state_names
+            else self.nodes
+        )
+        return self._data_set(key, val, view, param_state)
+
+    def _data_set(
+        self,
+        key: str,
+        val: Tuple[float, jnp.ndarray],
+        view: pd.DataFrame,
+        param_state: Optional[List[Dict]] = None,
+    ):
+        # Note: `data_set` does not support arrays for `val`.
+        if key in view.columns:
+            view = view[~np.isnan(view[key])]
+            added_param_state = [
+                {
+                    "indices": np.atleast_2d(view.index.values),
+                    "key": key,
+                    "val": jnp.atleast_1d(jnp.asarray(val)),
+                }
+            ]
+            if param_state is not None:
+                param_state += added_param_state
+            else:
+                param_state = added_param_state
+        else:
+            raise KeyError("Key not recognized.")
+        return param_state
 
     def make_trainable(
         self,
@@ -329,18 +382,18 @@ class Module(ABC):
         num_created_parameters = len(indices_per_param)
         if init_val is not None:
             if isinstance(init_val, float):
-                new_params = jnp.asarray([[init_val]] * num_created_parameters)
+                new_params = jnp.asarray([init_val] * num_created_parameters)
             elif isinstance(init_val, list):
                 assert (
                     len(init_val) == num_created_parameters
                 ), f"len(init_val)={len(init_val)}, but trying to create {num_created_parameters} parameters."
-                new_params = jnp.asarray(init_val)[:, None]
+                new_params = jnp.asarray(init_val)
             else:
                 raise ValueError(
                     f"init_val must a float, list, or None, but it is a {type(init_val).__name__}."
                 )
         else:
-            new_params = jnp.mean(param_vals, axis=1, keepdims=True)
+            new_params = jnp.mean(param_vals, axis=1)
 
         self.trainable_params.append({key: new_params})
         self.num_trainable_params += num_created_parameters
@@ -400,10 +453,12 @@ class Module(ABC):
             params[synapse_params] = self.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
-        for inds, set_param in zip(self.indices_set_by_trainables, trainable_params):
-            for key in set_param.keys():
-                if key in list(params.keys()):  # Only parameters, not initial states.
-                    params[key] = params[key].at[inds].set(set_param[key])
+        for parameter in trainable_params:
+            inds = parameter["indices"]
+            set_param = parameter["val"]
+            key = parameter["key"]
+            if key in list(params.keys()):  # Only parameters, not initial states.
+                params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
         cond_params = self.init_conds(params)
@@ -1083,6 +1138,15 @@ class View:
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
         self.pointer._set(key, val, self.view, self.pointer.nodes)
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]] = None,
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`."""
+        return self.pointer._data_set(key, val, self.view, param_state)
 
     def make_trainable(
         self,
