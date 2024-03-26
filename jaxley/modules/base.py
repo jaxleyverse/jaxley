@@ -927,18 +927,44 @@ class Module(ABC):
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
 
-    def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+    def move_to(self, x=0.0, y=0.0, z=0.0):
         """Move cells or networks to a location (x, y, z)."""
         self._move_to(x, y, z, self.nodes)
 
-    def _move_to(self, x: float, y: float, z: float, view):
-        # Need to cast to set because this will return one columnn per compartment,
-        # not one column per branch.
-        indizes = set(view["branch_index"].to_numpy().tolist())
-        for i in indizes:
-            self.xyzr[i][:, 0] = x
-            self.xyzr[i][:, 1] = y
-            self.xyzr[i][:, 2] = z
+    def _move_to(self, x, y, z, view):
+        if (
+            isinstance(x, np.ndarray)
+            and isinstance(y, np.ndarray)
+            and isinstance(z, np.ndarray)
+        ):
+            assert (
+                x.shape
+                == y.shape
+                == z.shape
+                == (2, len(view.cell_index.value_counts()))
+            ), "Coordinate shape mismatch."
+            tup_indices = np.array([view.cell_index, view.branch_index])
+            branches_per_cell = np.unique(tup_indices, axis=1)[0]
+
+            x_expanded = x[:, branches_per_cell]
+            y_expanded = y[:, branches_per_cell]
+            z_expanded = z[:, branches_per_cell]
+
+            xyzr_arr = np.array(self.xyzr)
+            xyzr_arr[:, :, 0] = x_expanded.T
+            xyzr_arr[:, :, 1] = y_expanded.T
+            xyzr_arr[:, :, 2] = z_expanded.T
+
+            self.xyzr = list(xyzr_arr)
+
+        else:
+            # Need to cast to set because this will return one columnn per compartment,
+            # not one column per branch.
+            indizes = set(view["branch_index"].to_numpy().tolist())
+            for i in indizes:
+                self.xyzr[i][:, 0] = x
+                self.xyzr[i][:, 1] = y
+                self.xyzr[i][:, 2] = z
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -1130,6 +1156,10 @@ class View:
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move(x, y, z, nodes)
+
+    def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._move_to(x, y, z, nodes)
 
     def adjust_view(self, key: str, index: Union[int, str, list, range, slice]):
         """Update view."""
