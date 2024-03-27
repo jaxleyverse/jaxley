@@ -262,7 +262,7 @@ def test_make_trainable_corresponds_to_set_pospischil():
     net1, net2 = build_two_networks()
     net1.cell(0).insert(Na())
     net1.insert(K())
-    net1.cell("all").branch("all").comp("all").make_trainable("vt")
+    net1.cell("all").branch("all").loc("all").make_trainable("vt")
     params1 = net1.get_parameters()
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
@@ -271,7 +271,7 @@ def test_make_trainable_corresponds_to_set_pospischil():
 
     net2.cell(0).insert(Na())
     net2.insert(K())
-    net2.cell("all").branch("all").comp("all").make_trainable("vt")
+    net2.cell("all").branch("all").loc("all").make_trainable("vt")
     params2 = net2.get_parameters()
     params2[0]["vt"] = params2[0]["vt"].at[:].set(0.05)
     net2.to_jax()
@@ -286,8 +286,8 @@ def test_make_trainable_corresponds_to_set_pospischil():
     net2.cell(1).branch(1).loc(0.0).record()
 
     current = jx.step_current(2.0, 3.0, 0.2, 0.025, 5.0)
-    net1.cell(0).branch(1).comp(0.0).stimulate(current)
-    net2.cell(0).branch(1).comp(0.0).stimulate(current)
+    net1.cell(0).branch(1).loc(0.0).stimulate(current)
+    net2.cell(0).branch(1).loc(0.0).stimulate(current)
     voltages1 = jx.integrate(net1, params=params1)
     voltages2 = jx.integrate(net2, params=params2)
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
@@ -338,7 +338,7 @@ def test_data_set_vs_make_trainable_pospischil():
     net2.cell(0).insert(Na())
     net2.insert(K())
     val = params1[0]["vt"]
-    pstate = net2.cell("all").branch("all").comp("all").data_set("vt", val.item(), None)
+    pstate = net2.cell("all").branch("all").loc("all").data_set("vt", val.item(), None)
     net2.to_jax()
     all_params2 = net2.get_all_parameters(trainable_params=pstate)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
@@ -346,12 +346,12 @@ def test_data_set_vs_make_trainable_pospischil():
     assert np.array_equal(all_params1["K_gK"], all_params2["K_gK"], equal_nan=True)
 
     # Perform test on simulation.
-    net1.cell(1).branch(1).comp(0.0).record()
-    net2.cell(1).branch(1).comp(0.0).record()
+    net1.cell(1).branch(1).loc(0.0).record()
+    net2.cell(1).branch(1).loc(0.0).record()
 
     current = jx.step_current(2.0, 3.0, 0.2, 0.025, 5.0)
-    net1.cell(0).branch(1).comp(0.0).stimulate(current)
-    net2.cell(0).branch(1).comp(0.0).stimulate(current)
+    net1.cell(0).branch(1).loc(0.0).stimulate(current)
+    net2.cell(0).branch(1).loc(0.0).stimulate(current)
     voltages1 = jx.integrate(net1, params=params1)
     voltages2 = jx.integrate(net2, param_state=pstate)
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
@@ -362,21 +362,21 @@ def test_data_set_vs_make_trainable_network():
     current = jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0)
     for net in [net1, net2]:
         net.insert(HH())
-        pre = net.cell(0).branch(0).comp(0.0)
-        post = net.cell(0).branch(1).comp(0.9)
+        pre = net.cell(0).branch(0).loc(0.0)
+        post = net.cell(0).branch(1).loc(0.9)
         pre.connect(post, IonotropicSynapse())
-        pre = net.cell(0).branch(0).comp(0.1)
-        post = net.cell(1).branch(1).comp(0.4)
+        pre = net.cell(0).branch(0).loc(0.1)
+        post = net.cell(1).branch(1).loc(0.4)
         pre.connect(post, TestSynapse())
-        pre = net.cell(1).branch(0).comp(0.3)
-        post = net.cell(0).branch(1).comp(0.0)
+        pre = net.cell(1).branch(0).loc(0.3)
+        post = net.cell(0).branch(1).loc(0.0)
         pre.connect(post, IonotropicSynapse())
 
-        net.cell(0).branch(1).comp(1.0).record()
-        net.cell(1).branch(0).comp(1.0).record()
+        net.cell(0).branch(1).loc(1.0).record()
+        net.cell(1).branch(0).loc(1.0).record()
 
-        net.cell(1).branch(0).comp(0.4).stimulate(current)
-        net.cell(0).branch(0).comp(0.6).stimulate(current)
+        net.cell(1).branch(0).loc(0.4).stimulate(current)
+        net.cell(0).branch(0).loc(0.6).stimulate(current)
 
     net1.make_trainable("radius", 0.9)
     net1.make_trainable("length", 0.99)
