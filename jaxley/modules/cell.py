@@ -329,9 +329,7 @@ def read_swc(
         [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
     )
 
-    radiuses = np.flip(
-        np.asarray([radius_fns[b](range_) for b in range(len(parents))]), axis=1
-    )
+    radiuses = np.asarray([radius_fns[b](range_) for b in range(len(parents))])
     radiuses_each = radiuses.flatten(order="C")
     if min_radius is None:
         assert np.all(

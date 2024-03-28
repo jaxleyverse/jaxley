@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pandas as pd
 
 from jaxley.modules import Module
-from jaxley.utils.cell_utils import params_to_pstate
+from jaxley.utils.cell_utils import flip_comp_indices, params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
@@ -75,8 +75,10 @@ def integrate(
         assert (
             t_max is not None
         ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
+    i_inds = flip_comp_indices(i_inds, module.nseg)  # See #305
 
     rec_inds = module.recordings.rec_index.to_numpy()
+    rec_inds = flip_comp_indices(rec_inds, module.nseg)  # See #305
     rec_states = module.recordings.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
@@ -90,7 +92,9 @@ def integrate(
 
     # Make the `trainable_params` of the same shape as the `param_state`, such that they
     # can be processed together by `get_all_parameters`.
-    pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, module.indices_set_by_trainables, module.trainable_is_synaptic
+    )
 
     # Gather parameters from `make_trainable` and `data_set` into a single list.
     if param_state is not None:

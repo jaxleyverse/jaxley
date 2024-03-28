@@ -14,7 +14,7 @@ from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
-from jaxley.utils.cell_utils import merge_cells
+from jaxley.utils.cell_utils import flip_comp_indices, merge_cells
 from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
 
@@ -278,8 +278,9 @@ class Network(Module):
         )
         return states, current_terms
 
-    @staticmethod
-    def _step_synapse_state(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _step_synapse_state(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -304,6 +305,9 @@ class Network(Module):
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
+            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
+            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
+
             # State updates.
             states_updated = synapse_type.update_states(
                 synapse_states,
@@ -319,8 +323,9 @@ class Network(Module):
 
         return states
 
-    @staticmethod
-    def _synapse_currents(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _synapse_currents(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -350,6 +355,9 @@ class Network(Module):
             # Get pre and post indexes of the current synapse type.
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
+            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
+            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
@@ -639,7 +647,9 @@ class SynapseView(View):
         self._assert_key_in_params_or_states(key)
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
-        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
+        self.pointer._make_trainable(
+            self.view, key, init_val, is_synaptic=True, verbose=verbose
+        )
 
     def data_set(
         self,
@@ -649,7 +659,9 @@ class SynapseView(View):
     ):
         """Set parameter of module (or its view) to a new value within `jit`."""
         self._assert_key_in_params_or_states(key)
-        return self.pointer._data_set(key, val, self.view, param_state)
+        return self.pointer._data_set(
+            key, val, self.view, is_synaptic=True, param_state=param_state
+        )
 
     def record(self, state: str = "v"):
         """Record a state."""

@@ -19,6 +19,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
+    flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
 )
@@ -81,6 +82,7 @@ class Module(ABC):
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
+        self.trainable_is_synaptic: List[bool] = []
         self.allow_make_trainable: bool = True
         self.num_trainable_params: int = 0
 
@@ -96,7 +98,7 @@ class Module(ABC):
 
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
-        loc = np.linspace(1 - 0.5 / self.nseg, 0.5 / self.nseg, self.nseg)
+        loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
         xyz = (
             [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
             if len(loc) > 0
@@ -152,7 +154,9 @@ class Module(ABC):
         """
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
-            self.jaxnodes[key] = jnp.asarray(value)
+            inds = jnp.arange(len(value))
+            inds = flip_comp_indices(inds, self.nseg)  # See #305
+            self.jaxnodes[key] = jnp.asarray(value)[inds]
 
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
@@ -297,13 +301,16 @@ class Module(ABC):
             if key in self.synapse_param_names or key in self.synapse_state_names
             else self.nodes
         )
-        return self._data_set(key, val, view, param_state)
+        return self._data_set(
+            key, val, view, is_synaptic=False, param_state=param_state
+        )
 
     def _data_set(
         self,
         key: str,
         val: Tuple[float, jnp.ndarray],
         view: pd.DataFrame,
+        is_synaptic: bool,
         param_state: Optional[List[Dict]] = None,
     ):
         # Note: `data_set` does not support arrays for `val`.
@@ -314,6 +321,7 @@ class Module(ABC):
                     "indices": np.atleast_2d(view.index.values),
                     "key": key,
                     "val": jnp.atleast_1d(jnp.asarray(val)),
+                    "is_synaptic": is_synaptic,
                 }
             ]
             if param_state is not None:
@@ -350,13 +358,14 @@ class Module(ABC):
         ), "Parameters of synapses can only be made trainable via the `SynapseView`."
         view = self.nodes
         view = deepcopy(view.assign(controlled_by_param=0))
-        self._make_trainable(view, key, init_val, verbose=verbose)
+        self._make_trainable(view, key, init_val, is_synaptic=False, verbose=verbose)
 
     def _make_trainable(
         self,
         view,
         key: str,
         init_val: Optional[Union[float, list]] = None,
+        is_synaptic: bool = False,
         verbose: bool = True,
     ):
         assert (
@@ -369,14 +378,17 @@ class Module(ABC):
             # Because of this `x.index.values` we cannot support `make_trainable()` on
             # the module level for synapse parameters (but only for `SynapseView`).
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
-            indices_per_param = jnp.stack(inds_of_comps)
+
+            # Sorted inds are only used to infer the correct starting values.
             param_vals = jnp.asarray(
                 [view.loc[inds, key].to_numpy() for inds in inds_of_comps]
             )
         else:
             raise KeyError(f"Parameter {key} not recognized.")
 
+        indices_per_param = jnp.stack(inds_of_comps)
         self.indices_set_by_trainables.append(indices_per_param)
+        self.trainable_is_synaptic.append(is_synaptic)
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
@@ -454,7 +466,10 @@ class Module(ABC):
 
         # Override with those parameters set by `.make_trainable()`.
         for parameter in trainable_params:
-            inds = parameter["indices"]
+            if parameter["is_synaptic"]:
+                inds = parameter["indices"]
+            else:
+                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
             key = parameter["key"]
             if key in list(params.keys()):  # Only parameters, not initial states.
@@ -487,6 +502,7 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+            indices = flip_comp_indices(indices, self.nseg)  # See #305
             voltages = channel_nodes.loc[indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
@@ -693,8 +709,8 @@ class Module(ABC):
         )
         return states, current_terms
 
-    @staticmethod
     def _step_channels_state(
+        self,
         states,
         delta_t,
         channels: List[Channel],
@@ -710,6 +726,7 @@ class Module(ABC):
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+            indices = flip_comp_indices(indices, self.nseg)  # See #305
 
             channel_params = {}
             for p in channel_param_names:
@@ -738,8 +755,8 @@ class Module(ABC):
 
         return states
 
-    @staticmethod
     def _channel_currents(
+        self,
         states,
         delta_t,
         channels: List[Channel],
@@ -763,6 +780,7 @@ class Module(ABC):
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+            indices = flip_comp_indices(indices, self.nseg)  # See #305
 
             channel_params = {}
             for p in channel_param_names:

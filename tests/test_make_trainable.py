@@ -120,7 +120,9 @@ def test_diverse_synapse_types():
     params[1]["gC"] = params[1]["gC"].at[0].set(3.3)
     params[1]["gC"] = params[1]["gC"].at[1].set(4.4)
     net.to_jax()
-    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net.indices_set_by_trainables, net.trainable_is_synaptic
+    )
     all_parameters = net.get_all_parameters(pstate)
 
     assert np.all(all_parameters["radius"] == 1.0)
@@ -140,7 +142,9 @@ def test_diverse_synapse_types():
     # Modify the trainable parameters.
     params[2]["gS"] = params[2]["gS"].at[:].set(5.5)
     net.to_jax()
-    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net.indices_set_by_trainables, net.trainable_is_synaptic
+    )
     all_parameters = net.get_all_parameters(pstate)
     assert np.all(all_parameters["gS"][0] == 2.2)
     assert np.all(all_parameters["gS"][1] == 5.5)
@@ -228,7 +232,9 @@ def get_params_subset_trainable(net):
     params = net.get_parameters()
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net.to_jax()
-    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net.indices_set_by_trainables, net.trainable_is_synaptic
+    )
     return net.get_all_parameters(trainable_params=pstate)
 
 
@@ -236,7 +242,9 @@ def get_params_set_subset(net):
     net.cell(0).branch(1).set("HH_gNa", 0.0)
     params = net.get_parameters()
     net.to_jax()
-    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net.indices_set_by_trainables, net.trainable_is_synaptic
+    )
     return net.get_all_parameters(trainable_params=pstate)
 
 
@@ -245,7 +253,9 @@ def get_params_all_trainable(net):
     params = net.get_parameters()
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net.to_jax()
-    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net.indices_set_by_trainables, net.trainable_is_synaptic
+    )
     return net.get_all_parameters(trainable_params=pstate)
 
 
@@ -253,7 +263,9 @@ def get_params_set(net):
     net.set("HH_gNa", 0.0)
     params = net.get_parameters()
     net.to_jax()
-    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net.indices_set_by_trainables, net.trainable_is_synaptic
+    )
     return net.get_all_parameters(trainable_params=pstate)
 
 
@@ -266,7 +278,9 @@ def test_make_trainable_corresponds_to_set_pospischil():
     params1 = net1.get_parameters()
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
-    pstate1 = params_to_pstate(params1, net1.indices_set_by_trainables)
+    pstate1 = params_to_pstate(
+        params1, net1.indices_set_by_trainables, net1.trainable_is_synaptic
+    )
     all_params1 = net1.get_all_parameters(trainable_params=pstate1)
 
     net2.cell(0).insert(Na())
@@ -275,7 +289,9 @@ def test_make_trainable_corresponds_to_set_pospischil():
     params2 = net2.get_parameters()
     params2[0]["vt"] = params2[0]["vt"].at[:].set(0.05)
     net2.to_jax()
-    pstate2 = params_to_pstate(params2, net2.indices_set_by_trainables)
+    pstate2 = params_to_pstate(
+        params2, net2.indices_set_by_trainables, net2.trainable_is_synaptic
+    )
     all_params2 = net2.get_all_parameters(trainable_params=pstate2)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
     assert np.array_equal(all_params1["Na_gNa"], all_params2["Na_gNa"], equal_nan=True)
@@ -311,14 +327,18 @@ def test_group_trainable_corresponds_to_set():
     params = net1.get_parameters()
     params[0]["radius"] = params[0]["radius"].at[:].set(2.5)
     net1.to_jax()
-    pstate = params_to_pstate(params, net1.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net1.indices_set_by_trainables, net1.trainable_is_synaptic
+    )
     all_parameters1 = net1.get_all_parameters(pstate)
 
     net2 = build_net()
     net2.test.set("radius", 2.5)
     params = net2.get_parameters()
     net2.to_jax()
-    pstate = params_to_pstate(params, net2.indices_set_by_trainables)
+    pstate = params_to_pstate(
+        params, net2.indices_set_by_trainables, net2.trainable_is_synaptic
+    )
     all_parameters2 = net2.get_all_parameters(pstate)
 
     assert np.allclose(all_parameters1["radius"], all_parameters2["radius"])
@@ -332,7 +352,9 @@ def test_data_set_vs_make_trainable_pospischil():
     params1 = net1.get_parameters()
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
-    pstate1 = params_to_pstate(params1, net1.indices_set_by_trainables)
+    pstate1 = params_to_pstate(
+        params1, net1.indices_set_by_trainables, net1.trainable_is_synaptic
+    )
     all_params1 = net1.get_all_parameters(trainable_params=pstate1)
 
     net2.cell(0).insert(Na())
