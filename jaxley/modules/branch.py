@@ -135,9 +135,9 @@ class BranchView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[local_idcs.columns] = (
-            local_idcs  # set indexes locally. enables net[0:2,0:2]
-        )
+        self.view[
+            local_idcs.columns
+        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
         return new_view
