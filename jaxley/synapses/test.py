@@ -13,7 +13,7 @@ class TestSynapse(Synapse):
     synapse_params = {"gC": 0.5}
     synapse_states = {"c": 0.2}
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
         v_th = -35.0
         delta = 10.0
@@ -25,10 +25,10 @@ class TestSynapse(Synapse):
         s_inf = s_bar
         slope = -1.0 / tau_s
         exp_term = jnp.exp(slope * delta_t)
-        new_s = u["c"] * exp_term + s_inf * (1.0 - exp_term)
+        new_s = states["c"] * exp_term + s_inf * (1.0 - exp_term)
         return {"c": new_s}
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(self, states, pre_voltage, post_voltage, params):
         e_syn = 0.0
-        g_syn = params["gC"] * u["c"]
+        g_syn = params["gC"] * states["c"]
         return g_syn * (post_voltage - e_syn)

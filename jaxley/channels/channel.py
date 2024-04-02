@@ -61,5 +61,14 @@ class Channel:
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Given channel states and voltage, return the current through the channel."""
+        """Given channel states and voltage, return the current through the channel.
+
+        Args:
+            states: All states of the compartment.
+            v: Voltage of the compartment in mV.
+            params: Parameters of the channel (conductances in `S/cm2`).
+
+        Returns:
+            Current in `muA/cm2`.
+        """
         raise NotImplementedError

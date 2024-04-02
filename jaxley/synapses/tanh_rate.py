@@ -13,11 +13,11 @@ class TanhRateSynapse(Synapse):
     synapse_params = {"gS": 0.5, "x_offset": -70.0}
     synapse_states = {}
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
         return {}
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(self, states, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
         current = -1 * params["gS"] * jnp.tanh(pre_voltage - params["x_offset"])
         return current
