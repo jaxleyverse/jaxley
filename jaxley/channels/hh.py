@@ -25,6 +25,7 @@ class HH(Channel):
             f"{prefix}_h": 0.2,
             f"{prefix}_n": 0.2,
         }
+        self.current_name = f"i_HH"
 
     def update_states(
         self,
