@@ -501,27 +501,28 @@ class Module(ABC):
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
 
-    def record(self, state: str = "v"):
+    def record(self, state: str = "v", verbose: bool = True):
         """Insert a recording into the compartment."""
         view = deepcopy(self.nodes)
         view["state"] = state
         recording_view = view[["comp_index", "state"]]
         recording_view = recording_view.rename(columns={"comp_index": "rec_index"})
-        self._record(recording_view)
+        self._record(recording_view, verbose=verbose)
 
-    def _record(self, view):
+    def _record(self, view, verbose: bool = True):
         self.recordings = pd.concat([self.recordings, view], ignore_index=True)
-        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-        warning = f"Added {num_comps} compartments to recordings. If this was not intended, run `delete_recordings`."
-        if len(view) > 1:
-            warnings.warn(warning)
-        print(f"Added {len(view)} recordings. See `.recordings` for details.")
+        if verbose:
+            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+            warning = f"Added {num_comps} compartments to recordings. If this was not intended, run `delete_recordings`."
+            if len(view) > 1:
+                warnings.warn(warning)
+            print(f"Added {len(view)} recordings. See `.recordings` for details.")
 
     def delete_recordings(self):
         """Removes all recordings from the module."""
         self.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(self, current: Optional[jnp.ndarray] = None):
+    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -532,11 +533,9 @@ class Module(ABC):
         on the data and that should not be learned). For stimuli that depend on data
         (or that should be learned), please use `data_stimulate()`.
         """
-        self._stimulate(current, self.nodes)
+        self._stimulate(current, self.nodes, verbose=verbose)
 
-    def _stimulate(self, current, view):
-        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-        warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
+    def _stimulate(self, current, view, verbose: bool = True):
 
         current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
         batch_size = current.shape[0]
@@ -549,22 +548,34 @@ class Module(ABC):
         else:
             self.currents = current
         self.current_inds = pd.concat([self.current_inds, view])
-        if len(view) > 1:
-            warnings.warn(warning)
-        print(f"Added {len(view)} stimuli. See `.currents` for details.")
+
+        if verbose:
+            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+            warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
+            if len(view) > 1:
+                warnings.warn(warning)
+            print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
     def data_stimulate(
-        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None
+        self,
+        current,
+        data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+        verbose: bool = False,
     ):
-        """Insert a stimulus into the module within jit (or grad)."""
-        return self._data_stimulate(current, data_stimuli, self.nodes)
+        """Insert a stimulus into the module within jit (or grad).
+
+        Args:
+            verbose: Whether or not to print the number of inserted stimuli. `False`
+                by default because this method is meant to be jitted."""
+        return self._data_stimulate(current, data_stimuli, self.nodes, verbose=verbose)
 
     def _data_stimulate(
-        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]], view
+        self,
+        current,
+        data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        view,
+        verbose: bool = False,
     ):
-        num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-        warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
-
         current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
         batch_size = current.shape[0]
         is_multiple = len(view) == batch_size
@@ -584,9 +595,13 @@ class Module(ABC):
         else:
             currents = current
         inds = pd.concat([inds, view])
-        if len(view) > 1:
-            warnings.warn(warning)
-        print(f"Added {len(view)} stimuli. See `.currents` for details.")
+
+        if verbose:
+            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
+            warning = f"Added stimuli to {num_comps} compartments."
+            if len(view) > 1:
+                warnings.warn(warning)
+            print(f"Added {len(view)} stimuli.")
 
         return (currents, inds)
 
@@ -1115,25 +1130,30 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._insert(channel, nodes)
 
-    def record(self, state: str = "v"):
+    def record(self, state: str = "v", verbose: bool = True):
         """Record a state."""
         nodes = self.set_global_index_and_index(self.view)
         view = deepcopy(nodes)
         view["state"] = state
         recording_view = view[["comp_index", "state"]]
         recording_view = recording_view.rename(columns={"comp_index": "rec_index"})
-        self.pointer._record(recording_view)
+        self.pointer._record(recording_view, verbose=verbose)
 
-    def stimulate(self, current: Optional[jnp.ndarray] = None):
+    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         nodes = self.set_global_index_and_index(self.view)
-        self.pointer._stimulate(current, nodes)
+        self.pointer._stimulate(current, nodes, verbose=verbose)
 
     def data_stimulate(
-        self, current, data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]]
+        self,
+        current,
+        data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        verbose: bool = False,
     ):
         """Insert a stimulus into the module within jit (or grad)."""
         nodes = self.set_global_index_and_index(self.view)
-        return self.pointer._data_stimulate(current, data_stimuli, nodes)
+        return self.pointer._data_stimulate(
+            current, data_stimuli, nodes, verbose=verbose
+        )
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
