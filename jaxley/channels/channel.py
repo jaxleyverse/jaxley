@@ -5,7 +5,11 @@ import jax.numpy as jnp
 
 
 class Channel:
-    """Channel base class. All channels inherit from this class."""
+    """Channel base class. All channels inherit from this class.
+
+    As in NEURON, a `Channel` is considered a distributed process, which means that its
+    conductances are to be specified in `S/cm2` and its currents are to be specified in
+    `uA/cm2`."""
 
     _name = None
     channel_params = None
@@ -69,6 +73,6 @@ class Channel:
             params: Parameters of the channel (conductances in `S/cm2`).
 
         Returns:
-            Current in `muA/cm2`.
+            Current in `uA/cm2`.
         """
         raise NotImplementedError

@@ -4,6 +4,7 @@ config.update("jax_enable_x64", True)
 config.update("jax_platform_name", "cpu")
 
 import os
+from math import pi
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
@@ -178,6 +179,13 @@ def test_radius_and_length_net():
     ]
     network = jx.Network([cell1, cell2], connectivities)
     network.insert(HH())
+
+    # first cell, 0-eth branch, 0-st compartment because loc=0.0
+    radius_post = network[1, 0, 0].view["radius"].item()
+    lenght_post = network[1, 0, 0].view["length"].item()
+    area = 2 * pi * lenght_post * radius_post
+    point_process_to_dist_factor = 100_000.0 / area
+    network.set("gS", 0.5 / point_process_to_dist_factor)
 
     for cell_ind in range(2):
         network.cell(cell_ind).branch(1).loc(0.0).record()

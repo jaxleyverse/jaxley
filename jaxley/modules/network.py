@@ -14,7 +14,11 @@ from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
-from jaxley.utils.cell_utils import flip_comp_indices, merge_cells
+from jaxley.utils.cell_utils import (
+    convert_point_process_to_distributed,
+    flip_comp_indices,
+    merge_cells,
+)
 from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
 
@@ -374,6 +378,13 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
+            synapse_currents = convert_point_process_to_distributed(
+                synapse_currents,
+                params["radius"][post_inds],
+                params["length"][post_inds],
+            )
+
+            # Split into voltage and constant terms.
             voltage_term = (synapse_currents[1] - synapse_currents[0]) / diff
             constant_term = synapse_currents[0] - voltage_term * voltages[post_inds]
 

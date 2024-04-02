@@ -2,7 +2,6 @@ import inspect
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from math import pi
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
@@ -20,6 +19,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
+    convert_point_process_to_distributed,
     flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
@@ -537,7 +537,9 @@ class Module(ABC):
         """Removes all recordings from the module."""
         self.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
+    def stimulate(
+        self, current: Optional[jnp.ndarray] = None, verbose: bool = True
+    ) -> None:
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -547,6 +549,9 @@ class Module(ABC):
         it should only be used for static stimuli (i.e., stimuli that do not depend
         on the data and that should not be learned). For stimuli that depend on data
         (or that should be learned), please use `data_stimulate()`.
+
+        Args:
+            current: Current in `nA`.
         """
         self._stimulate(current, self.nodes, verbose=verbose)
 
@@ -580,8 +585,10 @@ class Module(ABC):
         """Insert a stimulus into the module within jit (or grad).
 
         Args:
+            current: Current in `nA`.
             verbose: Whether or not to print the number of inserted stimuli. `False`
-                by default because this method is meant to be jitted."""
+                by default because this method is meant to be jitted.
+        """
         return self._data_stimulate(current, data_stimuli, self.nodes, verbose=verbose)
 
     def _data_stimulate(
@@ -864,15 +871,17 @@ class Module(ABC):
     ):
         """
         Return external input to each compartment in uA / cm^2.
+
+        Args:
+            voltages: mV.
+            i_stim: nA.
+            radius: um.
+            length_single_compartment: um.
         """
         zero_vec = jnp.zeros_like(voltages)
-        # `radius`: um
-        # `length_single_compartment`: um
-        # `i_stim`: nA
-        current = (
-            i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
-        )  # nA / um^2
-        current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
+        current = convert_point_process_to_distributed(
+            i_stim, radius[i_inds], length_single_compartment[i_inds]
+        )
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),

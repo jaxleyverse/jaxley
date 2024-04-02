@@ -4,7 +4,12 @@ import jax.numpy as jnp
 
 
 class Synapse:
-    """Base class for a synapse."""
+    """Base class for a synapse.
+
+    As in NEURON, a `Synapse` is considered a point process, which means that its
+    conductances are to be specified in `uS` and its currents are to be specified in
+    `nA`.
+    """
 
     _name = None
     synapse_params = None
@@ -24,7 +29,17 @@ class Synapse:
         post_voltage: jnp.ndarray,
         params: Dict[str, jnp.ndarray],
     ) -> Dict[str, jnp.ndarray]:
-        """ODE update step."""
+        """ODE update step.
+
+        Args:
+            states: States of the synapse.
+            delta_t: Time step in `ms`.
+            pre_voltage: Voltage of the presynaptic compartment, shape `()`.
+            post_voltage: Voltage of the postsynaptic compartment, shape `()`.
+            params: Parameters of the synapse. Conductances in `uS`.
+
+        Returns:
+            Updated states."""
         raise NotImplementedError
 
     def compute_current(
@@ -33,13 +48,15 @@ class Synapse:
         post_voltage: jnp.ndarray,
         params: Dict[str, jnp.ndarray],
     ) -> jnp.ndarray:
-        """Return current through synapse in `nA`.
+        """Return current through one synapse in `nA`.
+
+        Internally, we use `jax.vmap` to vectorize this function across many synapses.
 
         Args:
             states: States of the synapse.
             pre_voltage: Voltage of the presynaptic compartment, shape `()`.
             post_voltage: Voltage of the postsynaptic compartment, shape `()`.
-            params: Parameters of the synapse.
+            params: Parameters of the synapse. Conductances in `uS`.
 
         Returns:
             Current through the synapse in `nA`, shape `()`.
