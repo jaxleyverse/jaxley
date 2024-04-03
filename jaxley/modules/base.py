@@ -786,6 +786,11 @@ class Module(ABC):
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
+
+        current_states = {}
+        for name in self.membrane_current_names:
+            current_states[name] = jnp.zeros_like(voltages)
+
         for channel in channels:
             name = channel._name
             channel_param_names = list(channel.channel_params.keys())
@@ -815,12 +820,16 @@ class Module(ABC):
 
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
-            updated_currents = []
-            if channel.current_name not in updated_currents:
-                states[channel.current_name] = membrane_currents[0]
-                updated_currents.append(channel.current_name)
-            else:
-                states[channel.current_name] += membrane_currents[0]
+            current_states[channel.current_name] = (
+                current_states[channel.current_name]
+                .at[indices]
+                .add(membrane_currents[0])
+            )
+
+        # Copy the currents into the `state` dictionary such that they can be
+        # recorded and used by `Channel.update_states()`.
+        for name in self.membrane_current_names:
+            states[name] = current_states[name]
 
         return states, (voltage_terms, constant_terms)
 
