@@ -87,78 +87,7 @@ class CompartmentView(View):
         Then, we update synapse parameter and state arrays with the new connection.
         Finally, we update synapse meta information.
         """
-        synapse_name = type(synapse_type).__name__
-        is_new_type = True if synapse_name not in self.pointer.synapse_names else False
-
-        if is_new_type:
-            # New type: index for the synapse type is one more than the currently
-            # highest index.
-            max_ind = self.pointer.edges["type_ind"].max() + 1
-            type_ind = 0 if jnp.isnan(max_ind) else max_ind
-        else:
-            # Not a new type: search for the index that this type has previously had.
-            type_ind = self.pointer.edges.query(f"type == '{synapse_name}'")[
-                "type_ind"
-            ].to_numpy()[0]
-
-        # The `edges` dataframe expects the compartment as continuous `loc`, not
-        # as discrete compartment index (because the continuous `loc` is used for
-        # plotting). Below, we cast the compartment index to its (rough) location.
-        pre_comp = loc_of_index(
-            self.view["global_comp_index"].to_numpy(), self.pointer.nseg
-        )
-        post_comp = loc_of_index(
-            post.view["global_comp_index"].to_numpy(), self.pointer.nseg
-        )
-        index = len(self.pointer.edges)
-
-        # Update edges.
-        self.pointer.edges = pd.concat(
-            [
-                self.pointer.edges,
-                pd.DataFrame(
-                    dict(
-                        pre_locs=pre_comp,
-                        post_locs=post_comp,
-                        pre_branch_index=self.view["branch_index"].to_numpy(),
-                        post_branch_index=post.view["branch_index"].to_numpy(),
-                        pre_cell_index=self.view["cell_index"].to_numpy(),
-                        post_cell_index=post.view["cell_index"].to_numpy(),
-                        type=synapse_name,
-                        type_ind=type_ind,
-                        global_pre_comp_index=self.view["global_comp_index"].to_numpy(),
-                        global_post_comp_index=post.view[
-                            "global_comp_index"
-                        ].to_numpy(),
-                        global_pre_branch_index=self.view[
-                            "global_branch_index"
-                        ].to_numpy(),
-                        global_post_branch_index=post.view[
-                            "global_branch_index"
-                        ].to_numpy(),
-                    )
-                ),
-            ],
-            ignore_index=True,
-        )
-
-        # Add parameters and states to the `.edges` table.
-        indices = list(range(index, index + 1))
-        for key in synapse_type.synapse_params:
-            param_val = synapse_type.synapse_params[key]
-            self.pointer.edges.loc[indices, key] = param_val
-
-        # Update synaptic state array.
-        for key in synapse_type.synapse_states:
-            state_val = synapse_type.synapse_states[key]
-            self.pointer.edges.loc[indices, key] = state_val
-
-        # (Potentially) update variables that track meta information about synapses.
-        if is_new_type:
-            self.pointer.synapse_names.append(type(synapse_type).__name__)
-            self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
-            self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
-            self.pointer.synapses.append(synapse_type)
+        self._append_multiple_synapses(self.view, post.view, synapse_type)
 
     def distance(self, endpoint: "CompartmentView"):
         """Return the direct distance between two compartments.

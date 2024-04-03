@@ -60,28 +60,28 @@ def test_network_grad():
     grad_fn = value_and_grad(simulate)
     v, g = grad_fn(params)
 
-    value_230224 = jnp.asarray(-611.28845207)
+    value_230224 = jnp.asarray(-580.79271734)
     max_error = np.max(np.abs(v - value_230224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
     grad_230224 = [
-        {"HH_gNa": jnp.asarray([-313.79434246])},
-        {"HH_gK": jnp.asarray([6.73457712, 2.07025077, 23.36748439])},
+        {"HH_gNa": jnp.asarray([-1330.69128594])},
+        {"HH_gK": jnp.asarray([2.4996021, 13.61190008, 61.16684584])},
         {
             "HH_gLeak": jnp.asarray(
                 [
-                    -288.18865692,
-                    -85.17100975,
-                    -283.09116685,
-                    -979.53684142,
-                    -2031.5499178,
-                    -866.28404335,
-                    -72497.21160272,
+                    -121.305113,
+                    -606.555168,
+                    -183.932419,
+                    -465.945968,
+                    -5668.16363,
+                    -248.320435,
+                    -250947.475,
                 ]
             )
         },
-        {"gS": jnp.asarray([-35.57541138])},
-        {"gC": jnp.asarray([-0.17439718, -0.28092325])},
+        {"gS": jnp.asarray([-85.83902596])},
+        {"gC": jnp.asarray([-0.00831085, -0.00502889])},
     ]
 
     for true_g, new_g in zip(grad_230224, g):

@@ -15,6 +15,7 @@ from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
 from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
+from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -1076,6 +1077,15 @@ class Module(ABC):
         for i in range(self.shape[0]):
             yield self[i]
 
+    def _local_inds_to_global(
+        self, cell_inds: np.ndarray, branch_inds: np.ndarray, comp_inds: np.ndarray
+    ):
+        """Given local inds of cell, branch, and comp, return the global comp index."""
+        global_ind = (
+            self.cumsum_nbranches[cell_inds] + branch_inds
+        ) * self.nseg + comp_inds
+        return global_ind.astype(int)
+
 
 class View:
     """View of a `Module`."""
@@ -1295,6 +1305,99 @@ class View:
     def shape(self):
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
+
+    def _append_multiple_synapses(
+        self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
+    ) -> None:
+        """Append multiple rows to the `self.edges` table.
+
+        This is used, e.g. by `fully_connect` and `connect`.
+        """
+        synapse_name = type(synapse_type).__name__
+        type_ind, is_new_type = self._infer_synapse_type_ind(synapse_name)
+        index = len(self.pointer.edges)
+
+        post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
+        pre_loc = loc_of_index(pre_rows["comp_index"].to_numpy(), self.pointer.nseg)
+
+        # Define new synapses. Each row is one synapse.
+        new_rows = dict(
+            pre_locs=pre_loc,
+            post_locs=post_loc,
+            pre_branch_index=pre_rows["branch_index"].to_numpy(),
+            post_branch_index=post_rows["branch_index"].to_numpy(),
+            pre_cell_index=pre_rows["cell_index"].to_numpy(),
+            post_cell_index=post_rows["cell_index"].to_numpy(),
+            type=synapse_name,
+            type_ind=type_ind,
+            global_pre_comp_index=pre_rows["global_comp_index"].to_numpy(),
+            global_post_comp_index=post_rows["global_comp_index"].to_numpy(),
+            global_pre_branch_index=pre_rows["global_branch_index"].to_numpy(),
+            global_post_branch_index=post_rows["global_branch_index"].to_numpy(),
+        )
+
+        # Update edges.
+        self.pointer.edges = pd.concat(
+            [self.pointer.edges, pd.DataFrame(new_rows)],
+            ignore_index=True,
+        )
+
+        indices = list(range(index, index + len(pre_loc)))
+        self._add_params_to_edges(synapse_type, indices)
+
+        if is_new_type:
+            self._update_synapse_state_names(synapse_type)
+
+    def _infer_synapse_type_ind(self, synapse_name: str) -> Tuple[int, bool]:
+        """Return the unique identifier for every synapse type.
+
+        Also returns a boolean indicating whether the synapse is already in the
+        `module`.
+
+        Used during `self._append_multiple_synapses`.
+        """
+        is_new_type = True if synapse_name not in self.pointer.synapse_names else False
+
+        if is_new_type:
+            # New type: index for the synapse type is one more than the currently
+            # highest index.
+            max_ind = self.pointer.edges["type_ind"].max() + 1
+            type_ind = 0 if jnp.isnan(max_ind) else max_ind
+        else:
+            # Not a new type: search for the index that this type has previously had.
+            type_ind = self.pointer.edges.query(f"type == '{synapse_name}'")[
+                "type_ind"
+            ].to_numpy()[0]
+        return type_ind, is_new_type
+
+    def _add_params_to_edges(self, synapse_type: Synapse, indices: list) -> None:
+        """Fills parameter and state columns of new synapses in the `edges` table.
+
+        This method does not create new rows in the `.edges` table. It only fills
+        columns of already existing rows.
+
+        Used during `self._append_multiple_synapses`.
+        """
+        # Add parameters and states to the `.edges` table.
+        for key in synapse_type.synapse_params:
+            param_val = synapse_type.synapse_params[key]
+            self.pointer.edges.loc[indices, key] = param_val
+
+        # Update synaptic state array.
+        for key in synapse_type.synapse_states:
+            state_val = synapse_type.synapse_states[key]
+            self.pointer.edges.loc[indices, key] = state_val
+
+    def _update_synapse_state_names(self, synapse_type: Synapse) -> None:
+        """Update attributes with information about the synapses.
+
+        Used during `self._append_multiple_synapses`.
+        """
+        # (Potentially) update variables that track meta information about synapses.
+        self.pointer.synapse_names.append(type(synapse_type).__name__)
+        self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
+        self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
+        self.pointer.synapses.append(synapse_type)
 
 
 class GroupView(View):
