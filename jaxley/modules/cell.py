@@ -269,9 +269,6 @@ class CellView(View):
             post_cell_inds, rand_branch_post, rand_comp_post
         )
         global_post_indices = global_post_indices.ravel()
-        
-        # global_post_indices = post_cell_view.view.groupby("cell_index").sample(num_pre, replace=True).index.to_numpy()        
-        # global_post_indices = global_post_indices.reshape((-1, num_pre), order="F").ravel()
 
         post_rows = post_cell_view.view.loc[global_post_indices]
 

@@ -1251,8 +1251,12 @@ class View:
         """
         rank_by = lambda x, by: x[by].rank(method="dense").astype(int) - 1
         idcs_df = self.view[["cell_index", "branch_index", "comp_index"]]
-        idcs_df.loc[:, 'branch_index'] = rank_by(idcs_df.groupby('cell_index'), 'branch_index')
-        idcs_df.loc[:, 'comp_index'] = rank_by(idcs_df.groupby(['cell_index', 'branch_index']), 'comp_index')
+        idcs_df.loc[:, "branch_index"] = rank_by(
+            idcs_df.groupby("cell_index"), "branch_index"
+        )
+        idcs_df.loc[:, "comp_index"] = rank_by(
+            idcs_df.groupby(["cell_index", "branch_index"]), "comp_index"
+        )
         return idcs_df
 
     def _childview(self, index: Union[int, str, list, range, slice]):
