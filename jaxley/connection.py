@@ -137,8 +137,7 @@ def custom_connect(
     # Infer indices of (random) postsynaptic compartments.
     cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
     sample_comp_idx = (
-        lambda view, cell_idx: cell_idx_view(view.view, cell_idx)
-        .groupby("cell_index")
+        lambda view, cell_idx: cell_idx_view(view.view, cell_idx)  # view for the cell
         .sample()
         .index.to_numpy()
     )
