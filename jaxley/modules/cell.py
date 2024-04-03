@@ -254,9 +254,31 @@ class CellView(View):
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
-        self.sparse_connect(post_cell_view, synapse_type, p=1.0, replace=False)
+        # Get pre- and postsynaptic cell indices.
+        pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
+        post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
+        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_cell_inds]
+        num_pre = len(pre_cell_inds)
+        num_post = len(post_cell_inds)
 
-    def sparse_connect(self, post_cell_view, synapse_type, p, replace: bool = False):
+        # Infer indices of (random) postsynaptic compartments.
+        # Each row of `rand_branch_post` is an integer in `[0, nbranches_post[i] - 1]`.
+        rand_branch_post = np.floor(np.random.rand(num_pre, num_post) * nbranches_post)
+        rand_comp_post = np.floor(np.random.rand(num_pre, num_post) * self.pointer.nseg)
+        global_post_indices = post_cell_view.pointer._local_inds_to_global(
+            post_cell_inds, rand_branch_post, rand_comp_post
+        )
+        global_post_indices = global_post_indices.flatten()
+        post_rows = post_cell_view.view.loc[global_post_indices]
+
+        # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+        pre_rows = self[0, 0].view
+        # Repeat rows `num_post` times. See SO 50788508.
+        pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)].reset_index(drop=True)
+
+        self._append_multiple_synapses(pre_rows, post_rows, synapse_type)
+
+    def sparse_connect(self, post_cell_view, synapse_type, p):
         """Returns a list of `Connection`s forming a sparse, randomly connected layer.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
@@ -267,17 +289,16 @@ class CellView(View):
         num_post = len(post_cell_inds)
 
         num_connections = np.random.binomial(num_pre * num_post, p)
-        selected_conns = np.random.choice(
-            np.arange(num_connections), size=num_connections, replace=replace
-        )
-        # We sort only for convenience such that the synapses in `.edges` are sorted
-        # and can be more easily inspected by the user.
-        selected_conns = np.sort(selected_conns)
-        pre_syn_neurons = pre_cell_inds[selected_conns // num_post]
-        post_syn_neurons = post_cell_inds[selected_conns % num_post]
-        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_syn_neurons]
+        pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
+        post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
+
+        # Sort the synapses only for convenience of inspecting `.edges`.
+        sorting = np.argsort(pre_syn_neurons)
+        pre_syn_neurons = pre_syn_neurons[sorting]
+        post_syn_neurons = pre_syn_neurons[post_syn_neurons]
 
         # Post-synapse is a randomly chosen branch and compartment.
+        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_syn_neurons]
         rand_branch_post = np.floor(np.random.rand(num_connections) * nbranches_post)
         rand_comp_post = np.floor(np.random.rand(num_connections) * self.pointer.nseg)
         global_post_indices = post_cell_view.pointer._local_inds_to_global(
