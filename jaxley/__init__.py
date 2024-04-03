@@ -4,6 +4,7 @@ from jaxley.connection import (
     connect,
     fully_connect,
     sparse_connect,
+    custom_connect,
 )
 from jaxley.integrate import integrate
 from jaxley.modules import *

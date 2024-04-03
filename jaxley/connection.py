@@ -40,6 +40,12 @@ def connect(pre: "CompartmentView", post: "CompartmentView", synapse_type: "Syna
     pre._append_multiple_synapses(pre.view, post.view, synapse_type)
 
 
+def get_pre_post_inds(pre_cell_view, post_cell_view):
+    pre_cell_inds = np.unique(pre_cell_view.view["cell_index"].to_numpy())
+    post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
+    return pre_cell_inds, post_cell_inds
+
+
 def fully_connect(
     pre_cell_view: "CellView", post_cell_view: "CellView", synapse_type: "Synapse"
 ):
@@ -48,24 +54,12 @@ def fully_connect(
     Connections are from branch 0 location 0 to a randomly chosen branch and loc.
     """
     # Get pre- and postsynaptic cell indices.
-    pre_cell_inds = np.unique(pre_cell_view.view["cell_index"].to_numpy())
-    post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-    nbranches_post = np.asarray(pre_cell_view.pointer.nbranches_per_cell)[
-        post_cell_inds
-    ]
-    num_pre = len(pre_cell_inds)
-    num_post = len(post_cell_inds)
+    pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
+    num_pre, num_post = len(pre_cell_inds), len(post_cell_inds)
 
     # Infer indices of (random) postsynaptic compartments.
-    # Each row of `rand_branch_post` is an integer in `[0, nbranches_post[i] - 1]`.
-    rand_branch_post = np.floor(np.random.rand(num_pre, num_post) * nbranches_post)
-    rand_comp_post = np.floor(
-        np.random.rand(num_pre, num_post) * pre_cell_view.pointer.nseg
-    )
-    global_post_indices = post_cell_view.pointer._local_inds_to_global(
-        post_cell_inds, rand_branch_post, rand_comp_post
-    )
-    global_post_indices = global_post_indices.ravel()
+    global_post_indices = post_cell_view.view.groupby("cell_index").sample(num_pre, replace=True).index.to_numpy()        
+    global_post_indices = global_post_indices.reshape((-1, num_pre), order="F").ravel()
 
     post_rows = post_cell_view.view.loc[global_post_indices]
 
@@ -87,10 +81,9 @@ def sparse_connect(
 
     Connections are from branch 0 location 0 to a randomly chosen branch and loc.
     """
-    pre_cell_inds = np.unique(pre_cell_view.view["cell_index"].to_numpy())
-    post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-    num_pre = len(pre_cell_inds)
-    num_post = len(post_cell_inds)
+    # Get pre- and postsynaptic cell indices.
+    pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
+    num_pre, num_post = len(pre_cell_inds), len(post_cell_inds)
 
     num_connections = np.random.binomial(num_pre * num_post, p)
     pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
@@ -118,6 +111,29 @@ def sparse_connect(
     global_pre_indices = post_cell_view.pointer._local_inds_to_global(
         pre_syn_neurons, np.zeros(num_connections), np.zeros(num_connections)
     ).astype(int)
+    pre_rows = pre_cell_view.view.loc[global_pre_indices]
+
+    pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
+
+
+def custom_connect(pre_cell_view: "CellView", post_cell_view: "CellView", synapse_type: "Synapse", connectivity_matrix: np.ndarray):  
+    # Get pre- and postsynaptic cell indices.
+    pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
+
+    # get connection pairs from connectivity matrix
+    from_idx, to_idx = np.where(connectivity_matrix)
+    pre_cell_inds = pre_cell_inds[from_idx]
+    post_cell_inds = post_cell_inds[to_idx]
+
+    # Infer indices of (random) postsynaptic compartments.
+    possible_comp_idcs = np.arange(pre_cell_view.pointer.nseg)
+    post_comp_idx = np.random.choice(possible_comp_idcs, len(to_idx))
+    # TODO: replace with random branch / comp indexes !
+    global_post_indices = post_cell_view.pointer._local_inds_to_global(post_cell_inds, np.zeros_like(to_idx), post_comp_idx)
+    post_rows = post_cell_view.view.loc[global_post_indices]
+
+    idcs_to_zero = np.zeros_like(from_idx)
+    global_pre_indices = pre_cell_view.pointer._local_inds_to_global(pre_cell_inds, idcs_to_zero, idcs_to_zero)
     pre_rows = pre_cell_view.view.loc[global_pre_indices]
 
     pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
