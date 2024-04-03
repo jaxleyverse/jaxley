@@ -1250,13 +1250,13 @@ class View:
         1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
         """
 
-        def reindex_A_by_B(df, A, B):
-            df.loc[:, A] = df.groupby(B)[A].rank(method="dense").astype(int) - 1
+        def reindex_a_by_b(df, a, b):
+            df.loc[:, a] = df.groupby(b)[a].rank(method="dense").astype(int) - 1
             return df
 
         idcs = self.view[["cell_index", "branch_index", "comp_index"]]
-        idcs = reindex_A_by_B(idcs, "branch_index", "cell_index")
-        idcs = reindex_A_by_B(idcs, "comp_index", ["cell_index", "branch_index"])
+        idcs = reindex_a_by_b(idcs, "branch_index", "cell_index")
+        idcs = reindex_a_by_b(idcs, "comp_index", ["cell_index", "branch_index"])
         return idcs
 
     def _childview(self, index: Union[int, str, list, range, slice]):
