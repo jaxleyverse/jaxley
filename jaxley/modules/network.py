@@ -14,7 +14,7 @@ from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
-from jaxley.utils.cell_utils import merge_cells
+from jaxley.utils.cell_utils import flip_comp_indices, merge_cells
 from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
 
@@ -278,8 +278,9 @@ class Network(Module):
         )
         return states, current_terms
 
-    @staticmethod
-    def _step_synapse_state(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _step_synapse_state(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -304,6 +305,9 @@ class Network(Module):
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
+            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
+            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
+
             # State updates.
             states_updated = synapse_type.update_states(
                 synapse_states,
@@ -319,8 +323,9 @@ class Network(Module):
 
         return states
 
-    @staticmethod
-    def _synapse_currents(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _synapse_currents(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -350,6 +355,9 @@ class Network(Module):
             # Get pre and post indexes of the current synapse type.
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
+            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
+            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
@@ -619,13 +627,7 @@ class SynapseView(View):
         self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
-    def make_trainable(
-        self,
-        key: str,
-        init_val: Optional[Union[float, list]] = None,
-        verbose: bool = True,
-    ):
-        """Make a parameter trainable."""
+    def _assert_key_in_params_or_states(self, key):
         synapse_index = self.view["type_ind"].values[0]
         synapse_type = self.pointer.synapses[synapse_index]
         synapse_param_names = list(synapse_type.synapse_params.keys())
@@ -635,15 +637,33 @@ class SynapseView(View):
             key in synapse_param_names or key in synapse_state_names
         ), f"{key} does not exist in synapse of type {synapse_type._name}."
 
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
+        """Make a parameter trainable."""
+        self._assert_key_in_params_or_states(key)
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
         self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]] = None,
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`."""
+        self._assert_key_in_params_or_states(key)
+        return self.pointer._data_set(key, val, self.view, param_state=param_state)
 
     def record(self, state: str = "v"):
         """Record a state."""
         assert (
             state in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
-        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
+        ), f"State {state} does not exist in synapse of type {self.view['type'].values[0]}."
 
         view = deepcopy(self.view)
         view["state"] = state

@@ -19,8 +19,8 @@ nav:
   - FAQ: faq.md
   - Credits: credits.md
 
-repo_name: 'mackelab/jaxley'
-repo_url: http://github.com/mackelab/jaxley
+repo_name: 'jaxleyverse/jaxley'
+repo_url: http://github.com/jaxleyverse/jaxley
 
 theme:
   name: 'material'

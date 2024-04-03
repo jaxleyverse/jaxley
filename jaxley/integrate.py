@@ -5,14 +5,16 @@ import jax.numpy as jnp
 import pandas as pd
 
 from jaxley.modules import Module
+from jaxley.utils.cell_utils import flip_comp_indices, params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
 def integrate(
     module: Module,
     params: List[Dict[str, jnp.ndarray]] = [],
-    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
     *,
+    param_state: Optional[List[Dict]] = None,
+    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
@@ -23,6 +25,10 @@ def integrate(
     Solves ODE and simulates neuron model.
 
     Args:
+        params: Trainable parameters returned by `get_parameters()`.
+        param_state: Parameters returned by `data_set`.
+        data_stimuli: Outputs of `.data_stimulate()`, only needed if stimuli change
+            across function calls.
         t_max: Duration of the simulation in milliseconds. If `t_max` is greater than
             the length of the stimulus input, the stimulus will be padded at the end
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
@@ -43,7 +49,7 @@ def integrate(
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
-    module.to_jax()  # Creates `.jaxnodes` from `.nodes`.
+    module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
     # At least one stimulus was inserted.
     if module.currents is not None or data_stimuli is not None:
@@ -69,8 +75,10 @@ def integrate(
         assert (
             t_max is not None
         ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
+    i_inds = flip_comp_indices(i_inds, module.nseg)  # See #305
 
     rec_inds = module.recordings.rec_index.to_numpy()
+    rec_inds = flip_comp_indices(rec_inds, module.nseg)  # See #305
     rec_states = module.recordings.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
@@ -82,10 +90,18 @@ def integrate(
         else:
             i_current = i_current[:t_max_steps, :]
 
+    # Make the `trainable_params` of the same shape as the `param_state`, such that they
+    # can be processed together by `get_all_parameters`.
+    pstate = params_to_pstate(params, module.indices_set_by_trainables)
+
+    # Gather parameters from `make_trainable` and `data_set` into a single list.
+    if param_state is not None:
+        pstate += param_state
+
     # Run `init_conds()` and return every parameter that is needed to solve the ODE.
     # This includes conductances, radiuses, lenghts, axial_resistivities, but also
     # coupling conductances.
-    all_params = module.get_all_parameters(params)
+    all_params = module.get_all_parameters(pstate)
 
     def _body_fun(state, i_stim):
         state = module.step(
@@ -133,6 +149,8 @@ def integrate(
     for inds, set_param in zip(module.indices_set_by_trainables, params):
         for key in set_param.keys():
             if key in list(states.keys()):  # Only initial states, not parameters.
+                if key not in module.synapse_state_names:
+                    inds = flip_comp_indices(inds, module.nseg)  # See 305
                 states[key] = states[key].at[inds].set(set_param[key])
 
     # Add to the states the initial current through every channel.

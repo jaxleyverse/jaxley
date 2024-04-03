@@ -24,6 +24,9 @@ class Channel:
 
         Args:
             new_name: The new name of the channel.
+
+        Returns:
+            Renamed channel, such that this function is chainable.
         """
         old_prefix = self._name + "_"
         new_prefix = new_name + "_"
@@ -46,6 +49,7 @@ class Channel:
             ): value
             for key, value in self.channel_states.items()
         }
+        return self
 
     def update_states(
         self, states, dt, v, params
