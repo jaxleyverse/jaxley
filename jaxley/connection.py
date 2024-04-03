@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List
 
 import numpy as np
@@ -5,30 +6,22 @@ import numpy as np
 from jaxley.synapses import Synapse
 
 
+@dataclass
 class Connection:
     """A simple wrapper to save all elements that are important for a single synapse."""
 
-    def __init__(
-        self,
-        pre_cell_ind,
-        pre_branch_ind,
-        pre_loc,
-        post_cell_ind,
-        post_branch_ind,
-        post_loc,
-    ):
-        self.pre_cell_ind = pre_cell_ind
-        self.pre_branch_ind = pre_branch_ind
-        self.pre_loc = pre_loc
-        self.post_cell_ind = post_cell_ind
-        self.post_branch_ind = post_branch_ind
-        self.post_loc = post_loc
+    pre_cell_ind: int
+    pre_branch_ind: int
+    pre_loc: float
+    post_cell_ind: int
+    post_branch_ind: int
+    post_loc: float
 
 
+@dataclass
 class Connectivity:
-    def __init__(self, synapse_type: Synapse, conns: List[Connection]):
-        self.synapse_type = synapse_type
-        self.conns = conns
+    synapse_type: "Synapse"
+    conns: List[Connection]
 
 
 class ConnectivityBuilder:
