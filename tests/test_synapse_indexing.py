@@ -10,6 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
 
 
@@ -26,7 +27,7 @@ def test_multiparameter_setting():
 
     pre = net.cell(0).branch(0).loc(0.0)
     post = net.cell(1).branch(0).loc(0.0)
-    pre.connect(post, IonotropicSynapse())
+    connect(pre, post, IonotropicSynapse())
 
     syn_view = net.IonotropicSynapse
     syn_params = ["gS", "e_syn"]
@@ -67,7 +68,7 @@ def test_set_and_querying_params_one_type(synapse_type):
         for post_ind in [2, 3]:
             pre = net.cell(pre_ind).branch(0).loc(0.0)
             post = net.cell(post_ind).branch(0).loc(0.0)
-            pre.connect(post, synapse_type)
+            connect(pre, post, synapse_type)
 
     # Get the synapse parameters to test setting
     syn_params = list(synapse_type.synapse_params.keys())
@@ -108,7 +109,7 @@ def test_set_and_querying_params_two_types(synapse_type):
         for post_ind, synapse in zip([2, 3], [IonotropicSynapse(), synapse_type]):
             pre = net.cell(pre_ind).branch(0).loc(0.0)
             post = net.cell(post_ind).branch(0).loc(0.0)
-            pre.connect(post, synapse)
+            connect(pre, post, synapse)
 
     type1_params = list(IonotropicSynapse.synapse_params.keys())
     synapse_type_params = list(synapse_type.synapse_params.keys())
@@ -165,31 +166,39 @@ def test_shuffling_order_of_set(synapse_type):
     net1 = jx.Network([cell for _ in range(4)])
     net2 = jx.Network([cell for _ in range(4)])
 
-    net1.cell(0).branch(0).loc(1.0).connect(
-        net1.cell(1).branch(0).loc(0.1), IonotropicSynapse()
+    connect(
+        net1.cell(0).branch(0).loc(1.0),
+        net1.cell(1).branch(0).loc(0.1),
+        IonotropicSynapse(),
     )
-    net1.cell(1).branch(0).loc(0.6).connect(
-        net1.cell(2).branch(0).loc(0.7), IonotropicSynapse()
+    connect(
+        net1.cell(1).branch(0).loc(0.6),
+        net1.cell(2).branch(0).loc(0.7),
+        IonotropicSynapse(),
     )
-    net1.cell(2).branch(0).loc(0.4).connect(
-        net1.cell(3).branch(0).loc(0.3), synapse_type
+    connect(
+        net1.cell(2).branch(0).loc(0.4), net1.cell(3).branch(0).loc(0.3), synapse_type
     )
-    net1.cell(3).branch(0).loc(0.1).connect(
-        net1.cell(1).branch(0).loc(0.1), synapse_type
+    connect(
+        net1.cell(3).branch(0).loc(0.1), net1.cell(1).branch(0).loc(0.1), synapse_type
     )
 
     # Different order as for `net1`.
-    net2.cell(3).branch(0).loc(0.1).connect(
-        net2.cell(1).branch(0).loc(0.1), synapse_type
+    connect(
+        net2.cell(3).branch(0).loc(0.1), net2.cell(1).branch(0).loc(0.1), synapse_type
     )
-    net2.cell(1).branch(0).loc(0.6).connect(
-        net2.cell(2).branch(0).loc(0.7), IonotropicSynapse()
+    connect(
+        net2.cell(1).branch(0).loc(0.6),
+        net2.cell(2).branch(0).loc(0.7),
+        IonotropicSynapse(),
     )
-    net2.cell(2).branch(0).loc(0.4).connect(
-        net2.cell(3).branch(0).loc(0.3), synapse_type
+    connect(
+        net2.cell(2).branch(0).loc(0.4), net2.cell(3).branch(0).loc(0.3), synapse_type
     )
-    net2.cell(0).branch(0).loc(1.0).connect(
-        net2.cell(1).branch(0).loc(0.1), IonotropicSynapse()
+    connect(
+        net2.cell(0).branch(0).loc(1.0),
+        net2.cell(1).branch(0).loc(0.1),
+        IonotropicSynapse(),
     )
 
     net1.insert(HH())

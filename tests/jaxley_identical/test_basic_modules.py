@@ -12,6 +12,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -200,13 +201,13 @@ def test_complex_net():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.fully_connect(post, IonotropicSynapse())
-    pre.fully_connect(post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse())
+    fully_connect(pre, post, TestSynapse())
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.fully_connect(post, IonotropicSynapse())
-    pre.fully_connect(post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse())
+    fully_connect(pre, post, TestSynapse())
 
     net.set("gS", 0.44)
     net.set("gC", 0.62)

@@ -107,7 +107,7 @@ def test_diverse_synapse_types():
         for post_ind, syn in zip([2, 3], [IonotropicSynapse(), TestSynapse()]):
             pre = net.cell(pre_ind).branch(0).loc(0.0)
             post = net.cell(post_ind).branch(0).loc(0.0)
-            pre.connect(post, syn)
+            connect(pre, post, syn)
 
     net.IonotropicSynapse.make_trainable("gS")
     net.TestSynapse([0, 1]).make_trainable("gC")
@@ -364,13 +364,13 @@ def test_data_set_vs_make_trainable_network():
         net.insert(HH())
         pre = net.cell(0).branch(0).loc(0.0)
         post = net.cell(0).branch(1).loc(0.9)
-        pre.connect(post, IonotropicSynapse())
+        connect(pre, post, IonotropicSynapse())
         pre = net.cell(0).branch(0).loc(0.1)
         post = net.cell(1).branch(1).loc(0.4)
-        pre.connect(post, TestSynapse())
+        connect(pre, post, TestSynapse())
         pre = net.cell(1).branch(0).loc(0.3)
         post = net.cell(0).branch(1).loc(0.0)
-        pre.connect(post, IonotropicSynapse())
+        connect(pre, post, IonotropicSynapse())
 
         net.cell(0).branch(1).loc(1.0).record()
         net.cell(1).branch(0).loc(1.0).record()

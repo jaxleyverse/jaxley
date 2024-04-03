@@ -8,6 +8,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -74,9 +75,9 @@ def test_record_synaptic_and_membrane_states():
     net = jx.Network([cell for _ in range(3)])
     net.insert(HH())
 
-    net.cell([0]).fully_connect(net.cell([1]), IonotropicSynapse())
-    net.cell([1]).fully_connect(net.cell([2]), TestSynapse())
-    net.cell([2]).fully_connect(net.cell([0]), IonotropicSynapse())
+    fully_connect(net.cell([0]), net.cell([1]), IonotropicSynapse())
+    fully_connect(net.cell([1]), net.cell([2]), TestSynapse())
+    fully_connect(net.cell([2]), net.cell([0]), IonotropicSynapse())
 
     current = jx.step_current(1.0, 80.0, 0.02, 0.025, 100.0)
     net.cell(0).branch(0).loc(0.0).stimulate(current)

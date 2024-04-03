@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
+from jaxley.connection import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse
 
 
@@ -62,11 +63,11 @@ def test_api_equivalence_synapses():
     net2 = jx.Network([cell1, cell2])
     pre = net2.cell(0).branch(0).loc(1.0)
     post = net2.cell(1).branch(4).loc(1.0)
-    pre.connect(post, IonotropicSynapse())
+    connect(pre, post, IonotropicSynapse())
 
     pre = net2.cell(1).branch(1).loc(0.8)
     post = net2.cell(0).branch(4).loc(0.1)
-    pre.connect(post, IonotropicSynapse())
+    connect(pre, post, IonotropicSynapse())
 
     for net in [net1, net2]:
         current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
@@ -104,10 +105,10 @@ def test_api_equivalence_layers():
 
     net2 = jx.Network(cells)
     _ = np.random.seed(0)
-    net2.cell([0, 1, 2, 3, 4]).fully_connect(
-        net2.cell([5, 6, 7, 8, 9]), IonotropicSynapse()
+    fully_connect(
+        net2.cell([0, 1, 2, 3, 4]), net2.cell([5, 6, 7, 8, 9]), IonotropicSynapse()
     )
-    net2.cell([5, 6, 7, 8, 9]).fully_connect(net2.cell(10), IonotropicSynapse())
+    fully_connect(net2.cell([5, 6, 7, 8, 9]), net2.cell(10), IonotropicSynapse())
 
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     for net in [net1, net2]:
