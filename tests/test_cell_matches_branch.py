@@ -71,7 +71,4 @@ def test_equivalence():
 
     for g_1, g_2 in zip(g1, g2):
         for key in g_1:
-            rearranged = np.zeros_like(g_1[key])
-            rearranged[:4] = g_1[key][4:]
-            rearranged[4:] = g_1[key][:4]
-            assert np.allclose(rearranged, g_2[key]), "Gradients do not match."
+            assert np.allclose(g_1[key], g_2[key]), "Gradients do not match."

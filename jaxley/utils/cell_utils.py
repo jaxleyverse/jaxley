@@ -158,16 +158,31 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     """
     nseg = nseg_per_branch  # only for convenience.
     possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
-    closest = np.argmin(np.abs(possible_locs - loc))
-    ind_along_branch = nseg - closest - 1
+    ind_along_branch = np.argmin(np.abs(possible_locs - loc))
     return branch_ind * nseg + ind_along_branch
 
 
 def loc_of_index(global_comp_index, nseg):
     """Return location corresponding to index."""
     index = global_comp_index % nseg
-    possible_locs = np.linspace(1 - 0.5 / nseg, 0.5 / nseg, nseg)
+    possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
     return possible_locs[index]
+
+
+def flip_comp_indices(indices: np.ndarray, nseg: int):
+    """Flip ordering of compartments because the solver treats 0 as last compartment.
+
+    E.g with nseg=8, this function will do:
+    [2] -> [5]
+    [13] -> [10] because this is the second branch (it only flips within branch).
+
+    This is required to hide the weird compartment ordering from the user (#30) and is
+    introduced in PR #305.
+    """
+    remainder = indices % nseg
+    corrected_comp_ind = nseg - remainder - 1
+    integer_division = indices // nseg * nseg
+    return integer_division + corrected_comp_ind
 
 
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):

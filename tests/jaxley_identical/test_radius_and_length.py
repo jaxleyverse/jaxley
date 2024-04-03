@@ -64,8 +64,8 @@ def test_radius_and_length_branch():
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
 
     np.random.seed(1)
-    branch.set("length", 5 * np.random.rand(2))
-    branch.set("radius", np.random.rand(2))
+    branch.set("length", np.flip(5 * np.random.rand(2)))
+    branch.set("radius", np.flip(np.random.rand(2)))
 
     branch.insert(HH())
     branch.loc(0.0).record()
@@ -110,8 +110,11 @@ def test_radius_and_length_cell():
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)
-    cell.set("length", 5 * np.random.rand(2 * num_branches))
-    cell.set("radius", np.random.rand(2 * num_branches))
+    rands1 = 5 * np.random.rand(2 * num_branches)
+    rands2 = np.random.rand(2 * num_branches)
+    for b in range(num_branches):
+        cell.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        cell.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
@@ -157,12 +160,18 @@ def test_radius_and_length_net():
     cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)
-    cell1.set("length", 5 * np.random.rand(2 * num_branches))
-    cell1.set("radius", np.random.rand(2 * num_branches))
+    rands1 = 5 * np.random.rand(2 * num_branches)
+    rands2 = np.random.rand(2 * num_branches)
+    for b in range(num_branches):
+        cell1.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        cell1.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     np.random.seed(2)
-    cell2.set("length", 5 * np.random.rand(2 * num_branches))
-    cell2.set("radius", np.random.rand(2 * num_branches))
+    rands1 = 5 * np.random.rand(2 * num_branches)
+    rands2 = np.random.rand(2 * num_branches)
+    for b in range(num_branches):
+        cell2.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        cell2.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     connectivities = [
         jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])

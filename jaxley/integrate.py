@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pandas as pd
 
 from jaxley.modules import Module
-from jaxley.utils.cell_utils import params_to_pstate
+from jaxley.utils.cell_utils import flip_comp_indices, params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
@@ -75,8 +75,10 @@ def integrate(
         assert (
             t_max is not None
         ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
+    i_inds = flip_comp_indices(i_inds, module.nseg)  # See #305
 
     rec_inds = module.recordings.rec_index.to_numpy()
+    rec_inds = flip_comp_indices(rec_inds, module.nseg)  # See #305
     rec_states = module.recordings.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
@@ -147,6 +149,8 @@ def integrate(
     for inds, set_param in zip(module.indices_set_by_trainables, params):
         for key in set_param.keys():
             if key in list(states.keys()):  # Only initial states, not parameters.
+                if key not in module.synapse_state_names:
+                    inds = flip_comp_indices(inds, module.nseg)  # See 305
                 states[key] = states[key].at[inds].set(set_param[key])
 
     # Add to the states the initial current through every channel.

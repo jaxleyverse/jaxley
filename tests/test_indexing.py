@@ -10,7 +10,26 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.utils.cell_utils import index_of_loc, loc_of_index
+from jaxley.utils.cell_utils import flip_comp_indices, index_of_loc, loc_of_index
+
+
+def test_flip_compartment_indices():
+    nseg = 4
+
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg)
+    cell1 = jx.Cell(branch, parents=[-1, 0, 0])
+    cell2 = jx.Cell(branch, parents=[-1, 0, 0])
+
+    indices = [0, 1, 2, 3]
+    flipped_inds = flip_comp_indices(np.asarray(indices), nseg).tolist()
+    radii = np.random.rand(nseg)
+
+    for counter, i in enumerate(flipped_inds):
+        cell1[1, i].set("radius", radii[counter])
+    for counter, i in enumerate(indices):
+        cell2[1, i].set("radius", np.flip(radii)[counter])
+    assert all(cell1.nodes == cell2.nodes)
 
 
 def test_getitem():
@@ -51,8 +70,8 @@ def test_loc_v_comp():
     comp = jx.Compartment()
     branch = jx.Branch([comp for _ in range(4)])
 
-    assert np.all(branch.comp(0).show() == branch.loc(1.0).show())
-    assert np.all(branch.comp(3).show() == branch.loc(0.0).show())
+    assert np.all(branch.comp(0).show() == branch.loc(0.0).show())
+    assert np.all(branch.comp(3).show() == branch.loc(1.0).show())
 
     assert np.all(branch.loc(loc_of_index(2, 4)).show() == branch.comp(2).show())
     assert np.all(branch.comp(index_of_loc(0, 0.4, 4)).show() == branch.loc(0.4).show())
