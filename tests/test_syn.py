@@ -9,6 +9,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 
