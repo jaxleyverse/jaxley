@@ -696,7 +696,7 @@ class Module(ABC):
                 delta_t=delta_t,
             )
 
-        u["v"] = new_voltages.flatten(order="C")
+        u["v"] = new_voltages.ravel(order="C")
 
         return u
 
@@ -1249,22 +1249,11 @@ class View:
         1, 3, 6     -->     1, 1, 0 # 1st compartment of 2nd branch of 2nd cell
         1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
         """
-        local_idcs = ["cell_index", "branch_index", "comp_index"]
-        global_idcs = [f"global_{id}" for id in local_idcs]
-        all_idcs = global_idcs + local_idcs
-
-        # resets the index based on the parent index.
-        # i.e. if cell_index increments, branch_index and comp_index are reset.
-        reset_counts = (
-            lambda df, col: df.groupby(col)
-            .apply(lambda x: x - x.min(), include_groups=False)
-            .reset_index()
-        )
-
-        idcs_df = self.view[all_idcs]
-        for parent, col in zip(global_idcs[:-1], local_idcs[1:]):
-            idcs_df.loc[:, col] = reset_counts(self.view[all_idcs], parent)[col].values
-        return idcs_df[local_idcs]
+        rank_by = lambda x, by: x[by].rank(method="dense").astype(int) - 1
+        idcs_df = self.view[["cell_index", "branch_index", "comp_index"]]
+        idcs_df.loc[:, 'branch_index'] = rank_by(idcs_df.groupby('cell_index'), 'branch_index')
+        idcs_df.loc[:, 'comp_index'] = rank_by(idcs_df.groupby(['cell_index', 'branch_index']), 'comp_index')
+        return idcs_df
 
     def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current view.

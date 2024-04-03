@@ -268,7 +268,11 @@ class CellView(View):
         global_post_indices = post_cell_view.pointer._local_inds_to_global(
             post_cell_inds, rand_branch_post, rand_comp_post
         )
-        global_post_indices = global_post_indices.flatten()
+        global_post_indices = global_post_indices.ravel()
+        
+        # global_post_indices = post_cell_view.view.groupby("cell_index").sample(num_pre, replace=True).index.to_numpy()        
+        # global_post_indices = global_post_indices.reshape((-1, num_pre), order="F").ravel()
+
         post_rows = post_cell_view.view.loc[global_post_indices]
 
         # Pre-synapse is at the zero-eth branch and zero-eth compartment.
@@ -348,7 +352,7 @@ def read_swc(
     )
 
     radiuses = np.asarray([radius_fns[b](range_) for b in range(len(parents))])
-    radiuses_each = radiuses.flatten(order="C")
+    radiuses_each = radiuses.ravel(order="C")
     if min_radius is None:
         assert np.all(
             radiuses_each > 0.0
