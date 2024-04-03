@@ -74,21 +74,6 @@ class CompartmentView(View):
         index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
         return self(index)
 
-    def connect(self, post: "CompartmentView", synapse_type):
-        """Connect two compartments with a chemical synapse.
-
-        High-level strategy:
-
-        We need to first check if the network already has a type of this synapse, else
-        we need to register it as a new synapse in a bunch of dictionaries which track
-        synapse parameters, state and meta information.
-
-        Next, we register the new connection in the synapse dataframe (`.edges`).
-        Then, we update synapse parameter and state arrays with the new connection.
-        Finally, we update synapse meta information.
-        """
-        self._append_multiple_synapses(self.view, post.view, synapse_type)
-
     def distance(self, endpoint: "CompartmentView"):
         """Return the direct distance between two compartments.
 
