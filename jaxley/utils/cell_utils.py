@@ -185,6 +185,15 @@ def flip_comp_indices(indices: np.ndarray, nseg: int):
     return integer_division + corrected_comp_ind
 
 
+def flip_values(values: jnp.ndarray, nseg):
+    """Flips the ordering of values with the `flip_comp_indices` method.
+    
+    See also #305.
+    """
+    inds = flip_comp_indices(jnp.arange(len(values)), nseg)
+    return values[inds]
+
+
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     midpoint_r_a = 0.5 * (r_a1 + r_a2)
     return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
@@ -209,7 +218,6 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
 def params_to_pstate(
     params: List[Dict[str, jnp.ndarray]],
     indices_set_by_trainables: List[jnp.ndarray],
-    trainable_is_synaptic: List[bool],
 ):
     """Make outputs `get_parameters()` conform with outputs of `.data_set()`.
 
@@ -223,7 +231,6 @@ def params_to_pstate(
             "key": list(p.keys())[0],
             "val": list(p.values())[0],
             "indices": i,
-            "is_synaptic": syn,
         }
-        for p, i, syn in zip(params, indices_set_by_trainables, trainable_is_synaptic)
+        for p, i in zip(params, indices_set_by_trainables)
     ]

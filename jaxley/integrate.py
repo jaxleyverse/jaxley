@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pandas as pd
 
 from jaxley.modules import Module
-from jaxley.utils.cell_utils import flip_comp_indices, params_to_pstate
+from jaxley.utils.cell_utils import flip_comp_indices, flip_values, params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
@@ -93,7 +93,7 @@ def integrate(
     # Make the `trainable_params` of the same shape as the `param_state`, such that they
     # can be processed together by `get_all_parameters`.
     pstate = params_to_pstate(
-        params, module.indices_set_by_trainables, module.trainable_is_synaptic
+        params, module.indices_set_by_trainables
     )
 
     # Gather parameters from `make_trainable` and `data_set` into a single list.
@@ -140,10 +140,10 @@ def integrate(
         i_current = jnp.concatenate([i_current, dummy_stimulus])
 
     # Join node and edge states into a single state dictionary.
-    states = {"v": module.jaxnodes["v"]}
+    states = {"v": flip_values(module.jaxnodes["v"], module.nseg)}  # See #305
     for channel in module.channels:
         for channel_states in list(channel.channel_states.keys()):
-            states[channel_states] = module.jaxnodes[channel_states]
+            states[channel_states] = flip_values(module.jaxnodes[channel_states], module.nseg)  # See #305
     for synapse_states in module.synapse_state_names:
         states[synapse_states] = module.jaxedges[synapse_states]
 
@@ -151,7 +151,11 @@ def integrate(
     for inds, set_param in zip(module.indices_set_by_trainables, params):
         for key in set_param.keys():
             if key in list(states.keys()):  # Only initial states, not parameters.
-                states[key] = states[key].at[inds].set(set_param[key])
+                value = set_param[key]
+                if key not in module.synapse_param_names:
+                    # See #305, all membrane states must be flipped.
+                    value = flip_values(value, module.nseg)
+                states[key] = states[key].at[inds].set(value)
 
     # Add to the states the initial current through every channel.
     states, _ = module._channel_currents(
