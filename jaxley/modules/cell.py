@@ -254,26 +254,21 @@ class CellView(View):
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
-        # Define some short-hands to avoid clutter later.
-        nseg = self.pointer.nseg
-        nbranches_per_cell = np.asarray(self.pointer.nbranches_per_cell)
-        cum_branch_ind = np.asarray(self.pointer.cumsum_nbranches)
-
         # Get pre- and postsynaptic cell indices.
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-        nbranches_post = nbranches_per_cell[post_cell_inds]
+        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_cell_inds]
         num_pre = len(pre_cell_inds)
         num_post = len(post_cell_inds)
 
         # Infer indices of (random) postsynaptic compartments.
         # Each row of `rand_branch_post` is an integer in `[0, nbranches_post[i] - 1]`.
         rand_branch_post = np.floor(np.random.rand(num_pre, num_post) * nbranches_post)
-        rand_comp_post = np.floor(np.random.rand(num_pre, num_post) * nseg)
-        global_post_indices = (
-            cum_branch_ind[post_cell_inds] + rand_branch_post
-        ) * nseg + rand_comp_post
-        global_post_indices = global_post_indices.flatten().astype(int)
+        rand_comp_post = np.floor(np.random.rand(num_pre, num_post) * self.pointer.nseg)
+        global_post_indices = post_cell_view.pointer._local_inds_to_global(
+            post_cell_inds, rand_branch_post, rand_comp_post
+        )
+        global_post_indices = global_post_indices.flatten()
         post_rows = post_cell_view.view.loc[global_post_indices]
 
         # Pre-synapse is at the zero-eth branch and zero-eth compartment.
@@ -296,19 +291,25 @@ class CellView(View):
         num_connections = np.random.binomial(num_pre * num_post, p)
         pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
         post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
+        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_syn_neurons]
 
-        for pre_ind, post_ind in zip(pre_syn_neurons, post_syn_neurons):
-            num_branches_post = self.pointer.nbranches_per_cell[post_ind]
-            branch_pre = 0
-            loc_pre = 0.0
-            rand_branch_post = np.random.randint(0, num_branches_post)
-            rand_loc_post = np.random.rand()
+        # Post-synapse is a randomly chosen branch and compartment.
+        rand_branch_post = np.floor(np.random.rand(num_connections) * nbranches_post)
+        rand_comp_post = np.floor(np.random.rand(num_connections) * self.pointer.nseg)
+        global_post_indices = post_cell_view.pointer._local_inds_to_global(
+            post_syn_neurons, rand_branch_post, rand_comp_post
+        ).astype(int)
+        post_rows = post_cell_view.view.loc[global_post_indices]
 
-            pre = self.pointer.cell(pre_ind).branch(branch_pre).loc(loc_pre)
-            post = (
-                self.pointer.cell(post_ind).branch(rand_branch_post).loc(rand_loc_post)
-            )
-            pre.connect(post, synapse_type)
+        # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+        rand_branch_pre = np.zeros_like(rand_branch_post)
+        rand_comp_pre = np.zeros_like(rand_comp_post)
+        global_pre_indices = post_cell_view.pointer._local_inds_to_global(
+            pre_syn_neurons, rand_branch_pre, rand_comp_pre
+        ).astype(int)
+        pre_rows = self.view.loc[global_pre_indices]
+
+        self._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.

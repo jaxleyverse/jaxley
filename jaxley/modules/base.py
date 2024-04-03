@@ -1077,6 +1077,15 @@ class Module(ABC):
         for i in range(self.shape[0]):
             yield self[i]
 
+    def _local_inds_to_global(
+        self, cell_inds: np.ndarray, branch_inds: np.ndarray, comp_inds: np.ndarray
+    ):
+        """Given local inds of cell, branch, and comp, return the global comp index."""
+        global_ind = (
+            self.cumsum_nbranches[cell_inds] + branch_inds
+        ) * self.nseg + comp_inds
+        return global_ind.astype(int)
+
 
 class View:
     """View of a `Module`."""
