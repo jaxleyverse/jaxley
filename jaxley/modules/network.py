@@ -391,7 +391,7 @@ class Network(Module):
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
-            states[f"{synapse_type._name}_current"] = synapse_currents[0]
+            states[f"i{synapse_type._name}"] = synapse_currents[0]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 

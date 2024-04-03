@@ -108,8 +108,8 @@ def test_multiple_channel_currents():
 
         def update_states(self, states, dt, v, params):
             state = states["cumulative"]
-            state += states["Dummy1_current"] * 0.001
-            state += states["Dummy2_current"] * 0.001
+            state += states["iDummy1"] * 0.001
+            state += states["iDummy2"] * 0.001
             return {"cumulative": state}
 
         def compute_current(self, states, v, params):

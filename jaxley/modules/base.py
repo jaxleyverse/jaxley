@@ -749,9 +749,7 @@ class Module(ABC):
 
             for channel_for_current in channels:
                 name_for_current = channel_for_current._name
-                channel_states[f"{name_for_current}_current"] = states[
-                    f"{name_for_current}_current"
-                ]
+                channel_states[f"i{name_for_current}"] = states[f"i{name_for_current}"]
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
@@ -812,7 +810,7 @@ class Module(ABC):
 
             # Same the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
-            states[f"{name}_current"] = membrane_currents[0]
+            states[f"i{name}"] = membrane_currents[0]
 
         return states, (voltage_terms, constant_terms)
 
