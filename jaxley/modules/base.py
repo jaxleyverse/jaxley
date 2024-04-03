@@ -1249,15 +1249,15 @@ class View:
         1, 3, 6     -->     1, 1, 0 # 1st compartment of 2nd branch of 2nd cell
         1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
         """
-        rank_by = lambda x, by: x[by].rank(method="dense").astype(int) - 1
-        idcs_df = self.view[["cell_index", "branch_index", "comp_index"]]
-        idcs_df.loc[:, "branch_index"] = rank_by(
-            idcs_df.groupby("cell_index"), "branch_index"
+        index_A_by_B = (
+            lambda x, A, B: x.groupby(B)[A].rank(method="dense").astype(int) - 1
+        )  # reindexes A by B, i.e. A=[0,0,1,1], B=[0,1,2,4] -> B=[0,1,0,1]
+        idcs = self.view[["cell_index", "branch_index", "comp_index"]]
+        idcs.loc[:, "branch_index"] = index_A_by_B(idcs, "branch_index", "cell_index")
+        idcs.loc[:, "comp_index"] = index_A_by_B(
+            idcs, "comp_index", ["cell_index", "branch_index"]
         )
-        idcs_df.loc[:, "comp_index"] = rank_by(
-            idcs_df.groupby(["cell_index", "branch_index"]), "comp_index"
-        )
-        return idcs_df
+        return idcs
 
     def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current view.
