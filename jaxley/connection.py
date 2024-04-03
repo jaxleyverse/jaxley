@@ -136,14 +136,10 @@ def custom_connect(
 
     # Infer indices of (random) postsynaptic compartments.
     cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
-    sample_comp_idx = (
-        lambda view, cell_idx: cell_idx_view(view.view, cell_idx)  # view for the cell
-        .sample()
-        .index.to_numpy()
-    )
-    global_post_indices = np.hstack(
-        [sample_comp_idx(post_cell_view, idx) for idx in post_cell_inds]
-    )
+    sample_comp = lambda view, cell_idx: cell_idx_view(view.view, cell_idx).sample()
+    global_post_indices = [
+        sample_comp(post_cell_view, cell_idx).index[0] for cell_idx in post_cell_inds
+    ]
     post_rows = post_cell_view.view.loc[global_post_indices]
 
     idcs_to_zero = np.zeros_like(from_idx)
