@@ -221,24 +221,24 @@ def test_complex_net():
 
     voltages = jx.integrate(net)
 
-    voltages_230224 = jnp.asarray(
+    voltages_030424 = jnp.asarray(
         [
             [
                 -70.0,
-                -63.40809519,
-                -59.42574795,
-                -54.78729764,
-                -30.54821909,
-                5.18185244,
-                -46.68138279,
-                -75.00157503,
-                -74.0318307,
-                -72.51526219,
-                -70.7509882,
+                -62.79934311,
+                -59.50451699,
+                -56.20728455,
+                -47.58470731,
+                24.57972201,
+                -29.59107638,
+                -71.54330661,
+                -71.72027779,
+                -70.19820291,
+                -68.56204818,
             ]
         ]
     )
 
-    max_error = np.max(np.abs(voltages[:, ::40] - voltages_230224))
+    max_error = np.max(np.abs(voltages[:, ::40] - voltages_030424))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

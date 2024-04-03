@@ -237,9 +237,9 @@ class CellView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[
-            local_idcs.columns
-        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         if index == "all":
             self.allow_make_trainable = False
         new_view = super().adjust_view("cell_index", index)
@@ -267,17 +267,19 @@ class CellView(View):
         num_post = len(post_cell_inds)
 
         # Infer indices of (random) postsynaptic compartments.
-        # Each row of `rand_branch_post` is an integrer in `[0, nbranches_post[i] - 1]`.
+        # Each row of `rand_branch_post` is an integer in `[0, nbranches_post[i] - 1]`.
         rand_branch_post = np.floor(np.random.rand(num_pre, num_post) * nbranches_post)
         rand_comp_post = np.floor(np.random.rand(num_pre, num_post) * nseg)
         global_post_indices = (
             cum_branch_ind[post_cell_inds] + rand_branch_post
         ) * nseg + rand_comp_post
-        global_post_indices = global_post_indices.T.flatten().astype(int)
+        global_post_indices = global_post_indices.flatten().astype(int)
         post_rows = post_cell_view.view.loc[global_post_indices]
 
         # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-        pre_rows = pd.concat([self[0, 0].view] * num_post)
+        pre_rows = self[0, 0].view
+        # Repeat rows `num_post` times. See SO 50788508.
+        pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)].reset_index(drop=True)
 
         self._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 

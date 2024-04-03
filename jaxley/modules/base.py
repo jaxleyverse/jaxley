@@ -1303,8 +1303,6 @@ class View:
         """Append multiple rows to the `self.edges` table.
 
         This is used, e.g. by `fully_connect`.
-
-
         """
         synapse_name = type(synapse_type).__name__
         type_ind, is_new_type = self._infer_synapse_type_ind(synapse_name)
