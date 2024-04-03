@@ -647,9 +647,7 @@ class SynapseView(View):
         self._assert_key_in_params_or_states(key)
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
-        self.pointer._make_trainable(
-            self.view, key, init_val, verbose=verbose
-        )
+        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
 
     def data_set(
         self,
@@ -659,9 +657,7 @@ class SynapseView(View):
     ):
         """Set parameter of module (or its view) to a new value within `jit`."""
         self._assert_key_in_params_or_states(key)
-        return self.pointer._data_set(
-            key, val, self.view, param_state=param_state
-        )
+        return self.pointer._data_set(key, val, self.view, param_state=param_state)
 
     def record(self, state: str = "v"):
         """Record a state."""

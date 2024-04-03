@@ -10,7 +10,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.utils.cell_utils import index_of_loc, loc_of_index, flip_comp_indices
+from jaxley.utils.cell_utils import flip_comp_indices, index_of_loc, loc_of_index
 
 
 def test_flip_compartment_indices():
@@ -30,7 +30,7 @@ def test_flip_compartment_indices():
     for counter, i in enumerate(indices):
         cell2[1, i].set("radius", np.flip(radii)[counter])
     assert all(cell1.nodes == cell2.nodes)
-    
+
 
 def test_getitem():
     comp = jx.Compartment()

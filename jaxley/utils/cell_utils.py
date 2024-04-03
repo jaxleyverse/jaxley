@@ -185,15 +185,6 @@ def flip_comp_indices(indices: np.ndarray, nseg: int):
     return integer_division + corrected_comp_ind
 
 
-def flip_values(values: jnp.ndarray, nseg):
-    """Flips the ordering of values with the `flip_comp_indices` method.
-    
-    See also #305.
-    """
-    inds = flip_comp_indices(jnp.arange(len(values)), nseg)
-    return values[inds]
-
-
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     midpoint_r_a = 0.5 * (r_a1 + r_a2)
     return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
@@ -227,10 +218,6 @@ def params_to_pstate(
     we run the function to add indices to the dict. The outputs of `params_to_pstate`
     are of the same shape as the outputs of `.data_set()`."""
     return [
-        {
-            "key": list(p.keys())[0],
-            "val": list(p.values())[0],
-            "indices": i,
-        }
+        {"key": list(p.keys())[0], "val": list(p.values())[0], "indices": i}
         for p, i in zip(params, indices_set_by_trainables)
     ]

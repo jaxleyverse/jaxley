@@ -153,9 +153,9 @@ class Module(ABC):
         """
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
-            # inds = jnp.arange(len(value))
-            # inds = flip_comp_indices(inds, self.nseg)  # See #305
-            self.jaxnodes[key] = jnp.asarray(value)#[inds]
+            inds = jnp.arange(len(value))
+            inds = flip_comp_indices(inds, self.nseg)  # See #305
+            self.jaxnodes[key] = jnp.asarray(value)[inds]
 
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
@@ -300,9 +300,7 @@ class Module(ABC):
             if key in self.synapse_param_names or key in self.synapse_state_names
             else self.nodes
         )
-        return self._data_set(
-            key, val, view, param_state=param_state
-        )
+        return self._data_set(key, val, view, param_state=param_state)
 
     def _data_set(
         self,
@@ -461,20 +459,13 @@ class Module(ABC):
 
         # Override with those parameters set by `.make_trainable()`.
         for parameter in trainable_params:
-            inds = parameter["indices"]
-            set_param = parameter["val"]
             key = parameter["key"]
+            inds = parameter["indices"]
+            if key not in self.synapse_param_names:
+                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
+            set_param = parameter["val"]
             if key in list(params.keys()):  # Only parameters, not initial states.
                 params[key] = params[key].at[inds].set(set_param[:, None])
-
-        # #305, flip those parameters that are not synaptic parameters, i.e.:
-        # Membrane channel parameters, radiuses, lengths, r_a.
-        for key in params.keys():
-            if key not in self.synapse_param_names:
-                value = params[key]
-                inds = jnp.arange(len(value))
-                inds = flip_comp_indices(inds, self.nseg)
-                params[key] = value[inds]
 
         # Compute conductance params and append them.
         cond_params = self.init_conds(params)
