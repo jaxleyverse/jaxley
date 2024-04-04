@@ -1,17 +1,17 @@
 ## User experiences, bugs, and feature requests
 
 To report bugs and suggest features (including better documentation), please equally
-head over to [issues on GitHub](https://github.com/mackelab/jaxley/issues).
+head over to [issues on GitHub](https://github.com/jaxleyverse/jaxley/issues).
 
 ## Code contributions
 
-In general, we use pull requests to make changes to `neurax`. So, if you are planning to
+In general, we use pull requests to make changes to `jaxley`. So, if you are planning to
 make a contribution, please fork, create a feature branch and then make a PR from
-your feature branch to the upstream `neurax` ([details](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)).
+your feature branch to the upstream `jaxley` ([details](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)).
 
 ### Development environment
 
-Clone [the repo](https://github.com/mackelab/neurax) and install via `setup.py` using `pip install -e ".[dev]"` (the dev
+Clone [the repo](https://github.com/jaxleyverse/jaxley) and install via `setup.py` using `pip install -e ".[dev]"` (the dev
 flag installs development and testing dependencies).
 
 ### Style conventions
@@ -19,7 +19,7 @@ flag installs development and testing dependencies).
 For docstrings and comments, we use [Google
 Style](http://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
 
-Code needs to pass through the following tools, which are installed alongside `neurax`:
+Code needs to pass through the following tools, which are installed alongside `jaxley`:
 
 **[black](https://github.com/psf/black)**: Automatic code formatting for Python. You can
 run black manually from the console using `black .` in the top directory of the
@@ -35,9 +35,9 @@ and run them locally.
 
 ## Online documentation
 
-Most of [the documentation](http://mackelab.org/neurax) is written in markdown ([basic
+Most of [the documentation](http://mackelab.org/jaxley) is written in markdown ([basic
 markdown guide](https://guides.github.com/features/mastering-markdown/)).
 
 You can directly fix mistakes and suggest clearer formulations in markdown files simply
 by initiating a PR on through GitHub. Click on [documentation
-file](https://github.com/mackelab/neurax/tree/master/docs/docs) and look for the little pencil at top right.
+file](https://github.com/jaxleyverse/jaxley/tree/master/docs/docs) and look for the little pencil at top right.

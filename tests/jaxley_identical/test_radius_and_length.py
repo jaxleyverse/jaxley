@@ -4,6 +4,7 @@ config.update("jax_enable_x64", True)
 config.update("jax_platform_name", "cpu")
 
 import os
+from math import pi
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
@@ -64,12 +65,12 @@ def test_radius_and_length_branch():
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
 
     np.random.seed(1)
-    branch.set("length", 5 * np.random.rand(2))
-    branch.set("radius", np.random.rand(2))
+    branch.set("length", np.flip(5 * np.random.rand(2)))
+    branch.set("radius", np.flip(np.random.rand(2)))
 
     branch.insert(HH())
-    branch.comp(0.0).record()
-    branch.comp(0.0).stimulate(current)
+    branch.loc(0.0).record()
+    branch.loc(0.0).stimulate(current)
 
     voltages = jx.integrate(branch, delta_t=dt)
 
@@ -110,12 +111,15 @@ def test_radius_and_length_cell():
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)
-    cell.set("length", 5 * np.random.rand(2 * num_branches))
-    cell.set("radius", np.random.rand(2 * num_branches))
+    rands1 = 5 * np.random.rand(2 * num_branches)
+    rands2 = np.random.rand(2 * num_branches)
+    for b in range(num_branches):
+        cell.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        cell.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     cell.insert(HH())
-    cell.branch(1).comp(0.0).record()
-    cell.branch(1).comp(0.0).stimulate(current)
+    cell.branch(1).loc(0.0).record()
+    cell.branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(cell, delta_t=dt)
 
@@ -157,12 +161,18 @@ def test_radius_and_length_net():
     cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)
-    cell1.set("length", 5 * np.random.rand(2 * num_branches))
-    cell1.set("radius", np.random.rand(2 * num_branches))
+    rands1 = 5 * np.random.rand(2 * num_branches)
+    rands2 = np.random.rand(2 * num_branches)
+    for b in range(num_branches):
+        cell1.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        cell1.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     np.random.seed(2)
-    cell2.set("length", 5 * np.random.rand(2 * num_branches))
-    cell2.set("radius", np.random.rand(2 * num_branches))
+    rands1 = 5 * np.random.rand(2 * num_branches)
+    rands2 = np.random.rand(2 * num_branches)
+    for b in range(num_branches):
+        cell2.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        cell2.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     connectivities = [
         jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
@@ -170,11 +180,18 @@ def test_radius_and_length_net():
     network = jx.Network([cell1, cell2], connectivities)
     network.insert(HH())
 
+    # first cell, 0-eth branch, 0-st compartment because loc=0.0
+    radius_post = network[1, 0, 0].view["radius"].item()
+    lenght_post = network[1, 0, 0].view["length"].item()
+    area = 2 * pi * lenght_post * radius_post
+    point_process_to_dist_factor = 100_000.0 / area
+    network.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
+
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).comp(0.0).record()
+        network.cell(cell_ind).branch(1).loc(0.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).comp(0.0).stimulate(current)
+        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(network, delta_t=dt)
 

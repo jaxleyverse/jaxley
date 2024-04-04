@@ -14,7 +14,11 @@ from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
-from jaxley.utils.cell_utils import merge_cells
+from jaxley.utils.cell_utils import (
+    convert_point_process_to_distributed,
+    flip_comp_indices,
+    merge_cells,
+)
 from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
 
@@ -45,7 +49,7 @@ class Network(Module):
         self.synapses = [connectivity.synapse_type for connectivity in connectivities]
 
         # TODO(@michaeldeistler): should we also track this for channels?
-        self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
+        self.synapse_names = [c.synapse_type._name for c in connectivities]
         self.synapse_param_names = list(
             chain.from_iterable(
                 [list(c.synapse_type.synapse_params.keys()) for c in connectivities]
@@ -227,7 +231,7 @@ class Network(Module):
                             post_locs=post_locs,
                             post_branch_index=post_branch_inds,
                             post_cell_index=post_cell_inds,
-                            type=type(connectivity.synapse_type).__name__,
+                            type=connectivity.synapse_type._name,
                             type_ind=i,
                             global_pre_comp_index=global_pre_comp_inds,
                             global_post_comp_index=global_post_comp_inds,
@@ -278,8 +282,9 @@ class Network(Module):
         )
         return states, current_terms
 
-    @staticmethod
-    def _step_synapse_state(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _step_synapse_state(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -289,7 +294,7 @@ class Network(Module):
 
         for i, synapse_type in enumerate(syn_channels):
             assert (
-                synapse_names[i] == type(synapse_type).__name__
+                synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
@@ -303,6 +308,9 @@ class Network(Module):
 
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
+            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
+            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
 
             # State updates.
             states_updated = synapse_type.update_states(
@@ -319,8 +327,9 @@ class Network(Module):
 
         return states
 
-    @staticmethod
-    def _synapse_currents(states, syn_channels, params, delta_t, edges: pd.DataFrame):
+    def _synapse_currents(
+        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+    ):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -335,7 +344,7 @@ class Network(Module):
         diff = 1e-3
         for i, synapse_type in enumerate(syn_channels):
             assert (
-                synapse_names[i] == type(synapse_type).__name__
+                synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
@@ -350,6 +359,9 @@ class Network(Module):
             # Get pre and post indexes of the current synapse type.
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
+            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
+            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
@@ -366,6 +378,13 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
+            synapse_currents = convert_point_process_to_distributed(
+                synapse_currents,
+                params["radius"][post_inds],
+                params["length"][post_inds],
+            )
+
+            # Split into voltage and constant terms.
             voltage_term = (synapse_currents[1] - synapse_currents[0]) / diff
             constant_term = synapse_currents[0] - voltage_term * voltages[post_inds]
 
@@ -619,13 +638,7 @@ class SynapseView(View):
         self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
-    def make_trainable(
-        self,
-        key: str,
-        init_val: Optional[Union[float, list]] = None,
-        verbose: bool = True,
-    ):
-        """Make a parameter trainable."""
+    def _assert_key_in_params_or_states(self, key):
         synapse_index = self.view["type_ind"].values[0]
         synapse_type = self.pointer.synapses[synapse_index]
         synapse_param_names = list(synapse_type.synapse_params.keys())
@@ -635,15 +648,33 @@ class SynapseView(View):
             key in synapse_param_names or key in synapse_state_names
         ), f"{key} does not exist in synapse of type {synapse_type._name}."
 
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
+        """Make a parameter trainable."""
+        self._assert_key_in_params_or_states(key)
         # Use `.index.values` for indexing because we are memorizing the indices for
         # `jaxedges`.
         self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]] = None,
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`."""
+        self._assert_key_in_params_or_states(key)
+        return self.pointer._data_set(key, val, self.view, param_state=param_state)
 
     def record(self, state: str = "v"):
         """Record a state."""
         assert (
             state in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
-        ), f"State {key} does not exist in synapse of type {self.view['type'].values[0]}."
+        ), f"State {state} does not exist in synapse of type {self.view['type'].values[0]}."
 
         view = deepcopy(self.view)
         view["state"] = state

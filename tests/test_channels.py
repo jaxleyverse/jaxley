@@ -2,6 +2,7 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
+from typing import Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -36,10 +37,9 @@ def test_channel_set_name():
 
 
 def test_channel_change_name():
-    na = Na()
     # channel name can be changed with change_name method
     # (and only this way after initialization)
-    na.change_name("NaPospischil")
+    na = Na().change_name("NaPospischil")
     assert na.name == "NaPospischil"
     assert "NaPospischil_gNa" in na.channel_params.keys()
     assert "NaPospischil_eNa" in na.channel_params.keys()
@@ -50,17 +50,16 @@ def test_channel_change_name():
 
 
 def test_integration_with_renamed_channels():
-    neuron_hh = HH()
-    neuron_hh.change_name("NeuronHH")
+    neuron_hh = HH().change_name("NeuronHH")
     standard_hh = HH()
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=4)
 
-    branch.comp(0.0).insert(standard_hh)
+    branch.loc(0.0).insert(standard_hh)
     branch.insert(neuron_hh)
 
-    branch.comp(1.0).record()
+    branch.loc(1.0).record()
     v = jx.integrate(branch, t_max=1.0)
 
     # Test if voltage is `NaN` which happens when channels get mixed up.
@@ -76,12 +75,12 @@ def test_init_states():
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
     cell = jx.Cell(branch, [-1, 0])
-    cell.branch(0).comp(0.0).record()
+    cell.branch(0).loc(0.0).record()
 
     cell.branch(0).insert(Na())
     cell.branch(1).insert(K())
-    cell.branch(1).comp(0.0).insert(Km())
-    cell.branch(0).comp(1.0).insert(CaT())
+    cell.branch(1).loc(0.0).insert(Km())
+    cell.branch(0).loc(1.0).insert(CaT())
     cell.insert(CaL())
     cell.insert(Leak())
 
@@ -105,21 +104,26 @@ def test_multiple_channel_currents():
     class User(Channel):
         """The channel which uses currents of Dummy1 and Dummy2 to update its states."""
 
-        channel_params = {}
-        channel_states = {"cumulative": 0.0}
+        def __init__(self, name: Optional[str] = None):
+            super().__init__(name)
+            self.channel_params = {}
+            self.channel_states = {"cumulative": 0.0}
+            self.current_name = f"i_User"
 
         def update_states(self, states, dt, v, params):
             state = states["cumulative"]
-            state += states["Dummy1_current"] * 0.001
-            state += states["Dummy2_current"] * 0.001
+            state += states["i_Dummy"] * 0.001
             return {"cumulative": state}
 
         def compute_current(self, states, v, params):
             return 0.01 * jnp.ones_like(v)
 
     class Dummy1(Channel):
-        channel_params = {}
-        channel_states = {}
+        def __init__(self, name: Optional[str] = None):
+            super().__init__(name)
+            self.channel_params = {}
+            self.channel_states = {}
+            self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
             return {}
@@ -128,8 +132,11 @@ def test_multiple_channel_currents():
             return 0.01 * jnp.ones_like(v)
 
     class Dummy2(Channel):
-        channel_params = {}
-        channel_states = {}
+        def __init__(self, name: Optional[str] = None):
+            super().__init__(name)
+            self.channel_params = {}
+            self.channel_states = {}
+            self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
             return {}
@@ -142,12 +149,12 @@ def test_multiple_channel_currents():
     comp = jx.Compartment()
     branch = jx.Branch(comp, 1)
     cell = jx.Cell(branch, parents=[-1])
-    cell.branch(0).comp(0.0).stimulate(jx.step_current(1.0, 2.0, 0.1, dt, t_max))
+    cell.branch(0).loc(0.0).stimulate(jx.step_current(1.0, 2.0, 0.1, dt, t_max))
 
     cell.insert(User())
     cell.insert(Dummy1())
     cell.insert(Dummy2())
-    cell.branch(0).comp(0.0).record("cumulative")
+    cell.branch(0).loc(0.0).record("cumulative")
 
     s = jx.integrate(cell, delta_t=dt)
 

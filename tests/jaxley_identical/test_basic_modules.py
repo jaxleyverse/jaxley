@@ -7,6 +7,8 @@ import os
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
+from math import pi
+
 import jax.numpy as jnp
 import numpy as np
 
@@ -58,8 +60,8 @@ def test_branch():
     comp = jx.Compartment().initialize()
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
     branch.insert(HH())
-    branch.comp(0.0).record()
-    branch.comp(0.0).stimulate(current)
+    branch.loc(0.0).record()
+    branch.loc(0.0).stimulate(current)
 
     voltages = jx.integrate(branch, delta_t=dt)
 
@@ -98,8 +100,8 @@ def test_cell():
     branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
     cell.insert(HH())
-    cell.branch(1).comp(0.0).record()
-    cell.branch(1).comp(0.0).stimulate(current)
+    cell.branch(1).loc(0.0).record()
+    cell.branch(1).loc(0.0).stimulate(current)
 
     voltages = jx.integrate(cell, delta_t=dt)
 
@@ -146,11 +148,16 @@ def test_net():
     network.insert(HH())
 
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).comp(0.0).record()
+        network.cell(cell_ind).branch(1).loc(0.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).comp(0.0).stimulate(current)
+        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
+    area = 2 * pi * 10.0 * 1.0
+    point_process_to_dist_factor = 100_000.0 / area
+    network.IonotropicSynapse.set(
+        "IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor
+    )
     voltages = jx.integrate(network, delta_t=dt)
 
     voltages_040224 = jnp.asarray(
@@ -208,37 +215,43 @@ def test_complex_net():
     pre.fully_connect(post, IonotropicSynapse())
     pre.fully_connect(post, TestSynapse())
 
-    net.set("gS", 0.44)
-    net.set("gC", 0.62)
-    net.IonotropicSynapse([0, 2, 4]).set("gS", 0.32)
-    net.TestSynapse([0, 3, 5]).set("gC", 0.24)
+    area = 2 * pi * 10.0 * 1.0
+    point_process_to_dist_factor = 100_000.0 / area
+    net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
+    net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
+    net.IonotropicSynapse([0, 2, 4]).set(
+        "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
+    )
+    net.TestSynapse([0, 3, 5]).set(
+        "TestSynapse_gC", 0.24 / point_process_to_dist_factor
+    )
 
     current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
     for i in range(3):
-        net.cell(i).branch(0).comp(0.0).stimulate(current)
+        net.cell(i).branch(0).loc(0.0).stimulate(current)
 
-    net.cell(6).branch(0).comp(0.0).record()
+    net.cell(6).branch(0).loc(0.0).record()
 
     voltages = jx.integrate(net)
 
-    voltages_230224 = jnp.asarray(
+    voltages_030424 = jnp.asarray(
         [
             [
                 -70.0,
-                -63.40809519,
-                -59.42574795,
-                -54.78729764,
-                -30.54821909,
-                5.18185244,
-                -46.68138279,
-                -75.00157503,
-                -74.0318307,
-                -72.51526219,
-                -70.7509882,
+                -62.79934311,
+                -59.50451699,
+                -56.20728455,
+                -47.58470731,
+                24.57972201,
+                -29.59107638,
+                -71.54330661,
+                -71.72027779,
+                -70.19820291,
+                -68.56204818,
             ]
         ]
     )
 
-    max_error = np.max(np.abs(voltages[:, ::40] - voltages_230224))
+    max_error = np.max(np.abs(voltages[:, ::40] - voltages_030424))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

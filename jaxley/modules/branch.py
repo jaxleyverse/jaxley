@@ -30,9 +30,6 @@ class Branch(Module):
             compartment_list = [compartments for _ in range(nseg)]
         else:
             compartment_list = compartments
-        # Compartments are currently defined in reverse. See also #30. This `.reverse`
-        # is needed to make `tests/test_composability_of_modules.py` pass.
-        compartment_list.reverse()
 
         self.nseg = len(compartment_list)
         self.total_nbranches = 1
@@ -68,12 +65,13 @@ class Branch(Module):
         if key.startswith("__"):
             return super().__getattribute__(key)
 
-        if key == "comp":
+        if key in ["comp", "loc"]:
             view = deepcopy(self.nodes)
             view["global_comp_index"] = view["comp_index"]
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
-            return CompartmentView(self, view)
+            compview = CompartmentView(self, view)
+            return compview if key == "comp" else compview.loc
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
             view = self.nodes.loc[inds]
@@ -126,18 +124,25 @@ class Branch(Module):
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
+    def __len__(self):
+        return self.nseg
+
 
 class BranchView(View):
     def __init__(self, pointer, view):
-        view = view.assign(controlled_by_param=view.branch_index)
+        view = view.assign(controlled_by_param=view.global_branch_index)
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
+        local_idcs = self._get_local_indices()
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
-        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
         return new_view
 
     def __getattr__(self, key):
-        assert key == "comp"
-        return CompartmentView(self.pointer, self.view)
+        assert key in ["comp", "loc"]
+        compview = CompartmentView(self.pointer, self.view)
+        return compview if key == "comp" else compview.loc

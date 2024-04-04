@@ -1,3 +1,4 @@
+import time
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Union
 
@@ -9,10 +10,12 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
+from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     compute_branches_in_level,
     compute_coupling_cond,
     compute_levels,
+    loc_of_index,
 )
 from jaxley.utils.swc import swc_to_jaxley
 
@@ -229,70 +232,88 @@ class CellView(View):
     """CellView."""
 
     def __init__(self, pointer, view):
-        view = view.assign(controlled_by_param=view.cell_index)
+        view = view.assign(controlled_by_param=view.global_cell_index)
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
+        local_idcs = self._get_local_indices()
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         if index == "all":
             self.allow_make_trainable = False
         new_view = super().adjust_view("cell_index", index)
-        new_view.view["comp_index"] -= new_view.view["comp_index"].iloc[0]
-        new_view.view["branch_index"] -= new_view.view["branch_index"].iloc[0]
         return new_view
 
     def __getattr__(self, key):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
 
-    def fully_connect(self, post_cell_view, synapse_type):
-        """Returns a list of `Connection`s which build a fully connected layer.
+    def fully_connect(self, post_cell_view: "CellView", synapse_type: Synapse) -> None:
+        """Appends multiple connections which build a fully connected layer.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
+        # Get pre- and postsynaptic cell indices.
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
+        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_cell_inds]
+        num_pre = len(pre_cell_inds)
+        num_post = len(post_cell_inds)
 
-        for pre_ind in pre_cell_inds:
-            for post_ind in post_cell_inds:
-                num_branches_post = self.pointer.nbranches_per_cell[post_ind]
-                branch_pre = 0
-                loc_pre = 0.0
-                rand_branch_post = np.random.randint(0, num_branches_post)
-                rand_loc_post = np.random.rand()
-                pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
-                post = (
-                    self.pointer.cell(post_ind)
-                    .branch(rand_branch_post)
-                    .comp(rand_loc_post)
-                )
-                pre.connect(post, synapse_type)
+        # Infer indices of (random) postsynaptic compartments.
+        # Each row of `rand_branch_post` is an integer in `[0, nbranches_post[i] - 1]`.
+        rand_branch_post = np.floor(np.random.rand(num_pre, num_post) * nbranches_post)
+        rand_comp_post = np.floor(np.random.rand(num_pre, num_post) * self.pointer.nseg)
+        global_post_indices = post_cell_view.pointer._local_inds_to_global(
+            post_cell_inds, rand_branch_post, rand_comp_post
+        )
+        global_post_indices = global_post_indices.ravel()
 
-    def sparse_connect(self, post_cell_view, p, synapse_type):
+        post_rows = post_cell_view.view.loc[global_post_indices]
+
+        # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+        pre_rows = self[0, 0].view
+        # Repeat rows `num_post` times. See SO 50788508.
+        pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)].reset_index(drop=True)
+
+        self._append_multiple_synapses(pre_rows, post_rows, synapse_type)
+
+    def sparse_connect(self, post_cell_view, synapse_type, p):
         """Returns a list of `Connection`s forming a sparse, randomly connected layer.
 
         Connections are from branch 0 location 0 to a randomly chosen branch and loc.
         """
         pre_cell_inds = np.unique(self.view["cell_index"].to_numpy())
         post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-
         num_pre = len(pre_cell_inds)
         num_post = len(post_cell_inds)
+
         num_connections = np.random.binomial(num_pre * num_post, p)
         pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
         post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
 
-        for pre_ind, post_ind in zip(pre_syn_neurons, post_syn_neurons):
-            num_branches_post = self.pointer.nbranches_per_cell[post_ind]
-            branch_pre = 0
-            loc_pre = 0.0
-            rand_branch_post = np.random.randint(0, num_branches_post)
-            rand_loc_post = np.random.rand()
+        # Sort the synapses only for convenience of inspecting `.edges`.
+        sorting = np.argsort(pre_syn_neurons)
+        pre_syn_neurons = pre_syn_neurons[sorting]
+        post_syn_neurons = pre_syn_neurons[post_syn_neurons]
 
-            pre = self.pointer.cell(pre_ind).branch(branch_pre).comp(loc_pre)
-            post = (
-                self.pointer.cell(post_ind).branch(rand_branch_post).comp(rand_loc_post)
-            )
-            pre.connect(post, synapse_type)
+        # Post-synapse is a randomly chosen branch and compartment.
+        nbranches_post = np.asarray(self.pointer.nbranches_per_cell)[post_syn_neurons]
+        rand_branch_post = np.floor(np.random.rand(num_connections) * nbranches_post)
+        rand_comp_post = np.floor(np.random.rand(num_connections) * self.pointer.nseg)
+        global_post_indices = post_cell_view.pointer._local_inds_to_global(
+            post_syn_neurons, rand_branch_post, rand_comp_post
+        ).astype(int)
+        post_rows = post_cell_view.view.loc[global_post_indices]
+
+        # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+        global_pre_indices = post_cell_view.pointer._local_inds_to_global(
+            pre_syn_neurons, np.zeros(num_connections), np.zeros(num_connections)
+        ).astype(int)
+        pre_rows = self.view.loc[global_pre_indices]
+
+        self._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -327,10 +348,8 @@ def read_swc(
         [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
     )
 
-    radiuses = np.flip(
-        np.asarray([radius_fns[b](range_) for b in range(len(parents))]), axis=1
-    )
-    radiuses_each = radiuses.flatten(order="C")
+    radiuses = np.asarray([radius_fns[b](range_) for b in range(len(parents))])
+    radiuses_each = radiuses.ravel(order="C")
     if min_radius is None:
         assert np.all(
             radiuses_each > 0.0

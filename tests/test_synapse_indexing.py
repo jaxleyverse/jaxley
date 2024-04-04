@@ -24,12 +24,12 @@ def test_multiparameter_setting():
     cell = jx.Cell(branch, parents=[-1])
     net = jx.Network([cell for _ in range(2)])
 
-    pre = net.cell(0).branch(0).comp(0.0)
-    post = net.cell(1).branch(0).comp(0.0)
+    pre = net.cell(0).branch(0).loc(0.0)
+    post = net.cell(1).branch(0).loc(0.0)
     pre.connect(post, IonotropicSynapse())
 
     syn_view = net.IonotropicSynapse
-    syn_params = ["gS", "e_syn"]
+    syn_params = ["IonotropicSynapse_gS", "IonotropicSynapse_e_syn"]
 
     for p in syn_params:
         syn_view.set(p, 0.32)
@@ -65,8 +65,8 @@ def test_set_and_querying_params_one_type(synapse_type):
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:
-            pre = net.cell(pre_ind).branch(0).comp(0.0)
-            post = net.cell(post_ind).branch(0).comp(0.0)
+            pre = net.cell(pre_ind).branch(0).loc(0.0)
+            post = net.cell(post_ind).branch(0).loc(0.0)
             pre.connect(post, synapse_type)
 
     # Get the synapse parameters to test setting
@@ -106,11 +106,11 @@ def test_set_and_querying_params_two_types(synapse_type):
 
     for pre_ind in [0, 1]:
         for post_ind, synapse in zip([2, 3], [IonotropicSynapse(), synapse_type]):
-            pre = net.cell(pre_ind).branch(0).comp(0.0)
-            post = net.cell(post_ind).branch(0).comp(0.0)
+            pre = net.cell(pre_ind).branch(0).loc(0.0)
+            post = net.cell(post_ind).branch(0).loc(0.0)
             pre.connect(post, synapse)
 
-    type1_params = list(IonotropicSynapse.synapse_params.keys())
+    type1_params = list(IonotropicSynapse().synapse_params.keys())
     synapse_type_params = list(synapse_type.synapse_params.keys())
 
     default_synapse_type = net.edges[synapse_type_params[0]].to_numpy()[[1, 3]]
@@ -165,39 +165,39 @@ def test_shuffling_order_of_set(synapse_type):
     net1 = jx.Network([cell for _ in range(4)])
     net2 = jx.Network([cell for _ in range(4)])
 
-    net1.cell(0).branch(0).comp(1.0).connect(
-        net1.cell(1).branch(0).comp(0.1), IonotropicSynapse()
+    net1.cell(0).branch(0).loc(1.0).connect(
+        net1.cell(1).branch(0).loc(0.1), IonotropicSynapse()
     )
-    net1.cell(1).branch(0).comp(0.6).connect(
-        net1.cell(2).branch(0).comp(0.7), IonotropicSynapse()
+    net1.cell(1).branch(0).loc(0.6).connect(
+        net1.cell(2).branch(0).loc(0.7), IonotropicSynapse()
     )
-    net1.cell(2).branch(0).comp(0.4).connect(
-        net1.cell(3).branch(0).comp(0.3), synapse_type
+    net1.cell(2).branch(0).loc(0.4).connect(
+        net1.cell(3).branch(0).loc(0.3), synapse_type
     )
-    net1.cell(3).branch(0).comp(0.1).connect(
-        net1.cell(1).branch(0).comp(0.1), synapse_type
+    net1.cell(3).branch(0).loc(0.1).connect(
+        net1.cell(1).branch(0).loc(0.1), synapse_type
     )
 
     # Different order as for `net1`.
-    net2.cell(3).branch(0).comp(0.1).connect(
-        net2.cell(1).branch(0).comp(0.1), synapse_type
+    net2.cell(3).branch(0).loc(0.1).connect(
+        net2.cell(1).branch(0).loc(0.1), synapse_type
     )
-    net2.cell(1).branch(0).comp(0.6).connect(
-        net2.cell(2).branch(0).comp(0.7), IonotropicSynapse()
+    net2.cell(1).branch(0).loc(0.6).connect(
+        net2.cell(2).branch(0).loc(0.7), IonotropicSynapse()
     )
-    net2.cell(2).branch(0).comp(0.4).connect(
-        net2.cell(3).branch(0).comp(0.3), synapse_type
+    net2.cell(2).branch(0).loc(0.4).connect(
+        net2.cell(3).branch(0).loc(0.3), synapse_type
     )
-    net2.cell(0).branch(0).comp(1.0).connect(
-        net2.cell(1).branch(0).comp(0.1), IonotropicSynapse()
+    net2.cell(0).branch(0).loc(1.0).connect(
+        net2.cell(1).branch(0).loc(0.1), IonotropicSynapse()
     )
 
     net1.insert(HH())
     net2.insert(HH())
 
     for i in range(4):
-        net1.cell(i).branch(0).comp(0.0).record()
-        net2.cell(i).branch(0).comp(0.0).record()
+        net1.cell(i).branch(0).loc(0.0).record()
+        net2.cell(i).branch(0).loc(0.0).record()
 
     voltages1 = jx.integrate(net1, t_max=5.0)
     voltages2 = jx.integrate(net2, t_max=5.0)

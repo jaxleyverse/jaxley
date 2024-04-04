@@ -160,11 +160,11 @@ def test_swc_voltages():
     cell.set("HH_h", 0.4889)
     cell.set("HH_n", 0.3644787)
 
-    cell.branch(1).comp(0.05).stimulate(
+    cell.branch(1).loc(0.05).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in trunk_inds + tuft_inds + basal_inds:
-        cell.branch(i).comp(0.05).record()
+        cell.branch(i).loc(0.05).record()
 
     voltages_jaxley = jx.integrate(cell, delta_t=dt)
 
