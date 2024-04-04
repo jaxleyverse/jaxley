@@ -37,6 +37,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -70.0,
         }
         self.channel_states = {}
+        self.current_name = f"i_{prefix}"
 
     def update_states(
         self,
@@ -73,6 +74,7 @@ class Na(Channel):
             "vt": -60.0,  # Global parameter, not prefixed with `Na`.
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.current_name = f"i_Na"
 
     def update_states(
         self,
@@ -142,6 +144,7 @@ class K(Channel):
             "vt": -60.0,  # Global parameter, not prefixed with `Na`.
         }
         self.channel_states = {f"{prefix}_n": 0.2}
+        self.current_name = f"i_K"
 
     def update_states(
         self,
@@ -196,6 +199,7 @@ class Km(Channel):
             f"eKm": -90.0,
         }
         self.channel_states = {f"{prefix}_p": 0.2}
+        self.current_name = f"i_K"
 
     def update_states(
         self,
@@ -250,6 +254,7 @@ class CaL(Channel):
             "eCa": 120.0,
         }
         self.channel_states = {f"{prefix}_q": 0.2, f"{prefix}_r": 0.2}
+        self.current_name = f"i_Ca"
 
     def update_states(
         self,
@@ -318,6 +323,7 @@ class CaT(Channel):
             "eCa": 120.0,  # Global parameter, not prefixed with `CaT`.
         }
         self.channel_states = {f"{prefix}_u": 0.2}
+        self.current_name = f"i_Ca"
 
     def update_states(
         self,

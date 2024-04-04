@@ -10,6 +10,7 @@ class Channel:
     _name = None
     channel_params = None
     channel_states = None
+    current_name = None
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
@@ -55,10 +56,10 @@ class Channel:
         self, states, dt, v, params
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Return the updated states."""
-        pass
+        raise NotImplementedError
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
-        pass
+        raise NotImplementedError

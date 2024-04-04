@@ -79,6 +79,7 @@ class Module(ABC):
 
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
+        self.membrane_current_names: List[str] = []
 
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
@@ -138,6 +139,8 @@ class Module(ABC):
             for channel in module.channels:
                 if channel._name not in [c._name for c in self.channels]:
                     self.channels.append(channel)
+                if channel.current_name not in self.membrane_current_names:
+                    self.membrane_current_names.append(channel.current_name)
         # Setting columns of channel names to `False` instead of `NaN`.
         for channel in self.channels:
             name = channel._name
@@ -234,6 +237,9 @@ class Module(ABC):
         if name not in [c._name for c in self.channels]:
             self.channels.append(channel)
             self.nodes[name] = False  # Previous columns do not have the new channel.
+
+        if channel.current_name not in self.membrane_current_names:
+            self.membrane_current_names.append(channel.current_name)
 
         # Add a binary column that indicates if a channel is present.
         self.nodes.loc[view.index.values, name] = True
@@ -747,11 +753,8 @@ class Module(ABC):
             for s in channel_state_names:
                 channel_states[s] = states[s][indices]
 
-            for channel_for_current in channels:
-                name_for_current = channel_for_current._name
-                channel_states[f"{name_for_current}_current"] = states[
-                    f"{name_for_current}_current"
-                ]
+            for current_name in self.membrane_current_names:
+                channel_states[current_name] = states[current_name]
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
@@ -783,6 +786,11 @@ class Module(ABC):
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
+
+        current_states = {}
+        for name in self.membrane_current_names:
+            current_states[name] = jnp.zeros_like(voltages)
+
         for channel in channels:
             name = channel._name
             channel_param_names = list(channel.channel_params.keys())
@@ -810,9 +818,18 @@ class Module(ABC):
             voltage_terms = voltage_terms.at[indices].add(voltage_term)
             constant_terms = constant_terms.at[indices].add(-constant_term)
 
-            # Same the current (for the unperturbed voltage) as a state that will
+            # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
-            states[f"{name}_current"] = membrane_currents[0]
+            current_states[channel.current_name] = (
+                current_states[channel.current_name]
+                .at[indices]
+                .add(membrane_currents[0])
+            )
+
+        # Copy the currents into the `state` dictionary such that they can be
+        # recorded and used by `Channel.update_states()`.
+        for name in self.membrane_current_names:
+            states[name] = current_states[name]
 
         return states, (voltage_terms, constant_terms)
 
