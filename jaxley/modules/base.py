@@ -1300,14 +1300,33 @@ class View:
         return tuple(local_idcs.nunique())
 
     def _append_multiple_synapses(
-        self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
+        self,
+        pre_rows: pd.DataFrame,
+        post_rows: pd.DataFrame,
+        synapse_type: Union[Synapse, List[Synapse]],
     ) -> None:
         """Append multiple rows to the `self.edges` table.
 
         This is used, e.g. by `fully_connect` and `connect`.
         """
-        synapse_name = type(synapse_type).__name__
-        type_ind, is_new_type = self._infer_synapse_type_ind(synapse_name)
+        num_synapses = pre_rows.shape[0]
+        assert isinstance(
+            synapse_type, (Synapse, List)
+        ), "Supports only Synapse and List[Synapse] as input types."
+        synapse_type = (
+            [synapse_type] if isinstance(synapse_type, Synapse) else synapse_type
+        )
+        synapse_type = (
+            synapse_type if len(synapse_type) > 1 else synapse_type * num_synapses
+        )
+        assert (
+            len(synapse_type) == num_synapses
+        ), "Number of synapses does not match number of pre/post connections."
+
+        get_name = lambda syn: type(syn).__name__
+        synapse_names = np.array(list(map(get_name, synapse_type)))
+        type_info = list(map(self._infer_synapse_type_ind, synapse_names))
+        type_ind, is_new_type = np.vstack(type_info).T
         index = len(self.pointer.edges)
 
         post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
@@ -1321,7 +1340,7 @@ class View:
             post_branch_index=post_rows["branch_index"].to_numpy(),
             pre_cell_index=pre_rows["cell_index"].to_numpy(),
             post_cell_index=post_rows["cell_index"].to_numpy(),
-            type=synapse_name,
+            type=synapse_names,
             type_ind=type_ind,
             global_pre_comp_index=pre_rows["global_comp_index"].to_numpy(),
             global_post_comp_index=post_rows["global_comp_index"].to_numpy(),
@@ -1335,11 +1354,16 @@ class View:
             ignore_index=True,
         )
 
-        indices = list(range(index, index + len(pre_loc)))
-        self._add_params_to_edges(synapse_type, indices)
+        indices = [[idx] for idx in range(index, index + len(pre_loc))]
+        if len(np.unique(synapse_names)) == 1:
+            synapse_type = [synapse_type[0]]
+            indices = [sum(indices, [])]
+            is_new_type = [is_new_type[0]]
 
-        if is_new_type:
-            self._update_synapse_state_names(synapse_type)
+        for ind, unique_synapse_type, is_new in zip(indices, synapse_type, is_new_type):
+            self._add_params_to_edges(unique_synapse_type, ind)
+            if is_new:
+                self._update_synapse_state_names(unique_synapse_type)
 
     def _infer_synapse_type_ind(self, synapse_name: str) -> Tuple[int, bool]:
         """Return the unique identifier for every synapse type.
@@ -1372,13 +1396,11 @@ class View:
         Used during `self._append_multiple_synapses`.
         """
         # Add parameters and states to the `.edges` table.
-        for key in synapse_type.synapse_params:
-            param_val = synapse_type.synapse_params[key]
+        for key, param_val in synapse_type.synapse_params.items():
             self.pointer.edges.loc[indices, key] = param_val
 
         # Update synaptic state array.
-        for key in synapse_type.synapse_states:
-            state_val = synapse_type.synapse_states[key]
+        for key, state_val in synapse_type.synapse_states.items():
             self.pointer.edges.loc[indices, key] = state_val
 
     def _update_synapse_state_names(self, synapse_type: Synapse) -> None:

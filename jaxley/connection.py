@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
+import jax.numpy as jnp
 import numpy as np
-
-from jaxley.synapses import Synapse
 
 
 @dataclass
@@ -24,7 +23,11 @@ class Connectivity:
     conns: List[Connection]
 
 
-def connect(pre: "CompartmentView", post: "CompartmentView", synapse_type: "Synapse"):
+def connect(
+    pre: "CompartmentView",
+    post: "CompartmentView",
+    synapse_type: Union["Synapse", List["Synapse"]],
+):
     """Connect two compartments with a chemical synapse.
 
     High-level strategy:
@@ -47,7 +50,9 @@ def get_pre_post_inds(pre_cell_view, post_cell_view):
 
 
 def fully_connect(
-    pre_cell_view: "CellView", post_cell_view: "CellView", synapse_type: "Synapse"
+    pre_cell_view: "CellView",
+    post_cell_view: "CellView",
+    synapse_type: Union["Synapse", List["Synapse"]],
 ):
     """Appends multiple connections which build a fully connected layer.
 
@@ -78,7 +83,7 @@ def fully_connect(
 def sparse_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
-    synapse_type: "Synapse",
+    synapse_type: Union["Synapse", List["Synapse"]],
     p: float,
 ):
     """Returns a list of `Connection`s forming a sparse, randomly connected layer.
@@ -123,7 +128,7 @@ def sparse_connect(
 def custom_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
-    synapse_type: "Synapse",
+    synapse_type: Union["Synapse", List["Synapse"]],
     connectivity_matrix: np.ndarray,
 ):
     # Get pre- and postsynaptic cell indices.
@@ -134,7 +139,7 @@ def custom_connect(
     pre_cell_inds = pre_cell_inds[from_idx]
     post_cell_inds = post_cell_inds[to_idx]
 
-    # Infer indices of (random) postsynaptic compartments.
+    # Sample random postsynaptic compartments (global comp indices).
     cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
     sample_comp = lambda view, cell_idx: cell_idx_view(view.view, cell_idx).sample()
     global_post_indices = [
