@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -23,6 +23,30 @@ class Connectivity:
     conns: List[Connection]
 
 
+def get_pre_post_inds(
+    pre_cell_view: "CellView", post_cell_view: "CellView"
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Get the unique cell indices of the pre- and postsynaptic cells."""
+    pre_cell_inds = np.unique(pre_cell_view.view["cell_index"].to_numpy())
+    post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
+    return pre_cell_inds, post_cell_inds
+
+
+def pre_comp_not_equal_post_comp(
+    pre: "CompartmentView", post: "CompartmentView"
+) -> bool:
+    """Check if pre and post compartments are different."""
+    cols = ["cell_index", "branch_index", "comp_index"]
+    return np.any(pre.view[cols].values != post.view[cols].values, axis=1)
+
+
+def is_part_of_network(pre: "View", post: "View") -> bool:
+    """Check if views are from the same network."""
+    is_in_net = "network" in pre.pointer.__class__.__name__.lower()
+    is_in_same_net = pre.pointer is post.pointer
+    return is_in_net and is_in_same_net
+
+
 def connect(
     pre: "CompartmentView",
     post: "CompartmentView",
@@ -40,13 +64,14 @@ def connect(
     Then, we update synapse parameter and state arrays with the new connection.
     Finally, we update synapse meta information.
     """
+    assert is_part_of_network(
+        pre, post
+    ), "Pre and post compartments must be part of the same network."
+    assert np.all(
+        pre_comp_not_equal_post_comp(pre, post)
+    ), "Pre and post compartments must be different."
+
     pre._append_multiple_synapses(pre.view, post.view, synapse_type)
-
-
-def get_pre_post_inds(pre_cell_view, post_cell_view):
-    pre_cell_inds = np.unique(pre_cell_view.view["cell_index"].to_numpy())
-    post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-    return pre_cell_inds, post_cell_inds
 
 
 def fully_connect(
@@ -86,7 +111,7 @@ def sparse_connect(
     synapse_type: Union["Synapse", List["Synapse"]],
     p: float,
 ):
-    """Returns a list of `Connection`s forming a sparse, randomly connected layer.
+    """Appends multiple connections which build a sparse, randomly connected layer.
 
     Connections are from branch 0 location 0 to a randomly chosen branch and loc.
     """
@@ -131,6 +156,12 @@ def custom_connect(
     synapse_type: Union["Synapse", List["Synapse"]],
     connectivity_matrix: np.ndarray,
 ):
+    """Appends multiple connections which build a custom connected network.
+
+    Connects pre- and postsynaptic cells according to a custom connectivity matrix.
+    Entries > 0 in the matrix indicate a connection between the corresponding cells.
+    Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+    """
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
 
