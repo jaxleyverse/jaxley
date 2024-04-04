@@ -378,25 +378,26 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
-            synapse_currents = convert_point_process_to_distributed(
-                synapse_currents,
+            # Gather slope and offset for every postsynaptic compartment.
+            gathered_syn_currents = gather_synapes(
+                len(voltages),
+                post_inds,
+                synapse_currents[0],
+                synapse_currents[1],
+            )
+
+            gathered_syn_currents = vmap(convert_point_process_to_distributed, in_axes=(0, None, None))(
+                gathered_syn_currents,
                 params["radius"][post_inds],
                 params["length"][post_inds],
             )
 
             # Split into voltage and constant terms.
-            voltage_term = (synapse_currents[1] - synapse_currents[0]) / diff
-            constant_term = synapse_currents[0] - voltage_term * voltages[post_inds]
+            voltage_term = (gathered_syn_currents[1] - gathered_syn_currents[0]) / diff
+            constant_term = gathered_syn_currents[0] - voltage_term * voltages
 
-            # Gather slope and offset for every postsynaptic compartment.
-            gathered_syn_currents = gather_synapes(
-                len(voltages),
-                post_inds,
-                voltage_term,
-                constant_term,
-            )
-            syn_voltage_terms += gathered_syn_currents[0]
-            syn_constant_terms -= gathered_syn_currents[1]
+            syn_voltage_terms += voltage_term
+            syn_constant_terms -= constant_term
 
             # Add the synaptic currents through every compartment as state.
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
