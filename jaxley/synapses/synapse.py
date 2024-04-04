@@ -21,6 +21,38 @@ class Synapse:
     @property
     def name(self) -> Optional[str]:
         return self._name
+    
+    def change_name(self, new_name: str):
+        """Change the synapse name.
+
+        Args:
+            new_name: The new name of the channel.
+
+        Returns:
+            Renamed channel, such that this function is chainable.
+        """
+        old_prefix = self._name + "_"
+        new_prefix = new_name + "_"
+
+        self._name = new_name
+        self.synapse_params = {
+            (
+                new_prefix + key[len(old_prefix) :]
+                if key.startswith(old_prefix)
+                else key
+            ): value
+            for key, value in self.synapse_params.items()
+        }
+
+        self.synapse_states = {
+            (
+                new_prefix + key[len(old_prefix) :]
+                if key.startswith(old_prefix)
+                else key
+            ): value
+            for key, value in self.synapse_states.items()
+        }
+        return self
 
     def update_states(
         states: Dict[str, jnp.ndarray],

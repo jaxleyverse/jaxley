@@ -1332,7 +1332,7 @@ class View:
 
         This is used, e.g. by `fully_connect` and `connect`.
         """
-        synapse_name = type(synapse_type).__name__
+        synapse_name = synapse_type._name
         type_ind, is_new_type = self._infer_synapse_type_ind(synapse_name)
         index = len(self.pointer.edges)
 
@@ -1413,7 +1413,7 @@ class View:
         Used during `self._append_multiple_synapses`.
         """
         # (Potentially) update variables that track meta information about synapses.
-        self.pointer.synapse_names.append(type(synapse_type).__name__)
+        self.pointer.synapse_names.append(synapse_type._name)
         self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
         self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.pointer.synapses.append(synapse_type)
