@@ -21,7 +21,7 @@ class Synapse:
     @property
     def name(self) -> Optional[str]:
         return self._name
-    
+
     def change_name(self, new_name: str):
         """Change the synapse name.
 

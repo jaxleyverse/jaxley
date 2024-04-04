@@ -185,7 +185,7 @@ def test_radius_and_length_net():
     lenght_post = network[1, 0, 0].view["length"].item()
     area = 2 * pi * lenght_post * radius_post
     point_process_to_dist_factor = 100_000.0 / area
-    network.set("gS", 0.5 / point_process_to_dist_factor)
+    network.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
 
     for cell_ind in range(2):
         network.cell(cell_ind).branch(1).loc(0.0).record()

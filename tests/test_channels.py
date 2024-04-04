@@ -2,6 +2,7 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
+from typing import Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -103,21 +104,26 @@ def test_multiple_channel_currents():
     class User(Channel):
         """The channel which uses currents of Dummy1 and Dummy2 to update its states."""
 
-        channel_params = {}
-        channel_states = {"cumulative": 0.0}
+        def __init__(self, name: Optional[str] = None):
+            super().__init__(name)
+            self.channel_params = {}
+            self.channel_states = {"cumulative": 0.0}
+            self.current_name = f"i_User"
 
         def update_states(self, states, dt, v, params):
             state = states["cumulative"]
-            state += states["Dummy1_current"] * 0.001
-            state += states["Dummy2_current"] * 0.001
+            state += states["i_Dummy"] * 0.001
             return {"cumulative": state}
 
         def compute_current(self, states, v, params):
             return 0.01 * jnp.ones_like(v)
 
     class Dummy1(Channel):
-        channel_params = {}
-        channel_states = {}
+        def __init__(self, name: Optional[str] = None):
+            super().__init__(name)
+            self.channel_params = {}
+            self.channel_states = {}
+            self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
             return {}
@@ -126,8 +132,11 @@ def test_multiple_channel_currents():
             return 0.01 * jnp.ones_like(v)
 
     class Dummy2(Channel):
-        channel_params = {}
-        channel_states = {}
+        def __init__(self, name: Optional[str] = None):
+            super().__init__(name)
+            self.channel_params = {}
+            self.channel_states = {}
+            self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
             return {}

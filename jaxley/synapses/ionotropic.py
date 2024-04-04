@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
@@ -29,7 +29,9 @@ class IonotropicSynapse(Synapse):
         super().__init__(name)
         prefix = self._name
         self.synapse_params = {
-            f"{prefix}_gS": 0.5, f"{prefix}_e_syn": 0.0, f"{prefix}_k_minus": 0.025
+            f"{prefix}_gS": 0.5,
+            f"{prefix}_e_syn": 0.0,
+            f"{prefix}_k_minus": 0.025,
         }
         self.synapse_states = {f"{prefix}_s": 0.2}
 

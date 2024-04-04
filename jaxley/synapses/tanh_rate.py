@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
@@ -23,5 +23,9 @@ class TanhRateSynapse(Synapse):
     def compute_current(self, states, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
         prefix = self._name
-        current = -1 * params[f"{prefix}_gS"] * jnp.tanh(pre_voltage - params[f"{prefix}_x_offset"])
+        current = (
+            -1
+            * params[f"{prefix}_gS"]
+            * jnp.tanh(pre_voltage - params[f"{prefix}_x_offset"])
+        )
         return current
