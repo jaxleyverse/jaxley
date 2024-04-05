@@ -378,29 +378,27 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
-            # Gather slope and offset for every postsynaptic compartment.
-            gathered_syn_currents = jnp.stack(gather_synapes(
-                len(voltages),
-                post_inds,
-                synapse_currents[0],
-                synapse_currents[1],
-            ))
-            clip_syn_current = 0.1
-            gathered_syn_currents = jnp.clip(gathered_syn_currents, a_max=clip_syn_current)
-            gathered_syn_currents = jnp.clip(gathered_syn_currents, a_min=-clip_syn_current)
-
-            gathered_syn_currents = vmap(convert_point_process_to_distributed, in_axes=(0, None, None))(
-                gathered_syn_currents,
-                params["radius"],
-                params["length"],
+            synapse_currents_dist = convert_point_process_to_distributed(
+                synapse_currents,
+                params["radius"][post_inds],
+                params["length"][post_inds],
             )
 
             # Split into voltage and constant terms.
-            voltage_term = (gathered_syn_currents[1] - gathered_syn_currents[0]) / diff
-            constant_term = gathered_syn_currents[0] - voltage_term * voltages
+            voltage_term = (synapse_currents_dist[1] - synapse_currents_dist[0]) / diff
+            constant_term = (
+                synapse_currents_dist[0] - voltage_term * voltages[post_inds]
+            )
 
-            syn_voltage_terms += voltage_term
-            syn_constant_terms -= constant_term
+            # Gather slope and offset for every postsynaptic compartment.
+            gathered_syn_currents = gather_synapes(
+                len(voltages),
+                post_inds,
+                voltage_term,
+                constant_term,
+            )
+            syn_voltage_terms += gathered_syn_currents[0]
+            syn_constant_terms -= gathered_syn_currents[1]
 
             # Add the synaptic currents through every compartment as state.
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are

@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 
 
-
 def save_exp(x, max_value: float = 50.0):
     """Clip the input to a maximum value and return its exponential."""
     x = jnp.clip(x, a_max=max_value)

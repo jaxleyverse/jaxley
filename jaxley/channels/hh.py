@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential, save_exp
+from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 
 class HH(Channel):
@@ -92,4 +92,4 @@ class HH(Channel):
 
 
 def _vtrap(x, y):
-    return x / (jnp.exp(x / y) - 1.0)
+    return x / (save_exp(x / y) - 1.0)

@@ -3,7 +3,11 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential, save_exp
+from jaxley.solver_gate import (
+    save_exp,
+    solve_gate_exponential,
+    solve_inf_gate_exponential,
+)
 
 # This is an implementation of Pospischil channels:
 # Leak, Na, K, Km, CaT, CaL

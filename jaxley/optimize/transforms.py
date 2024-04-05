@@ -1,11 +1,12 @@
 from typing import Dict, List
 
 import jax.numpy as jnp
+from jaxley.solver_gate import save_exp
 
 
 def sigmoid(x: jnp.ndarray) -> jnp.ndarray:
     """Sigmoid."""
-    return 1 / (1 + jnp.exp(-x))
+    return 1 / (1 + save_exp(-x))
 
 
 def expit(x: jnp.ndarray) -> jnp.ndarray:
