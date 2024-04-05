@@ -1,6 +1,13 @@
 import jax.numpy as jnp
 
 
+
+def save_exp(x, max_value: float = 50.0):
+    """Clip the input to a maximum value and return its exponential."""
+    x = jnp.clip(x, a_max=max_value)
+    return jnp.exp(x)
+
+
 def solve_gate_implicit(
     gating_state: jnp.ndarray,
     dt: float,
@@ -31,7 +38,7 @@ def exponential_euler(
     x_tau: jnp.ndarray,
 ):
     """An exact solver for the linear dynamical system `dx = -(x - x_inf) / x_tau`."""
-    exp_term = jnp.exp(-dt / x_tau)
+    exp_term = save_exp(-dt / x_tau)
     return x * exp_term + x_inf * (1.0 - exp_term)
 
 
@@ -54,7 +61,5 @@ def solve_inf_gate_exponential(
         _type_: updated gate
     """
     slope = -1.0 / tau_s
-
-    exp_term = jnp.exp(slope * dt)
-
+    exp_term = save_exp(slope * dt)
     return x * exp_term + s_inf * (1.0 - exp_term)

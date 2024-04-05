@@ -379,17 +379,20 @@ class Network(Module):
                 synapse_params,
             )
             # Gather slope and offset for every postsynaptic compartment.
-            gathered_syn_currents = gather_synapes(
+            gathered_syn_currents = jnp.stack(gather_synapes(
                 len(voltages),
                 post_inds,
                 synapse_currents[0],
                 synapse_currents[1],
-            )
+            ))
+            clip_syn_current = 0.1
+            gathered_syn_currents = jnp.clip(gathered_syn_currents, a_max=clip_syn_current)
+            gathered_syn_currents = jnp.clip(gathered_syn_currents, a_min=-clip_syn_current)
 
             gathered_syn_currents = vmap(convert_point_process_to_distributed, in_axes=(0, None, None))(
                 gathered_syn_currents,
-                params["radius"][post_inds],
-                params["length"][post_inds],
+                params["radius"],
+                params["length"],
             )
 
             # Split into voltage and constant terms.
