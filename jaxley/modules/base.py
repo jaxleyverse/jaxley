@@ -1,5 +1,4 @@
 import inspect
-import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -527,10 +526,6 @@ class Module(ABC):
     def _record(self, view, verbose: bool = True):
         self.recordings = pd.concat([self.recordings, view], ignore_index=True)
         if verbose:
-            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-            warning = f"Added {num_comps} compartments to recordings. If this was not intended, run `delete_recordings`."
-            if len(view) > 1:
-                warnings.warn(warning)
             print(f"Added {len(view)} recordings. See `.recordings` for details.")
 
     def delete_recordings(self):
@@ -570,10 +565,6 @@ class Module(ABC):
         self.current_inds = pd.concat([self.current_inds, view])
 
         if verbose:
-            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-            warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
-            if len(view) > 1:
-                warnings.warn(warning)
             print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
     def data_stimulate(
@@ -619,10 +610,6 @@ class Module(ABC):
         inds = pd.concat([inds, view])
 
         if verbose:
-            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-            warning = f"Added stimuli to {num_comps} compartments."
-            if len(view) > 1:
-                warnings.warn(warning)
             print(f"Added {len(view)} stimuli.")
 
         return (currents, inds)
