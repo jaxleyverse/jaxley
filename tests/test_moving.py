@@ -10,10 +10,11 @@ from jax import jit
 import jaxley as jx
 
 
-def test_move():
+def test_move_cell():
     nseg = 4
     length = 10.0
 
+    # Test move on a cell with compute_xyz()
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
     cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
@@ -23,6 +24,7 @@ def test_move():
     assert cell.xyzr[0][0, 1] == 30.0
     assert cell.xyzr[0][0, 2] == 5.0
 
+    # Test move_to on a cell that starts with a specified xyzr
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
     cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
@@ -46,9 +48,23 @@ def test_move():
     assert cell.xyzr[0][0, 3] == 10.0
 
 
-def test_move_to():
-    nseg = 4
+def test_move_network():
+    """NOTE: if move() is called on the network, network.xyzr is updated, not network.cells[i].xyzr as well. This could be changed in the future."""
+    nseg = 2
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=nseg)
+    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
+    cell.compute_xyz()
+    net = jx.Network([cell, cell, cell])
+    net.move(20.0, 30.0, 5.0)
+    for i in [0, 3, 6]:
+        assert net.xyzr[i][0, 0] == 20.0
+        assert net.xyzr[i][0, 1] == 30.0
+        assert net.xyzr[i][0, 2] == 5.0
 
+
+def test_move_to_cell():
+    nseg = 4
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
     cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
@@ -79,3 +95,33 @@ def test_move_to():
     assert cell.xyzr[0][0, 1] == 9.0
     assert cell.xyzr[0][0, 2] == 3.0
     assert cell.xyzr[0][0, 3] == 10.0
+
+
+def test_move_to_network():
+    """NOTE: if move() is called on the network, network.xyzr is updated, not network.cells[i].xyzr as well. This could be changed in the future."""
+    nseg = 4
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=nseg)
+    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
+    cell.compute_xyz()
+    net = jx.Network([cell, cell, cell])
+    net.move_to(10.0, 20.0, 30.0)
+    # Branch 0 of cell 0
+    assert net.xyzr[0][0, 0] == 10.0
+    assert net.xyzr[0][0, 1] == 20.0
+    assert net.xyzr[0][0, 2] == 30.0
+    # Branch 0 of cell 1
+    assert net.xyzr[3][0, 0] == 10.0
+    assert net.xyzr[3][0, 1] == 20.0
+    assert net.xyzr[3][0, 2] == 30.0
+
+
+def test_move_to_arrays():
+    """Test with network and with group"""
+    pass
+
+
+if __name__ == "__main__":
+    test_move_network()
+    test_move_to_network()
+    test_move_to_arrays()

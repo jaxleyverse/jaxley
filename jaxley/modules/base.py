@@ -1052,13 +1052,20 @@ class Module(ABC):
             self.xyzr = list(xyzr_arr)
 
         else:
-            # Need to cast to set because this will return one columnn per compartment,
-            # not one column per branch.
-            indizes = set(view["branch_index"].to_numpy().tolist())
-            for i in indizes:
-                self.xyzr[i][:, 0] = x
-                self.xyzr[i][:, 1] = y
-                self.xyzr[i][:, 2] = z
+            # Move the first compartment of the first branch of the first cell to the specified location
+            init_coords = self.xyzr[0].copy()
+            self.xyzr[0][0, 0] = x
+            self.xyzr[0][1, 0] = x + (init_coords[1, 0] - init_coords[0, 0])
+            self.xyzr[0][0, 1] = y
+            self.xyzr[0][1, 1] = y + (init_coords[1, 1] - init_coords[0, 1])
+            self.xyzr[0][0, 2] = z
+            self.xyzr[0][1, 2] = z + (init_coords[1, 2] - init_coords[0, 2])
+
+            # Shift everything relative to the first branch which gets the location
+            for branch in view["branch_index"].unique()[1:]:
+                self.xyzr[branch][:, 0] = x + (self.xyzr[branch][:, 0] - init_coords[0, 0])
+                self.xyzr[branch][:, 1] = y + (self.xyzr[branch][:, 1] - init_coords[0, 1])
+                self.xyzr[branch][:, 2] = z + (self.xyzr[branch][:, 2] - init_coords[0, 2])
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
