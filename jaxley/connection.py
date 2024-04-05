@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Tuple, Union
 
-import jax.numpy as jnp
 import numpy as np
 
 
@@ -45,6 +44,13 @@ def is_part_of_network(pre: "View", post: "View") -> bool:
     is_in_net = "network" in pre.pointer.__class__.__name__.lower()
     is_in_same_net = pre.pointer is post.pointer
     return is_in_net and is_in_same_net
+
+
+def sample_comp(
+    cell_view: "CellView", cell_idx: int, num: int = 1, replace=True
+) -> "CompartmentView":
+    cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
+    return cell_idx_view(cell_view.view, cell_idx).sample(num, replace=replace)
 
 
 def connect(
@@ -108,7 +114,7 @@ def sparse_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
     synapse_type: Union["Synapse", List["Synapse"]],
-    p: float,
+    p,
 ):
     """Appends multiple connections which build a sparse, randomly connected layer.
 
@@ -125,19 +131,12 @@ def sparse_connect(
     # Sort the synapses only for convenience of inspecting `.edges`.
     sorting = np.argsort(pre_syn_neurons)
     pre_syn_neurons = pre_syn_neurons[sorting]
-    post_syn_neurons = pre_syn_neurons[post_syn_neurons]
+    post_syn_neurons = post_syn_neurons[sorting]
 
     # Post-synapse is a randomly chosen branch and compartment.
-    nbranches_post = np.asarray(pre_cell_view.pointer.nbranches_per_cell)[
-        post_syn_neurons
+    global_post_indices = [
+        sample_comp(post_cell_view, cell_idx).index[0] for cell_idx in post_syn_neurons
     ]
-    rand_branch_post = np.floor(np.random.rand(num_connections) * nbranches_post)
-    rand_comp_post = np.floor(
-        np.random.rand(num_connections) * pre_cell_view.pointer.nseg
-    )
-    global_post_indices = post_cell_view.pointer._local_inds_to_global(
-        post_syn_neurons, rand_branch_post, rand_comp_post
-    ).astype(int)
     post_rows = post_cell_view.view.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
@@ -170,8 +169,6 @@ def custom_connect(
     post_cell_inds = post_cell_inds[to_idx]
 
     # Sample random postsynaptic compartments (global comp indices).
-    cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
-    sample_comp = lambda view, cell_idx: cell_idx_view(view.view, cell_idx).sample()
     global_post_indices = [
         sample_comp(post_cell_view, cell_idx).index[0] for cell_idx in post_cell_inds
     ]
