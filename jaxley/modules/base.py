@@ -1324,9 +1324,11 @@ class View:
         ), "Number of synapses does not match number of pre/post connections."
 
         get_name = lambda syn: type(syn).__name__
-        synapse_names = np.array(list(map(get_name, synapse_type)))
-        type_info = list(map(self._infer_synapse_type_ind, synapse_names))
-        type_ind, is_new_type = np.vstack(type_info).T
+        synapse_names = [get_name(syn) for syn in synapse_type]
+        for syn, name in zip(synapse_type, synapse_names):
+            if self._infer_synapse_type_ind(name)[1]:  # is_new
+                self._update_synapse_state_names(syn)
+        type_ind = [self._infer_synapse_type_ind(name)[0] for name in synapse_names]
         index = len(self.pointer.edges)
 
         post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
@@ -1358,12 +1360,9 @@ class View:
         if len(np.unique(synapse_names)) == 1:
             synapse_type = [synapse_type[0]]
             indices = [sum(indices, [])]
-            is_new_type = [is_new_type[0]]
 
-        for ind, unique_synapse_type, is_new in zip(indices, synapse_type, is_new_type):
+        for ind, unique_synapse_type in zip(indices, synapse_type):
             self._add_params_to_edges(unique_synapse_type, ind)
-            if is_new:
-                self._update_synapse_state_names(unique_synapse_type)
 
     def _infer_synapse_type_ind(self, synapse_name: str) -> Tuple[int, bool]:
         """Return the unique identifier for every synapse type.
@@ -1373,18 +1372,9 @@ class View:
 
         Used during `self._append_multiple_synapses`.
         """
-        is_new_type = True if synapse_name not in self.pointer.synapse_names else False
-
-        if is_new_type:
-            # New type: index for the synapse type is one more than the currently
-            # highest index.
-            max_ind = self.pointer.edges["type_ind"].max() + 1
-            type_ind = 0 if jnp.isnan(max_ind) else max_ind
-        else:
-            # Not a new type: search for the index that this type has previously had.
-            type_ind = self.pointer.edges.query(f"type == '{synapse_name}'")[
-                "type_ind"
-            ].to_numpy()[0]
+        syn_names = self.pointer.synapse_names
+        is_new_type = False if synapse_name in syn_names else True
+        type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
         return type_ind, is_new_type
 
     def _add_params_to_edges(self, synapse_type: Synapse, indices: list) -> None:

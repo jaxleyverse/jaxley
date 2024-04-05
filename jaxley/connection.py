@@ -95,6 +95,14 @@ def fully_connect(
     )
     global_post_indices = global_post_indices.reshape((-1, num_pre), order="F").ravel()
 
+    # nbranches_post = np.asarray(post_cell_view.pointer.nbranches_per_cell)[post_cell_inds]
+    # rand_branch_post = np.floor(np.random.rand(num_pre, num_post) * nbranches_post)
+    # rand_comp_post = np.floor(np.random.rand(num_pre, num_post) * post_cell_view.pointer.nseg)
+    # global_post_indices = post_cell_view.pointer._local_inds_to_global(
+    #     post_cell_inds, rand_branch_post, rand_comp_post
+    # )
+    # global_post_indices = global_post_indices.ravel()
+
     post_rows = post_cell_view.view.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
