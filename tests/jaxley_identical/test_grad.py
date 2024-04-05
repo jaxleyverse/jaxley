@@ -7,6 +7,8 @@ import os
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
+from math import pi
+
 import jax.numpy as jnp
 import numpy as np
 from jax import value_and_grad
@@ -35,10 +37,17 @@ def test_network_grad():
     pre.fully_connect(post, IonotropicSynapse())
     pre.fully_connect(post, TestSynapse())
 
-    net.set("gS", 0.44)
-    net.set("gC", 0.62)
-    net.IonotropicSynapse([0, 2, 4]).set("gS", 0.32)
-    net.TestSynapse([0, 3, 5]).set("gC", 0.24)
+    area = 2 * pi * 10.0 * 1.0
+    point_process_to_dist_factor = 100_000.0 / area
+
+    net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
+    net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
+    net.IonotropicSynapse([0, 2, 4]).set(
+        "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
+    )
+    net.TestSynapse([0, 3, 5]).set(
+        "TestSynapse_gC", 0.24 / point_process_to_dist_factor
+    )
 
     current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
     for i in range(3):
@@ -53,39 +62,47 @@ def test_network_grad():
     net.cell([0, 1, 4]).make_trainable("HH_gK")
     net.cell("all").make_trainable("HH_gLeak")
 
-    net.IonotropicSynapse.make_trainable("gS")
-    net.TestSynapse([0, 2]).make_trainable("gC")
+    net.IonotropicSynapse.make_trainable("IonotropicSynapse_gS")
+    net.TestSynapse([0, 2]).make_trainable("TestSynapse_gC")
 
     params = net.get_parameters()
     grad_fn = value_and_grad(simulate)
     v, g = grad_fn(params)
 
-    value_230224 = jnp.asarray(-611.28845207)
+    value_230224 = jnp.asarray(-580.79271734)
     max_error = np.max(np.abs(v - value_230224))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
     grad_230224 = [
-        {"HH_gNa": jnp.asarray([-313.79434246])},
-        {"HH_gK": jnp.asarray([6.73457712, 2.07025077, 23.36748439])},
+        {"HH_gNa": jnp.asarray([-1330.69128594])},
+        {"HH_gK": jnp.asarray([2.4996021, 13.61190008, 61.16684584])},
         {
             "HH_gLeak": jnp.asarray(
                 [
-                    -288.18865692,
-                    -85.17100975,
-                    -283.09116685,
-                    -979.53684142,
-                    -2031.5499178,
-                    -866.28404335,
-                    -72497.21160272,
+                    -121.305113,
+                    -606.555168,
+                    -183.932419,
+                    -465.945968,
+                    -5668.16363,
+                    -248.320435,
+                    -250947.475,
                 ]
             )
         },
-        {"gS": jnp.asarray([-35.57541138])},
-        {"gC": jnp.asarray([-0.17439718, -0.28092325])},
+        {
+            "IonotropicSynapse_gS": jnp.asarray([-85.83902596])
+            * point_process_to_dist_factor
+        },
+        {
+            "TestSynapse_gC": jnp.asarray([-0.00831085, -0.00502889])
+            * point_process_to_dist_factor
+        },
     ]
 
     for true_g, new_g in zip(grad_230224, g):
         for key in true_g:
             max_error = np.max(np.abs(true_g[key] - new_g[key]))
             tolerance = 1e-3  # Leak cond has a huge gradient...
-            assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+            assert (
+                max_error <= tolerance
+            ), f"Error for {key} is {max_error} > {tolerance}"

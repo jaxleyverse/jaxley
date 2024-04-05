@@ -1,3 +1,4 @@
+from math import pi
 from typing import Dict, List
 
 import jax.numpy as jnp
@@ -221,3 +222,23 @@ def params_to_pstate(
         {"key": list(p.keys())[0], "val": list(p.values())[0], "indices": i}
         for p, i in zip(params, indices_set_by_trainables)
     ]
+
+
+def convert_point_process_to_distributed(
+    current: jnp.ndarray, radius: jnp.ndarray, length: jnp.ndarray
+) -> jnp.ndarray:
+    """Convert current point process (nA) to distributed current (uA/cm2).
+
+    This function gets called for synapses and for external stimuli.
+
+    Args:
+        current: Current in `nA`.
+        radius: Compartment radius in `um`.
+        length: Compartment length in `um`.
+
+    Return:
+        Current in `uA/cm2`.
+    """
+    area = 2 * pi * radius * length
+    current /= area  # nA / um^2
+    return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)

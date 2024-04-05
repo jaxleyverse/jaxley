@@ -14,7 +14,11 @@ from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
-from jaxley.utils.cell_utils import flip_comp_indices, merge_cells
+from jaxley.utils.cell_utils import (
+    convert_point_process_to_distributed,
+    flip_comp_indices,
+    merge_cells,
+)
 from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
 
@@ -45,7 +49,7 @@ class Network(Module):
         self.synapses = [connectivity.synapse_type for connectivity in connectivities]
 
         # TODO(@michaeldeistler): should we also track this for channels?
-        self.synapse_names = [type(c.synapse_type).__name__ for c in connectivities]
+        self.synapse_names = [c.synapse_type._name for c in connectivities]
         self.synapse_param_names = list(
             chain.from_iterable(
                 [list(c.synapse_type.synapse_params.keys()) for c in connectivities]
@@ -227,7 +231,7 @@ class Network(Module):
                             post_locs=post_locs,
                             post_branch_index=post_branch_inds,
                             post_cell_index=post_cell_inds,
-                            type=type(connectivity.synapse_type).__name__,
+                            type=connectivity.synapse_type._name,
                             type_ind=i,
                             global_pre_comp_index=global_pre_comp_inds,
                             global_post_comp_index=global_post_comp_inds,
@@ -290,7 +294,7 @@ class Network(Module):
 
         for i, synapse_type in enumerate(syn_channels):
             assert (
-                synapse_names[i] == type(synapse_type).__name__
+                synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
@@ -340,7 +344,7 @@ class Network(Module):
         diff = 1e-3
         for i, synapse_type in enumerate(syn_channels):
             assert (
-                synapse_names[i] == type(synapse_type).__name__
+                synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
@@ -374,6 +378,13 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
+            synapse_currents = convert_point_process_to_distributed(
+                synapse_currents,
+                params["radius"][post_inds],
+                params["length"][post_inds],
+            )
+
+            # Split into voltage and constant terms.
             voltage_term = (synapse_currents[1] - synapse_currents[0]) / diff
             constant_term = synapse_currents[0] - voltage_term * voltages[post_inds]
 

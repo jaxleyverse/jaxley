@@ -1,3 +1,5 @@
+from typing import Optional
+
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -13,8 +15,11 @@ from jaxley.channels import HH, Channel, K, Na
 class Dummy1(Channel):
     """A dummy channel which simply accumulates a state (same state as dummy2)."""
 
-    channel_params = {}
-    channel_states = {"Dummy_s": 0.0}
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        self.channel_params = {}
+        self.channel_states = {"Dummy_s": 0.0}
+        self.current_name = f"i_Dummy1"
 
     @staticmethod
     def update_states(u, dt, voltages, params):
@@ -32,8 +37,11 @@ class Dummy1(Channel):
 class Dummy2(Channel):
     """A dummy channel which simply accumulates a state (same state as dummy1)."""
 
-    channel_params = {}
-    channel_states = {"Dummy_s": 0.0}
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        self.channel_params = {}
+        self.channel_states = {"Dummy_s": 0.0}
+        self.current_name = f"i_Dummy2"
 
     @staticmethod
     def update_states(u, dt, voltages, params):

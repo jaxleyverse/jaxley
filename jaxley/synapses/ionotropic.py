@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
@@ -25,22 +25,31 @@ class IonotropicSynapse(Synapse):
 
     """
 
-    synapse_params = {"gS": 0.5, "e_syn": 0.0, "k_minus": 0.025}
-    synapse_states = {"s": 0.2}
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        prefix = self._name
+        self.synapse_params = {
+            f"{prefix}_gS": 0.5,
+            f"{prefix}_e_syn": 0.0,
+            f"{prefix}_k_minus": 0.025,
+        }
+        self.synapse_states = {f"{prefix}_s": 0.2}
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
+        prefix = self._name
         v_th = -35.0
         delta = 10.0
 
         s_inf = 1.0 / (1.0 + jnp.exp((v_th - pre_voltage) / delta))
-        tau_s = (1.0 - s_inf) / params["k_minus"]
+        tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
 
         slope = -1.0 / tau_s
         exp_term = jnp.exp(slope * delta_t)
-        new_s = u["s"] * exp_term + s_inf * (1.0 - exp_term)
-        return {"s": new_s}
+        new_s = states[f"{prefix}_s"] * exp_term + s_inf * (1.0 - exp_term)
+        return {f"{prefix}_s": new_s}
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
-        g_syn = params["gS"] * u["s"]
-        return g_syn * (post_voltage - params["e_syn"])
+    def compute_current(self, states, pre_voltage, post_voltage, params):
+        prefix = self._name
+        g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
+        return g_syn * (post_voltage - params[f"{prefix}_e_syn"])
