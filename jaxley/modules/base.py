@@ -1313,20 +1313,21 @@ class View:
         assert isinstance(
             synapse_type, (Synapse, List)
         ), "Supports only Synapse and List[Synapse] as input types."
-        synapse_type = (
-            [synapse_type] if isinstance(synapse_type, Synapse) else synapse_type
-        )
-        synapse_type = (
-            synapse_type if len(synapse_type) > 1 else synapse_type * num_synapses
-        )
+
+        # expand input to correct length
+        is_synapse = isinstance(synapse_type, Synapse)
+        synapse_type = [synapse_type] if is_synapse else synapse_type
+        synapse_type *= 1 if len(synapse_type) > 1 else num_synapses
+
         assert (
             len(synapse_type) == num_synapses
         ), "Number of synapses does not match number of pre/post connections."
 
+        # Add synapse types to the module and infer their unique identifier.
         get_name = lambda syn: type(syn).__name__
         synapse_names = [get_name(syn) for syn in synapse_type]
         for syn, name in zip(synapse_type, synapse_names):
-            if self._infer_synapse_type_ind(name)[1]:  # is_new
+            if self._infer_synapse_type_ind(name)[1]:  # synapse is not known
                 self._update_synapse_state_names(syn)
         type_ind = [self._infer_synapse_type_ind(name)[0] for name in synapse_names]
         index = len(self.pointer.edges)
@@ -1357,9 +1358,9 @@ class View:
         )
 
         indices = [[idx] for idx in range(index, index + len(pre_loc))]
-        if len(np.unique(synapse_names)) == 1:
-            synapse_type = [synapse_type[0]]
-            indices = [sum(indices, [])]
+        if len(np.unique(synapse_names)) == 1:  # no need for subsequent for loop
+            synapse_type = [synapse_type[0]]  # same synapse type for all
+            indices = [sum(indices, [])]  # ensures all indices are unpacked at once
 
         for ind, unique_synapse_type in zip(indices, synapse_type):
             self._add_params_to_edges(unique_synapse_type, ind)
