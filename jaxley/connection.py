@@ -33,7 +33,7 @@ def get_pre_post_inds(
 
 def pre_comp_not_equal_post_comp(
     pre: "CompartmentView", post: "CompartmentView"
-) -> ndarray[bool]:
+) -> np.ndarray[bool]:
     """Check if pre and post compartments are different."""
     cols = ["cell_index", "branch_index", "comp_index"]
     return np.any(pre.view[cols].values != post.view[cols].values, axis=1)
@@ -165,6 +165,8 @@ def custom_connect(
     """
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
+
+    assert connectivity_matrix.shape == (pre_cell_view.shape[0], post_cell_view.shape[0]), "Connectivity matrix must have shape (num_pre, num_post)."
 
     # get connection pairs from connectivity matrix
     from_idx, to_idx = np.where(connectivity_matrix)
