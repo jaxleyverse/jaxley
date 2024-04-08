@@ -3,6 +3,8 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
+from jaxley.synapses import Synapse
+
 
 class Connection:
     """A simple wrapper to save all elements that are important for a single synapse."""
