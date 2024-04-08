@@ -118,7 +118,7 @@ def test_move_to_network():
 
 
 def test_move_to_arrays():
-    """Test with network and with group"""
+    """Test with network"""
     nseg = 4
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
