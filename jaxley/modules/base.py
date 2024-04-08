@@ -1052,21 +1052,21 @@ class Module(ABC):
 
             xyzr_arr = np.array(self.xyzr)
 
-            # Compute the difference between the start and stop of each branch
+            # Compute the distance between the start and stop of each branch
             branch_lengths = np.subtract(xyzr_arr[:, 1, :3], xyzr_arr[:, 0, :3])
 
             # Get an array with cell index per branch for expanding arrays later
             tup_indices = np.array([view.cell_index, view.branch_index])
             cell_inds = np.unique(tup_indices, axis=1)[0]
 
-            # Find the indices of the first branch of each cell
+            # Find the indices in xyzr of the first branch of each cell
             _, first_branches = np.unique(cell_inds, return_index=True)
             # Select the xyz coordinates of the first branch of each cell
             xyz_first_branches = xyzr_arr[first_branches, :, :3]
-            # Copy the coordinates of the first branch for the following subtraction
+            # Copy the coordinates of the first branches for the following subtraction
             xyz_firsts_expanded = xyz_first_branches[cell_inds, :, :]
 
-            # Compute the distance between the first branch and all other branches
+            # Compute the distance between first branches and their connected branches
             branch_offsets = xyzr_arr[:, :, :3] - xyz_firsts_expanded
 
             # Compute new coord arr [# branches, [branch start, branch end], [x, y, z]]
