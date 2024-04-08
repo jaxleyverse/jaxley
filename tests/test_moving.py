@@ -46,10 +46,6 @@ def test_move_cell():
 
 
 def test_move_network():
-    """
-    NOTE: if move() is called on the network, network.xyzr is updated, not
-    network.cells[i].xyzr as well. This could be changed in the future.
-    """
     nseg = 2
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
@@ -96,10 +92,6 @@ def test_move_to_cell():
 
 
 def test_move_to_network():
-    """
-    NOTE: if move() is called on the network, network.xyzr is updated, not
-    network.cells[i].xyzr as well. This could be changed in the future.
-    """
     nseg = 4
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
