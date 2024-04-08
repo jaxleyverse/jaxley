@@ -1337,7 +1337,8 @@ class View:
         ), "Number of synapses does not match number of pre/post connections."
 
         # Add synapse types to the module and infer their unique identifier.
-        synapse_names = [synapse_type._name for syn in synapse_type]
+        synapse_names = [syn._name for syn in synapse_type]
+        index = len(self.pointer.edges)
         for syn, name in zip(synapse_type, synapse_names):
             if self._infer_synapse_type_ind(name)[1]:  # synapse is not known
                 self._update_synapse_state_names(syn)

@@ -1,5 +1,7 @@
 import jax
 
+from jaxley.utils.cell_utils import index_of_loc
+
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
@@ -31,7 +33,7 @@ def test_connect():
     with pytest.raises(AssertionError):
         connect(cell[0, 0], branch[0], TestSynapse())  # should raise
 
-    # test raise if not part of same net
+    # # test raise if not part of same net
     connect(cell1_net1, cell2_net1, TestSynapse())
     with pytest.raises(AssertionError):
         connect(cell1_net1, cell1_net2, TestSynapse())  # should raise
@@ -42,27 +44,72 @@ def test_connect():
 
     ### test connect multiple
     # test connect multiple with single synapse
-    connect(net1[1, 0], net1[2, 0], TestSynapse())
-    connect(net1[1, 1], net1[2, 1], [TestSynapse()])
-    # TODO: verify that the synapses are connected correctly
+    connect(net2[1, 0], net2[2, 0], TestSynapse())
+    connect(net2[1, 1], net2[2, 1], [TestSynapse()])
 
     # test connect multiple with same synapses
-    connect(net1[1, 2], net1[2, 2], [TestSynapse()] * 8)
-    # TODO: verify that the synapses are connected correctly
+    connect(net2[1, 2], net2[2, 2], [TestSynapse()] * 8)
 
     # # test connect multiple with different synapses
     connect(
-        net1[1, 3, :3],
-        net1[2, 3, :3],
+        net2[1, 3, :3],
+        net2[2, 3, :3],
         [IonotropicSynapse(), IonotropicSynapse(), TestSynapse()],
     )
-    # TODO: verify that the synapses are connected correctly
-    # TODO: verify that the synapses are registered correctly
-    # net1.edges...
+
+    # test after all connections are made, to catch "overwritten" connections
+    get_comps = lambda locs: [index_of_loc(0, idx, net2.nseg) for idx in locs]
+
+    # check if all connections are made correctly
+    first_set_edges = net2.edges.iloc[:8]
+    assert (first_set_edges[["pre_branch_index", "post_branch_index"]] == 0).all().all()
+    assert (first_set_edges["pre_cell_index"] == 1).all()
+    assert (first_set_edges["post_cell_index"] == 2).all()
+    assert (
+        get_comps(first_set_edges["pre_locs"])
+        == get_comps(first_set_edges["post_locs"])
+        == [0, 1, 2, 3, 4, 5, 6, 7]
+    )
+    assert (first_set_edges["type"] == "TestSynapse").all()
+
+    second_set_edges = net2.edges.iloc[8:16]
+    assert (
+        (second_set_edges[["pre_branch_index", "post_branch_index"]] == 1).all().all()
+    )
+    assert (second_set_edges["pre_cell_index"] == 1).all()
+    assert (second_set_edges["post_cell_index"] == 2).all()
+    assert get_comps(second_set_edges["pre_locs"]) == get_comps(
+        second_set_edges["post_locs"]
+    )
+    assert (second_set_edges["type"] == "TestSynapse").all()
+
+    third_set_edges = net2.edges.iloc[16:24]
+    assert (third_set_edges[["pre_branch_index", "post_branch_index"]] == 2).all().all()
+    assert (third_set_edges["pre_cell_index"] == 1).all()
+    assert (third_set_edges["post_cell_index"] == 2).all()
+    assert get_comps(third_set_edges["pre_locs"]) == get_comps(
+        third_set_edges["post_locs"]
+    )
+    assert (third_set_edges["type"] == "TestSynapse").all()
+
+    fourth_set_edges = net2.edges.iloc[24:27]
+    assert (
+        (fourth_set_edges[["pre_branch_index", "post_branch_index"]] == 3).all().all()
+    )
+    assert (fourth_set_edges["pre_cell_index"] == 1).all()
+    assert (fourth_set_edges["post_cell_index"] == 2).all()
+    assert get_comps(fourth_set_edges["pre_locs"]) == get_comps(
+        fourth_set_edges["post_locs"]
+    )
+    print(fourth_set_edges["type"])
+    assert (
+        fourth_set_edges["type"]
+        == ["IonotropicSynapse", "IonotropicSynapse", "TestSynapse"]
+    ).all()
 
     # test connect raise if num synapses does not match
     with pytest.raises(AssertionError):
-        connect(net1[1, 3, :4], net1[2, 3, :4], [TestSynapse()] * 3)  # should raise
+        connect(net2[1, 3, :4], net1[2, 3, :4], [TestSynapse()] * 3)  # should raise
 
 
 def test_fully_connect():
@@ -77,6 +124,44 @@ def test_fully_connect():
 
     fully_connect(net[8:12], net[12:16], TestSynapse())
 
+    assert all(
+        net.edges.global_post_comp_index
+        == [
+            108,
+            135,
+            165,
+            168,
+            99,
+            123,
+            151,
+            177,
+            115,
+            141,
+            162,
+            172,
+            119,
+            126,
+            156,
+            169,
+            294,
+            329,
+            345,
+            379,
+            295,
+            317,
+            356,
+            365,
+            311,
+            325,
+            355,
+            375,
+            302,
+            320,
+            352,
+            375,
+        ]
+    )
+
 
 def test_sparse_connect():
     comp = jx.Compartment()
@@ -90,25 +175,67 @@ def test_sparse_connect():
 
     sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5)
 
+    assert all(
+        [
+            63,
+            59,
+            65,
+            86,
+            80,
+            58,
+            92,
+            85,
+            168,
+            145,
+            189,
+            153,
+            180,
+            190,
+            184,
+            163,
+            159,
+            179,
+            182,
+        ]
+    )
+
 
 def test_custom_connect():
     comp = jx.Compartment()
     branch = jx.Branch([comp for _ in range(8)])
     cell = jx.Cell([branch for _ in range(3)], parents=np.array([-1, 0, 0]))
 
-    n_by_n_adjacency_matrix = [[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 0, 0]]
+    _ = np.random.seed(0)
+    n_by_n_adjacency_matrix = np.array(
+        [[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 0, 0]], dtype=bool
+    )
+    incides_of_connected_cells = np.stack(np.where(n_by_n_adjacency_matrix)).T
+    incides_of_connected_cells[:, 1] += 4
 
     net = jx.Network([cell for _ in range(4 * 4)])
-    custom_connect(net[:4], net[4:], TestSynapse(), n_by_n_adjacency_matrix)
-    # TODO: verify that the synapses are connected correctly
-    # net1.edges...
+    custom_connect(net[:4], net[4:8], TestSynapse(), n_by_n_adjacency_matrix)
+    assert len(net.edges.index) == 4
+    assert (
+        (net.edges[["pre_cell_index", "post_cell_index"]] == incides_of_connected_cells)
+        .all()
+        .all()
+    )
 
-    m_by_n_adjacency_matrix = [[0, 1, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1]]
+    m_by_n_adjacency_matrix = np.array(
+        [[0, 1, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=bool
+    )
+    incides_of_connected_cells = np.stack(np.where(m_by_n_adjacency_matrix)).T
 
     net = jx.Network([cell for _ in range(4 * 4)])
-    custom_connect(
-        net[:4], net[:4], TestSynapse(), m_by_n_adjacency_matrix
-    )  # should raise
+    with pytest.raises(AssertionError):
+        custom_connect(
+            net[:4], net[:4], TestSynapse(), m_by_n_adjacency_matrix
+        )  # should raise
+
     custom_connect(net[:3], net[:4], TestSynapse(), m_by_n_adjacency_matrix)
-    # TODO: verify that the synapses are connected correctly
-    # net1.edges...
+    assert len(net.edges.index) == 5
+    assert (
+        (net.edges[["pre_cell_index", "post_cell_index"]] == incides_of_connected_cells)
+        .all()
+        .all()
+    )
