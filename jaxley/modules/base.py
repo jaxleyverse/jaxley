@@ -17,6 +17,7 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
+    childview,
     compute_levels,
     convert_point_process_to_distributed,
     flip_comp_indices,
@@ -551,7 +552,6 @@ class Module(ABC):
         self._stimulate(current, self.nodes, verbose=verbose)
 
     def _stimulate(self, current, view, verbose: bool = True):
-
         current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
         batch_size = current.shape[0]
         is_multiple = len(view) == batch_size
@@ -1065,26 +1065,35 @@ class Module(ABC):
             return self[:].shape[1:]
         return self[:].shape
 
-    def _childview(self, index: Union[int, str, list, range, slice]):
-        """Return the child view of the current module.
-
-        network.cell(index) at network level.
-        cell.branch(index) at cell level.
-        branch.comp(index) at branch level."""
-        views = ["net", "cell", "branch", "comp", "/"]
-        parent_name = self.__class__.__name__.lower()  # name of current view
-        child_idx = (
-            np.where([v in parent_name for v in views])[0][0] + 1
-        )  # idx of child view
-        child_view = views[child_idx]  # name of child view
-        if child_view != "/":
-            return self.__getattr__(child_view)(index)
-        raise AttributeError("Compartment does not support indexing")
-
     def __getitem__(self, index):
+        return self._getitem(self, index)
+
+    def _getitem(
+        self,
+        module: Union["Module", "View"],
+        index: Union[Tuple, int],
+        child_name: Optional[str] = None,
+    ) -> "View":
+        """Return View which is created from indexing the module.
+
+        Args:
+            module: The module to be indexed. Will be a `Module` if `._getitem` is
+                called from `__getitem__` in a `Module` and will be a `View` if it was
+                called from `__getitem__` in a `View`.
+            index: The index (or indices) to index the module.
+            child_name: If passed, this will be the key that is used to index the
+                `module`, e.g. if it is the string `branch` then we will try to call
+                `module.xyz(index)`. If `None` then we try to infer automatically what
+                the childview should be, given the name of the `module`.
+
+        Returns:
+            An indexed `View`.
+        """
         if isinstance(index, tuple):
-            return self._childview(index[0])[index[1:]]
-        return self._childview(index)
+            if len(index) > 1:
+                return childview(module, index[0], child_name)[index[1:]]
+            return childview(module, index[0], child_name)
+        return childview(module, index, child_name)
 
     def __iter__(self):
         for i in range(self.shape[0]):
@@ -1272,25 +1281,8 @@ class View:
         idcs = reindex_a_by_b(idcs, "comp_index", ["cell_index", "branch_index"])
         return idcs
 
-    def _childview(self, index: Union[int, str, list, range, slice]):
-        """Return the child view of the current view.
-
-        cell(0).branch(index) at cell level.
-        branch(0).comp(index) at branch level."""
-        views = np.array(["net", "cell", "branch", "comp", "/"])
-        parent_name = self.__class__.__name__.lower()
-        child_idx = np.roll([v in parent_name for v in views], 1)
-        child_view = views[child_idx][0]
-        if child_view != "/":
-            return self.__getattr__(child_view)(index)
-        raise AttributeError("Compartment does not support indexing")
-
     def __getitem__(self, index):
-        if isinstance(index, tuple):
-            if len(index) > 1:
-                return self._childview(index[0])[index[1:]]
-            return self._childview(index[0])
-        return self._childview(index)
+        return self.pointer._getitem(self, index)
 
     def __iter__(self):
         for i in range(self.shape[0]):
@@ -1398,11 +1390,66 @@ class View:
 class GroupView(View):
     """GroupView (aka sectionlist).
 
-    The only difference to a standard `View` is that it sets `controlled_by_param` to
-    0 for all compartments. This means that a group will always be controlled by a
-    single parameter.
+    Unlike the standard `View` it sets `controlled_by_param` to
+    0 for all compartments. This means that a group will be controlled by a single
+    parameter (unless it is subclassed).
     """
 
-    def __init__(self, pointer, view):
+    def __init__(
+        self,
+        pointer: Module,
+        view: pd.DataFrame,
+        childview: type,
+        childview_keys: List[str],
+    ) -> None:
+        """Initialize group.
+
+        Args:
+            pointer: The module from which the group was created.
+            view: The dataframe which defines the compartments, branches, and cells in
+                the group.
+            childview: An uninitialized view (e.g. `CellView`). Depending on the module,
+                subclassing groups will return a different `View`. E.g., `net.group[0]`
+                will return a `CellView`, whereas `cell.group[0]` will return a
+                `BranchView`. The childview argument defines which view is created. We
+                do not automatically infer this because that would force us to import
+                `CellView`, `BranchView`, and `CompartmentView` in the `base.py` file.
+            childview_keys: The names by which the group can be subclassed. Used to
+                raise `KeyError` if one does, e.g. `net.group.branch(0)` (i.e. `.cell`
+                is skipped).
+        """
+        self.childview_of_group = childview
+        self.names_of_childview = childview_keys
         view["controlled_by_param"] = 0
         super().__init__(pointer, view)
+
+    def __getattr__(self, key: str) -> View:
+        """Subclass the group.
+
+        This first checks whether the key that is used to subclass the view is allowed.
+        For example, one cannot `net.group.branch(0)` but instead must use
+        `net.group.cell("all").branch(0).` If this is valid, then it instantiates the
+        correct `View` which had been passed to `__init__()`.
+
+        Args:
+            key: The key which is used to subclass the group.
+
+        Return:
+            View of the subclassed group.
+        """
+        # Ensure that hidden methods such as `__deepcopy__` still work.
+        if key.startswith("__"):
+            return super().__getattribute__(key)
+
+        if key in self.names_of_childview:
+            view = deepcopy(self.view)
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return self.childview_of_group(self.pointer, view)
+        else:
+            raise KeyError(f"Key {key} not recognized.")
+
+    def __getitem__(self, index):
+        """Subclass the group with lazy indexing."""
+        return self.pointer._getitem(self, index, self.names_of_childview[0])

@@ -11,7 +11,12 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.utils.cell_utils import flip_comp_indices, index_of_loc, loc_of_index
+from jaxley.utils.cell_utils import (
+    childview,
+    flip_comp_indices,
+    index_of_loc,
+    loc_of_index,
+)
 
 
 def test_flip_compartment_indices():
@@ -218,15 +223,15 @@ def test_child_view():
     cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 0, 1, 1]))
     net = jx.Network([cell for _ in range(2)])
 
-    assert np.all(net._childview(0).show() == net.cell(0).show())
-    assert np.all(cell._childview(0).show() == cell.branch(0).show())
-    assert np.all(branch._childview(0).show() == branch.comp(0).show())
+    assert np.all(childview(net, 0).show() == net.cell(0).show())
+    assert np.all(childview(cell, 0).show() == cell.branch(0).show())
+    assert np.all(childview(branch, 0).show() == branch.comp(0).show())
 
     assert np.all(
-        net._childview(0)._childview(0).show() == net.cell(0).branch(0).show()
+        childview(childview(net, 0), 0).show() == net.cell(0).branch(0).show()
     )
     assert np.all(
-        cell._childview(0)._childview(0).show() == cell.branch(0).comp(0).show()
+        childview(childview(cell, 0), 0).show() == cell.branch(0).comp(0).show()
     )
 
 
