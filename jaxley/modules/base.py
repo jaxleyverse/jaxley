@@ -1022,11 +1022,22 @@ class Module(ABC):
 
     def move_to(
         self,
-        x: float | np.ndarray = 0.0,
-        y: float | np.ndarray = 0.0,
-        z: float | np.ndarray = 0.0,
+        x: Union[float, np.ndarray] = 0.0,
+        y: Union[float, np.ndarray] = 0.0,
+        z: Union[float, np.ndarray] = 0.0,
     ):
-        """Move cells or networks to a location (x, y, z)."""
+        """Move cells or networks to a location (x, y, z).
+
+        If x, y, and z are floats, then the first compartment of the first branch
+        of the first cell is moved to that float coordinate, and everything else is
+        shifted by the difference between that compartment's previous coordinate and
+        the new float location.
+
+        If x, y, and z are arrays, then they must each have a length equal to the number
+        of cells in the network. Then the first compartment of the first branch of each
+        cell is moved to the specified location. This avoids the need to move cells in
+        loops.
+        """
         self._move_to(x, y, z, self.nodes)
 
     def _move_to(self, x, y, z, view):
@@ -1037,24 +1048,31 @@ class Module(ABC):
         ):
             assert (
                 x.shape == y.shape == z.shape == (len(view.cell_index.value_counts()),)
-            ), "Coordinate shape mismatch."
+            ), "x, y, and z array shapes are not all equal to (number of cells, )."
 
             xyzr_arr = np.array(self.xyzr)
 
-            # Compute the within branch offsets (compartment lengths)
-            comp_offsets = np.subtract(xyzr_arr[:, 1, :3], xyzr_arr[:, 0, :3])
+            # Compute the difference between the start and stop of each branch
+            branch_lengths = np.subtract(xyzr_arr[:, 1, :3], xyzr_arr[:, 0, :3])
 
-            # Compute the within cell branch offsets
+            # Get an array with cell index per branch for expanding arrays later
             tup_indices = np.array([view.cell_index, view.branch_index])
-            branches_per_cell = np.unique(tup_indices, axis=1)[0]
-            _, first_branches = np.unique(branches_per_cell, return_index=True)
+            cell_inds = np.unique(tup_indices, axis=1)[0]
+
+            # Find the indices of the first branch of each cell
+            _, first_branches = np.unique(cell_inds, return_index=True)
+            # Select the xyz coordinates of the first branch of each cell
             xyz_first_branches = xyzr_arr[first_branches, :, :3]
-            xyz_firsts_expanded = xyz_first_branches[branches_per_cell, :, :]
+            # Copy the coordinates of the first branch for the following subtraction
+            xyz_firsts_expanded = xyz_first_branches[cell_inds, :, :]
+
+            # Compute the distance between the first branch and all other branches
             branch_offsets = xyzr_arr[:, :, :3] - xyz_firsts_expanded
 
+            # Compute new coord arr [# branches, [branch start, branch end], [x, y, z]]
             new_xyz = np.stack([x, y, z])
-            new_xyz = new_xyz.T[branches_per_cell]
-            new_xyz_expanded = np.stack([new_xyz, new_xyz + comp_offsets], axis=1)
+            new_xyz = new_xyz.T[cell_inds]
+            new_xyz_expanded = np.stack([new_xyz, new_xyz + branch_lengths], axis=1)
             new_xyz_expanded = new_xyz_expanded + branch_offsets
 
             xyzr_arr[:, :, :3] = new_xyz_expanded
@@ -1063,7 +1081,9 @@ class Module(ABC):
 
         else:
             xyzr_arr = np.array(self.xyzr)
+            # Compute the distance between the first branch and the x, y, z float input
             shift_amount = np.array([x, y, z]) - xyzr_arr[0][0, :3]
+            # Shift all branches such that the first branch is at x, y, z
             xyzr_arr[:, :, :3] += shift_amount
             self.xyzr = list(xyzr_arr)
 
