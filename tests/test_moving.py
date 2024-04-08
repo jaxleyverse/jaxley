@@ -12,7 +12,6 @@ import jaxley as jx
 
 def test_move_cell():
     nseg = 4
-    length = 10.0
 
     # Test move on a cell with compute_xyz()
     comp = jx.Compartment()
@@ -49,7 +48,10 @@ def test_move_cell():
 
 
 def test_move_network():
-    """NOTE: if move() is called on the network, network.xyzr is updated, not network.cells[i].xyzr as well. This could be changed in the future."""
+    """
+    NOTE: if move() is called on the network, network.xyzr is updated, not
+    network.cells[i].xyzr as well. This could be changed in the future.
+    """
     nseg = 2
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
@@ -98,7 +100,10 @@ def test_move_to_cell():
 
 
 def test_move_to_network():
-    """NOTE: if move() is called on the network, network.xyzr is updated, not network.cells[i].xyzr as well. This could be changed in the future."""
+    """
+    NOTE: if move() is called on the network, network.xyzr is updated, not
+    network.cells[i].xyzr as well. This could be changed in the future.
+    """
     nseg = 4
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
@@ -118,10 +123,20 @@ def test_move_to_network():
 
 def test_move_to_arrays():
     """Test with network and with group"""
-    pass
-
-
-if __name__ == "__main__":
-    test_move_network()
-    test_move_to_network()
-    test_move_to_arrays()
+    nseg = 4
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=nseg)
+    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
+    cell.compute_xyz()
+    net = jx.Network([cell, cell, cell])
+    x_coords = np.array([10.0, 20.0, 30.0])
+    y_coords = np.array([5.0, 15.0, 25.0])
+    z_coords = np.array([1.0, 2.0, 3.0])
+    net.move_to(x_coords, y_coords, z_coords)
+    assert net.xyzr[0][0, 0] == 10.0
+    assert net.xyzr[0][1, 0] == nseg * 10.0 + 10.0
+    assert net.xyzr[0][0, 1] == 5.0
+    assert net.xyzr[0][0, 2] == 1.0
+    assert net.xyzr[3][0, 0] == 20.0
+    assert net.xyzr[3][0, 2] == 2.0
+    assert net.xyzr[6][0, 1] == 25.0

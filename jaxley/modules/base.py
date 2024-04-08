@@ -551,7 +551,6 @@ class Module(ABC):
         self._stimulate(current, self.nodes, verbose=verbose)
 
     def _stimulate(self, current, view, verbose: bool = True):
-
         current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
         batch_size = current.shape[0]
         is_multiple = len(view) == batch_size
@@ -1021,7 +1020,12 @@ class Module(ABC):
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
 
-    def move_to(self, x=0.0, y=0.0, z=0.0):
+    def move_to(
+        self,
+        x: float | np.ndarray = 0.0,
+        y: float | np.ndarray = 0.0,
+        z: float | np.ndarray = 0.0,
+    ):
         """Move cells or networks to a location (x, y, z)."""
         self._move_to(x, y, z, self.nodes)
 
@@ -1032,22 +1036,28 @@ class Module(ABC):
             and isinstance(z, np.ndarray)
         ):
             assert (
-                x.shape
-                == y.shape
-                == z.shape
-                == (2, len(view.cell_index.value_counts()))
+                x.shape == y.shape == z.shape == (len(view.cell_index.value_counts()),)
             ), "Coordinate shape mismatch."
-            tup_indices = np.array([view.cell_index, view.branch_index])
-            branches_per_cell = np.unique(tup_indices, axis=1)[0]
-
-            x_expanded = x[:, branches_per_cell]
-            y_expanded = y[:, branches_per_cell]
-            z_expanded = z[:, branches_per_cell]
 
             xyzr_arr = np.array(self.xyzr)
-            xyzr_arr[:, :, 0] = x_expanded.T
-            xyzr_arr[:, :, 1] = y_expanded.T
-            xyzr_arr[:, :, 2] = z_expanded.T
+
+            # Compute the within branch offsets (compartment lengths)
+            comp_offsets = np.subtract(xyzr_arr[:, 1, :3], xyzr_arr[:, 0, :3])
+
+            # Compute the within cell branch offsets
+            tup_indices = np.array([view.cell_index, view.branch_index])
+            branches_per_cell = np.unique(tup_indices, axis=1)[0]
+            _, first_branches = np.unique(branches_per_cell, return_index=True)
+            xyz_first_branches = xyzr_arr[first_branches, :, :3]
+            xyz_firsts_expanded = xyz_first_branches[branches_per_cell, :, :]
+            branch_offsets = xyzr_arr[:, :, :3] - xyz_firsts_expanded
+
+            new_xyz = np.stack([x, y, z])
+            new_xyz = new_xyz.T[branches_per_cell]
+            new_xyz_expanded = np.stack([new_xyz, new_xyz + comp_offsets], axis=1)
+            new_xyz_expanded = new_xyz_expanded + branch_offsets
+
+            xyzr_arr[:, :, :3] = new_xyz_expanded
 
             self.xyzr = list(xyzr_arr)
 
@@ -1063,9 +1073,15 @@ class Module(ABC):
 
             # Shift everything relative to the first branch which gets the location
             for branch in view["branch_index"].unique()[1:]:
-                self.xyzr[branch][:, 0] = x + (self.xyzr[branch][:, 0] - init_coords[0, 0])
-                self.xyzr[branch][:, 1] = y + (self.xyzr[branch][:, 1] - init_coords[0, 1])
-                self.xyzr[branch][:, 2] = z + (self.xyzr[branch][:, 2] - init_coords[0, 2])
+                self.xyzr[branch][:, 0] = x + (
+                    self.xyzr[branch][:, 0] - init_coords[0, 0]
+                )
+                self.xyzr[branch][:, 1] = y + (
+                    self.xyzr[branch][:, 1] - init_coords[0, 1]
+                )
+                self.xyzr[branch][:, 2] = z + (
+                    self.xyzr[branch][:, 2] - init_coords[0, 2]
+                )
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
