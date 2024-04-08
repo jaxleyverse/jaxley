@@ -378,15 +378,17 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
-            synapse_currents = convert_point_process_to_distributed(
+            synapse_currents_dist = convert_point_process_to_distributed(
                 synapse_currents,
                 params["radius"][post_inds],
                 params["length"][post_inds],
             )
 
             # Split into voltage and constant terms.
-            voltage_term = (synapse_currents[1] - synapse_currents[0]) / diff
-            constant_term = synapse_currents[0] - voltage_term * voltages[post_inds]
+            voltage_term = (synapse_currents_dist[1] - synapse_currents_dist[0]) / diff
+            constant_term = (
+                synapse_currents_dist[0] - voltage_term * voltages[post_inds]
+            )
 
             # Gather slope and offset for every postsynaptic compartment.
             gathered_syn_currents = gather_synapes(

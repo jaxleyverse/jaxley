@@ -2,6 +2,7 @@ from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
+from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
 
@@ -41,11 +42,11 @@ class IonotropicSynapse(Synapse):
         v_th = -35.0
         delta = 10.0
 
-        s_inf = 1.0 / (1.0 + jnp.exp((v_th - pre_voltage) / delta))
+        s_inf = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
         tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
 
         slope = -1.0 / tau_s
-        exp_term = jnp.exp(slope * delta_t)
+        exp_term = save_exp(slope * delta_t)
         new_s = states[f"{prefix}_s"] * exp_term + s_inf * (1.0 - exp_term)
         return {f"{prefix}_s": new_s}
 
