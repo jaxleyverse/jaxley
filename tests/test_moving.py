@@ -26,8 +26,6 @@ def test_move_cell():
     # Test move_to on a cell that starts with a specified xyzr
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-    cell.compute_xyz()
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -78,8 +76,6 @@ def test_move_to_cell():
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-    cell.compute_xyz()
     cell = jx.Cell(
         branch,
         parents=[-1],

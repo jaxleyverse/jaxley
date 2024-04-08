@@ -1062,26 +1062,10 @@ class Module(ABC):
             self.xyzr = list(xyzr_arr)
 
         else:
-            # Move the first compartment of the first branch of the first cell to the specified location
-            init_coords = self.xyzr[0].copy()
-            self.xyzr[0][0, 0] = x
-            self.xyzr[0][1, 0] = x + (init_coords[1, 0] - init_coords[0, 0])
-            self.xyzr[0][0, 1] = y
-            self.xyzr[0][1, 1] = y + (init_coords[1, 1] - init_coords[0, 1])
-            self.xyzr[0][0, 2] = z
-            self.xyzr[0][1, 2] = z + (init_coords[1, 2] - init_coords[0, 2])
-
-            # Shift everything relative to the first branch which gets the location
-            for branch in view["branch_index"].unique()[1:]:
-                self.xyzr[branch][:, 0] = x + (
-                    self.xyzr[branch][:, 0] - init_coords[0, 0]
-                )
-                self.xyzr[branch][:, 1] = y + (
-                    self.xyzr[branch][:, 1] - init_coords[0, 1]
-                )
-                self.xyzr[branch][:, 2] = z + (
-                    self.xyzr[branch][:, 2] - init_coords[0, 2]
-                )
+            xyzr_arr = np.array(self.xyzr)
+            shift_amount = np.array([x, y, z]) - xyzr_arr[0][0, :3]
+            xyzr_arr[:, :, :3] += shift_amount
+            self.xyzr = list(xyzr_arr)
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
