@@ -1313,10 +1313,7 @@ class View:
         return tuple(local_idcs.nunique())
 
     def _append_multiple_synapses(
-        self,
-        pre_rows: pd.DataFrame,
-        post_rows: pd.DataFrame,
-        synapse_type: Synapse,
+        self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
     ) -> None:
         """Append multiple rows to the `self.edges` table.
 
