@@ -4,22 +4,70 @@ from typing import List, Tuple, Union
 import numpy as np
 
 
-@dataclass
 class Connection:
     """A simple wrapper to save all elements that are important for a single synapse."""
 
-    pre_cell_ind: int
-    pre_branch_ind: int
-    pre_loc: float
-    post_cell_ind: int
-    post_branch_ind: int
-    post_loc: float
+    def __init__(
+        self,
+        pre_cell_ind,
+        pre_branch_ind,
+        pre_loc,
+        post_cell_ind,
+        post_branch_ind,
+        post_loc,
+    ):
+        self.pre_cell_ind = pre_cell_ind
+        self.pre_branch_ind = pre_branch_ind
+        self.pre_loc = pre_loc
+        self.post_cell_ind = post_cell_ind
+        self.post_branch_ind = post_branch_ind
+        self.post_loc = post_loc
 
 
-@dataclass
 class Connectivity:
-    synapse_type: "Synapse"
-    conns: List[Connection]
+    def __init__(self, synapse_type: Synapse, conns: List[Connection]):
+        self.synapse_type = synapse_type
+        self.conns = conns
+
+
+class ConnectivityBuilder:
+    """Helper to build layers of connectivity patterns."""
+
+    def __init__(self, nbranches_per_submodule: List[int]):
+        self.nbranches_per_submodule = nbranches_per_submodule
+
+    def fc(self, pre_cell_inds, post_cell_inds):
+        """Returns a list of `Connection`s which build a fully connected layer.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
+        conns = []
+        for pre_ind in pre_cell_inds:
+            for post_ind in post_cell_inds:
+                num_branches_post = self.nbranches_per_submodule[post_ind]
+                rand_branch = np.random.randint(0, num_branches_post)
+                rand_loc = np.random.rand()
+                conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))
+        return conns
+
+    def sparse_random(self, pre_cell_inds, post_cell_inds, p):
+        """Returns a list of `Connection`s forming a sparse, randomly connected layer.
+
+        Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+        """
+        num_pre = len(pre_cell_inds)
+        num_post = len(post_cell_inds)
+        num_connections = np.random.binomial(num_pre * num_post, p)
+        pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
+        post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
+
+        conns = []
+        for pre_ind, post_ind in zip(pre_syn_neurons, post_syn_neurons):
+            num_branches_post = self.nbranches_per_submodule[post_ind]
+            rand_branch = np.random.randint(0, num_branches_post)
+            rand_loc = np.random.rand()
+            conns.append(Connection(pre_ind, 0, 0, post_ind, rand_branch, rand_loc))
+        return conns
 
 
 def get_pre_post_inds(
@@ -50,7 +98,7 @@ def sample_comp(
     cell_view: "CellView", cell_idx: int, num: int = 1, replace=True
 ) -> "CompartmentView":
     """Sample a compartment from a cell.
-    
+
     Returns View with shape (num, num_cols)."""
     cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
     return cell_idx_view(cell_view.view, cell_idx).sample(num, replace=replace)
@@ -166,7 +214,10 @@ def custom_connect(
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
 
-    assert connectivity_matrix.shape == (pre_cell_view.shape[0], post_cell_view.shape[0]), "Connectivity matrix must have shape (num_pre, num_post)."
+    assert connectivity_matrix.shape == (
+        pre_cell_view.shape[0],
+        post_cell_view.shape[0],
+    ), "Connectivity matrix must have shape (num_pre, num_post)."
 
     # get connection pairs from connectivity matrix
     from_idx, to_idx = np.where(connectivity_matrix)
