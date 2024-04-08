@@ -9,6 +9,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 
@@ -23,7 +24,7 @@ def test_set_and_querying_params_one_type():
         for post_ind in [2, 3]:
             pre = net.cell(pre_ind).branch(0).loc(0.0)
             post = net.cell(post_ind).branch(0).loc(0.0)
-            pre.connect(post, IonotropicSynapse())
+            connect(pre, post, IonotropicSynapse())
 
     # Get the synapse parameters to test setting
     syn_params = list(IonotropicSynapse().synapse_params.keys())

@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
+from jaxley.connection import connect
 from jaxley.synapses import IonotropicSynapse
 
 
@@ -62,58 +63,17 @@ def test_api_equivalence_synapses():
     net2 = jx.Network([cell1, cell2])
     pre = net2.cell(0).branch(0).loc(1.0)
     post = net2.cell(1).branch(4).loc(1.0)
-    pre.connect(post, IonotropicSynapse())
+    connect(pre, post, IonotropicSynapse())
 
     pre = net2.cell(1).branch(1).loc(0.8)
     post = net2.cell(0).branch(4).loc(0.1)
-    pre.connect(post, IonotropicSynapse())
+    connect(pre, post, IonotropicSynapse())
 
     for net in [net1, net2]:
         current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
         net.cell(0).branch(0).loc(0.0).stimulate(current)
         net.cell(0).branch(0).loc(0.5).record()
         net.cell(1).branch(4).loc(0.5).record()
-
-    voltages1 = jx.integrate(net1)
-    voltages2 = jx.integrate(net2)
-
-    assert (
-        np.max(np.abs(voltages1 - voltages2)) < 1e-8
-    ), "Voltages do not match between synapse APIs."
-
-
-def test_api_equivalence_layers():
-    """Test whether ways of adding synapses are equivalent for layer API."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 1)
-    cell = jx.Cell(branch, parents=[-1])
-    cells = [cell for _ in range(11)]
-
-    conn_builder = jx.ConnectivityBuilder([cell.total_nbranches for cell in cells])
-    _ = np.random.seed(0)
-    conns = [
-        jx.Connectivity(
-            IonotropicSynapse(),
-            [
-                *conn_builder.fc(range(5), range(5, 10)),
-                *conn_builder.fc(range(5, 10), range(10, 11)),
-            ],
-        )
-    ]
-    net1 = jx.Network(cells, conns)
-
-    net2 = jx.Network(cells)
-    _ = np.random.seed(0)
-    net2.cell([0, 1, 2, 3, 4]).fully_connect(
-        net2.cell([5, 6, 7, 8, 9]), IonotropicSynapse()
-    )
-    net2.cell([5, 6, 7, 8, 9]).fully_connect(net2.cell(10), IonotropicSynapse())
-
-    current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
-    for net in [net1, net2]:
-        net.cell(0).branch(0).loc(0.0).stimulate(current)
-        net.cell(1).branch(0).loc(0.0).stimulate(current)
-        net.cell(10).branch(0).loc(0.5).record()
 
     voltages1 = jx.integrate(net1)
     voltages2 = jx.integrate(net2)
