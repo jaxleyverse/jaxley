@@ -33,13 +33,13 @@ def get_pre_post_inds(
 
 def pre_comp_not_equal_post_comp(
     pre: "CompartmentView", post: "CompartmentView"
-) -> bool:
+) -> ndarray[bool]:
     """Check if pre and post compartments are different."""
     cols = ["cell_index", "branch_index", "comp_index"]
     return np.any(pre.view[cols].values != post.view[cols].values, axis=1)
 
 
-def is_part_of_network(pre: "View", post: "View") -> bool:
+def is_same_network(pre: "View", post: "View") -> bool:
     """Check if views are from the same network."""
     is_in_net = "network" in pre.pointer.__class__.__name__.lower()
     is_in_same_net = pre.pointer is post.pointer
@@ -49,6 +49,9 @@ def is_part_of_network(pre: "View", post: "View") -> bool:
 def sample_comp(
     cell_view: "CellView", cell_idx: int, num: int = 1, replace=True
 ) -> "CompartmentView":
+    """Sample a compartment from a cell.
+    
+    Returns View with shape (num, num_cols)."""
     cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
     return cell_idx_view(cell_view.view, cell_idx).sample(num, replace=replace)
 
@@ -70,7 +73,7 @@ def connect(
     Then, we update synapse parameter and state arrays with the new connection.
     Finally, we update synapse meta information.
     """
-    assert is_part_of_network(
+    assert is_same_network(
         pre, post
     ), "Pre and post compartments must be part of the same network."
     assert np.all(
@@ -152,7 +155,7 @@ def custom_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
     synapse_type: Union["Synapse", List["Synapse"]],
-    connectivity_matrix: np.ndarray,
+    connectivity_matrix: np.ndarray[bool],
 ):
     """Appends multiple connections which build a custom connected network.
 
