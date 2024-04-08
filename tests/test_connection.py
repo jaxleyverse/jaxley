@@ -45,17 +45,6 @@ def test_connect():
     ### test connect multiple
     # test connect multiple with single synapse
     connect(net2[1, 0], net2[2, 0], TestSynapse())
-    connect(net2[1, 1], net2[2, 1], [TestSynapse()])
-
-    # test connect multiple with same synapses
-    connect(net2[1, 2], net2[2, 2], [TestSynapse()] * 8)
-
-    # # test connect multiple with different synapses
-    connect(
-        net2[1, 3, :3],
-        net2[2, 3, :3],
-        [IonotropicSynapse(), IonotropicSynapse(), TestSynapse()],
-    )
 
     # test after all connections are made, to catch "overwritten" connections
     get_comps = lambda locs: [index_of_loc(0, idx, net2.nseg) for idx in locs]
@@ -71,45 +60,6 @@ def test_connect():
         == [0, 1, 2, 3, 4, 5, 6, 7]
     )
     assert (first_set_edges["type"] == "TestSynapse").all()
-
-    second_set_edges = net2.edges.iloc[8:16]
-    assert (
-        (second_set_edges[["pre_branch_index", "post_branch_index"]] == 1).all().all()
-    )
-    assert (second_set_edges["pre_cell_index"] == 1).all()
-    assert (second_set_edges["post_cell_index"] == 2).all()
-    assert get_comps(second_set_edges["pre_locs"]) == get_comps(
-        second_set_edges["post_locs"]
-    )
-    assert (second_set_edges["type"] == "TestSynapse").all()
-
-    third_set_edges = net2.edges.iloc[16:24]
-    assert (third_set_edges[["pre_branch_index", "post_branch_index"]] == 2).all().all()
-    assert (third_set_edges["pre_cell_index"] == 1).all()
-    assert (third_set_edges["post_cell_index"] == 2).all()
-    assert get_comps(third_set_edges["pre_locs"]) == get_comps(
-        third_set_edges["post_locs"]
-    )
-    assert (third_set_edges["type"] == "TestSynapse").all()
-
-    fourth_set_edges = net2.edges.iloc[24:27]
-    assert (
-        (fourth_set_edges[["pre_branch_index", "post_branch_index"]] == 3).all().all()
-    )
-    assert (fourth_set_edges["pre_cell_index"] == 1).all()
-    assert (fourth_set_edges["post_cell_index"] == 2).all()
-    assert get_comps(fourth_set_edges["pre_locs"]) == get_comps(
-        fourth_set_edges["post_locs"]
-    )
-    print(fourth_set_edges["type"])
-    assert (
-        fourth_set_edges["type"]
-        == ["IonotropicSynapse", "IonotropicSynapse", "TestSynapse"]
-    ).all()
-
-    # test connect raise if num synapses does not match
-    with pytest.raises(AssertionError):
-        connect(net2[1, 3, :4], net1[2, 3, :4], [TestSynapse()] * 3)  # should raise
 
 
 def test_fully_connect():

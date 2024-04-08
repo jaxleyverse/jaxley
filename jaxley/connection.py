@@ -59,7 +59,7 @@ def sample_comp(
 def connect(
     pre: "CompartmentView",
     post: "CompartmentView",
-    synapse_type: Union["Synapse", List["Synapse"]],
+    synapse_type: "Synapse",
 ):
     """Connect two compartments with a chemical synapse.
 
@@ -86,7 +86,7 @@ def connect(
 def fully_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
-    synapse_type: Union["Synapse", List["Synapse"]],
+    synapse_type: "Synapse",
 ):
     """Appends multiple connections which build a fully connected layer.
 
@@ -116,7 +116,7 @@ def fully_connect(
 def sparse_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
-    synapse_type: Union["Synapse", List["Synapse"]],
+    synapse_type: "Synapse",
     p,
 ):
     """Appends multiple connections which build a sparse, randomly connected layer.
@@ -154,7 +154,7 @@ def sparse_connect(
 def custom_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
-    synapse_type: Union["Synapse", List["Synapse"]],
+    synapse_type: "Synapse",
     connectivity_matrix: np.ndarray[bool],
 ):
     """Appends multiple connections which build a custom connected network.

@@ -1316,33 +1316,17 @@ class View:
         self,
         pre_rows: pd.DataFrame,
         post_rows: pd.DataFrame,
-        synapse_type: Union[Synapse, List[Synapse]],
+        synapse_type: Synapse,
     ) -> None:
         """Append multiple rows to the `self.edges` table.
 
         This is used, e.g. by `fully_connect` and `connect`.
         """
-        num_synapses = pre_rows.shape[0]
-        assert isinstance(
-            synapse_type, (Synapse, List)
-        ), "Supports only Synapse and List[Synapse] as input types."
-
-        # expand input to correct length
-        is_synapse = isinstance(synapse_type, Synapse)
-        synapse_type = [synapse_type] if is_synapse else synapse_type
-        synapse_type *= 1 if len(synapse_type) > 1 else num_synapses
-
-        assert (
-            len(synapse_type) == num_synapses
-        ), "Number of synapses does not match number of pre/post connections."
-
         # Add synapse types to the module and infer their unique identifier.
-        synapse_names = [syn._name for syn in synapse_type]
-        index = len(self.pointer.edges)
-        for syn, name in zip(synapse_type, synapse_names):
-            if self._infer_synapse_type_ind(name)[1]:  # synapse is not known
-                self._update_synapse_state_names(syn)
-        type_ind = [self._infer_synapse_type_ind(name)[0] for name in synapse_names]
+        synapse_name = synapse_type._name
+        if self._infer_synapse_type_ind(synapse_name)[1]:  # synapse is not known
+            self._update_synapse_state_names(synapse_type)
+        type_ind = self._infer_synapse_type_ind(synapse_name)[0]
 
         post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
         pre_loc = loc_of_index(pre_rows["comp_index"].to_numpy(), self.pointer.nseg)
@@ -1355,7 +1339,7 @@ class View:
             post_branch_index=post_rows["branch_index"].to_numpy(),
             pre_cell_index=pre_rows["cell_index"].to_numpy(),
             post_cell_index=post_rows["cell_index"].to_numpy(),
-            type=synapse_names,
+            type=synapse_name,
             type_ind=type_ind,
             global_pre_comp_index=pre_rows["global_comp_index"].to_numpy(),
             global_post_comp_index=post_rows["global_comp_index"].to_numpy(),
@@ -1369,13 +1353,7 @@ class View:
             ignore_index=True,
         )
 
-        indices = [[idx] for idx in range(index, index + len(pre_loc))]
-        if len(np.unique(synapse_names)) == 1:  # no need for subsequent for loop
-            synapse_type = [synapse_type[0]]  # same synapse type for all
-            indices = [sum(indices, [])]  # ensures all indices are unpacked at once
-
-        for ind, unique_synapse_type in zip(indices, synapse_type):
-            self._add_params_to_edges(unique_synapse_type, ind)
+        self._add_params_to_edges(synapse_type, type_ind)
 
     def _infer_synapse_type_ind(self, synapse_name: str) -> Tuple[int, bool]:
         """Return the unique identifier for every synapse type.
