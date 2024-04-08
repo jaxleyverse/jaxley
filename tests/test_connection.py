@@ -9,7 +9,12 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.connection import connect, custom_connect, fully_connect, sparse_connect
+from jaxley.connection import (
+    connect,
+    connectivity_matrix_connect,
+    fully_connect,
+    sparse_connect,
+)
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -150,7 +155,7 @@ def test_sparse_connect():
     )
 
 
-def test_custom_connect():
+def test_connectivity_matrix_connect():
     comp = jx.Compartment()
     branch = jx.Branch([comp for _ in range(8)])
     cell = jx.Cell([branch for _ in range(3)], parents=np.array([-1, 0, 0]))
@@ -163,7 +168,9 @@ def test_custom_connect():
     incides_of_connected_cells[:, 1] += 4
 
     net = jx.Network([cell for _ in range(4 * 4)])
-    custom_connect(net[:4], net[4:8], TestSynapse(), n_by_n_adjacency_matrix)
+    connectivity_matrix_connect(
+        net[:4], net[4:8], TestSynapse(), n_by_n_adjacency_matrix
+    )
     assert len(net.edges.index) == 4
     assert (
         (net.edges[["pre_cell_index", "post_cell_index"]] == incides_of_connected_cells)
@@ -178,11 +185,13 @@ def test_custom_connect():
 
     net = jx.Network([cell for _ in range(4 * 4)])
     with pytest.raises(AssertionError):
-        custom_connect(
+        connectivity_matrix_connect(
             net[:4], net[:4], TestSynapse(), m_by_n_adjacency_matrix
         )  # should raise
 
-    custom_connect(net[:3], net[:4], TestSynapse(), m_by_n_adjacency_matrix)
+    connectivity_matrix_connect(
+        net[:3], net[:4], TestSynapse(), m_by_n_adjacency_matrix
+    )
     assert len(net.edges.index) == 5
     assert (
         (net.edges[["pre_cell_index", "post_cell_index"]] == incides_of_connected_cells)

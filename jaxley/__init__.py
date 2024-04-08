@@ -2,7 +2,7 @@ from jaxley.connection import (
     Connection,
     Connectivity,
     connect,
-    custom_connect,
+    connectivity_matrix_connect,
     fully_connect,
     sparse_connect,
 )

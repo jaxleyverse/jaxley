@@ -201,7 +201,7 @@ def sparse_connect(
     pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
 
-def custom_connect(
+def connectivity_matrix_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
     synapse_type: "Synapse",
@@ -220,6 +220,7 @@ def custom_connect(
         pre_cell_view.shape[0],
         post_cell_view.shape[0],
     ), "Connectivity matrix must have shape (num_pre, num_post)."
+    assert connectivity_matrix.dtype == bool, "Connectivity matrix must be boolean."
 
     # get connection pairs from connectivity matrix
     from_idx, to_idx = np.where(connectivity_matrix)
