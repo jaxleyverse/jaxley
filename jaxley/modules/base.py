@@ -748,7 +748,7 @@ class Module(ABC):
                 channel_states[s] = states[s][indices]
 
             for current_name in self.membrane_current_names:
-                channel_states[current_name] = states[current_name]
+                channel_states[current_name] = states[current_name][indices]
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
