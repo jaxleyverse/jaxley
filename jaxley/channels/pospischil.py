@@ -3,7 +3,11 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential
+from jaxley.solver_gate import (
+    save_exp,
+    solve_gate_exponential,
+    solve_inf_gate_exponential,
+)
 
 # This is an implementation of Pospischil channels:
 # Leak, Na, K, Km, CaT, CaL
@@ -22,8 +26,7 @@ def efun(x):
     Returns:
         float: x/[exp(x)-1]
     """
-
-    return x / (jnp.exp(x) - 1.0)
+    return x / (save_exp(x) - 1.0)
 
 
 class Leak(Channel):
@@ -125,10 +128,10 @@ class Na(Channel):
     @staticmethod
     def h_gate(v, vt):
         v_alpha = v - vt - 17.0
-        alpha = 0.128 * jnp.exp(-v_alpha / 18.0)
+        alpha = 0.128 * save_exp(-v_alpha / 18.0)
 
         v_beta = v - vt - 40.0
-        beta = 4.0 / (jnp.exp(-v_beta / 5.0) + 1.0)
+        beta = 4.0 / (save_exp(-v_beta / 5.0) + 1.0)
         return alpha, beta
 
 
@@ -183,7 +186,7 @@ class K(Channel):
         alpha = 0.032 * efun(-0.2 * v_alpha) / 0.2
 
         v_beta = v - vt - 10.0
-        beta = 0.5 * jnp.exp(-v_beta / 40.0)
+        beta = 0.5 * save_exp(-v_beta / 40.0)
         return alpha, beta
 
 
@@ -236,9 +239,9 @@ class Km(Channel):
     @staticmethod
     def p_gate(v, taumax):
         v_p = v + 35.0
-        p_inf = 1.0 / (1.0 + jnp.exp(-0.1 * v_p))
+        p_inf = 1.0 / (1.0 + save_exp(-0.1 * v_p))
 
-        tau_p = taumax / (3.3 * jnp.exp(0.05 * v_p) + jnp.exp(-0.05 * v_p))
+        tau_p = taumax / (3.3 * save_exp(0.05 * v_p) + save_exp(-0.05 * v_p))
 
         return p_inf, tau_p
 
@@ -298,16 +301,16 @@ class CaL(Channel):
         alpha = 0.055 * efun(v_alpha / 3.8) * 3.8
 
         v_beta = -v - 75.0
-        beta = 0.94 * jnp.exp(v_beta / 17.0)
+        beta = 0.94 * save_exp(v_beta / 17.0)
         return alpha, beta
 
     @staticmethod
     def r_gate(v):
         v_alpha = -v - 13.0
-        alpha = 0.000457 * jnp.exp(v_alpha / 50)
+        alpha = 0.000457 * save_exp(v_alpha / 50)
 
         v_beta = -v - 15.0
-        beta = 0.0065 / (jnp.exp(v_beta / 28.0) + 1)
+        beta = 0.0065 / (save_exp(v_beta / 28.0) + 1)
         return alpha, beta
 
 
@@ -346,7 +349,7 @@ class CaT(Channel):
         """Return current."""
         prefix = self._name
         u = states[f"{prefix}_u"]
-        s_inf = 1.0 / (1.0 + jnp.exp(-(v + params[f"{prefix}_vx"] + 57.0) / 6.2))
+        s_inf = 1.0 / (1.0 + save_exp(-(v + params[f"{prefix}_vx"] + 57.0) / 6.2))
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
         gCaT = params[f"{prefix}_gCaT"] * (s_inf**2) * u * 1000  # mS/cm^2
@@ -362,10 +365,10 @@ class CaT(Channel):
     @staticmethod
     def u_gate(v, vx):
         v_u1 = v + vx + 81.0
-        u_inf = 1.0 / (1.0 + jnp.exp(v_u1 / 4))
+        u_inf = 1.0 / (1.0 + save_exp(v_u1 / 4))
 
-        tau_u = (30.8 + (211.4 + jnp.exp((v + vx + 113.2) / 5.0))) / (
-            3.7 * (1 + jnp.exp((v + vx + 84.0) / 3.2))
+        tau_u = (30.8 + (211.4 + save_exp((v + vx + 113.2) / 5.0))) / (
+            3.7 * (1 + save_exp((v + vx + 84.0) / 3.2))
         )
 
         return u_inf, tau_u

@@ -2,6 +2,7 @@ from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
+from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
 
@@ -23,12 +24,12 @@ class TestSynapse(Synapse):
         delta = 10.0
         k_minus = 1.0 / 40.0
 
-        s_bar = 1.0 / (1.0 + jnp.exp((v_th - pre_voltage) / delta))
+        s_bar = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
         tau_s = (1.0 - s_bar) / k_minus
 
         s_inf = s_bar
         slope = -1.0 / tau_s
-        exp_term = jnp.exp(slope * delta_t)
+        exp_term = save_exp(slope * delta_t)
         new_s = states[f"{prefix}_c"] * exp_term + s_inf * (1.0 - exp_term)
         return {f"{prefix}_c": new_s}
 
