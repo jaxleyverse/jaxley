@@ -1321,6 +1321,7 @@ class View:
         """
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name
+        index = len(self.pointer.edges)
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
         if is_new:  # synapse is not known
             self._update_synapse_state_names(synapse_type)
@@ -1350,7 +1351,8 @@ class View:
             ignore_index=True,
         )
 
-        self._add_params_to_edges(synapse_type, type_ind)
+        indices = [idx for idx in range(index, index + len(pre_loc))]
+        self._add_params_to_edges(synapse_type, indices)
 
     def _infer_synapse_type_ind(self, synapse_name: str) -> Tuple[int, bool]:
         """Return the unique identifier for every synapse type.
