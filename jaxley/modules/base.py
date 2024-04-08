@@ -1,8 +1,6 @@
 import inspect
-import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from math import pi
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
@@ -20,6 +18,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
+    convert_point_process_to_distributed,
     flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
@@ -79,6 +78,7 @@ class Module(ABC):
 
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
+        self.membrane_current_names: List[str] = []
 
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
@@ -138,6 +138,8 @@ class Module(ABC):
             for channel in module.channels:
                 if channel._name not in [c._name for c in self.channels]:
                     self.channels.append(channel)
+                if channel.current_name not in self.membrane_current_names:
+                    self.membrane_current_names.append(channel.current_name)
         # Setting columns of channel names to `False` instead of `NaN`.
         for channel in self.channels:
             name = channel._name
@@ -234,6 +236,9 @@ class Module(ABC):
         if name not in [c._name for c in self.channels]:
             self.channels.append(channel)
             self.nodes[name] = False  # Previous columns do not have the new channel.
+
+        if channel.current_name not in self.membrane_current_names:
+            self.membrane_current_names.append(channel.current_name)
 
         # Add a binary column that indicates if a channel is present.
         self.nodes.loc[view.index.values, name] = True
@@ -521,17 +526,15 @@ class Module(ABC):
     def _record(self, view, verbose: bool = True):
         self.recordings = pd.concat([self.recordings, view], ignore_index=True)
         if verbose:
-            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-            warning = f"Added {num_comps} compartments to recordings. If this was not intended, run `delete_recordings`."
-            if len(view) > 1:
-                warnings.warn(warning)
             print(f"Added {len(view)} recordings. See `.recordings` for details.")
 
     def delete_recordings(self):
         """Removes all recordings from the module."""
         self.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
+    def stimulate(
+        self, current: Optional[jnp.ndarray] = None, verbose: bool = True
+    ) -> None:
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -541,6 +544,9 @@ class Module(ABC):
         it should only be used for static stimuli (i.e., stimuli that do not depend
         on the data and that should not be learned). For stimuli that depend on data
         (or that should be learned), please use `data_stimulate()`.
+
+        Args:
+            current: Current in `nA`.
         """
         self._stimulate(current, self.nodes, verbose=verbose)
 
@@ -559,10 +565,6 @@ class Module(ABC):
         self.current_inds = pd.concat([self.current_inds, view])
 
         if verbose:
-            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-            warning = f"Added stimuli to {num_comps} compartments. If this was not intended, run `delete_stimuli`."
-            if len(view) > 1:
-                warnings.warn(warning)
             print(f"Added {len(view)} stimuli. See `.currents` for details.")
 
     def data_stimulate(
@@ -574,8 +576,10 @@ class Module(ABC):
         """Insert a stimulus into the module within jit (or grad).
 
         Args:
+            current: Current in `nA`.
             verbose: Whether or not to print the number of inserted stimuli. `False`
-                by default because this method is meant to be jitted."""
+                by default because this method is meant to be jitted.
+        """
         return self._data_stimulate(current, data_stimuli, self.nodes, verbose=verbose)
 
     def _data_stimulate(
@@ -606,10 +610,6 @@ class Module(ABC):
         inds = pd.concat([inds, view])
 
         if verbose:
-            num_comps = "ALL(!)" if len(view) == len(self.nodes) else len(view)
-            warning = f"Added stimuli to {num_comps} compartments."
-            if len(view) > 1:
-                warnings.warn(warning)
             print(f"Added {len(view)} stimuli.")
 
         return (currents, inds)
@@ -747,11 +747,8 @@ class Module(ABC):
             for s in channel_state_names:
                 channel_states[s] = states[s][indices]
 
-            for channel_for_current in channels:
-                name_for_current = channel_for_current._name
-                channel_states[f"{name_for_current}_current"] = states[
-                    f"{name_for_current}_current"
-                ]
+            for current_name in self.membrane_current_names:
+                channel_states[current_name] = states[current_name]
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
@@ -783,6 +780,11 @@ class Module(ABC):
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
+
+        current_states = {}
+        for name in self.membrane_current_names:
+            current_states[name] = jnp.zeros_like(voltages)
+
         for channel in channels:
             name = channel._name
             channel_param_names = list(channel.channel_params.keys())
@@ -810,9 +812,18 @@ class Module(ABC):
             voltage_terms = voltage_terms.at[indices].add(voltage_term)
             constant_terms = constant_terms.at[indices].add(-constant_term)
 
-            # Same the current (for the unperturbed voltage) as a state that will
+            # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
-            states[f"{name}_current"] = membrane_currents[0]
+            current_states[channel.current_name] = (
+                current_states[channel.current_name]
+                .at[indices]
+                .add(membrane_currents[0])
+            )
+
+        # Copy the currents into the `state` dictionary such that they can be
+        # recorded and used by `Channel.update_states()`.
+        for name in self.membrane_current_names:
+            states[name] = current_states[name]
 
         return states, (voltage_terms, constant_terms)
 
@@ -847,15 +858,17 @@ class Module(ABC):
     ):
         """
         Return external input to each compartment in uA / cm^2.
+
+        Args:
+            voltages: mV.
+            i_stim: nA.
+            radius: um.
+            length_single_compartment: um.
         """
         zero_vec = jnp.zeros_like(voltages)
-        # `radius`: um
-        # `length_single_compartment`: um
-        # `i_stim`: nA
-        current = (
-            i_stim / 2 / pi / radius[i_inds] / length_single_compartment[i_inds]
-        )  # nA / um^2
-        current *= 100_000  # Convert (nA / um^2) to (uA / cm^2)
+        current = convert_point_process_to_distributed(
+            i_stim, radius[i_inds], length_single_compartment[i_inds]
+        )
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),
@@ -1324,13 +1337,11 @@ class View:
         ), "Number of synapses does not match number of pre/post connections."
 
         # Add synapse types to the module and infer their unique identifier.
-        get_name = lambda syn: type(syn).__name__
-        synapse_names = [get_name(syn) for syn in synapse_type]
+        synapse_names = [synapse_type._name for syn in synapse_type]
         for syn, name in zip(synapse_type, synapse_names):
             if self._infer_synapse_type_ind(name)[1]:  # synapse is not known
                 self._update_synapse_state_names(syn)
         type_ind = [self._infer_synapse_type_ind(name)[0] for name in synapse_names]
-        index = len(self.pointer.edges)
 
         post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
         pre_loc = loc_of_index(pre_rows["comp_index"].to_numpy(), self.pointer.nseg)
@@ -1400,7 +1411,7 @@ class View:
         Used during `self._append_multiple_synapses`.
         """
         # (Potentially) update variables that track meta information about synapses.
-        self.pointer.synapse_names.append(type(synapse_type).__name__)
+        self.pointer.synapse_names.append(synapse_type._name)
         self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
         self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.pointer.synapses.append(synapse_type)

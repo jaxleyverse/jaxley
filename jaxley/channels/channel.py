@@ -5,11 +5,16 @@ import jax.numpy as jnp
 
 
 class Channel:
-    """Channel base class. All channels inherit from this class."""
+    """Channel base class. All channels inherit from this class.
+
+    As in NEURON, a `Channel` is considered a distributed process, which means that its
+    conductances are to be specified in `S/cm2` and its currents are to be specified in
+    `uA/cm2`."""
 
     _name = None
     channel_params = None
     channel_states = None
+    current_name = None
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
@@ -55,10 +60,19 @@ class Channel:
         self, states, dt, v, params
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Return the updated states."""
-        pass
+        raise NotImplementedError
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Given channel states and voltage, return the current through the channel."""
-        pass
+        """Given channel states and voltage, return the current through the channel.
+
+        Args:
+            states: All states of the compartment.
+            v: Voltage of the compartment in mV.
+            params: Parameters of the channel (conductances in `S/cm2`).
+
+        Returns:
+            Current in `uA/cm2`.
+        """
+        raise NotImplementedError

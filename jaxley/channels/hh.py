@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential
+from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 
 class HH(Channel):
@@ -25,6 +25,7 @@ class HH(Channel):
             f"{prefix}_h": 0.2,
             f"{prefix}_n": 0.2,
         }
+        self.current_name = f"i_HH"
 
     def update_states(
         self,
@@ -74,21 +75,21 @@ class HH(Channel):
     @staticmethod
     def m_gate(v):
         alpha = 0.1 * _vtrap(-(v + 40), 10)
-        beta = 4.0 * jnp.exp(-(v + 65) / 18)
+        beta = 4.0 * save_exp(-(v + 65) / 18)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        alpha = 0.07 * jnp.exp(-(v + 65) / 20)
-        beta = 1.0 / (jnp.exp(-(v + 35) / 10) + 1)
+        alpha = 0.07 * save_exp(-(v + 65) / 20)
+        beta = 1.0 / (save_exp(-(v + 35) / 10) + 1)
         return alpha, beta
 
     @staticmethod
     def n_gate(v):
         alpha = 0.01 * _vtrap(-(v + 55), 10)
-        beta = 0.125 * jnp.exp(-(v + 65) / 80)
+        beta = 0.125 * save_exp(-(v + 65) / 80)
         return alpha, beta
 
 
 def _vtrap(x, y):
-    return x / (jnp.exp(x / y) - 1.0)
+    return x / (save_exp(x / y) - 1.0)

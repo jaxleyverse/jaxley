@@ -30,7 +30,7 @@ def test_multiparameter_setting():
     connect(pre, post, IonotropicSynapse())
 
     syn_view = net.IonotropicSynapse
-    syn_params = ["gS", "e_syn"]
+    syn_params = ["IonotropicSynapse_gS", "IonotropicSynapse_e_syn"]
 
     for p in syn_params:
         syn_view.set(p, 0.32)
@@ -111,7 +111,7 @@ def test_set_and_querying_params_two_types(synapse_type):
             post = net.cell(post_ind).branch(0).loc(0.0)
             connect(pre, post, synapse)
 
-    type1_params = list(IonotropicSynapse.synapse_params.keys())
+    type1_params = list(IonotropicSynapse().synapse_params.keys())
     synapse_type_params = list(synapse_type.synapse_params.keys())
 
     default_synapse_type = net.edges[synapse_type_params[0]].to_numpy()[[1, 3]]
