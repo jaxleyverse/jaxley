@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 import jax.numpy as jnp
+
 from jaxley.solver_gate import save_exp
 
 
