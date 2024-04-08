@@ -1321,9 +1321,9 @@ class View:
         """
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name
-        if self._infer_synapse_type_ind(synapse_name)[1]:  # synapse is not known
+        type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
+        if is_new:  # synapse is not known
             self._update_synapse_state_names(synapse_type)
-        type_ind = self._infer_synapse_type_ind(synapse_name)[0]
 
         post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
         pre_loc = loc_of_index(pre_rows["comp_index"].to_numpy(), self.pointer.nseg)
