@@ -69,7 +69,7 @@ class CompartmentView(View):
             view._is_inside = "comp"
             return view
         raise AttributeError(
-            f"'CompartmentView' object has no attribute '{self._is_inside}'."
+            f"'CompartmentView' object has no attribute 'comp' or 'loc'."
         )
 
     def loc(self, loc: float):
