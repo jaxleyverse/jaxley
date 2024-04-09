@@ -1014,11 +1014,16 @@ class Module(ABC):
     def _move(self, x: float, y: float, z: float, view):
         # Need to cast to set because this will return one columnn per compartment,
         # not one column per branch.
+        xyzr_arr = np.array(self.xyzr)
+        if np.isnan(xyzr_arr[:, :, :3]).any():
+            print("Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first.")
+            self.compute_xyz()
         indizes = set(view["branch_index"].to_numpy().tolist())
         for i in indizes:
             self.xyzr[i][:, 0] += x
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
+        self._update_nodes_with_xyz()
 
     def move_to(
         self,
@@ -1078,6 +1083,7 @@ class Module(ABC):
             xyzr_arr[:, :, :3] = new_xyz_expanded
 
             self.xyzr = list(xyzr_arr)
+            self._update_nodes_with_xyz()
 
         else:
             xyzr_arr = np.array(self.xyzr)
@@ -1381,6 +1387,11 @@ class View:
     def shape(self):
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
+    
+    @property
+    def xyzr(self):
+        idxs = self.view.global_comp_index
+        return np.array(self.pointer.xyzr)[idxs]
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
