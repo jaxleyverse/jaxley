@@ -69,7 +69,7 @@ class CompartmentView(View):
             view._has_been_called = True
             return view
         raise AttributeError(
-            f"'CompartmentView' object has no attribute 'comp' or 'loc'."
+            "'CompartmentView' object has no attribute 'comp' or 'loc'."
         )
 
     def loc(self, loc: float):
