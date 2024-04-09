@@ -1016,7 +1016,9 @@ class Module(ABC):
         # not one column per branch.
         xyzr_arr = np.array(self.xyzr)
         if np.isnan(xyzr_arr[:, :, :3]).any():
-            print("Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first.")
+            print(
+                "Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first."
+            )
             self.compute_xyz()
         indizes = set(view["branch_index"].to_numpy().tolist())
         for i in indizes:
@@ -1083,15 +1085,31 @@ class Module(ABC):
             xyzr_arr[:, :, :3] = new_xyz_expanded
 
             self.xyzr = list(xyzr_arr)
-            self._update_nodes_with_xyz()
 
         else:
             xyzr_arr = np.array(self.xyzr)
+            if np.isnan(xyzr_arr[:, :, :3]).any():
+                print(
+                    "Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first."
+                )
+                self.compute_xyz()
+                xyzr_arr = np.array(self.xyzr)
+
+            # Get the branch index(es) of the cell(s) in the module's xyzr to modify
+            # This is necessary when view is a subset of the module's full view
+            full_view = self.show()
+            tup_indices = np.array([full_view.cell_index, full_view.branch_index])
+            full_view_cell_inds = np.unique(tup_indices, axis=1)[0]
+            view_cell_inds = list(set(view.cell_index))
+            branch_inds = np.where(np.isin(full_view_cell_inds, view_cell_inds))[0]
+
             # Compute the distance between the first branch and the x, y, z float input
-            shift_amount = np.array([x, y, z]) - xyzr_arr[0][0, :3]
+            shift_amount = np.array([x, y, z]) - xyzr_arr[branch_inds[0]][0, :3]
             # Shift all branches such that the first branch is at x, y, z
-            xyzr_arr[:, :, :3] += shift_amount
+            xyzr_arr[branch_inds, :, :3] += shift_amount
+
             self.xyzr = list(xyzr_arr)
+        self._update_nodes_with_xyz()
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -1387,7 +1405,7 @@ class View:
     def shape(self):
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
-    
+
     @property
     def xyzr(self):
         idxs = self.view.global_comp_index
