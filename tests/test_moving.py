@@ -137,7 +137,19 @@ def test_move_to_cellview():
     cell.compute_xyz()
     net = jx.Network([cell for _ in range(3)])
 
+    # Test with float input
     net.cell(0).move_to(50.0, 3.0, 40.0)
     assert net.xyzr[0][0, 0] == 50.0
     assert net.xyzr[0][0, 1] == 3.0
     assert net.xyzr[0][0, 2] == 40.0
+
+    # Test with array input
+    net = jx.Network([cell for _ in range(4)])
+    testx = np.array([1.0, 2.0, 3.0])
+    testy = np.array([4.0, 5.0, 6.0])
+    testz = np.array([7.0, 8.0, 9.0])
+    net.cell([0, 1, 2]).move_to(testx, testy, testz)
+    assert net.xyzr[0][0, 0] == 1.0
+    assert net.xyzr[3][0, 1] == 5.0
+    assert net.xyzr[6][0, 2] == 9.0
+    assert net.xyzr[9][0, 0] == 0.0

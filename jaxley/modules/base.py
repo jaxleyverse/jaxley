@@ -1048,6 +1048,14 @@ class Module(ABC):
         self._move_to(x, y, z, self.nodes)
 
     def _move_to(self, x, y, z, view):
+        # Get the branch index(es) of the cell(s) in the module's xyzr to modify
+        # This is necessary when view is a subset of the module's full view
+        full_view = self.show()
+        tup_indices = np.array([full_view.cell_index, full_view.branch_index])
+        full_view_cell_inds = np.unique(tup_indices, axis=1)[0]
+        view_cell_inds = list(set(view.cell_index))
+        branch_inds = np.where(np.isin(full_view_cell_inds, view_cell_inds))[0]
+
         if (
             isinstance(x, np.ndarray)
             and isinstance(y, np.ndarray)
@@ -1057,7 +1065,7 @@ class Module(ABC):
                 x.shape == y.shape == z.shape == (len(view.cell_index.value_counts()),)
             ), "x, y, and z array shapes are not all equal to (number of cells, )."
 
-            xyzr_arr = np.array(self.xyzr)
+            xyzr_arr = np.array(self.xyzr)[branch_inds, :, :]
 
             # Compute the distance between the start and stop of each branch
             branch_lengths = np.subtract(xyzr_arr[:, 1, :3], xyzr_arr[:, 0, :3])
@@ -1081,10 +1089,12 @@ class Module(ABC):
             new_xyz = new_xyz.T[cell_inds]
             new_xyz_expanded = np.stack([new_xyz, new_xyz + branch_lengths], axis=1)
             new_xyz_expanded = new_xyz_expanded + branch_offsets
-
             xyzr_arr[:, :, :3] = new_xyz_expanded
 
-            self.xyzr = list(xyzr_arr)
+            # Insert the moved branches back into the full module xyz array
+            full_xyzr_arr = np.array(self.xyzr)
+            full_xyzr_arr[branch_inds, :, :] = xyzr_arr
+            self.xyzr = list(full_xyzr_arr)
 
         else:
             xyzr_arr = np.array(self.xyzr)
@@ -1094,14 +1104,6 @@ class Module(ABC):
                 )
                 self.compute_xyz()
                 xyzr_arr = np.array(self.xyzr)
-
-            # Get the branch index(es) of the cell(s) in the module's xyzr to modify
-            # This is necessary when view is a subset of the module's full view
-            full_view = self.show()
-            tup_indices = np.array([full_view.cell_index, full_view.branch_index])
-            full_view_cell_inds = np.unique(tup_indices, axis=1)[0]
-            view_cell_inds = list(set(view.cell_index))
-            branch_inds = np.where(np.isin(full_view_cell_inds, view_cell_inds))[0]
 
             # Compute the distance between the first branch and the x, y, z float input
             shift_amount = np.array([x, y, z]) - xyzr_arr[branch_inds[0]][0, :3]
