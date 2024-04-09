@@ -128,3 +128,16 @@ def test_move_to_arrays():
     assert net.xyzr[3][0, 0] == 20.0
     assert net.xyzr[3][0, 2] == 2.0
     assert net.xyzr[6][0, 1] == 25.0
+
+
+def test_move_to_cellview():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=2)
+    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
+    cell.compute_xyz()
+    net = jx.Network([cell for _ in range(3)])
+
+    net.cell(0).move_to(50.0, 3.0, 40.0)
+    assert net.xyzr[0][0, 0] == 50.0
+    assert net.xyzr[0][0, 1] == 3.0
+    assert net.xyzr[0][0, 2] == 40.0
