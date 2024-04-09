@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import jax
+import pytest
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -227,3 +228,18 @@ def test_child_view():
     assert np.all(
         cell._childview(0)._childview(0).show() == cell.branch(0).comp(0).show()
     )
+
+
+def test_comp_indexing_exception_handling():
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(4)])
+
+    branch.comp(0)
+    with pytest.raises(AttributeError):
+        branch.comp(0).comp(0)
+    with pytest.raises(AttributeError):
+        branch.comp(0).loc(0.0)
+    with pytest.raises(AttributeError):
+        branch.loc(0.0).comp(0)
+    with pytest.raises(AttributeError):
+        branch.loc(0.0).loc(0.0)
