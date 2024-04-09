@@ -64,9 +64,9 @@ class CompartmentView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
-        if not hasattr(self, "_is_inside"):
+        if not hasattr(self, "_has_been_called"):
             view = super().adjust_view("comp_index", index)
-            view._is_inside = "comp"
+            view._has_been_called = True
             return view
         raise AttributeError(
             f"'CompartmentView' object has no attribute 'comp' or 'loc'."
@@ -79,7 +79,7 @@ class CompartmentView(View):
             ), "Compartments must be indexed by a continuous value between 0 and 1."
         index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
         view = self(index)
-        view._is_inside = "loc"
+        view._has_been_called = True
         return view
 
     def distance(self, endpoint: "CompartmentView"):
