@@ -1041,7 +1041,7 @@ class Module(ABC):
         the new float location.
 
         If x, y, and z are arrays, then they must each have a length equal to the number
-        of cells in the network. Then the first compartment of the first branch of each
+        of cells being moved. Then the first compartment of the first branch of each
         cell is moved to the specified location. This avoids the need to move cells in
         loops.
         """
@@ -1407,11 +1407,6 @@ class View:
     def shape(self):
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
-
-    @property
-    def xyzr(self):
-        idxs = self.view.global_comp_index
-        return np.array(self.pointer.xyzr)[idxs]
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
