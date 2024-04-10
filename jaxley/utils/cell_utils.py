@@ -242,3 +242,27 @@ def convert_point_process_to_distributed(
     area = 2 * pi * radius * length
     current /= area  # nA / um^2
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
+
+
+def get_local_indices(view):
+        """Computes local from global indices.
+
+        #cell_index, branch_index, comp_index
+        0, 0, 0     -->     0, 0, 0 # 1st compartment of 1st branch of 1st cell
+        0, 0, 1     -->     0, 0, 1 # 2nd compartment of 1st branch of 1st cell
+        0, 1, 2     -->     0, 1, 0 # 1st compartment of 2nd branch of 1st cell
+        0, 1, 3     -->     0, 1, 1 # 2nd compartment of 2nd branch of 1st cell
+        1, 2, 4     -->     1, 0, 0 # 1st compartment of 1st branch of 2nd cell
+        1, 2, 5     -->     1, 0, 1 # 2nd compartment of 1st branch of 2nd cell
+        1, 3, 6     -->     1, 1, 0 # 1st compartment of 2nd branch of 2nd cell
+        1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
+        """
+
+        def reindex_a_by_b(df, a, b):
+            df.loc[:, a] = df.groupby(b)[a].rank(method="dense").astype(int) - 1
+            return df
+
+        idcs = view[["cell_index", "branch_index", "comp_index"]]
+        idcs = reindex_a_by_b(idcs, "branch_index", "cell_index")
+        idcs = reindex_a_by_b(idcs, "comp_index", ["cell_index", "branch_index"])
+        return idcs

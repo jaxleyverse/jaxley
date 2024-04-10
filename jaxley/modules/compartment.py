@@ -6,7 +6,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
-from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
+from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index, get_local_indices
 
 
 class Compartment(Module):
@@ -45,6 +45,10 @@ class Compartment(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
+    @property
+    def shape(self):
+        return ()
+
     def init_conds(self, params):
         cond_params = {
             "branch_conds_fwd": jnp.asarray([]),
@@ -71,6 +75,11 @@ class CompartmentView(View):
         raise AttributeError(
             "'CompartmentView' object has no attribute 'comp' or 'loc'."
         )
+
+    @property
+    def shape(self):
+        local_idcs = get_local_indices(self.view)
+        return tuple(local_idcs.nunique())[2:]
 
     def loc(self, loc: float):
         if loc != "all":

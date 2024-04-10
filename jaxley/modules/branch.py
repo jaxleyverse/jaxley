@@ -7,7 +7,7 @@ import pandas as pd
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import compute_coupling_cond
+from jaxley.utils.cell_utils import compute_coupling_cond, get_local_indices
 
 
 class Branch(Module):
@@ -82,6 +82,11 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
+    @property
+    def shape(self):
+        local_idcs = get_local_indices(self.nodes)
+        return tuple(local_idcs.nunique())[2:]
+
     def init_conds(self, params):
         conds = self.init_branch_conds(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
@@ -134,7 +139,7 @@ class BranchView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
-        local_idcs = self._get_local_indices()
+        local_idcs = get_local_indices(self.view)
         self.view[local_idcs.columns] = (
             local_idcs  # set indexes locally. enables net[0:2,0:2]
         )
@@ -146,3 +151,8 @@ class BranchView(View):
         assert key in ["comp", "loc"]
         compview = CompartmentView(self.pointer, self.view)
         return compview if key == "comp" else compview.loc
+
+    @property
+    def shape(self):
+        local_idcs = get_local_indices(self.view)
+        return tuple(local_idcs.nunique())[1:]

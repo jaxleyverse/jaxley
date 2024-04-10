@@ -16,6 +16,7 @@ from jaxley.utils.cell_utils import (
     compute_coupling_cond,
     compute_levels,
     loc_of_index,
+    get_local_indices
 )
 from jaxley.utils.swc import swc_to_jaxley
 
@@ -114,6 +115,11 @@ class Cell(Module):
             return GroupView(self, view)
         else:
             raise KeyError(f"Key {key} not recognized.")
+
+    @property
+    def shape(self):
+        local_idcs = get_local_indices(self.nodes)
+        return tuple(local_idcs.nunique())[1:]
 
     def init_morph(self):
         """Initialize morphology."""
@@ -236,7 +242,7 @@ class CellView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: float):
-        local_idcs = self._get_local_indices()
+        local_idcs = get_local_indices(self.view)
         self.view[local_idcs.columns] = (
             local_idcs  # set indexes locally. enables net[0:2,0:2]
         )
@@ -248,6 +254,11 @@ class CellView(View):
     def __getattr__(self, key):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
+
+    @property
+    def shape(self):
+        local_idcs = get_local_indices(self.view)
+        return tuple(local_idcs.nunique())
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
