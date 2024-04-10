@@ -1,4 +1,11 @@
-from jaxley.connection import Connection, Connectivity, ConnectivityBuilder
+from jaxley.connection import (
+    Connection,
+    Connectivity,
+    connect,
+    connectivity_matrix_connect,
+    fully_connect,
+    sparse_connect,
+)
 from jaxley.integrate import integrate
 from jaxley.modules import *
 from jaxley.optimize import ParamTransform

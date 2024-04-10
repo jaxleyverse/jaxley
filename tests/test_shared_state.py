@@ -7,6 +7,7 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+from jaxley_mech.channels.l5pc import CaHVA, CaPump
 
 import jaxley as jx
 from jaxley.channels import HH, Channel, K, Na
@@ -77,3 +78,15 @@ def test_shared_state():
         comp.stimulate(current)
 
         voltages.append(jx.integrate(comp))
+
+
+def test_current_as_state_multicompartment():
+    """#323 had discovered a bug when currents are only used in a few compartments."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 2)
+
+    branch.comp(0).insert(CaHVA())  # defines current `i_Ca`
+    branch.comp(0).insert(CaPump())  # uses `states["i_Ca"]`
+
+    branch.comp(0).record()
+    _ = jx.integrate(branch, t_max=1.0)

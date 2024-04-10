@@ -14,6 +14,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -207,13 +208,13 @@ def test_complex_net():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.fully_connect(post, IonotropicSynapse())
-    pre.fully_connect(post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse())
+    fully_connect(pre, post, TestSynapse())
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.fully_connect(post, IonotropicSynapse())
-    pre.fully_connect(post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse())
+    fully_connect(pre, post, TestSynapse())
 
     area = 2 * pi * 10.0 * 1.0
     point_process_to_dist_factor = 100_000.0 / area
@@ -234,24 +235,24 @@ def test_complex_net():
 
     voltages = jx.integrate(net)
 
-    voltages_030424 = jnp.asarray(
+    voltages_050424 = jnp.asarray(
         [
             [
                 -70.0,
-                -62.79934311,
-                -59.50451699,
-                -56.20728455,
-                -47.58470731,
-                24.57972201,
-                -29.59107638,
-                -71.54330661,
-                -71.72027779,
-                -70.19820291,
-                -68.56204818,
+                -64.50265487,
+                -61.27489686,
+                -58.08903187,
+                -50.76777752,
+                30.19190044,
+                -25.41085503,
+                -74.20435222,
+                -75.49758455,
+                -74.60925039,
+                -73.41264165,
             ]
         ]
     )
 
-    max_error = np.max(np.abs(voltages[:, ::40] - voltages_030424))
+    max_error = np.max(np.abs(voltages[:, ::40] - voltages_050424))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

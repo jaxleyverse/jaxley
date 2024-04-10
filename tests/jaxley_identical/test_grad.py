@@ -15,6 +15,7 @@ from jax import value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connection import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -29,13 +30,13 @@ def test_network_grad():
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    pre.fully_connect(post, IonotropicSynapse())
-    pre.fully_connect(post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse())
+    fully_connect(pre, post, TestSynapse())
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    pre.fully_connect(post, IonotropicSynapse())
-    pre.fully_connect(post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse())
+    fully_connect(pre, post, TestSynapse())
 
     area = 2 * pi * 10.0 * 1.0
     point_process_to_dist_factor = 100_000.0 / area
@@ -69,37 +70,37 @@ def test_network_grad():
     grad_fn = value_and_grad(simulate)
     v, g = grad_fn(params)
 
-    value_230224 = jnp.asarray(-580.79271734)
-    max_error = np.max(np.abs(v - value_230224))
+    value_080424 = jnp.asarray(-595.26727325)
+    max_error = np.max(np.abs(v - value_080424))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
-    grad_230224 = [
-        {"HH_gNa": jnp.asarray([-1330.69128594])},
-        {"HH_gK": jnp.asarray([2.4996021, 13.61190008, 61.16684584])},
+    grad_080424 = [
+        {"HH_gNa": jnp.asarray([-1535.22449953])},
+        {"HH_gK": jnp.asarray([35.48478889, 14.32112752, 121.63791342])},
         {
             "HH_gLeak": jnp.asarray(
                 [
-                    -121.305113,
-                    -606.555168,
-                    -183.932419,
-                    -465.945968,
-                    -5668.16363,
-                    -248.320435,
-                    -250947.475,
+                    -1455.10679072,
+                    -653.562989,
+                    -295.76687787,
+                    -379.81105237,
+                    -10324.49675834,
+                    -1344.91808099,
+                    -277680.15914084,
                 ]
             )
         },
         {
-            "IonotropicSynapse_gS": jnp.asarray([-85.83902596])
+            "IonotropicSynapse_gS": jnp.asarray([-91.88927175883443])
             * point_process_to_dist_factor
         },
         {
-            "TestSynapse_gC": jnp.asarray([-0.00831085, -0.00502889])
+            "TestSynapse_gC": jnp.asarray([-0.05350404, -0.11460676])
             * point_process_to_dist_factor
         },
     ]
 
-    for true_g, new_g in zip(grad_230224, g):
+    for true_g, new_g in zip(grad_080424, g):
         for key in true_g:
             max_error = np.max(np.abs(true_g[key] - new_g[key]))
             tolerance = 1e-3  # Leak cond has a huge gradient...

@@ -64,7 +64,13 @@ class CompartmentView(View):
         super().__init__(pointer, view)
 
     def __call__(self, index: int):
-        return super().adjust_view("comp_index", index)
+        if not hasattr(self, "_has_been_called"):
+            view = super().adjust_view("comp_index", index)
+            view._has_been_called = True
+            return view
+        raise AttributeError(
+            "'CompartmentView' object has no attribute 'comp' or 'loc'."
+        )
 
     def loc(self, loc: float):
         if loc != "all":
@@ -72,22 +78,9 @@ class CompartmentView(View):
                 loc >= 0.0 and loc <= 1.0
             ), "Compartments must be indexed by a continuous value between 0 and 1."
         index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
-        return self(index)
-
-    def connect(self, post: "CompartmentView", synapse_type):
-        """Connect two compartments with a chemical synapse.
-
-        High-level strategy:
-
-        We need to first check if the network already has a type of this synapse, else
-        we need to register it as a new synapse in a bunch of dictionaries which track
-        synapse parameters, state and meta information.
-
-        Next, we register the new connection in the synapse dataframe (`.edges`).
-        Then, we update synapse parameter and state arrays with the new connection.
-        Finally, we update synapse meta information.
-        """
-        self._append_multiple_synapses(self.view, post.view, synapse_type)
+        view = self(index)
+        view._has_been_called = True
+        return view
 
     def distance(self, endpoint: "CompartmentView"):
         """Return the direct distance between two compartments.
