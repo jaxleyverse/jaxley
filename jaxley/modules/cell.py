@@ -266,9 +266,22 @@ def read_swc(
     nseg: int,
     max_branch_len: float = 300.0,
     min_radius: Optional[float] = None,
+    assign_groups: bool = False,
 ):
-    """Reads SWC file into a `jx.Cell`."""
-    parents, pathlengths, radius_fns, _, coords_of_branches = swc_to_jaxley(
+    """Reads SWC file into a `jx.Cell`.
+
+    Args:
+        fname: Path to the swc file.
+        nseg: The number of compartments per branch.
+        max_branch_len: If a branch is longer than this value it is split into two
+            branches.
+        min_radius: If the radius of a reconstruction is below this value it is clipped.
+        assign_groups: If True, then the identity of reconstructed points in the SWC
+            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
+            `apical`, `custom`. See here:
+            http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    """
+    parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None
     )
     nbranches = len(parents)
@@ -276,8 +289,8 @@ def read_swc(
     non_split = 1 / nseg
     range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
 
-    comp = Compartment().initialize()
-    branch = Branch([comp for _ in range(nseg)]).initialize()
+    comp = Compartment()
+    branch = Branch([comp for _ in range(nseg)])
     cell = Cell(
         [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
     )
@@ -295,4 +308,21 @@ def read_swc(
 
     cell.set("length", lengths_each)
     cell.set("radius", radiuses_each)
+
+    # Description of SWC file format:
+    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    ind_name_lookup = {
+        0: "undefined",
+        1: "soma",
+        2: "axon",
+        3: "basal",
+        4: "apical",
+        5: "custom",
+    }
+    types = np.asarray(types).astype(int)
+    if assign_groups:
+        for type_ind, name in ind_name_lookup.items():
+            indices = np.where(types == type_ind)[0].tolist()
+            if len(indices) > 0:
+                cell.branch(indices).add_to_group(name)
     return cell
