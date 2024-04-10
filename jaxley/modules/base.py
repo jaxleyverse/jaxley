@@ -1055,14 +1055,9 @@ class Module(ABC):
 
         ```
         network.shape = (num_cells, num_branches, num_compartments)
-        cell.shape = (num_branches, num_compartments)
-        branch.shape = (num_compartments,)
+        cell.shape = (1, num_branches, num_compartments)
+        branch.shape = (1, 1, num_compartments,)
         ```"""
-        mod_name = self.__class__.__name__.lower()
-        if "comp" in mod_name:
-            return (1,)
-        elif "branch" in mod_name:
-            return self[:].shape[1:]
         return self[:].shape
 
     def _childview(self, index: Union[int, str, list, range, slice]):
@@ -1087,8 +1082,7 @@ class Module(ABC):
         return self._childview(index)
 
     def __iter__(self):
-        for i in range(self.shape[0]):
-            yield self[i]
+        raise NotImplementedError
 
     def _local_inds_to_global(
         self, cell_inds: np.ndarray, branch_inds: np.ndarray, comp_inds: np.ndarray
@@ -1293,8 +1287,7 @@ class View:
         return self._childview(index)
 
     def __iter__(self):
-        for i in range(self.shape[0]):
-            yield self[i]
+        raise NotImplementedError
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.

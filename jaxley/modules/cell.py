@@ -115,6 +115,10 @@ class Cell(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
+    def __iter__(self):
+        for i in range(self.shape[1]):
+            yield self[i]
+
     def init_morph(self):
         """Initialize morphology."""
         parents = self.comb_parents
@@ -248,6 +252,10 @@ class CellView(View):
     def __getattr__(self, key):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
+    
+    def __iter__(self):
+        for i in range(self.shape[1]):
+            yield self[i]
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.

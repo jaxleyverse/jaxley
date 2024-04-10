@@ -82,6 +82,10 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
+    def __iter__(self):
+        for i in range(self.shape[2]):
+            yield self[i]
+
     def init_conds(self, params):
         conds = self.init_branch_conds(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
@@ -141,6 +145,10 @@ class BranchView(View):
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
         return new_view
+
+    def __iter__(self):
+        for i in range(self.shape[2]):
+            yield self[i]
 
     def __getattr__(self, key):
         assert key in ["comp", "loc"]

@@ -111,6 +111,10 @@ class Network(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
+    def __iter__(self):
+        for i in range(self.shape[0]):
+            yield self[i]
+
     def init_morph(self):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
