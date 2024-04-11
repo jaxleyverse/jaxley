@@ -1,10 +1,8 @@
-from typing import List, Tuple
+from typing import Tuple
 
 import jax.numpy as jnp
 import numpy as np
 from jax.lax import ScatterDimensionNumbers, scatter_add
-
-from jaxley.utils.cell_utils import index_of_loc
 
 
 def gather_synapes(
