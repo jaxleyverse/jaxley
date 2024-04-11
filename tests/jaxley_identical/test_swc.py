@@ -23,7 +23,8 @@ def test_swc_cell():
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../morph.swc")
-    cell = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
+    cell = jx.read_swc(fname, nseg=2, max_branch_len=300.0, assign_groups=True)
+    _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
