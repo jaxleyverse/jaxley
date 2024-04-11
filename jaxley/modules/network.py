@@ -31,13 +31,11 @@ class Network(Module):
     def __init__(
         self,
         cells: List[Cell],
-        connectivities: List[Connectivity] = [],
     ):
         """Initialize network of cells and synapses.
 
         Args:
             cells: _description_
-            connectivities: _description_
         """
         super().__init__()
         for cell in cells:
@@ -46,20 +44,12 @@ class Network(Module):
         self.cells = cells
         self.nseg = cells[0].nseg
 
-        self.synapses = [connectivity.synapse_type for connectivity in connectivities]
+        self.synapses = []
 
         # TODO(@michaeldeistler): should we also track this for channels?
-        self.synapse_names = [c.synapse_type._name for c in connectivities]
-        self.synapse_param_names = list(
-            chain.from_iterable(
-                [list(c.synapse_type.synapse_params.keys()) for c in connectivities]
-            )
-        )
-        self.synapse_state_names = list(
-            chain.from_iterable(
-                [list(c.synapse_type.synapse_states.keys()) for c in connectivities]
-            )
-        )
+        self.synapse_names = []
+        self.synapse_param_names = []
+        self.synapse_state_names = []
 
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
         # branch, apart from those branches which do not have a parent (i.e.
@@ -69,7 +59,7 @@ class Network(Module):
         self.branch_edges: Optional[pd.DataFrame] = None
 
         self.initialize()
-        self.init_syns(connectivities)
+        self.init_syns([])
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self._append_params_and_states(self.network_params, self.network_states)
