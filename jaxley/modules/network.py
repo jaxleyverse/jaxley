@@ -1,7 +1,6 @@
 import itertools
 from copy import deepcopy
-from itertools import chain
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import networkx as nx
