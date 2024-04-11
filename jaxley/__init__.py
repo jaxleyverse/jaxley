@@ -1,5 +1,4 @@
 from jaxley.connection import (
-    Connection,
     connect,
     connectivity_matrix_connect,
     fully_connect,

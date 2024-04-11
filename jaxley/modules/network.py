@@ -18,7 +18,7 @@ from jaxley.utils.cell_utils import (
     flip_comp_indices,
     merge_cells,
 )
-from jaxley.utils.syn_utils import gather_synapes, prepare_syn
+from jaxley.utils.syn_utils import gather_synapes
 
 
 class Network(Module):
@@ -180,9 +180,7 @@ class Network(Module):
         pre_cell_inds = []
         post_cell_inds = []
         for i, connectivity in enumerate(connectivities):
-            pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = prepare_syn(
-                connectivity.conns, self.nseg
-            )
+            pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = jnp.array([]), jnp.array([]), jnp.array([]), jnp.array([])
             # Global compartment indizes.
             global_pre_comp_inds = (
                 self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds

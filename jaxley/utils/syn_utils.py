@@ -39,22 +39,3 @@ def gather_synapes(
         dnums,
     )
     return incoming_currents_voltages, incoming_currents_contant
-
-
-def prepare_syn(
-    conns: List["jx.Connection"], nseg_per_branch: int
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Prepare synapses by computing the pre and post compartment within each cell."""
-    pre_syn_inds = [
-        index_of_loc(c.pre_branch_ind, c.pre_loc, nseg_per_branch) for c in conns
-    ]
-    pre_syn_inds = jnp.asarray(pre_syn_inds)
-    pre_syn_cell_inds = jnp.asarray([c.pre_cell_ind for c in conns])
-
-    post_syn_inds = [
-        index_of_loc(c.post_branch_ind, c.post_loc, nseg_per_branch) for c in conns
-    ]
-    post_syn_inds = jnp.asarray(post_syn_inds)
-    post_syn_cell_inds = jnp.asarray([c.post_cell_ind for c in conns])
-
-    return pre_syn_cell_inds, pre_syn_inds, post_syn_cell_inds, post_syn_inds
