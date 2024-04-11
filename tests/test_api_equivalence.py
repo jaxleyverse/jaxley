@@ -52,13 +52,17 @@ def test_api_equivalence_synapses():
     cell1 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
     cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
 
-    conns = [
-        jx.Connectivity(
-            IonotropicSynapse(),
-            [jx.Connection(0, 0, 1.0, 1, 4, 1.0), jx.Connection(1, 1, 0.8, 0, 4, 0.1)],
-        )
-    ]
-    net1 = jx.Network([cell1, cell2], conns)
+    net1 = jx.Network([cell1, cell2])
+    connect(
+        net1.cell(0).branch(0).loc(1.0),
+        net1.cell(1).branch(4).loc(1.0),
+        IonotropicSynapse(),
+    )
+    connect(
+        net1.cell(1).branch(1).loc(0.8),
+        net1.cell(0).branch(4).loc(0.1),
+        IonotropicSynapse(),
+    )
 
     net2 = jx.Network([cell1, cell2])
     pre = net2.cell(0).branch(0).loc(1.0)

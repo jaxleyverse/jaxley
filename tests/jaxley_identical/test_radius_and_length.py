@@ -1,5 +1,7 @@
 from jax import config
 
+from jaxley.connection import connect
+
 config.update("jax_enable_x64", True)
 config.update("jax_platform_name", "cpu")
 
@@ -155,8 +157,8 @@ def test_radius_and_length_net():
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     num_branches = len(parents)
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     cell1 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
     cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
@@ -174,10 +176,12 @@ def test_radius_and_length_net():
         cell2.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
         cell2.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
-    connectivities = [
-        jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
-    ]
-    network = jx.Network([cell1, cell2], connectivities)
+    network = jx.Network([cell1, cell2])
+    connect(
+        network.cell(0).branch(0).loc(0.0),
+        network.cell(1).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
     network.insert(HH())
 
     # first cell, 0-eth branch, 0-st compartment because loc=0.0

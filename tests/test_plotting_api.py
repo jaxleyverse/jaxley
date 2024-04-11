@@ -2,6 +2,8 @@ import os
 
 import jax
 
+from jaxley.connection import connect
+
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
@@ -36,13 +38,17 @@ def test_network():
     cell2 = jx.read_swc(fname, nseg=4)
     cell3 = jx.read_swc(fname, nseg=4)
 
-    conns = [
-        jx.Connectivity(
-            IonotropicSynapse(),
-            [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 2, 0, 0.0)],
-        )
-    ]
-    net = jx.Network([cell1, cell2, cell3], conns)
+    net = jx.Network([cell1, cell2, cell3])
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(2).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
 
     # Plot 1.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -75,13 +81,17 @@ def test_vis_networks_built_from_scartch():
     branch = jx.Branch(comp, 4)
     cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
 
-    conns = [
-        jx.Connectivity(
-            IonotropicSynapse(),
-            [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 1, 2, 0.0)],
-        )
-    ]
-    net = jx.Network([cell, cell], conns)
+    net = jx.Network([cell, cell])
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(2).loc(0.0),
+        IonotropicSynapse(),
+    )
     net.compute_xyz()
 
     # Plot 1.
@@ -113,14 +123,17 @@ def test_mixed_network():
     branch = jx.Branch(comp, 4)
     cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
 
-    conns = [
-        jx.Connectivity(
-            IonotropicSynapse(),
-            [jx.Connection(0, 0, 0.0, 1, 0, 0.0), jx.Connection(0, 0, 0.0, 1, 1, 0.0)],
-        )
-    ]
-
-    net = jx.Network([cell1, cell2], conns)
+    net = jx.Network([cell1, cell2])
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(1).loc(0.0),
+        IonotropicSynapse(),
+    )
 
     net.compute_xyz()
     net.cell(0).move(0, 800)

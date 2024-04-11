@@ -1,5 +1,7 @@
 from jax import config
 
+from jaxley.connection import connect
+
 config.update("jax_enable_x64", True)
 config.update("jax_platform_name", "cpu")
 
@@ -63,10 +65,12 @@ def test_swc_net():
     cell1 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
     cell2 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
 
-    connectivities = [
-        jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
-    ]
-    network = jx.Network([cell1, cell2], connectivities)
+    network = jx.Network([cell1, cell2])
+    connect(
+        network.cell(0).branch(0).loc(0.0),
+        network.cell(1).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
     network.insert(HH())
 
     # first cell, 0-eth branch, 1-st compartment because loc=0.0 -> comp = nseg-1 = 1
