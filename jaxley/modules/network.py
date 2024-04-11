@@ -43,22 +43,8 @@ class Network(Module):
         self.cells = cells
         self.nseg = cells[0].nseg
 
-        self.synapses = []
-
-        # TODO(@michaeldeistler): should we also track this for channels?
-        self.synapse_names = []
-        self.synapse_param_names = []
-        self.synapse_state_names = []
-
-        # Two columns: `parent_branch_index` and `child_branch_index`. One row per
-        # branch, apart from those branches which do not have a parent (i.e.
-        # -1 in parents). For every branch, tracks the global index of that branch
-        # (`child_branch_index`) and the global index of its parent
-        # (`parent_branch_index`). Needed at `init_syns()`.
-        self.branch_edges: Optional[pd.DataFrame] = None
-
         self.initialize()
-        self.init_syns([])
+        self.init_syns()
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self._append_params_and_states(self.network_params, self.network_states)
@@ -168,90 +154,25 @@ class Network(Module):
 
         return cond_params
 
-    def init_syns(self, connectivities):
-        global_pre_comp_inds = []
-        global_post_comp_inds = []
-        global_pre_branch_inds = []
-        global_post_branch_inds = []
-        pre_locs = []
-        post_locs = []
-        pre_branch_inds = []
-        post_branch_inds = []
-        pre_cell_inds = []
-        post_cell_inds = []
-        for i, connectivity in enumerate(connectivities):
-            pre_cell_inds_, pre_inds, post_cell_inds_, post_inds = jnp.array([]), jnp.array([]), jnp.array([]), jnp.array([])
-            # Global compartment indizes.
-            global_pre_comp_inds = (
-                self.cumsum_nbranches[pre_cell_inds_] * self.nseg + pre_inds
-            )
-            global_post_comp_inds = (
-                self.cumsum_nbranches[post_cell_inds_] * self.nseg + post_inds
-            )
-            global_pre_branch_inds = [
-                self.cumsum_nbranches[c.pre_cell_ind] + c.pre_branch_ind
-                for c in connectivity.conns
-            ]
-            global_post_branch_inds = [
-                self.cumsum_nbranches[c.post_cell_ind] + c.post_branch_ind
-                for c in connectivity.conns
-            ]
-            # Local compartment inds.
-            pre_locs = np.asarray([c.pre_loc for c in connectivity.conns])
-            post_locs = np.asarray([c.post_loc for c in connectivity.conns])
-            # Local branch inds.
-            pre_branch_inds = np.asarray([c.pre_branch_ind for c in connectivity.conns])
-            post_branch_inds = np.asarray(
-                [c.post_branch_ind for c in connectivity.conns]
-            )
-            pre_cell_inds = pre_cell_inds_
-            post_cell_inds = post_cell_inds_
+    def init_syns(self):
+        self.synapses = []
 
-            self.edges = pd.concat(
-                [
-                    self.edges,
-                    pd.DataFrame(
-                        dict(
-                            pre_locs=pre_locs,
-                            pre_branch_index=pre_branch_inds,
-                            pre_cell_index=pre_cell_inds,
-                            post_locs=post_locs,
-                            post_branch_index=post_branch_inds,
-                            post_cell_index=post_cell_inds,
-                            type=connectivity.synapse_type._name,
-                            type_ind=i,
-                            global_pre_comp_index=global_pre_comp_inds,
-                            global_post_comp_index=global_post_comp_inds,
-                            global_pre_branch_index=global_pre_branch_inds,
-                            global_post_branch_index=global_post_branch_inds,
-                        )
-                    ),
-                ],
-                ignore_index=True,
-            )
+        # TODO(@michaeldeistler): should we also track this for channels?
+        self.synapse_names = []
+        self.synapse_param_names = []
+        self.synapse_state_names = []
 
-        # Add parameters and states to the `.edges` table.
-        index = 0
-        for i, connectivity in enumerate(connectivities):
-            for key in connectivity.synapse_type.synapse_params:
-                param_val = connectivity.synapse_type.synapse_params[key]
-                indices = np.arange(index, index + len(connectivity.conns))
-                self.edges.loc[indices, key] = param_val
-
-            for key in connectivity.synapse_type.synapse_states:
-                state_val = connectivity.synapse_type.synapse_states[key]
-                indices = np.arange(index, index + len(connectivity.conns))
-                self.edges.loc[indices, key] = state_val
-
-            index += len(connectivity.conns)
-
+        # Two columns: `parent_branch_index` and `child_branch_index`. One row per
+        # branch, apart from those branches which do not have a parent (i.e.
+        # -1 in parents). For every branch, tracks the global index of that branch
+        # (`child_branch_index`) and the global index of its parent
+        # (`parent_branch_index`).
         self.branch_edges = pd.DataFrame(
             dict(
                 parent_branch_index=self.comb_parents[self.comb_parents != -1],
                 child_branch_index=np.where(self.comb_parents != -1)[0],
             )
         )
-
         self.initialized_syns = True
 
     def _step_synapse(
