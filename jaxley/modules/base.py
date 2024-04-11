@@ -471,6 +471,10 @@ class Module(ABC):
                 inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
             if key in list(params.keys()):  # Only parameters, not initial states.
+                # `inds` is of shape `(num_params, num_comps_per_param)`.
+                # `set_param` is of shape `(num_params,)`
+                # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
+                # `.set()` to work. This is done with `[:, None]`.
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
