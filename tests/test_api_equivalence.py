@@ -21,15 +21,13 @@ def test_api_equivalence_morphology():
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
-    comp = jx.Compartment().initialize()
+    comp = jx.Compartment()
 
-    branch1 = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
-    cell1 = jx.Cell(
-        [branch1 for _ in range(num_branches)], parents=parents
-    ).initialize()
+    branch1 = jx.Branch([comp for _ in range(nseg_per_branch)])
+    cell1 = jx.Cell([branch1 for _ in range(num_branches)], parents=parents)
 
-    branch2 = jx.Branch(comp, nseg=nseg_per_branch).initialize()
-    cell2 = jx.Cell(branch2, parents=parents).initialize()
+    branch2 = jx.Branch(comp, nseg=nseg_per_branch)
+    cell2 = jx.Cell(branch2, parents=parents)
 
     cell1.branch(2).loc(0.4).record()
     cell2.branch(2).loc(0.4).record()

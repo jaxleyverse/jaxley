@@ -23,7 +23,7 @@ def test_radius_and_length_compartment():
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
-    comp = jx.Compartment().initialize()
+    comp = jx.Compartment()
 
     np.random.seed(1)
     comp.set("length", 5 * np.random.rand(1))
@@ -63,8 +63,8 @@ def test_radius_and_length_branch():
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
 
     np.random.seed(1)
     branch.set("length", np.flip(5 * np.random.rand(2)))
@@ -108,8 +108,8 @@ def test_radius_and_length_cell():
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     num_branches = len(parents)
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
     np.random.seed(1)

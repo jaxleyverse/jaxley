@@ -35,7 +35,7 @@ def test_similarity():
 
 
 def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
-    comp = jx.Compartment().initialize()
+    comp = jx.Compartment()
     comp.insert(HH())
 
     comp.set("length", 10.0)

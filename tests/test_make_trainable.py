@@ -21,9 +21,9 @@ def test_make_trainable():
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch(comp, nseg_per_branch).initialize()
-    cell = jx.Cell(branch, parents=parents).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg_per_branch)
+    cell = jx.Cell(branch, parents=parents)
     cell.insert(HH())
 
     cell.branch(0).loc(0.0).set("length", 12.0)
@@ -47,9 +47,9 @@ def test_delete_trainables():
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
     parents = jnp.asarray(parents)
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch(comp, nseg_per_branch).initialize()
-    cell = jx.Cell(branch, parents=parents).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg_per_branch)
+    cell = jx.Cell(branch, parents=parents)
 
     cell.branch(0).loc(0.0).make_trainable("length", 12.0)
     assert cell.num_trainable_params == 1
