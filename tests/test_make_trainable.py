@@ -398,3 +398,24 @@ def test_data_set_vs_make_trainable_network():
     voltages1 = jx.integrate(net1, params=params1)
     voltages2 = jx.integrate(net2, param_state=pstate)
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
+
+
+def test_make_states_trainable_api():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell = jx.Cell(branch, [-1, 0])
+    net = jx.Network([cell for _ in range(2)])
+    net.insert(HH())
+    net.cell(0).branch(0).comp(0).record()
+
+    net.cell("all").make_trainable("v")
+    net.make_trainable("HH_h")
+    net.cell(0).branch("all").make_trainable("HH_m")
+    net.cell(0).branch("all").comp("all").make_trainable("HH_n")
+
+    def simulate(params):
+        return jx.integrate(net, params=params, t_max=10.0)
+
+    parameters = net.get_parameters()
+    v = simulate(parameters)
+    assert np.invert(np.any(np.isnan(v))), "Found NaN in voltage."
