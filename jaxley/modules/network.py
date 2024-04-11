@@ -18,6 +18,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     flip_comp_indices,
     merge_cells,
+    get_local_indices,
 )
 from jaxley.utils.syn_utils import gather_synapes, prepare_syn
 
@@ -111,6 +112,11 @@ class Network(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
+    @property
+    def shape(self):
+        local_idcs = get_local_indices(self.nodes)
+        return tuple(local_idcs.nunique())
+    
     def init_morph(self):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)

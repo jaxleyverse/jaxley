@@ -22,6 +22,7 @@ from jaxley.utils.cell_utils import (
     flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
+    get_local_indices
 )
 from jaxley.utils.plot_utils import plot_morph
 
@@ -1249,29 +1250,6 @@ class View:
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
-    def _get_local_indices(self):
-        """Computes local from global indices.
-
-        #cell_index, branch_index, comp_index
-        0, 0, 0     -->     0, 0, 0 # 1st compartment of 1st branch of 1st cell
-        0, 0, 1     -->     0, 0, 1 # 2nd compartment of 1st branch of 1st cell
-        0, 1, 2     -->     0, 1, 0 # 1st compartment of 2nd branch of 1st cell
-        0, 1, 3     -->     0, 1, 1 # 2nd compartment of 2nd branch of 1st cell
-        1, 2, 4     -->     1, 0, 0 # 1st compartment of 1st branch of 2nd cell
-        1, 2, 5     -->     1, 0, 1 # 2nd compartment of 1st branch of 2nd cell
-        1, 3, 6     -->     1, 1, 0 # 1st compartment of 2nd branch of 2nd cell
-        1, 3, 7     -->     1, 1, 1 # 2nd compartment of 2nd branch of 2nd cell
-        """
-
-        def reindex_a_by_b(df, a, b):
-            df.loc[:, a] = df.groupby(b)[a].rank(method="dense").astype(int) - 1
-            return df
-
-        idcs = self.view[["cell_index", "branch_index", "comp_index"]]
-        idcs = reindex_a_by_b(idcs, "branch_index", "cell_index")
-        idcs = reindex_a_by_b(idcs, "comp_index", ["cell_index", "branch_index"])
-        return idcs
-
     def _childview(self, index: Union[int, str, list, range, slice]):
         """Return the child view of the current view.
 
@@ -1293,7 +1271,7 @@ class View:
         return self._childview(index)
 
     def __iter__(self):
-        for i in range(self.shape[0]):
+        for i in range(self.shape[1]):
             yield self[i]
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
@@ -1309,8 +1287,7 @@ class View:
 
     @property
     def shape(self):
-        local_idcs = self._get_local_indices()
-        return tuple(local_idcs.nunique())
+        raise NotImplementedError
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
