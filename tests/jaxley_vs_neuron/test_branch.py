@@ -39,8 +39,8 @@ def test_similarity():
 
 def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     branch.insert(HH())
 
     radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
@@ -185,7 +185,7 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams):
         branch.loc(loc).set("radius", diams[counter] / 2)
         counter += 1
 
-    branch = branch.initialize()
+    branch = branch
 
     # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for jaxley.
     branch.loc(0.02).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))

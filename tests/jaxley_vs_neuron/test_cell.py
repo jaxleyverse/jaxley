@@ -36,9 +36,9 @@ def test_similarity():
 
 def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     nseg_per_branch = 8
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch(comp, nseg_per_branch).initialize()
-    cell = jx.Cell(branch, parents=[-1, 0, 0]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg_per_branch)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
     cell.insert(HH())
 
     cell.set("radius", 5.0)
