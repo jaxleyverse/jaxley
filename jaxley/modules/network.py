@@ -107,7 +107,7 @@ class Network(Module):
             view["global_comp_index"] = view["comp_index"]
             view["global_branch_index"] = view["branch_index"]
             view["global_cell_index"] = view["cell_index"]
-            return GroupView(self, view)
+            return GroupView(self, view, CellView, ["cell"])
         else:
             raise KeyError(f"Key {key} not recognized.")
 
