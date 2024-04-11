@@ -10,7 +10,6 @@ import pandas as pd
 from jax import vmap
 from matplotlib.axes import Axes
 
-from jaxley.connection import Connectivity
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
