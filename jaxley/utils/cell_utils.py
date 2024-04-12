@@ -1,5 +1,5 @@
 from math import pi
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -242,3 +242,23 @@ def convert_point_process_to_distributed(
     area = 2 * pi * radius * length
     current /= area  # nA / um^2
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
+
+
+def childview(
+    module,
+    index: Union[int, str, list, range, slice],
+    child_name: Optional[str] = None,
+):
+    """Return the child view of the current module.
+
+    network.cell(index) at network level.
+    cell.branch(index) at cell level.
+    branch.comp(index) at branch level."""
+    if child_name is None:
+        parent_name = module.__class__.__name__.lower()
+        views = np.array(["net", "cell", "branch", "comp", "/"])
+        child_idx = np.roll([v in parent_name for v in views], 1)
+        child_name = views[child_idx][0]
+    if child_name != "/":
+        return module.__getattr__(child_name)(index)
+    raise AttributeError("Compartment does not support indexing")

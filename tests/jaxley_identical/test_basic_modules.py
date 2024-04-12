@@ -14,7 +14,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connection import fully_connect
+from jaxley.connection import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -23,7 +23,7 @@ def test_compartment():
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
-    comp = jx.Compartment().initialize()
+    comp = jx.Compartment()
     comp.insert(HH())
     comp.record()
     comp.stimulate(current)
@@ -58,8 +58,8 @@ def test_branch():
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     branch.insert(HH())
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
@@ -97,8 +97,8 @@ def test_cell():
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
@@ -137,15 +137,17 @@ def test_net():
     depth = 2
     parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
 
-    comp = jx.Compartment().initialize()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)]).initialize()
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
     cell1 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
     cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
 
-    connectivities = [
-        jx.Connectivity(IonotropicSynapse(), [jx.Connection(0, 0, 0.0, 1, 0, 0.0)])
-    ]
-    network = jx.Network([cell1, cell2], connectivities)
+    network = jx.Network([cell1, cell2])
+    connect(
+        network.cell(0).branch(0).loc(0.0),
+        network.cell(1).branch(0).loc(0.0),
+        IonotropicSynapse(),
+    )
     network.insert(HH())
 
     for cell_ind in range(2):

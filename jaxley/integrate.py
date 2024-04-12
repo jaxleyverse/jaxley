@@ -151,7 +151,11 @@ def integrate(
             if key in list(states.keys()):  # Only initial states, not parameters.
                 if key not in module.synapse_state_names:
                     inds = flip_comp_indices(inds, module.nseg)  # See 305
-                states[key] = states[key].at[inds].set(set_param[key])
+                # `inds` is of shape `(num_params, num_comps_per_param)`.
+                # `set_param` is of shape `(num_params,)`
+                # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
+                # `.set()` to work. This is done with `[:, None]`.
+                states[key] = states[key].at[inds].set(set_param[key][:, None])
 
     # Add to the states the initial current through every channel.
     states, _ = module._channel_currents(

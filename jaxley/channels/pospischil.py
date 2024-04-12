@@ -68,7 +68,7 @@ class Leak(Channel):
 class Na(Channel):
     """Sodium channel"""
 
-    def __init__(self, name: str | None = None):
+    def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -193,7 +193,7 @@ class K(Channel):
 class Km(Channel):
     """Slow M Potassium channel"""
 
-    def __init__(self, name: str | None = None):
+    def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
