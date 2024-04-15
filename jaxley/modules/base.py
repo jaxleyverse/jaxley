@@ -738,14 +738,14 @@ class Module(ABC):
         # only loops over necessary keys, as opposed to looping over d.items()
 
         # Update states of the channels.
-        flipped_indices = flip_comp_indices(channel_nodes.index, self.nseg)
-        channel_nodes.set_index(flipped_indices, inplace=True)  # See #305
+        indices = channel_nodes["comp_index"].to_numpy()
+        flipped_indices = flip_comp_indices(indices, self.nseg)  # See #305
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += ["radius", "length", "axial_resistivity"]
             channel_state_names = list(channel.channel_states)
             channel_state_names += self.membrane_current_names
-            indices = channel_nodes[channel._name].index.to_numpy()
+            indices = flipped_indices[channel_nodes[channel._name]]
 
             channel_params = query(params, channel_param_names, indices)
             channel_states = query(states, channel_state_names, indices)
