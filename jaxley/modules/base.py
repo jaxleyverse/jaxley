@@ -734,25 +734,15 @@ class Module(ABC):
 
         # Update states of the channels.
         for channel in channels:
-            name = channel._name
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
-            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+            where_channel = channel_nodes[channel._name]
+            indices = channel_nodes.loc[where_channel].index.to_numpy()
             indices = flip_comp_indices(indices, self.nseg)  # See #305
 
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = params[p][indices]
-            channel_params["radius"] = params["radius"][indices]
-            channel_params["length"] = params["length"][indices]
-            channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
+            channel_params = {p: channel_nodes[p][indices] for p in channel.channel_params}
+            channel_params.update({p: params[p][indices] for p in ["radius", "length", "axial_resistivity"]}) 
 
-            channel_states = {}
-            for s in channel_state_names:
-                channel_states[s] = states[s][indices]
-
-            for current_name in self.membrane_current_names:
-                channel_states[current_name] = states[current_name][indices]
+            channel_states = {s: states[s][indices] for s in channel.channel_states}
+            channel_states.update({s: states[s][indices] for s in self.membrane_current_names})
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
