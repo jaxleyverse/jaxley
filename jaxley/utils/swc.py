@@ -42,6 +42,7 @@ def swc_to_jaxley(
         pathlengths = [0.1] + pathlengths
         radius_fns = [lambda x: content[0, 5] * np.ones_like(x)] + radius_fns
         sorted_branches = [[0]] + sorted_branches
+        print("sorted_branches", sorted_branches)
 
         # Type of padded section is assumed to be of `custom` type:
         # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
@@ -49,7 +50,15 @@ def swc_to_jaxley(
 
     all_coords_of_branches = []
     for i, branch in enumerate(sorted_branches):
-        coords_of_branch = content[np.asarray(branch) - 1, 2:6]
+        # Remove 1 because `content` is an array that indices from 0.
+        branch = np.asarray(branch) - 1
+
+        # Deal with additional branch that might have been added above in the lines
+        # `if np.sum(np.asarray(parents) == -1) > 1.0:`
+        branch[branch < 0] = 0
+
+        # Get traced coordinates of the branch.
+        coords_of_branch = content[branch, 2:6]
         all_coords_of_branches.append(coords_of_branch)
 
     return parents, pathlengths, radius_fns, types, all_coords_of_branches
