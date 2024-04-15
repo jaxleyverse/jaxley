@@ -73,7 +73,7 @@ class Na(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNa": 50e-3,
-            f"{prefix}_eNa": 50.0,
+            "eNa": 50.0,
             "vt": -60.0,  # Global parameter, not prefixed with `Na`.
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
@@ -103,7 +103,7 @@ class Na(Channel):
         # Multiply with 1000 to convert Siemens to milli Siemens.
         gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # mS/cm^2
 
-        current = gNa * (v - params[f"{prefix}_eNa"])
+        current = gNa * (v - params["eNa"])
         return current
 
     def init_state(self, v, params):
@@ -143,7 +143,7 @@ class K(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gK": 5e-3,
-            f"{prefix}_eK": -90.0,
+            "eK": -90.0,
             "vt": -60.0,  # Global parameter, not prefixed with `Na`.
         }
         self.channel_states = {f"{prefix}_n": 0.2}
@@ -172,7 +172,7 @@ class K(Channel):
         # Multiply with 1000 to convert Siemens to milli Siemens.
         gK = params[f"{prefix}_gK"] * (n**4) * 1000  # mS/cm^2
 
-        return gK * (v - params[f"{prefix}_eK"])
+        return gK * (v - params["eK"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -199,7 +199,7 @@ class Km(Channel):
         self.channel_params = {
             f"{prefix}_gKm": 0.004e-3,
             f"{prefix}_taumax": 4000.0,
-            f"eKm": -90.0,
+            f"eK": -90.0,
         }
         self.channel_states = {f"{prefix}_p": 0.2}
         self.current_name = f"i_K"
@@ -228,7 +228,7 @@ class Km(Channel):
 
         # Multiply with 1000 to convert Siemens to milli Siemens.
         gKm = params[f"{prefix}_gKm"] * p * 1000  # mS/cm^2
-        return gKm * (v - params["eKm"])
+        return gKm * (v - params["eK"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
