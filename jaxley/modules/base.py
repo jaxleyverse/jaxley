@@ -732,17 +732,22 @@ class Module(ABC):
         """One integration step of the channels."""
         voltages = states["v"]
 
+        query = lambda d, keys, idcs: dict(
+            zip(keys, (v[idcs] for v in map(d.get, keys)))
+        )  # get dict with subset of keys and values from d
+
         # Update states of the channels.
+        flipped_indices = flip_comp_indices(channel_nodes.index, self.nseg)
+        channel_nodes.set_index(flipped_indices, inplace=True)  # See #305
         for channel in channels:
-            where_channel = channel_nodes[channel._name]
-            indices = channel_nodes.loc[where_channel].index.to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
+            channel_param_names = list(channel.channel_params)
+            channel_param_names += ["radius", "length", "axial_resistivity"]
+            channel_state_names = list(channel.channel_states)
+            channel_state_names += self.membrane_current_names
+            indices = channel_nodes[channel._name].index.to_numpy()
 
-            channel_params = {p: channel_nodes[p][indices] for p in channel.channel_params}
-            channel_params.update({p: params[p][indices] for p in ["radius", "length", "axial_resistivity"]}) 
-
-            channel_states = {s: states[s][indices] for s in channel.channel_states}
-            channel_states.update({s: states[s][indices] for s in self.membrane_current_names})
+            channel_params = query(params, channel_param_names, indices)
+            channel_states = query(states, channel_state_names, indices)
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
