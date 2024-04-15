@@ -139,6 +139,13 @@ def test_mixed_network():
     net.cell(0).move(0, 800)
     net.cell(1).move(0, -800)
     net.rotate(180)
+
+    before_xyzrs = net.xyzr[len(cell1.xyzr) :]
     net.cell(1).rotate(90)
+    after_xyzrs = net.xyzr[len(cell1.xyzr) :]
+    # Test that rotation worked as expected.
+    for b, a in zip(before_xyzrs, after_xyzrs):
+        assert np.allclose(b[:, 0], -a[:, 1], atol=1e-6)
+        assert np.allclose(b[:, 1], a[:, 0], atol=1e-6)
 
     _ = net.vis(detail="full")

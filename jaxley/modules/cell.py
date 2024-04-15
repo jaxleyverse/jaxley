@@ -256,9 +256,8 @@ class CellView(View):
             degrees: How many degrees to rotate the module by.
             rotation_axis: Either of {`xy` | `xz` | `yz`}.
         """
-        self.pointer._rotate(
-            degrees=degrees, rotation_axis=rotation_axis, view=self.view
-        )
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._rotate(degrees=degrees, rotation_axis=rotation_axis, view=nodes)
 
 
 def read_swc(
