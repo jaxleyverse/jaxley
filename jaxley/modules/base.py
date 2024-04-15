@@ -1013,18 +1013,16 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
-        """Move cells or networks by adding to their (x, y, z) coordinates."""
+        """Move cells or networks by adding to their (x, y, z) coordinates.
+
+        NOTE: This method works when module.xyzr is not of the form
+        (n branches, [start_branch, end_branch], 4) but rather constructed by the code
+        that reads swc files."""
         self._move(x, y, z, self.nodes)
 
     def _move(self, x: float, y: float, z: float, view):
         # Need to cast to set because this will return one columnn per compartment,
         # not one column per branch.
-        xyzr_arr = np.array(self.xyzr)
-        if np.isnan(xyzr_arr[:, :, :3]).any():
-            print(
-                "Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first."
-            )
-            self.compute_xyz()
         indizes = set(view["branch_index"].to_numpy().tolist())
         for i in indizes:
             self.xyzr[i][:, 0] += x
@@ -1084,14 +1082,15 @@ class Module(ABC):
             # Select the xyz coordinates of the first branch of each cell
             xyz_first_branches = xyzr_arr[first_branches, :, :3]
             # Copy the coordinates of the first branches for the following subtraction
-            xyz_firsts_expanded = xyz_first_branches[cell_inds, :, :]
+            local_cell_inds = cell_inds - cell_inds[0]
+            xyz_firsts_expanded = xyz_first_branches[local_cell_inds, :, :]
 
             # Compute the distance between first branches and their connected branches
             branch_offsets = xyzr_arr[:, :, :3] - xyz_firsts_expanded
 
             # Compute new coord arr [# branches, [branch start, branch end], [x, y, z]]
             new_xyz = np.stack([x, y, z])
-            new_xyz = new_xyz.T[cell_inds]
+            new_xyz = new_xyz.T[local_cell_inds]
             new_xyz_expanded = np.stack([new_xyz, new_xyz + branch_lengths], axis=1)
             new_xyz_expanded = new_xyz_expanded + branch_offsets
             xyzr_arr[:, :, :3] = new_xyz_expanded
@@ -1404,6 +1403,22 @@ class View:
     def shape(self):
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
+
+    @property
+    def xyzr(self):
+        """Returns the xyzr entries of the branch, cell, or network. If called on a
+        compartment or location, it will return the (x, y, z) of the center of the
+        compartment.
+        """
+        idxs = self.view.global_branch_index.unique()
+        if self.__class__.__name__ == "CompartmentView":
+            nseg = self.pointer.nseg
+            loc_of_index = self.view.comp_index / nseg + 0.5 / nseg
+            return interpolate_xyz(
+                loc_of_index.values[0], np.array(self.pointer.xyzr)[idxs][0]
+            )
+        else:
+            return np.array(self.pointer.xyzr)[idxs]
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
