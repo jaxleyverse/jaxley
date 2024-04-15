@@ -745,7 +745,7 @@ class Module(ABC):
             channel_param_names += ["radius", "length", "axial_resistivity"]
             channel_state_names = list(channel.channel_states)
             channel_state_names += self.membrane_current_names
-            indices = flipped_indices[channel_nodes[channel._name]]
+            indices = flipped_indices[channel_nodes[channel._name].astype(bool)]
 
             channel_params = query(params, channel_param_names, indices)
             channel_states = query(states, channel_state_names, indices)
