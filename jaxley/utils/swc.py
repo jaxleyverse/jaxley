@@ -49,7 +49,7 @@ def swc_to_jaxley(
 
     all_coords_of_branches = []
     for i, branch in enumerate(sorted_branches):
-        # Remove 1 because `content` is an array that indices from 0.
+        # Remove 1 because `content` is an array that is indexed from 0.
         branch = np.asarray(branch) - 1
 
         # Deal with additional branch that might have been added above in the lines
@@ -67,8 +67,6 @@ def _split_into_branches_and_sort(
     content: np.ndarray, max_branch_len: float, sort: bool = True
 ) -> Tuple[np.ndarray, np.ndarray]:
     branches, types = _split_into_branches(content)
-    for b in branches:
-        print(b[0])
     branches, types = _split_long_branches(branches, types, content, max_branch_len)
 
     if sort:
@@ -161,24 +159,31 @@ def _split_into_branches(content: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     all_branches.append(current_branch)
     return all_branches, all_types
 
-def _single_point_soma(current_branch, content) -> bool:
-    # Must be a single traced point.
-    if  len(current_branch) > 1:
+
+def _single_point_soma(current_branch: np.ndarray, content: np.ndarray) -> bool:
+    """Return True if the `current_branch` is the only point traced as `soma`."""
+    # Current branch must have consist of a single traced point.
+    if len(current_branch) > 1:
         return False
-    
-    # Traced point must be of type "soma"
+
+    # Traced point must be of type "soma" (i.e. have type == 1)
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-    traced_point = content[current_branch[0]]
-    if traced_point[1] != 1:
+    traced_point = content[int(current_branch[0]) - 1]
+    if int(traced_point[1]) != 1:
         return False
-    
+
     # There can only be a single soma value.
     all_types = content[:, 1]
-    if np.sum(np.where(all_types == 1)[0]) > 1:
+    if np.sum(np.where(all_types == 1.0)[0]) > 1:
         return False
-    
+
+    # Warn here, but the conversion of the length happens in `_compute_pathlengths`.
+    warn(
+        "Found a soma which consists of a single traced point. `Jaxley` "
+        "interprets this soma as a spherical compartment with radius "
+        "specified in the SWC file, i.e. with surface area 4*pi*r*r."
+    )
     return True
-    
 
 
 def _build_parents(all_branches):
@@ -228,8 +233,13 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     cutoffs = np.cumsum(np.concatenate([np.asarray([0]), each_length])) / summed_len
     cutoffs[0] -= 1e-8
     cutoffs[-1] += 1e-8
+
+    # We have to linearly interpolate radiuses, therefore we need at least two radiuses.
+    # However, jaxley allows somata which consist of a single traced point (i.e.
+    # just one radius). Therefore, we just `tile` in order to generate an artificial
+    # endpoint and startpoint radius of the soma.
     if len(radiuses) == 1:
-        radiuses = np.asarray([radiuses.item(), radiuses.item()])
+        radiuses = np.tile(radiuses, 2)
 
     def radius(loc):
         """Function which returns the radius via linear interpolation."""
@@ -254,11 +264,6 @@ def _compute_pathlengths(all_branches, coords):
                 point_diffs[:, 0] ** 2 + point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2
             )
         else:
-            warn(
-                "Found a branch which consists of a single traced point. `Jaxley` "
-                "interprets this branch as a spherical compartment with radius "
-                "specified in the SWC file."
-            )
             # Jaxley uses length and radius for every compartment and assumes the
             # surface area to be 2*pi*r*length. For branches consisting of a single
             # traced point we assume for them to have area 4*pi*r*r. Therefore, we have

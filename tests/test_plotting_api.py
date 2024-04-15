@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 import jax
 
@@ -140,7 +141,7 @@ def test_mixed_network():
     net.cell(1).move(0, -800)
     net.rotate(180)
 
-    before_xyzrs = net.xyzr[len(cell1.xyzr) :]
+    before_xyzrs = deepcopy(net.xyzr[len(cell1.xyzr) :])
     net.cell(1).rotate(90)
     after_xyzrs = net.xyzr[len(cell1.xyzr) :]
     # Test that rotation worked as expected.
