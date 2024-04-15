@@ -735,6 +735,7 @@ class Module(ABC):
         query = lambda d, keys, idcs: dict(
             zip(keys, (v[idcs] for v in map(d.get, keys)))
         )  # get dict with subset of keys and values from d
+        # only loops over necessary keys, as opposed to looping over d.items()
 
         # Update states of the channels.
         flipped_indices = flip_comp_indices(channel_nodes.index, self.nseg)
