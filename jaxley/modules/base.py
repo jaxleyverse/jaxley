@@ -1051,6 +1051,16 @@ class Module(ABC):
         self._move_to(x, y, z, self.nodes)
 
     def _move_to(self, x, y, z, view):
+        xyz_shapes = [x.shape for x in self.xyzr]
+        if len(set(xyz_shapes)) != 1:
+            raise ValueError(
+                "The xyzr array is not of the form"
+                "(n branches, [start_branch, end_branch], 4). This may occur when SWC"
+                "file data is used. In this case, use the move() method instead."
+            )
+        else:
+            full_xyzr_arr = np.array(self.xyzr)
+
         # Get the branch index(es) of the cell(s) in the module's xyzr to modify
         # This is necessary when view is a subset of the module's full view
         full_view = self.show()
@@ -1096,25 +1106,23 @@ class Module(ABC):
             xyzr_arr[:, :, :3] = new_xyz_expanded
 
             # Insert the moved branches back into the full module xyz array
-            full_xyzr_arr = np.array(self.xyzr)
             full_xyzr_arr[branch_inds, :, :] = xyzr_arr
             self.xyzr = list(full_xyzr_arr)
 
         else:
-            xyzr_arr = np.array(self.xyzr)
-            if np.isnan(xyzr_arr[:, :, :3]).any():
+            if np.isnan(full_xyzr_arr[:, :, :3]).any():
                 print(
                     "Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first."
                 )
                 self.compute_xyz()
-                xyzr_arr = np.array(self.xyzr)
+                full_xyzr_arr = np.array(self.xyzr)
 
             # Compute the distance between the first branch and the x, y, z float input
-            shift_amount = np.array([x, y, z]) - xyzr_arr[branch_inds[0]][0, :3]
+            shift_amount = np.array([x, y, z]) - full_xyzr_arr[branch_inds[0]][0, :3]
             # Shift all branches such that the first branch is at x, y, z
-            xyzr_arr[branch_inds, :, :3] += shift_amount
+            full_xyzr_arr[branch_inds, :, :3] += shift_amount
 
-            self.xyzr = list(xyzr_arr)
+            self.xyzr = list(full_xyzr_arr)
         self._update_nodes_with_xyz()
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
@@ -1417,6 +1425,10 @@ class View:
             return interpolate_xyz(
                 loc_of_index.values[0], np.array(self.pointer.xyzr)[idxs][0]
             )
+        # Check here if inhomogeneously shaped xyz arrays from SWC files
+        xyz_shapes = [x.shape for x in self.pointer.xyzr]
+        if len(set(xyz_shapes)) > 1:
+            return [self.pointer.xyzr[i] for i in idxs]
         else:
             return np.array(self.pointer.xyzr)[idxs]
 
