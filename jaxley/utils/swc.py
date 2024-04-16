@@ -25,7 +25,7 @@ def swc_to_jaxley(
     )
 
     parents = _build_parents(sorted_branches)
-    each_length = _compute_pathlengths(sorted_branches, content[:, 2:5])
+    each_length = _compute_pathlengths(sorted_branches, content[:, 2:6])
     pathlengths = [np.sum(length_traced) for length_traced in each_length]
     for i, pathlen in enumerate(pathlengths):
         if pathlen == 0.0:
@@ -49,7 +49,15 @@ def swc_to_jaxley(
 
     all_coords_of_branches = []
     for i, branch in enumerate(sorted_branches):
-        coords_of_branch = content[np.asarray(branch) - 1, 2:6]
+        # Remove 1 because `content` is an array that is indexed from 0.
+        branch = np.asarray(branch) - 1
+
+        # Deal with additional branch that might have been added above in the lines
+        # `if np.sum(np.asarray(parents) == -1) > 1.0:`
+        branch[branch < 0] = 0
+
+        # Get traced coordinates of the branch.
+        coords_of_branch = content[branch, 2:6]
         all_coords_of_branches.append(coords_of_branch)
 
     return parents, pathlengths, radius_fns, types, all_coords_of_branches
@@ -75,7 +83,7 @@ def _split_into_branches_and_sort(
 def _split_long_branches(
     branches, types, content, max_branch_len
 ) -> Tuple[np.ndarray, np.ndarray]:
-    pathlengths = _compute_pathlengths(branches, content[:, 2:5])
+    pathlengths = _compute_pathlengths(branches, content[:, 2:6])
     pathlengths = [np.sum(length_traced) for length_traced in pathlengths]
     split_branches = []
     split_types = []
@@ -86,7 +94,7 @@ def _split_long_branches(
             num_subbranches += 1
             split_branch = _split_branch_equally(branch, num_subbranches)
             lengths_of_subbranches = _compute_pathlengths(
-                split_branch, coords=content[:, 2:5]
+                split_branch, coords=content[:, 2:6]
             )
             lengths_of_subbranches = [
                 np.sum(length_traced) for length_traced in lengths_of_subbranches
@@ -141,7 +149,7 @@ def _split_into_branches(content: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
             # `-1` because SWC starts counting at 1.
             current_type = c[1]
         if current_parent in branch_inds[1:]:
-            if len(current_branch) > 1:
+            if len(current_branch) > 1 or _single_point_soma(current_branch, content):
                 all_branches.append(current_branch)
                 all_types.append(current_type)
             current_branch = [int(current_parent), int(current_ind)]
@@ -150,6 +158,32 @@ def _split_into_branches(content: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
     all_branches.append(current_branch)
     return all_branches, all_types
+
+
+def _single_point_soma(current_branch: np.ndarray, content: np.ndarray) -> bool:
+    """Return True if the `current_branch` is the only point traced as `soma`."""
+    # Current branch must have consist of a single traced point.
+    if len(current_branch) > 1:
+        return False
+
+    # Traced point must be of type "soma" (i.e. have type == 1)
+    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    traced_point = content[int(current_branch[0]) - 1]
+    if int(traced_point[1]) != 1:
+        return False
+
+    # There can only be a single soma value.
+    all_types = content[:, 1]
+    if np.sum(np.where(all_types == 1.0)[0]) > 1:
+        return False
+
+    # Warn here, but the conversion of the length happens in `_compute_pathlengths`.
+    warn(
+        "Found a soma which consists of a single traced point. `Jaxley` "
+        "interprets this soma as a spherical compartment with radius "
+        "specified in the SWC file, i.e. with surface area 4*pi*r*r."
+    )
+    return True
 
 
 def _build_parents(all_branches):
@@ -200,6 +234,13 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     cutoffs[0] -= 1e-8
     cutoffs[-1] += 1e-8
 
+    # We have to linearly interpolate radiuses, therefore we need at least two radiuses.
+    # However, jaxley allows somata which consist of a single traced point (i.e.
+    # just one radius). Therefore, we just `tile` in order to generate an artificial
+    # endpoint and startpoint radius of the soma.
+    if len(radiuses) == 1:
+        radiuses = np.tile(radiuses, 2)
+
     def radius(loc):
         """Function which returns the radius via linear interpolation."""
         index = np.digitize(loc, cutoffs, right=False)
@@ -217,9 +258,17 @@ def _compute_pathlengths(all_branches, coords):
     branch_pathlengths = []
     for b in all_branches:
         coords_in_branch = coords[np.asarray(b) - 1]
-        point_diffs = np.diff(coords_in_branch, axis=0)
-        dists = np.sqrt(
-            point_diffs[:, 0] ** 2 + point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2
-        )
+        if len(coords_in_branch) > 1:
+            point_diffs = np.diff(coords_in_branch, axis=0)
+            dists = np.sqrt(
+                point_diffs[:, 0] ** 2 + point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2
+            )
+        else:
+            # Jaxley uses length and radius for every compartment and assumes the
+            # surface area to be 2*pi*r*length. For branches consisting of a single
+            # traced point we assume for them to have area 4*pi*r*r. Therefore, we have
+            # to set length = 2*r.
+            radius = coords_in_branch[0, 3]  # xyzr -> 3 is radius.
+            dists = np.asarray([2 * radius])
         branch_pathlengths.append(dists)
     return branch_pathlengths
