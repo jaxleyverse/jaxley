@@ -1013,11 +1013,7 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
-        """Move cells or networks by adding to their (x, y, z) coordinates.
-
-        NOTE: This method works when module.xyzr is not of the form
-        (n branches, [start_branch, end_branch], 4) but rather constructed by the code
-        that reads swc files."""
+        """Move cells or networks by adding to their (x, y, z) coordinates."""
         self._move(x, y, z, self.nodes)
 
     def _move(self, x: float, y: float, z: float, view):
@@ -1111,11 +1107,9 @@ class Module(ABC):
 
         else:
             if np.isnan(full_xyzr_arr[:, :, :3]).any():
-                print(
-                    "Warning: attempting to move before computing xyz coordinates. Running compute_xyz() first."
+                raise ValueError(
+                    "Some coordinates are missing. Use `compute_xyz()` before attempting to move."
                 )
-                self.compute_xyz()
-                full_xyzr_arr = np.array(self.xyzr)
 
             # Compute the distance between the first branch and the x, y, z float input
             shift_amount = np.array([x, y, z]) - full_xyzr_arr[branch_inds[0]][0, :3]
@@ -1414,23 +1408,17 @@ class View:
 
     @property
     def xyzr(self):
-        """Returns the xyzr entries of the branch, cell, or network. If called on a
-        compartment or location, it will return the (x, y, z) of the center of the
-        compartment.
+        """Returns the xyzr entries of a branch, cell, or network.
+
+        If called on a compartment or location, it will return the (x, y, z) of the
+        center of the compartment.
         """
         idxs = self.view.global_branch_index.unique()
         if self.__class__.__name__ == "CompartmentView":
-            nseg = self.pointer.nseg
-            loc_of_index = self.view.comp_index / nseg + 0.5 / nseg
-            return interpolate_xyz(
-                loc_of_index.values[0], np.array(self.pointer.xyzr)[idxs][0]
-            )
-        # Check here if inhomogeneously shaped xyz arrays from SWC files
-        xyz_shapes = [x.shape for x in self.pointer.xyzr]
-        if len(set(xyz_shapes)) > 1:
-            return [self.pointer.xyzr[i] for i in idxs]
+            loc = loc_of_index(self.view.comp_index, self.pointer.nseg)
+            return [interpolate_xyz(loc, self.pointer.xyzr[idxs[0]])]
         else:
-            return np.array(self.pointer.xyzr)[idxs]
+            return [self.pointer.xyzr[i] for i in idxs]
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
