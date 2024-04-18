@@ -1047,15 +1047,7 @@ class Module(ABC):
         self._move_to(x, y, z, self.nodes)
 
     def _move_to(self, x, y, z, view):
-        xyz_shapes = [x.shape for x in self.xyzr]
-        if len(set(xyz_shapes)) != 1:
-            raise ValueError(
-                "The xyzr array is not of the form"
-                "(n branches, [start_branch, end_branch], 4). This may occur when SWC"
-                "file data is used. In this case, use the move() method instead."
-            )
-        else:
-            full_xyzr_arr = np.array(self.xyzr)
+        # TODO: scan coords for nans to make sure not trying to move nans
 
         # Get the branch index(es) of the cell(s) in the module's xyzr to modify
         # This is necessary when view is a subset of the module's full view
@@ -1065,58 +1057,43 @@ class Module(ABC):
         view_cell_inds = list(set(view.cell_index))
         branch_inds = np.where(np.isin(full_view_cell_inds, view_cell_inds))[0]
 
+        # Created a nested list of branches dividing the branches by cell
+        cell_inds = full_view_cell_inds[branch_inds]
+        nested_branches = []
+        for c in view_cell_inds:
+            nested_branch_inds = branch_inds[cell_inds == c]
+            nested_branches.append([self.xyzr[b] for b in nested_branch_inds])
+
+        def _move_branches_to(branches, x, y, z):
+            # Compute the shift of the first coordinate to the new location
+            shift_amount = np.array([x, y, z]) - branches[0][0, :3]
+            # Shift all of the branch coords in the list to recenter
+            for b in branches:
+                b[:, :3] += shift_amount
+            return branches
+
         if (
             isinstance(x, np.ndarray)
             and isinstance(y, np.ndarray)
             and isinstance(z, np.ndarray)
         ):
             assert (
-                x.shape == y.shape == z.shape == (len(view.cell_index.value_counts()),)
-            ), "x, y, and z array shapes are not all equal to (number of cells, )."
+                x.shape == y.shape == z.shape == (len(nested_branches),)
+            ), "x, y, and z array shapes are not all equal to the number of cells to be moved."
 
-            xyzr_arr = np.array(self.xyzr)[branch_inds, :, :]
-
-            # Compute the distance between the start and stop of each branch
-            branch_lengths = np.subtract(xyzr_arr[:, 1, :3], xyzr_arr[:, 0, :3])
-
-            # Get an array with cell index per branch for expanding arrays later
-            tup_indices = np.array([view.cell_index, view.branch_index])
-            cell_inds = np.unique(tup_indices, axis=1)[0]
-
-            # Find the indices in xyzr of the first branch of each cell
-            _, first_branches = np.unique(cell_inds, return_index=True)
-            # Select the xyz coordinates of the first branch of each cell
-            xyz_first_branches = xyzr_arr[first_branches, :, :3]
-            # Copy the coordinates of the first branches for the following subtraction
-            local_cell_inds = cell_inds - cell_inds[0]
-            xyz_firsts_expanded = xyz_first_branches[local_cell_inds, :, :]
-
-            # Compute the distance between first branches and their connected branches
-            branch_offsets = xyzr_arr[:, :, :3] - xyz_firsts_expanded
-
-            # Compute new coord arr [# branches, [branch start, branch end], [x, y, z]]
-            new_xyz = np.stack([x, y, z])
-            new_xyz = new_xyz.T[local_cell_inds]
-            new_xyz_expanded = np.stack([new_xyz, new_xyz + branch_lengths], axis=1)
-            new_xyz_expanded = new_xyz_expanded + branch_offsets
-            xyzr_arr[:, :, :3] = new_xyz_expanded
-
-            # Insert the moved branches back into the full module xyz array
-            full_xyzr_arr[branch_inds, :, :] = xyzr_arr
-            self.xyzr = list(full_xyzr_arr)
+            moved_nested_branches = []
+            for i, branches in enumerate(nested_branches):
+                branches = _move_branches_to(branches, x[i], y[i], z[i])
+                moved_nested_branches.append(branches)
+            # Un-nest the branches to return to xyzr format, could also use itertools
+            moved_branches = sum(moved_nested_branches, [])
 
         else:
-            if np.isnan(full_xyzr_arr[:, :, :3]).any():
-                raise ValueError(
-                    "Some coordinates are missing. Use `compute_xyz()` before attempting to move."
-                )
+            moved_branches = _move_branches_to(self.xyzr, x, y, z)
 
-            # Compute the distance between the first branch and the x, y, z float input
-            shift_amount = np.array([x, y, z]) - full_xyzr_arr[branch_inds[0]][0, :3]
-            # Shift all branches such that the first branch is at x, y, z
-            full_xyzr_arr[branch_inds, :, :3] += shift_amount
+        for i, b in enumerate(branch_inds):
+            self.xyzr[b] = moved_branches[i]
 
-            self.xyzr = list(full_xyzr_arr)
         self._update_nodes_with_xyz()
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
@@ -1416,7 +1393,7 @@ class View:
         idxs = self.view.global_branch_index.unique()
         if self.__class__.__name__ == "CompartmentView":
             loc = loc_of_index(self.view.comp_index, self.pointer.nseg)
-            return [interpolate_xyz(loc, self.pointer.xyzr[idxs[0]])]
+            return list(interpolate_xyz(loc, self.pointer.xyzr[idxs[0]]))
         else:
             return [self.pointer.xyzr[i] for i in idxs]
 
