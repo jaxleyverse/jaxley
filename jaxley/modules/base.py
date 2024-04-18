@@ -1041,36 +1041,16 @@ class Module(ABC):
 
         If x, y, and z are arrays, then they must each have a length equal to the number
         of cells being moved. Then the first compartment of the first branch of each
-        cell is moved to the specified location. This avoids the need to move cells in
-        loops.
+        cell is moved to the specified location.
         """
         self._move_to(x, y, z, self.nodes)
 
-    def _move_to(self, x, y, z, view):
+    def _move_to(self, x, y, z, view: pd.DataFrame):
         # TODO: scan coords for nans to make sure not trying to move nans
 
-        # Get the branch index(es) of the cell(s) in the module's xyzr to modify
-        # This is necessary when view is a subset of the module's full view
-        full_view = self.show()
-        tup_indices = np.array([full_view.cell_index, full_view.branch_index])
-        full_view_cell_inds = np.unique(tup_indices, axis=1)[0]
-        view_cell_inds = list(set(view.cell_index))
-        branch_inds = np.where(np.isin(full_view_cell_inds, view_cell_inds))[0]
-
-        # Created a nested list of branches dividing the branches by cell
-        cell_inds = full_view_cell_inds[branch_inds]
-        nested_branches = []
-        for c in view_cell_inds:
-            nested_branch_inds = branch_inds[cell_inds == c]
-            nested_branches.append([self.xyzr[b] for b in nested_branch_inds])
-
-        def _move_branches_to(branches, x, y, z):
-            # Compute the shift of the first coordinate to the new location
-            shift_amount = np.array([x, y, z]) - branches[0][0, :3]
-            # Shift all of the branch coords in the list to recenter
-            for b in branches:
-                b[:, :3] += shift_amount
-            return branches
+        # Get the indices of the cells and branches to move
+        cell_inds = list(view.cell_index.unique())
+        branch_inds = view.branch_index.unique()
 
         if (
             isinstance(x, np.ndarray)
@@ -1078,20 +1058,33 @@ class Module(ABC):
             and isinstance(z, np.ndarray)
         ):
             assert (
-                x.shape == y.shape == z.shape == (len(nested_branches),)
+                x.shape == y.shape == z.shape == (len(cell_inds),)
             ), "x, y, and z array shapes are not all equal to the number of cells to be moved."
 
-            moved_nested_branches = []
-            for i, branches in enumerate(nested_branches):
-                branches = _move_branches_to(branches, x[i], y[i], z[i])
-                moved_nested_branches.append(branches)
-            # Un-nest the branches to return to xyzr format, could also use itertools
-            moved_branches = sum(moved_nested_branches, [])
+            # Split the branches by cell id (.branches_per_cell only works on module)
+            tup_indices = np.array([view.cell_index, view.branch_index])
+            view_cell_branch_inds = np.unique(tup_indices, axis=1)[0]
+
+            branches_by_cell = []
+            for c in cell_inds:
+                single_cell_branch_inds = branch_inds[view_cell_branch_inds == c]
+                branch_list = [self.xyzr[b] for b in single_cell_branch_inds]
+                branches_by_cell.append(np.stack(branch_list))
 
         else:
-            moved_branches = _move_branches_to(self.xyzr, x, y, z)
+            # Feed all the branches through the loop below at once
+            branches_by_cell = [np.stack(self.xyzr)]
+            x, y, z = [[i] for i in [x, y, z]]
 
-        for i, b in enumerate(branch_inds):
+        moved_branches = []
+        for branches, x, y, z in zip(branches_by_cell, x, y, z):
+            # Compute the shift of the first coordinate to the new location
+            shift_amount = np.array([x, y, z]) - branches[0][0, :3]
+            # Shift all of the branch coords in the list to recenter
+            branches[:, :, :3] += shift_amount
+            moved_branches.extend(branches)
+
+        for i, b in enumerate(list(branch_inds)):
             self.xyzr[b] = moved_branches[i]
 
         self._update_nodes_with_xyz()
@@ -1320,6 +1313,7 @@ class View:
         self.pointer._move(x, y, z, nodes)
 
     def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        # Ensuring here that the branch indices in the view passed are global
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move_to(x, y, z, nodes)
 
