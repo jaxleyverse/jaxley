@@ -20,7 +20,7 @@ def test_channel_set_name():
     na = Na(name="NaPospischil")
     assert na.name == "NaPospischil"
     assert "NaPospischil_gNa" in na.channel_params.keys()
-    assert "NaPospischil_eNa" in na.channel_params.keys()
+    assert "eNa" in na.channel_params.keys()
     assert "NaPospischil_h" in na.channel_states.keys()
     assert "NaPospischil_m" in na.channel_states.keys()
     assert "NaPospischil_vt" not in na.channel_params.keys()
@@ -31,7 +31,7 @@ def test_channel_set_name():
     with pytest.raises(AttributeError):
         k.name = "KPospischil"
     assert "KPospischil_gNa" not in k.channel_params.keys()
-    assert "KPospischil_eNa" not in k.channel_params.keys()
+    assert "eNa" not in k.channel_params.keys()
     assert "KPospischil_h" not in k.channel_states.keys()
     assert "KPospischil_m" not in k.channel_states.keys()
 
@@ -42,7 +42,7 @@ def test_channel_change_name():
     na = Na().change_name("NaPospischil")
     assert na.name == "NaPospischil"
     assert "NaPospischil_gNa" in na.channel_params.keys()
-    assert "NaPospischil_eNa" in na.channel_params.keys()
+    assert "eNa" in na.channel_params.keys()
     assert "NaPospischil_h" in na.channel_states.keys()
     assert "NaPospischil_m" in na.channel_states.keys()
     assert "NaPospischil_vt" not in na.channel_params.keys()
