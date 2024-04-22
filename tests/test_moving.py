@@ -3,6 +3,8 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
+import os
+
 import jax.numpy as jnp
 import numpy as np
 from jax import jit
@@ -153,3 +155,47 @@ def test_move_to_cellview():
     assert net.xyzr[3][0, 1] == 5.0
     assert net.xyzr[6][0, 2] == 9.0
     assert net.xyzr[9][0, 0] == 0.0
+
+
+def test_move_to_swc_cell():
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "morph.swc")
+    cell1 = jx.read_swc(fname, nseg=4)
+    cell2 = jx.read_swc(fname, nseg=4)
+    cell3 = jx.read_swc(fname, nseg=4)
+
+    # Try move_to on a cell
+    cell1.move_to(10.0, 20.0, 30.0)
+    assert cell1.xyzr[0][0, 0] == 10.0
+    assert cell1.xyzr[0][0, 1] == 20.0
+
+    net = jx.Network([cell1, cell2, cell3])
+    # Try move_to on the network
+    net.move_to(10.0, 20.0, 30.0)
+    assert net.xyzr[0][0, 0] == 10.0
+    assert net.xyzr[0][0, 1] == 20.0
+
+    x_coords = np.array([20.0, 30.0, 40.0])
+    y_coords = np.array([5.0, 15.0, 25.0])
+    z_coords = np.array([1.0, 2.0, 3.0])
+
+    net.move_to(x_coords, y_coords, z_coords)
+
+    n_branches_cell1 = len(cell1.xyzr)
+    n_branches_cell2 = len(cell2.xyzr)
+    assert net.xyzr[0][0, 0] == 20.0
+    assert net.xyzr[n_branches_cell1][0, 1] == 15.0
+    assert net.xyzr[n_branches_cell1 + n_branches_cell2][0, 2] == 3.0
+
+    # Test move_to on a subset of the cells
+    sub_net = net.cell([1, 2])
+    sub_net.move_to(30.0, 40.0, 50.0)
+    assert net.xyzr[n_branches_cell1][0, 0] == 30.0
+    assert net.xyzr[n_branches_cell1][0, 1] == 40.0
+
+    x_coords = np.array([3.0, 4.0])
+    y_coords = np.array([6.0, 7.0])
+    z_coords = np.array([9.0, 10.0])
+    sub_net.move_to(x_coords, y_coords, z_coords)
+    assert net.xyzr[n_branches_cell1][0, 0] == 3.0
+    assert net.xyzr[n_branches_cell1 + n_branches_cell2][0, 1] == 7.0

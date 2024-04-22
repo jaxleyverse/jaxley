@@ -1045,8 +1045,18 @@ class Module(ABC):
         """
         self._move_to(x, y, z, self.nodes)
 
-    def _move_to(self, x, y, z, view: pd.DataFrame):
-        # TODO: scan coords for nans to make sure not trying to move nans
+    def _move_to(
+        self,
+        x: Union[float, np.ndarray],
+        y: Union[float, np.ndarray],
+        z: Union[float, np.ndarray],
+        view: pd.DataFrame,
+    ):
+        # Test if any coordinate values are NaN which would greatly affect moving
+        if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
+            raise ValueError(
+                "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
+            )
 
         # Get the indices of the cells and branches to move
         cell_inds = list(view.cell_index.unique())
@@ -1069,21 +1079,32 @@ class Module(ABC):
             for c in cell_inds:
                 single_cell_branch_inds = branch_inds[view_cell_branch_inds == c]
                 branch_list = [self.xyzr[b] for b in single_cell_branch_inds]
-                branches_by_cell.append(np.stack(branch_list))
+                branches_by_cell.append(branch_list)
 
         else:
-            # Feed all the branches through the loop below at once
-            branches_by_cell = [np.stack(self.xyzr)]
+            # Treat as if all branches belong to the same cell to be moved
+            branches_by_cell = [self.xyzr]
             x, y, z = [[i] for i in [x, y, z]]
 
         moved_branches = []
         for branches, x, y, z in zip(branches_by_cell, x, y, z):
             # Compute the shift of the first coordinate to the new location
             shift_amount = np.array([x, y, z]) - branches[0][0, :3]
-            # Shift all of the branch coords in the list to recenter
-            branches[:, :, :3] += shift_amount
+            # Shift all of the cell's branch coords by this amount
+            branch_shapes = [b.shape[0] for b in branches]
+            branches = np.concatenate(branches, axis=0)
+            branches[:, :3] += shift_amount
+            branches = np.split(branches, np.cumsum(branch_shapes[:-1]))
+
+            # Deal with the case where branches are (4,) shape from SWC file, this is
+            # needed for _update_nodes_with_xyz to work, in theory branches should be 3D
+            faulty_branch_inds = np.where(np.array(branch_shapes) < 2)
+            for i in list(faulty_branch_inds[0]):
+                branches[i] = np.tile(branches[i], (2, 1))  # make stop same as start
+
             moved_branches.extend(branches)
 
+        # Iterating over the branches to reset (separate to avoid multiD indexing)
         for i, b in enumerate(list(branch_inds)):
             self.xyzr[b] = moved_branches[i]
 
@@ -1378,7 +1399,7 @@ class View:
         return tuple(local_idcs.nunique())
 
     @property
-    def xyzr(self):
+    def xyzr(self) -> List[np.ndarray]:
         """Returns the xyzr entries of a branch, cell, or network.
 
         If called on a compartment or location, it will return the (x, y, z) of the
