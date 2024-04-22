@@ -14,6 +14,37 @@ from jaxley.optimize import TypeOptimizer
 from jaxley.optimize.utils import l2_norm
 
 
+def test_type_optimizer_api():
+    """Tests whether optimization recovers a ground truth parameter set."""
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+    comp.stimulate(jx.step_current(0.1, 3.0, 0.1, 0.025, 5.0))
+
+    def simulate(params):
+        return jx.integrate(comp, params=params)
+
+    comp.make_trainable("HH_gNa")
+    comp.make_trainable("radius")
+
+    def loss_fn(params):
+        return jnp.mean(simulate(params))
+
+    grad_fn = jit(value_and_grad(loss_fn))
+
+    # Diverse lr -> good learning.
+    opt_params = comp.get_parameters()
+    lrs = {"HH_gNa": [0.01, 0.1], "radius": [1.0, 0.2]}
+    optimizer = TypeOptimizer(
+        lambda args: optax.sgd(args[0], momentum=args[1]), lrs, opt_params
+    )
+    opt_state = optimizer.init(opt_params)
+
+    _, grad = grad_fn(opt_params)
+    updates, opt_state = optimizer.update(grad, opt_state)
+    opt_params = optax.apply_updates(opt_params, updates)
+
+
 def test_type_optimizer():
     """Tests whether optimization recovers a ground truth parameter set."""
     comp = jx.Compartment()
