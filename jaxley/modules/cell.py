@@ -256,9 +256,8 @@ class CellView(View):
             degrees: How many degrees to rotate the module by.
             rotation_axis: Either of {`xy` | `xz` | `yz`}.
         """
-        self.pointer._rotate(
-            degrees=degrees, rotation_axis=rotation_axis, view=self.view
-        )
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._rotate(degrees=degrees, rotation_axis=rotation_axis, view=nodes)
 
 
 def read_swc(
@@ -269,6 +268,11 @@ def read_swc(
     assign_groups: bool = False,
 ):
     """Reads SWC file into a `jx.Cell`.
+
+    Jaxley assumes cylindrical compartments and therefore defines length and radius
+    for every compartment. The surface area is then 2*pi*r*length. For branches
+    consisting of a single traced point we assume for them to have area 4*pi*r*r.
+    Therefore, in these cases, we set lenght=2*r.
 
     Args:
         fname: Path to the swc file.
