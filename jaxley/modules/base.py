@@ -732,27 +732,23 @@ class Module(ABC):
         """One integration step of the channels."""
         voltages = states["v"]
 
+        query = lambda d, keys, idcs: dict(
+            zip(keys, (v[idcs] for v in map(d.get, keys)))
+        )  # get dict with subset of keys and values from d
+        # only loops over necessary keys, as opposed to looping over d.items()
+
         # Update states of the channels.
+        indices = channel_nodes["comp_index"].to_numpy()
+        flipped_indices = flip_comp_indices(indices, self.nseg)  # See #305
         for channel in channels:
-            name = channel._name
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
-            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
+            channel_param_names = list(channel.channel_params)
+            channel_param_names += ["radius", "length", "axial_resistivity"]
+            channel_state_names = list(channel.channel_states)
+            channel_state_names += self.membrane_current_names
+            indices = flipped_indices[channel_nodes[channel._name].astype(bool)]
 
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = params[p][indices]
-            channel_params["radius"] = params["radius"][indices]
-            channel_params["length"] = params["length"][indices]
-            channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
-
-            channel_states = {}
-            for s in channel_state_names:
-                channel_states[s] = states[s][indices]
-
-            for current_name in self.membrane_current_names:
-                channel_states[current_name] = states[current_name][indices]
+            channel_params = query(params, channel_param_names, indices)
+            channel_states = query(states, channel_state_names, indices)
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[indices], channel_params
