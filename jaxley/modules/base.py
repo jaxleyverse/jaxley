@@ -1386,6 +1386,141 @@ class View:
         self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.pointer.synapses.append(synapse_type)
 
+    def _viewed_indices(self, level: str = "comp"):
+        """Unique compartment, branch, and cell indicies currently in view."""
+        return np.unique(self.view[f"{level}_index"])
+    
+    # make View behave like a Module
+    # TODO: Add tests to check if View and Module work the same way!
+    # comp = Comp(); viewed_comp = net.comp(0)
+    # for attr in ["attr1", ...]:; assert comp.attr == viewed_comp.attr
+    # repeat for different views of comps, branches, cells
+    # TODO: Add `_ensure_view_is_connected`? To prevent properties of disconnected views?
+      
+    @property
+    def initialized_syns(self):
+        return self.pointer.initialized_syns
+    
+    @property
+    def initialized_morph(self):
+        return self.pointer.initialized_morph
+    
+    @property
+    def initialized_conds(self):
+        return self.pointer.initialized_conds
+    
+    @property
+    def comb_parents(self):
+        viewed_branch_inds = self._viewed_indices("branch")
+        return self.pointer.comb_parents[viewed_branch_inds]
+    
+    @property
+    def comb_branches_in_each_level(self):
+        viewed_branch_inds = self._viewed_indices("branch")
+        comb_branches_in_each_level = [idcs[np.isin(idcs, viewed_branch_inds)] for idcs in self.pointer.comb_branches_in_each_level]
+        comb_branches_in_each_level = [level for level in comb_branches_in_each_level if len(level) > 0]
+        return comb_branches_in_each_level
+    
+    @property
+    def nbranches_per_cell(self):
+        viewed_cell_inds = self._viewed_indices("cell")
+        return [self.pointer.nbranches_per_cell[i] for i in viewed_cell_inds]
+    
+    @property
+    def total_nbranches(self):
+        return sum(self.nbranches_per_cell)
+    
+    @property
+    def cumsum_nbranches(self):
+        return np.cumsum([0] + self.nbranches_per_cell)
+    
+    @property
+    def xyzr(self):
+        # THIS IS TEMPORARY UNTIL #320 is merged
+        viewed_branch_inds = self._viewed_indices("branch")
+        return np.array(self.pointer.xyzr)[viewed_branch_inds].tolist()
+    
+    @property
+    def nseg(self):
+        # TODO: unless CompView, then this should return 1!
+        return self.pointer.nseg
+    
+    @property
+    def branch_edges(self):
+        viewed_branch_inds = self._viewed_indices("branch")
+        branch_edges = self.pointer.branch_edges
+        where_to_view_edges = branch_edges.isin(viewed_branch_inds) # only consider complete edges (both pre & post are in view)
+        viewed_branch_edges = branch_edges.branch_edges.loc[where_to_view_edges.any(axis=1)]
+        return viewed_branch_edges
+    
+    @property
+    def nodes(self):
+        #TODO: ENSURE THIS WORKS!
+        indices_of_viewed_elements = self.view.index
+        nodes = self.pointer.nodes.loc[indices_of_viewed_elements]
+        nodes.reset_index(drop=True, inplace=True)
+
+        # drop columns with all nan or all False
+        # TODO: THIS SHOULD ONLY CONSIDER PARAMS THAT ARE ACTUALLY USED IN THE VIEW
+        nodes = nodes.dropna(axis=1)
+        # nodes = nodes.loc[:, (nodes != False).any()] #TODO: FIX: prevent from dropping 0th index
+        return nodes
+    
+    @property
+    def synapses(self):
+        pass # TODO:
+    
+    @property
+    def synapse_param_names(self):
+        pass # TODO:
+    @property
+    def synapse_state_names(self):
+        pass # TODO:
+    @property
+    def synapse_names(self):
+        pass # TODO:   
+    
+    @property
+    def channels(self):
+        pass # TODO:
+
+    @property
+    def membrane_current_names(self):
+        pass # TODO:
+
+    @property
+    def indices_set_by_trainables(self):
+        pass # TODO:
+
+    @property
+    def trainable_params(self):
+        pass # TODO:
+
+    @property
+    def num_trainable_params(self):
+        return np.sum([len(p) for p in self.pointer.get_parameters()])
+
+    @property
+    def recordings(self):
+        pass # TODO:
+
+    @property
+    def currents(self):
+        pass # TODO:
+
+    @property
+    def current_inds(self):
+        pass # TODO:
+
+    @property
+    def group_nodes(self):
+        pass # TODO:
+
+    def to_module(self):
+    # this prolly needs to be added to the respective ModuleView class since it
+    # needs to know about jx.Branch etc.
+        pass # TODO: Make a new module with the same properties as the view
+
 
 class GroupView(View):
     """GroupView (aka sectionlist).
