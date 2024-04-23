@@ -1031,7 +1031,7 @@ class Module(ABC):
         x: Union[float, np.ndarray] = 0.0,
         y: Union[float, np.ndarray] = 0.0,
         z: Union[float, np.ndarray] = 0.0,
-    ):
+    ) -> None:
         """Move cells or networks to a location (x, y, z).
 
         If x, y, and z are floats, then the first compartment of the first branch
@@ -1071,42 +1071,29 @@ class Module(ABC):
                 x.shape == y.shape == z.shape == (len(cell_inds),)
             ), "x, y, and z array shapes are not all equal to the number of cells to be moved."
 
-            # Split the branches by cell id (.branches_per_cell only works on module)
+            # Split the branches by cell id
             tup_indices = np.array([view.cell_index, view.branch_index])
             view_cell_branch_inds = np.unique(tup_indices, axis=1)[0]
+            _, branch_split_inds = np.unique(view_cell_branch_inds, return_index=True)
+            branches_by_cell = np.split(
+                view.branch_index.unique(), branch_split_inds[1:]
+            )
 
-            branches_by_cell = []
-            for c in cell_inds:
-                single_cell_branch_inds = branch_inds[view_cell_branch_inds == c]
-                branch_list = [self.xyzr[b] for b in single_cell_branch_inds]
-                branches_by_cell.append(branch_list)
+            # Calculate the amount to shift all of the branches of each cell
+            shift_amounts = (
+                np.array([x, y, z]).T - np.stack(self[cell_inds, 0].xyzr)[:, 0, :3]
+            )
 
         else:
             # Treat as if all branches belong to the same cell to be moved
-            branches_by_cell = [self.xyzr]
-            x, y, z = [[i] for i in [x, y, z]]
+            branches_by_cell = [branch_inds]
+            # Calculate the amount to shift all branches by the 1st branch of 1st cell
+            shift_amounts = [np.array([x, y, z]) - self[cell_inds].xyzr[0][0, :3]]
 
-        moved_branches = []
-        for branches, x, y, z in zip(branches_by_cell, x, y, z):
-            # Compute the shift of the first coordinate to the new location
-            shift_amount = np.array([x, y, z]) - branches[0][0, :3]
-            # Shift all of the cell's branch coords by this amount
-            branch_shapes = [b.shape[0] for b in branches]
-            branches = np.concatenate(branches, axis=0)
-            branches[:, :3] += shift_amount
-            branches = np.split(branches, np.cumsum(branch_shapes[:-1]))
-
-            # Deal with the case where branches are (4,) shape from SWC file, this is
-            # needed for _update_nodes_with_xyz to work, in theory branches should be 3D
-            faulty_branch_inds = np.where(np.array(branch_shapes) < 2)
-            for i in list(faulty_branch_inds[0]):
-                branches[i] = np.tile(branches[i], (2, 1))  # make stop same as start
-
-            moved_branches.extend(branches)
-
-        # Iterating over the branches to reset (separate to avoid multiD indexing)
-        for i, b in enumerate(list(branch_inds)):
-            self.xyzr[b] = moved_branches[i]
+        # Move all of the branches
+        for i, branches in enumerate(branches_by_cell):
+            for b in branches:
+                self.xyzr[b][:, :3] += shift_amounts[i]
 
         self._update_nodes_with_xyz()
 
