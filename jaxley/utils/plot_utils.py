@@ -28,9 +28,9 @@ def plot_morph(
         x1, x2 = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
-            _ = ax.plot(x1, x2, c=col, **morph_plot_kwargs)
+            _ = ax.plot(x1, x2, color=col, **morph_plot_kwargs)
         elif "scatter" in type.lower():
-            _ = ax.scatter(x1, x2, c=col, **morph_plot_kwargs)
+            _ = ax.scatter(x1, x2, color=col, **morph_plot_kwargs)
         else:
             raise NotImplementedError
 
