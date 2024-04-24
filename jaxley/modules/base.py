@@ -1442,7 +1442,12 @@ class View:
     
     @property
     def nseg(self):
-        # TODO: unless CompView, then this should return 1!
+        # if only one branch is viewed, return the number of compartments in that branch
+        # TODO: What to do about viewing single 2 comps or 2 branch sections in 2 cells?
+        viewed_branch_inds = self._viewed_indices("branch")
+        viewed_comp_inds = self._viewed_indices("comp")
+        if len(viewed_branch_inds) == 1:
+            return len(viewed_comp_inds)
         return self.pointer.nseg
     
     @property
@@ -1468,17 +1473,24 @@ class View:
     
     @property
     def synapses(self):
-        pass # TODO:
+        pre, post = self.pointer.edges[["global_pre_comp_index", "global_post_comp_index"]].values.T
+        # ensure both pre and post are in self.view.index
+        viewed_indices = self.view.index
+        where_to_view_edges = np.isin(pre, viewed_indices) & np.isin(post, viewed_indices)
+        viewed_types = np.unique(self.pointer.edges["type"].loc[where_to_view_edges])
+        return [s for s in self.pointer.synapses if s._name in viewed_types]
     
     @property
     def synapse_param_names(self):
-        pass # TODO:
+        return sum([list(s.synapse_params.keys()) for s in self.synapses], [])
+
     @property
     def synapse_state_names(self):
-        pass # TODO:
+        return sum([list(s.synapse_states.keys()) for s in self.synapses], [])
+
     @property
     def synapse_names(self):
-        pass # TODO:   
+        return [s._name for s in self.synapses]
     
     @property
     def channels(self):
@@ -1493,15 +1505,18 @@ class View:
 
     @property
     def indices_set_by_trainables(self):
-        pass # TODO:
+        # viewed_indices = self.view.index
+        # trainable_inds = self.pointer.indices_set_by_trainables
+        # return [ind for ind in trainable_inds if np.isin(ind, viewed_indices).any()]
+        pass # TODO
 
     @property
     def trainable_params(self):
-        pass # TODO:
+        pass # TODO
 
     @property
     def num_trainable_params(self):
-        return np.sum([len(p) for p in self.pointer.get_parameters()])
+        pass # TODO
 
     @property
     def recordings(self):
