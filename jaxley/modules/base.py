@@ -1508,18 +1508,23 @@ class View:
 
     @property
     def indices_set_by_trainables(self):
-        # viewed_indices = self.view.index
-        # trainable_inds = self.pointer.indices_set_by_trainables
-        # return [ind for ind in trainable_inds if np.isin(ind, viewed_indices).any()]
-        pass # TODO
+        viewed_indices = self.view.index
+        trainable_inds = self.pointer.indices_set_by_trainables
+        viewed_trainable_inds = [inds[np.isin(inds, viewed_indices)] for inds in trainable_inds]
+        return [inds for inds in viewed_trainable_inds if len(inds) > 0]
 
     @property
     def trainable_params(self):
-        pass # TODO
+        viewed_indices = self.view.index
+        trainable_inds = self.pointer.indices_set_by_trainables
+        trainable_param_is_viewed = [np.isin(inds, viewed_indices).any() for inds in trainable_inds]
+        return [p for in_view, p in zip(trainable_param_is_viewed, self.pointer.trainable_params) if in_view]
 
     @property
     def num_trainable_params(self):
-        pass # TODO
+        viewed_trainable_params = np.hstack(sum((list(p.values()) for p in self.trainable_params), []))
+        return len(viewed_trainable_params)
+
 
     @property
     def recordings(self):
