@@ -1482,11 +1482,14 @@ class View:
     
     @property
     def channels(self):
-        pass # TODO:
+        channels = self.pointer.channels
+        channel_names = [c.__class__.__name__ for c in channels]
+        present_channels = self.view[channel_names].any(axis=0)
+        return [c for c, present in zip(channels, present_channels) if present]
 
     @property
     def membrane_current_names(self):
-        pass # TODO:
+        return [c.current_name for c in self.channels]
 
     @property
     def indices_set_by_trainables(self):
@@ -1502,15 +1505,23 @@ class View:
 
     @property
     def recordings(self):
-        pass # TODO:
+        viewed_indices = self.view.index
+        viewed_rec_inds = self.pointer.recordings["rec_index"].isin(viewed_indices)
+        return self.pointer.recordings.loc[viewed_rec_inds]
 
     @property
     def currents(self):
-        pass # TODO:
+        viewed_indices = self.view.index
+        global_current_inds = self.pointer.current_inds.index
+        viewed_current_inds = global_current_inds.isin(viewed_indices)
+        return self.pointer.currents[viewed_current_inds]
 
     @property
     def current_inds(self):
-        pass # TODO:
+        viewed_indices = self.view.index
+        global_current_inds = self.pointer.current_inds.index
+        viewed_current_inds = global_current_inds.isin(viewed_indices)
+        return self.pointer.current_inds[viewed_current_inds]
 
     @property
     def group_nodes(self):
