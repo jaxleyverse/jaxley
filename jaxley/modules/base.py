@@ -1459,24 +1459,28 @@ class View:
     
     @property
     def nodes(self):
-        #TODO: ENSURE THIS WORKS!
         indices_of_viewed_elements = self.view.index
         nodes = self.pointer.nodes.loc[indices_of_viewed_elements]
-        nodes.reset_index(drop=True, inplace=True)
+        nodes.reset_index(drop=True, inplace=True)# TODO: reindex?
 
-        # drop columns with all nan or all False
-        # TODO: THIS SHOULD ONLY CONSIDER PARAMS THAT ARE ACTUALLY USED IN THE VIEW
-        nodes = nodes.dropna(axis=1)
-        # nodes = nodes.loc[:, (nodes != False).any()] #TODO: FIX: prevent from dropping 0th index
-        return nodes
+        indexes = ["comp_index", "branch_index", "cell_index"]
+        params_in_view = ["length", "radius", "axial_resistivity", "capacitance", "v"]
+        for channel in self.channels:
+            params_in_view += list(channel.channel_params.keys()) + [channel._name]
+        return nodes[indexes + params_in_view]
+    
+    @property
+    def edges(self):
+        pre, post = self.pointer.edges[["global_pre_comp_index", "global_post_comp_index"]].values.T
+        viewed_indices = self.view.index
+        # ensure both pre and post are in self.view.index
+        where_to_view_edges = np.isin(pre, viewed_indices) & np.isin(post, viewed_indices)
+        return self.pointer.edges[where_to_view_edges]
     
     @property
     def synapses(self):
-        pre, post = self.pointer.edges[["global_pre_comp_index", "global_post_comp_index"]].values.T
-        # ensure both pre and post are in self.view.index
-        viewed_indices = self.view.index
-        where_to_view_edges = np.isin(pre, viewed_indices) & np.isin(post, viewed_indices)
-        viewed_types = np.unique(self.pointer.edges["type"].loc[where_to_view_edges])
+        edges_fully_in_view = self.edges.index
+        viewed_types = np.unique(self.pointer.edges["type"].loc[edges_fully_in_view])
         return [s for s in self.pointer.synapses if s._name in viewed_types]
     
     @property
