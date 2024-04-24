@@ -1522,7 +1522,7 @@ class View:
 
     @property
     def num_trainable_params(self):
-        viewed_trainable_params = np.hstack(sum((list(p.values()) for p in self.trainable_params), []))
+        viewed_trainable_params = np.hstack(np.sum((list(p.values()) for p in self.trainable_params), []))
         return len(viewed_trainable_params)
 
 
