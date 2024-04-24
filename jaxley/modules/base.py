@@ -1009,7 +1009,7 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
-        """Move cells or networks in the (x, y, z) plane."""
+        """Move cells or networks by adding to their (x, y, z) coordinates."""
         self._move(x, y, z, self.nodes)
 
     def _move(self, x: float, y: float, z: float, view):
@@ -1020,6 +1020,78 @@ class Module(ABC):
             self.xyzr[i][:, 0] += x
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
+        self._update_nodes_with_xyz()
+
+    def move_to(
+        self,
+        x: Union[float, np.ndarray] = 0.0,
+        y: Union[float, np.ndarray] = 0.0,
+        z: Union[float, np.ndarray] = 0.0,
+    ) -> None:
+        """Move cells or networks to a location (x, y, z).
+
+        If x, y, and z are floats, then the first compartment of the first branch
+        of the first cell is moved to that float coordinate, and everything else is
+        shifted by the difference between that compartment's previous coordinate and
+        the new float location.
+
+        If x, y, and z are arrays, then they must each have a length equal to the number
+        of cells being moved. Then the first compartment of the first branch of each
+        cell is moved to the specified location.
+        """
+        self._move_to(x, y, z, self.nodes)
+
+    def _move_to(
+        self,
+        x: Union[float, np.ndarray],
+        y: Union[float, np.ndarray],
+        z: Union[float, np.ndarray],
+        view: pd.DataFrame,
+    ):
+        # Test if any coordinate values are NaN which would greatly affect moving
+        if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
+            raise ValueError(
+                "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
+            )
+
+        # Get the indices of the cells and branches to move
+        cell_inds = list(view.cell_index.unique())
+        branch_inds = view.branch_index.unique()
+
+        if (
+            isinstance(x, np.ndarray)
+            and isinstance(y, np.ndarray)
+            and isinstance(z, np.ndarray)
+        ):
+            assert (
+                x.shape == y.shape == z.shape == (len(cell_inds),)
+            ), "x, y, and z array shapes are not all equal to the number of cells to be moved."
+
+            # Split the branches by cell id
+            tup_indices = np.array([view.cell_index, view.branch_index])
+            view_cell_branch_inds = np.unique(tup_indices, axis=1)[0]
+            _, branch_split_inds = np.unique(view_cell_branch_inds, return_index=True)
+            branches_by_cell = np.split(
+                view.branch_index.unique(), branch_split_inds[1:]
+            )
+
+            # Calculate the amount to shift all of the branches of each cell
+            shift_amounts = (
+                np.array([x, y, z]).T - np.stack(self[cell_inds, 0].xyzr)[:, 0, :3]
+            )
+
+        else:
+            # Treat as if all branches belong to the same cell to be moved
+            branches_by_cell = [branch_inds]
+            # Calculate the amount to shift all branches by the 1st branch of 1st cell
+            shift_amounts = [np.array([x, y, z]) - self[cell_inds].xyzr[0][0, :3]]
+
+        # Move all of the branches
+        for i, branches in enumerate(branches_by_cell):
+            for b in branches:
+                self.xyzr[b][:, :3] += shift_amounts[i]
+
+        self._update_nodes_with_xyz()
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -1244,6 +1316,11 @@ class View:
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move(x, y, z, nodes)
 
+    def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        # Ensuring here that the branch indices in the view passed are global
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._move_to(x, y, z, nodes)
+
     def adjust_view(self, key: str, index: Union[int, str, list, range, slice]):
         """Update view."""
         if isinstance(index, int) or isinstance(index, np.int64):
@@ -1303,6 +1380,20 @@ class View:
     def shape(self):
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
+
+    @property
+    def xyzr(self) -> List[np.ndarray]:
+        """Returns the xyzr entries of a branch, cell, or network.
+
+        If called on a compartment or location, it will return the (x, y, z) of the
+        center of the compartment.
+        """
+        idxs = self.view.global_branch_index.unique()
+        if self.__class__.__name__ == "CompartmentView":
+            loc = loc_of_index(self.view.comp_index, self.pointer.nseg)
+            return list(interpolate_xyz(loc, self.pointer.xyzr[idxs[0]]))
+        else:
+            return [self.pointer.xyzr[i] for i in idxs]
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
