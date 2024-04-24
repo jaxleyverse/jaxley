@@ -1107,6 +1107,11 @@ class Module(ABC):
             self.cumsum_nbranches[cell_inds] + branch_inds
         ) * self.nseg + comp_inds
         return global_ind.astype(int)
+    
+
+    @property
+    def groups(self):
+        return list(self.group_nodes.keys())
 
 
 class View:
@@ -1435,12 +1440,6 @@ class View:
         return np.cumsum([0] + self.nbranches_per_cell)
     
     @property
-    def xyzr(self):
-        # THIS IS TEMPORARY UNTIL #320 is merged
-        viewed_branch_inds = self._viewed_indices("branch")
-        return np.array(self.pointer.xyzr)[viewed_branch_inds].tolist()
-    
-    @property
     def nseg(self):
         # if only one branch is viewed, return the number of compartments in that branch
         # TODO: What to do about viewing single 2 comps or 2 branch sections in 2 cells?
@@ -1540,7 +1539,17 @@ class View:
 
     @property
     def group_nodes(self):
-        pass # TODO:
+        viewed_group_nodes = {}
+        viewed_indices = self.view.index
+        for key, group_nodes in self.pointer.group_nodes.items():
+            inds_in_group = group_nodes.index.isin(viewed_indices)
+            if inds_in_group.any():
+                viewed_group_nodes[key] = group_nodes.loc[inds_in_group]
+        return viewed_group_nodes
+
+    @property
+    def groups(self):
+        return list(self.group_nodes.keys())
 
     def to_module(self):
     # this prolly needs to be added to the respective ModuleView class since it
