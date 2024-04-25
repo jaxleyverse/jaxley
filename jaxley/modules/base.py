@@ -1447,6 +1447,7 @@ class Module(ABC):
         self._update_nodes_with_xyz()
 
         # add global attrs
+        module_graph.graph["module"] = self.__class__.__name__
         module_graph.graph["nseg"] = self.nseg
         module_graph.graph["total_nbranches"] = self.total_nbranches
         module_graph.graph["cumsum_nbranches"] = self.cumsum_nbranches
