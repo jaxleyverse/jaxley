@@ -5,7 +5,6 @@ import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
 
 import jaxley as jx
 
