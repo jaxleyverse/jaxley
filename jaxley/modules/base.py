@@ -1507,9 +1507,7 @@ class Module(ABC):
                     self.indices_set_by_trainables, self.trainable_params
                 ):
                     if i in inds.flatten():
-                        trainable_params[i].update(
-                            {k: v.item() for k, v in params.items()}
-                        )
+                        trainable_params[i].update(params)
             trainable_iter = {k: {"trainables": v} for k, v in trainable_params.items()}
             module_graph.add_nodes_from(trainable_iter.items())
 
