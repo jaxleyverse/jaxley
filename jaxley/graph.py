@@ -181,10 +181,10 @@ def from_graph(
         columns=optional_attrs, inplace=True, errors="ignore"
     )  # ignore if columns do not exist
 
-    # build skeleton of module instances
     return_type = (
         global_attrs.pop("module").lower() if "module" in global_attrs else None
-    )
+    )  # try to infer module type from global attrs (exported with `to_graph`)
+    # build skeleton of module instances
     module = build_skeleton_module(nodes, return_type)
 
     # set global attributes of module
@@ -229,26 +229,35 @@ def from_graph(
         group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
         module.group_nodes = group_nodes
     if not trainables.empty:
+        # trainables require special handling, since some of them are shared
+        # and some are set individually
         trainables = pd.DataFrame(
             nx.get_node_attributes(module_graph, "trainable"), dtype=float
         )
+        # prepare trainables dataframe
         trainables = trainables.T.unstack().reset_index().dropna()
         trainables = trainables.rename(
             columns={"level_0": "param", "level_1": "index", 0: "value"}
         )
+        # 1. merge indices with same trainables into lists
         grouped_trainables = trainables.groupby(["param", "value"])
         merged_trainables = grouped_trainables.agg(
             {"index": lambda x: jnp.array(x.values)}
         ).reset_index()
         concat_here = merged_trainables["index"].apply(lambda x: len(x) == 1)
-        common_trainables = merged_trainables.loc[~concat_here]
-        diff_trainables = (
+
+        # 2. split into shared and seperate trainables
+        shared_trainables = merged_trainables.loc[~concat_here]
+        sep_trainables = (
             merged_trainables.loc[concat_here].groupby("param").agg(list).reset_index()
         )
-        diff_trainables.loc[:, "index"] = diff_trainables["index"].apply(jnp.stack)
-        diff_trainables.loc[:, "value"] = diff_trainables["value"].apply(jnp.array)
-        common_trainables.loc[:, "value"] = common_trainables["value"].apply(np.array)
-        trainable_params = pd.concat([common_trainables, diff_trainables])
+        # 3. convert lists to jnp arrays and stack indices
+        sep_trainables.loc[:, "index"] = sep_trainables["index"].apply(jnp.stack)
+        sep_trainables.loc[:, "value"] = sep_trainables["value"].apply(jnp.array)
+        shared_trainables.loc[:, "value"] = shared_trainables["value"].apply(np.array)
+
+        # 4. format to match module.trainable_params and module.indices_set_by_trainables
+        trainable_params = pd.concat([shared_trainables, sep_trainables])
         indices_set_by_trainables = trainable_params["index"].values
         trainable_params = [
             {k: jnp.array(v).reshape(-1)}
