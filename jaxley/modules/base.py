@@ -1483,14 +1483,15 @@ class Module(ABC):
                 module_graph.add_node(index, **{"currents": currents})
 
         # add trainable params to nodes
-        trainable_inds = np.unique(np.hstack(self.indices_set_by_trainables))
-        trainable_params = {i:{} for i in trainable_inds}
-        for i in trainable_inds:
-            for inds, params in zip(self.indices_set_by_trainables, self.trainable_params):
-                if i in inds.flatten():
-                    trainable_params[i].update(params)
-        trainable_iter = {k:{"trainables":v} for k,v in trainable_params.items()}
-        module_graph.add_nodes_from(trainable_iter.items())
+        if self.trainable_params:
+            trainable_inds = np.unique(np.hstack(self.indices_set_by_trainables))
+            trainable_params = {i:{} for i in trainable_inds}
+            for i in trainable_inds:
+                for inds, params in zip(self.indices_set_by_trainables, self.trainable_params):
+                    if i in inds.flatten():
+                        trainable_params[i].update(params)
+            trainable_iter = {k:{"trainables":v} for k,v in trainable_params.items()}
+            module_graph.add_nodes_from(trainable_iter.items())
 
         # connect comps within branches
         for index, group in self.nodes.groupby("branch_index"):
