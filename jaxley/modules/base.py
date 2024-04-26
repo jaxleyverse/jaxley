@@ -5,7 +5,6 @@ import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
-import networkx as nx
 
 import jax.numpy as jnp
 import networkx as nx
@@ -1440,11 +1439,25 @@ class Module(ABC):
             self.cumsum_nbranches[cell_inds] + branch_inds
         ) * self.nseg + comp_inds
         return global_ind.astype(int)
-    
-    def to_graph(self):
-        """Return a networkx graph of the module."""
+
+    def to_graph(self) -> nx.DiGraph:
+        """Export the module as a networkx graph.
+
+        Constructs a nx.DiGraph from the module. Each compartment in the module
+        is represented by a node in the graph. The edges between the nodes represent
+        the connections between the compartments. These edges can either be connections
+        between compartments within the same branch, between different branches or
+        even between different cells. In this case the latter the synapse parameters
+        are stored as edge attributes. Additionally, global attributes of the module,
+        for example `nseg`, are stored as graph attributes.
+
+        Exported graphs can be imported again to `jaxley` using the `from_graph` method.
+
+        Returns:
+            A networkx graph of the module.
+        """
         module_graph = nx.DiGraph()
-        self._update_nodes_with_xyz() # make xyz coords attr of nodes
+        self._update_nodes_with_xyz()  # make xyz coords attr of nodes
 
         # add global attrs
         module_graph.graph["module"] = self.__class__.__name__
@@ -1463,9 +1476,12 @@ class Module(ABC):
         module_graph.add_nodes_from(self.nodes.iterrows())
 
         # add groups to nodes
-        group_node_dict = {k:list(v.index) for k,v in self.group_nodes.items()}
+        group_node_dict = {k: list(v.index) for k, v in self.group_nodes.items()}
         nodes_in_groups = sum(list(group_node_dict.values()), [])
-        node_group_dict = {k:[i for i, v in group_node_dict.items() if k in v] for k in nodes_in_groups}
+        node_group_dict = {
+            k: [i for i, v in group_node_dict.items() if k in v]
+            for k in nodes_in_groups
+        }
         # ensure multiple groups allowed per node
         for idx, key in node_group_dict.items():
             module_graph.add_node(idx, **{"groups": key})
@@ -1474,7 +1490,7 @@ class Module(ABC):
         if not self.recordings.empty:
             for index, group in self.recordings.groupby("rec_index"):
                 rec_index = group["rec_index"].loc[0]
-                rec_states = group["state"].values 
+                rec_states = group["state"].values
                 module_graph.add_node(rec_index, **{"recordings": rec_states})
 
         # add currents to nodes
@@ -1485,12 +1501,14 @@ class Module(ABC):
         # add trainable params to nodes
         if self.trainable_params:
             trainable_inds = np.unique(np.hstack(self.indices_set_by_trainables))
-            trainable_params = {i:{} for i in trainable_inds}
+            trainable_params = {i: {} for i in trainable_inds}
             for i in trainable_inds:
-                for inds, params in zip(self.indices_set_by_trainables, self.trainable_params):
+                for inds, params in zip(
+                    self.indices_set_by_trainables, self.trainable_params
+                ):
                     if i in inds.flatten():
                         trainable_params[i].update(params)
-            trainable_iter = {k:{"trainables":v} for k,v in trainable_params.items()}
+            trainable_iter = {k: {"trainables": v} for k, v in trainable_params.items()}
             module_graph.add_nodes_from(trainable_iter.items())
 
         # connect comps within branches
@@ -1500,9 +1518,13 @@ class Module(ABC):
         # connect branches
         for index, edge in self.branch_edges.iterrows():
             parent_branch_idx = edge["parent_branch_index"]
-            parent_comp_idx = max(self.nodes[self.nodes["branch_index"] == parent_branch_idx].index)
+            parent_comp_idx = max(
+                self.nodes[self.nodes["branch_index"] == parent_branch_idx].index
+            )
             child_branch_idx = edge["child_branch_index"]
-            child_comp_idx = min(self.nodes[self.nodes["branch_index"] == child_branch_idx].index)
+            child_comp_idx = min(
+                self.nodes[self.nodes["branch_index"] == child_branch_idx].index
+            )
             module_graph.add_edge(parent_comp_idx, child_comp_idx, type="branch")
 
         # connect synapses
@@ -1924,6 +1946,7 @@ class View:
         self.pointer.synapse_param_names += list(synapse_type.synapse_params.keys())
         self.pointer.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.pointer.synapses.append(synapse_type)
+
 
 class GroupView(View):
     """GroupView (aka sectionlist).
