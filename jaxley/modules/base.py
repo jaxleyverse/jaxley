@@ -1490,7 +1490,6 @@ class Module(ABC):
                 if i in inds.flatten():
                     trainable_params[i].update(params)
         trainable_iter = {k:{"trainables":v} for k,v in trainable_params.items()}
-        print(trainable_iter)
         module_graph.add_nodes_from(trainable_iter.items())
 
         # connect comps within branches
