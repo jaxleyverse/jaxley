@@ -20,6 +20,8 @@ def integrate(
     solver: str = "bwd_euler",
     tridiag_solver: str = "stone",
     checkpoint_lengths: Optional[List[int]] = None,
+    all_states: Optional[Dict] = None,
+    return_states: bool = False,
 ) -> jnp.ndarray:
     """
     Solves ODE and simulates neuron model.
@@ -46,6 +48,11 @@ def integrate(
             to the desired simulation length. Therefore, a poor choice of
             `checkpoint_lengths` can lead to longer simulation time. If `None`, no
             checkpointing is applied.
+        all_states: An optional initial state that was returned by a previous
+            `jx.integrate(..., return_states=True)` run. Overrides potentially
+            trainable initial states.
+        return_states: If True, it returns all states such that the current state of
+            the `Module` can be set with `set_states`.
     """
 
     assert module.initialized, "Module is not initialized, run `.initialize()`."
@@ -113,10 +120,12 @@ def integrate(
     if param_state is not None:
         pstate += param_state
 
-    # Run `init_conds()` and return every parameter that is needed to solve the ODE.
-    # This includes conductances, radiuses, lenghts, axial_resistivities, but also
-    # coupling conductances.
     all_params = module.get_all_parameters(pstate)
+    all_states = (
+        module.get_all_states(pstate, all_params, delta_t)
+        if all_states is None
+        else all_states
+    )
 
     def _body_fun(state, externals):
         state = module.step(
@@ -154,48 +163,22 @@ def integrate(
         for key in externals.keys():
             externals[key] = jnp.concatenate([externals[key], dummy_external])
 
-    # Join node and edge states into a single state dictionary.
-    states = {"v": module.jaxnodes["v"]}
-    for channel in module.channels:
-        for channel_states in list(channel.channel_states.keys()):
-            states[channel_states] = module.jaxnodes[channel_states]
-    for synapse_states in module.synapse_state_names:
-        states[synapse_states] = module.jaxedges[synapse_states]
-
-    # Override with the initial states set by `.make_trainable()`.
-    for inds, set_param in zip(module.indices_set_by_trainables, params):
-        for key in set_param.keys():
-            if key in list(states.keys()):  # Only initial states, not parameters.
-                if key not in module.synapse_state_names:
-                    inds = flip_comp_indices(inds, module.nseg)  # See 305
-                # `inds` is of shape `(num_params, num_comps_per_param)`.
-                # `set_param` is of shape `(num_params,)`
-                # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
-                # `.set()` to work. This is done with `[:, None]`.
-                states[key] = states[key].at[inds].set(set_param[key][:, None])
-
-    # Add to the states the initial current through every channel.
-    states, _ = module._channel_currents(
-        states, delta_t, module.channels, module.nodes, all_params
-    )
-
-    # Add to the states the initial current through every synapse.
-    states, _ = module._synapse_currents(
-        states, module.synapses, all_params, delta_t, module.edges
-    )
-
     # Record the initial state.
     init_recs = jnp.asarray(
-        [states[rec_state][rec_ind] for rec_state, rec_ind in zip(rec_states, rec_inds)]
+        [
+            all_states[rec_state][rec_ind]
+            for rec_state, rec_ind in zip(rec_states, rec_inds)
+        ]
     )
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # Run simulation.
     _, recordings = nested_checkpoint_scan(
         _body_fun,
-        states,
+        all_states,
         externals,
         length=length,
         nested_lengths=checkpoint_lengths,
     )
-    return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
+    recs = jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
+    return (recs, all_states) if return_states else recs

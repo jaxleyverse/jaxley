@@ -83,3 +83,18 @@ def test_api_equivalence_synapses():
     assert (
         np.max(np.abs(voltages1 - voltages2)) < 1e-8
     ), "Voltages do not match between synapse APIs."
+
+
+def test_api_equivalence_continued_simulation():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 2)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+    cell.insert(HH())
+    cell[0, 1].record()
+
+    v1 = jx.integrate(cell, t_max=4.0)
+    v21, states = jx.integrate(cell, return_states=True, t_max=2.0)
+    v22 = jx.integrate(cell, all_states=states, t_max=2.0)
+
+    v2 = jnp.concatenate([v21, v22[:, 1:]], axis=1)
+    assert np.max(np.abs(v1 - v2)) < 1e-8
