@@ -1502,7 +1502,7 @@ class Module(ABC):
             parent_comp_idx = max(self.nodes[self.nodes["branch_index"] == parent_branch_idx].index)
             child_branch_idx = edge["child_branch_index"]
             child_comp_idx = min(self.nodes[self.nodes["branch_index"] == child_branch_idx].index)
-            module_graph.add_edge(parent_comp_idx, child_comp_idx)
+            module_graph.add_edge(parent_comp_idx, child_comp_idx, type="branch")
 
         # connect synapses
         for index, edge in self.edges.iterrows():
