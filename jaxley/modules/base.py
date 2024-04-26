@@ -1444,7 +1444,7 @@ class Module(ABC):
     def to_graph(self):
         """Return a networkx graph of the module."""
         module_graph = nx.DiGraph()
-        self._update_nodes_with_xyz()
+        self._update_nodes_with_xyz() # make xyz coords attr of nodes
 
         # add global attrs
         module_graph.graph["module"] = self.__class__.__name__
@@ -1457,10 +1457,7 @@ class Module(ABC):
         module_graph.graph["channels"] = self.channels
         module_graph.graph["allow_make_trainable"] = self.allow_make_trainable
         module_graph.graph["num_trainable_params"] = self.num_trainable_params
-
-        # TODO: store as node attrs if possible
-        module_graph.graph["indices_set_by_trainables"] = self.indices_set_by_trainables
-        module_graph.graph["trainable_params"] = self.trainable_params
+        module_graph.graph["xyzr"] = self.xyzr
 
         # add nodes
         module_graph.add_nodes_from(self.nodes.iterrows())
@@ -1482,8 +1479,19 @@ class Module(ABC):
 
         # add currents to nodes
         if self.currents is not None:
-            for index, current in zip(self.current_inds.index, self.currents):
-                module_graph.add_node(index, **{"current": current})
+            for index, currents in zip(self.current_inds.index, self.currents):
+                module_graph.add_node(index, **{"currents": currents})
+
+        # add trainable params to nodes
+        trainable_inds = np.unique(np.hstack(self.indices_set_by_trainables))
+        trainable_params = {i:{} for i in trainable_inds}
+        for i in trainable_inds:
+            for inds, params in zip(self.indices_set_by_trainables, self.trainable_params):
+                if i in inds.flatten():
+                    trainable_params[i].update(params)
+        trainable_iter = {k:{"trainables":v} for k,v in trainable_params.items()}
+        print(trainable_iter)
+        module_graph.add_nodes_from(trainable_iter.items())
 
         # connect comps within branches
         for index, group in self.nodes.groupby("branch_index"):
