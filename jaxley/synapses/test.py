@@ -14,7 +14,7 @@ class TestSynapse(Synapse):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
-        self.synapse_params = {f"{prefix}_gC": 0.5}
+        self.synapse_params = {f"{prefix}_gC": 1e-4}
         self.synapse_states = {f"{prefix}_c": 0.2}
 
     def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
