@@ -15,10 +15,10 @@ class IonotropicSynapse(Synapse):
     dependent on the presynaptic voltage.
 
     The synaptic parameters are:
-        - gS: the maximal conductance across the postsynaptic membrane
-        - e_syn: the reversal potential across the postsynaptic membrane
+        - gS: the maximal conductance across the postsynaptic membrane (uS)
+        - e_syn: the reversal potential across the postsynaptic membrane (mV)
         - k_minus: the rate constant of neurotransmitter unbinding from the postsynaptic
-            receptor
+            receptor (s^-1)
 
     Details of this implementation can be found in the following book chapter:
         L. F. Abbott and E. Marder, "Modeling Small Networks," in Methods in Neuronal
@@ -30,7 +30,7 @@ class IonotropicSynapse(Synapse):
         super().__init__(name)
         prefix = self._name
         self.synapse_params = {
-            f"{prefix}_gS": 0.5,
+            f"{prefix}_gS": 1e-4,
             f"{prefix}_e_syn": 0.0,
             f"{prefix}_k_minus": 0.025,
         }
@@ -39,8 +39,8 @@ class IonotropicSynapse(Synapse):
     def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
         prefix = self._name
-        v_th = -35.0
-        delta = 10.0
+        v_th = -35.0 # mV
+        delta = 10.0 # mV
 
         s_inf = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
         tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
