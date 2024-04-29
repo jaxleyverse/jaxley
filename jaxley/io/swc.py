@@ -4,6 +4,7 @@
 from copy import copy
 from typing import Callable, List, Optional, Tuple
 from warnings import warn
+import networkx as nx
 
 import numpy as np
 
@@ -318,3 +319,22 @@ def _compute_pathlengths(
             dists = np.asarray([2 * radius])
         branch_pathlengths.append(dists)
     return branch_pathlengths
+
+def swc_to_graph(fname, num_lines = None, sort=True) -> nx.DiGraph:
+    content = np.loadtxt(fname)[:num_lines]
+    content = content[content[:, 0].argsort()] if sort else content # sort by idx
+    idxs, ids, xs, ys, zs, rs, parents = content.T
+    ids = ids.astype(int)
+    idxs = idxs.astype(int) - 1
+    root_idx = np.where(parents == -1)[0][0] # in case .swc does not start from root
+    parents = parents.astype(int) - 1
+
+    graph = nx.DiGraph() # TODO: how to handle groups? Only one per node?
+    graph.add_nodes_from({i: {"x": x, "y": y, "z": z, "radius": r, "id": id} for i, id, x, y, z, r in zip(idxs, ids, xs, ys, zs, rs)}.items())
+    graph.add_edges_from([(node, idx) for idx, node in enumerate(parents) if idx != root_idx])
+    return graph
+
+
+def asc_to_graph(fname, num_lines = None, sort=True) -> nx.DiGraph:
+    # future TODO: implement asc to graph reader
+    pass
