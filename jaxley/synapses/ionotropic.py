@@ -39,8 +39,8 @@ class IonotropicSynapse(Synapse):
     def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state and current."""
         prefix = self._name
-        v_th = -35.0 # mV
-        delta = 10.0 # mV
+        v_th = -35.0  # mV
+        delta = 10.0  # mV
 
         s_inf = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
         tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
