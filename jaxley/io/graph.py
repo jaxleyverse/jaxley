@@ -2,6 +2,7 @@ from math import pi
 from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
+from jax import vmap
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -194,7 +195,7 @@ def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100):
         lengths = [graph.edges[(i,j)]["length"] for i,j in path]
 
         xyz = [[n[k] if has_loc else np.nan for k in "xyz"] for n in path_node_attrs]
-        r = [[n["r"] if has_loc else 1.0] for n in path_node_attrs]
+        r = [[n["r"] if has_rad else 1.0] for n in path_node_attrs]
         xyzr = np.hstack([np.array(xyz), np.array(r)])
         ids = np.array([n["id"] if has_id else 0 for n in path_node_attrs])
 
@@ -315,7 +316,7 @@ def from_graph(
     # Graph only has to contain edges to be importable as a module
     # In this case, xyz are set to NaN and r to 1
     assert nx.is_weakly_connected(graph), "Graph must be connected to be imported as a module."
-    assert len(list(nx.simple_cycles(new_graph))) == 0, "Graph cannot have loops"
+    assert len(list(nx.simple_cycles(graph))) == 0, "Graph cannot have loops"
     if not graph.edges:
         raise ValueError("Graph must have edges to be imported as a module.")
 
@@ -326,12 +327,17 @@ def from_graph(
     # add comp_index, branch_index, cell_index to graph
     # first check if they are already present, otherwise compute them
     if not "branch_index" in graph.nodes[0]:
-        nseg = graph.graph["nseg"] if "nseg" in graph.graph else default_nseg
+        nseg = graph.graph["nseg"] if "nseg" in graph.graph else nseg
         
         # add branch_index and segment morphology into branches and compartments
+        roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
+        assert len(roots) == 1, "Currently only 1 morphology can be imported."
         graph = impose_branch_structure(graph, nsegs = nseg, max_branch_len = max_branch_len)
         nx.set_node_attributes(graph, {i:0 for i in graph.nodes}, "cell_index")
         nx.set_node_attributes(graph, {i:i for i in graph.nodes}, "comp_index")
+        #TODO: Add xyzr
+        xyzr = np.stack([[n[k] for k in "xyzr"] for i,n in graph.nodes(data=True)]).reshape(4,-1,4)
+        graph.graph["xyzr"] = xyzr
 
     # setup branch structure and compute parents
     # edges connecting comps in different branches are set to type "branch"
@@ -355,13 +361,14 @@ def from_graph(
 
     # add group information to nodes if available
     ids = nx.get_node_attributes(graph, "id")
-    if ids == {}:
+    if ids != {}:
         group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
         # Type of padded section is assumed to be of `custom` type:
         # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-        groups = [group_ids[id] if id in group_ids else "custom" for id in ids]
+        groups = [group_ids[id] if id in group_ids else "custom" for id in ids.values()]
         graph.add_nodes_from({i:{"groups":[id]} for i, id in enumerate(groups)}.items())
-        nx.set_node_attributes(graph, {i:None for i in graph.nodes}, "id") # remove id
+    for i, node in graph.nodes(data=True):
+        node.pop("id") # remove id
 
     ###############################
     ### Port graph to jx.Module ###
@@ -373,7 +380,8 @@ def from_graph(
     
     # build skeleton of module instances
     nodes = pd.DataFrame((n for i, n in graph.nodes(data=True)))
-    module = build_skeleton_module(nodes, return_type)
+    idxs = nodes[["cell_index", "branch_index", "comp_index"]]
+    module = build_skeleton_module(idxs, return_type)
 
     # set global attributes of module
     for k, v in global_attrs.items():
