@@ -154,34 +154,100 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         module_graph.add_edge(pre, post, **attrs)
     return module_graph
 
-def get_depth_first_branch_indexes(graph, nseg=4, return_mapper=False):
-    branch_index = 0
-    node_count = 0
-    mapper = {}
+def dist(pre, post):
+    pre_loc = np.hstack((pre["x"], pre["y"], pre["z"]))
+    post_loc = np.hstack((post["x"], post["y"], post["z"]))
+    return np.sqrt(np.sum((pre_loc - post_loc)**2))
 
-    # depth first search to assign branch index
-    for node in nx.dfs_preorder_nodes(graph):
-        children = list(graph.successors(node))
-        if len(children) > 1 or node_count == nseg:
-            branch_index += 1
-            node_count = 0
-        mapper[node] = branch_index
-        node_count += 1
+def get_linear_paths(graph):
+    path_edges = []
+    current_path = []
+    for i,j in nx.dfs_edges(graph, 0):
+        current_path.append((i,j))
+        is_leave_node = graph.out_degree(j) == 0 and graph.in_degree(j) == 1
+        is_branching_node = graph.out_degree(j) > 1
+        if is_leave_node or is_branching_node:
+            path_edges.append(current_path)
+            current_path = []
+    return path_edges
 
-    # reindex by enumerating number of unique branch indices
-    recount = {old: new for new, old in enumerate(set(mapper.values()))}
-    mapper = {node_idx: recount[branch_idx] for node_idx, branch_idx in mapper.items()}
+path_e2n = lambda path: [path[0][0]]+[e[1] for e in path]
+path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
 
-    # TODO: splice in new nodes to ensure nseg segments per branch
-    counts = np.unique(list((mapper.values())), return_counts=True)[1]
-    assert np.all(counts <= nseg), "All branches must have nseg segments"
-    if return_mapper:
-        return mapper
-    return np.array(list(mapper.values()))
+def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100):
+    has_loc = "x" in graph.nodes[0]
+    has_rad = "r" in graph.nodes[0]
+    has_id = "id" in graph.nodes[0]
+
+    pathgraphs = []
+    max_branch_idx = 0
+
+    for i,j in graph.edges:
+        graph.edges[i,j]["length"] = dist(graph.nodes[i], graph.nodes[j]) if has_loc else 1
+
+    # segment linear sections of the graph/morphology
+    linear_paths  = get_linear_paths(graph)
+    for path in linear_paths:
+        # get node and edge attrs
+        path_nodes = path_e2n(path)
+        path_node_attrs = [graph.nodes[i] for i in path_nodes]
+        lengths = [graph.edges[(i,j)]["length"] for i,j in path]
+
+        xyz = [[n[k] if has_loc else np.nan for k in "xyz"] for n in path_node_attrs]
+        r = [[n["r"] if has_loc else 1.0] for n in path_node_attrs]
+        xyzr = np.hstack([np.array(xyz), np.array(r)])
+        ids = np.array([n["id"] if has_id else 0 for n in path_node_attrs])
+
+        # segment morphology into branches based on nseg and max_branch_len
+        pathlens = np.cumsum(np.array([0]+lengths))
+        total_pathlen = pathlens[-1]
+        num_branches = int(total_pathlen / max_branch_len) + 1
+        
+        # index branches
+        branch_inds = (max_branch_idx + np.arange(num_branches).repeat(nsegs))
+        max_branch_idx = branch_inds[-1] + 1
+        
+        # compute where to place compartment centers along morphology
+        comp_len = total_pathlen / (num_branches*nsegs)
+        locs = np.linspace(comp_len / 2, total_pathlen-comp_len / 2, num_branches*nsegs)
+        new_nodes = np.interp(locs, pathlens, path_nodes) 
+        new_nodes += 0.1*np.random.randn() # ensure unique nodes -> disjoint subgraphs 
+
+        # interpolate xyzr and ids along the morphology
+        new_xyzr = vmap(jnp.interp, in_axes=(None, None, 1))(locs, pathlens, xyzr)
+        new_ids = np.interp(locs, pathlens, ids).astype(int)
+
+        # construct graph for segemented morphology 
+        keys = ["x", "y", "z", "r", "id", "branch_index"]
+        new_node_attrs = zip(*new_xyzr.tolist(), new_ids, branch_inds)
+        new_node_attrs = [{k:v for k,v in zip(keys, items)} for items in new_node_attrs]
+
+        pathgraph = nx.DiGraph(path_n2e(new_nodes))
+        pathgraph.add_nodes_from(zip(new_nodes, new_node_attrs))
+        pathgraphs.append(pathgraph)
+
+    # combine linear paths
+    new_graph = nx.union_all(pathgraphs)
+
+    # connect linear subgraphs according to the original graph
+    linear_path_roots_leaves = np.array([(path[0][0], path[-1][-1]) for path in linear_paths])
+    edges_between_linear_paths = list(zip(*np.where(np.equal(*np.meshgrid(*(linear_path_roots_leaves.T))))))
+    new_edges_between_linear_paths = [(max(pathgraphs[i]), min(pathgraphs[j])) for i,j in edges_between_linear_paths]
+    new_graph.add_edges_from(new_edges_between_linear_paths)
+
+    # reconnect root
+    root_edges = list(zip(*np.where([linear_path_roots_leaves[:,0] == 0])))[1:] # drop (0,0)
+    new_root_edges = [(min(pathgraphs[i]), min(pathgraphs[j])) for i,j in root_edges]
+    new_graph.add_edges_from(new_root_edges)
+
+    # rename nodes by enumeration (since nodes idxs were interpolated)
+    new_keys = {k: i for i, k in enumerate(new_graph.nodes)}
+    new_graph = nx.relabel_nodes(new_graph, new_keys)
+    return new_graph
 
 def from_graph(
     graph: nx.DiGraph,
-    default_nseg: int = 4,
+    nseg: int = 4,
     max_branch_len: float = 300.0,
     assign_groups: bool = True,
 ) -> Union[jx.Network, jx.Cell, jx.Branch, jx.Compartment]:
@@ -248,6 +314,8 @@ def from_graph(
     
     # Graph only has to contain edges to be importable as a module
     # In this case, xyz are set to NaN and r to 1
+    assert nx.is_weakly_connected(graph), "Graph must be connected to be imported as a module."
+    assert len(list(nx.simple_cycles(new_graph))) == 0, "Graph cannot have loops"
     if not graph.edges:
         raise ValueError("Graph must have edges to be imported as a module.")
 
@@ -257,21 +325,13 @@ def from_graph(
 
     # add comp_index, branch_index, cell_index to graph
     # first check if they are already present, otherwise compute them
-    if not "comp_index" in graph.nodes[0]:
+    if not "branch_index" in graph.nodes[0]:
         nseg = graph.graph["nseg"] if "nseg" in graph.graph else default_nseg
-        if "x" in graph.nodes[0]:
-            # TODO: compute comp_idx, branch_idx, cell_idx as in swc.py
-            # TODO: add length and radius
-            # add to node attrs
-            pass
-            # graph = interpolated_graph
-        else:
-            # proceed without xyz coordinates. Naively compute branch structure. 
-            # xyz can be computed later. Assuming one cell index
-            branch_inds = get_depth_first_branch_indexes(graph, nseg, return_mapper=True)
-            nx.set_node_attributes(graph, branch_inds, "branch_index")
-            nx.set_node_attributes(graph, {i:0 for i in graph.nodes}, "cell_index")
-            nx.set_node_attributes(graph, {i:i for i in graph.nodes}, "comp_index")
+        
+        # add branch_index and segment morphology into branches and compartments
+        graph = impose_branch_structure(graph, nsegs = nseg, max_branch_len = max_branch_len)
+        nx.set_node_attributes(graph, {i:0 for i in graph.nodes}, "cell_index")
+        nx.set_node_attributes(graph, {i:i for i in graph.nodes}, "comp_index")
 
     # setup branch structure and compute parents
     # edges connecting comps in different branches are set to type "branch"
