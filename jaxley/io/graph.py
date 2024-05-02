@@ -175,13 +175,14 @@ def get_linear_paths(graph):
 path_e2n = lambda path: [path[0][0]]+[e[1] for e in path]
 path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
 
-def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100):
+def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100, append_morphology=True):
     has_loc = "x" in graph.nodes[0]
     has_rad = "r" in graph.nodes[0]
     has_id = "id" in graph.nodes[0]
 
     pathgraphs = []
     max_branch_idx = 0
+    branch_memberships = []
 
     for i,j in graph.edges:
         graph.edges[i,j]["length"] = dist(graph.nodes[i], graph.nodes[j]) if has_loc else 1
@@ -211,8 +212,8 @@ def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100):
         # compute where to place compartment centers along morphology
         comp_len = total_pathlen / (num_branches*nsegs)
         locs = np.linspace(comp_len / 2, total_pathlen-comp_len / 2, num_branches*nsegs)
-        new_nodes = np.interp(locs, pathlens, path_nodes) 
-        new_nodes += 0.1*np.random.randn() # ensure unique nodes -> disjoint subgraphs 
+        new_nodes = np.interp(locs, pathlens, path_nodes)
+        new_nodes += 1e-4*np.random.randn() # ensure unique nodes -> disjoint subgraphs 
 
         # interpolate xyzr and ids along the morphology
         new_xyzr = vmap(jnp.interp, in_axes=(None, None, 1))(locs, pathlens, xyzr)
@@ -240,6 +241,14 @@ def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100):
     root_edges = list(zip(*np.where([linear_path_roots_leaves[:,0] == 0])))[1:] # drop (0,0)
     new_root_edges = [(min(pathgraphs[i]), min(pathgraphs[j])) for i,j in root_edges]
     new_graph.add_edges_from(new_root_edges)
+
+    if append_morphology: # needs to run before relabeling nodes
+        branch_inds = list(nx.get_node_attributes(new_graph, "branch_index").values())
+        branch_membership = np.round(np.interp(graph.nodes, new_graph.nodes, branch_inds))
+        morphology = np.array([[data[k] for k in "xyzr"] for i, data in graph.nodes(data=True)])
+        # group morphological data by branch index
+        xyzr = [morphology[branch_membership == i] for i in np.unique(branch_membership)]
+        new_graph.graph["xyzr"] = xyzr
 
     # rename nodes by enumeration (since nodes idxs were interpolated)
     new_keys = {k: i for i, k in enumerate(new_graph.nodes)}
@@ -336,8 +345,7 @@ def from_graph(
         nx.set_node_attributes(graph, {i:0 for i in graph.nodes}, "cell_index")
         nx.set_node_attributes(graph, {i:i for i in graph.nodes}, "comp_index")
         #TODO: Add xyzr
-        xyzr = np.stack([[n[k] for k in "xyzr"] for i,n in graph.nodes(data=True)]).reshape(4,-1,4)
-        graph.graph["xyzr"] = xyzr
+
 
     # setup branch structure and compute parents
     # edges connecting comps in different branches are set to type "branch"
