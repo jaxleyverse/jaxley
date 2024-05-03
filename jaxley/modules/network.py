@@ -393,7 +393,7 @@ class Network(Module):
                                 ind_within_layer - (num_in_layer - 1) / 2
                             ) * layers_config["within_layer_offset"]
 
-                        self.cell(global_counter).move(x=x_offset, y=y_offset, z=0)
+                        self.cell(global_counter).move_to(x=x_offset, y=y_offset, z=0)
                         global_counter += 1
             ax = self._vis(
                 dims=dims,
