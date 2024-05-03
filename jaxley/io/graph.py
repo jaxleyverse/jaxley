@@ -155,7 +155,8 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         module_graph.add_edge(pre, post, **attrs)
     return module_graph
 
-def dist(pre, post):
+def dist(graph, i,j):
+    pre, post = graph.nodes[i], graph.nodes[j]
     pre_loc = np.hstack((pre["x"], pre["y"], pre["z"]))
     post_loc = np.hstack((post["x"], post["y"], post["z"]))
     return np.sqrt(np.sum((pre_loc - post_loc)**2))
@@ -168,91 +169,128 @@ def get_linear_paths(graph):
         is_leave_node = graph.out_degree(j) == 0 and graph.in_degree(j) == 1
         is_branching_node = graph.out_degree(j) > 1
         if is_leave_node or is_branching_node:
-            path_edges.append(current_path)
+            path_edges.append(np.array(current_path))
             current_path = []
     return path_edges
 
 path_e2n = lambda path: [path[0][0]]+[e[1] for e in path]
 path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
+jnp_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 
-def impose_branch_structure(graph, nsegs = 4, max_branch_len = 100, append_morphology=True):
+def add_edge_lengths(graph, edges=None):
     has_loc = "x" in graph.nodes[0]
-    has_rad = "r" in graph.nodes[0]
-    has_id = "id" in graph.nodes[0]
+    edges = graph.edges if edges is None else edges
+    for i,j in edges:
+        graph.edges[i,j]["length"] = dist(graph, i, j)  if has_loc else 1
+    return graph
 
-    pathgraphs = []
+def resample_path(graph, path, locs, interp_node_attrs = ["x", "y", "z", "r"], ensure_unique_node_inds=False):
+    path_nodes = np.array(path_e2n(path))
+    lengths = [graph.edges[(i,j)]["length"] for i,j in path]
+    pathlens = np.cumsum(np.array([0]+lengths))
+    new_nodes = np.interp(locs, pathlens, path_nodes)
+    new_nodes += 1e-5*np.random.randn() if ensure_unique_node_inds else 0 # ensure unique nodes -> disjoint subgraphs 
+    
+    node_attrs = np.vstack([[graph.nodes[idx][k] for k in interp_node_attrs] for idx in path_nodes])    
+    new_node_attrs = jnp_interp(new_nodes, path_nodes, node_attrs).T.tolist()
+    new_edge_attrs  = [{"length": d} for d in np.diff(locs)]
+    new_edges = path_n2e(new_nodes)
+    pathgraph = nx.DiGraph()
+    pathgraph.add_edges_from((i,j, attrs) for (i,j), attrs in zip(new_edges, new_edge_attrs))
+    pathgraph.add_nodes_from((i, dict(zip(interp_node_attrs, attrs))) for i, attrs in zip(new_nodes, new_node_attrs))
+    return pathgraph
+
+def split_edge(graph, i, j, nsegs = 2, interp_node_attrs = ["x", "y", "z", "r"]):
+    if not "length" in graph.edges[(i,j)]:
+        graph = add_edge_lengths(graph, [(i,j)])
+    length = graph.edges[(i,j)]["length"]
+    locs = np.linspace(0,length,nsegs+1)
+    pathgraph = resample_path(graph, [(i,j)], locs, interp_node_attrs)
+    graph.add_edges_from(pathgraph.edges(data=True))
+    graph.add_nodes_from(pathgraph.nodes(data=True))
+    graph.remove_edge(i,j)
+    return graph
+
+def impose_branch_structure(graph, max_branch_len = 100):
+    if not "id" in graph.nodes[0]:
+        nx.set_node_attributes(graph, 0, "id")
+
+    ids = np.array([n["id"] for i, n in graph.nodes(data=True)])
+    graph = add_edge_lengths(graph, graph.edges)
+    for i,j in list(graph.edges):
+        if ids[i] == ids[j]:
+            graph.edges[i,j]["id"] = ids[i]
+        else:
+            split_path = split_edge(graph, i, j, nsegs = 2)
+            edge_1, edge_2 = path_n2e(next(nx.all_simple_paths(split_path,i,j)))
+            graph.edges[edge_1]["id"] = ids[i]
+            graph.edges[edge_2]["id"] = ids[j]
+    
+    [n.pop("id") for i, n in graph.nodes(data=True) if "id" in n] # run after, since might be used multiple times
+    new_keys = {k: i for i, k in enumerate(sorted(graph.nodes))}
+    graph = nx.relabel_nodes(graph, new_keys)
+
     max_branch_idx = 0
-    branch_memberships = []
-
-    for i,j in graph.edges:
-        graph.edges[i,j]["length"] = dist(graph.nodes[i], graph.nodes[j]) if has_loc else 1
-
     # segment linear sections of the graph/morphology
     linear_paths  = get_linear_paths(graph)
     for path in linear_paths:
-        # get node and edge attrs
-        path_nodes = path_e2n(path)
-        path_node_attrs = [graph.nodes[i] for i in path_nodes]
-        lengths = [graph.edges[(i,j)]["length"] for i,j in path]
+        ids = [graph.edges[(i,j)]["id"] for i,j in path]
+        unique_ids = np.unique(ids)
+        where_single_ids = (ids == unique_ids[:, None])
+        for single_id in where_single_ids:
+            lengths = [graph.edges[(i,j)]["length"] for i,j in path[single_id]]
+            
+            # segment morphology into branches based on max_branch_len and ids
+            pathlens = np.cumsum(lengths)
+            total_pathlen = pathlens[-1]
+            num_branches = int(total_pathlen / max_branch_len) + 1
+            branch_ends = np.cumsum([total_pathlen / num_branches]*num_branches)
+            branch_inds = max_branch_idx + num_branches-np.sum(pathlens <= branch_ends[:, None], axis=0)
+            max_branch_idx += num_branches
+            graph.add_edges_from(((*e,{'branch_index': branch_idx}) for e, branch_idx in zip(path[single_id], branch_inds)))
+    return graph
 
-        xyz = [[n[k] if has_loc else np.nan for k in "xyz"] for n in path_node_attrs]
-        r = [[n["r"] if has_rad else 1.0] for n in path_node_attrs]
-        xyzr = np.hstack([np.array(xyz), np.array(r)])
-        ids = np.array([n["id"] if has_id else 0 for n in path_node_attrs])
 
-        # segment morphology into branches based on nseg and max_branch_len
-        pathlens = np.cumsum(np.array([0]+lengths))
-        total_pathlen = pathlens[-1]
-        num_branches = int(total_pathlen / max_branch_len) + 1
-        
-        # index branches
-        branch_inds = (max_branch_idx + np.arange(num_branches).repeat(nsegs))
-        max_branch_idx = branch_inds[-1] + 1
-        
-        # compute where to place compartment centers along morphology
-        comp_len = total_pathlen / (num_branches*nsegs)
-        locs = np.linspace(comp_len / 2, total_pathlen-comp_len / 2, num_branches*nsegs)
-        new_nodes = np.interp(locs, pathlens, path_nodes)
-        new_nodes += 1e-4*np.random.randn() # ensure unique nodes -> disjoint subgraphs 
+def compartmentalize_branches(graph, nseg=4, append_morphology=True):
+    edges = pd.DataFrame([d for i,j,d in graph.edges(data=True)], index=graph.edges)
+    edges = edges.reset_index(names=["i","j"]).sort_values(["branch_index", "i", "j"])
+    branch_groups = edges.groupby("branch_index")
 
-        # interpolate xyzr and ids along the morphology
-        new_xyzr = vmap(jnp.interp, in_axes=(None, None, 1))(locs, pathlens, xyzr)
-        new_ids = np.interp(locs, pathlens, ids).astype(int)
+    branchgraphs = []
+    xyzr = []
+    for idx, group in branch_groups:
+        pathlens = group["length"].cumsum()
+        total_pathlen = pathlens.iloc[-1]
+        comp_len = total_pathlen / nseg
+        locs = np.linspace(comp_len / 2, total_pathlen-comp_len / 2, nseg)
+        path = group[["i","j"]].values
+        branchgraph = resample_path(graph, path, locs, ensure_unique_node_inds=False)
+        nx.set_node_attributes(branchgraph, comp_len, "comp_len")
+        nx.set_node_attributes(branchgraph, group["id"].iloc[0], "id")
+        branchgraphs.append(branchgraph)
 
-        # construct graph for segemented morphology 
-        keys = ["x", "y", "z", "r", "id", "branch_index"]
-        new_node_attrs = zip(*new_xyzr.tolist(), new_ids, branch_inds)
-        new_node_attrs = [{k:v for k,v in zip(keys, items)} for items in new_node_attrs]
+        branch_xyzr = np.array([[graph.nodes[idx][k] for k in "xyzr"] for idx in path_e2n(path)])
+        xyzr.append(branch_xyzr)
 
-        pathgraph = nx.DiGraph(path_n2e(new_nodes))
-        pathgraph.add_nodes_from(zip(new_nodes, new_node_attrs))
-        pathgraphs.append(pathgraph)
+    new_graph = nx.union_all(branchgraphs)
 
-    # combine linear paths
-    new_graph = nx.union_all(pathgraphs)
-
-    # connect linear subgraphs according to the original graph
-    linear_path_roots_leaves = np.array([(path[0][0], path[-1][-1]) for path in linear_paths])
-    edges_between_linear_paths = list(zip(*np.where(np.equal(*np.meshgrid(*(linear_path_roots_leaves.T))))))
-    new_edges_between_linear_paths = [(max(pathgraphs[i]), min(pathgraphs[j])) for i,j in edges_between_linear_paths]
+    # reconnect branches
+    branch_roots_leaves = pd.concat([branch_groups.first()["i"], branch_groups.last()["j"]], axis=1)
+    edges_between_branches = list(zip(*np.where(np.equal(*np.meshgrid(*(branch_roots_leaves.values.T))))))
+    new_edges_between_linear_paths = [(max(branchgraphs[i]), min(branchgraphs[j])) for i,j in edges_between_branches]
     new_graph.add_edges_from(new_edges_between_linear_paths)
 
     # reconnect root
-    root_edges = list(zip(*np.where([linear_path_roots_leaves[:,0] == 0])))[1:] # drop (0,0)
-    new_root_edges = [(min(pathgraphs[i]), min(pathgraphs[j])) for i,j in root_edges]
+    root_edges = list(zip(*np.where([branch_roots_leaves["i"] == 0])))[1:] # drop (0,0)
+    new_root_edges = [(min(branchgraphs[i]), min(branchgraphs[j])) for i,j in root_edges]
     new_graph.add_edges_from(new_root_edges)
 
-    if append_morphology: # needs to run before relabeling nodes
-        branch_inds = list(nx.get_node_attributes(new_graph, "branch_index").values())
-        branch_membership = np.round(np.interp(graph.nodes, new_graph.nodes, branch_inds))
-        morphology = np.array([[data[k] for k in "xyzr"] for i, data in graph.nodes(data=True)])
-        # group morphological data by branch index
-        xyzr = [morphology[branch_membership == i] for i in np.unique(branch_membership)]
+    new_keys = {k: i for i, k in enumerate(sorted(new_graph.nodes))}
+    new_graph = nx.relabel_nodes(new_graph, new_keys)
+
+    if append_morphology:
         new_graph.graph["xyzr"] = xyzr
 
-    # rename nodes by enumeration (since nodes idxs were interpolated)
-    new_keys = {k: i for i, k in enumerate(new_graph.nodes)}
-    new_graph = nx.relabel_nodes(new_graph, new_keys)
     return new_graph
 
 def from_graph(
@@ -341,11 +379,11 @@ def from_graph(
         # add branch_index and segment morphology into branches and compartments
         roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
         assert len(roots) == 1, "Currently only 1 morphology can be imported."
-        graph = impose_branch_structure(graph, nsegs = nseg, max_branch_len = max_branch_len)
+        graph = impose_branch_structure(graph, max_branch_len = max_branch_len)
+        graph = impose_branch_structure(graph, nseg = nseg)
+        graph = compartmentalize_branches(graph)
         nx.set_node_attributes(graph, {i:0 for i in graph.nodes}, "cell_index")
         nx.set_node_attributes(graph, {i:i for i in graph.nodes}, "comp_index")
-        #TODO: Add xyzr
-
 
     # setup branch structure and compute parents
     # edges connecting comps in different branches are set to type "branch"
@@ -375,6 +413,7 @@ def from_graph(
         # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
         groups = [group_ids[id] if id in group_ids else "custom" for id in ids.values()]
         graph.add_nodes_from({i:{"groups":[id]} for i, id in enumerate(groups)}.items())
+        # TODO: DROP UNDEFINED FROM GROUPS!
     for i, node in graph.nodes(data=True):
         node.pop("id") # remove id
 
