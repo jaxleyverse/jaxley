@@ -419,7 +419,6 @@ def from_graph(
         roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
         assert len(roots) == 1, "Currently only 1 morphology can be imported."
         graph = impose_branch_structure(graph, max_branch_len=max_branch_len)
-        graph = impose_branch_structure(graph, nseg=nseg)
         graph = compartmentalize_branches(graph)
         nx.set_node_attributes(graph, {i: 0 for i in graph.nodes}, "cell_index")
         nx.set_node_attributes(graph, {i: i for i in graph.nodes}, "comp_index")
