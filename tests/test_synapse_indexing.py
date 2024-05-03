@@ -10,7 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connection import connect
+from jaxley.connection import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
 
 
@@ -212,3 +212,28 @@ def test_shuffling_order_of_set(synapse_type):
     voltages2 = jx.integrate(net2, t_max=5.0)
 
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
+
+
+def test_get_synapse_indices():
+    comp = jx.Compartment()
+    branch = jx.Branch([comp])
+    cell = jx.Cell([branch], parents=[-1])
+    network = jx.Network([cell for _ in range(5)])
+    fully_connect(network.cell("all"), network.cell("all"), IonotropicSynapse())
+    fully_connect(network.cell("all"), network.cell("all"), TanhRateSynapse())
+    ionotropic_inds = network.get_synapse_indices(
+        {
+            "pre_cell_index": np.array([0, 1]),
+            "post_cell_index": np.array([2, 3]),
+            "type": "IonotropicSynapse",
+        }
+    )
+    tanh_inds = network.get_synapse_indices(
+        {
+            "pre_cell_index": np.array([0, 1]),
+            "post_cell_index": np.array([2, 3]),
+            "type": "TanhRateSynapse",
+        }
+    )
+    assert np.all(np.array(ionotropic_inds) == np.array([2, 8]))
+    assert np.all(np.array(tanh_inds) == np.array([2, 8]))

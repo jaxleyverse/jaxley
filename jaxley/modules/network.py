@@ -174,6 +174,33 @@ class Network(Module):
         )
         self.initialized_syns = True
 
+    def get_synapse_indices(self, edge_properties: Dict) -> List[int]:
+        """Get the synapse indices in the SynapseView that have the given edge properties.
+
+        These synapses can then be used to index into the SynapseView and set
+        parameters. Importantly, the type key can only have one entry... this gives the
+        correct index in the (type-specific) SynapseView.
+        """
+        edges_of_synapse_type = self.edges[
+            self.edges["type"] == edge_properties["type"]
+        ]
+        edge_properties.pop("type")
+        edge_properties_df = pd.DataFrame.from_dict(edge_properties, orient="index").T
+        merge_keys = list(edge_properties.keys())
+        comparison_df = pd.merge(
+            edges_of_synapse_type,
+            edge_properties_df,
+            on=merge_keys,
+            how="left",
+            indicator="exists",
+        )
+        synapse_indices = comparison_df[
+            comparison_df["exists"] == "both"
+        ].index.to_numpy()
+        if synapse_indices.size == 0:
+            raise ValueError("No synapses found with the given edge properties.")
+        return list(synapse_indices)
+
     def _step_synapse(
         self,
         states,
