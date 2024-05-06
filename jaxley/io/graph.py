@@ -1,5 +1,5 @@
 from math import pi
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 from jax import vmap
@@ -166,13 +166,32 @@ jnp_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 unpack = lambda d, keys: [d[k] for k in keys]
 
 
-def dist(graph, i, j):
+def dist(graph: nx.DiGraph, i: int, j: int) -> float:
+    """Compute the euclidean distance between two nodes in a graph.
+
+    Args:
+        graph: A networkx graph.
+        i: Index of the first node.
+        j: Index of the second node.
+
+    Returns:
+        The euclidean distance between the two nodes."""
     pre_loc = np.hstack(unpack(graph.nodes[i], "xyz"))
     post_loc = np.hstack(unpack(graph.nodes[j], "xyz"))
     return np.sqrt(np.sum((pre_loc - post_loc) ** 2))
 
 
-def get_linear_paths(graph):
+def get_linear_paths(graph: nx.DiGraph) -> List[np.ndarray]:
+    """Get all linear paths in a graph.
+
+    The graph is traversed depth-first starting from the root node.
+
+    Args:
+        graph: A networkx graph.
+
+    Returns:
+        A list of linear paths in the graph. Each path is represented as an array of
+        edges."""
     paths, current_path = [], []
     for i, j in nx.dfs_edges(graph, 0):
         current_path.append((i, j))
@@ -182,7 +201,21 @@ def get_linear_paths(graph):
     return paths
 
 
-def add_edge_lengths(graph, edges=None):
+def add_edge_lengths(
+    graph: nx.DiGraph, edges: Optional[List[Tuple]] = None
+) -> nx.DiGraph:
+    """Add the length edges to the graph.
+
+    The length is computed as the euclidean distance between the nodes of the edge.
+    If no edges are provided, the length is computed for all edges in the graph.
+
+    Args:
+        graph: A networkx graph.
+        edges: A list of edges for which to compute the length. If None, the length is
+            computed for all edges.
+
+    Returns:
+        The graph with the length attribute added to the edges."""
     has_loc = "x" in graph.nodes[0]
     edges = graph.edges if edges is None else edges
     for i, j in edges:
@@ -191,8 +224,27 @@ def add_edge_lengths(graph, edges=None):
 
 
 def resample_path(
-    graph, path, locs, interp_attrs=["x", "y", "z", "r"], ensure_unique_node_inds=False
-):
+    graph: nx.DiGraph,
+    path: List[Tuple],
+    locs: Union[List, np.ndarray],
+    interp_attrs: List[str] = ["x", "y", "z", "r"],
+    ensure_unique_node_inds: bool = False,
+) -> nx.DiGraph:
+    """Resample a path in a graph at different locations along its length.
+
+    Selected node attributes are interpolated linearly between the nodes of the path.
+
+    Args:
+        graph: A networkx graph.
+        path: A list of edges representing the path.
+        locs: A list of locations along the path at which to resample.
+        interp_attrs: A list of node attributes to interpolate.
+        ensure_unique_node_inds: Add a small random number to the new nodes to ensure
+            unique node indices. This is useful when resampling multiple paths. That
+            are added to the same graph afterwards. Ensures the graphs are disjoint.
+
+    Returns:
+        A new graph with the resampled path."""
     path_nodes = np.array(path_e2n(path))
     lengths = [graph.edges[(i, j)]["length"] for i, j in path]
     pathlens = np.cumsum(np.array([0] + lengths))
@@ -214,22 +266,103 @@ def resample_path(
     return pathgraph
 
 
-def split_edge(graph, i, j, nsegs=2, interp_node_attrs=["x", "y", "z", "r"]):
+def split_edge(
+    graph: nx.DiGraph,
+    i: int,
+    j: int,
+    nsegs: int = 2,
+    interp_node_attrs: List[str] = ["x", "y", "z", "r"],
+) -> nx.DiGraph:
+    """Split an edge in a graph into multiple segments.
+
+    The edge is split into `nsegs` segments of equal length. The node attributes are
+    interpolated linearly between the nodes of the edge.
+
+    Args:
+        graph: A networkx graph.
+        i: Index of the first node of the edge.
+        j: Index of the second node of the edge.
+        nsegs: Number of segments to split the edge into.
+        interp_node_attrs: A list of node attributes to interpolate.
+
+    Returns:
+        The graph with specified edge split into multiple segments."""
     if not "length" in graph.edges[(i, j)]:
         graph = add_edge_lengths(graph, [(i, j)])
     length = graph.edges[(i, j)]["length"]
+    id = graph.edges[(i, j)]["id"]
     locs = np.linspace(0, length, nsegs + 1)
     pathgraph = resample_path(graph, [(i, j)], locs, interp_node_attrs)
+    nx.set_edge_attributes(pathgraph, id, "id")
     graph.add_edges_from(pathgraph.edges(data=True))
     graph.add_nodes_from(pathgraph.nodes(data=True))
     graph.remove_edge(i, j)
     return graph
 
 
-def impose_branch_structure(graph, max_branch_len=100):
+def impose_branch_structure(
+    graph: nx.DiGraph, max_branch_len: float = 100
+) -> nx.DiGraph:
+    """Impose branch structure on a graph representing a morphology.
+
+    Adds branch indices to the edges of the graph.
+
+    In order to simulate a morphology, that is specified by a graph, the graph has
+    to be first segmented into branches, as is also done by NEURON. We do this by
+    adding branch_index labels to the graph. We add these to indices to the branches
+    rather than nodes since the (continuous) morphology (and hence attributes, i.e.
+    radius) is defined by the graph's edges rather than its nodes.
+
+    To do this we first add the "id"s (which are attributes of the nodes) to the
+    edges of the graph. If i and j are connected by an edge, then the edge is
+    labelled with the id of i. If i and j have different ids, then the edge is
+    split into two edges of equal length and each edge is labelled with the id
+    of i and j. Attributes of the added node are interpolated linearly between
+    the nodes of the edge.
+
+    For example:
+    Graph:      |------|---------|--------------|
+    radius:     1      2         3              4
+    ID:         1      1         4              4
+
+    is relabelled as:
+    Graph:      |------|----|----|--------------|
+    radius:     1      2   2.5   3              4
+    ID:             1     1    4         4
+
+
+    Then branch indices are assigned such that the length of each branch is below
+    a maximum branch length and only belongs to has one "id". If it exceeds the
+    maximum branch length, it is split into multiple branches. That are each
+    of roughly equal length.
+
+    For a segment of the graph with the following structure and a maximum branch
+    length of 20:
+
+    Graph: |----|------|----------|--------------|-----|---|--|----|----|---------|
+    ID:       1     1        1            1         4    4   4   4    4      4
+    Length:   4     6       10           14         5    3   2   4    4      9
+
+    The graph is split into branches roughly as follows:
+    Graph: |----|------|----------|--------------|-----|---|--|----|----|---------|
+    ID:       1     1        1            1         4    4   4   4    4      4
+    Length:   4     6       10           14         5    3   2   4    4      9
+    Branch:   0     0        0            1         2    2   2   2    3      3
+
+    This means we now have a continuous morphology with edges assigned to specific
+    branches and types.
+
+    Args:
+        graph: A networkx graph representing a morphology.
+        max_branch_len: Maximum length of a branch.
+
+    Returns:
+        The graph with the edges labelled by "id" and "branch_index".
+    """
     if not "id" in graph.nodes[0]:
         nx.set_node_attributes(graph, 0, "id")
 
+    # add id to edges, split edges if necessary
     ids = np.array([n["id"] for i, n in graph.nodes(data=True)])
     graph = add_edge_lengths(graph, graph.edges)
     for i, j in list(graph.edges):
@@ -241,10 +374,17 @@ def impose_branch_structure(graph, max_branch_len=100):
             graph.edges[edge_1]["id"] = ids[i]
             graph.edges[edge_2]["id"] = ids[j]
 
-    # run after, since might be used multiple times
+    # Split edge if single edge is longer than max_branch_len
+    edge_lens = nx.get_edge_attributes(graph.edges, "length")
+    long_edges = {k: v for k, v in edge_lens.items() if v > max_branch_len}
+    for i, j in long_edges:
+        nsegs = graph.edges[i, j]["length"] // max_branch_len + 1
+        graph = split_edge(graph, i, j, nsegs=nsegs)
+
+    # run after, since same id label might be used multiple times in for loop
     [n.pop("id") for i, n in graph.nodes(data=True) if "id" in n]
     new_keys = {k: i for i, k in enumerate(sorted(graph.nodes))}
-    graph = nx.relabel_nodes(graph, new_keys)
+    graph = nx.relabel_nodes(graph, new_keys)  # ensure node labels are integers
 
     max_branch_idx = 0
     # segment linear sections of the graph/morphology
@@ -276,7 +416,44 @@ def impose_branch_structure(graph, max_branch_len=100):
     return graph
 
 
-def compartmentalize_branches(graph, nseg=4, append_morphology=True):
+def compartmentalize_branches(
+    graph: nx.DiGraph, nseg: int = 4, append_morphology: bool = True
+) -> nx.DiGraph:
+    """Compartmentalize the morphology, by compartmentalizing the branches.
+
+    Currently, the nodes in the graph have no particular meaning. While they hold
+    the x,y,z,r attributes, the graph nodes just represent points at which the
+    morphology was sampled / measured. In order to simulate the morphology, the graph
+    hence needs to be compartmentalized first. For this we place discrete
+    compartments along the morphology. In the resulting compartmentalized graph
+    nodes take the form of compartments and edges represent the connections between
+    compartments. Therefore each branch is split into `nseg` compartments along its
+    length, with the attributes being linearly interpolated along the existing
+    'measured' nodes of the edge. Each compartment therefore has length=branch_length/nseg
+    and is represented by a node in the graph at each center.
+
+    For example for nseg=4 and a branch with the following structure:
+    Graph: |----|------|----------|------------|-----|---|--|--|----|--------|
+    Length:   4     6       10           12       5    3   2  2   4      8
+    Branch:   0     0        0            1       2    2   2  2   3      3
+
+    The graph is compartmentalized as follows
+    (length now corresponds to compartment length, nods marked with 'x'):
+    Graph:    x-----x-----x----x---x---x---x--x---x---x--x--x---x---x---x---x
+    Length:   5     5     5    5   3   3   3  3   3   3  3  3   3   3   3   3
+    Branch:   0     0     0    0   1   1   1  1   2   2  2  2   3   3   3   3
+
+    Args:
+        graph: A networkx graph representing a morphology.
+        nseg: Number of compartments to split each branch into.
+        append_morphology: Wether to append the original morphology to the graph
+            as an attribute.
+
+    Returns:
+        The graph with the branches compartmentalized into nseg compartments.
+    """
+    edge_attrs = next(iter(graph.edges(data=True)))[2]
+    assert "branch_index" in edge_attrs, "Graph edges must have branches indices."
     edges = pd.DataFrame([d for i, j, d in graph.edges(data=True)], index=graph.edges)
     edges = edges.reset_index(names=["i", "j"]).sort_values(["branch_index", "i", "j"])
     branch_groups = edges.groupby("branch_index")
