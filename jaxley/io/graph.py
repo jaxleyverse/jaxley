@@ -438,10 +438,10 @@ def compartmentalize_branches(
     Branch:   0     0        0            1       2    2   2  2   3      3
 
     The graph is compartmentalized as follows
-    (length now corresponds to compartment length, nods marked with 'x'):
-    Graph:    x-----x-----x----x---x---x---x--x---x---x--x--x---x---x---x---x
-    Length:   5     5     5    5   3   3   3  3   3   3  3  3   3   3   3   3
-    Branch:   0     0     0    0   1   1   1  1   2   2  2  2   3   3   3   3
+    (length now corresponds to compartment length, comp nodes marked with 'x'):
+    Graph:     x----x----x----x---x--x--x--x--x--x--x--x--x--x--x--x
+    Length:    5    5    5    5   3  3  3  3  3  3  3  3  3  3  3  3
+    Branch:    0    0    0    0   1  1  1  1  2  2  2  2  3  3  3  3
 
     Args:
         graph: A networkx graph representing a morphology.
@@ -458,6 +458,7 @@ def compartmentalize_branches(
     edges = edges.reset_index(names=["i", "j"]).sort_values(["branch_index", "i", "j"])
     branch_groups = edges.groupby("branch_index")
 
+    # individually compartmentalize branches and save resulting graph structure
     branchgraphs = []
     xyzr = []
     for idx, group in branch_groups:
@@ -477,9 +478,10 @@ def compartmentalize_branches(
         )
         xyzr.append(branch_xyzr)
 
+    # merge compartmentalized branches into single graph
     new_graph = nx.union_all(branchgraphs)
 
-    # reconnect branches
+    # reconnect seperate branches
     branch_roots = branch_groups.first()["i"]
     branch_leaves = branch_groups.last()["j"]
     branch_roots_leaves = pd.concat([branch_roots, branch_leaves], axis=1)
@@ -498,6 +500,7 @@ def compartmentalize_branches(
     ]
     new_graph.add_edges_from(new_root_edges)
 
+    # set node labels to integers
     new_keys = {k: i for i, k in enumerate(sorted(new_graph.nodes))}
     new_graph = nx.relabel_nodes(new_graph, new_keys)
 
