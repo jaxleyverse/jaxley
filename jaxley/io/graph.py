@@ -162,6 +162,8 @@ path_e2n = lambda path: [path[0][0]] + [e[1] for e in path]
 path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
 jnp_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 unpack = lambda d, keys: [d[k] for k in keys]
+has_node_attr = lambda graph, attr: all(attr in graph.nodes[n] for n in graph.nodes)
+has_edge_attr = lambda graph, attr: all(attr in graph.edges[e] for e in graph.edges)
 
 
 def node_dist(graph: nx.DiGraph, i: int, j: int) -> float:
@@ -286,16 +288,14 @@ def split_edge(
     Returns:
         The graph with specified edge split into multiple segments."""
     edge = graph.edges[(i, j)]
-    if not "length" in edge:
-        graph = add_edge_lengths(graph, [(i, j)])
-    length = edge["length"]
-    locs = np.linspace(0, length, nsegs + 1)
+    graph = graph if "length" in edge else add_edge_lengths(graph, [(i, j)])
+    locs = np.linspace(0, edge["length"], nsegs + 1)
     pathgraph = resample_path(graph, [(i, j)], locs, interp_node_attrs)
-    
-    if "id" in edge:
-        id = graph.edges[(i, j)]
-        nx.set_edge_attributes(pathgraph, id, "id")
-    
+
+    for attr in ["id", "branch_index"]:
+        if attr in edge:
+            nx.set_edge_attributes(pathgraph, edge[attr], attr)
+
     graph.add_edges_from(pathgraph.edges(data=True))
     graph.add_nodes_from(pathgraph.nodes(data=True))
     graph.remove_edge(i, j)
@@ -307,7 +307,8 @@ def impose_branch_structure(
 ) -> nx.DiGraph:
     """Impose branch structure on a graph representing a morphology.
 
-    Adds branch indices to the edges of the graph.
+    Adds branch indices to the edges of the graph. Graph needs to have nodes with
+    "id" and either x,y,z as node or length as edge attributes.
 
     In order to simulate a morphology, that is specified by a graph, the graph has
     to be first segmented into branches, as is also done by NEURON. We do this by
@@ -350,6 +351,7 @@ def impose_branch_structure(
     ID:       1     1        1            1         4    4   4   4    4      4
     Length:   4     6       10           14         5    3   2   4    4      9
     Branch:   0     0        0            1         2    2   2   2    3      3
+    B.-length:        20          |      14      |       12        |      13      |
 
     This means we now have a continuous morphology with edges assigned to specific
     branches and types.
@@ -361,29 +363,32 @@ def impose_branch_structure(
     Returns:
         The graph with the edges labelled by "id" and "branch_index".
     """
-    if not "id" in graph.nodes[0]:
-        nx.set_node_attributes(graph, 0, "id")
+    assert has_node_attr(graph, "id"), "Graph nodes must have an 'id' attribute."
+    assert has_node_attr(graph, "x") or has_edge_attr(
+        graph, "length"
+    ), "Graph must have xyz locs as node or lengths as edge attribute."
+    if not has_edge_attr(graph, "length"):  # compute lens from xyz if not present
+        graph = add_edge_lengths(graph, graph.edges)
 
     # add id to edges, split edges if necessary
-    ids = np.array([n["id"] for i, n in graph.nodes(data=True)])
-    graph = add_edge_lengths(graph, graph.edges)
     for i, j in list(graph.edges):
-        if ids[i] == ids[j]:
-            graph.edges[i, j]["id"] = ids[i]
+        if graph.nodes[i]["id"] == graph.nodes[j]["id"]:
+            graph.edges[i, j]["id"] = graph.nodes[i]["id"]
         else:
-            split_path = split_edge(graph, i, j, nsegs=2)
-            edge_1, edge_2 = path_n2e(nx.shortest_path(split_path, i, j))
-            graph.edges[edge_1]["id"] = ids[i]
-            graph.edges[edge_2]["id"] = ids[j]
+            graph = split_edge(graph, i, j, nsegs=2)
+            edge_i, edge_j = path_n2e(nx.shortest_path(graph, i, j))
+            graph.edges[edge_i]["id"] = graph.nodes[i]["id"]
+            graph.edges[edge_j]["id"] = graph.nodes[j]["id"]
 
     # Split edge if single edge is longer than max_branch_len
-    edge_lens = nx.get_edge_attributes(graph, "length")
-    long_edges = {k: v for k, v in edge_lens.items() if v > max_branch_len}
-    for i, j in long_edges:
+    # run after adding ids to edges, so that new edges are also labelled
+    edge_lengths = nx.get_edge_attributes(graph, "length")
+    too_long_edges = {k: v for k, v in edge_lengths.items() if v > max_branch_len}
+    for i, j in too_long_edges:
         nsegs = graph.edges[i, j]["length"] // max_branch_len + 1
         graph = split_edge(graph, i, j, nsegs=nsegs)
 
-    # run after, since same id label might be used multiple times in for loop
+    # rm after, since same id label might be used multiple times in for loop
     [n.pop("id") for i, n in graph.nodes(data=True) if "id" in n]
     new_keys = {k: i for i, k in enumerate(sorted(graph.nodes))}
     graph = nx.relabel_nodes(graph, new_keys)  # ensure node labels are integers
@@ -454,8 +459,10 @@ def compartmentalize_branches(
     Returns:
         The graph with the branches compartmentalized into nseg compartments.
     """
-    edge_attrs = next(iter(graph.edges(data=True)))[2]
-    assert "branch_index" in edge_attrs, "Graph edges must have branches indices."
+    assert has_edge_attr(
+        graph, "branch_index"
+    ), "Graph edges must have branches indices."
+
     edges = pd.DataFrame([d for i, j, d in graph.edges(data=True)], index=graph.edges)
     edges = edges.reset_index(names=["i", "j"]).sort_values(["branch_index", "i", "j"])
     branch_groups = edges.groupby("branch_index")
@@ -508,7 +515,6 @@ def compartmentalize_branches(
 
     # TODO: handle soma (r == l)
 
-
     if append_morphology:
         new_graph.graph["xyzr"] = xyzr
 
@@ -532,9 +538,22 @@ def from_graph(
     imported from the node attributes of the graph. See `to_graph` for how they
     are formatted.
 
-    The only requirement to construct a module from a graph is that the graph contains
-    edges. In this case, all requrired parameters are set to their default values
-    and the branch structure is computed naively.
+    All modules that are exported to a graph from jaxley using the `to_graph` method
+    can be imported back using this method. If the graph was not exported with jaxley,
+    the only requirement to construct a module from a graph is that the graph contains
+    edges, i.e.
+
+    ```python
+    edges = [(0,1), (1,2), (1,3)]
+    graph = nx.DiGraph(edges)
+    module = from_graph(graph)
+    ```
+
+    In this case, all requrired parameters are set to their default values
+    and the branch structure is computed naively. However, note that in this case
+    the graph has to be connected and cannot contain loops, since we cannot
+    distinguish between disconnected compartments or disconnected cells in a
+    network purely from the graph structure.
 
     Returns nx.Network, nx.Cell, nx.Branch, or nx.Compartment depending on
     num_cell_idxs > 1, num_branch_idxs > 1 etc.
@@ -547,6 +566,7 @@ def from_graph(
         - cumsum_nbranches: np.ndarray
         - channels
         - synapses
+        - xyzr: list[np.ndarray]
     - nodes:
         - id: int (used to define groups, according to NEURON's SWC convention)
         - groups: list[str] (can also be defined direclty)
@@ -582,73 +602,92 @@ def from_graph(
         A module instance that is populated with the node and egde attributes of
         the nx.DiGraph."""
 
-    # Graph only has to contain edges to be importable as a module
-    # In this case, xyz are set to NaN and r to 1
-    assert nx.is_weakly_connected(
-        graph
-    ), "Graph must be connected to be imported as a module."
-    assert len(list(nx.simple_cycles(graph))) == 0, "Graph cannot have loops"
-    if not graph.edges:
-        raise ValueError("Graph must have edges to be imported as a module.")
+    graph_was_exported_with_jaxley = "module" in graph.graph
 
     ########################################
     ### Make the graph jaxley compatible ###
     ########################################
 
-    # add comp_index, branch_index, cell_index to graph
-    # first check if they are already present, otherwise compute them
-    if not "branch_index" in graph.nodes[0]:
-        nseg = graph.graph["nseg"] if "nseg" in graph.graph else nseg
+    if not graph_was_exported_with_jaxley:
+        # Graph only has to contain edges to be importable as a module
+        # In this case, xyz are set to NaN, r to 1 and lengths to 10
+        assert nx.is_weakly_connected(
+            graph
+        ), "Graph must be connected to be imported as a module."
+        assert len(list(nx.simple_cycles(graph))) == 0, "Graph cannot have loops"
+        if not graph.edges:
+            raise ValueError("Graph must have edges to be imported as a module.")
 
-        # add branch_index and segment morphology into branches and compartments
-        roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
-        assert len(roots) == 1, "Currently only 1 morphology can be imported."
-        graph = impose_branch_structure(graph, max_branch_len=max_branch_len)
-        graph = compartmentalize_branches(graph)
-        nx.set_node_attributes(graph, {i: 0 for i in graph.nodes}, "cell_index")
-        nx.set_node_attributes(graph, {i: i for i in graph.nodes}, "comp_index")
+        # fill graph with defaults if not present
+        default_node_attrs = {"x": np.nan, "y": np.nan, "z": np.nan, "r": 1, "id": 0}
+        for k, v in default_node_attrs.items():
+            if not has_node_attr(graph, k):
+                nx.set_node_attributes(graph, v, k)
 
-    # setup branch structure and compute parents
-    # edges connecting comps in different branches are set to type "branch"
-    # also works for mutliple cells
-    if nx.get_edge_attributes(graph, "type") == {}:
-        cell_idxs = nx.get_node_attributes(graph, "cell_index")
-        unique_cells = np.unique(list(cell_idxs.values()))
-        graph.graph["comb_parents"] = []
-        for idx in unique_cells:
-            cell_nodes = [k for k, v in cell_idxs.items() if v == idx]
-            cell_graph = graph.subgraph(cell_nodes)
-            branch_idxs = nx.get_node_attributes(cell_graph, "branch_index")
-            within_branch = np.array(
-                [(branch_idxs[i] == branch_idxs[j]) for i, j in graph.edges]
-            )
-            node_connections = np.stack([(i, j) for i, j in graph.edges])
-            pre, post = node_connections[~within_branch].T
-            graph.add_edges_from(zip(pre, post), type="branch")
-            branch_connections = [
-                (branch_idxs[i], branch_idxs[j]) for i, j in zip(pre, post)
+        default_edge_attrs = {"length": 10.0}
+        for k, v in default_edge_attrs.items():
+            if not has_edge_attr(graph, k):
+                nx.set_edge_attributes(graph, v, k)
+
+        # add comp_index, branch_index, cell_index to graph
+        # first check if they are already present, otherwise compute them
+        if not has_node_attr(graph, "branch_index"):
+            nseg = graph.graph["nseg"] if "nseg" in graph.graph else nseg
+
+            # add branch_index and segment morphology into branches and compartments
+            roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
+            assert len(roots) == 1, "Currently only 1 morphology can be imported."
+            graph = impose_branch_structure(graph, max_branch_len=max_branch_len)
+            graph = compartmentalize_branches(graph)
+            nx.set_node_attributes(graph, {i: 0 for i in graph.nodes}, "cell_index")
+            nx.set_node_attributes(graph, {i: i for i in graph.nodes}, "comp_index")
+
+        # setup branch structure and compute parents
+        # edges connecting comps in different branches are set to type "branch"
+        # this works for mutliple cells in theory, however only one cell is currently supported
+        if nx.get_edge_attributes(graph, "type") == {}:
+            cell_idxs = nx.get_node_attributes(graph, "cell_index")
+            unique_cells = np.unique(list(cell_idxs.values()))
+            graph.graph["comb_parents"] = []
+            for idx in unique_cells:
+                cell_nodes = [k for k, v in cell_idxs.items() if v == idx]
+                cell_graph = graph.subgraph(cell_nodes)
+                branch_idxs = nx.get_node_attributes(cell_graph, "branch_index")
+                within_branch = np.array(
+                    [(branch_idxs[i] == branch_idxs[j]) for i, j in graph.edges]
+                )
+                node_connections = np.stack([(i, j) for i, j in graph.edges])
+                pre, post = node_connections[~within_branch].T
+                graph.add_edges_from(zip(pre, post), type="branch")
+                branch_connections = [
+                    (branch_idxs[i], branch_idxs[j]) for i, j in zip(pre, post)
+                ]
+                parents = [-1]
+                if len(branch_connections) > 0:
+                    dfs_parents = nx.dfs_predecessors(nx.DiGraph(branch_connections), 0)
+                    parents += list(dfs_parents.values())
+                graph.graph["comb_parents"] += parents
+
+        # add group information to nodes if available via id attribute
+        ids = nx.get_node_attributes(graph, "id")
+        if ids != {}:
+            group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
+            # Type of padded section is assumed to be of `custom` type:
+            # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+
+            groups = [
+                group_ids[id] if id in group_ids else f"custom{id-4}"
+                for id in ids.values()
             ]
-            parents = nx.dfs_predecessors(nx.DiGraph(branch_connections), 0)
-            parents = [-1] + list(parents.values())
-            graph.graph["comb_parents"] += parents
+            graph.add_nodes_from(
+                {i: {"groups": [id]} for i, id in enumerate(groups)}.items()
+            )
+        for i, node in graph.nodes(data=True):
+            node.pop("id")  # remove id attribute from nodes
 
-    # add group information to nodes if available
-    ids = nx.get_node_attributes(graph, "id")
-    if ids != {}:
-        group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
-        # Type of padded section is assumed to be of `custom` type:
-        # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-
-        groups = [group_ids[id] if id in group_ids else f"custom_{id-4}" for id in ids.values()]
-        graph.add_nodes_from(
-            {i: {"groups": [id]} for i, id in enumerate(groups)}.items()
-        )
-    for i, node in graph.nodes(data=True):
-        node.pop("id")  # remove id
-
-    ###############################
-    ### Port graph to jx.Module ###
-    ###############################
+    #################################
+    ### Import graph as jx.Module ###
+    #################################
 
     global_attrs = graph.graph.copy()
     # try to infer module type from global attrs (exported with `to_graph`)
@@ -693,7 +732,7 @@ def from_graph(
 
     if not groups.empty and assign_groups:
         groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
-        groups = groups[groups["group"] != "undefined"] # skip undefined comps
+        groups = groups[groups["group"] != "undefined"]  # skip undefined comps
         group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
         module.group_nodes = group_nodes
     if not recordings.empty:
