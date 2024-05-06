@@ -166,7 +166,7 @@ jnp_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 unpack = lambda d, keys: [d[k] for k in keys]
 
 
-def dist(graph: nx.DiGraph, i: int, j: int) -> float:
+def node_dist(graph: nx.DiGraph, i: int, j: int) -> float:
     """Compute the euclidean distance between two nodes in a graph.
 
     Args:
@@ -219,7 +219,7 @@ def add_edge_lengths(
     has_loc = "x" in graph.nodes[0]
     edges = graph.edges if edges is None else edges
     for i, j in edges:
-        graph.edges[i, j]["length"] = dist(graph, i, j) if has_loc else 1
+        graph.edges[i, j]["length"] = node_dist(graph, i, j) if has_loc else 1
     return graph
 
 
@@ -287,13 +287,17 @@ def split_edge(
 
     Returns:
         The graph with specified edge split into multiple segments."""
-    if not "length" in graph.edges[(i, j)]:
+    edge = graph.edges[(i, j)]
+    if not "length" in edge:
         graph = add_edge_lengths(graph, [(i, j)])
-    length = graph.edges[(i, j)]["length"]
-    id = graph.edges[(i, j)]["id"]
+    length = edge["length"]
     locs = np.linspace(0, length, nsegs + 1)
     pathgraph = resample_path(graph, [(i, j)], locs, interp_node_attrs)
-    nx.set_edge_attributes(pathgraph, id, "id")
+    
+    if "id" in edge:
+        id = graph.edges[(i, j)]
+        nx.set_edge_attributes(pathgraph, id, "id")
+    
     graph.add_edges_from(pathgraph.edges(data=True))
     graph.add_nodes_from(pathgraph.nodes(data=True))
     graph.remove_edge(i, j)
@@ -375,7 +379,7 @@ def impose_branch_structure(
             graph.edges[edge_2]["id"] = ids[j]
 
     # Split edge if single edge is longer than max_branch_len
-    edge_lens = nx.get_edge_attributes(graph.edges, "length")
+    edge_lens = nx.get_edge_attributes(graph, "length")
     long_edges = {k: v for k, v in edge_lens.items() if v > max_branch_len}
     for i, j in long_edges:
         nsegs = graph.edges[i, j]["length"] // max_branch_len + 1
