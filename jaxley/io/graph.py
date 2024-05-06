@@ -100,9 +100,7 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
     }
     # asumes multiple groups per node are allowed
     for idx, key in node_group_dict.items():
-        module_graph.add_node(
-            idx, **{"groups": key}
-        )  # TODO: allow multiple group memberships?
+        module_graph.add_node(idx, **{"groups": key})
 
     # add recordings to nodes
     if not module.recordings.empty:
@@ -508,6 +506,9 @@ def compartmentalize_branches(
     new_keys = {k: i for i, k in enumerate(sorted(new_graph.nodes))}
     new_graph = nx.relabel_nodes(new_graph, new_keys)
 
+    # TODO: handle soma (r == l)
+
+
     if append_morphology:
         new_graph.graph["xyzr"] = xyzr
 
@@ -637,11 +638,11 @@ def from_graph(
         group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
         # Type of padded section is assumed to be of `custom` type:
         # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-        groups = [group_ids[id] if id in group_ids else "custom" for id in ids.values()]
+
+        groups = [group_ids[id] if id in group_ids else f"custom_{id-4}" for id in ids.values()]
         graph.add_nodes_from(
             {i: {"groups": [id]} for i, id in enumerate(groups)}.items()
         )
-        # TODO: DROP UNDEFINED FROM GROUPS!
     for i, node in graph.nodes(data=True):
         node.pop("id")  # remove id
 
@@ -692,6 +693,7 @@ def from_graph(
 
     if not groups.empty and assign_groups:
         groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
+        groups = groups[groups["group"] != "undefined"] # skip undefined comps
         group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
         module.group_nodes = group_nodes
     if not recordings.empty:
