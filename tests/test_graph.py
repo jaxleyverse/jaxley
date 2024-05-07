@@ -169,7 +169,9 @@ def test_graph_to_jaxley():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "morph.swc")
     graph = swc_to_graph(fname)
-    swc_module = from_graph(edge_graph)
+    swc_module = from_graph(graph)
+    for group in ["soma", "apical", "basal"]:
+        assert group in swc_module.group_nodes
 
     # test if exported module can be imported into jaxley
     module_graph = to_graph(net)

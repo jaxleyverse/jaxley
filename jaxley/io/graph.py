@@ -600,11 +600,12 @@ def from_graph(
 
     Args:
         graph: A networkx graph representing a module.
-        default_nseg: The default number of segments per compartment.
-            Will only be selected if the graph does not have nseg as attr.
+        nseg: The default number of segments per compartment.
+            Will only be selected if the graph has not been compartmentalized yet.
         max_branch_len: Maximal length of one branch. If a branch exceeds this length,
             it is split into equal parts such that each subbranch is below
-            `max_branch_len`.
+            `max_branch_len`. Will only be used if no branch structure is has been
+            assigned yet.
         assign_groups: Wether to assign groups to nodes based on the the id or groups
             attribute.
 
@@ -749,11 +750,13 @@ def from_graph(
         recordings = recordings.T.unstack().reset_index().set_index("level_0")
         recordings = recordings.rename(columns={"level_1": "rec_index", 0: "state"})
         module.recordings = recordings
+    
     if not currents.empty:
         current_inds = nodes.loc[currents.T.index]
         currents = jnp.vstack(currents.values).T
         module.currents = currents
         module.current_inds = current_inds
+    
     if not trainables.empty:
         # trainables require special handling, since some of them are shared
         # and some are set individually
@@ -789,16 +792,17 @@ def from_graph(
             {k: jnp.array(v).reshape(-1)}
             for k, v in trainable_params[["param", "value"]].values
         ]
-        if not groups.empty and assign_groups:
-            groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
-            groups = groups[groups["group"] != "undefined"]  # skip undefined comps
-            group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
-            module.group_nodes = group_nodes
-            # update group nodes in module to reflect what is shown in view
-            for group, nodes in module.group_nodes.items():
-                module.group_nodes[group] = module.__getattr__(group).view
-
         module.trainable_params = trainable_params
         module.indices_set_by_trainables = indices_set_by_trainables
+    
+    if not groups.empty and assign_groups:
+        groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
+        groups = groups[groups["group"] != "undefined"]  # skip undefined comps
+        group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
+        module.group_nodes = group_nodes
+        # update group nodes in module to reflect what is shown in view
+        for group, nodes in module.group_nodes.items():
+            module.group_nodes[group] = module.__getattr__(group).view
+
 
     return module
