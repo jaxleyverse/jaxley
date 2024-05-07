@@ -1,14 +1,20 @@
+import os
 from copy import deepcopy
 
 import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
-from jaxley_mech.channels.fm97 import K, Leak, Na
 
 import jaxley as jx
 from jaxley import connect
-from jaxley.io.graph import from_graph, to_graph
+from jaxley.channels.pospischil import K, Leak, Na
+from jaxley.io.graph import (
+    compartmentalize_branches,
+    from_graph,
+    impose_branch_structure,
+    to_graph,
+)
 from jaxley.io.swc import swc_to_graph
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
@@ -160,10 +166,19 @@ def test_graph_to_jaxley():
         edge_module = from_graph(edge_graph)
 
     # test whether swc file can be imported into jaxley
-    fname = "../tests/morph.swc"
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "morph.swc")
     graph = swc_to_graph(fname)
     swc_module = from_graph(edge_graph)
 
     # test if exported module can be imported into jaxley
     module_graph = to_graph(net)
     prev_exported_module = from_graph(module_graph)
+
+    # test import at different stages of graph pre-processing
+    graph = swc_to_graph(fname)
+    graph = impose_branch_structure(graph)
+    from_graph(graph)
+
+    graph = compartmentalize_branches(graph)
+    from_graph(graph)
