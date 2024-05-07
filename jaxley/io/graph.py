@@ -78,19 +78,24 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
 
     # add global attrs
     module_graph.graph["module"] = module.__class__.__name__
-    module_graph.graph["nseg"] = module.nseg
-    module_graph.graph["total_nbranches"] = module.total_nbranches
-    module_graph.graph["cumsum_nbranches"] = module.cumsum_nbranches
-    module_graph.graph["initialized_morph"] = module.initialized_morph
-    module_graph.graph["initialized_syns"] = module.initialized_syns
-    module_graph.graph["synapses"] = module.synapses
-    module_graph.graph["channels"] = module.channels
-    module_graph.graph["allow_make_trainable"] = module.allow_make_trainable
-    module_graph.graph["num_trainable_params"] = module.num_trainable_params
-    module_graph.graph["xyzr"] = module.xyzr
+    for attr in [
+        "nseg",
+        "total_nbranches",
+        "cumsum_nbranches",
+        "initialized_morph",
+        "initialized_syns",
+        "synapses",
+        "channels",
+        "allow_make_trainable",
+        "num_trainable_params",
+        "xyzr",
+    ]:
+        module_graph.graph[attr] = getattr(module, attr)
 
     # add nodes
-    module_graph.add_nodes_from(module.nodes.iterrows())
+    module_graph.add_nodes_from(
+        module.nodes.to_dict("index").items()
+    )  # preserves dtypes
 
     # add groups to nodes
     group_node_dict = {k: list(v.index) for k, v in module.group_nodes.items()}
@@ -152,10 +157,17 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         attrs = edge.to_dict()
         pre = attrs["global_pre_comp_index"]
         post = attrs["global_post_comp_index"]
-        module_graph.add_edge(pre, post, **attrs)
+        module_graph.add_edge(pre, post, type="synapse")
+        # allow for multiple synapses between the same compartments
+        if "parameters" in module_graph.edges[pre, post]:
+            module_graph.edges[pre, post]["parameters"].append(attrs)
+        else:
+            module_graph.edges[pre, post]["parameters"] = [attrs]
+
     return module_graph
 
 
+# helper functions
 is_leaf = lambda graph, n: graph.out_degree(n) == 0 and graph.in_degree(n) == 1
 is_branching = lambda graph, n: graph.out_degree(n) > 1
 path_e2n = lambda path: [path[0][0]] + [e[1] for e in path]
@@ -512,6 +524,7 @@ def compartmentalize_branches(
     # set node labels to integers
     new_keys = {k: i for i, k in enumerate(sorted(new_graph.nodes))}
     new_graph = nx.relabel_nodes(new_graph, new_keys)
+    nx.set_node_attributes(new_graph, {i: i for i in new_graph.nodes}, "comp_index")
 
     # TODO: handle soma (r == l)
 
@@ -582,11 +595,8 @@ def from_graph(
         - currents: list[float]
         - trainable: dict[str, float]
     - edges:
-        - parent_branch_index: int
-        - child_branch_index: int
-        - global_pre_comp_index: int
-        - global_post_comp_index: int
         - type: str ("synapse" or "branch" or None)
+        - parameters: list[dict] (stores synapse parameters)
 
     Args:
         graph: A networkx graph representing a module.
@@ -619,6 +629,9 @@ def from_graph(
             raise ValueError("Graph must have edges to be imported as a module.")
 
         # fill graph with defaults if not present
+        if not has_edge_attr(graph, "length") and has_node_attr(graph, "x"):
+            graph = add_edge_lengths(graph)
+
         default_node_attrs = {"x": np.nan, "y": np.nan, "z": np.nan, "r": 1, "id": 0}
         for k, v in default_node_attrs.items():
             if not has_node_attr(graph, k):
@@ -638,9 +651,11 @@ def from_graph(
             roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
             assert len(roots) == 1, "Currently only 1 morphology can be imported."
             graph = impose_branch_structure(graph, max_branch_len=max_branch_len)
+
+        if not has_node_attr(graph, "comp_index"):
             graph = compartmentalize_branches(graph)
-            nx.set_node_attributes(graph, {i: 0 for i in graph.nodes}, "cell_index")
-            nx.set_node_attributes(graph, {i: i for i in graph.nodes}, "comp_index")
+
+        nx.set_node_attributes(graph, {i: 0 for i in graph.nodes}, "cell_index")
 
         # setup branch structure and compute parents
         # edges connecting comps in different branches are set to type "branch"
@@ -707,17 +722,17 @@ def from_graph(
     # import nodes and edges
     edge_type = nx.get_edge_attributes(graph, "type")
     edges = pd.DataFrame(edge_type.values(), index=edge_type.keys(), columns=["type"])
-    is_synapse = edges["type"] != "branch"
+    is_synapse = edges["type"] == "synapse"
     idxs = edges[~is_synapse].reset_index().values.T[:2]
     branch_edges = pd.DataFrame([nodes["branch_index"].loc[i].values for i in idxs]).T
     branch_edges.columns = ["parent_branch_index", "child_branch_index"]
 
     synapse_edges = pd.DataFrame(
-        [graph.edges[idxs] for idxs in edges[is_synapse].index]
+        sum([graph.edges[idxs]["parameters"] for idxs in edges[is_synapse].index], [])
     )
 
     # drop special attrs from nodes and ignore error if col does not exist
-    optional_attrs = ["recordings", "currents", "groups", "trainables"]
+    optional_attrs = ["recordings", "currents", "groups", "trainable"]
     nodes.drop(columns=optional_attrs, inplace=True, errors="ignore")
 
     module.nodes[nodes.columns] = nodes  # set column-wise. preserves cols not in nodes.
@@ -730,18 +745,13 @@ def from_graph(
     groups = pd.DataFrame(nx.get_node_attributes(graph, "groups").items())
     trainables = pd.DataFrame(nx.get_node_attributes(graph, "trainable"), dtype=float)
 
-    if not groups.empty and assign_groups:
-        groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
-        groups = groups[groups["group"] != "undefined"]  # skip undefined comps
-        group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
-        module.group_nodes = group_nodes
     if not recordings.empty:
         recordings = recordings.T.unstack().reset_index().set_index("level_0")
         recordings = recordings.rename(columns={"level_1": "rec_index", 0: "state"})
         module.recordings = recordings
     if not currents.empty:
         current_inds = nodes.loc[currents.T.index]
-        currents = np.stack(currents.values)
+        currents = jnp.vstack(currents.values).T
         module.currents = currents
         module.current_inds = current_inds
     if not trainables.empty:
@@ -774,11 +784,19 @@ def from_graph(
 
         # 4. format to match module.trainable_params and module.indices_set_by_trainables
         trainable_params = pd.concat([shared_trainables, sep_trainables])
-        indices_set_by_trainables = trainable_params["index"].values
+        indices_set_by_trainables = trainable_params["index"].values.tolist()
         trainable_params = [
             {k: jnp.array(v).reshape(-1)}
             for k, v in trainable_params[["param", "value"]].values
         ]
+        if not groups.empty and assign_groups:
+            groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
+            groups = groups[groups["group"] != "undefined"]  # skip undefined comps
+            group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
+            module.group_nodes = group_nodes
+            # update group nodes in module to reflect what is shown in view
+            for group, nodes in module.group_nodes.items():
+                module.group_nodes[group] = module.__getattr__(group).view
 
         module.trainable_params = trainable_params
         module.indices_set_by_trainables = indices_set_by_trainables
