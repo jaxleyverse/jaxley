@@ -221,7 +221,15 @@ def test_get_synapse_indices():
     network = jx.Network([cell for _ in range(5)])
     fully_connect(network.cell("all"), network.cell("all"), IonotropicSynapse())
     fully_connect(network.cell("all"), network.cell("all"), TanhRateSynapse())
+
     ionotropic_inds = network.get_synapse_indices([0, 1], [2, 3], "IonotropicSynapse")
     tanh_inds = network.get_synapse_indices(0, 2, "TanhRateSynapse")
     assert np.all(np.array(ionotropic_inds) == np.array([2, 8]))
     assert tanh_inds[0] == 2
+
+    some_cells = network.cell([1, 2, 3])
+    # NOTE: indexing into the cell view with global cell indices here, see issue #338
+    ionotropic_inds = some_cells.get_synapse_indices(
+        [1, 2], [2, 3], "IonotropicSynapse"
+    )
+    assert np.all(np.array(ionotropic_inds) == np.array([7, 13]))
