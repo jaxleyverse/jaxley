@@ -174,23 +174,29 @@ class Network(Module):
         )
         self.initialized_syns = True
 
-    def get_synapse_indices(self, edge_properties: Dict) -> List[int]:
-        """Get the synapse indices in the SynapseView that have the given edge properties.
+    def get_synapse_indices(
+        self,
+        pre_cells: Union[int, List],
+        post_cells: Union[int, List],
+        synapse_type: str,
+    ) -> List[int]:
+        """Get the synapse indices in the SynapseView between the given pre and post synaptic cells.
 
-        These synapses can then be used to index into the SynapseView and set
-        parameters. Importantly, the type key can only have one entry... this gives the
-        correct index in the (type-specific) SynapseView.
+        These synapses can then be used to index into the SynapseView of the respective
+        synapse type and set parameters.
         """
-        edges_of_synapse_type = self.edges[
-            self.edges["type"] == edge_properties["type"]
-        ]
-        edge_properties.pop("type")
-        edge_properties_df = pd.DataFrame.from_dict(edge_properties, orient="index").T
-        merge_keys = list(edge_properties.keys())
+        # Have to convert to lists to make the dataframe for connection identification
+        pre_cells = [pre_cells] if isinstance(pre_cells, int) else pre_cells
+        post_cells = [post_cells] if isinstance(post_cells, int) else post_cells
+        edges_of_synapse_type = self.edges[self.edges["type"] == synapse_type]
+        edge_properties_df = pd.DataFrame(
+            {"pre_cell_index": pre_cells, "post_cell_index": post_cells}
+        )
+        # Exists will be "both" here for all edges between pre and post synaptic cell(s)
         comparison_df = pd.merge(
             edges_of_synapse_type,
             edge_properties_df,
-            on=merge_keys,
+            on=["pre_cell_index", "post_cell_index"],
             how="left",
             indicator="exists",
         )

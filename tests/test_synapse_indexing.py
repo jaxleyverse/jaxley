@@ -221,19 +221,7 @@ def test_get_synapse_indices():
     network = jx.Network([cell for _ in range(5)])
     fully_connect(network.cell("all"), network.cell("all"), IonotropicSynapse())
     fully_connect(network.cell("all"), network.cell("all"), TanhRateSynapse())
-    ionotropic_inds = network.get_synapse_indices(
-        {
-            "pre_cell_index": np.array([0, 1]),
-            "post_cell_index": np.array([2, 3]),
-            "type": "IonotropicSynapse",
-        }
-    )
-    tanh_inds = network.get_synapse_indices(
-        {
-            "pre_cell_index": np.array([0, 1]),
-            "post_cell_index": np.array([2, 3]),
-            "type": "TanhRateSynapse",
-        }
-    )
+    ionotropic_inds = network.get_synapse_indices([0, 1], [2, 3], "IonotropicSynapse")
+    tanh_inds = network.get_synapse_indices(0, 2, "TanhRateSynapse")
     assert np.all(np.array(ionotropic_inds) == np.array([2, 8]))
-    assert np.all(np.array(tanh_inds) == np.array([2, 8]))
+    assert tanh_inds[0] == 2
