@@ -1093,6 +1093,42 @@ class Module(ABC):
 
         self._update_nodes_with_xyz()
 
+    def get_synapse_indices(
+        self,
+        pre_cells: Union[int, List],
+        post_cells: Union[int, List],
+        synapse_type: str,
+    ) -> List[int]:
+        """Get the synapse indices in the SynapseView between the given pre and post synaptic cells.
+
+        These synapses can then be used to index into the SynapseView of the respective
+        synapse type and set parameters.
+        """
+        # Have to convert to lists to make the dataframe for connection identification
+        pre_cells = [pre_cells] if isinstance(pre_cells, int) else pre_cells
+        post_cells = [post_cells] if isinstance(post_cells, int) else post_cells
+        assert len(pre_cells) == len(
+            post_cells
+        ), "Number of presynaptic and postsynaptic cells must be equal."
+        edges_of_synapse_type = self.edges[self.edges["type"] == synapse_type]
+        edge_properties_df = pd.DataFrame(
+            {"pre_cell_index": pre_cells, "post_cell_index": post_cells}
+        )
+        # Exists will be "both" here for all edges between pre and post synaptic cell(s)
+        comparison_df = pd.merge(
+            edges_of_synapse_type,
+            edge_properties_df,
+            on=["pre_cell_index", "post_cell_index"],
+            how="left",
+            indicator="exists",
+        )
+        synapse_indices = comparison_df[
+            comparison_df["exists"] == "both"
+        ].index.to_numpy()
+        if synapse_indices.size == 0:
+            raise ValueError("No synapses found with the given edge properties.")
+        return list(synapse_indices)
+
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
 
@@ -1320,6 +1356,13 @@ class View:
         # Ensuring here that the branch indices in the view passed are global
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move_to(x, y, z, nodes)
+
+    def get_synapse_indices(
+        self, pre: Union[int, List], post: Union[int, List], synapse_type: str
+    ) -> List[int]:
+        pre_indices = list(self.view.global_cell_index[pre])
+        post_indices = list(self.view.global_cell_index[post])
+        return self.pointer.get_synapse_indices(pre_indices, post_indices, synapse_type)
 
     def adjust_view(self, key: str, index: Union[int, str, list, range, slice]):
         """Update view."""
