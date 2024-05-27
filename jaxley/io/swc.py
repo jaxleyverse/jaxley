@@ -5,6 +5,8 @@ from copy import copy
 from typing import Callable, List, Optional, Tuple
 from warnings import warn
 import networkx as nx
+from jaxley.io.graph import from_graph
+import jaxley as jx
 
 import numpy as np
 
@@ -329,12 +331,94 @@ def swc_to_graph(fname, num_lines = None, sort=True) -> nx.DiGraph:
     root_idx = np.where(parents == -1)[0][0] # in case .swc does not start from root
     parents = parents.astype(int) - 1
 
-    graph = nx.DiGraph() # TODO: how to handle groups? Only one per node?
-    graph.add_nodes_from({i: {"x": x, "y": y, "z": z, "radius": r, "id": id} for i, id, x, y, z, r in zip(idxs, ids, xs, ys, zs, rs)}.items())
+    graph = nx.DiGraph()
+    graph.add_nodes_from({i: {"x": x, "y": y, "z": z, "r": r, "id": id} for i, id, x, y, z, r in zip(idxs, ids, xs, ys, zs, rs)}.items())
     graph.add_edges_from([(node, idx) for idx, node in enumerate(parents) if idx != root_idx])
     return graph
 
 
-def asc_to_graph(fname, num_lines = None, sort=True) -> nx.DiGraph:
-    # future TODO: implement asc to graph reader
-    pass
+def swc_to_graph_to_jaxley(
+    fname: str,
+    nseg: int = 4,
+    max_branch_len: float = 100.0,
+    sort: bool = True,
+    num_lines: Optional[int] = None,
+):
+    graph = swc_to_graph(fname, num_lines, sort)
+    return from_graph(graph, nseg=nseg, max_branch_len=max_branch_len)
+    
+
+def read_swc(
+    fname: str,
+    nseg: int,
+    max_branch_len: float = 300.0,
+    min_radius: Optional[float] = None,
+    assign_groups: bool = False,
+):
+    """Reads SWC file into a `jx.Cell`.
+
+    Jaxley assumes cylindrical compartments and therefore defines length and radius
+    for every compartment. The surface area is then 2*pi*r*length. For branches
+    consisting of a single traced point we assume for them to have area 4*pi*r*r.
+    Therefore, in these cases, we set lenght=2*r.
+
+    Args:
+        fname: Path to the swc file.
+        nseg: The number of compartments per branch.
+        max_branch_len: If a branch is longer than this value it is split into two
+            branches.
+        min_radius: If the radius of a reconstruction is below this value it is clipped.
+        assign_groups: If True, then the identity of reconstructed points in the SWC
+            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
+            `apical`, `custom`. See here:
+            http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    """
+    parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
+        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
+    )
+    nbranches = len(parents)
+
+    non_split = 1 / nseg
+    range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
+
+    comp = jx.Compartment()
+    branch = jx.Branch([comp for _ in range(nseg)])
+    cell = jx.Cell(
+        [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
+    )
+
+    radiuses = np.asarray([radius_fns[b](range_) for b in range(len(parents))])
+    radiuses_each = radiuses.ravel(order="C")
+    if min_radius is None:
+        assert np.all(
+            radiuses_each > 0.0
+        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
+    else:
+        radiuses_each[radiuses_each < min_radius] = min_radius
+
+    lengths_each = np.repeat(pathlengths, nseg) / nseg
+
+    cell.set("length", lengths_each)
+    cell.set("radius", radiuses_each)
+
+    # Description of SWC file format:
+    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    ind_name_lookup = {
+        0: "undefined",
+        1: "soma",
+        2: "axon",
+        3: "basal",
+        4: "apical",
+        5: "custom",
+    }
+    types = np.asarray(types).astype(int)
+    if assign_groups:
+        for type_ind in np.unique(types):
+            if type_ind < 5.5:
+                name = ind_name_lookup[type_ind]
+            else:
+                name = f"custom{type_ind}"
+            indices = np.where(types == type_ind)[0].tolist()
+            if len(indices) > 0:
+                cell.branch(indices).add_to_group(name)
+    return cell
