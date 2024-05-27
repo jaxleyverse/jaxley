@@ -29,6 +29,7 @@ from jaxley.utils.cell_utils import (
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
+from jaxley.utils.cell_utils import recursive_compare
 
 
 class Module(ABC):
@@ -132,6 +133,9 @@ class Module(ABC):
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
+    
+    def __eq__(self, other):
+        return recursive_compare(self.__dict__, other.__dict__)
 
     def __dir__(self):
         base_dir = object.__dir__(self)
@@ -509,7 +513,6 @@ class Module(ABC):
         params = {}
         for key in ["radius", "length", "axial_resistivity", "capacitance"]:
             params[key] = self.jaxnodes[key]
-
         for channel in self.channels:
             for channel_params in channel.channel_params:
                 params[channel_params] = self.jaxnodes[channel_params]
