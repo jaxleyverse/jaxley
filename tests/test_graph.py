@@ -13,49 +13,12 @@ from jaxley.io.graph import (
     compartmentalize_branches,
     from_graph,
     impose_branch_structure,
+    make_jaxley_compatible,
     to_graph,
 )
 from jaxley.io.swc import swc_to_graph
 from jaxley.synapses import IonotropicSynapse, TestSynapse
-
-
-def match_container_elements(a, b):
-    if type(a) != type(b):
-        return False
-    if l := len(a) > 0:
-        if isinstance(a[0], dict):
-            for i in range(l):
-                if not match_dicts_and_contents(a[i], b[i]):
-                    return False
-            return True
-
-        # replace nans by 0 since nan != nan
-        return np.all(np.nan_to_num(a) == np.nan_to_num(b))
-    return True
-
-
-def match_dicts_and_contents(a, b):
-    if a.keys() != b.keys():  # keys must match
-        return False
-
-    for key in a.keys():
-        A, B = a[key], b[key]  # unpack by key to ensure same order
-        if type(A) != type(B):
-            return False
-        if isinstance(A, pd.DataFrame):
-            A, B = A.to_dict(), B.to_dict()
-
-        if isinstance(A, dict):
-            if not match_dicts_and_contents(A, B):
-                return False
-        elif isinstance(A, (list, np.ndarray, jnp.ndarray)):
-            if not match_container_elements(A, B):
-                return False
-        else:
-            both_nan = np.isnan(A) and np.isnan(B) if isinstance(A, float) else False
-            if A != B and not both_nan:
-                return False
-    return True
+from jaxley.utils.cell_utils import recursive_compare
 
 
 def get_unique_trainables(indices_set_by_trainables, trainable_params):
@@ -142,20 +105,20 @@ def test_graph_import_export_cycle():
         assert np.all(trainables == re_trainables)
 
         # match the remaining attributes in the module dicts
-        match_dicts_and_contents(module_dict, re_module_dict)
+        recursive_compare(module_dict, re_module_dict)
 
         # ensure graphs are equal
         assert nx.is_isomorphic(
             module_graph,
             re_module_graph,
-            node_match=match_dicts_and_contents,
-            edge_match=match_dicts_and_contents,
+            node_match=recursive_compare,
+            edge_match=recursive_compare,
         )
 
 
 def test_graph_to_jaxley():
     comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
+    branch = jx.Branch([comp for _ in range(2)])
     cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 1, 2, 2]))
     net = jx.Network([cell] * 3)
 
@@ -177,10 +140,22 @@ def test_graph_to_jaxley():
     module_graph = to_graph(net)
     prev_exported_module = from_graph(module_graph)
 
-    # test import at different stages of graph pre-processing
-    graph = swc_to_graph(fname)
-    graph = impose_branch_structure(graph)
-    from_graph(graph)
+    # assert that modules are equal
+    assert net == prev_exported_module
 
-    graph = compartmentalize_branches(graph)
-    from_graph(graph)
+    # test import after different stages of graph pre-processing
+    graph = swc_to_graph(fname)
+    module_imported_directly = from_graph(deepcopy(graph))
+
+    graph = impose_branch_structure(deepcopy(graph))
+    module_imported_after_branching = from_graph(graph)
+
+    graph = compartmentalize_branches(deepcopy(graph))
+    module_imported_after_compartmentalization = from_graph(graph)
+
+    graph = make_jaxley_compatible(deepcopy(graph))
+    module_imported_after_making_it_compatible = from_graph(graph)
+
+
+    #TODO: test if integrate works!
+
