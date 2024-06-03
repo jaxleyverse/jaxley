@@ -135,6 +135,7 @@ class Module(ABC):
         return f"jx.{type(self).__name__}"
     
     def __eq__(self, other):
+        # TODO: Add tests!
         return recursive_compare(self.__dict__, other.__dict__)
 
     def __dir__(self):
