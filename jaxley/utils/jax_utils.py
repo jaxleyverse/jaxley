@@ -1,5 +1,5 @@
 import math
-from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -12,9 +12,9 @@ Func = TypeVar("Func", bound=Callable)
 
 
 def nested_checkpoint_scan(
-    f: Callable[[Carry, Input], Tuple[Carry, Output]],
+    f: Callable[[Carry, Dict[str, jnp.ndarray]], Tuple[Carry, Output]],
     init: Carry,
-    xs: Input,
+    xs: Dict[str, jnp.ndarray],
     length: Optional[int] = None,
     *,
     nested_lengths: Sequence[int],

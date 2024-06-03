@@ -641,13 +641,23 @@ class Module(ABC):
         u,
         delta_t,
         i_inds,
-        i_current,
+        i_input: Dict[str, jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
         tridiag_solver: str = "stone",
     ):
         """One step of solving the Ordinary Differential Equation."""
-        voltages = u["v"]
+
+        # Extract the external inputs
+        for key in i_input.keys():
+            if key == "i_current":
+                i_current = i_input["i_current"]
+            else:
+                u[key] = i_input[key]
+
+        # Extract the voltages
+        # If voltage is not clamped to a value, it will be updated.
+        voltages = i_input.get("v", u["v"])
 
         # Parameters have to go in here.
         u, (v_terms, const_terms) = self._step_channels(
@@ -669,38 +679,39 @@ class Module(ABC):
         )
 
         # Voltage steps.
-        cm = params["capacitance"]  # Abbreviation.
-        if solver == "bwd_euler":
-            new_voltages = step_voltage_implicit(
-                voltages=voltages,
-                voltage_terms=(v_terms + syn_v_terms) / cm,
-                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                summed_coupling_conds=params["summed_coupling_conds"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
-                nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                branches_in_each_level=self.comb_branches_in_each_level,
-                tridiag_solver=tridiag_solver,
-                delta_t=delta_t,
-            )
-        else:
-            new_voltages = step_voltage_explicit(
-                voltages,
-                (v_terms + syn_v_terms) / cm,
-                (const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
-                nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                delta_t=delta_t,
-            )
+        if "v" not in i_input.keys():
+            cm = params["capacitance"]  # Abbreviation.
+            if solver == "bwd_euler":
+                new_voltages = step_voltage_implicit(
+                    voltages=voltages,
+                    voltage_terms=(v_terms + syn_v_terms) / cm,
+                    constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
+                    coupling_conds_bwd=params["coupling_conds_bwd"],
+                    coupling_conds_fwd=params["coupling_conds_fwd"],
+                    summed_coupling_conds=params["summed_coupling_conds"],
+                    branch_cond_fwd=params["branch_conds_fwd"],
+                    branch_cond_bwd=params["branch_conds_bwd"],
+                    nbranches=self.total_nbranches,
+                    parents=self.comb_parents,
+                    branches_in_each_level=self.comb_branches_in_each_level,
+                    tridiag_solver=tridiag_solver,
+                    delta_t=delta_t,
+                )
+            else:
+                new_voltages = step_voltage_explicit(
+                    voltages,
+                    (v_terms + syn_v_terms) / cm,
+                    (const_terms + i_ext + syn_const_terms) / cm,
+                    coupling_conds_bwd=params["coupling_conds_bwd"],
+                    coupling_conds_fwd=params["coupling_conds_fwd"],
+                    branch_cond_fwd=params["branch_conds_fwd"],
+                    branch_cond_bwd=params["branch_conds_bwd"],
+                    nbranches=self.total_nbranches,
+                    parents=self.comb_parents,
+                    delta_t=delta_t,
+                )
 
-        u["v"] = new_voltages.ravel(order="C")
+            u["v"] = new_voltages.ravel(order="C")
 
         return u
 

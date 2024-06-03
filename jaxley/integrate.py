@@ -103,12 +103,12 @@ def integrate(
     # coupling conductances.
     all_params = module.get_all_parameters(pstate)
 
-    def _body_fun(state, i_stim):
+    def _body_fun(state, external_input):
         state = module.step(
             state,
             delta_t,
             i_inds,
-            i_stim,
+            external_input,
             params=all_params,
             solver=solver,
             tridiag_solver=tridiag_solver,
@@ -173,8 +173,15 @@ def integrate(
     )
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
+    external_input = {"i_current": i_current}
+    if hasattr(module, "external_states"):
+        external_input.update(module.external_states)
     # Run simulation.
     _, recordings = nested_checkpoint_scan(
-        _body_fun, states, i_current, length=length, nested_lengths=checkpoint_lengths
+        _body_fun,
+        states,
+        external_input,
+        length=length,
+        nested_lengths=checkpoint_lengths,
     )
     return jnp.concatenate([init_recording, recordings[:nsteps_to_return]], axis=0).T
