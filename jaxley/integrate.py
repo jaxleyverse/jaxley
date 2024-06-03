@@ -174,8 +174,12 @@ def integrate(
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
     external_input = {"i_current": i_current}
-    if hasattr(module, "external_states"):
-        external_input.update(module.external_states)
+    try:
+        if hasattr(module, "external_states"):
+            external_input.update(module.external_states)
+    except:
+        pass
+
     # Run simulation.
     _, recordings = nested_checkpoint_scan(
         _body_fun,
