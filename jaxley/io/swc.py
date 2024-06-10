@@ -334,6 +334,7 @@ def swc_to_graph(fname, num_lines = None, sort=True) -> nx.DiGraph:
     graph = nx.DiGraph()
     graph.add_nodes_from({i: {"x": x, "y": y, "z": z, "r": r, "id": id} for i, id, x, y, z, r in zip(idxs, ids, xs, ys, zs, rs)}.items())
     graph.add_edges_from([(node, idx) for idx, node in enumerate(parents) if idx != root_idx])
+    graph.graph["type"] = "swc"
     return graph
 
 
