@@ -94,6 +94,9 @@ class Module(ABC):
         self.currents: Optional[jnp.ndarray] = None
         self.current_inds: pd.DataFrame = pd.DataFrame().from_dict({})
 
+        # For (clamped) external states
+        self.external_states: Optional[Dict[str, jnp.ndarray]] = None
+
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
 
