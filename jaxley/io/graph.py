@@ -10,7 +10,7 @@ import pandas as pd
 import jaxley as jx
 
 
-def build_skeleton_module(
+def build_module_scaffold(
     idxs: pd.DataFrame, return_type: Optional[str] = None
 ) -> Union[jx.Network, jx.Cell, jx.Branch, jx.Compartment]:
     """Builds a skeleton module from a DataFrame of indices.
@@ -640,9 +640,12 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 4, max_branch_len: flo
             parents += list(dfs_parents.values())
             bfs_layers = nx.bfs_layers(branch_graph, 0)
             comb_branches_in_each_level = [jnp.array(nodes) for nodes in bfs_layers]
-        graph.graph["comb_parents"] = parents
+        graph.graph["comb_parents"] = np.array(parents)
         graph.graph["comb_branches_in_each_level"] = comb_branches_in_each_level
-        graph.graph["comb_parents"] = np.array(graph.graph["comb_parents"])  
+
+    # rename node attr r to radius
+    for n, data in graph.nodes(data=True):
+        data["radius"] = data.pop("r")
 
     # add group information to nodes if available via id attribute
     ids = nx.get_node_attributes(graph, "id")
@@ -756,7 +759,7 @@ def from_graph(
     # build skeleton of module instances
     nodes = pd.DataFrame((n for i, n in graph.nodes(data=True)))
     idxs = nodes[["cell_index", "branch_index", "comp_index"]]
-    module = build_skeleton_module(idxs, return_type)
+    module = build_module_scaffold(idxs, return_type)
 
     # set global attributes of module
     for k, v in global_attrs.items():
