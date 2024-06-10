@@ -626,6 +626,40 @@ class Module(ABC):
         self.currents = None
         self.current_inds = pd.DataFrame().from_dict({})
 
+    def clamp(
+        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
+    ) -> None:
+        """Clamp a state to a given value across specified compartments.
+
+        Args:
+            state_name (str): The name of the state to clamp.
+            state_array (jnp.ndarray): Array of values to clamp the state to.
+            verbose (bool): If True, prints details about the clamping.
+
+        This function sets external states for the compartments.
+        """
+        if state_name not in self.nodes.columns:
+            raise KeyError(f"{state_name} is not a recognized state in this module.")
+        self._clamp(state_name, state_array, verbose)
+
+    def _clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool) -> None:
+        """Apply the clamping internally.
+
+        Args:
+            state_name (str): The name of the state to clamp.
+            state_array (jnp.ndarray): Array of values to clamp the state to.
+            verbose (bool): If True, prints details about the clamping.
+        """
+        if self.external_states is None:
+            self.external_states = {}
+
+        self.external_states[state_name] = state_array
+
+        if verbose:
+            print(
+                f"Clamped state '{state_name}' with values shape {state_array.shape}."
+            )
+
     def insert(self, channel):
         """Insert a channel."""
         self._insert(channel, self.nodes)
