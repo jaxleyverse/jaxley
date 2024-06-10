@@ -642,18 +642,20 @@ class Module(ABC):
             raise KeyError(f"{state_name} is not a recognized state in this module.")
         self._clamp(state_name, state_array, verbose)
 
-    def _clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool) -> None:
+    def _clamp(self, state_name, state_array, verbose: bool) -> None:
         """Apply the clamping internally.
 
         Args:
             state_name (str): The name of the state to clamp.
-            state_array (jnp.ndarray): Array of values to clamp the state to.
+            state_array (jnp.ndarray): Array of values to clamp the state to, shape=(n, ).
             verbose (bool): If True, prints details about the clamping.
         """
         if self.external_states is None:
             self.external_states = {}
 
-        self.external_states[state_name] = state_array
+        self.external_states[state_name] = state_array.reshape(
+            -1, 1
+        )  # reshape to (n, 1)
 
         if verbose:
             print(

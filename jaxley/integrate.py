@@ -81,14 +81,38 @@ def integrate(
     rec_inds = flip_comp_indices(rec_inds, module.nseg)  # See #305
     rec_states = module.recordings.state.to_numpy()
 
+    if module.external_states:
+        external_states = module.external_states
+    else:
+        external_states = None
+
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
         t_max_steps = int(t_max // delta_t + 1)
+
+        # Pad or truncate the stimulus.
         if t_max_steps > i_current.shape[0]:
             pad = jnp.zeros((t_max_steps - i_current.shape[0], i_current.shape[1]))
             i_current = jnp.concatenate((i_current, pad))
         else:
             i_current = i_current[:t_max_steps, :]
+            if external_states:
+                for key in external_states.keys():
+                    external_states[key] = external_states[key][:t_max_steps, :]
+
+        # Pad or truncate external states.
+        if external_states:
+            for key in external_states.keys():
+                if t_max_steps > external_states[key].shape[0]:
+                    pad = jnp.zeros(
+                        (
+                            t_max_steps - external_states[key].shape[0],
+                            external_states[key].shape[1],
+                        )
+                    )
+                    external_states[key] = jnp.concatenate((external_states[key], pad))
+                else:
+                    external_states[key] = external_states[key][:t_max_steps, :]
 
     # Make the `trainable_params` of the same shape as the `param_state`, such that they
     # can be processed together by `get_all_parameters`.
@@ -174,9 +198,8 @@ def integrate(
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
     external_inputs = {"i_current": i_current}
-    if module.external_states:
-        external_inputs.update(module.external_states)
-
+    if external_states:
+        external_inputs.update(external_states)
     # Run simulation.
     _, recordings = nested_checkpoint_scan(
         _body_fun,
