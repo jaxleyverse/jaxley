@@ -9,9 +9,17 @@ import pandas as pd
 
 import jaxley as jx
 
+def infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
+    nuniques = idxs.nunique()[["cell_index", "branch_index", "comp_index"]]
+    nuniques.index = ["cell", "branch", "compartment"]
+    nuniques = pd.concat([pd.Series({"network": 1}), nuniques])
+    return_type = nuniques.loc[nuniques == 1].index[-1]
+    return return_type
 
 def build_module_scaffold(
-    idxs: pd.DataFrame, return_type: Optional[str] = None
+    idxs: pd.DataFrame, 
+    return_type: Optional[str] = None, 
+    parent_branches: Optional[List[np.ndarray]] = None
 ) -> Union[jx.Network, jx.Cell, jx.Branch, jx.Compartment]:
     """Builds a skeleton module from a DataFrame of indices.
 
@@ -31,10 +39,7 @@ def build_module_scaffold(
     build_cache = {k: [] for k in return_types}
 
     if return_type is None:  # infer return type from idxs
-        nuniques = idxs.nunique()[["cell_index", "branch_index", "comp_index"]]
-        nuniques.index = ["cell", "branch", "compartment"]
-        nuniques = pd.concat([pd.Series({"network": 1}), nuniques])
-        return_type = nuniques.loc[nuniques == 1].index[-1]
+        return_type = infer_module_type_from_inds(idxs)
 
     comp = jx.Compartment()
     build_cache["compartment"] = comp
@@ -47,7 +52,8 @@ def build_module_scaffold(
     if return_type in return_types[2:]:
         for cell_id, cell_groups in idxs.groupby("cell_index"):
             num_branches = cell_groups["branch_index"].nunique()
-            parents = np.arange(num_branches) - 1  # ignores morphology
+            default_parents = np.arange(num_branches) - 1  # ignores morphology
+            parents = default_parents if parent_branches is None else parent_branches[cell_id]
             cell = jx.Cell([branch]*num_branches, parents)
             build_cache["cell"].append(cell)
 
@@ -82,11 +88,9 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
     module._update_nodes_with_xyz()  # make xyz coords attr of nodes
 
     # add global attrs
-    module_graph.graph["module"] = module.__class__.__name__
+    module_graph.graph["type"] = module.__class__.__name__
     for attr in [
         "nseg",
-        "total_nbranches",
-        "cumsum_nbranches",
         "initialized_morph",
         "initialized_syns",
         "synapses",
@@ -177,26 +181,12 @@ is_leaf = lambda graph, n: graph.out_degree(n) == 0 and graph.in_degree(n) == 1
 is_branching = lambda graph, n: graph.out_degree(n) > 1
 path_e2n = lambda path: [path[0][0]] + [e[1] for e in path]
 path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
-jnp_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 unpack = lambda d, keys: [d[k] for k in keys]
 has_node_attr = lambda graph, attr: all(attr in graph.nodes[n] for n in graph.nodes)
 has_edge_attr = lambda graph, attr: all(attr in graph.edges[e] for e in graph.edges)
-
-
-def node_dist(graph: nx.DiGraph, i: int, j: int) -> float:
-    """Compute the euclidean distance between two nodes in a graph.
-
-    Args:
-        graph: A networkx graph.
-        i: Index of the first node.
-        j: Index of the second node.
-
-    Returns:
-        The euclidean distance between the two nodes."""
-    pre_loc = np.hstack(unpack(graph.nodes[i], "xyz"))
-    post_loc = np.hstack(unpack(graph.nodes[j], "xyz"))
-    return np.sqrt(np.sum((pre_loc - post_loc) ** 2))
-
+d_eucl = lambda x: pd.DataFrame(x[["x", "y", "z"]].diff().pow(2).sum(axis=1).apply(np.sqrt))
+enum_branches = lambda x: ((x["l"] > x["l_end"]).sum() + len(x["l_end"]) - 1)
+v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 
 def get_linear_paths(graph: nx.DiGraph) -> List[np.ndarray]:
     """Get all linear paths in a graph.
@@ -217,449 +207,105 @@ def get_linear_paths(graph: nx.DiGraph) -> List[np.ndarray]:
             current_path.clear()
     return paths
 
-
-def add_edge_lengths(
-    graph: nx.DiGraph, edges: Optional[List[Tuple]] = None
-) -> nx.DiGraph:
-    """Add the length edges to the graph.
-
-    The length is computed as the euclidean distance between the nodes of the edge.
-    If no edges are provided, the length is computed for all edges in the graph.
-
-    Args:
-        graph: A networkx graph.
-        edges: A list of edges for which to compute the length. If None, the length is
-            computed for all edges.
-
-    Returns:
-        The graph with the length attribute added to the edges."""
-    has_loc = "x" in graph.nodes[0]
-    edges = graph.edges if edges is None else edges
-    for i, j in edges:
-        graph.edges[i, j]["length"] = node_dist(graph, i, j) if has_loc else 1
-    return graph
-
-
-def resample_path(
-    graph: nx.DiGraph,
-    path: List[Tuple],
-    locs: Union[List, np.ndarray],
-    interp_attrs: List[str] = ["x", "y", "z", "r"],
-    ensure_unique_node_inds: bool = False,
-) -> nx.DiGraph:
-    """Resample a path in a graph at different locations along its length.
-
-    Selected node attributes are interpolated linearly between the nodes of the path.
-
-    Args:
-        graph: A networkx graph.
-        path: A list of edges representing the path.
-        locs: A list of locations along the path at which to resample.
-        interp_attrs: A list of node attributes to interpolate.
-        ensure_unique_node_inds: Add a small random number to the new nodes to ensure
-            unique node indices. This is useful when resampling multiple paths. That
-            are added to the same graph afterwards. Ensures the graphs are disjoint.
-
-    Returns:
-        A new graph with the resampled path."""
-    path_nodes = np.array(path_e2n(path))
-    lengths = [graph.edges[(i, j)]["length"] for i, j in path]
-    pathlens = np.cumsum(np.array([0] + lengths))
-    new_nodes = np.interp(locs, pathlens, path_nodes)
-    # ensure unique nodes -> disjoint subgraphs
-    new_nodes += 1e-5 * np.random.randn() if ensure_unique_node_inds else 0
-
-    node_attrs = np.vstack([unpack(graph.nodes[n], interp_attrs) for n in path_nodes])
-    new_node_attrs = jnp_interp(new_nodes, path_nodes, node_attrs).T.tolist()
-    new_edge_attrs = [{"length": d} for d in np.diff(locs)]
-    new_edges = path_n2e(new_nodes)
-    pathgraph = nx.DiGraph(
-        (i, j, attrs) for (i, j), attrs in zip(new_edges, new_edge_attrs)
-    )
-    pathgraph.add_nodes_from(
-        (i, dict(zip(interp_attrs, attrs)))
-        for i, attrs in zip(new_nodes, new_node_attrs)
-    )
-    return pathgraph
-
-
-def split_edge(
-    graph: nx.DiGraph,
-    i: int,
-    j: int,
-    nsegs: int = 2,
-    interp_node_attrs: List[str] = ["x", "y", "z", "r"],
-) -> nx.DiGraph:
-    """Split an edge in a graph into multiple segments.
-
-    The edge is split into `nsegs` segments of equal length. The node attributes are
-    interpolated linearly between the nodes of the edge.
-
-    Args:
-        graph: A networkx graph.
-        i: Index of the first node of the edge.
-        j: Index of the second node of the edge.
-        nsegs: Number of segments to split the edge into.
-        interp_node_attrs: A list of node attributes to interpolate.
-
-    Returns:
-        The graph with specified edge split into multiple segments."""
-    edge = graph.edges[(i, j)]
-    graph = graph if "length" in edge else add_edge_lengths(graph, [(i, j)])
-    locs = np.linspace(0, edge["length"], nsegs + 1)
-    pathgraph = resample_path(graph, [(i, j)], locs, interp_node_attrs)
-
-    for attr in ["id", "branch_index"]:
-        if attr in edge:
-            nx.set_edge_attributes(pathgraph, edge[attr], attr)
-
-    graph.add_edges_from(pathgraph.edges(data=True))
-    graph.add_nodes_from(pathgraph.nodes(data=True))
-    graph.remove_edge(i, j)
-    return graph
-
-
-def impose_branch_structure(
-    graph: nx.DiGraph, max_branch_len: float = 100, return_lengths: bool = False,
-) -> nx.DiGraph:
-    """Impose branch structure on a graph representing a morphology.
-
-    Adds branch indices to the edges of the graph. Graph needs to have nodes with
-    "id" and either x,y,z as node or length as edge attributes.
-
-    In order to simulate a morphology, that is specified by a graph, the graph has
-    to be first segmented into branches, as is also done by NEURON. We do this by
-    adding branch_index labels to the graph. We add these to indices to the branches
-    rather than nodes since the (continuous) morphology (and hence attributes, i.e.
-    radius) is defined by the graph's edges rather than its nodes.
-
-    To do this we first add the "id"s (which are attributes of the nodes) to the
-    edges of the graph. If i and j are connected by an edge, then the edge is
-    labelled with the id of i. If i and j have different ids, then the edge is
-    split into two edges of equal length and each edge is labelled with the id
-    of i and j. Attributes of the added node are interpolated linearly between
-    the nodes of the edge.
-
-    For example:
-    Graph:      |------|---------|--------------|
-    radius:     1      2         3              4
-    ID:         1      1         4              4
-
-    is relabelled as:
-    Graph:      |------|----|----|--------------|
-    radius:     1      2   2.5   3              4
-    ID:             1     1    4         4
-
-
-    Then branch indices are assigned such that the length of each branch is below
-    a maximum branch length and only belongs to has one "id". If it exceeds the
-    maximum branch length, it is split into multiple branches. That are each
-    of roughly equal length.
-
-    For a segment of the graph with the following structure and a maximum branch
-    length of 20:
-
-    Graph: |----|------|----------|--------------|-----|---|--|----|----|---------|
-    ID:       1     1        1            1         4    4   4   4    4      4
-    Length:   4     6       10           14         5    3   2   4    4      9
-
-    The graph is split into branches roughly as follows:
-    Graph: |----|------|----------|--------------|-----|---|--|----|----|---------|
-    ID:       1     1        1            1         4    4   4   4    4      4
-    Length:   4     6       10           14         5    3   2   4    4      9
-    Branch:   0     0        0            1         2    2   2   2    3      3
-    B.-length:        20          |      14      |       12        |      13      |
-
-    This means we now have a continuous morphology with edges assigned to specific
-    branches and types.
-
-    Args:
-        graph: A networkx graph representing a morphology.
-        max_branch_len: Maximum length of a branch.
-        return_lengths: Whether to return the pathlengths of the branches
-
-    Returns:
-        The graph with the edges labelled by "id" and "branch_index".
-    """
-    assert has_node_attr(graph, "id"), "Graph nodes must have an 'id' attribute."
-    assert has_node_attr(graph, "x") or has_edge_attr(
-        graph, "length"
-    ), "Graph must have xyz locs as node or lengths as edge attribute."
-    if not has_edge_attr(graph, "length"):  # compute lens from xyz if not present
-        graph = add_edge_lengths(graph, graph.edges)
-
-    # add id to edges, split edges if necessary
-    for i, j in list(graph.edges):
-        if graph.nodes[i]["id"] == graph.nodes[j]["id"]:
-            graph.edges[i, j]["id"] = graph.nodes[i]["id"]
-        else:
-            graph = split_edge(graph, i, j, nsegs=2)
-            edge_i, edge_j = path_n2e(nx.shortest_path(graph, i, j))
-            graph.edges[edge_i]["id"] = graph.nodes[i]["id"]
-            graph.edges[edge_j]["id"] = graph.nodes[j]["id"]
-
-    # Split edge if single edge is longer than max_branch_len
-    # run after adding ids to edges, so that new edges are also labelled
-    edge_lengths = nx.get_edge_attributes(graph, "length")
-    too_long_edges = {k: v for k, v in edge_lengths.items() if v > max_branch_len}
-    for i, j in too_long_edges:
-        nsegs = int(graph.edges[i, j]["length"] // max_branch_len + 1)
-        graph = split_edge(graph, i, j, nsegs=nsegs)
-
-    # rm after, since same id label might be used multiple times in for loop
-    [n.pop("id") for i, n in graph.nodes(data=True) if "id" in n]
-    new_keys = {k: i for i, k in enumerate(sorted(graph.nodes))}
-    graph = nx.relabel_nodes(graph, new_keys)  # ensure node labels are integers
-
-    max_branch_idx = 0
-    # segment linear sections of the graph/morphology
+def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: float = 2000, return_branch_lengths: bool = False) -> nx.DiGraph:
     linear_paths = get_linear_paths(graph)
+    graph_nodes = pd.DataFrame([d for i,d in graph.nodes(data=True)])
+    linear_path_nodes = [path_e2n(p) for p in linear_paths]
+    
+    path_roots_and_leafs = np.stack([np.array(edge)[[0, -1]] for edge in linear_path_nodes])
+    parent_equal_child = np.equal(*np.meshgrid(*(path_roots_and_leafs.T)))
+    edges_between_paths = np.stack(list(zip(*np.where(parent_equal_child))))
+
+    # segment into branches
+    jaxley_nodes = []
+    branch_counter = 0
     branch_lengths = []
-    for path in linear_paths:
-        ids = [graph.edges[(i, j)]["id"] for i, j in path]
-        unique_ids = np.unique(ids)
-        where_single_ids = ids == unique_ids[:, None]
-        for single_id in where_single_ids:
-            lengths = np.array([graph.edges[(i, j)]["length"] for i, j in path[single_id]])
+    for i, path in enumerate(linear_path_nodes):
+        path_nodes = graph_nodes.loc[path]
+        seglengths = path_nodes.groupby("id").apply(d_eucl, include_groups=False)
+        pathlengths = seglengths.groupby("id").cumsum().reset_index(drop=True)
+        path_nodes["l"] = pathlengths.values
+        is_single_comp = path_nodes.groupby("id").size() == 1
+        if is_single_comp.any(): # handle single compartment edge case
+            where = np.where(is_single_comp)[0][0]
+            path_nodes = pd.concat([path_nodes.loc[:where], path_nodes.loc[where:]], ignore_index=True)
+            path_nodes.at[where+1, "l"] = 0.1
 
-            # segment morphology into branches based on max_branch_len and ids
-            pathlens = np.cumsum(lengths)
-            total_pathlen = pathlens[-1]
-            num_branches = int(total_pathlen / max_branch_len) + 1
-            branch_ends = np.cumsum([total_pathlen / num_branches] * num_branches)
-            branch_inds = (
-                max_branch_idx
-                + num_branches
-                - np.sum(pathlens <= branch_ends[:, None], axis=0)
-            )
-            max_branch_idx += num_branches
-            branch_lengths += [sum(lengths[branch_inds == i]) for i in np.unique(branch_inds)]
-            graph.add_edges_from(
-                (
-                    (*e, {"branch_index": branch_idx})
-                    for e, branch_idx in zip(path[single_id], branch_inds)
-                )
-            )
-    if return_lengths:
-        return graph, branch_lengths
-    return graph
+        total_pathlen = path_nodes.groupby("id")["l"].max()
+        num_branches = (total_pathlen / max_branch_len + 1).astype(int)
+        branch_ends = (total_pathlen / num_branches)
+        branch_lengths += np.hstack(branch_ends).tolist()
+        branch_ends = (branch_ends.apply(lambda x: [x])*num_branches).apply(np.cumsum)
+        path_nodes = pd.merge(path_nodes, branch_ends, on="id", suffixes=("", "_end"))
 
+        path_nodes["branch_index"] = path_nodes.apply(enum_branches, axis=1)
+        path_nodes["branch_index"] += (branch_counter + path_nodes.groupby("id").ngroup())
+        branch_counter += num_branches.sum() # sums across id
 
-def compartmentalize_branches(
-    graph: nx.DiGraph, nseg: int = 4, append_morphology: bool = True
-) -> nx.DiGraph:
-    """Compartmentalize the morphology, by compartmentalizing the branches.
+        path_nodes.drop("l_end", axis=1, inplace=True)
+        path_nodes["path_index"] = i
+        jaxley_nodes.append(path_nodes)
+    jaxley_nodes = pd.concat(jaxley_nodes, ignore_index=True)
 
-    Currently, the nodes in the graph have no particular meaning. While they hold
-    the x,y,z,r attributes, the graph nodes just represent points at which the
-    morphology was sampled / measured. In order to simulate the morphology, the graph
-    hence needs to be compartmentalized first. For this we place discrete
-    compartments along the morphology. In the resulting compartmentalized graph
-    nodes take the form of compartments and edges represent the connections between
-    compartments. Therefore each branch is split into `nseg` compartments along its
-    length, with the attributes being linearly interpolated along the existing
-    'measured' nodes of the edge. Each compartment therefore has length=branch_length/nseg
-    and is represented by a node in the graph at each center.
+    # save xyzr for each branch
+    xyzr = [n[["x","y","z","r"]].values for i,n in jaxley_nodes.groupby("branch_index")]
 
-    For example for nseg=4 and a branch with the following structure:
-    Graph: |----|------|----------|------------|-----|---|--|--|----|--------|
-    Length:   4     6       10           12       5    3   2  2   4      8
-    Branch:   0     0        0            1       2    2   2  2   3      3
+    # compartmentalize branches
+    comp_jaxley_nodes = []
+    keys = ["x", "y", "z", "r", "id", "branch_index", "path_index"]
+    for idx, branch_nodes in jaxley_nodes.groupby("branch_index"):    
+        branch_len = branch_nodes["l"].max()
+        comp_len = branch_len / nseg
+        locs = np.linspace(comp_len/2, branch_len-comp_len/2, nseg)
+        comp_attrs = v_interp(locs, branch_nodes["l"].values, branch_nodes[keys].values)
+        comp_attrs = pd.DataFrame(comp_attrs.T, columns=keys)
+        comp_attrs[keys[-3:]] = comp_attrs[keys[-3:]].astype(int)
+        comp_attrs["length"] = comp_len
+        comp_jaxley_nodes.append(comp_attrs)
+    comp_jaxley_nodes = pd.concat(comp_jaxley_nodes, ignore_index=True)
+    comp_jaxley_nodes.rename(columns={"r": "radius"}, inplace=True)
 
-    The graph is compartmentalized as follows
-    (length now corresponds to compartment length, comp nodes marked with 'x'):
-    Graph:     x----x----x----x---x--x--x--x--x--x--x--x--x--x--x--x
-    Length:    5    5    5    5   3  3  3  3  3  3  3  3  3  3  3  3
-    Branch:    0    0    0    0   1  1  1  1  2  2  2  2  3  3  3  3
+    comp_jaxley_nodes["cell_index"] = 0
+    comp_jaxley_nodes["comp_index"] = np.arange(comp_jaxley_nodes.shape[0])
 
-    Args:
-        graph: A networkx graph representing a morphology.
-        nseg: Number of compartments to split each branch into.
-        append_morphology: Wether to append the original morphology to the graph
-            as an attribute.
+    # Types assigned according to the SWC format:
+    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
+    id2group = lambda x: [group_ids[x] if x < 5 else f"custom{x}"]
+    comp_jaxley_nodes["groups"] = comp_jaxley_nodes["id"].apply(id2group)
 
-    Returns:
-        The graph with the branches compartmentalized into nseg compartments.
-    """
-    assert has_edge_attr(
-        graph, "branch_index"
-    ), "Graph edges must have branches indices."
-
-    edges = pd.DataFrame([d for i, j, d in graph.edges(data=True)], index=graph.edges)
-    edges = edges.reset_index(names=["i", "j"]).sort_values(["branch_index", "i", "j"])
-    branch_groups = edges.groupby("branch_index")
-
-    # individually compartmentalize branches and save resulting graph structure
-    branchgraphs = []
-    xyzr = []
-    for idx, group in branch_groups:
-        pathlens = group["length"].cumsum()
-        total_pathlen = pathlens.iloc[-1]
-        comp_len = total_pathlen / nseg
-        locs = np.linspace(comp_len / 2, total_pathlen - comp_len / 2, nseg)
-        path = group[["i", "j"]].values
-        branchgraph = resample_path(graph, path, locs, ensure_unique_node_inds=True)
-        nx.set_node_attributes(branchgraph, comp_len, "length")
-        nx.set_node_attributes(branchgraph, idx, "branch_index")
-        nx.set_node_attributes(branchgraph, group["id"].iloc[0], "id")
-        branchgraphs.append(branchgraph)
-
-        branch_xyzr = np.array(
-            [[graph.nodes[idx][k] for k in "xyzr"] for idx in path_e2n(path)]
-        )
-        xyzr.append(branch_xyzr)
-
-    # merge compartmentalized branches into single graph
-    new_graph = nx.union_all(branchgraphs)
-
-    # reconnect seperate branches
-    branch_roots = branch_groups.first()["i"]
-    branch_leaves = branch_groups.last()["j"]
-    branch_roots_leaves = pd.concat([branch_roots, branch_leaves], axis=1)
-    root_equal_leaf = np.equal(*np.meshgrid(*(branch_roots_leaves.values.T)))
-    edges_between_branches = list(zip(*np.where(root_equal_leaf)))
-    branch2node_edge = lambda i, j: (min(branchgraphs[i]), min(branchgraphs[j]))
-    new_edges_between_branches = [
-        branch2node_edge(i, j) for i, j in edges_between_branches
-    ]
-    new_graph.add_edges_from(new_edges_between_branches)
-
-    # reconnect root
-    root_edges = list(zip(*np.where([branch_roots_leaves["i"] == 0])))[1:]  # drop (0,0)
-    new_root_edges = [
-        (min(branchgraphs[i]), min(branchgraphs[j])) for i, j in root_edges
-    ]
-    new_graph.add_edges_from(new_root_edges)
-
-    # set node labels to integers
-    new_keys = {k: i for i, k in enumerate(sorted(new_graph.nodes))}
-    new_graph = nx.relabel_nodes(new_graph, new_keys)
-    nx.set_node_attributes(new_graph, {i: i for i in new_graph.nodes}, "comp_index")
-
-    # TODO: handle soma (r == l)
-
-    if append_morphology:
-        new_graph.graph["xyzr"] = xyzr
-
-    return new_graph
-
-def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 4, max_branch_len: float = 300.0) -> nx.DiGraph:
-    """Make a simple graph defined morphologies compatible with jaxley.
+    # set up edges
+    path_attrs = comp_jaxley_nodes.groupby("path_index")
+    path_root_comps = path_attrs.first()["comp_index"]
+    path_leaf_comps = path_attrs.last()["comp_index"]
+    path_roots = np.where(path_roots_and_leafs[:,0] == 0)[0]
     
-    To be compatible with jaxley a graph at minimum has to have the following attributes:
-    - Node: r: float, 'length': float, 'comp_index': int, 'branch_index': int, 
-        'cell_index': int, groups': Optional[List[str]].
-    - Edge: 'type': ["inter_branch", "intra_branch"].
-    - Graph: 'nseg': int, 'comb_parents': List[int], 'comb_branches_in_each_level': List[np.ndarray].
+    intra_path_edges = [path_n2e(np.arange(root,leaf+1)) for root, leaf in zip(path_root_comps, path_leaf_comps)]
+    num_path_inds = [len(t) for t in intra_path_edges]
+    intra_path_edges = np.array(sum(intra_path_edges, []))
+    intra_branch_edge_inds = np.hstack([np.arange(1,n)*8+idx for idx, n in zip(np.cumsum([0]+num_path_inds), ((np.array(num_path_inds)+1) // nseg)) if n > 1]) -1
+    inter_branch_edges = intra_path_edges[intra_branch_edge_inds]
+    intra_branch_edges = np.delete(intra_path_edges, intra_branch_edge_inds, axis=0)
+    inter_path_edges = np.stack([path_leaf_comps.loc[edges_between_paths[:,0]].values, path_root_comps.loc[edges_between_paths[:,1]].values]).T
+    root_edges = np.stack([[0,n] for n in path_root_comps.loc[path_roots][1:]])
 
-    This function checks if the graph is compatible with jaxley. If not, it preprocesses
-    the graph to make it compatible. This is also run as part of the `from_graph` method.
+    # construct compartmentalized graph
+    comp_graph = nx.DiGraph()
+    comp_graph.add_edges_from(intra_branch_edges, type="intra_branch")
+    comp_graph.add_edges_from(inter_branch_edges, type="inter_branch")
+    comp_graph.add_edges_from(inter_path_edges, type="inter_branch")
+    comp_graph.add_edges_from(root_edges, type="inter_branch")
+
+    keys = ["radius", "length", "x", "y", "z", "comp_index", "branch_index", "cell_index", "groups"]
+    comp_graph.add_nodes_from(((n, {k:v for k,v in zip(keys, vals)}) for i, (n,*vals) in comp_jaxley_nodes[["comp_index"]+keys].iterrows()))   
     
-    The following steps are taken:
-    1. x, y, z, r, id are set to default values if not present.
-    2. edge lengths are computed
-    3. branch structure is imposed (see `impose_branch_structure` for details)
-    4. branches are compartmentalized (see `compartmentalize_branches` for details)
-    5. branch type is labelled as "inter_branch" or "intra_branch"
-    6. graph attributes (nseg, comb_parents, comb_branches_in_each_level) are added
-    7. group information is added to nodes if available via id attribute.
-    
-    Args:
-        graph: A networkx graph.
-        nseg: Number of compartments to split each branch into.
-        max_branch_len: Maximum length of a branch.
-        
-    Returns:
-        Jaxley compatible graph that can be imported as a module."""
-    has_branches = has_edge_attr(graph, "branch_index") or has_node_attr(graph, "branch_index")
-    has_compartments = has_node_attr(graph, "comp_index")
-    has_edge_lengths = has_edge_attr(graph, "length")
-    has_coords = has_node_attr(graph, "x")
-    was_preprocessed = has_branches or has_compartments
+    comp_graph.graph["xyzr"] = xyzr
+    comp_graph.graph["nseg"] = nseg
+    comp_graph.graph["type"] = infer_module_type_from_inds(comp_jaxley_nodes[["cell_index", "branch_index", "comp_index"]])
 
-    # Graph only has to contain edges to be importable as a module
-    # In this case, xyz are set to NaN, r to 1 and lengths to 10
-    assert nx.is_weakly_connected(
-        graph
-    ), "Graph must be connected to be imported as a module."
-    assert len(list(nx.simple_cycles(graph))) == 0, "Graph cannot have loops"
-    if not graph.edges:
-        raise ValueError("Graph must have edges to be imported as a module.")
-
-    # fill graph with defaults if not present
-    if not has_edge_lengths and has_coords and not was_preprocessed:
-        graph = add_edge_lengths(graph)
-
-    if not was_preprocessed:
-        default_node_attrs = {"x": np.nan, "y": np.nan, "z": np.nan, "r": 1, "id": 0}
-        for k, v in default_node_attrs.items():
-            if not has_node_attr(graph, k):
-                nx.set_node_attributes(graph, v, k)
-
-        default_edge_attrs = {"length": 10.0}
-        for k, v in default_edge_attrs.items():
-            if not has_edge_attr(graph, k):
-                nx.set_edge_attributes(graph, v, k)
-
-    # add comp_index, branch_index, cell_index to graph
-    # first check if they are already present, otherwise compute them
-    if not has_branches:
-        nseg = graph.graph["nseg"] if "nseg" in graph.graph else nseg
-
-        # add branch_index and segment morphology into branches and compartments
-        roots = np.where([graph.in_degree(n) == 0 for n in graph.nodes])[0]
-        assert len(roots) == 1, "Currently only 1 morphology can be imported."
-        graph = impose_branch_structure(graph, max_branch_len=max_branch_len)
-
-    if not has_compartments:
-        graph = compartmentalize_branches(graph, nseg=nseg)
-
-    if not has_node_attr(graph, "cell_index"):
-        nx.set_node_attributes(graph, {i: 0 for i in graph.nodes}, "cell_index")
-
-    # setup branch structure and compute parents. edges connecting comps in 
-    # different branches are set to type "inter_branch" and edges connecting 
-    # comps within branches are set to type "intra_branch"
-    # only one cell is currently supported !!!
-    if nx.get_edge_attributes(graph, "type") == {}:
-        branch_idxs = nx.get_node_attributes(graph, "branch_index")
-        comp_edges = np.stack([(i, j) for i, j in graph.edges])
-        branch_edges = np.stack([(branch_idxs[i], branch_idxs[j]) for i, j in comp_edges])
-        within_branch = np.equal(*branch_edges.T)
-        
-        intra_branch_edges = comp_edges[within_branch].T
-        inter_branch_edges = comp_edges[~within_branch].T
-        graph.add_edges_from(zip(*inter_branch_edges), type="inter_branch")
-        graph.add_edges_from(zip(*intra_branch_edges), type="intra_branch")
-        
-        parents = [-1]
-        branch_structure = branch_edges[~within_branch].T
-        if len(branch_structure) > 0:
-            branch_graph = nx.DiGraph(zip(*branch_structure))
-            dfs_parents = nx.dfs_predecessors(branch_graph, 0)
-            parents += list(dfs_parents.values())
-            bfs_layers = nx.bfs_layers(branch_graph, 0)
-            comb_branches_in_each_level = [jnp.array(nodes) for nodes in bfs_layers]
-        graph.graph["comb_parents"] = np.array(parents)
-        graph.graph["comb_branches_in_each_level"] = comb_branches_in_each_level
-
-    # rename node attr r to radius
-    for n, data in graph.nodes(data=True):
-        data["radius"] = data.pop("r")
-
-    # add group information to nodes if available via id attribute
-    ids = nx.get_node_attributes(graph, "id")
-    if ids != {}:
-        group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
-        # Type of padded section is assumed to be of `custom` type:
-        # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-
-        groups = [group_ids[id] if id in group_ids else f"custom{id-4}" for id in ids.values()]
-        graph.add_nodes_from({i: {"groups": [id]} for i, id in enumerate(groups)}.items())
-        for i, node in graph.nodes(data=True):
-            node.pop("id")  # remove id attribute from nodes
-    return graph
-
+    if return_branch_lengths:
+        return comp_graph, branch_lengths
+    return comp_graph
 
 def from_graph(
     graph: nx.DiGraph,
@@ -744,28 +390,18 @@ def from_graph(
     ### Make the graph jaxley compatible ###
     ########################################
 
-    was_exported_with_jaxley = "module" in graph.graph
-    if not was_exported_with_jaxley:
+    # try to infer module type from global attrs (exported with `to_graph`)
+    graph_type = graph.graph.pop("type").lower() if "type" in graph.graph else None
+    if graph_type == "swc":
         graph = make_jaxley_compatible(graph, nseg=nseg, max_branch_len=max_branch_len)
 
     #################################
     ### Import graph as jx.Module ###
     #################################
 
-    global_attrs = graph.graph.copy()
-    # try to infer module type from global attrs (exported with `to_graph`)
-    return_type = global_attrs.pop("module").lower() if was_exported_with_jaxley else None
-
-    # build skeleton of module instances
-    nodes = pd.DataFrame((n for i, n in graph.nodes(data=True)))
-    idxs = nodes[["cell_index", "branch_index", "comp_index"]]
-    module = build_module_scaffold(idxs, return_type)
-
-    # set global attributes of module
-    for k, v in global_attrs.items():
-        setattr(module, k, v)
-
     # import nodes and edges
+    nodes = pd.DataFrame((n for i, n in graph.nodes(data=True)))
+    nodes = nodes.sort_values("comp_index", ignore_index=True) # ensure index == comp_index
     edge_type = nx.get_edge_attributes(graph, "type")
     edges = pd.DataFrame(edge_type.values(), index=edge_type.keys(), columns=["type"])
     edges = edges.reset_index(names=["pre", "post"])
@@ -779,12 +415,26 @@ def from_graph(
     edge_params = {k: v for k, v in edge_params.items() if k in synapse_edges}
     synapse_edges = pd.DataFrame(sum(edge_params.values(), [])).T
 
+    acc_parents = []
+    parent_branch_inds = branch_edges.set_index("child_branch_index").sort_index()["parent_branch_index"]
+    for branch_inds in nodes.groupby("cell_index")["branch_index"].unique():
+        soma_branch_idx = branch_inds[0]
+        parents = parent_branch_inds.loc[branch_inds[1:]] - soma_branch_idx
+        acc_parents.append([-1] + parents.tolist())
+    
     # drop special attrs from nodes and ignore error if col does not exist
     optional_attrs = ["recordings", "currents", "groups", "trainable"]
     nodes.drop(columns=optional_attrs, inplace=True, errors="ignore")
 
+    # build module
+    idxs = nodes[["cell_index", "branch_index", "comp_index"]]
+    module = build_module_scaffold(idxs, graph_type, acc_parents)
+
+    # set global attributes of module
+    for k, v in graph.graph.items():
+        setattr(module, k, v)
+
     module.nodes[nodes.columns] = nodes  # set column-wise. preserves cols not in nodes.
-    module.branch_edges = branch_edges
     module.edges = synapse_edges
 
     # Add optional attributes if they can be found in nodes
@@ -850,6 +500,5 @@ def from_graph(
         # update group nodes in module to reflect what is shown in view
         for group, nodes in module.group_nodes.items():
             module.group_nodes[group] = module.__getattr__(group).view
-
 
     return module
