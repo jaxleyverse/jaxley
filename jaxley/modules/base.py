@@ -640,22 +640,25 @@ class Module(ABC):
         """
         if state_name not in self.nodes.columns:
             raise KeyError(f"{state_name} is not a recognized state in this module.")
-        self._clamp(state_name, state_array, verbose)
+        self._clamp(state_name, state_array, self.nodes, verbose)
 
-    def _clamp(self, state_name, state_array, verbose: bool) -> None:
+    def _clamp(self, state_name, state_array, view, verbose: bool) -> None:
         """Apply the clamping internally.
 
         Args:
-            state_name (str): The name of the state to clamp.
-            state_array (jnp.ndarray): Array of values to clamp the state to, shape=(n, ).
-            verbose (bool): If True, prints details about the clamping.
+            state_name: The name of the state to clamp.
+            state_array: Array of values to clamp the state to, 
+                shape=`(num_time_steps)`.
+            verbose: If True, prints details about the clamping.
         """
+        assert len(view) == 1, ".clamp is currently only supported for point neurons."
         if self.external_states is None:
             self.external_states = {}
 
-        self.external_states[state_name] = state_array.reshape(
-            -1, 1
-        )  # reshape to (n, 1)
+        # `state_array` has shape `(time_steps)`. `self.external_states[key]` has shape
+        # (time_steps, num_compartments), but for now the number of compartments has to
+        # be 1.
+        self.external_states[state_name] = np.expand_dims(state_array, axis=1)
 
         if verbose:
             print(
@@ -718,39 +721,38 @@ class Module(ABC):
         )
 
         # Voltage steps.
-        if "v" not in i_input.keys():
-            cm = params["capacitance"]  # Abbreviation.
-            if solver == "bwd_euler":
-                new_voltages = step_voltage_implicit(
-                    voltages=voltages,
-                    voltage_terms=(v_terms + syn_v_terms) / cm,
-                    constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                    coupling_conds_bwd=params["coupling_conds_bwd"],
-                    coupling_conds_fwd=params["coupling_conds_fwd"],
-                    summed_coupling_conds=params["summed_coupling_conds"],
-                    branch_cond_fwd=params["branch_conds_fwd"],
-                    branch_cond_bwd=params["branch_conds_bwd"],
-                    nbranches=self.total_nbranches,
-                    parents=self.comb_parents,
-                    branches_in_each_level=self.comb_branches_in_each_level,
-                    tridiag_solver=tridiag_solver,
-                    delta_t=delta_t,
-                )
-            else:
-                new_voltages = step_voltage_explicit(
-                    voltages,
-                    (v_terms + syn_v_terms) / cm,
-                    (const_terms + i_ext + syn_const_terms) / cm,
-                    coupling_conds_bwd=params["coupling_conds_bwd"],
-                    coupling_conds_fwd=params["coupling_conds_fwd"],
-                    branch_cond_fwd=params["branch_conds_fwd"],
-                    branch_cond_bwd=params["branch_conds_bwd"],
-                    nbranches=self.total_nbranches,
-                    parents=self.comb_parents,
-                    delta_t=delta_t,
-                )
+        cm = params["capacitance"]  # Abbreviation.
+        if solver == "bwd_euler":
+            new_voltages = step_voltage_implicit(
+                voltages=voltages,
+                voltage_terms=(v_terms + syn_v_terms) / cm,
+                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
+                coupling_conds_bwd=params["coupling_conds_bwd"],
+                coupling_conds_fwd=params["coupling_conds_fwd"],
+                summed_coupling_conds=params["summed_coupling_conds"],
+                branch_cond_fwd=params["branch_conds_fwd"],
+                branch_cond_bwd=params["branch_conds_bwd"],
+                nbranches=self.total_nbranches,
+                parents=self.comb_parents,
+                branches_in_each_level=self.comb_branches_in_each_level,
+                tridiag_solver=tridiag_solver,
+                delta_t=delta_t,
+            )
+        else:
+            new_voltages = step_voltage_explicit(
+                voltages,
+                (v_terms + syn_v_terms) / cm,
+                (const_terms + i_ext + syn_const_terms) / cm,
+                coupling_conds_bwd=params["coupling_conds_bwd"],
+                coupling_conds_fwd=params["coupling_conds_fwd"],
+                branch_cond_fwd=params["branch_conds_fwd"],
+                branch_cond_bwd=params["branch_conds_bwd"],
+                nbranches=self.total_nbranches,
+                parents=self.comb_parents,
+                delta_t=delta_t,
+            )
 
-            u["v"] = new_voltages.ravel(order="C")
+        u["v"] = new_voltages.ravel(order="C")
 
         return u
 
@@ -1318,6 +1320,20 @@ class View:
         return self.pointer._data_stimulate(
             current, data_stimuli, nodes, verbose=verbose
         )
+
+    def clamp(
+        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
+    ) -> None:
+        """Clamp a state to a given value across specified compartments.
+
+        Args:
+            state_name (str): The name of the state to clamp.
+            state_array (jnp.ndarray): Array of values to clamp the state to.
+            verbose (bool): If True, prints details about the clamping.
+
+        This function sets external states for the compartments.
+        """
+        raise NotImplementedError(".clamp is currently not supported for submodules.")
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""

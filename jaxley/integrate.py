@@ -104,13 +104,7 @@ def integrate(
         if external_states:
             for key in external_states.keys():
                 if t_max_steps > external_states[key].shape[0]:
-                    pad = jnp.zeros(
-                        (
-                            t_max_steps - external_states[key].shape[0],
-                            external_states[key].shape[1],
-                        )
-                    )
-                    external_states[key] = jnp.concatenate((external_states[key], pad))
+                    raise NotImplementedError("clamp must be at least as long as the simulation.")
                 else:
                     external_states[key] = external_states[key][:t_max_steps, :]
 
@@ -197,6 +191,9 @@ def integrate(
     )
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
+
+    print("i_current", i_current.shape)
+    print("external_states", external_states["v"].shape)
     external_inputs = {"i_current": i_current}
     if external_states:
         external_inputs.update(external_states)
