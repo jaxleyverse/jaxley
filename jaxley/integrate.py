@@ -52,61 +52,53 @@ def integrate(
     module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
     # At least one stimulus was inserted.
-    if module.currents is not None or data_stimuli is not None:
-        if module.currents is not None:
-            i_current = module.currents  # Shape `(num_stimuli, time)`.
-            i_inds = module.current_inds.comp_index.to_numpy()
+    externals = {"i": jnp.asarray([[]]).astype("float")}
+    external_inds = {"i": jnp.asarray([]).astype("int32")}
+    for key in module.externals.keys():
+        externals[key] = module.externals[key]
+        external_inds[key] = module.external_inds[key]
 
-            if data_stimuli is not None:
-                # Append stimuli from `data_stimuli`.
-                i_current = jnp.concatenate([i_current, data_stimuli[0]])
-                i_inds = jnp.concatenate(
-                    [i_inds, data_stimuli[1].comp_index.to_numpy()]
-                )
-        else:
-            i_current = data_stimuli[0]  # Shape `(num_stimuli, time)`
-            i_inds = data_stimuli[1].comp_index.to_numpy()
+    if data_stimuli is not None:
+        # Append stimuli from `data_stimuli`.
+        externals["i"] = jnp.concatenate([externals["i"], data_stimuli[0]])
+        external_inds["i"] = jnp.concatenate(
+            [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
+        )
 
-        i_current = i_current.T  # Shape `(time, num_stimuli)`.
-    else:
-        # No stimulus was inserted.
-        i_current = jnp.asarray([[]]).astype("int32")
-        i_inds = jnp.asarray([]).astype("int32")
+    if not externals.keys():
+        # No stimulus was inserted and no clamp was set.
         assert (
             t_max is not None
-        ), "If no stimulus is inserted that you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
-    i_inds = flip_comp_indices(i_inds, module.nseg)  # See #305
+        ), "If no stimulus or clamp are inserted you have to specify the simulation duration at `jx.integrate(..., t_max=)`."
+
+    for key in externals.keys():
+        externals[key] = externals[key].T  # Shape `(time, num_stimuli)`.
+        external_inds[key] = flip_comp_indices(
+            external_inds[key], module.nseg
+        )  # See #305
 
     rec_inds = module.recordings.rec_index.to_numpy()
     rec_inds = flip_comp_indices(rec_inds, module.nseg)  # See #305
     rec_states = module.recordings.state.to_numpy()
-
-    if module.external_states:
-        external_states = module.external_states
-    else:
-        external_states = None
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
         t_max_steps = int(t_max // delta_t + 1)
 
         # Pad or truncate the stimulus.
-        if t_max_steps > i_current.shape[0]:
-            pad = jnp.zeros((t_max_steps - i_current.shape[0], i_current.shape[1]))
-            i_current = jnp.concatenate((i_current, pad))
-        else:
-            i_current = i_current[:t_max_steps, :]
-            if external_states:
-                for key in external_states.keys():
-                    external_states[key] = external_states[key][:t_max_steps, :]
+        if "i" in externals.keys() and t_max_steps > externals["i"].shape[0]:
+            pad = jnp.zeros(
+                (t_max_steps - externals["i"].shape[0], externals["i"].shape[1])
+            )
+            externals["i"] = jnp.concatenate((externals["i"], pad))
 
-        # Pad or truncate external states.
-        if external_states:
-            for key in external_states.keys():
-                if t_max_steps > external_states[key].shape[0]:
-                    raise NotImplementedError("clamp must be at least as long as the simulation.")
-                else:
-                    external_states[key] = external_states[key][:t_max_steps, :]
+        for key in externals.keys():
+            if t_max_steps > externals[key].shape[0]:
+                raise NotImplementedError(
+                    "clamp must be at least as long as simulation."
+                )
+            else:
+                externals[key] = externals[key][:t_max_steps, :]
 
     # Make the `trainable_params` of the same shape as the `param_state`, such that they
     # can be processed together by `get_all_parameters`.
@@ -121,12 +113,12 @@ def integrate(
     # coupling conductances.
     all_params = module.get_all_parameters(pstate)
 
-    def _body_fun(state, external_input):
+    def _body_fun(state, externals):
         state = module.step(
             state,
             delta_t,
-            i_inds,
-            external_input,
+            external_inds,
+            externals,
             params=all_params,
             solver=solver,
             tridiag_solver=tridiag_solver,
@@ -142,18 +134,20 @@ def integrate(
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
     # return only the first `nsteps_to_return` elements (plus the initial state).
-    nsteps_to_return = len(i_current)
+    example_key = list(externals.keys())[0]
+    nsteps_to_return = len(externals[example_key])
     if checkpoint_lengths is None:
-        checkpoint_lengths = [len(i_current)]
-        length = len(i_current)
+        checkpoint_lengths = [len(externals[example_key])]
+        length = len(externals[example_key])
     else:
         length = prod(checkpoint_lengths)
+        dummy_external = jnp.zeros((size_difference, externals[example_key].shape[1]))
         assert (
-            len(i_current) <= length
+            len(externals[example_key]) <= length
         ), "The desired simulation duration is longer than `prod(nested_length)`."
-        size_difference = length - len(i_current)
-        dummy_stimulus = jnp.zeros((size_difference, i_current.shape[1]))
-        i_current = jnp.concatenate([i_current, dummy_stimulus])
+        size_difference = length - len(externals[example_key])
+        for key in externals.keys():
+            externals[key] = jnp.concatenate([externals[key], dummy_external])
 
     # Join node and edge states into a single state dictionary.
     states = {"v": module.jaxnodes["v"]}
@@ -191,17 +185,11 @@ def integrate(
     )
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
-
-    print("i_current", i_current.shape)
-    print("external_states", external_states["v"].shape)
-    external_inputs = {"i_current": i_current}
-    if external_states:
-        external_inputs.update(external_states)
     # Run simulation.
     _, recordings = nested_checkpoint_scan(
         _body_fun,
         states,
-        external_inputs,
+        externals,
         length=length,
         nested_lengths=checkpoint_lengths,
     )
