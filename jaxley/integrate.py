@@ -51,19 +51,24 @@ def integrate(
     assert module.initialized, "Module is not initialized, run `.initialize()`."
     module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
-    # At least one stimulus was inserted.
-    externals = {"i": jnp.asarray([[]]).astype("float")}
-    external_inds = {"i": jnp.asarray([]).astype("int32")}
-    for key in module.externals.keys():
-        externals[key] = module.externals[key]
-        external_inds[key] = module.external_inds[key]
+    # Initialize the external inputs and their indices.
+    externals = module.externals.copy()
+    external_inds = module.external_inds.copy()
 
-    if data_stimuli is not None:
-        # Append stimuli from `data_stimuli`.
-        externals["i"] = jnp.concatenate([externals["i"], data_stimuli[0]])
-        external_inds["i"] = jnp.concatenate(
-            [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
-        )
+    # If stimulus is inserted, add it to the external inputs.
+    if "i" in module.externals.keys() or data_stimuli is not None:
+        if "i" in module.externals.keys():
+            if data_stimuli is not None:
+                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[0]])
+                external_inds["i"] = jnp.concatenate(
+                    [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
+                )
+        else:
+            externals["i"] = data_stimuli[0]
+            external_inds["i"] = data_stimuli[1].comp_index.to_numpy()
+    else:
+        externals["i"] = jnp.asarray([[]]).astype("float")
+        external_inds["i"] = jnp.asarray([]).astype("int32")
 
     if not externals.keys():
         # No stimulus was inserted and no clamp was set.
