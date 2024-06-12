@@ -189,8 +189,8 @@ def test_set_and_insert():
     cell2[0].stimulate(batch_of_currents)
     cell2.branch(0).record("v")
 
-    assert np.all(cell1.currents == cell2.currents)
-    assert np.all(cell1.current_inds == cell2.current_inds)
+    assert np.all(cell1.externals["i"] == cell2.externals["i"])
+    assert np.all(cell1.external_inds["i"] == cell2.external_inds["i"])
     assert np.all(cell1.recordings == cell2.recordings)
 
 
