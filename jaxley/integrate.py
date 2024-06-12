@@ -55,6 +55,11 @@ def integrate(
     externals = {}
     external_inds = {}
 
+    # Add all the external and indices from .clamp().
+    for key in module.externals.keys():
+        externals[key] = module.externals[key]
+        external_inds[key] = module.external_inds[key]
+
     # If stimulus is inserted, add it to the external inputs.
     if "i" in module.externals.keys() or data_stimuli is not None:
         if "i" in module.externals.keys():
@@ -67,16 +72,15 @@ def integrate(
                     [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
                 )
         else:
-            externals["i"] = data_stimuli[0]
-            external_inds["i"] = data_stimuli[1].comp_index.to_numpy()
+            externals = {"i": jnp.asarray([[]]).astype("float")}
+            external_inds = {"i": jnp.asarray([]).astype("int32")}
+            externals["i"] = jnp.concatenate([externals["i"], data_stimuli[0]])
+            external_inds["i"] = jnp.concatenate(
+                [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
+            )
     else:
         externals = {"i": jnp.asarray([[]]).astype("float")}
         external_inds = {"i": jnp.asarray([]).astype("int32")}
-
-    # Add the rest of the external and indices from .clamp().
-    for key in module.externals.keys():
-        externals[key] = module.externals[key]
-        external_inds[key] = module.external_inds[key]
 
     if not externals.keys():
         # No stimulus was inserted and no clamp was set.
