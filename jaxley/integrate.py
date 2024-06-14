@@ -146,11 +146,11 @@ def integrate(
         length = len(externals[example_key])
     else:
         length = prod(checkpoint_lengths)
+        size_difference = length - len(externals[example_key])
         dummy_external = jnp.zeros((size_difference, externals[example_key].shape[1]))
         assert (
             len(externals[example_key]) <= length
         ), "The desired simulation duration is longer than `prod(nested_length)`."
-        size_difference = length - len(externals[example_key])
         for key in externals.keys():
             externals[key] = jnp.concatenate([externals[key], dummy_external])
 
