@@ -208,15 +208,15 @@ def get_linear_paths(graph: nx.DiGraph) -> List[np.ndarray]:
             current_path.clear()
     return paths
 
-def insert_at(df: pd.DataFrame, idx: int, at: List[float] = [0.5, 0.5]) -> pd.DataFrame:
-    rows = df.iloc[idx-1:idx+1]
-    locs = rows["l"].values
-    at = np.array(at)
-    assert np.logical_and(0 <= at, at <= 1).all(), "at must be in [0, 1]"
-    points = np.interp(at, [0, 1], locs)
-    interp_data = np.array(v_interp(points, locs, rows.values))
+def insert_rows(df: pd.DataFrame, at: int, locs: List[float] = [0.5, 0.5]) -> pd.DataFrame:
+    rows = df.iloc[at-1:at+1]
+    lens = rows["l"].values
+    locs = np.array(locs)
+    assert np.logical_and(0 <= locs, locs <= 1).all(), "at must be in [0, 1]"
+    points = np.interp(locs, [0, 1], lens)
+    interp_data = np.array(v_interp(points, lens, rows.values))
     interp_data = pd.DataFrame(interp_data.T, columns=rows.columns)
-    df = pd.concat([df.iloc[:idx], interp_data, df.iloc[idx:]], ignore_index=True)
+    df = pd.concat([df.iloc[:at], interp_data, df.iloc[at:]], ignore_index=True)
     return df
 
 def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: float = 2000) -> nx.DiGraph:
@@ -234,22 +234,12 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         pathlengths = seglengths.cumsum().reset_index(drop=True)
         path_nodes["l"] = pathlengths.values
 
-        if path_nodes["l"].size == 1:
-            path_nodes = insert_at(path_nodes, idx, at=[0])
-            path_nodes["l"] = np.array([0, 0.1])
-        
-        if path_nodes.groupby("id").ngroups > 1:
-            for id in path_nodes["id"].unique()[:-1]:
-                idx = np.where(path_nodes["id"] == id)[0][-1]+1
-                path_nodes = insert_at(path_nodes, idx, at=[0.5, 0.5])
-                path_nodes.loc[idx:idx+1, "id"] = path_nodes.loc[[idx-1, idx+2], "id"].values
-                path_nodes.loc[idx+1, "l"] += 0.0001
-
-        total_pathlen = path_nodes.groupby("id")["l"].max() - path_nodes.groupby("id")["l"].min()
+        pathlens_by_id = path_nodes.groupby("id")["l"]
+        total_pathlen = pathlens_by_id.max() - pathlens_by_id.min()
         num_branches = (total_pathlen / max_branch_len + 1).astype(int)
-
+        
         branch_ends = (total_pathlen / num_branches)
-        branch_ends = (branch_ends.apply(lambda x: [x])*num_branches).apply(np.cumsum) + path_nodes.groupby("id")["l"].min()
+        branch_ends = (branch_ends.apply(lambda x: [x])*num_branches).apply(np.cumsum) + pathlens_by_id.min()
         branch_ends = np.hstack(branch_ends.values)
 
         enum_branches = lambda x: (x <= branch_ends).sum()
@@ -257,6 +247,17 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         path_nodes.loc[:, "branch_index"] = branch_counter + path_branch_inds
         branch_counter += len(branch_ends)
         
+        # close gaps in path_nodes between different branches
+        interp_with = [0.5, 0.5]
+        if path_nodes.groupby("branch_index").ngroups > 1:
+            change_of_branch = path_nodes["branch_index"].diff() != 0
+            for idx in np.where(change_of_branch)[0][1:]:
+                path_nodes = insert_rows(path_nodes, idx, locs=interp_with)
+                keys = ["branch_index", "id"]
+                new_inds = np.arange(idx, idx+len(interp_with))
+                prev_inds = new_inds[[0, -1]] + [-1, 1]
+                path_nodes.loc[new_inds, keys] = path_nodes.loc[prev_inds, keys].values
+    
         path_nodes["path_index"] = i
         jaxley_branches.append(path_nodes)
     jaxley_branches = pd.concat(jaxley_branches).reset_index(drop=True)
