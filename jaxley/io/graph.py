@@ -214,15 +214,18 @@ def insert_rows(df: pd.DataFrame, at: int, locs: List[float] = [0.5, 0.5]) -> pd
     locs = np.array(locs)
     assert np.logical_and(0 <= locs, locs <= 1).all(), "at must be in [0, 1]"
     points = np.interp(locs, [0, 1], lens)
-    interp_data = np.array(v_interp(points, lens, rows.values))
-    interp_data = pd.DataFrame(interp_data.T, columns=rows.columns)
-    df = pd.concat([df.iloc[:at], interp_data, df.iloc[at:]], ignore_index=True)
+    interp_rows = np.array(v_interp(points, lens, rows.values))
+    interp_rows = pd.DataFrame(interp_rows.T, columns=rows.columns)
+    df = pd.concat([df.iloc[:at], interp_rows, df.iloc[at:]], ignore_index=True)
     return df
 
 def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: float = 2000) -> nx.DiGraph:
     linear_paths = get_linear_paths(graph)
     graph_data = pd.DataFrame([d for i,d in graph.nodes(data=True)])
     linear_path_nodes = [path_e2n(p) for p in linear_paths]
+    path_roots_and_leafs = np.stack([np.array(edge)[[0, -1]] for edge in linear_path_nodes])
+    split_nodes, counts = np.unique(path_roots_and_leafs.flatten(), return_counts=True)
+    split_nodes = split_nodes[counts > 2]
 
     # segment into branches
     jaxley_branches = []
@@ -234,8 +237,14 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         pathlengths = seglengths.cumsum().reset_index(drop=True)
         path_nodes["l"] = pathlengths.values
 
+        ids = path_nodes["id"].values
+        is_split_node = [path[i] in split_nodes for i in [0, -1]]
+        id_bleed = np.logical_and(np.diff(ids)[[0, -1]] != 0, is_split_node)
+        path_nodes.loc[path[0], "id"] = ids[1] if id_bleed[0] else ids[0]
+        path_nodes.loc[path[-1], "id"] = ids[-2] if id_bleed[-1] else ids[-1]
+
         pathlens_by_id = path_nodes.groupby("id")["l"]
-        total_pathlen = pathlens_by_id.max() - pathlens_by_id.min()
+        total_pathlen = pathlens_by_id.agg(np.ptp)
         num_branches = (total_pathlen / max_branch_len + 1).astype(int)
         
         branch_ends = (total_pathlen / num_branches)
@@ -243,7 +252,7 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         branch_ends = np.hstack(branch_ends.values)
 
         enum_branches = lambda x: (x <= branch_ends).sum()
-        path_branch_inds = path_nodes["l"].apply(enum_branches) -1
+        path_branch_inds = path_nodes["l"].apply(enum_branches) - 1
         path_nodes.loc[:, "branch_index"] = branch_counter + path_branch_inds
         branch_counter += len(branch_ends)
         
@@ -261,6 +270,7 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         path_nodes["path_index"] = i
         jaxley_branches.append(path_nodes)
     jaxley_branches = pd.concat(jaxley_branches).reset_index(drop=True)
+    jaxley_branches["l"] -= jaxley_branches.groupby("branch_index")["l"].transform("min")
 
     max_branch_idx = jaxley_branches["branch_index"].unique().max()
     num_branches = jaxley_branches["branch_index"].unique().shape
@@ -291,7 +301,6 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     jaxley_comps["groups"] = jaxley_comps["id"].apply(id2group)
 
     # set up edges
-    path_roots_and_leafs = np.stack([np.array(edge)[[0, -1]] for edge in linear_path_nodes])
     parent_equal_child = np.equal(*np.meshgrid(*(path_roots_and_leafs.T)))
     edges_between_paths = np.stack(list(zip(*np.where(parent_equal_child))))
 
@@ -317,7 +326,6 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     comp_graph.add_nodes_from(((n, {k:v for k,v in zip(keys, vals)}) for i, (n,*vals) in jaxley_comps[["comp_index"]+keys].iterrows()))   
     
     comp_graph.graph["nseg"] = nseg
-    #TODO: FIX XYZ breakage! (seems to happen when num_comps_in_branch > 1)
     comp_graph.graph["xyzr"] = [n[["x","y","z","r"]].values for i,n in jaxley_branches.groupby("branch_index")]
     comp_graph.graph["type"] = infer_module_type_from_inds(jaxley_comps[["cell_index", "branch_index", "comp_index"]])
 
