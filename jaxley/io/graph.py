@@ -219,6 +219,21 @@ def insert_rows(df: pd.DataFrame, at: int, locs: List[float] = [0.5, 0.5]) -> pd
     df = pd.concat([df.iloc[:at], interp_rows, df.iloc[at:]], ignore_index=True)
     return df
 
+def reorder_nodes(graph, source):
+    reordered_nodes = nx.dfs_preorder_nodes(graph.to_undirected(), source=source)
+    label_mapping = {old: new for new, old in enumerate(reordered_nodes)}
+    graph = nx.relabel_nodes(graph, label_mapping)
+    return graph
+
+def flip_edges(graph, source=0):
+    for (i, j) in list(nx.dfs_edges(graph.to_undirected(), source=source)):
+        if (i, j) not in graph.edges:
+            attrs = graph.edges[j, i]
+            graph.remove_edge(j, i)
+            graph.add_edge(i, j)
+            graph.edges[i, j].update(attrs)
+    return graph
+
 def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: float = 2000) -> nx.DiGraph:
     linear_paths = get_linear_paths(graph)
     graph_data = pd.DataFrame([d for i,d in graph.nodes(data=True)])
@@ -237,6 +252,8 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         pathlengths = seglengths.cumsum().reset_index(drop=True)
         path_nodes["l"] = pathlengths.values
 
+        # stop id of nodes with > 1 outgoing edge bleeding into other branches
+        # happens because the node is reused as start node for outgoing branches
         ids = path_nodes["id"].values
         is_split_node = [path[i] in split_nodes for i in [0, -1]]
         id_bleed = np.logical_and(np.diff(ids)[[0, -1]] != 0, is_split_node)
@@ -247,17 +264,18 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         total_pathlen = pathlens_by_id.agg(np.ptp)
         num_branches = (total_pathlen / max_branch_len + 1).astype(int)
         
-        branch_ends = (total_pathlen / num_branches)
-        branch_ends = (branch_ends.apply(lambda x: [x])*num_branches).apply(np.cumsum) + pathlens_by_id.min()
+        branch_lens = (total_pathlen / num_branches)
+        branch_lens = branch_lens.apply(lambda x: [x])*num_branches
+        branch_ends = branch_lens.apply(np.cumsum) + pathlens_by_id.min()
         branch_ends = np.hstack(branch_ends.values)
 
-        enum_branches = lambda x: (x <= branch_ends).sum()
-        path_branch_inds = path_nodes["l"].apply(enum_branches) - 1
+        enum_branches = lambda x: len(branch_ends) - (x <= branch_ends).sum()
+        path_branch_inds = path_nodes["l"].apply(enum_branches)
         path_nodes.loc[:, "branch_index"] = branch_counter + path_branch_inds
         branch_counter += len(branch_ends)
         
         # close gaps in path_nodes between different branches
-        interp_with = [0.5, 0.5]
+        interp_with = [0.5, 0.5] # [0.5, 0.5]
         if path_nodes.groupby("branch_index").ngroups > 1:
             change_of_branch = path_nodes["branch_index"].diff() != 0
             for idx in np.where(change_of_branch)[0][1:]:
@@ -278,11 +296,12 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
 
     # compartmentalize branches
     jaxley_comps = []
-    keys = ["x", "y", "z", "r", "id", "branch_index", "path_index"]
+    keys = ["x", "y", "z", "r", "node_index", "id", "branch_index", "path_index"]
     for idx, branch_nodes in jaxley_branches.groupby("branch_index"):
         branch_len = branch_nodes["l"].max()
         comp_len = branch_len / nseg
         locs = np.linspace(comp_len/2, branch_len-comp_len/2, nseg)
+        locs = locs[::-1] if branch_nodes["l"].iloc[0] != 0 else locs
         comp_attrs = v_interp(locs, branch_nodes["l"].values, branch_nodes[keys].values)
         comp_attrs = pd.DataFrame(comp_attrs.T, columns=keys)
         comp_attrs[keys[-3:]] = comp_attrs[keys[-3:]].astype(int)
@@ -291,8 +310,14 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     jaxley_comps = pd.concat(jaxley_comps, ignore_index=True)
 
     jaxley_comps.rename(columns={"r": "radius"}, inplace=True)
-    jaxley_comps["cell_index"] = 0
     jaxley_comps["comp_index"] = np.arange(jaxley_comps.shape[0])
+    jaxley_comps["cell_index"] = 0
+
+    if 1 in jaxley_comps["id"]:
+        soma_comp_idx = jaxley_comps.groupby("id")["comp_index"].idxmin().loc[1]
+    else:
+        soma_comp_idx = jaxley_comps[["x", "y", "z"]].pow(2).sum(1).idxmin()
+        soma_comp_idx = jaxley_comps.loc[soma_comp_idx, "comp_index"]
 
     # Types assigned according to the SWC format:
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
@@ -301,17 +326,16 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     jaxley_comps["groups"] = jaxley_comps["id"].apply(id2group)
 
     # set up edges
+    comps_in_paths = jaxley_comps.groupby("path_index")["comp_index"]
+    branches_in_paths = jaxley_comps.groupby("path_index")["branch_index"]
+    intra_path_edges = [path_n2e(c) for i, c in comps_in_paths]
+    is_inter_branch_edge = np.hstack([(g.diff() != 0).iloc[1:].values for i,g in branches_in_paths])
+    intra_path_edges = np.array(sum(intra_path_edges, []))
+    intra_branch_edges = intra_path_edges[~is_inter_branch_edge]
+    inter_branch_edges = intra_path_edges[is_inter_branch_edge]
+
     parent_equal_child = np.equal(*np.meshgrid(*(path_roots_and_leafs.T)))
     edges_between_paths = np.stack(list(zip(*np.where(parent_equal_child))))
-
-    comps_in_paths = jaxley_comps.groupby("path_index")["comp_index"]
-    intra_path_edges = [path_n2e(g) for i, g in comps_in_paths]
-    intra_path_edges = np.array(sum(intra_path_edges, []))
-    num_path_inds = comps_in_paths.count().values -1
-    intra_branch_edge_inds = np.hstack([np.arange(1,n)*nseg+idx for idx, n in zip(np.cumsum([0]+num_path_inds.tolist()), ((np.array(num_path_inds)+1) // nseg)) if n > 1]) -1
-    inter_branch_edges = intra_path_edges[intra_branch_edge_inds]
-    intra_branch_edges = np.delete(intra_path_edges, intra_branch_edge_inds, axis=0)
-
     inter_path_leafs = comps_in_paths.first().values[edges_between_paths[:,1]]
     inter_path_roots = comps_in_paths.last().values[edges_between_paths[:,0]]
     inter_path_edges = np.stack([inter_path_roots, inter_path_leafs]).T
@@ -324,6 +348,11 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
 
     keys = ["radius", "length", "x", "y", "z", "comp_index", "branch_index", "cell_index", "groups"]
     comp_graph.add_nodes_from(((n, {k:v for k,v in zip(keys, vals)}) for i, (n,*vals) in jaxley_comps[["comp_index"]+keys].iterrows()))   
+
+    # # reoder nodes
+    # comp_graph = flip_edges(comp_graph, source=soma_comp_idx)
+    # comp_graph = reorder_nodes(comp_graph, source=soma_comp_idx)
+    # nx.set_node_attributes(comp_graph, {n: {"comp_index": n} for n in comp_graph.nodes})
     
     comp_graph.graph["nseg"] = nseg
     comp_graph.graph["xyzr"] = [n[["x","y","z","r"]].values for i,n in jaxley_branches.groupby("branch_index")]
@@ -432,6 +461,8 @@ def from_graph(
     inter_branch_edges = edges.loc[is_inter_branch][["pre", "post"]].values
     synapse_edges = edges.loc[is_synapse][["pre", "post"]].values
     branch_edges = pd.DataFrame(nodes["branch_index"].values[inter_branch_edges], columns=["parent_branch_index", "child_branch_index"])
+    # branch_graph = nx.Graph((r.values for i,r in branch_edges.iterrows()))
+    # branch_edges = pd.DataFrame([(k,v) for k,v in nx.dfs_successors(branch_graph, source=0).items()], columns=["parent_branch_index", "child_branch_index"]).explode("child_branch_index")
 
     edge_params = nx.get_edge_attributes(graph, "parameters")
     edge_params = {k: v for k, v in edge_params.items() if k in synapse_edges}
@@ -440,8 +471,8 @@ def from_graph(
     acc_parents = []
     parent_branch_inds = branch_edges.set_index("child_branch_index").sort_index()["parent_branch_index"]
     for branch_inds in nodes.groupby("cell_index")["branch_index"].unique():
-        soma_branch_idx = branch_inds[0]
-        parents = parent_branch_inds.loc[branch_inds[1:]] - soma_branch_idx
+        root_branch_idx = branch_inds[0]
+        parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
         acc_parents.append([-1] + parents.tolist())
     
     # drop special attrs from nodes and ignore error if col does not exist
