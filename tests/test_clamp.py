@@ -67,3 +67,23 @@ def test_clamp_and_stimulate_api():
 
     vs2 = jnp.concatenate([vs21, vs22])
     assert np.max(np.abs(vs1 - vs2)) < 1e-8
+
+
+def test_data_clamp():
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+    clamp = -50.0 * jnp.ones((1000,))
+
+    def provide_data(clamp):
+        data_clamps = comp.data_clamp("v", clamp)
+        return data_clamps
+
+    def simulate(clamp):
+        data_clamps = provide_data(clamp)
+        return jx.integrate(comp, data_clamps=data_clamps)
+
+    jitted_simulate = jax.jit(simulate)
+
+    s = jitted_simulate(clamp)
+    assert np.all(s[:, 1:] == -50.0)

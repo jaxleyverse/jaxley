@@ -651,6 +651,63 @@ class Module(ABC):
         self.externals.pop("i", None)
         self.external_inds.pop("i", None)
 
+    def data_clamp(
+        self,
+        state_name: str,
+        state_array: jnp.ndarray,
+        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+        verbose: bool = False,
+    ):
+        """Insert a clamp into the module within jit (or grad).
+
+        Args:
+            state_array: State variable in the default Jaxley unit.
+            verbose: Whether or not to print the number of inserted clamps. `False`
+                by default because this method is meant to be jitted.
+        """
+        return self._data_clamp(
+            state_name, state_array, data_clamps, self.nodes, verbose=verbose
+        )
+
+    def _data_clamp(
+        self,
+        state_name: str,
+        state_array,
+        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        view,
+        verbose: bool = False,
+    ):
+        state_array = (
+            state_array
+            if state_array.ndim == 2
+            else jnp.expand_dims(state_array, axis=0)
+        )
+        batch_size = state_array.shape[0]
+        is_multiple = len(view) == batch_size
+        state_array = (
+            state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
+        )
+        assert batch_size in [1, len(view)], "Number of comps and clamps do not match."
+
+        if data_clamps is not None:
+            clamps = data_clamps[0]
+            inds = data_clamps[1]
+        else:
+            clamps = None
+            inds = pd.DataFrame().from_dict({})
+
+        # Same as in `.clamp()`.
+        if clamps is not None:
+            clamps = jnp.concatenate([clamps, state_array])
+        else:
+            clamps = state_array
+        inds = pd.concat([inds, view])
+
+        if verbose:
+            print(f"Added {len(view)} clamps.")
+
+        return (state_name, clamps, inds)
+
     def insert(self, channel):
         """Insert a channel."""
         self._insert(channel, self.nodes)
