@@ -708,6 +708,11 @@ class Module(ABC):
 
         return (state_name, clamps, inds)
 
+    def delete_clamps(self, state_name: str):
+        """Removes all clamps of the given state from the module."""
+        self.externals.pop(state_name, None)
+        self.external_inds.pop(state_name, None)
+
     def insert(self, channel):
         """Insert a channel."""
         self._insert(channel, self.nodes)
