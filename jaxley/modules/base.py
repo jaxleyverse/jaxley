@@ -1389,11 +1389,11 @@ class View:
         self.pointer._external_input(state_name, state_array, nodes, verbose=verbose)
 
     def data_clamp(
-        self, 
-        state_name: str, 
-        state_array: jnp.ndarray, 
+        self,
+        state_name: str,
+        state_array: jnp.ndarray,
         data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
-        verbose: bool = False
+        verbose: bool = False,
     ):
         """Insert a clamp into the module within jit (or grad)."""
         nodes = self.set_global_index_and_index(self.view)
