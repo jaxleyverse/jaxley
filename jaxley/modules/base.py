@@ -690,8 +690,8 @@ class Module(ABC):
         assert batch_size in [1, len(view)], "Number of comps and clamps do not match."
 
         if data_clamps is not None:
-            clamps = data_clamps[0]
-            inds = data_clamps[1]
+            clamps = data_clamps[1]
+            inds = data_clamps[2]
         else:
             clamps = None
             inds = pd.DataFrame().from_dict({})
@@ -1387,6 +1387,19 @@ class View:
         """
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._external_input(state_name, state_array, nodes, verbose=verbose)
+
+    def data_clamp(
+        self, 
+        state_name: str, 
+        state_array: jnp.ndarray, 
+        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        verbose: bool = False
+    ):
+        """Insert a clamp into the module within jit (or grad)."""
+        nodes = self.set_global_index_and_index(self.view)
+        return self.pointer._data_clamp(
+            state_name, state_array, data_clamps, nodes, verbose=verbose
+        )
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
