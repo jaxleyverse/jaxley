@@ -90,9 +90,12 @@ class Module(ABC):
         # For recordings.
         self.recordings: pd.DataFrame = pd.DataFrame().from_dict({})
 
-        # For stimuli.
-        self.currents: Optional[jnp.ndarray] = None
-        self.current_inds: pd.DataFrame = pd.DataFrame().from_dict({})
+        # For stimuli or clamps.
+        # E.g. `self.externals = {"v": zeros(1000,2), "i": ones(1000, 2)}`
+        # for 1000 timesteps and two compartments.
+        self.externals: Dict[str, jnp.ndarray] = {}
+        # E.g. `self.external)inds = {"v": jnp.asarray([0,1]), "i": jnp.asarray([2,3])}`
+        self.external_inds: Dict[str, jnp.ndarray] = {}
 
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
@@ -553,23 +556,48 @@ class Module(ABC):
         Args:
             current: Current in `nA`.
         """
-        self._stimulate(current, self.nodes, verbose=verbose)
+        self._external_input("i", current, self.nodes, verbose=verbose)
 
-    def _stimulate(self, current, view, verbose: bool = True):
-        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
-        batch_size = current.shape[0]
+    def clamp(
+        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
+    ) -> None:
+        """Clamp a state to a given value across specified compartments.
+
+        Args:
+            state_name: The name of the state to clamp.
+            state_array (jnp.nd: Array of values to clamp the state to.
+            verbose : If True, prints details about the clamping.
+
+        This function sets external states for the compartments.
+        """
+        if state_name not in self.nodes.columns:
+            raise KeyError(f"{state_name} is not a recognized state in this module.")
+        self._external_input(state_name, state_array, self.nodes, verbose=verbose)
+
+    def _external_input(
+        self,
+        key: str,
+        values: Optional[jnp.ndarray],
+        view: pd.DataFrame,
+        verbose: bool = True,
+    ):
+        values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
+        batch_size = values.shape[0]
         is_multiple = len(view) == batch_size
-        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
+        values = values if is_multiple else jnp.repeat(values, len(view), axis=0)
         assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
 
-        if self.currents is not None:
-            self.currents = jnp.concatenate([self.currents, current])
+        if key in self.externals.keys():
+            self.externals[key] = jnp.concatenate([self.externals[key], values])
+            self.external_inds[key] = jnp.concatenate(
+                [self.external_inds[key], view.comp_index.to_numpy()]
+            )
         else:
-            self.currents = current
-        self.current_inds = pd.concat([self.current_inds, view])
+            self.externals[key] = values
+            self.external_inds[key] = view.comp_index.to_numpy()
 
         if verbose:
-            print(f"Added {len(view)} stimuli. See `.currents` for details.")
+            print(f"Added {len(view)} external_states. See `.externals` for details.")
 
     def data_stimulate(
         self,
@@ -620,8 +648,8 @@ class Module(ABC):
 
     def delete_stimuli(self):
         """Removes all stimuli from the module."""
-        self.currents = None
-        self.current_inds = pd.DataFrame().from_dict({})
+        self.externals.pop("i", None)
+        self.external_inds.pop("i", None)
 
     def insert(self, channel):
         """Insert a channel."""
@@ -640,23 +668,28 @@ class Module(ABC):
         self,
         u,
         delta_t,
-        i_inds,
-        i_current,
+        external_inds,
+        externals: Dict[str, jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
         tridiag_solver: str = "stone",
     ):
         """One step of solving the Ordinary Differential Equation."""
+
+        # Extract the voltages
         voltages = u["v"]
 
-        # Parameters have to go in here.
-        u, (v_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels, self.nodes, params
-        )
-
-        # External input.
+        # Extract the external inputs
+        has_current = "i" in externals.keys()
+        i_current = externals["i"] if has_current else jnp.asarray([]).astype("float")
+        i_inds = external_inds["i"] if has_current else jnp.asarray([]).astype("int32")
         i_ext = self._get_external_input(
             voltages, i_inds, i_current, params["radius"], params["length"]
+        )
+
+        # Step of the channels.
+        u, (v_terms, const_terms) = self._step_channels(
+            u, delta_t, self.channels, self.nodes, params
         )
 
         # Step of the synapse.
@@ -667,6 +700,11 @@ class Module(ABC):
             delta_t,
             self.edges,
         )
+
+        # Clamp for channels and synapses.
+        for key in externals.keys():
+            if key not in ["i", "v"]:
+                u[key] = u[key].at[external_inds[key]].set(externals[key])
 
         # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
@@ -701,6 +739,10 @@ class Module(ABC):
             )
 
         u["v"] = new_voltages.ravel(order="C")
+
+        # Clamp for voltages.
+        if "v" in externals.keys():
+            u["v"] = u["v"].at[external_inds["v"]].set(externals["v"])
 
         return u
 
@@ -1255,7 +1297,7 @@ class View:
 
     def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         nodes = self.set_global_index_and_index(self.view)
-        self.pointer._stimulate(current, nodes, verbose=verbose)
+        self.pointer._external_input("i", current, nodes, verbose=verbose)
 
     def data_stimulate(
         self,
@@ -1268,6 +1310,21 @@ class View:
         return self.pointer._data_stimulate(
             current, data_stimuli, nodes, verbose=verbose
         )
+
+    def clamp(
+        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
+    ) -> None:
+        """Clamp a state to a given value across specified compartments.
+
+        Args:
+            state_name: The name of the state to clamp.
+            state_array: Array of values to clamp the state to.
+            verbose: If True, prints details about the clamping.
+
+        This function sets external states for the compartments.
+        """
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._external_input(state_name, state_array, nodes, verbose=verbose)
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
