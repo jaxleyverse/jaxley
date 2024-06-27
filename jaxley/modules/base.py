@@ -612,44 +612,9 @@ class Module(ABC):
             verbose: Whether or not to print the number of inserted stimuli. `False`
                 by default because this method is meant to be jitted.
         """
-        return self._data_stimulate(current, data_stimuli, self.nodes, verbose=verbose)
-
-    def _data_stimulate(
-        self,
-        current,
-        data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
-        view,
-        verbose: bool = False,
-    ):
-        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
-        batch_size = current.shape[0]
-        is_multiple = len(view) == batch_size
-        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
-        assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
-
-        if data_stimuli is not None:
-            currents = data_stimuli[0]
-            inds = data_stimuli[1]
-        else:
-            currents = None
-            inds = pd.DataFrame().from_dict({})
-
-        # Same as in `.stimulate()`.
-        if currents is not None:
-            currents = jnp.concatenate([currents, current])
-        else:
-            currents = current
-        inds = pd.concat([inds, view])
-
-        if verbose:
-            print(f"Added {len(view)} stimuli.")
-
-        return (currents, inds)
-
-    def delete_stimuli(self):
-        """Removes all stimuli from the module."""
-        self.externals.pop("i", None)
-        self.external_inds.pop("i", None)
+        return self._data_external_input(
+            "i", current, data_stimuli, self.nodes, verbose=verbose
+        )
 
     def data_clamp(
         self,
@@ -665,15 +630,15 @@ class Module(ABC):
             verbose: Whether or not to print the number of inserted clamps. `False`
                 by default because this method is meant to be jitted.
         """
-        return self._data_clamp(
+        return self._data_external_input(
             state_name, state_array, data_clamps, self.nodes, verbose=verbose
         )
 
-    def _data_clamp(
+    def _data_external_input(
         self,
         state_name: str,
         state_array,
-        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        data_external_input: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
         view,
         verbose: bool = False,
     ):
@@ -689,24 +654,28 @@ class Module(ABC):
         )
         assert batch_size in [1, len(view)], "Number of comps and clamps do not match."
 
-        if data_clamps is not None:
-            clamps = data_clamps[1]
-            inds = data_clamps[2]
+        if data_external_input is not None:
+            external_input = data_external_input[1]
+            external_input = jnp.concatenate([external_input, state_array])
+            inds = data_external_input[2]
         else:
-            clamps = None
+            external_input = state_array
             inds = pd.DataFrame().from_dict({})
 
-        # Same as in `.clamp()`.
-        if clamps is not None:
-            clamps = jnp.concatenate([clamps, state_array])
-        else:
-            clamps = state_array
         inds = pd.concat([inds, view])
 
         if verbose:
-            print(f"Added {len(view)} clamps.")
+            if state_name == "i":
+                print(f"Added {len(view)} stimuli.")
+            else:
+                print(f"Added {len(view)} clamps.")
 
-        return (state_name, clamps, inds)
+        return (state_name, external_input, inds)
+
+    def delete_stimuli(self):
+        """Removes all stimuli from the module."""
+        self.externals.pop("i", None)
+        self.external_inds.pop("i", None)
 
     def delete_clamps(self, state_name: str):
         """Removes all clamps of the given state from the module."""
@@ -1369,8 +1338,8 @@ class View:
     ):
         """Insert a stimulus into the module within jit (or grad)."""
         nodes = self.set_global_index_and_index(self.view)
-        return self.pointer._data_stimulate(
-            current, data_stimuli, nodes, verbose=verbose
+        return self.pointer._data_external_input(
+            "i", current, data_stimuli, nodes, verbose=verbose
         )
 
     def clamp(
@@ -1397,7 +1366,7 @@ class View:
     ):
         """Insert a clamp into the module within jit (or grad)."""
         nodes = self.set_global_index_and_index(self.view)
-        return self.pointer._data_clamp(
+        return self.pointer._data_external_input(
             state_name, state_array, data_clamps, nodes, verbose=verbose
         )
 
