@@ -438,7 +438,7 @@ class Module(ABC):
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
 
     def _add_to_group(self, group_name, view):
-        if group_name in self.group_nodes.keys():
+        if group_name in self.group_nodes:
             view = pd.concat([self.group_nodes[group_name], view])
         self.group_nodes[group_name] = view
 
@@ -449,8 +449,12 @@ class Module(ABC):
         """
         return self.trainable_params
 
-    def get_all_parameters(self, trainable_params):
+    def get_all_parameters(self, pstate: Dict):
         """Return all parameters (and coupling conductances) needed to simulate.
+
+        Runs `init_conds()` and return every parameter that is needed to solve the ODE.
+        This includes conductances, radiuses, lenghts, axial_resistivities, but also
+        coupling conductances.
 
         This is done by first obtaining the current value of every parameter (not only
         the trainable ones) and then replacing the trainable ones with the value
@@ -461,20 +465,20 @@ class Module(ABC):
             params[key] = self.jaxnodes[key]
 
         for channel in self.channels:
-            for channel_params in list(channel.channel_params.keys()):
+            for channel_params in channel.channel_params:
                 params[channel_params] = self.jaxnodes[channel_params]
 
         for synapse_params in self.synapse_param_names:
             params[synapse_params] = self.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
-        for parameter in trainable_params:
+        for parameter in pstate:
             key = parameter["key"]
             inds = parameter["indices"]
             if key not in self.synapse_param_names:
                 inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
-            if key in list(params.keys()):  # Only parameters, not initial states.
+            if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
@@ -487,6 +491,41 @@ class Module(ABC):
             params[key] = cond_params[key]
 
         return params
+
+    def get_all_states(self, pstate: Dict, all_params, delta_t: float) -> Dict:
+        """Get the full initial state of the module from jaxnodes and trainables."""
+        # Join node and edge states into a single state dictionary.
+        states = {"v": self.jaxnodes["v"]}
+        for channel in self.channels:
+            for channel_states in channel.channel_states:
+                states[channel_states] = self.jaxnodes[channel_states]
+        for synapse_states in self.synapse_state_names:
+            states[synapse_states] = self.jaxedges[synapse_states]
+
+        # Override with the initial states set by `.make_trainable()`.
+        for parameter in pstate:
+            key = parameter["key"]
+            inds = parameter["indices"]
+            if key not in self.synapse_state_names:
+                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
+            set_param = parameter["val"]
+            if key in states:  # Only initial states, not parameters.
+                # `inds` is of shape `(num_params, num_comps_per_param)`.
+                # `set_param` is of shape `(num_params,)`
+                # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
+                # `.set()` to work. This is done with `[:, None]`.
+                states[key] = states[key].at[inds].set(set_param[:, None])
+
+        # Add to the states the initial current through every channel.
+        states, _ = self._channel_currents(
+            states, delta_t, self.channels, self.nodes, all_params
+        )
+
+        # Add to the states the initial current through every synapse.
+        states, _ = self._synapse_currents(
+            states, self.synapses, all_params, delta_t, self.edges
+        )
+        return states
 
     @property
     def initialized(self):
