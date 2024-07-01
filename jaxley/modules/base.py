@@ -438,7 +438,7 @@ class Module(ABC):
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
 
     def _add_to_group(self, group_name, view):
-        if group_name in self.group_nodes.keys():
+        if group_name in self.group_nodes:
             view = pd.concat([self.group_nodes[group_name], view])
         self.group_nodes[group_name] = view
 
@@ -465,7 +465,7 @@ class Module(ABC):
             params[key] = self.jaxnodes[key]
 
         for channel in self.channels:
-            for channel_params in list(channel.channel_params.keys()):
+            for channel_params in channel.channel_params:
                 params[channel_params] = self.jaxnodes[channel_params]
 
         for synapse_params in self.synapse_param_names:
@@ -478,7 +478,7 @@ class Module(ABC):
             if key not in self.synapse_param_names:
                 inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
-            if key in list(params.keys()):  # Only parameters, not initial states.
+            if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
@@ -497,7 +497,7 @@ class Module(ABC):
         # Join node and edge states into a single state dictionary.
         states = {"v": self.jaxnodes["v"]}
         for channel in self.channels:
-            for channel_states in list(channel.channel_states.keys()):
+            for channel_states in channel.channel_states:
                 states[channel_states] = self.jaxnodes[channel_states]
         for synapse_states in self.synapse_state_names:
             states[synapse_states] = self.jaxedges[synapse_states]
@@ -509,7 +509,7 @@ class Module(ABC):
             if key not in self.synapse_state_names:
                 inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
-            if key in list(states.keys()):  # Only initial states, not parameters.
+            if key in states:  # Only initial states, not parameters.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
