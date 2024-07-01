@@ -173,7 +173,7 @@ def integrate(
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # Run simulation.
-    _, recordings = nested_checkpoint_scan(
+    all_states, recordings = nested_checkpoint_scan(
         _body_fun,
         all_states,
         externals,
