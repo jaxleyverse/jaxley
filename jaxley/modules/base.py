@@ -247,13 +247,35 @@ class Module(ABC):
         # Add a binary column that indicates if a channel is present.
         self.nodes.loc[view.index.values, name] = True
 
-        # Loop over all new parameters, e.g. gNa, eNa.
-        for key in channel.channel_params:
-            self.nodes.loc[view.index.values, key] = channel.channel_params[key]
+        # Collect new parameters and states into a DataFrame.
+        new_params_and_states = {}
 
         # Loop over all new parameters, e.g. gNa, eNa.
+        for key in channel.channel_params:
+            new_params_and_states[key] = channel.channel_params[key]
+
+        # Loop over all new states, e.g. m, h, n.
         for key in channel.channel_states:
-            self.nodes.loc[view.index.values, key] = channel.channel_states[key]
+            new_params_and_states[key] = channel.channel_states[key]
+
+        # Create a DataFrame with the new params and states.
+        new_params_and_states_df = pd.DataFrame(
+            new_params_and_states, index=view.index.values
+        )
+
+        # Concatenate the new params and states DataFrame with self.nodes.
+        # Ensure no duplicate columns before concatenation.
+        for col in new_params_and_states_df.columns:
+            if col in self.nodes.columns:
+                # Update existing columns with new values
+                self.nodes.loc[new_params_and_states_df.index, col] = (
+                    new_params_and_states_df[col]
+                )
+            else:
+                # Concatenate new columns only
+                self.nodes = pd.concat(
+                    [self.nodes, new_params_and_states_df[[col]]], axis=1
+                )
 
     def set(self, key: str, val: Union[float, jnp.ndarray]):
         """Set parameter of module (or its view) to a new value.
