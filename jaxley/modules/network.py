@@ -68,9 +68,14 @@ class Network(Module):
 
         if key == "cell":
             view = deepcopy(self.nodes)
-            view["global_comp_index"] = view["comp_index"]
-            view["global_branch_index"] = view["branch_index"]
-            view["global_cell_index"] = view["cell_index"]
+            global_indices = pd.DataFrame(
+                {
+                    "global_comp_index": view["comp_index"],
+                    "global_branch_index": view["branch_index"],
+                    "global_cell_index": view["cell_index"],
+                }
+            )
+            view = pd.concat([view, global_indices], axis=1)
             return CellView(self, view)
         elif key in self.synapse_names:
             type_index = self.synapse_names.index(key)
@@ -78,9 +83,14 @@ class Network(Module):
         elif key in self.group_nodes:
             inds = self.group_nodes[key].index.values
             view = self.nodes.loc[inds]
-            view["global_comp_index"] = view["comp_index"]
-            view["global_branch_index"] = view["branch_index"]
-            view["global_cell_index"] = view["cell_index"]
+            global_indices = pd.DataFrame(
+                {
+                    "global_comp_index": view["comp_index"],
+                    "global_branch_index": view["branch_index"],
+                    "global_cell_index": view["cell_index"],
+                }
+            )
+            view = pd.concat([view, global_indices], axis=1)
             return GroupView(self, view, CellView, ["cell"])
         else:
             raise KeyError(f"Key {key} not recognized.")

@@ -1590,9 +1590,11 @@ class View:
             global_post_branch_index=post_rows["global_branch_index"].to_numpy(),
         )
 
+        new_rows_df = pd.DataFrame(new_rows)
+        
         # Update edges.
         self.pointer.edges = pd.concat(
-            [self.pointer.edges, pd.DataFrame(new_rows)],
+            [self.pointer.edges.dropna(axis=1, how="all"), new_rows_df.dropna(axis=1, how="all")],
             ignore_index=True,
         )
 
