@@ -15,6 +15,7 @@ def integrate(
     *,
     param_state: Optional[List[Dict]] = None,
     data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+    data_clamps: Optional[Tuple[str, jnp.ndarray, pd.DataFrame]] = None,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
@@ -31,6 +32,8 @@ def integrate(
         param_state: Parameters returned by `data_set`.
         data_stimuli: Outputs of `.data_stimulate()`, only needed if stimuli change
             across function calls.
+        data_clamps: Outputs of `.data_clamp()`, only needed if clamps change across
+            function calls.
         t_max: Duration of the simulation in milliseconds. If `t_max` is greater than
             the length of the stimulus input, the stimulus will be padded at the end
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
@@ -66,16 +69,32 @@ def integrate(
     if "i" in module.externals.keys() or data_stimuli is not None:
         if "i" in module.externals.keys():
             if data_stimuli is not None:
-                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[0]])
+                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
                 external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
+                    [external_inds["i"], data_stimuli[2].comp_index.to_numpy()]
                 )
         else:
-            externals["i"] = data_stimuli[0]
-            external_inds["i"] = data_stimuli[1].comp_index.to_numpy()
-    else:
+            externals["i"] = data_stimuli[1]
+            external_inds["i"] = data_stimuli[2].comp_index.to_numpy()
+    elif data_clamps is None:
         externals["i"] = jnp.asarray([[]]).astype("float")
         external_inds["i"] = jnp.asarray([]).astype("int32")
+
+    # If a clamp is inserted, add it to the external inputs.
+    if data_clamps is not None:
+        state_name, clamps, inds = data_clamps
+        if state_name in module.externals.keys():
+            externals[state_name] = jnp.concatenate([externals[state_name], clamps])
+            external_inds[state_name] = jnp.concatenate(
+                [external_inds[state_name], inds.comp_index.to_numpy()]
+            )
+        else:
+            externals[state_name] = clamps
+            external_inds[state_name] = inds.comp_index.to_numpy()
+        # Need to inject a null current for integration if there isn't one
+        if "i" not in module.externals.keys() and data_stimuli is None:
+            externals["i"] = data_clamps[1] * 0.0
+            external_inds["i"] = data_clamps[2].comp_index.to_numpy()
 
     if not externals.keys():
         # No stimulus was inserted and no clamp was set.
