@@ -187,7 +187,7 @@ has_node_attr = lambda graph, attr: all(attr in graph.nodes[n] for n in graph.no
 has_edge_attr = lambda graph, attr: all(attr in graph.edges[e] for e in graph.edges)
 v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 
-def get_linear_paths(graph: nx.DiGraph, source_node: Union[int, str] = 0) -> List[np.ndarray]:
+def get_paths(graph: nx.DiGraph, source_node: Union[int, str] = 0) -> List[np.ndarray]:
     """Get all linear paths in a graph.
 
     The graph is traversed depth-first starting from the root node.
@@ -206,21 +206,18 @@ def get_linear_paths(graph: nx.DiGraph, source_node: Union[int, str] = 0) -> Lis
     # source node to the rest of the graph later on
     source = leaf_idx if source_node == "leaf" else source_node
     for i, j in nx.dfs_edges(graph.to_undirected(), source):
-        current_path.append((i, j))
-        if is_leaf(graph, j) or is_branching(graph, j) or not has_same_id(graph, i, j):
+        if is_leaf(graph, j) or is_branching(graph, j):
+            paths.append(np.array(current_path + [(i, j)]))
+            current_path = []
+        elif not has_same_id(graph, i, j): # start new path if ids differ
             paths.append(np.array(current_path))
-            current_path.clear()
-    return paths
+            current_path = [(i, j)]
+        else:
+            current_path.append((i, j))
+    return [p for p in paths if p.shape[0] > 0]
 
-def insert_rows(df: pd.DataFrame, at: int, locs: List[float] = [0.5, 0.5]) -> pd.DataFrame:
-    rows = df.iloc[at-1:at+1]
-    lens = rows["l"].values
-    locs = np.array(locs)
-    assert np.logical_and(0 <= locs, locs <= 1).all(), "at must be in [0, 1]"
-    points = np.interp(locs, [0, 1], lens)
-    interp_rows = np.array(v_interp(points, lens, rows.values))
-    interp_rows = pd.DataFrame(interp_rows.T, columns=rows.columns)
-    df = pd.concat([df.iloc[:at], interp_rows, df.iloc[at:]], ignore_index=True)
+def insert_rows(df: pd.DataFrame, rows: pd.DataFrame, at: int) -> pd.DataFrame:
+    df = pd.concat([df.iloc[:at], rows, df.iloc[at:]], ignore_index=True)
     return df
 
 # def reorder_nodes(graph, source):
@@ -248,11 +245,11 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     First, the graph is travesed and partitioned into connected non-branching paths.
     Then these paths are segmented into branches, such that each branch only has
     a single id and a maximum length of `max_branch_len`. If paths have multiple
-    ids or branches, then the midpoint of two nodes with different ids is used as
-    start / end of a branch. To illustrate, paths are split at "x"
+    ids or branches, then the new path is considered to start at the last node with
+    the same ide. To illustrate,
     
-    nodes: o--o---x---o---o     ->    o--o---o    o---o--o
-    ids:   1  1       2   2     ->    1  1   1    2   2  2
+    nodes: o--o---o-----o     ->    o--o    o---o-----o
+    ids:   1  1   2     2     ->    1  1    2   2     2
     
     Then each branch is split into compartments of equal length. The coordinates
     are interpolated linearly.
@@ -262,44 +259,35 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         nseg: The number of segments per compartment.
         max_branch_len: The maximum length of a branch.
         source_node: The node from which to start the graph traversal. If "leaf",
-            the traversal starts at the first identified leaf node.
+            the traversal starts at the first identified leaf node. 
+            WARNING: "leaf" is not tested!
     
     Returns:
         A compartmentalized graph that can be imported into jaxley with `from_graph`.
     """
-    linear_paths = get_linear_paths(graph, source_node=source_node)
+    paths = get_paths(graph, source_node=source_node)
     graph_data = pd.DataFrame([d for i,d in graph.nodes(data=True)])
-    linear_path_nodes = [path_e2n(p) for p in linear_paths]
+    linear_path_nodes = [path_e2n(p) for p in paths]
     path_roots_and_leafs = np.stack([np.array(edge)[[0, -1]] for edge in linear_path_nodes])
-    split_nodes, counts = np.unique(path_roots_and_leafs.flatten(), return_counts=True)
-    split_nodes = split_nodes[counts > 2]
 
     # segment into branches
     jaxley_branches = []
     branch_counter = 0
     for i, path in enumerate(linear_path_nodes):
         path_nodes = graph_data.loc[path]
+        # assume id could have bled over from connected path, ensures same id
+        path_nodes.loc[path[0], "id"] = path_nodes.loc[path[1], "id"]
         path_nodes["node_index"] = path
         seglengths = path_nodes[["x", "y", "z"]].diff().pow(2).sum(1).pow(0.5)
         pathlengths = seglengths.cumsum().reset_index(drop=True)
         path_nodes["l"] = pathlengths.values
 
-        # stop id of nodes with > 1 outgoing edge bleeding into other branches
-        # happens because the node is reused as start node for outgoing branches
-        ids = path_nodes["id"].values
-        is_split_node = [path[i] in split_nodes for i in [0, -1]]
-        id_bleed = np.logical_and(np.diff(ids)[[0, -1]] != 0, is_split_node)
-        path_nodes.loc[path[0], "id"] = ids[1] if id_bleed[0] else ids[0]
-        path_nodes.loc[path[-1], "id"] = ids[-2] if id_bleed[-1] else ids[-1]
-
-        pathlens_by_id = path_nodes.groupby("id")["l"]
-        total_pathlen = pathlens_by_id.agg(np.ptp)
+        total_pathlen = np.ptp(pathlengths)
         num_branches = (total_pathlen / max_branch_len + 1).astype(int)
         
         branch_lens = (total_pathlen / num_branches)
-        branch_lens = branch_lens.apply(lambda x: [x])*num_branches
-        branch_ends = branch_lens.apply(np.cumsum) + pathlens_by_id.min()
-        branch_ends = np.hstack(branch_ends.values)
+        branch_lens = [branch_lens]*num_branches
+        branch_ends = np.cumsum(branch_lens)
 
         enum_branches = lambda x: len(branch_ends) - (x <= branch_ends).sum()
         path_branch_inds = path_nodes["l"].apply(enum_branches)
@@ -307,16 +295,17 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         branch_counter += len(branch_ends)
         
         # close gaps in path_nodes between different branches
-        if path_nodes.groupby("branch_index").ngroups > 1:
-            change_of_branch = path_nodes["branch_index"].diff() != 0
-            interp_with = [0.0, 0.0] # [0.5, 0.5]
-            for idx in np.where(change_of_branch)[0][1:]:
-                path_nodes = insert_rows(path_nodes, idx, locs=interp_with)
-                keys = ["branch_index", "id"]
-                new_inds = np.arange(idx, idx+len(interp_with))
-                prev_inds = new_inds[[0, -1]] + [-1, 1]
-                path_nodes.loc[new_inds, keys] = path_nodes.loc[prev_inds, keys].values
-    
+        if len(branch_ends) > 1:
+            for loc in branch_ends[:-1]:
+                row = np.array(v_interp(loc, path_nodes["l"].to_numpy(), path_nodes.to_numpy()))
+                rows = pd.DataFrame([row]*2, columns=path_nodes.columns)
+                change_of_branch = path_nodes["branch_index"].diff() != 0
+                idx = np.where(change_of_branch)[0][1]
+                path_nodes = insert_rows(path_nodes, rows, at=idx)
+                path_nodes[["id", "branch_index"]] = path_nodes[["id", "branch_index"]].astype(int)
+                new_branch_inds = path_nodes["branch_index"].loc[[idx-1, idx+2]].to_numpy()
+                path_nodes.loc[[idx-1, idx+2], "branch_index"] = new_branch_inds
+
         path_nodes["path_index"] = i
         jaxley_branches.append(path_nodes)
     jaxley_branches = pd.concat(jaxley_branches).reset_index(drop=True)
@@ -345,11 +334,12 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     jaxley_comps["comp_index"] = np.arange(jaxley_comps.shape[0])
     jaxley_comps["cell_index"] = 0
 
-    if 1 in jaxley_comps["id"]:
-        soma_comp_idx = jaxley_comps.groupby("id")["comp_index"].idxmin().loc[1]
-    else:
-        soma_comp_idx = jaxley_comps[["x", "y", "z"]].pow(2).sum(1).idxmin()
-        soma_comp_idx = jaxley_comps.loc[soma_comp_idx, "comp_index"]
+    # # find soma
+    # if 1 in jaxley_comps["id"]:
+    #     soma_comp_idx = jaxley_comps.groupby("id")["comp_index"].idxmin().loc[1]
+    # else:
+    #     soma_comp_idx = jaxley_comps[["x", "y", "z"]].pow(2).sum(1).idxmin()
+    #     soma_comp_idx = jaxley_comps.loc[soma_comp_idx, "comp_index"]
 
     # Types assigned according to the SWC format:
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
