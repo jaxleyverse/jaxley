@@ -179,6 +179,7 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
 # helper functions
 is_leaf = lambda graph, n: graph.out_degree(n) == 0 and graph.in_degree(n) == 1
 is_branching = lambda graph, n: graph.out_degree(n) > 1
+has_same_id = lambda graph, i, j: graph.nodes[i]["id"] == graph.nodes[j]["id"]
 path_e2n = lambda path: [path[0][0]] + [e[1] for e in path]
 path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
 unpack = lambda d, keys: [d[k] for k in keys]
@@ -186,13 +187,15 @@ has_node_attr = lambda graph, attr: all(attr in graph.nodes[n] for n in graph.no
 has_edge_attr = lambda graph, attr: all(attr in graph.edges[e] for e in graph.edges)
 v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 
-def get_linear_paths(graph: nx.DiGraph) -> List[np.ndarray]:
+def get_linear_paths(graph: nx.DiGraph, source_node: Union[int, str] = 0) -> List[np.ndarray]:
     """Get all linear paths in a graph.
 
     The graph is traversed depth-first starting from the root node.
 
     Args:
         graph: A networkx graph.
+        source_node: node at which to start graph traversal. If "leaf", the traversal
+            starts at the first identified leaf node.
 
     Returns:
         A list of linear paths in the graph. Each path is represented as an array of
@@ -201,9 +204,10 @@ def get_linear_paths(graph: nx.DiGraph) -> List[np.ndarray]:
     leaf_idx = next(x for x in graph.nodes() if graph.out_degree(x)==0 and graph.in_degree(x)==1)
     # initiate traversal from leaf node, this avoids having to reconnect the
     # source node to the rest of the graph later on
-    for i, j in nx.dfs_edges(graph.to_undirected(), leaf_idx):
+    source = leaf_idx if source_node == "leaf" else source_node
+    for i, j in nx.dfs_edges(graph.to_undirected(), source):
         current_path.append((i, j))
-        if is_leaf(graph, j) or is_branching(graph, j):
+        if is_leaf(graph, j) or is_branching(graph, j) or not has_same_id(graph, i, j):
             paths.append(np.array(current_path))
             current_path.clear()
     return paths
@@ -219,23 +223,51 @@ def insert_rows(df: pd.DataFrame, at: int, locs: List[float] = [0.5, 0.5]) -> pd
     df = pd.concat([df.iloc[:at], interp_rows, df.iloc[at:]], ignore_index=True)
     return df
 
-def reorder_nodes(graph, source):
-    reordered_nodes = nx.dfs_preorder_nodes(graph.to_undirected(), source=source)
-    label_mapping = {old: new for new, old in enumerate(reordered_nodes)}
-    graph = nx.relabel_nodes(graph, label_mapping)
-    return graph
+# def reorder_nodes(graph, source):
+#     reordered_nodes = nx.dfs_preorder_nodes(graph.to_undirected(), source=source)
+#     label_mapping = {old: new for new, old in enumerate(reordered_nodes)}
+#     graph = nx.relabel_nodes(graph, label_mapping)
+#     return graph
 
-def flip_edges(graph, source=0):
-    for (i, j) in list(nx.dfs_edges(graph.to_undirected(), source=source)):
-        if (i, j) not in graph.edges:
-            attrs = graph.edges[j, i]
-            graph.remove_edge(j, i)
-            graph.add_edge(i, j)
-            graph.edges[i, j].update(attrs)
-    return graph
+# def flip_edges(graph, source=0):
+#     for (i, j) in list(nx.dfs_edges(graph.to_undirected(), source=source)):
+#         if (i, j) not in graph.edges:
+#             attrs = graph.edges[j, i]
+#             graph.remove_edge(j, i)
+#             graph.add_edge(i, j)
+#             graph.edges[i, j].update(attrs)
+#     return graph
 
-def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: float = 2000) -> nx.DiGraph:
-    linear_paths = get_linear_paths(graph)
+def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: float = 2000, source_node: Union[int, str] = 0) -> nx.DiGraph:
+    """Segment into branches and compartmentalize graph for use in jaxley.
+
+    The graph is segmented into branches and compartmentalized. Such that it can be
+    imported into jaxley with `from_graph`. This routine is also run inside `from_graph`
+    when called on a graph with the `swc` tag, that gets set by `swc_to_graph`.
+
+    First, the graph is travesed and partitioned into connected non-branching paths.
+    Then these paths are segmented into branches, such that each branch only has
+    a single id and a maximum length of `max_branch_len`. If paths have multiple
+    ids or branches, then the midpoint of two nodes with different ids is used as
+    start / end of a branch. To illustrate, paths are split at "x"
+    
+    nodes: o--o---x---o---o     ->    o--o---o    o---o--o
+    ids:   1  1       2   2     ->    1  1   1    2   2  2
+    
+    Then each branch is split into compartments of equal length. The coordinates
+    are interpolated linearly.
+    
+    Args:
+        graph: A networkx graph.
+        nseg: The number of segments per compartment.
+        max_branch_len: The maximum length of a branch.
+        source_node: The node from which to start the graph traversal. If "leaf",
+            the traversal starts at the first identified leaf node.
+    
+    Returns:
+        A compartmentalized graph that can be imported into jaxley with `from_graph`.
+    """
+    linear_paths = get_linear_paths(graph, source_node=source_node)
     graph_data = pd.DataFrame([d for i,d in graph.nodes(data=True)])
     linear_path_nodes = [path_e2n(p) for p in linear_paths]
     path_roots_and_leafs = np.stack([np.array(edge)[[0, -1]] for edge in linear_path_nodes])
@@ -275,9 +307,9 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
         branch_counter += len(branch_ends)
         
         # close gaps in path_nodes between different branches
-        interp_with = [0.5, 0.5] # [0.5, 0.5]
         if path_nodes.groupby("branch_index").ngroups > 1:
             change_of_branch = path_nodes["branch_index"].diff() != 0
+            interp_with = [0.0, 0.0] # [0.5, 0.5]
             for idx in np.where(change_of_branch)[0][1:]:
                 path_nodes = insert_rows(path_nodes, idx, locs=interp_with)
                 keys = ["branch_index", "id"]
@@ -339,12 +371,20 @@ def make_jaxley_compatible(graph: nx.DiGraph, nseg: int = 8, max_branch_len: flo
     inter_path_leafs = comps_in_paths.first().values[edges_between_paths[:,1]]
     inter_path_roots = comps_in_paths.last().values[edges_between_paths[:,0]]
     inter_path_edges = np.stack([inter_path_roots, inter_path_leafs]).T
-
+    
     # construct compartmentalized graph
     comp_graph = nx.DiGraph()
     comp_graph.add_edges_from(intra_branch_edges, type="intra_branch")
     comp_graph.add_edges_from(inter_branch_edges, type="inter_branch")
     comp_graph.add_edges_from(inter_path_edges, type="inter_branch")
+
+    # reconnect source nodes
+    if source_node != "leaf":
+        where_source = np.where(path_roots_and_leafs[:,0] == source_node)[0]
+        path_root_nodes = comps_in_paths.first()
+        source_nodes = path_root_nodes[path_root_nodes.index.isin(where_source)].to_numpy()
+        source_edges = np.stack([source_nodes[0]*np.ones_like(source_nodes[1:]), source_nodes[1:]]).T
+        comp_graph.add_edges_from(source_edges, type="inter_branch")
 
     keys = ["radius", "length", "x", "y", "z", "comp_index", "branch_index", "cell_index", "groups"]
     comp_graph.add_nodes_from(((n, {k:v for k,v in zip(keys, vals)}) for i, (n,*vals) in jaxley_comps[["comp_index"]+keys].iterrows()))   
