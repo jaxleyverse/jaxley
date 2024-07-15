@@ -37,10 +37,10 @@ jobs:
         isort -c jaxley tests
 
     - name: clone tridiax repo
-      uses: actions/checkout@v1  
+      uses: jaxleyverse/clone-github-repo-action@v2.3
       with:
-        owner: jaxleyverse
-        repository: tridiax
+        owner: 'jaxleyverse'
+        repository: 'tridiax'
         access-token: ${{secrets.ACCESS_TOKEN}}
 
     - name: install tridiax
