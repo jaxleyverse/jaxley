@@ -184,7 +184,7 @@ class Module(ABC):
         params: bool = True,
         states: bool = True,
         channel_names: Optional[List[str]] = None,
-    ):
+    ) -> pd.DataFrame:
         """Print detailed information about the Module or a view of it."""
         return self._show(
             self.nodes, param_names, indices, params, states, channel_names
