@@ -36,10 +36,22 @@ jobs:
       run: |
         isort -c jaxley tests
 
-    # - name: Test with pytest
-    #   run: |
-    #     pip install pytest pytest-cov
-    #     pytest -m "not tridiax" tests/ --cov=jaxley --cov-report=xml
+    - name: clone tridiax repo
+      uses: actions/checkout@v1  
+      with:
+        owner: jaxleyverse
+        repository: tridiax
+        access-token: ${{secrets.ACCESS_TOKEN}}
+
+    - name: install tridiax
+      run: |
+        cd triadax
+        python -m pip install -e .
+    
+    - name: Test with pytest
+      run: |
+        pip install pytest pytest-cov
+        pytest -m tests/ --cov=jaxley --cov-report=xml
       
     # - name: Upload coverage to Codecov
     #   uses: codecov/codecov-action@v3
