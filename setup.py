@@ -28,7 +28,7 @@ EXTRAS = {
 
 setup(
     name="jaxley",
-    python_requires=">=3.8.0",
+    python_requires=">=3.10",
     packages=find_packages(),
     install_requires=REQUIRED,
     extras_require=EXTRAS,
