@@ -186,7 +186,7 @@ class Module(ABC):
         channel_names: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """Print detailed information about the Module or a view of it.
-        
+
         Args:
             param_names: The names of the parameters to show. If `None`, all parameters
                 are shown. NOT YET IMPLEMENTED.
@@ -623,9 +623,7 @@ class Module(ABC):
         """Removes all recordings from the module."""
         self.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(
-        self, current: Optional[jnp.ndarray] = None, verbose: bool = True
-    ):
+    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -641,9 +639,7 @@ class Module(ABC):
         """
         self._external_input("i", current, self.nodes, verbose=verbose)
 
-    def clamp(
-        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
-    ):
+    def clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool = True):
         """Clamp a state to a given value across specified compartments.
 
         Args:
@@ -1369,7 +1365,7 @@ class View:
         channel_names: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """Print detailed information about the Module or a view of it.
-        
+
         Args:
             param_names: The names of the parameters to show. If `None`, all parameters
                 are shown. NOT YET IMPLEMENTED.
