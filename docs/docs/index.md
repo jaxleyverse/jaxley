@@ -1,7 +1,5 @@
 
-<h1 align="center">
-jaxley
-</h1>
+![jaxley_logo](logo.png)
 
 `jaxley` is a differentiable simulator for networks of multicompartment neurons in [JAX](https://github.com/google/jax). Its key features are:
 
@@ -37,6 +35,8 @@ git clone https://github.com/jaxleyverse/jaxley.git
 cd jaxley
 pip install -e .
 ```
+
+Note that `pip>=21.3` is required to install the editable version with `pyproject.toml` see [pip docs](https://pip.pypa.io/en/latest/reference/build-system/pyproject-toml/#editable-installation). 
 
 
 ### Feedback and Contributions
