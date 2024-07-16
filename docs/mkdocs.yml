@@ -1,5 +1,5 @@
 site_name: jaxley
-site_url: "https://mackelab.org/jaxley/"
+site_url: "https://jaxleyverse.github.io/jaxley"
 
 nav:
   - Home: index.md
