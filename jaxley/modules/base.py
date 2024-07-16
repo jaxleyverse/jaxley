@@ -131,7 +131,7 @@ class Module(ABC):
         for state_name, state_value in state_dict.items():
             self.nodes[state_name] = state_value
 
-    def _gather_channels_from_constituents(self, constituents: List) -> None:
+    def _gather_channels_from_constituents(self, constituents: List):
         """Modify `self.channels` and `self.nodes` with channel info from constituents.
 
         This is run at `__init__()`. It takes all branches of constituents (e.g.
@@ -185,14 +185,27 @@ class Module(ABC):
         states: bool = True,
         channel_names: Optional[List[str]] = None,
     ) -> pd.DataFrame:
-        """Print detailed information about the Module or a view of it."""
+        """Print detailed information about the Module or a view of it.
+        
+        Args:
+            param_names: The names of the parameters to show. If `None`, all parameters
+                are shown. NOT YET IMPLEMENTED.
+            indices: Whether to show the indices of the compartments.
+            params: Whether to show the parameters of the compartments.
+            states: Whether to show the states of the compartments.
+            channel_names: The names of the channels to show. If `None`, all channels are
+                shown.
+
+        Returns:
+            A `pd.DataFrame` with the requested information.
+        """
         return self._show(
             self.nodes, param_names, indices, params, states, channel_names
         )
 
     def _show(
         self,
-        view,
+        view: pd.DataFrame,
         param_names: Optional[Union[str, List[str]]] = None,
         indices: bool = True,
         params: bool = True,
@@ -612,7 +625,7 @@ class Module(ABC):
 
     def stimulate(
         self, current: Optional[jnp.ndarray] = None, verbose: bool = True
-    ) -> None:
+    ):
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -630,7 +643,7 @@ class Module(ABC):
 
     def clamp(
         self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
-    ) -> None:
+    ):
         """Clamp a state to a given value across specified compartments.
 
         Args:
@@ -674,7 +687,7 @@ class Module(ABC):
         current: jnp.ndarray,
         data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
         verbose: bool = False,
-    ):
+    ) -> Tuple[jnp.ndarray, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
 
         Args:
@@ -690,7 +703,7 @@ class Module(ABC):
         data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
         view: pd.DataFrame,
         verbose: bool = False,
-    ):
+    ) -> Tuple[jnp.ndarray, pd.DataFrame]:
         current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
         batch_size = current.shape[0]
         is_multiple = len(view) == batch_size
@@ -1355,6 +1368,20 @@ class View:
         states: bool = True,
         channel_names: Optional[List[str]] = None,
     ) -> pd.DataFrame:
+        """Print detailed information about the Module or a view of it.
+        
+        Args:
+            param_names: The names of the parameters to show. If `None`, all parameters
+                are shown. NOT YET IMPLEMENTED.
+            indices: Whether to show the indices of the compartments.
+            params: Whether to show the parameters of the compartments.
+            states: Whether to show the states of the compartments.
+            channel_names: The names of the channels to show. If `None`, all channels are
+                shown.
+
+        Returns:
+            A `pd.DataFrame` with the requested information.
+        """
         view = self.pointer._show(
             self.view, param_names, indices, params, states, channel_names
         )
@@ -1740,7 +1767,7 @@ class GroupView(View):
         view: pd.DataFrame,
         childview: type,
         childview_keys: List[str],
-    ) -> None:
+    ):
         """Initialize group.
 
         Args:
