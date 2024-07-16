@@ -17,7 +17,14 @@ class TestSynapse(Synapse):
         self.synapse_params = {f"{prefix}_gC": 1e-4}
         self.synapse_states = {f"{prefix}_c": 0.2}
 
-    def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        states: Dict,
+        delta_t: float,
+        pre_voltage: flaot,
+        post_voltage: float,
+        params: Dict,
+    ) -> Dict:
         """Return updated synapse state and current."""
         prefix = self._name
         v_th = -35.0
@@ -33,7 +40,9 @@ class TestSynapse(Synapse):
         new_s = states[f"{prefix}_c"] * exp_term + s_inf * (1.0 - exp_term)
         return {f"{prefix}_c": new_s}
 
-    def compute_current(self, states, pre_voltage, post_voltage, params):
+    def compute_current(
+        self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
+    ) -> float:
         prefix = self._name
         e_syn = 0.0
         g_syn = params[f"{prefix}_gC"] * states[f"{prefix}_c"]

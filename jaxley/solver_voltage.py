@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import jax.numpy as jnp
 from jax import vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
@@ -8,17 +10,17 @@ from jaxley.build_branched_tridiag import define_all_tridiags
 
 
 def step_voltage_explicit(
-    voltages,
-    voltage_terms,
-    constant_terms,
-    coupling_conds_bwd,
-    coupling_conds_fwd,
-    branch_cond_fwd,
-    branch_cond_bwd,
-    nbranches,
-    parents,
-    delta_t,
-):
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    coupling_conds_bwd: jnp.ndarray,
+    coupling_conds_fwd: jnp.ndarray,
+    branch_cond_fwd: jnp.ndarray,
+    branch_cond_bwd: jnp.ndarray,
+    nbranches: int,
+    parents: jnp.ndarray,
+    delta_t: float,
+) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
     voltages = jnp.reshape(voltages, (nbranches, -1))
     voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
@@ -39,20 +41,20 @@ def step_voltage_explicit(
 
 
 def step_voltage_implicit(
-    voltages,
-    voltage_terms,
-    constant_terms,
-    coupling_conds_bwd,
-    coupling_conds_fwd,
-    summed_coupling_conds,
-    branch_cond_fwd,
-    branch_cond_bwd,
-    nbranches,
-    parents,
-    branches_in_each_level,
-    tridiag_solver,
-    delta_t,
-):
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    coupling_conds_bwd: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    coupling_conds_fwd: jnp.ndarray,
+    summed_coupling_conds: jnp.ndarray,
+    branch_cond_fwd: jnp.ndarray,
+    branch_cond_bwd: jnp.ndarray,
+    nbranches: int,
+    parents: jnp.ndarray,
+    branches_in_each_level: jnp.ndarray,
+    tridiag_solver: str,
+    delta_t: float,
+) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
     voltages = jnp.reshape(voltages, (nbranches, -1))
     voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
@@ -98,15 +100,15 @@ def step_voltage_implicit(
 
 
 def voltage_vectorfield(
-    parents,
-    voltages,
-    voltage_terms,
-    constant_terms,
-    coupling_conds_bwd,
-    coupling_conds_fwd,
-    branch_cond_fwd,
-    branch_cond_bwd,
-):
+    parents: jnp.ndarray,
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    coupling_conds_bwd: jnp.ndarray,
+    coupling_conds_fwd: jnp.ndarray,
+    branch_cond_fwd: jnp.ndarray,
+    branch_cond_bwd: jnp.ndarray,
+) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
     # Membrane current update.
     vecfield = -voltage_terms * voltages + constant_terms
@@ -141,16 +143,16 @@ def voltage_vectorfield(
 
 
 def _triang_branched(
-    parents,
-    branches_in_each_level,
-    lowers,
-    diags,
-    uppers,
-    solves,
-    branch_cond_fwd,
-    branch_cond_bwd,
-    tridiag_solver,
-):
+    parents: jnp.ndarray,
+    branches_in_each_level: jnp.ndarray,
+    lowers: jnp.ndarray,
+    diags: jnp.ndarray,
+    uppers: jnp.ndarray,
+    solves: jnp.ndarray,
+    branch_cond_fwd: jnp.ndarray,
+    branch_cond_bwd: jnp.ndarray,
+    tridiag_solver: str,
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     Triangulation.
     """
@@ -175,8 +177,14 @@ def _triang_branched(
 
 
 def _backsub_branched(
-    branches_in_each_level, parents, diags, uppers, solves, branch_cond, tridiag_solver
-):
+    branches_in_each_level: jnp.ndarray,
+    parents: jnp.ndarray,
+    diags: jnp.ndarray,
+    uppers: jnp.ndarray,
+    solves: jnp.ndarray,
+    branch_cond: jnp.ndarray,
+    tridiag_solver: jnp.ndarray,
+) -> jnp.ndarray:
     """
     Backsubstitution.
     """
@@ -190,7 +198,14 @@ def _backsub_branched(
     return solves
 
 
-def _triang_level(branches_in_level, lowers, diags, uppers, solves, tridiag_solver):
+def _triang_level(
+    branches_in_level: jnp.ndarray,
+    lowers: jnp.ndarray,
+    diags: jnp.ndarray,
+    uppers: jnp.ndarray,
+    solves: jnp.ndarray,
+    tridiag_solver: str,
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     bil = branches_in_level
     if tridiag_solver == "stone":
         triang_fn = stone_triang
@@ -208,7 +223,13 @@ def _triang_level(branches_in_level, lowers, diags, uppers, solves, tridiag_solv
     return diags, uppers, solves
 
 
-def _backsub_level(branches_in_level, diags, uppers, solves, tridiag_solver):
+def _backsub_level(
+    branches_in_level: jnp.ndarray,
+    diags: jnp.ndarray,
+    uppers: jnp.ndarray,
+    solves: jnp.ndarray,
+    tridiag_solver: str,
+) -> jnp.ndarray:
     bil = branches_in_level
     if tridiag_solver == "stone":
         backsub_fn = stone_backsub
@@ -223,8 +244,11 @@ def _backsub_level(branches_in_level, diags, uppers, solves, tridiag_solver):
 
 
 def _eliminate_single_parent_upper(
-    diag_at_branch, solve_at_branch, branch_cond_fwd, branch_cond_bwd
-):
+    diag_at_branch: jnp.ndarray,
+    solve_at_branch: jnp.ndarray,
+    branch_cond_fwd: jnp.ndarray,
+    branch_cond_bwd: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     last_of_3 = diag_at_branch
     last_of_3_solve = solve_at_branch
 
@@ -236,13 +260,13 @@ def _eliminate_single_parent_upper(
 
 
 def _eliminate_parents_upper(
-    parents,
-    branches_in_level,
-    diags,
-    solves,
-    branch_cond_fwd,
-    branch_cond_bwd,
-):
+    parents: jnp.ndarray,
+    branches_in_level: jnp.ndarray,
+    diags: jnp.ndarray,
+    solves: jnp.ndarray,
+    branch_cond_fwd: jnp.ndarray,
+    branch_cond_bwd: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     bil = branches_in_level
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
         diags[bil, -1],
@@ -263,7 +287,12 @@ def _eliminate_parents_upper(
     return diags, solves
 
 
-def _eliminate_children_lower(branches_in_level, parents, solves, branch_cond):
+def _eliminate_children_lower(
+    branches_in_level: jnp.ndarray,
+    parents: jnp.ndarray,
+    solves: jnp.ndarray,
+    branch_cond: jnp.ndarray,
+) -> jnp.ndarray:
     bil = branches_in_level
     solves = solves.at[bil, -1].set(
         solves[bil, -1] - branch_cond[bil] * solves[parents[bil], 0]
