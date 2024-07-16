@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 from jax import vmap
 
 
@@ -277,3 +278,11 @@ def childview(
     if child_name != "/":
         return module.__getattr__(child_name)(index)
     raise AttributeError("Compartment does not support indexing")
+
+
+def concat_and_ignore_empty(dfs: List[pd.DataFrame], **kwargs) -> pd.DataFrame:
+    """Concatenate dataframes and ignore empty dataframes.
+
+    This is mainly to avoid `pd.concat` throwing a warning when concatenating empty
+    and non-empty dataframes."""
+    return pd.concat([df for df in dfs if len(df) > 0], **kwargs)

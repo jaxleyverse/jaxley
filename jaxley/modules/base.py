@@ -22,6 +22,7 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     childview,
     compute_levels,
+    concat_and_ignore_empty,
     convert_point_process_to_distributed,
     flip_comp_indices,
     interpolate_xyz,
@@ -1691,7 +1692,7 @@ class View:
         )
 
         # Update edges.
-        self.pointer.edges = pd.concat(
+        self.pointer.edges = concat_and_ignore_empty(
             [self.pointer.edges, pd.DataFrame(new_rows)],
             ignore_index=True,
         )
