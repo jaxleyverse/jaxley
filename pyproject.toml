@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jaxley"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "jax[cpu]",
+    "numpy",
+    "pandas>=2.2.0",
+    "matplotlib",
+    "networkx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "jupyter",
+    "mkdocs",
+    "mkdocs-material",
+    "markdown-include",
+    "mkdocs-redirects",
+    "mkdocstrings[python]>=0.18",
+    "neuron",
+    "pytest",
+    "pyright",
+    "optax",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["*"]  # package names should match these glob patterns (["*"] by default)
+exclude = []  # exclude packages matching these glob patterns (empty by default)
