@@ -51,7 +51,7 @@ We greatly benefited from previous toolboxes for simulating multicompartment neu
 
 ### License
 
-[MIT License](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
+[Apache License](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
 
 ### Citation
