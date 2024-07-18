@@ -13,6 +13,12 @@ from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
 
 
 class Compartment(Module):
+    """Compartment class.
+
+    This class defines a single compartment that can be simulated by itself or
+    connected up into branches. It is the basic building block of a neuron model.
+    """
+
     compartment_params: Dict = {
         "length": 10.0,  # um
         "radius": 1.0,  # um
@@ -42,13 +48,13 @@ class Compartment(Module):
 
         # Initialize the module.
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = True
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         cond_params = {
             "branch_conds_fwd": jnp.asarray([]),
             "branch_conds_bwd": jnp.asarray([]),
@@ -62,7 +68,7 @@ class Compartment(Module):
 class CompartmentView(View):
     """CompartmentView."""
 
-    def __init__(self, pointer, view):
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         view = view.assign(controlled_by_param=view.global_comp_index)
         super().__init__(pointer, view)
 
@@ -75,7 +81,7 @@ class CompartmentView(View):
             "'CompartmentView' object has no attribute 'comp' or 'loc'."
         )
 
-    def loc(self, loc: float):
+    def loc(self, loc: float) -> "CompartmentView":
         if loc != "all":
             assert (
                 loc >= 0.0 and loc <= 1.0
@@ -85,7 +91,7 @@ class CompartmentView(View):
         view._has_been_called = True
         return view
 
-    def distance(self, endpoint: "CompartmentView"):
+    def distance(self, endpoint: "CompartmentView") -> float:
         """Return the direct distance between two compartments.
 
         This does not compute the pathwise distance (which is currently not
@@ -114,7 +120,7 @@ class CompartmentView(View):
         col: str = "k",
         dims: Tuple[int] = (0, 1),
         morph_plot_kwargs: Dict = {},
-    ):
+    ) -> Axes:
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._scatter(
             ax=ax,

@@ -12,7 +12,7 @@ def swc_to_jaxley(
     max_branch_len: float = 100.0,
     sort: bool = True,
     num_lines: Optional[int] = None,
-):
+) -> Tuple[List[int], List[float], List[Callable], List[float], List[np.ndarray]]:
     """Read an SWC file and bring morphology into `jaxley` compatible formats.
 
     Args:
@@ -84,7 +84,7 @@ def _split_into_branches_and_sort(
 
 
 def _split_long_branches(
-    branches, types, content, max_branch_len
+    branches: np.ndarray, types: np.ndarray, content: np.ndarray, max_branch_len: float
 ) -> Tuple[np.ndarray, np.ndarray]:
     pathlengths = _compute_pathlengths(branches, content[:, 2:6])
     pathlengths = [np.sum(length_traced) for length_traced in pathlengths]
@@ -116,7 +116,7 @@ def _split_long_branches(
     return split_branches, split_types
 
 
-def _split_branch_equally(branch, num_subbranches):
+def _split_branch_equally(branch: np.ndarray, num_subbranches: int) -> List[np.ndarray]:
     num_points_each = len(branch) // num_subbranches
     branches = [branch[:num_points_each]]
     for i in range(1, num_subbranches - 1):
@@ -189,7 +189,7 @@ def _single_point_soma(current_branch: np.ndarray, content: np.ndarray) -> bool:
     return True
 
 
-def _build_parents(all_branches):
+def _build_parents(all_branches: List[np.ndarray]) -> List[int]:
     parents = [None] * len(all_branches)
     all_last_inds = [b[-1] for b in all_branches]
     for i, branch in enumerate(all_branches):
@@ -208,7 +208,11 @@ def _build_parents(all_branches):
 
 
 def _radius_generating_fns(
-    all_branches, radiuses, each_length, parents, types
+    all_branches: np.ndarray,
+    radiuses: np.ndarray,
+    each_length: np.ndarray,
+    parents: np.ndarray,
+    types: np.ndarray,
 ) -> List[Callable]:
     """For all branches in a cell, returns callable that return radius given loc."""
     radius_fns = []
@@ -244,7 +248,7 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     if len(radiuses) == 1:
         radiuses = np.tile(radiuses, 2)
 
-    def radius(loc):
+    def radius(loc: float) -> float:
         """Function which returns the radius via linear interpolation."""
         index = np.digitize(loc, cutoffs, right=False)
         left_rad = radiuses[index - 1]
@@ -257,7 +261,9 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     return radius
 
 
-def _compute_pathlengths(all_branches, coords):
+def _compute_pathlengths(
+    all_branches: np.ndarray, coords: np.ndarray
+) -> List[np.ndarray]:
     branch_pathlengths = []
     for b in all_branches:
         coords_in_branch = coords[np.asarray(b) - 1]

@@ -9,7 +9,7 @@ import numpy as np
 from jax import vmap
 
 
-def equal_segments(branch_property: list, nseg_per_branch: int):
+def equal_segments(branch_property: list, nseg_per_branch: int) -> jnp.ndarray:
     """Generates segments where some property is the same in each segment.
 
     Args:
@@ -22,7 +22,7 @@ def equal_segments(branch_property: list, nseg_per_branch: int):
 
 def linear_segments(
     initial_val: float, endpoint_vals: list, parents: jnp.ndarray, nseg_per_branch: int
-):
+) -> jnp.ndarray:
     """Generates segments where some property is linearly interpolated.
 
     Args:
@@ -46,7 +46,11 @@ def linear_segments(
     return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
 
 
-def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
+def merge_cells(
+    cumsum_num_branches: List[int],
+    arrs: List[List[jnp.ndarray]],
+    exclude_first: bool = True,
+) -> jnp.ndarray:
     """
     Build full list of which branches are solved in which iteration.
 
@@ -55,7 +59,7 @@ def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
 
     Args:
         cumsum_num_branches: cumulative number of branches. E.g., for three cells with
-            10, 15, and 5 branches respectively, this will should be a list containing
+            10, 15, and 5 branches respectively, this will be a list containing
             `[0, 10, 25, 30]`.
         arrs: A list of a list of arrays that should be merged.
         exclude_first: If `True`, the first element of each list in `arrs` will remain
@@ -87,18 +91,17 @@ def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
     return combined_parents_in_level
 
 
-def compute_levels(parents):
+def compute_levels(parents: jnp.ndarray) -> jnp.ndarray:
+    """Compute the level of each branch in the tree."""
     levels = np.zeros_like(parents)
 
     for i, p in enumerate(parents):
-        if p == -1:
-            levels[i] = 0
-        else:
-            levels[i] = levels[p] + 1
+        levels[i] = 0 if p == -1 else levels[p] + 1
     return levels
 
 
-def compute_branches_in_level(levels):
+def compute_branches_in_level(levels: jnp.ndarray) -> List[jnp.ndarray]:
+    """Collect the branches in each level of the tree."""
     num_branches = len(levels)
     branches_in_each_level = []
     for l in range(np.max(levels) + 1):
@@ -111,7 +114,8 @@ def compute_branches_in_level(levels):
     return branches_in_each_level
 
 
-def _compute_num_children(parents):
+def _compute_num_children(parents: jnp.ndarray) -> List[int]:
+    """Compute the number of children of each branch."""
     num_branches = len(parents)
     num_children = []
     for b in range(num_branches):
@@ -120,7 +124,8 @@ def _compute_num_children(parents):
     return num_children
 
 
-def _compute_index_of_child(parents):
+def _compute_index_of_child(parents: jnp.ndarray) -> List[int]:
+    """Compute the index of each child of each branch."""
     num_branches = len(parents)
     current_num_children_for_each_branch = np.zeros((num_branches,), np.dtype("int"))
     index_of_child = [-1]
@@ -134,7 +139,7 @@ def get_num_neighbours(
     num_children: jnp.ndarray,
     nseg_per_branch: int,
     num_branches: int,
-):
+) -> jnp.ndarray:
     """
     Number of neighbours of each compartment.
     """
@@ -166,14 +171,14 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     return branch_ind * nseg + ind_along_branch
 
 
-def loc_of_index(global_comp_index, nseg):
+def loc_of_index(global_comp_index: int, nseg: int) -> float:
     """Return location corresponding to index."""
     index = global_comp_index % nseg
     possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
     return possible_locs[index]
 
 
-def flip_comp_indices(indices: np.ndarray, nseg: int):
+def flip_comp_indices(indices: np.ndarray, nseg: int) -> np.ndarray:
     """Flip ordering of compartments because the solver treats 0 as last compartment.
 
     E.g with nseg=8, this function will do:
@@ -189,13 +194,20 @@ def flip_comp_indices(indices: np.ndarray, nseg: int):
     return integer_division + corrected_comp_ind
 
 
-def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
+def compute_coupling_cond(
+    rad1: jnp.ndarray,
+    rad2: jnp.ndarray,
+    r_a1: jnp.ndarray,
+    r_a2: jnp.ndarray,
+    l1: jnp.ndarray,
+    l2: jnp.ndarray,
+) -> jnp.ndarray:
     midpoint_r_a = 0.5 * (r_a1 + r_a2)
     return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
     # return midpoint_radius ** 2 / 2.0 / midpoint_axial_resistivity / rad1 / dx ** 2
 
 
-def interpolate_xyz(loc: float, coords: np.ndarray):
+def interpolate_xyz(loc: float, coords: np.ndarray) -> np.ndarray:
     """Perform a linear interpolation between xyz-coordinates.
 
     Args:
@@ -213,7 +225,7 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
 def params_to_pstate(
     params: List[Dict[str, jnp.ndarray]],
     indices_set_by_trainables: List[jnp.ndarray],
-):
+) -> List[Dict[str, jnp.ndarray]]:
     """Make outputs `get_parameters()` conform with outputs of `.data_set()`.
 
     `make_trainable()` followed by `params=get_parameters()` does not return indices
@@ -248,10 +260,10 @@ def convert_point_process_to_distributed(
 
 
 def childview(
-    module,
+    module: "Module",
     index: Union[int, str, list, range, slice],
     child_name: Optional[str] = None,
-):
+) -> "View":
     """Return the child view of the current module.
 
     network.cell(index) at network level.

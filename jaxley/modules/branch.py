@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from copy import deepcopy
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -14,6 +14,14 @@ from jaxley.utils.cell_utils import compute_coupling_cond
 
 
 class Branch(Module):
+    """Branch class.
+
+    This class defines a single branch that can be simulated by itself or
+    connected to build a cell. A branch is linear segment of several compartments
+    and can be connected to no, one or more other branches at each end to build more
+    intricate cell morphologies.
+    """
+
     branch_params: Dict = {}
     branch_states: Dict = {}
 
@@ -22,6 +30,14 @@ class Branch(Module):
         compartments: Union[Compartment, List[Compartment]] = None,
         nseg: Optional[int] = None,
     ):
+        """
+        Args:
+            compartments: A single compartment or a list of compartments that make up the
+                branch.
+            nseg: Number of segments to divide the branch into. If `compartments` is an
+                a single compartment, than the compartment is repeated `nseg` times to
+                create the branch.
+        """
         super().__init__()
         assert (
             isinstance(compartments, (Compartment, List)) or compartments is None
@@ -61,13 +77,13 @@ class Branch(Module):
             dict(parent_branch_index=[], child_branch_index=[])
         )
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = False
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -89,7 +105,7 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         conds = self.init_branch_conds(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
@@ -104,8 +120,23 @@ class Branch(Module):
         return cond_params
 
     @staticmethod
-    def init_branch_conds(axial_resistivity, radiuses, lengths, nseg):
-        """Given an axial resisitivity, set the coupling conductances."""
+    def init_branch_conds(
+        axial_resistivity: jnp.ndarray,
+        radiuses: jnp.ndarray,
+        lengths: jnp.ndarray,
+        nseg: int,
+    ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+        """Given an axial resisitivity, set the coupling conductances.
+
+        Args:
+            axial_resistivity: Axial resistivity of each compartment.
+            radiuses: Radius of each compartment.
+            lengths: Length of each compartment.
+            nseg: Number of compartments in the branch.
+
+        Returns:
+            Tuple of forward coupling conductances, backward coupling conductances, and summed coupling conductances.
+        """
 
         # Compute coupling conductance for segments within a branch.
         # `radius`: um
@@ -131,12 +162,14 @@ class Branch(Module):
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.nseg
 
 
 class BranchView(View):
-    def __init__(self, pointer, view):
+    """BranchView."""
+
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         view = view.assign(controlled_by_param=view.global_branch_index)
         super().__init__(pointer, view)
 
