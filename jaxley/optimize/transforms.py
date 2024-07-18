@@ -41,7 +41,7 @@ class ParamTransform:
 
     """
 
-    def __init__(self, lowers: Dict[str, float], uppers: Dict[str, float]) -> None:
+    def __init__(self, lowers: Dict[str, float], uppers: Dict[str, float]):
         """Initialize the bounds.
 
         Args:

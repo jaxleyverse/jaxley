@@ -3,7 +3,7 @@
 
 import time
 from copy import deepcopy
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -24,7 +24,12 @@ from jaxley.utils.swc import swc_to_jaxley
 
 
 class Cell(Module):
-    """Cell."""
+    """Cell class.
+
+    This class defines a single cell that can be simulated by itself or
+    connected with synapses to build a network. A cell is made up of several branches
+    and supports intricate cell morphologies.
+    """
 
     cell_params: Dict = {}
     cell_states: Dict = {}
@@ -32,14 +37,17 @@ class Cell(Module):
     def __init__(
         self,
         branches: Union[Branch, List[Branch]],
-        parents: List,
+        parents: List[int],
         xyzr: Optional[List[np.ndarray]] = None,
     ):
         """Initialize a cell.
 
         Args:
-            branches:
-            parents:
+            branches: A single branch or a list of branches that make up the cell.
+                If a single branch is provided, then the branch is repeated `len(parents)`
+                times to create the cell.
+            parents: The parent branch index for each branch. The first branch has no
+                parent and is therefore set to -1.
             xyzr: For every branch, the x, y, and z coordinates and the radius at the
                 traced coordinates. Note that this is the full tracing (from SWC), not
                 the stick representation coordinates.
@@ -94,10 +102,10 @@ class Cell(Module):
         )
 
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = False
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -127,7 +135,7 @@ class Cell(Module):
 
         self.initialized_morph = True
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
@@ -178,7 +186,14 @@ class Cell(Module):
         return cond_params
 
     @staticmethod
-    def init_cell_conds(ra_parent, ra_child, r_parent, r_child, l_parent, l_child):
+    def init_cell_conds(
+        ra_parent: jnp.ndarray,
+        ra_child: jnp.ndarray,
+        r_parent: jnp.ndarray,
+        r_child: jnp.ndarray,
+        l_parent: jnp.ndarray,
+        l_child: jnp.ndarray,
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Initializes the cell conductances, i.e., the ones at branch points.
 
         This method is used via vmap. Inputs should be scalar.
@@ -187,6 +202,17 @@ class Cell(Module):
         `r_a`: ohm cm
         `length_single_compartment`: um
         `coupling_conds`: S * um / cm / um^2 = S / cm / um
+
+        Args:
+            ra_parent: Axial resistivity of the parent compartment.
+            ra_child: Axial resistivity of the child compartment.
+            r_parent: Radius of the parent compartment.
+            r_child: Radius of the child compartment.
+            l_parent: Length of the parent compartment.
+            l_child: Length of the child compartment.
+
+        Returns:
+            Tuple of forward coupling conductances and backward coupling conductances.
         """
         branch_conds_fwd = compute_coupling_cond(
             r_child, r_parent, ra_child, ra_parent, l_child, l_parent
@@ -203,8 +229,12 @@ class Cell(Module):
 
     @staticmethod
     def update_summed_coupling_conds(
-        summed_conds, child_inds, conds_fwd, conds_bwd, parents
-    ):
+        summed_conds: jnp.ndarray,
+        child_inds: jnp.ndarray,
+        conds_fwd: jnp.ndarray,
+        conds_bwd: jnp.ndarray,
+        parents: jnp.ndarray,
+    ) -> jnp.ndarray:
         """Perform updates on `summed_coupling_conds`.
 
         Args:
@@ -213,6 +243,9 @@ class Cell(Module):
             conds_fwd: shape [num_branches - 1]
             conds_bwd: shape [num_branches - 1]
             parents: shape [num_branches]
+
+        Returns:
+            Updated `summed_coupling_conds`.
         """
 
         summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds])
@@ -234,7 +267,7 @@ class Cell(Module):
 class CellView(View):
     """CellView."""
 
-    def __init__(self, pointer, view):
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         view = view.assign(controlled_by_param=view.global_cell_index)
         super().__init__(pointer, view)
 
@@ -248,7 +281,7 @@ class CellView(View):
         new_view = super().adjust_view("cell_index", index)
         return new_view
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
 
@@ -269,7 +302,7 @@ def read_swc(
     max_branch_len: float = 300.0,
     min_radius: Optional[float] = None,
     assign_groups: bool = False,
-):
+) -> Cell:
     """Reads SWC file into a `jx.Cell`.
 
     Jaxley assumes cylindrical compartments and therefore defines length and radius
@@ -287,6 +320,9 @@ def read_swc(
             file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
             `apical`, `custom`. See here:
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+
+    Returns:
+        A `jx.Cell` object.
     """
     parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None

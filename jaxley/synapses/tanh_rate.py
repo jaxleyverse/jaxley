@@ -23,11 +23,20 @@ class TanhRateSynapse(Synapse):
         }
         self.synapse_states = {}
 
-    def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        states: Dict,
+        delta_t: float,
+        pre_voltage: float,
+        post_voltage: float,
+        params: Dict,
+    ) -> Dict:
         """Return updated synapse state and current."""
         return {}
 
-    def compute_current(self, states, pre_voltage, post_voltage, params):
+    def compute_current(
+        self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
+    ) -> float:
         """Return updated synapse state and current."""
         prefix = self._name
         current = (

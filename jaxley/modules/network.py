@@ -24,7 +24,10 @@ from jaxley.utils.syn_utils import gather_synapes
 
 
 class Network(Module):
-    """Network."""
+    """Network class.
+
+    This class defines a network of cells that can be connected with synapses.
+    """
 
     network_params: Dict = {}
     network_states: Dict = {}
@@ -36,7 +39,7 @@ class Network(Module):
         """Initialize network of cells and synapses.
 
         Args:
-            cells: _description_
+            cells: A list of cells that make up the network.
         """
         super().__init__()
         for cell in cells:
@@ -64,7 +67,7 @@ class Network(Module):
         self._gather_channels_from_constituents(cells)
         self.initialized_conds = False
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -105,7 +108,7 @@ class Network(Module):
 
         self.initialized_morph = True
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
@@ -157,6 +160,7 @@ class Network(Module):
         return cond_params
 
     def init_syns(self):
+        """Initialize synapses."""
         self.synapses = []
 
         # TODO(@michaeldeistler): should we also track this for channels?
@@ -179,12 +183,12 @@ class Network(Module):
 
     def _step_synapse(
         self,
-        states,
-        syn_channels,
-        params,
-        delta_t,
+        states: Dict,
+        syn_channels: List,
+        params: Dict,
+        delta_t: float,
         edges: pd.DataFrame,
-    ):
+    ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
         states, current_terms = self._synapse_currents(
@@ -193,8 +197,13 @@ class Network(Module):
         return states, current_terms
 
     def _step_synapse_state(
-        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
-    ):
+        self,
+        states: Dict,
+        syn_channels: List,
+        params: Dict,
+        delta_t: float,
+        edges: pd.DataFrame,
+    ) -> Dict:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -238,8 +247,13 @@ class Network(Module):
         return states
 
     def _synapse_currents(
-        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
-    ):
+        self,
+        states: Dict,
+        syn_channels: List,
+        params: Dict,
+        delta_t: float,
+        edges: pd.DataFrame,
+    ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -332,7 +346,7 @@ class Network(Module):
         synapse_scatter_kwargs: Dict = {},
         networkx_options: Dict = {},
         layer_kwargs: Dict = {},
-    ) -> None:
+    ) -> Axes:
         """Visualize the module.
 
         Args:
@@ -509,7 +523,7 @@ class SynapseView(View):
         indices: bool = True,
         params: bool = True,
         states: bool = True,
-    ):
+    ) -> pd.DataFrame:
         """Show synapses."""
         printable_nodes = deepcopy(self.view[["type", "type_ind"]])
 
@@ -550,7 +564,7 @@ class SynapseView(View):
         self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
-    def _assert_key_in_params_or_states(self, key):
+    def _assert_key_in_params_or_states(self, key: str):
         synapse_index = self.view["type_ind"].values[0]
         synapse_type = self.pointer.synapses[synapse_index]
         synapse_param_names = list(synapse_type.synapse_params.keys())
