@@ -36,8 +36,8 @@ class Cell(Module):
 
     def __init__(
         self,
-        branches: Union[Branch, List[Branch]] = None,
-        parents: List[int] = None,
+        branches: Optional[Union[Branch, List[Branch]]] = None,
+        parents: Optional[List[int]] = None,
         xyzr: Optional[List[np.ndarray]] = None,
     ):
         """Initialize a cell.

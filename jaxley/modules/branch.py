@@ -27,7 +27,7 @@ class Branch(Module):
 
     def __init__(
         self,
-        compartments: Union[Compartment, List[Compartment]] = None,
+        compartments: Optional[Union[Compartment, List[Compartment]]] = None,
         nseg: Optional[int] = None,
     ):
         """
