@@ -45,7 +45,7 @@ class Compartment(Module):
 
         # Initialize the module.
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = True
 
         # Coordinates.

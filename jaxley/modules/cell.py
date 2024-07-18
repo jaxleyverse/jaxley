@@ -99,7 +99,7 @@ class Cell(Module):
         )
 
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = False
 
     def __getattr__(self, key: str):

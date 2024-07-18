@@ -70,7 +70,7 @@ class Branch(Module):
             dict(parent_branch_index=[], child_branch_index=[])
         )
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = False
 
         # Coordinates.

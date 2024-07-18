@@ -281,10 +281,14 @@ class Module(ABC):
             val: The value to set the parameter to. If it is `jnp.ndarray` then it
                 must be of shape `(len(num_compartments))`.
         """
-        assert (
-            key not in self.synapse_param_names and key not in self.synapse_state_names
-        ), "Parameters of synapses can only be set via the `SynapseView`."
-        self._set(key, val, self.nodes, self.nodes)
+        # TODO(@michaeldeistler) should we allow `.set()` for synaptic parameters
+        # without using the `SynapseView`, purely for consistency with `make_trainable`?
+        view = (
+            self.edges
+            if key in self.synapse_param_names or key in self.synapse_state_names
+            else self.nodes
+        )
+        self._set(key, val, view, view)
 
     def _set(
         self,
