@@ -11,6 +11,7 @@ def concat_and_ignore_empty(dfs: List[pd.DataFrame], **kwargs) -> pd.DataFrame:
     and non-empty dataframes."""
     return pd.concat([df for df in dfs if len(df) > 0], **kwargs)
 
+
 def childview(
     module,
     index: Union[int, str, list, range, slice],
