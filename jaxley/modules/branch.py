@@ -19,18 +19,22 @@ class Branch(Module):
 
     def __init__(
         self,
-        compartments: Union[Compartment, List[Compartment]],
+        compartments: Union[Compartment, List[Compartment]] = None,
         nseg: Optional[int] = None,
     ):
         super().__init__()
         assert (
-            isinstance(compartments, Compartment) or nseg is None
-        ), "If `compartments` is a list then you cannot set `nseg`."
-        assert (
-            isinstance(compartments, List) or nseg is not None
-        ), "If `compartments` is not a list then you have to set `nseg`."
+            isinstance(compartments, (Compartment, List)) or compartments is None
+        ), "Only Compartment or List[Compartment] is allowed."
         if isinstance(compartments, Compartment):
-            compartment_list = [compartments for _ in range(nseg)]
+            assert (
+                nseg is not None
+            ), "If `compartments` is not a list then you have to set `nseg`."
+        compartments = Compartment() if compartments is None else compartments
+        nseg = 1 if nseg is None else nseg
+
+        if isinstance(compartments, Compartment):
+            compartment_list = [compartments] * nseg
         else:
             compartment_list = compartments
 
