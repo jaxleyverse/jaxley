@@ -13,7 +13,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connection import connect
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
 
 

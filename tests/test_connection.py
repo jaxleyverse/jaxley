@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.connection import (
+from jaxley.connect import (
     connect,
     connectivity_matrix_connect,
     fully_connect,

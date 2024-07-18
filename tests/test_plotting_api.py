@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import jax
 
-from jaxley.connection import connect
+from jaxley.connect import connect
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")

@@ -11,7 +11,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
-from jaxley.connection import connect
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
 

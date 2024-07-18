@@ -14,7 +14,7 @@ from jax import jit, value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connection import fully_connect
+from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse
 
 

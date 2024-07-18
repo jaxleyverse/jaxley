@@ -3,7 +3,7 @@
 
 from jax import config
 
-from jaxley.connection import connect
+from jaxley.connect import connect
 
 config.update("jax_enable_x64", True)
 config.update("jax_platform_name", "cpu")
