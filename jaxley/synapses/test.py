@@ -21,7 +21,7 @@ class TestSynapse(Synapse):
         self,
         states: Dict,
         delta_t: float,
-        pre_voltage: flaot,
+        pre_voltage: float,
         post_voltage: float,
         params: Dict,
     ) -> Dict:
