@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
@@ -13,7 +16,11 @@ class TanhRateSynapse(Synapse):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
-        self.synapse_params = {f"{prefix}_gS": 1e-4, f"{prefix}_x_offset": -70.0}
+        self.synapse_params = {
+            f"{prefix}_gS": 1e-4,
+            f"{prefix}_x_offset": -70.0,
+            f"{prefix}_slope": 1.0,
+        }
         self.synapse_states = {}
 
     def update_states(
@@ -35,6 +42,8 @@ class TanhRateSynapse(Synapse):
         current = (
             -1
             * params[f"{prefix}_gS"]
-            * jnp.tanh(pre_voltage - params[f"{prefix}_x_offset"])
+            * jnp.tanh(
+                (pre_voltage - params[f"{prefix}_x_offset"]) * params[f"{prefix}_slope"]
+            )
         )
         return current

@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import time
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
