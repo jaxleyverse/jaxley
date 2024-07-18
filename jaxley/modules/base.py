@@ -20,14 +20,13 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
-    childview,
     compute_levels,
-    concat_and_ignore_empty,
     convert_point_process_to_distributed,
     flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
 )
+from jaxley.utils.core_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
 
