@@ -3,6 +3,7 @@
 
 from typing import Callable, List, Optional, Tuple
 from warnings import warn
+from copy import copy
 
 import numpy as np
 
@@ -28,7 +29,7 @@ def swc_to_jaxley(
     )
 
     parents = _build_parents(sorted_branches)
-    each_length = _compute_pathlengths(sorted_branches, content[:, 2:6])
+    each_length = _compute_pathlengths(sorted_branches, content[:, 1:6])
     pathlengths = [np.sum(length_traced) for length_traced in each_length]
     for i, pathlen in enumerate(pathlengths):
         if pathlen == 0.0:
@@ -86,7 +87,7 @@ def _split_into_branches_and_sort(
 def _split_long_branches(
     branches, types, content, max_branch_len
 ) -> Tuple[np.ndarray, np.ndarray]:
-    pathlengths = _compute_pathlengths(branches, content[:, 2:6])
+    pathlengths = _compute_pathlengths(branches, content[:, 1:6])
     pathlengths = [np.sum(length_traced) for length_traced in pathlengths]
     split_branches = []
     split_types = []
@@ -97,7 +98,7 @@ def _split_long_branches(
             num_subbranches += 1
             split_branch = _split_branch_equally(branch, num_subbranches)
             lengths_of_subbranches = _compute_pathlengths(
-                split_branch, coords=content[:, 2:6]
+                split_branch, coords=content[:, 1:6]
             )
             lengths_of_subbranches = [
                 np.sum(length_traced) for length_traced in lengths_of_subbranches
@@ -219,7 +220,7 @@ def _radius_generating_fns(
             # branch if a new type of neurite is found (e.g. switch from soma to
             # apical). From looking at the SWC from n140.swc I believe that this is
             # also what NEURON does.
-            rads_in_branch[0] = rads_in_branch[1]
+            rads_in_branch = rads_in_branch[1:]
         radius_fn = _radius_generating_fn(
             radiuses=rads_in_branch, each_length=each_length[i]
         )
@@ -258,20 +259,35 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
 
 
 def _compute_pathlengths(all_branches, coords):
+    """
+    Args:
+        coords: Has shape (num_traced_points, 5), where `5` is (type, x, y, z, radius).
+    """
     branch_pathlengths = []
     for b in all_branches:
         coords_in_branch = coords[np.asarray(b) - 1]
         if len(coords_in_branch) > 1:
+            # If the branch starts at a different neurite (e.g. the soma) then NEURON
+            # ignores the distance from that initial point. To reproduce, use the
+            # following SWC dummy file and read it in NEURON (and Jaxley):
+            # 1 1 0.00 0.0 0.0 6.0 -1
+            # 2 2 9.00 0.0 0.0 0.5 1
+            # 3 2 10.0 0.0 0.0 0.3 2
+            types = coords_in_branch[:, 0]
+            if int(types[0]) == 1 and int(types[1]) != 1:
+                coords_in_branch = coords_in_branch[1:]
+
+            # Compute distances between all traced points in a branch.
             point_diffs = np.diff(coords_in_branch, axis=0)
             dists = np.sqrt(
-                point_diffs[:, 0] ** 2 + point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2
+                point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2 + point_diffs[:, 3] ** 2
             )
         else:
             # Jaxley uses length and radius for every compartment and assumes the
             # surface area to be 2*pi*r*length. For branches consisting of a single
             # traced point we assume for them to have area 4*pi*r*r. Therefore, we have
             # to set length = 2*r.
-            radius = coords_in_branch[0, 3]  # xyzr -> 3 is radius.
+            radius = coords_in_branch[0, 4]  # txyzr -> 4 is radius.
             dists = np.asarray([2 * radius])
         branch_pathlengths.append(dists)
     return branch_pathlengths

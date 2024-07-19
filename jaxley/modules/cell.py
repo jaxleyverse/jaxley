@@ -137,6 +137,9 @@ class Cell(Module):
         radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
         lengths = jnp.reshape(params["length"], (nbranches, nseg))
 
+        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
+        child_inds = self.branch_edges["child_branch_index"].to_numpy()
+
         conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
             axial_resistivity, radiuses, lengths, self.nseg
         )
@@ -144,21 +147,30 @@ class Cell(Module):
         coupling_conds_bwd = conds[1]
         summed_coupling_conds = conds[2]
 
-        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
-        child_inds = self.branch_edges["child_branch_index"].to_numpy()
+        # Nodes at branch points have zero length.
+        lengths = lengths.at[child_inds, 0].set(0.0)
+        lengths = lengths.at[par_inds, -1].set(0.0)
 
-        conds = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
+        conds_fwd = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
+            axial_resistivity[par_inds, 0],
+            axial_resistivity[child_inds, -1],
+            radiuses[par_inds, 0],
+            radiuses[child_inds, -1],
+            lengths[par_inds, 0],
+            jnp.zeros_like(lengths[par_inds, 0]),
+        )
+        conds_bwd = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
             axial_resistivity[child_inds, -1],
             axial_resistivity[par_inds, 0],
             radiuses[child_inds, -1],
             radiuses[par_inds, 0],
             lengths[child_inds, -1],
-            lengths[par_inds, 0],
+            jnp.zeros_like(lengths[child_inds, -1]),
         )
         branch_conds_fwd = jnp.zeros((nbranches))
         branch_conds_bwd = jnp.zeros((nbranches))
-        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
-        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
+        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds_fwd)
+        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds_bwd)
 
         summed_coupling_conds = self.update_summed_coupling_conds(
             summed_coupling_conds,
@@ -188,10 +200,7 @@ class Cell(Module):
         `length_single_compartment`: um
         `coupling_conds`: S * um / cm / um^2 = S / cm / um
         """
-        branch_conds_fwd = compute_coupling_cond(
-            r_child, r_parent, ra_child, ra_parent, l_child, l_parent
-        )
-        branch_conds_bwd = compute_coupling_cond(
+        branch_conds = compute_coupling_cond(
             r_parent, r_child, ra_parent, ra_child, l_parent, l_child
         )
 
@@ -199,7 +208,8 @@ class Cell(Module):
         branch_conds_fwd *= 10**7
         branch_conds_bwd *= 10**7
 
-        return branch_conds_fwd, branch_conds_bwd
+        num_branches_at_branchpoint = 2
+        return branch_conds / num_branches_at_branchpoint
 
     @staticmethod
     def update_summed_coupling_conds(
