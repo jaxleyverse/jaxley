@@ -167,6 +167,9 @@ class Cell(Module):
             lengths[child_inds, -1],
             jnp.zeros_like(lengths[child_inds, -1]),
         )
+        # conds_bwd = 0.1 * jnp.ones_like(conds_bwd)
+        # conds_fwd = 0.1 * jnp.ones_like(conds_fwd)
+
         branch_conds_fwd = jnp.zeros((nbranches))
         branch_conds_bwd = jnp.zeros((nbranches))
         branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds_fwd)
@@ -207,7 +210,7 @@ class Cell(Module):
         # Convert (S / cm / um) -> (mS / cm^2)
         branch_conds *= 10**7
 
-        num_branches_at_branchpoint = 2
+        num_branches_at_branchpoint = 3
         return branch_conds / num_branches_at_branchpoint
 
     @staticmethod
@@ -223,20 +226,24 @@ class Cell(Module):
             conds_bwd: shape [num_branches - 1]
             parents: shape [num_branches]
         """
+        # NEW
+        summed_conds = summed_conds.at[0, 0].add(2.0 * conds_bwd[1])
+        summed_conds = summed_conds.at[1, 1].add(2.0 * conds_bwd[1])
+        summed_conds = summed_conds.at[2, 1].add(2.0 * conds_bwd[1])
 
-        summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds])
+        # summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds])
 
-        dnums = ScatterDimensionNumbers(
-            update_window_dims=(),
-            inserted_window_dims=(0, 1),
-            scatter_dims_to_operand_dims=(0, 1),
-        )
-        summed_conds = scatter_add(
-            summed_conds,
-            jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
-            conds_fwd[child_inds],
-            dnums,
-        )
+        # dnums = ScatterDimensionNumbers(
+        #     update_window_dims=(),
+        #     inserted_window_dims=(0, 1),
+        #     scatter_dims_to_operand_dims=(0, 1),
+        # )
+        # summed_conds = scatter_add(
+        #     summed_conds,
+        #     jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
+        #     conds_fwd[child_inds],
+        #     dnums,
+        # )
         return summed_conds
 
 

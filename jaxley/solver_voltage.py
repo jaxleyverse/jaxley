@@ -76,27 +76,67 @@ def step_voltage_implicit(
         delta_t,
     )
 
-    # Solve quasi-tridiagonal system.
-    diags, uppers, solves = _triang_branched(
-        parents,
-        branches_in_each_level,
-        lowers,
-        diags,
-        uppers,
-        solves,
-        -delta_t * branch_cond_fwd,
-        -delta_t * branch_cond_bwd,
-        tridiag_solver,
-    )
-    solves = _backsub_branched(
-        branches_in_each_level,
-        parents,
-        diags,
-        uppers,
-        solves,
-        -delta_t * branch_cond_bwd,
-        tridiag_solver,
-    )
+    nseg = 2
+    small_matrices = []
+    for lower, upper, diag in zip(lowers, uppers, diags):
+        mat = jnp.zeros((nseg, nseg))
+        for i in range(nseg):
+            for j in range(nseg):
+                if i == j:
+                    mat = mat.at[i, j].set(diag[i])
+                elif i == j + 1:
+                    mat = mat.at[i, j].set(upper[i])
+                elif i == j - 1:
+                    mat = mat.at[i, j].set(lower[i])
+        small_matrices.append(mat)
+    
+    big_solve = jnp.concatenate(solves)
+    big_matrix = jnp.zeros((nseg * nbranches, nseg * nbranches))
+
+    for i in range(len(diags)):
+        small_mat = small_matrices[i]
+        big_matrix = big_matrix.at[i * nseg:(i+1) * nseg, i * nseg:(i+1) * nseg].set(small_mat)
+
+    # Update off diagonals.
+    branch_inds = jnp.arange(len(parents))
+    for branch in branch_inds:
+        if parents[branch] > -1:
+            child_ind = branch_inds[parents[branch]] * nseg
+            parent_ind = branch * nseg + nseg - 1
+            big_matrix = big_matrix.at[child_ind, parent_ind].set(-delta_t * branch_cond_bwd[i])
+            big_matrix = big_matrix.at[parent_ind, child_ind].set(-delta_t * branch_cond_fwd[i])
+    big_matrix = big_matrix.at[5, 3].set(-delta_t * branch_cond_bwd[i])
+    big_matrix = big_matrix.at[3, 5].set(-delta_t * branch_cond_bwd[i])
+    # print(big_matrix)
+    
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    # _ = ax.imshow(big_matrix)
+    # plt.show()
+    solution = jnp.linalg.solve(big_matrix, big_solve)
+    solves = jnp.reshape(solution, (nseg, nbranches))
+
+    # # Solve quasi-tridiagonal system.
+    # diags, uppers, solves = _triang_branched(
+    #     parents,
+    #     branches_in_each_level,
+    #     lowers,
+    #     diags,
+    #     uppers,
+    #     solves,
+    #     -delta_t * branch_cond_fwd,
+    #     -delta_t * branch_cond_bwd,
+    #     tridiag_solver,
+    # )
+    # solves = _backsub_branched(
+    #     branches_in_each_level,
+    #     parents,
+    #     diags,
+    #     uppers,
+    #     solves,
+    #     -delta_t * branch_cond_bwd,
+    #     tridiag_solver,
+    # )
     return solves
 
 
