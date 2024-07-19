@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import pandas as pd
 
 from jaxley.modules import Module
-from jaxley.utils.cell_utils import flip_comp_indices, params_to_pstate
+from jaxley.utils.cell_utils import params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 
@@ -21,7 +21,7 @@ def integrate(
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
-    tridiag_solver: str = "stone",
+    voltage_solver: str = "scipy",
     checkpoint_lengths: Optional[List[int]] = None,
     all_states: Optional[Dict] = None,
     return_states: bool = False,
@@ -88,12 +88,8 @@ def integrate(
 
     for key in externals.keys():
         externals[key] = externals[key].T  # Shape `(time, num_stimuli)`.
-        external_inds[key] = flip_comp_indices(
-            external_inds[key], module.nseg
-        )  # See #305
 
     rec_inds = module.recordings.rec_index.to_numpy()
-    rec_inds = flip_comp_indices(rec_inds, module.nseg)  # See #305
     rec_states = module.recordings.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
@@ -138,7 +134,7 @@ def integrate(
             externals,
             params=all_params,
             solver=solver,
-            tridiag_solver=tridiag_solver,
+            voltage_solver=voltage_solver,
         )
         recs = jnp.asarray(
             [

@@ -34,7 +34,7 @@ def test_swc_cell():
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -89,7 +89,7 @@ def test_swc_net():
     for stim_ind in range(2):
         network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt, tridiag_solver="thomas")
 
     voltages_040224 = jnp.asarray(
         [

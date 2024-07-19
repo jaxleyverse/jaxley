@@ -22,7 +22,6 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
     convert_point_process_to_distributed,
-    flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
 )
@@ -164,7 +163,6 @@ class Module(ABC):
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             inds = jnp.arange(len(value))
-            inds = flip_comp_indices(inds, self.nseg)  # See #305
             self.jaxnodes[key] = jnp.asarray(value)[inds]
 
         # `jaxedges` contains only parameters (no indices).
@@ -509,8 +507,6 @@ class Module(ABC):
         for parameter in pstate:
             key = parameter["key"]
             inds = parameter["indices"]
-            if key not in self.synapse_param_names:
-                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
@@ -551,8 +547,6 @@ class Module(ABC):
         for parameter in pstate:
             key = parameter["key"]
             inds = parameter["indices"]
-            if key not in self.synapse_state_names:
-                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
             if key in states:  # Only initial states, not parameters.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
@@ -592,7 +586,6 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
             voltages = channel_nodes.loc[indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
@@ -759,7 +752,7 @@ class Module(ABC):
         externals: Dict[str, jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
-        tridiag_solver: str = "stone",
+        voltage_solver: str = "jaxley.thomas",
     ) -> Dict[str, jnp.ndarray]:
         """One step of solving the Ordinary Differential Equation.
 
@@ -774,8 +767,9 @@ class Module(ABC):
             externals: The external inputs.
             params: The parameters of the module.
             solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
-            tridiag_solver: The tridiagonal solver to used to diagonalize the
-            coefficient matrix of the ODE system. Either "thomas" or "stone".
+            voltage_solver: The tridiagonal solver to used to diagonalize the
+                coefficient matrix of the ODE system. Either "jaxley.thomas", 
+                "jaxley.stone", or "jax.scipy.sparse".
 
         Returns:
             The updated state of the module.
@@ -818,16 +812,24 @@ class Module(ABC):
                 voltages=voltages,
                 voltage_terms=(v_terms + syn_v_terms) / cm,
                 constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                summed_coupling_conds=params["summed_coupling_conds"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
+                coupling_conds_upper=params["branch_uppers"],
+                coupling_conds_lower=params["branch_lowers"],
+                summed_coupling_conds=params["branch_diags"],
+                branchpoint_conds_children=params["branchpoint_conds_children"],
+                branchpoint_conds_parents=params["branchpoint_conds_parents"],
+                branchpoint_weights_children=params["branchpoint_weights_children"],
+                branchpoint_weights_parents=params["branchpoint_weights_parents"],
+                child_belongs_to_branchpoint=self.child_belongs_to_branchpoint,
+                par_inds=self.par_inds,
+                child_inds=self.child_inds,
                 nbranches=self.total_nbranches,
                 parents=self.comb_parents,
                 branches_in_each_level=self.comb_branches_in_each_level,
-                tridiag_solver=tridiag_solver,
+                solver=voltage_solver,
                 delta_t=delta_t,
+                branchpoint_group_inds=self.branchpoint_inds["branchpoint_group_inds"],
+                row_inds=self.row_and_col_inds["row_inds"],
+                col_inds=self.row_and_col_inds["col_inds"],
             )
         else:
             new_voltages = step_voltage_explicit(
@@ -886,24 +888,23 @@ class Module(ABC):
 
         # Update states of the channels.
         indices = channel_nodes["comp_index"].to_numpy()
-        flipped_indices = flip_comp_indices(indices, self.nseg)  # See #305
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += ["radius", "length", "axial_resistivity"]
             channel_state_names = list(channel.channel_states)
             channel_state_names += self.membrane_current_names
-            indices = flipped_indices[channel_nodes[channel._name].astype(bool)]
+            channel_indices = indices[channel_nodes[channel._name].astype(bool)]
 
-            channel_params = query(params, channel_param_names, indices)
-            channel_states = query(states, channel_state_names, indices)
+            channel_params = query(params, channel_param_names, channel_indices)
+            channel_states = query(states, channel_state_names, channel_indices)
 
             states_updated = channel.update_states(
-                channel_states, delta_t, voltages[indices], channel_params
+                channel_states, delta_t, voltages[channel_indices], channel_params
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in states_updated.items():
-                states[key] = states[key].at[indices].set(val)
+                states[key] = states[key].at[channel_indices].set(val)
 
         return states
 
@@ -937,7 +938,6 @@ class Module(ABC):
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
 
             channel_params = {}
             for p in channel_param_names:

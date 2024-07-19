@@ -31,7 +31,7 @@ def test_compartment():
     comp.record()
     comp.stimulate(current)
 
-    voltages = jx.integrate(comp, delta_t=dt)
+    voltages = jx.integrate(comp, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -67,7 +67,7 @@ def test_branch():
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(branch, delta_t=dt)
+    voltages = jx.integrate(branch, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -107,7 +107,7 @@ def test_cell():
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -164,7 +164,7 @@ def test_net():
     network.IonotropicSynapse.set(
         "IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor
     )
-    voltages = jx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt, tridiag_solver="thomas")
 
     voltages_040224 = jnp.asarray(
         [
@@ -238,7 +238,7 @@ def test_complex_net():
 
     net.cell(6).branch(0).loc(0.0).record()
 
-    voltages = jx.integrate(net)
+    voltages = jx.integrate(net, tridiag_solver="thomas")
 
     voltages_050424 = jnp.asarray(
         [

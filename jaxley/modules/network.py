@@ -15,11 +15,7 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
-from jaxley.utils.cell_utils import (
-    convert_point_process_to_distributed,
-    flip_comp_indices,
-    merge_cells,
-)
+from jaxley.utils.cell_utils import convert_point_process_to_distributed, merge_cells
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -129,12 +125,12 @@ class Network(Module):
         child_inds = self.branch_edges["child_branch_index"].to_numpy()
 
         conds = vmap(Cell.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
-            axial_resistivity[child_inds, -1],
-            axial_resistivity[par_inds, 0],
-            radiuses[child_inds, -1],
-            radiuses[par_inds, 0],
-            lengths[child_inds, -1],
-            lengths[par_inds, 0],
+            axial_resistivity[child_inds, 0],
+            axial_resistivity[par_inds, -1],
+            radiuses[child_inds, 0],
+            radiuses[par_inds, -1],
+            lengths[child_inds, 0],
+            lengths[par_inds, -1],
         )
         branch_conds_fwd = jnp.zeros((nbranches))
         branch_conds_bwd = jnp.zeros((nbranches))
@@ -228,9 +224,6 @@ class Network(Module):
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
-            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
-            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
-
             # State updates.
             states_updated = synapse_type.update_states(
                 synapse_states,
@@ -283,9 +276,6 @@ class Network(Module):
             # Get pre and post indexes of the current synapse type.
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
-
-            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
-            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(

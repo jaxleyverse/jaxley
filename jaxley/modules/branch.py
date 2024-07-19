@@ -152,10 +152,6 @@ class Branch(Module):
         coupling_conds_bwd = compute_coupling_cond(r1, r2, r_a1, r_a2, l1, l2)
         coupling_conds_fwd = compute_coupling_cond(r2, r1, r_a2, r_a1, l2, l1)
 
-        # Convert (S / cm / um) -> (mS / cm^2)
-        coupling_conds_fwd *= 10**7
-        coupling_conds_bwd *= 10**7
-
         # Compute the summed coupling conductances of each compartment.
         summed_coupling_conds = jnp.zeros((nseg))
         summed_coupling_conds = summed_coupling_conds.at[1:].add(coupling_conds_fwd)

@@ -36,7 +36,7 @@ def test_radius_and_length_compartment():
     comp.record()
     comp.stimulate(current)
 
-    voltages = jx.integrate(comp, delta_t=dt)
+    voltages = jx.integrate(comp, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -77,7 +77,7 @@ def test_radius_and_length_branch():
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(branch, delta_t=dt)
+    voltages = jx.integrate(branch, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -126,7 +126,7 @@ def test_radius_and_length_cell():
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, tridiag_solver="thomas")
 
     voltages_081123 = jnp.asarray(
         [
@@ -200,7 +200,7 @@ def test_radius_and_length_net():
     for stim_ind in range(2):
         network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt, tridiag_solver="thomas")
 
     voltages_040224 = jnp.asarray(
         [
