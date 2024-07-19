@@ -205,8 +205,7 @@ class Cell(Module):
         )
 
         # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10**7
-        branch_conds_bwd *= 10**7
+        branch_conds *= 10**7
 
         num_branches_at_branchpoint = 2
         return branch_conds / num_branches_at_branchpoint
