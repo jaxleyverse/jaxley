@@ -10,7 +10,7 @@ import pandas as pd
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import compute_coupling_cond
+from jaxley.utils.cell_utils import compute_coupling_cond, remap_to_consecutive
 
 
 class Branch(Module):
@@ -76,6 +76,20 @@ class Branch(Module):
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+
+        # For morphology indexing.
+        self.child_inds = np.asarray([])
+        self.child_belongs_to_branchpoint = np.asarray([])
+        self.par_inds = np.asarray([])
+        self.total_nbranchpoints = 0
+
+        self.row_and_col_inds = {"row_inds": jnp.asarray([]), "col_inds": jnp.asarray([])}
+        self.branchpoint_inds = {"branchpoint_group_inds": jnp.asarray([])}
+
+        self.children_in_level = []
+        self.parents_in_level = []
+        self.root_inds = jnp.asarray([0])
+
         self.initialize()
         self.init_syns()
         self.initialized_conds = False
@@ -110,12 +124,14 @@ class Branch(Module):
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
         cond_params = {
-            "branch_conds_fwd": jnp.asarray([]),
-            "branch_conds_bwd": jnp.asarray([]),
+            "branchpoint_conds_children": jnp.asarray([]),
+            "branchpoint_conds_parents": jnp.asarray([]),
+            "branchpoint_weights_children": jnp.asarray([]),
+            "branchpoint_weights_parents": jnp.asarray([]),
         }
-        cond_params["coupling_conds_fwd"] = conds[0]
-        cond_params["coupling_conds_bwd"] = conds[1]
-        cond_params["summed_coupling_conds"] = conds[2]
+        cond_params["branch_lowers"] = conds[0]
+        cond_params["branch_uppers"] = conds[1]
+        cond_params["branch_diags"] = conds[2]
 
         return cond_params
 
@@ -171,9 +187,9 @@ class BranchView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[local_idcs.columns] = (
-            local_idcs  # set indexes locally. enables net[0:2,0:2]
-        )
+        self.view[
+            local_idcs.columns
+        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
         return new_view

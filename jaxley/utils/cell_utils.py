@@ -44,7 +44,7 @@ def linear_segments(
     return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
 
 
-def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
+def merge_cells(cumsum_num_branches: List[int], cumsum_num_branchpoints: List[int], arrs: List[List[jnp.ndarray]], exclude_first: bool = True) -> jnp.ndarray:
     """
     Build full list of which branches are solved in which iteration.
 
@@ -68,9 +68,10 @@ def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
     for i, att in enumerate(arrs):
         p = att
         if exclude_first:
+            raise NotImplementedError
             p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
         else:
-            p = [p_in_level + cumsum_num_branches[i] for p_in_level in p]
+            p = [p_in_level + jnp.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]]) for p_in_level in p]
         ps.append(p)
 
     max_len = max([len(att) for att in arrs])
@@ -96,17 +97,31 @@ def compute_levels(parents):
     return levels
 
 
+<<<<<<< HEAD
 def compute_branches_in_level(levels):
+=======
+def compute_children_in_level(levels: jnp.ndarray, children_row_and_col: jnp.ndarray) -> List[jnp.ndarray]:
+>>>>>>> 90f1fb5 (Compartments, branches, and networks work now)
     num_branches = len(levels)
-    branches_in_each_level = []
-    for l in range(np.max(levels) + 1):
-        branches_in_current_level = []
+    children_in_each_level = []
+    for l in range(1, np.max(levels) + 1):
+        children_in_current_level = []
         for b in range(num_branches):
             if levels[b] == l:
-                branches_in_current_level.append(b)
-        branches_in_current_level = jnp.asarray(branches_in_current_level)
-        branches_in_each_level.append(branches_in_current_level)
-    return branches_in_each_level
+                children_in_current_level.append(children_row_and_col[b - 1])
+        children_in_current_level = jnp.asarray(children_in_current_level)
+        children_in_each_level.append(children_in_current_level)
+    return children_in_each_level
+
+
+def compute_parents_in_level(levels, par_inds, parents_row_and_col):
+    level_of_parent = levels[par_inds]
+    parents_in_each_level = []
+    for l in range(np.max(levels)):
+        parents_inds_in_current_level = jnp.where(level_of_parent == l)[0]
+        parents_in_current_level = parents_row_and_col[parents_inds_in_current_level]
+        parents_in_each_level.append(parents_in_current_level)
+    return parents_in_each_level
 
 
 def _compute_num_children(parents):
@@ -206,7 +221,13 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     `coupling_conds`: S * um / cm / um^2 = S / cm / um -> *10**7 -> mS / cm^2
     """
     # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-    return rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
+    return (
+        rad1
+        * rad2**2
+        / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2)
+        / l1
+        * 10**7
+    )
 
 
 def compute_coupling_cond_branchpoint(rad, r_a, l):
@@ -239,6 +260,9 @@ def compute_impact_on_node(rad, r_a, l):
     proportional to the crosssection of the compartment. We only require proportionality
     here because the branch point equation reads:
     `g_1 * (V_1 - V_b) + g_2 * (V_2 - V_b) = 0.0`
+
+    Because R_long = r_a * L/2 / crosssection, we get
+    g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a
 
     This equation can be multiplied by any constant."""
     return rad**2 / r_a / l

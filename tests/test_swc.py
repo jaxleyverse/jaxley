@@ -41,10 +41,10 @@ def test_swc_reader_lengths():
     neuron_pathlengths = np.asarray(neuron_pathlengths)
 
     for i, p in enumerate(pathlengths):
-        # For index two, there is some weird behaviour of NEURON. If I exclude the
+        # For index three, there is some weird behaviour of NEURON. If I exclude the
         # first traced point from the given branch in jaxley, then I can exactly
         # reproduce NEURON, but it is unclear to me why I should do that.
-        if i != 2:
+        if i != 3:
             dists = np.abs(neuron_pathlengths - p)
             assert np.min(dists) < 1e-3, "Some branches have too large distance."
 

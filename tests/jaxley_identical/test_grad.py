@@ -60,7 +60,7 @@ def test_network_grad():
     net.cell(6).branch(0).loc(0.0).record()
 
     def simulate(params):
-        return jnp.sum(jx.integrate(net, params=params, tridiag_solver="thomas")[0, ::40])
+        return jnp.sum(jx.integrate(net, params=params)[0, ::40])
 
     net.make_trainable("HH_gNa")
     net.cell([0, 1, 4]).make_trainable("HH_gK")

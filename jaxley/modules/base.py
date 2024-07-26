@@ -830,6 +830,9 @@ class Module(ABC):
                 branchpoint_group_inds=self.branchpoint_inds["branchpoint_group_inds"],
                 row_inds=self.row_and_col_inds["row_inds"],
                 col_inds=self.row_and_col_inds["col_inds"],
+                children_in_level=self.children_in_level,
+                parents_in_level=self.parents_in_level,
+                root_inds=self.root_inds,
             )
         else:
             new_voltages = step_voltage_explicit(

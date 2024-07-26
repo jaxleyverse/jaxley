@@ -15,17 +15,21 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
-    compute_branches_in_level,
+    compute_children_in_level,
     compute_children_indices,
     compute_coupling_cond,
     compute_coupling_cond_branchpoint,
     compute_impact_on_node,
     compute_levels,
+    compute_parents_in_level,
     loc_of_index,
     remap_to_consecutive,
 )
-from jaxley.utils.voltage_solver_utils import compute_morphology_indices
 from jaxley.utils.swc import swc_to_jaxley
+from jaxley.utils.voltage_solver_utils import (
+    compute_morphology_indices,
+    compute_morphology_indices_in_levels,
+)
 
 
 class Cell(Module):
@@ -123,18 +127,15 @@ class Cell(Module):
         par_inds = self.branch_edges["parent_branch_index"].to_numpy()
         self.child_inds = self.branch_edges["child_branch_index"].to_numpy()
         self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
+        
+        # TODO: does order have to be preserved?
         self.par_inds = np.unique(par_inds)
-        self.row_and_col_inds, self.branchpoint_inds = compute_morphology_indices(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.par_inds,
-            self.child_inds,
-            self.nseg,
-            self.total_nbranches,
-        )
+        self.total_nbranchpoints = len(self.par_inds)
+        self.root_inds = jnp.asarray([0])
 
         self.initialize()
-        self.init_syns()
+
+        self.init_syns(None)
         self.initialized_conds = False
 
     def __getattr__(self, key: str):
@@ -160,10 +161,38 @@ class Cell(Module):
 
     def init_morph(self):
         """Initialize morphology."""
+
+        # For scipy and jax.scipy.
+        self.row_and_col_inds, self.branchpoint_inds = compute_morphology_indices(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+            self.nseg,
+            self.total_nbranches,
+        )
+
+        # For Jaxley custom implementation.
+        children_and_parents = compute_morphology_indices_in_levels(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+            self.nseg,
+            self.total_nbranches,
+        )
+
         parents = self.comb_parents
+        children_inds = children_and_parents["children"]
+        parents_inds = children_and_parents["parents"]
 
         levels = compute_levels(parents)
-        self.comb_branches_in_each_level = compute_branches_in_level(levels)
+        self.children_in_level = compute_children_in_level(levels, children_inds)
+        self.parents_in_level = compute_parents_in_level(
+            levels, self.par_inds, parents_inds
+        )
+        if self.total_nbranchpoints == 0:
+            self.parents_in_level = [np.asarray([[0, 0]])]
 
         self.initialized_morph = True
 
@@ -267,9 +296,9 @@ class CellView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[local_idcs.columns] = (
-            local_idcs  # set indexes locally. enables net[0:2,0:2]
-        )
+        self.view[
+            local_idcs.columns
+        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
         if index == "all":
             self.allow_make_trainable = False
         new_view = super().adjust_view("cell_index", index)
