@@ -36,8 +36,8 @@ class Cell(Module):
 
     def __init__(
         self,
-        branches: Union[Branch, List[Branch]],
-        parents: List[int],
+        branches: Optional[Union[Branch, List[Branch]]] = None,
+        parents: Optional[List[int]] = None,
         xyzr: Optional[List[np.ndarray]] = None,
     ):
         """Initialize a cell.
@@ -53,9 +53,21 @@ class Cell(Module):
                 the stick representation coordinates.
         """
         super().__init__()
-        assert isinstance(branches, Branch) or len(parents) == len(
-            branches
-        ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
+        assert (
+            isinstance(branches, (Branch, List)) or branches is None
+        ), "Only Branch or List[Branch] is allowed."
+        if branches is not None:
+            assert (
+                parents is not None
+            ), "If `branches` is not a list then you have to set `parents`."
+        if isinstance(branches, List):
+            assert len(parents) == len(
+                branches
+            ), "Ensure equally many parents, i.e. len(branches) == len(parents)."
+
+        branches = Branch() if branches is None else branches
+        parents = [-1] if parents is None else parents
+
         if isinstance(branches, Branch):
             branch_list = [branches for _ in range(len(parents))]
         else:
