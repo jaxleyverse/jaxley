@@ -15,7 +15,6 @@ from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 from jaxley.build_branched_tridiag import define_all_tridiags
 from jaxley.utils.voltage_solver_utils import (
     build_voltage_matrix_elements,
-    convert_to_csc,
     group_and_sum,
 )
 
@@ -73,6 +72,9 @@ def step_voltage_implicit(
     branchpoint_group_inds,
     row_inds,
     col_inds,
+    data_inds,
+    indices,
+    indptr,
     children_in_level,
     parents_in_level,
     root_inds,
@@ -96,7 +98,6 @@ def step_voltage_implicit(
         summed_coupling_conds,
         delta_t,
     )
-    # [1:] because of the dummy that we insert.
     all_branchpoint_vals = jnp.concatenate(
         [branchpoint_weights_parents, branchpoint_weights_children]
     )
@@ -150,7 +151,6 @@ def step_voltage_implicit(
         )
     elif solver == "jax.scipy.sparse":
         solves = sparse_jax_scipy_solve(
-            delta_t,
             uppers,
             lowers,
             diags,
@@ -163,8 +163,9 @@ def step_voltage_implicit(
             branchpoint_solves,
             nseg,
             nbranches,
-            row_inds,
-            col_inds,
+            data_inds,
+            indices,
+            indptr,
         )
     elif solver.startswith("jaxley"):
         # Here, I move all child and parent indices towards a branchpoint into a larger
@@ -308,7 +309,6 @@ def sparse_scipy_solve(
 
 
 def sparse_jax_scipy_solve(
-    delta_t,
     uppers,
     lowers,
     diags,
@@ -321,8 +321,9 @@ def sparse_jax_scipy_solve(
     branchpoint_solves,
     nseg,
     nbranches,
-    row_inds,
-    col_inds,
+    data_inds,
+    indices,
+    indptr,
 ):
     elements, solve, _, start_ind_for_branchpoints = build_voltage_matrix_elements(
         uppers,
@@ -337,9 +338,6 @@ def sparse_jax_scipy_solve(
         branchpoint_solves,
         nseg,
         nbranches,
-    )
-    data_inds, indices, indptr = convert_to_csc(
-        num_elements=len(elements), row_ind=row_inds, col_ind=col_inds
     )
     elements = elements[data_inds]
 

@@ -23,7 +23,7 @@ from jaxley.utils.cell_utils import (
     remap_to_consecutive,
 )
 from jaxley.utils.syn_utils import gather_synapes
-from jaxley.utils.voltage_solver_utils import compute_morphology_indices, compute_morphology_indices_in_levels
+from jaxley.utils.voltage_solver_utils import compute_morphology_indices, compute_morphology_indices_in_levels, convert_to_csc
 
 class Network(Module):
     """Network class.
@@ -136,6 +136,15 @@ class Network(Module):
             self.total_nbranches,
         )
 
+        # For jax.scipy.
+        num_elements = len(self.row_and_col_inds["row_inds"])
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=num_elements, row_ind=self.row_and_col_inds["row_inds"], col_ind=self.row_and_col_inds["col_inds"]
+        )
+        self.data_inds = data_inds
+        self.indices = indices
+        self.indptr = indptr
+
         # For Jaxley custom implementation.
         self.children_and_parents = compute_morphology_indices_in_levels(
             len(self.par_inds),
@@ -158,12 +167,6 @@ class Network(Module):
             [cell.parents_in_level for cell in self.cells],
             exclude_first=False,
         )
-        # self.comb_branches_in_each_level = merge_cells(
-        #     self.cumsum_nbranches,
-        #     [cell.comb_branches_in_each_level for cell in self.cells],
-        #     exclude_first=False,
-        # )
-
         self.initialized_morph = True
 
     def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:

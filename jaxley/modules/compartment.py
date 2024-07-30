@@ -10,6 +10,7 @@ from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
+from jaxley.utils.voltage_solver_utils import convert_to_csc, compute_morphology_indices
 
 
 class Compartment(Module):
@@ -47,17 +48,30 @@ class Compartment(Module):
         )
 
         # For morphology indexing.
-        self.child_inds = np.asarray([])
-        self.child_belongs_to_branchpoint = np.asarray([])
-        self.par_inds = np.asarray([])
+        self.child_inds = np.asarray([]).astype(int)
+        self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
+        self.par_inds = np.asarray([]).astype(int)
         self.total_nbranchpoints = 0
 
-        self.row_and_col_inds = {"row_inds": jnp.asarray([]), "col_inds": jnp.asarray([])}
-        self.branchpoint_inds = {"branchpoint_group_inds": jnp.asarray([])}
-
+        self.row_and_col_inds, self.branchpoint_inds = compute_morphology_indices(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+            self.nseg,
+            self.total_nbranches,
+        )
         self.children_in_level = []
         self.parents_in_level = []
         self.root_inds = jnp.asarray([0])
+
+        num_elements = len(self.row_and_col_inds["row_inds"])
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=num_elements, row_ind=self.row_and_col_inds["row_inds"], col_ind=self.row_and_col_inds["col_inds"]
+        )
+        self.data_inds = data_inds
+        self.indices = indices
+        self.indptr = indptr
 
         # Initialize the module.
         self.initialize()

@@ -47,7 +47,86 @@ def test_api_equivalence_morphology():
     ), "Voltages do not match between morphology APIs."
 
 
-def test_solver_backends():
+def test_solver_backends_comp():
+    """Test whether ways of adding synapses are equivalent."""
+    comp = jx.Compartment()
+
+    current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
+    comp.stimulate(current)
+    comp.record()
+
+    voltages_jx_thomas = jx.integrate(comp, voltage_solver="jaxley.thomas")
+    voltages_jx_stone = jx.integrate(comp, voltage_solver="jaxley.stone")
+    with jax.disable_jit():
+        voltages_scipy = jx.integrate(comp, voltage_solver="scipy.sparse")
+    voltages_jax_scipy = jx.integrate(comp, voltage_solver="jax.scipy.sparse")
+
+    message = "Voltages do not match between"
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
+    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
+    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
+    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
+
+
+def test_solver_backends_branch():
+    """Test whether ways of adding synapses are equivalent."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+
+    current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
+    branch.loc(0.0).stimulate(current)
+    branch.loc(0.5).record()
+
+    voltages_jx_thomas = jx.integrate(branch, voltage_solver="jaxley.thomas")
+    voltages_jx_stone = jx.integrate(branch, voltage_solver="jaxley.stone")
+    with jax.disable_jit():
+        voltages_scipy = jx.integrate(branch, voltage_solver="scipy.sparse")
+    voltages_jax_scipy = jx.integrate(branch, voltage_solver="jax.scipy.sparse")
+
+    message = "Voltages do not match between"
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
+    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
+    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
+    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
+
+
+def test_solver_backends_cell():
+    """Test whether ways of adding synapses are equivalent."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+
+    current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
+    cell.branch(0).loc(0.0).stimulate(current)
+    cell.branch(0).loc(0.5).record()
+    cell.branch(4).loc(0.5).record()
+
+    voltages_jx_thomas = jx.integrate(cell, voltage_solver="jaxley.thomas")
+    voltages_jx_stone = jx.integrate(cell, voltage_solver="jaxley.stone")
+    with jax.disable_jit():
+        voltages_scipy = jx.integrate(cell, voltage_solver="scipy.sparse")
+    voltages_jax_scipy = jx.integrate(cell, voltage_solver="jax.scipy.sparse")
+
+    message = "Voltages do not match between"
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
+    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
+    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
+    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
+
+
+def test_solver_backends_net():
     """Test whether ways of adding synapses are equivalent."""
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
@@ -73,9 +152,19 @@ def test_solver_backends():
 
     voltages_jx_thomas = jx.integrate(net, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(net, voltage_solver="jaxley.stone")
+    with jax.disable_jit():
+        voltages_scipy = jx.integrate(net, voltage_solver="scipy.sparse")
+    voltages_jax_scipy = jx.integrate(net, voltage_solver="jax.scipy.sparse")
 
+    message = "Voltages do not match between"
     max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
-    assert max_error < 1e-8, f"Voltages do not match between thomas/stone. Error={max_error}"
+    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
+    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
+    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
 
 
 def test_api_equivalence_synapses():
