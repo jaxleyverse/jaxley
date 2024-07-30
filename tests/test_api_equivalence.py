@@ -47,6 +47,37 @@ def test_api_equivalence_morphology():
     ), "Voltages do not match between morphology APIs."
 
 
+def test_solver_backends():
+    """Test whether ways of adding synapses are equivalent."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell1 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+    cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+
+    net = jx.Network([cell1, cell2])
+    connect(
+        net.cell(0).branch(0).loc(1.0),
+        net.cell(1).branch(4).loc(1.0),
+        IonotropicSynapse(),
+    )
+    connect(
+        net.cell(1).branch(1).loc(0.8),
+        net.cell(0).branch(4).loc(0.1),
+        IonotropicSynapse(),
+    )
+
+    current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
+    net.cell(0).branch(0).loc(0.0).stimulate(current)
+    net.cell(0).branch(0).loc(0.5).record()
+    net.cell(1).branch(4).loc(0.5).record()
+
+    voltages_jx_thomas = jx.integrate(net, voltage_solver="jaxley.thomas")
+    voltages_jx_stone = jx.integrate(net, voltage_solver="jaxley.stone")
+
+    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
+    assert max_error < 1e-8, f"Voltages do not match between thomas/stone. Error={max_error}"
+
+
 def test_api_equivalence_synapses():
     """Test whether ways of adding synapses are equivalent."""
     comp = jx.Compartment()

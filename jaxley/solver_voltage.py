@@ -9,7 +9,7 @@ from jax.experimental.sparse.linalg import spsolve as jspsolve
 from jax.lax import ScatterDimensionNumbers, scatter_add
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import spsolve
-from tridiax.stone import stone_backsub, stone_triang
+from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
 from jaxley.build_branched_tridiag import define_all_tridiags
@@ -704,22 +704,10 @@ def _backsub_branched(
     )
 
 
-<<<<<<< HEAD
-def _triang_level(
-    branches_in_level: jnp.ndarray,
-    lowers: jnp.ndarray,
-    diags: jnp.ndarray,
-    uppers: jnp.ndarray,
-    solves: jnp.ndarray,
-    tridiag_solver: str,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    bil = branches_in_level
-    if tridiag_solver == "stone":
-=======
 def _triang_level(cil, lowers, diags, uppers, solves, tridiag_solver):
+    bil = cil
     if tridiag_solver == "jaxley.stone":
->>>>>>> f0200a2 (Compartments, branches, and networks work now)
-        triang_fn = stone_triang
+        triang_fn = stone_triang_upper
     elif tridiag_solver == "jaxley.thomas":
         triang_fn = thomas_triang_upper
     else:
@@ -735,7 +723,6 @@ def _triang_level(cil, lowers, diags, uppers, solves, tridiag_solver):
     return diags, lowers, solves, uppers
 
 
-<<<<<<< HEAD
 def _backsub_level(
     branches_in_level: jnp.ndarray,
     diags: jnp.ndarray,
@@ -744,13 +731,8 @@ def _backsub_level(
     tridiag_solver: str,
 ) -> jnp.ndarray:
     bil = branches_in_level
-    if tridiag_solver == "stone":
-=======
-def _backsub_level(cil, diags, lowers, solves, tridiag_solver):
-    bil = cil
     if tridiag_solver == "jaxley.stone":
->>>>>>> f0200a2 (Compartments, branches, and networks work now)
-        backsub_fn = stone_backsub
+        backsub_fn = stone_backsub_lower
     elif tridiag_solver == "jaxley.thomas":
         backsub_fn = thomas_backsub_lower
     else:
@@ -763,16 +745,6 @@ def _backsub_level(cil, diags, lowers, solves, tridiag_solver):
     return solves, lowers, diags
 
 
-<<<<<<< HEAD
-def _eliminate_single_parent_upper(
-    diag_at_branch: jnp.ndarray,
-    solve_at_branch: jnp.ndarray,
-    branch_cond_fwd: jnp.ndarray,
-    branch_cond_bwd: jnp.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    last_of_3 = diag_at_branch
-    last_of_3_solve = solve_at_branch
-=======
 def _eliminate_children_lower(
     parents,
     cil,
@@ -795,7 +767,6 @@ def _eliminate_children_lower(
     branchpoint_solves = branchpoint_solves.at[bpil].add(new_solve)
     branchpoint_weights_children = branchpoint_weights_children.at[bil].set(0.0)
     return branchpoint_diags, branchpoint_solves, branchpoint_weights_children
->>>>>>> f0200a2 (Compartments, branches, and networks work now)
 
 
 def _eliminate_single_child_lower(
@@ -812,16 +783,6 @@ def _eliminate_single_child_lower(
 
 
 def _eliminate_parents_upper(
-<<<<<<< HEAD
-    parents: jnp.ndarray,
-    branches_in_level: jnp.ndarray,
-    diags: jnp.ndarray,
-    solves: jnp.ndarray,
-    branch_cond_fwd: jnp.ndarray,
-    branch_cond_bwd: jnp.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    bil = branches_in_level
-=======
     parents,
     pil,
     diags,
@@ -833,7 +794,6 @@ def _eliminate_parents_upper(
 ):
     bil = pil[:, 0]
     bpil = pil[:, 1]
->>>>>>> f0200a2 (Compartments, branches, and networks work now)
     new_diag, new_solve = vmap(_eliminate_single_parent_upper, in_axes=(0, 0, 0, 0))(
         branchpoint_conds_parents[bil],
         branchpoint_weights_parents[bil],
@@ -849,17 +809,6 @@ def _eliminate_parents_upper(
     return diags, solves, branchpoint_conds_parents
 
 
-<<<<<<< HEAD
-def _eliminate_children_lower(
-    branches_in_level: jnp.ndarray,
-    parents: jnp.ndarray,
-    solves: jnp.ndarray,
-    branch_cond: jnp.ndarray,
-) -> jnp.ndarray:
-    bil = branches_in_level
-    solves = solves.at[bil, 0].set(
-        solves[bil, 0] - branch_cond[bil] * solves[parents[bil], -1]
-=======
 def _eliminate_single_parent_upper(
     branchpoint_conds_parents,
     branchpoint_weights_parents,
@@ -886,7 +835,6 @@ def _eliminate_parents_lower(
     bpil = pil[:, 1]
     branchpoint_solves = branchpoint_solves.at[bpil].add(
         -solves[bil, -1] * branchpoint_weights_parents[bil] / diags[bil, -1]
->>>>>>> f0200a2 (Compartments, branches, and networks work now)
     )
     branchpoint_weights_parents = branchpoint_weights_parents.at[bil].set(0.0)
     return branchpoint_weights_parents, branchpoint_solves
