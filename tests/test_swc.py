@@ -9,8 +9,8 @@ jax.config.update("jax_platform_name", "cpu")
 import os
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
-
 import numpy as np
+import pytest
 from neuron import h
 
 import jaxley as jx
@@ -20,11 +20,16 @@ _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
 
 
-def test_swc_reader_lengths():
+# Test is failing for "morph.swc". This is because NEURON and Jaxley handle interrupted
+# soma differently, see issue #140.
+@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph_minimal.swc"])
+def test_swc_reader_lengths(file):
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")
+    fname = os.path.join(dirname, "swc_files", file)
 
     _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
+    if pathlengths[0] == 0.1:
+        pathlengths = pathlengths[1:]
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
@@ -48,7 +53,19 @@ def test_swc_reader_lengths():
     ), "Number of branches does not match."
 
 
-def test_swc_radius():
+def test_dummy_compartment_length():
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", "morph_soma_both_ends.swc")
+
+    parents, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(
+        fname, max_branch_len=2000.0
+    )
+    assert parents == [-1, 0, 0, 1]
+    assert pathlengths == [0.1, 1.0, 2.6, 2.2]
+
+
+@pytest.mark.parametrize("file", ["morph_250_single_point_soma.swc", "morph_250.swc"])
+def test_swc_radius(file):
     """We expect them to match for sufficiently large nseg. See #140."""
     nseg = 64
     non_split = 1 / nseg
@@ -56,7 +73,7 @@ def test_swc_radius():
 
     # Can not use full morphology because of branch sorting.
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph_250.swc")
+    fname = os.path.join(dirname, "swc_files", file)
 
     _, pathlen, radius_fns, _, _ = jx.utils.swc.swc_to_jaxley(
         fname, max_branch_len=2000.0, sort=False
@@ -87,7 +104,8 @@ def test_swc_radius():
         assert max_error < 0.5, f"radiuses do not match, error {max_error}."
 
 
-def test_swc_voltages():
+@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+def test_swc_voltages(file):
     """Check if voltages of SWC recording match.
 
     To match the branch indices between NEURON and jaxley, we rely on comparing the
@@ -97,7 +115,7 @@ def test_swc_voltages():
     than 1.5 mV.
     """
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")  # n120
+    fname = os.path.join(dirname, "swc_files", file)  # n120
 
     i_delay = 2.0
     i_dur = 5.0

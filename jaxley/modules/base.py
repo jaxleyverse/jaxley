@@ -25,8 +25,8 @@ from jaxley.utils.cell_utils import (
     interpolate_xyz,
     loc_of_index,
 )
-from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
+from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
 

@@ -1,0 +1,30 @@
+# Original file n120.swc edited using StdSwc version 1.31 on 11/7/15.
+# Irregularities and fixes documented in n120.swc.std.  See StdSwc1.31.doc for more information.
+#
+# SWC to SWC conversion from L-Measure. Sridevi Polavaram: spolavar@gmu.edu
+# Original fileName:C:\Users\praveen\Desktop\Amina\Processing\Turner\Source-Version\n120.swc
+#
+# ORIGINAL_SOURCE Neurolucida
+# CREATURE rat F344
+# REGION Hippocampus
+# FIELD/LAYER CA1
+# TYPE CA1 Pyramidal Cell in vitro young
+# CONTRIBUTOR Turner_DA
+# REFERENCE J. Comp. Neurol. 391: 335-352, 1998
+# RAW N120.asc
+# EXTRAS Turner_P.CA1
+# SOMA_AREA 1.28E3
+# SHRINKAGE_CORRECTION 1.13 1.13 4.0
+# VERSION_NUMBER 2.0
+# VERSION_DATE 1998-03-27
+# *********************************************
+# original source format: Neurolucida
+# SCALE 1.13  1.13  4.0  
+# 
+# NEUROMANTIC V1.6.3 (11/24/2013 11:58:32 AM): Saved to n120-t1.swc
+1 1 0.0 0.0 0.0 1.0 -1
+2 1 1.0 0.0 0.0 1.0 1
+3 3 2.1 0.0 0.0 1.0 2
+4 3 3.2 0.0 0.0 1.0 3
+5 3 1.3 0.0 0.0 1.0 1
+6 3 2.6 0.0 0.0 1.0 5

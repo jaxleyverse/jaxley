@@ -162,7 +162,7 @@ def test_move_to_cellview():
 
 def test_move_to_swc_cell():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph.swc")
     cell1 = jx.read_swc(fname, nseg=4)
     cell2 = jx.read_swc(fname, nseg=4)
     cell3 = jx.read_swc(fname, nseg=4)
