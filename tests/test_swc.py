@@ -25,7 +25,6 @@ def test_swc_reader_lengths():
     fname = os.path.join(dirname, "morph.swc")
 
     _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
-    pathlengths = np.asarray(pathlengths)[1:]
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
@@ -40,13 +39,9 @@ def test_swc_reader_lengths():
         neuron_pathlengths.append(sec.L)
     neuron_pathlengths = np.asarray(neuron_pathlengths)
 
-    for i, p in enumerate(pathlengths):
-        # For index three, there is some weird behaviour of NEURON. If I exclude the
-        # first traced point from the given branch in jaxley, then I can exactly
-        # reproduce NEURON, but it is unclear to me why I should do that.
-        if i != 3:
-            dists = np.abs(neuron_pathlengths - p)
-            assert np.min(dists) < 1e-3, "Some branches have too large distance."
+    for p in pathlengths:
+        dists = np.abs(neuron_pathlengths - p)
+        assert np.min(dists) < 1e-3, "Some branches have too large distance."
 
     assert len(pathlengths) == len(
         neuron_pathlengths
@@ -87,13 +82,9 @@ def test_swc_radius():
         neuron_diams.append(diams_in_branch)
     neuron_diams = np.asarray(neuron_diams)
 
-    for sec in h.allsec():
-        print(sec.L)
-
     for i in range(len(jaxley_diams)):
-        assert np.all(
-            np.abs(jaxley_diams[i] - neuron_diams[i]) < 0.5
-        ), "radiuses do not match."
+        max_error = np.max(np.abs(jaxley_diams[i] - neuron_diams[i]))
+        assert max_error < 0.5, f"radiuses do not match, error {max_error}."
 
 
 def test_swc_voltages():
