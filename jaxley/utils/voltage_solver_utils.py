@@ -46,6 +46,7 @@ def compute_morphology_indices(
     branchpoint_inds_children = (
         start_ind_for_branchpoints + child_belongs_to_branchpoint
     )
+    
     branch_inds_parents = par_inds * nseg + (nseg - 1)
     branch_inds_children = child_inds * nseg
 
@@ -67,10 +68,6 @@ def compute_morphology_indices(
     branchpoint_diags_row_inds = jnp.arange(
         start_ind_for_branchpoints, start_ind_for_branchpoints + num_branchpoints
     )
-    all_branchpoint_inds = jnp.concatenate(
-        [branchpoint_inds_parents, branchpoint_inds_children]
-    )
-    branchpoint_group_inds = remap_to_consecutive(all_branchpoint_inds)
 
     col_inds = jnp.concatenate(
         [
@@ -96,9 +93,26 @@ def compute_morphology_indices(
             branchpoint_diags_row_inds,
         ]
     )
-    return {"col_inds": col_inds, "row_inds": row_inds}, {
-        "branchpoint_group_inds": branchpoint_group_inds
-    }
+    return {"col_inds": col_inds, "row_inds": row_inds}
+
+
+def build_branchpoint_group_inds(
+    num_branchpoints,
+    child_belongs_to_branchpoint,
+    nseg,
+    nbranches,
+):
+    start_ind_for_branchpoints = nseg * nbranches
+    branchpoint_inds_parents = start_ind_for_branchpoints + jnp.arange(num_branchpoints)
+    branchpoint_inds_children = (
+        start_ind_for_branchpoints + child_belongs_to_branchpoint
+    )
+    
+    all_branchpoint_inds = jnp.concatenate(
+        [branchpoint_inds_parents, branchpoint_inds_children]
+    )
+    branchpoint_group_inds = remap_to_consecutive(all_branchpoint_inds)
+    return branchpoint_group_inds
 
 
 def compute_morphology_indices_in_levels(

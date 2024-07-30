@@ -44,7 +44,12 @@ def linear_segments(
     return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
 
 
-def merge_cells(cumsum_num_branches: List[int], cumsum_num_branchpoints: List[int], arrs: List[List[jnp.ndarray]], exclude_first: bool = True) -> jnp.ndarray:
+def merge_cells(
+    cumsum_num_branches: List[int],
+    cumsum_num_branchpoints: List[int],
+    arrs: List[List[jnp.ndarray]],
+    exclude_first: bool = True,
+) -> jnp.ndarray:
     """
     Build full list of which branches are solved in which iteration.
 
@@ -71,7 +76,11 @@ def merge_cells(cumsum_num_branches: List[int], cumsum_num_branchpoints: List[in
             raise NotImplementedError
             p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
         else:
-            p = [p_in_level + jnp.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]]) for p_in_level in p]
+            p = [
+                p_in_level
+                + jnp.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]])
+                for p_in_level in p
+            ]
         ps.append(p)
 
     max_len = max([len(att) for att in arrs])
@@ -97,11 +106,9 @@ def compute_levels(parents):
     return levels
 
 
-<<<<<<< HEAD
-def compute_branches_in_level(levels):
-=======
-def compute_children_in_level(levels: jnp.ndarray, children_row_and_col: jnp.ndarray) -> List[jnp.ndarray]:
->>>>>>> 90f1fb5 (Compartments, branches, and networks work now)
+def compute_children_in_level(
+    levels: jnp.ndarray, children_row_and_col: jnp.ndarray
+) -> List[jnp.ndarray]:
     num_branches = len(levels)
     children_in_each_level = []
     for l in range(1, np.max(levels) + 1):
@@ -221,13 +228,7 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     `coupling_conds`: S * um / cm / um^2 = S / cm / um -> *10**7 -> mS / cm^2
     """
     # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-    return (
-        rad1
-        * rad2**2
-        / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2)
-        / l1
-        * 10**7
-    )
+    return rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
 
 
 def compute_coupling_cond_branchpoint(rad, r_a, l):

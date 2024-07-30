@@ -262,7 +262,9 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     return radius
 
 
-def _compute_pathlengths(all_branches: np.ndarray, coords: np.ndarray) -> List[np.ndarray]:
+def _compute_pathlengths(
+    all_branches: np.ndarray, coords: np.ndarray
+) -> List[np.ndarray]:
     """
     Args:
         coords: Has shape (num_traced_points, 5), where `5` is (type, x, y, z, radius).

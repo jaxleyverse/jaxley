@@ -21,7 +21,7 @@ def integrate(
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
-    voltage_solver: str = "jaxley.thomas",
+    voltage_solver: str = "jaxley.stone",
     checkpoint_lengths: Optional[List[int]] = None,
     all_states: Optional[Dict] = None,
     return_states: bool = False,

@@ -30,6 +30,7 @@ from jaxley.utils.voltage_solver_utils import (
     compute_morphology_indices,
     compute_morphology_indices_in_levels,
     convert_to_csc,
+    build_branchpoint_group_inds,
 )
 
 
@@ -128,7 +129,7 @@ class Cell(Module):
         par_inds = self.branch_edges["parent_branch_index"].to_numpy()
         self.child_inds = self.branch_edges["child_branch_index"].to_numpy()
         self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
-        
+
         # TODO: does order have to be preserved?
         self.par_inds = np.unique(par_inds)
         self.total_nbranchpoints = len(self.par_inds)
@@ -136,7 +137,7 @@ class Cell(Module):
 
         self.initialize()
 
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = False
 
     def __getattr__(self, key: str):
@@ -163,23 +164,6 @@ class Cell(Module):
     def init_morph(self):
         """Initialize morphology."""
 
-        # For scipy and jax.scipy.
-        self.row_and_col_inds, self.branchpoint_inds = compute_morphology_indices(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.par_inds,
-            self.child_inds,
-            self.nseg,
-            self.total_nbranches,
-        )
-        num_elements = len(self.row_and_col_inds["row_inds"])
-        data_inds, indices, indptr = convert_to_csc(
-            num_elements=num_elements, row_ind=self.row_and_col_inds["row_inds"], col_ind=self.row_and_col_inds["col_inds"]
-        )
-        self.data_inds = data_inds
-        self.indices = indices
-        self.indptr = indptr
-
         # For Jaxley custom implementation.
         children_and_parents = compute_morphology_indices_in_levels(
             len(self.par_inds),
@@ -189,7 +173,12 @@ class Cell(Module):
             self.nseg,
             self.total_nbranches,
         )
-
+        self.branchpoint_group_inds = build_branchpoint_group_inds(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.nseg,
+            self.total_nbranches,
+        )
         parents = self.comb_parents
         children_inds = children_and_parents["children"]
         parents_inds = children_and_parents["parents"]
@@ -304,9 +293,9 @@ class CellView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[
-            local_idcs.columns
-        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         if index == "all":
             self.allow_make_trainable = False
         new_view = super().adjust_view("cell_index", index)

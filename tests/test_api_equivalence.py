@@ -57,19 +57,10 @@ def test_solver_backends_comp():
 
     voltages_jx_thomas = jx.integrate(comp, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(comp, voltage_solver="jaxley.stone")
-    with jax.disable_jit():
-        voltages_scipy = jx.integrate(comp, voltage_solver="scipy.sparse")
-    voltages_jax_scipy = jx.integrate(comp, voltage_solver="jax.scipy.sparse")
 
     message = "Voltages do not match between"
     max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
-    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
-    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
 
 
 def test_solver_backends_branch():
@@ -83,20 +74,10 @@ def test_solver_backends_branch():
 
     voltages_jx_thomas = jx.integrate(branch, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(branch, voltage_solver="jaxley.stone")
-    with jax.disable_jit():
-        voltages_scipy = jx.integrate(branch, voltage_solver="scipy.sparse")
-    voltages_jax_scipy = jx.integrate(branch, voltage_solver="jax.scipy.sparse")
-
+    
     message = "Voltages do not match between"
     max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
-    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
-    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
-
 
 def test_solver_backends_cell():
     """Test whether ways of adding synapses are equivalent."""
@@ -111,19 +92,10 @@ def test_solver_backends_cell():
 
     voltages_jx_thomas = jx.integrate(cell, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(cell, voltage_solver="jaxley.stone")
-    with jax.disable_jit():
-        voltages_scipy = jx.integrate(cell, voltage_solver="scipy.sparse")
-    voltages_jax_scipy = jx.integrate(cell, voltage_solver="jax.scipy.sparse")
-
+    
     message = "Voltages do not match between"
     max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
-    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
-    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
 
 
 def test_solver_backends_net():
@@ -152,19 +124,10 @@ def test_solver_backends_net():
 
     voltages_jx_thomas = jx.integrate(net, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(net, voltage_solver="jaxley.stone")
-    with jax.disable_jit():
-        voltages_scipy = jx.integrate(net, voltage_solver="scipy.sparse")
-    voltages_jax_scipy = jx.integrate(net, voltage_solver="jax.scipy.sparse")
-
+    
     message = "Voltages do not match between"
     max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_scipy))
-    assert max_error < 1e-8, f"{message} thomas/scipy. Error={max_error}"
-
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jax_scipy))
-    assert max_error < 1e-8, f"{message} thomas/jax.scipy. Error={max_error}"
 
 
 def test_api_equivalence_synapses():

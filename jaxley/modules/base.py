@@ -27,7 +27,11 @@ from jaxley.utils.cell_utils import (
 )
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
-
+from jaxley.utils.voltage_solver_utils import (
+    compute_morphology_indices,
+    compute_morphology_indices_in_levels,
+    convert_to_csc,
+)
 
 class Module(ABC):
     """Module base class.
@@ -101,6 +105,10 @@ class Module(ABC):
 
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
+
+        # For debugging the solver. Will be empty by default and only filled if
+        # `self._init_morph_for_debugging` is run.
+        self.debug_states = {}
 
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
@@ -600,6 +608,69 @@ class Module(ABC):
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
 
+    def _init_morph_for_debugging(self):
+        """Instandiates row and column inds which can be used to solve the voltage eqs.
+        
+        This is important only for expert users who try to modify the solver for the
+        voltage equations. By default, this function is never run.
+
+        This is useful for debugging the solver because one can use 
+        `scipy.linalg.sparse.spsolve` after every step of the solve.
+
+        Here is the code snippet that can be used for debuggin then:
+        ```python
+        from scipy.sparse import csc_matrix
+        from scipy.sparse.linalg import spsolve
+        from jaxley.utils.voltage_solver_utils import build_voltage_matrix_elements
+
+        elements, solve, num_entries, start_ind_for_branchpoints = (
+            build_voltage_matrix_elements(
+                uppers,
+                lowers,
+                diags,
+                solves,
+                branchpoint_conds_children[child_inds],
+                branchpoint_conds_parents[par_inds],
+                branchpoint_weights_children[child_inds],
+                branchpoint_weights_parents[par_inds],
+                branchpoint_diags,
+                branchpoint_solves,
+                nseg,
+                nbranches,
+            )
+        )
+        sparse_matrix = csc_matrix(
+            (elements, (row_inds, col_inds)), shape=(num_entries, num_entries)
+        )
+        solution = spsolve(sparse_matrix, solve)
+        solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.
+        solves = jnp.reshape(solution, (nseg, nbranches))
+        z = jnp.zeros((1,))
+        return z, z, solves, z, z, z, z, z```
+        """
+        # For scipy and jax.scipy.
+        row_and_col_inds, branchpoint_inds = compute_morphology_indices(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+            self.nseg,
+            self.total_nbranches,
+        )
+
+        num_elements = len(self.row_and_col_inds["row_inds"])
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=num_elements,
+            row_ind=self.row_and_col_inds["row_inds"],
+            col_ind=self.row_and_col_inds["col_inds"],
+        )
+        self.debug_states["row_inds"] = row_and_col_inds["row_inds"]
+        self.debug_states["col_inds"] = row_and_col_inds["col_inds"]
+        self.debug_states["branchpoint_group_inds"] = branchpoint_inds["branchpoint_group_inds"]
+        self.debug_states["data_inds"] = data_inds
+        self.debug_states["indices"] = indices
+        self.debug_states["indptr"] = indptr
+
     def record(self, state: str = "v", verbose: bool = True):
         """Insert a recording into the compartment.
 
@@ -768,7 +839,7 @@ class Module(ABC):
             params: The parameters of the module.
             solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
             voltage_solver: The tridiagonal solver to used to diagonalize the
-                coefficient matrix of the ODE system. Either "jaxley.thomas", 
+                coefficient matrix of the ODE system. Either "jaxley.thomas",
                 "jaxley.stone", or "jax.scipy.sparse".
 
         Returns:
@@ -819,23 +890,16 @@ class Module(ABC):
                 branchpoint_conds_parents=params["branchpoint_conds_parents"],
                 branchpoint_weights_children=params["branchpoint_weights_children"],
                 branchpoint_weights_parents=params["branchpoint_weights_parents"],
-                child_belongs_to_branchpoint=self.child_belongs_to_branchpoint,
                 par_inds=self.par_inds,
                 child_inds=self.child_inds,
                 nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                branches_in_each_level=self.comb_branches_in_each_level,
                 solver=voltage_solver,
                 delta_t=delta_t,
-                branchpoint_group_inds=self.branchpoint_inds["branchpoint_group_inds"],
-                row_inds=self.row_and_col_inds["row_inds"],
-                col_inds=self.row_and_col_inds["col_inds"],
-                data_inds = self.data_inds,
-                indices = self.indices,
-                indptr = self.indptr,
                 children_in_level=self.children_in_level,
                 parents_in_level=self.parents_in_level,
                 root_inds=self.root_inds,
+                branchpoint_group_inds=self.branchpoint_group_inds,
+                debug_states=self.debug_states,
             )
         else:
             new_voltages = step_voltage_explicit(

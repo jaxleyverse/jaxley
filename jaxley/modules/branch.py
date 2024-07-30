@@ -11,7 +11,7 @@ import pandas as pd
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
 from jaxley.utils.cell_utils import compute_coupling_cond, remap_to_consecutive
-from jaxley.utils.voltage_solver_utils import convert_to_csc, compute_morphology_indices
+from jaxley.utils.voltage_solver_utils import compute_morphology_indices, convert_to_csc
 
 
 class Branch(Module):
@@ -83,27 +83,12 @@ class Branch(Module):
         self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
         self.par_inds = np.asarray([]).astype(int)
         self.total_nbranchpoints = 0
+        self.branchpoint_group_inds = np.asarray([]).astype(int)
 
-        self.row_and_col_inds, self.branchpoint_inds = compute_morphology_indices(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.par_inds,
-            self.child_inds,
-            self.nseg,
-            self.total_nbranches,
-        )
         self.children_in_level = []
         self.parents_in_level = []
         self.root_inds = jnp.asarray([0])
-
-        num_elements = len(self.row_and_col_inds["row_inds"])
-        data_inds, indices, indptr = convert_to_csc(
-            num_elements=num_elements, row_ind=self.row_and_col_inds["row_inds"], col_ind=self.row_and_col_inds["col_inds"]
-        )
-        self.data_inds = data_inds
-        self.indices = indices
-        self.indptr = indptr
-
+        
         self.initialize()
         self.init_syns()
         self.initialized_conds = False
@@ -201,9 +186,9 @@ class BranchView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[
-            local_idcs.columns
-        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         self.allow_make_trainable = True
         new_view = super().adjust_view("branch_index", index)
         return new_view
