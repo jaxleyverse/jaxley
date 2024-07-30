@@ -10,7 +10,6 @@ from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
-from jaxley.utils.voltage_solver_utils import compute_morphology_indices, convert_to_csc
 
 
 class Compartment(Module):
@@ -53,7 +52,7 @@ class Compartment(Module):
         self.par_inds = np.asarray([]).astype(int)
         self.total_nbranchpoints = 0
         self.branchpoint_group_inds = np.asarray([]).astype(int)
-        
+
         self.children_in_level = []
         self.parents_in_level = []
         self.root_inds = jnp.asarray([0])

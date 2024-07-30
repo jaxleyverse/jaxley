@@ -10,8 +10,7 @@ import pandas as pd
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import compute_coupling_cond, remap_to_consecutive
-from jaxley.utils.voltage_solver_utils import compute_morphology_indices, convert_to_csc
+from jaxley.utils.cell_utils import compute_coupling_cond
 
 
 class Branch(Module):
@@ -88,7 +87,7 @@ class Branch(Module):
         self.children_in_level = []
         self.parents_in_level = []
         self.root_inds = jnp.asarray([0])
-        
+
         self.initialize()
         self.init_syns()
         self.initialized_conds = False

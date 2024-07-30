@@ -10,10 +10,7 @@ from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
 from jaxley.build_branched_tridiag import define_all_tridiags
-from jaxley.utils.voltage_solver_utils import (
-    build_voltage_matrix_elements,
-    group_and_sum,
-)
+from jaxley.utils.cell_utils import group_and_sum
 
 
 def step_voltage_explicit(
@@ -120,12 +117,12 @@ def step_voltage_implicit(
         bp_weights_children = bp_weights_children.at[child_inds].set(
             branchpoint_weights_children
         )
-        bp_conds_parents = bp_conds_parents.at[par_inds].set(
-            branchpoint_conds_parents
-        )
+        bp_conds_parents = bp_conds_parents.at[par_inds].set(branchpoint_conds_parents)
         bp_weights_parents = bp_weights_parents.at[par_inds].set(
             branchpoint_weights_parents
         )
+
+    # Triangulate the linear system of equations.
     (
         diags,
         lowers,
@@ -152,6 +149,8 @@ def step_voltage_implicit(
         root_inds,
         debug_states,
     )
+
+    # Backsubstitute the linear system of equations.
     (
         solves,
         lowers,

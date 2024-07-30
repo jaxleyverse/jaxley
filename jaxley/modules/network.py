@@ -16,6 +16,7 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import (
+    build_branchpoint_group_inds,
     compute_coupling_cond_branchpoint,
     compute_impact_on_node,
     convert_point_process_to_distributed,
@@ -23,12 +24,6 @@ from jaxley.utils.cell_utils import (
     remap_to_consecutive,
 )
 from jaxley.utils.syn_utils import gather_synapes
-from jaxley.utils.voltage_solver_utils import (
-    compute_morphology_indices,
-    compute_morphology_indices_in_levels,
-    convert_to_csc,
-    build_branchpoint_group_inds,
-)
 
 
 class Network(Module):
@@ -60,7 +55,6 @@ class Network(Module):
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.nbranchpoints_per_cell = [cell.total_nbranchpoints for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
-        self.total_nbranchpoints = sum(self.nbranchpoints_per_cell)
         self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
         self.cumsum_nbranchpoints = jnp.cumsum(
             jnp.asarray([0] + self.nbranchpoints_per_cell)

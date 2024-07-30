@@ -26,12 +26,9 @@ from jaxley.utils.cell_utils import (
     loc_of_index,
 )
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
+from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.plot_utils import plot_morph
-from jaxley.utils.voltage_solver_utils import (
-    compute_morphology_indices,
-    compute_morphology_indices_in_levels,
-    convert_to_csc,
-)
+
 
 class Module(ABC):
     """Module base class.
@@ -610,18 +607,19 @@ class Module(ABC):
 
     def _init_morph_for_debugging(self):
         """Instandiates row and column inds which can be used to solve the voltage eqs.
-        
+
         This is important only for expert users who try to modify the solver for the
         voltage equations. By default, this function is never run.
 
-        This is useful for debugging the solver because one can use 
+        This is useful for debugging the solver because one can use
         `scipy.linalg.sparse.spsolve` after every step of the solve.
 
-        Here is the code snippet that can be used for debuggin then:
+        Here is the code snippet that can be used for debugging then (to be inserted in
+        `solver_voltage`):
         ```python
         from scipy.sparse import csc_matrix
         from scipy.sparse.linalg import spsolve
-        from jaxley.utils.voltage_solver_utils import build_voltage_matrix_elements
+        from jaxley.utils.debug_solver import build_voltage_matrix_elements
 
         elements, solve, num_entries, start_ind_for_branchpoints = (
             build_voltage_matrix_elements(
@@ -629,27 +627,28 @@ class Module(ABC):
                 lowers,
                 diags,
                 solves,
-                branchpoint_conds_children[child_inds],
-                branchpoint_conds_parents[par_inds],
-                branchpoint_weights_children[child_inds],
-                branchpoint_weights_parents[par_inds],
+                branchpoint_conds_children[debug_states["child_inds"]],
+                branchpoint_conds_parents[debug_states["par_inds"]],
+                branchpoint_weights_children[debug_states["child_inds"]],
+                branchpoint_weights_parents[debug_states["par_inds"]],
                 branchpoint_diags,
                 branchpoint_solves,
-                nseg,
+                debug_states["nseg"],
                 nbranches,
             )
         )
         sparse_matrix = csc_matrix(
-            (elements, (row_inds, col_inds)), shape=(num_entries, num_entries)
+            (elements, (debug_states["row_inds"], debug_states["col_inds"])),
+            shape=(num_entries, num_entries),
         )
         solution = spsolve(sparse_matrix, solve)
         solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.
-        solves = jnp.reshape(solution, (nseg, nbranches))
-        z = jnp.zeros((1,))
-        return z, z, solves, z, z, z, z, z```
+        solves = jnp.reshape(solution, (debug_states["nseg"], nbranches))
+        return solves
+        ```
         """
         # For scipy and jax.scipy.
-        row_and_col_inds, branchpoint_inds = compute_morphology_indices(
+        row_and_col_inds = compute_morphology_indices(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
             self.par_inds,
@@ -658,18 +657,21 @@ class Module(ABC):
             self.total_nbranches,
         )
 
-        num_elements = len(self.row_and_col_inds["row_inds"])
+        num_elements = len(row_and_col_inds["row_inds"])
         data_inds, indices, indptr = convert_to_csc(
             num_elements=num_elements,
-            row_ind=self.row_and_col_inds["row_inds"],
-            col_ind=self.row_and_col_inds["col_inds"],
+            row_ind=row_and_col_inds["row_inds"],
+            col_ind=row_and_col_inds["col_inds"],
         )
         self.debug_states["row_inds"] = row_and_col_inds["row_inds"]
         self.debug_states["col_inds"] = row_and_col_inds["col_inds"]
-        self.debug_states["branchpoint_group_inds"] = branchpoint_inds["branchpoint_group_inds"]
         self.debug_states["data_inds"] = data_inds
         self.debug_states["indices"] = indices
         self.debug_states["indptr"] = indptr
+
+        self.debug_states["nseg"] = self.nseg
+        self.debug_states["child_inds"] = self.child_inds
+        self.debug_states["par_inds"] = self.par_inds
 
     def record(self, state: str = "v", verbose: bool = True):
         """Insert a recording into the compartment.
@@ -823,7 +825,7 @@ class Module(ABC):
         externals: Dict[str, jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
-        voltage_solver: str = "jaxley.thomas",
+        voltage_solver: str = "jaxley.stone",
     ) -> Dict[str, jnp.ndarray]:
         """One step of solving the Ordinary Differential Equation.
 

@@ -15,23 +15,19 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
+    build_branchpoint_group_inds,
     compute_children_in_level,
     compute_children_indices,
     compute_coupling_cond,
     compute_coupling_cond_branchpoint,
     compute_impact_on_node,
     compute_levels,
+    compute_morphology_indices_in_levels,
     compute_parents_in_level,
     loc_of_index,
     remap_to_consecutive,
 )
 from jaxley.utils.swc import swc_to_jaxley
-from jaxley.utils.voltage_solver_utils import (
-    compute_morphology_indices,
-    compute_morphology_indices_in_levels,
-    convert_to_csc,
-    build_branchpoint_group_inds,
-)
 
 
 class Cell(Module):
@@ -170,8 +166,6 @@ class Cell(Module):
             self.child_belongs_to_branchpoint,
             self.par_inds,
             self.child_inds,
-            self.nseg,
-            self.total_nbranches,
         )
         self.branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
@@ -188,8 +182,6 @@ class Cell(Module):
         self.parents_in_level = compute_parents_in_level(
             levels, self.par_inds, parents_inds
         )
-        if self.total_nbranchpoints == 0:
-            self.parents_in_level = [np.asarray([[0, 0]])]
 
         self.initialized_morph = True
 

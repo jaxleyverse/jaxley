@@ -1,13 +1,7 @@
-# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
-# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 from typing import Tuple
 
 import jax.numpy as jnp
 import numpy as np
-from jax.lax import ScatterDimensionNumbers, scatter_add
-
-from jaxley.utils.cell_utils import remap_to_consecutive
 
 
 def compute_morphology_indices(
@@ -19,6 +13,9 @@ def compute_morphology_indices(
     nbranches,
 ):
     """Return (row, col) to build the sparse matrix defining the voltage eqs.
+
+    This is only used in `Base._init_morph_for_debugging()`, so is only ever used for
+    debugging.
 
     This is run at `init`, not during runtime.
 
@@ -46,7 +43,7 @@ def compute_morphology_indices(
     branchpoint_inds_children = (
         start_ind_for_branchpoints + child_belongs_to_branchpoint
     )
-    
+
     branch_inds_parents = par_inds * nseg + (nseg - 1)
     branch_inds_children = child_inds * nseg
 
@@ -94,48 +91,6 @@ def compute_morphology_indices(
         ]
     )
     return {"col_inds": col_inds, "row_inds": row_inds}
-
-
-def build_branchpoint_group_inds(
-    num_branchpoints,
-    child_belongs_to_branchpoint,
-    nseg,
-    nbranches,
-):
-    start_ind_for_branchpoints = nseg * nbranches
-    branchpoint_inds_parents = start_ind_for_branchpoints + jnp.arange(num_branchpoints)
-    branchpoint_inds_children = (
-        start_ind_for_branchpoints + child_belongs_to_branchpoint
-    )
-    
-    all_branchpoint_inds = jnp.concatenate(
-        [branchpoint_inds_parents, branchpoint_inds_children]
-    )
-    branchpoint_group_inds = remap_to_consecutive(all_branchpoint_inds)
-    return branchpoint_group_inds
-
-
-def compute_morphology_indices_in_levels(
-    num_branchpoints,
-    child_belongs_to_branchpoint,
-    par_inds,
-    child_inds,
-    nseg,
-    nbranches,
-):
-    """Return (row, col) to build the sparse matrix defining the voltage eqs.
-
-    This is run at `init`, not during runtime.
-    """
-    branchpoint_inds_parents = jnp.arange(num_branchpoints)
-    branchpoint_inds_children = child_belongs_to_branchpoint
-    branch_inds_parents = par_inds
-    branch_inds_children = child_inds
-
-    children = jnp.stack([branch_inds_children, branchpoint_inds_children])
-    parents = jnp.stack([branch_inds_parents, branchpoint_inds_parents])
-
-    return {"children": children.T, "parents": parents.T}
 
 
 def build_voltage_matrix_elements(
@@ -225,26 +180,6 @@ def drop_nseg_th_element(
     )
 
     return result
-
-
-def group_and_sum(
-    values_to_sum: jnp.ndarray, inds_to_group_by: jnp.ndarray, num_branchpoints: int
-) -> jnp.ndarray:
-    """Group values by whether they have the same integer and sum values within group.
-
-    This is used to construct the last diagonals at the branch points.
-
-    Written by ChatGPT.
-    """
-    # Initialize an array to hold the sum of each group
-    group_sums = jnp.zeros(num_branchpoints)
-
-    # `.at[inds]` requires that `inds` is not empty, so we need an if-case here.
-    # `len(inds) == 0` is the case for branches and compartments.
-    if num_branchpoints > 0:
-        group_sums = group_sums.at[inds_to_group_by].add(values_to_sum)
-
-    return group_sums
 
 
 def convert_to_csc(
