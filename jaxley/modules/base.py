@@ -20,13 +20,13 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
-    childview,
     compute_levels,
     convert_point_process_to_distributed,
     flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
 )
+from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
 
@@ -1691,7 +1691,7 @@ class View:
         )
 
         # Update edges.
-        self.pointer.edges = pd.concat(
+        self.pointer.edges = concat_and_ignore_empty(
             [self.pointer.edges, pd.DataFrame(new_rows)],
             ignore_index=True,
         )

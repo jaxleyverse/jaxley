@@ -14,12 +14,8 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.utils.cell_utils import (
-    childview,
-    flip_comp_indices,
-    index_of_loc,
-    loc_of_index,
-)
+from jaxley.utils.cell_utils import flip_comp_indices, index_of_loc, loc_of_index
+from jaxley.utils.misc_utils import childview
 
 
 def test_flip_compartment_indices():
