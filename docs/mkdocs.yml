@@ -19,7 +19,7 @@ nav:
     - Modules: reference/modules.md
     - Simulation: reference/integration.md
     - Mechansims: reference/mechanisms.md
-    - Connecting Cells: reference/connection.md
+    - Connecting Cells: reference/connect.md
     - Optimization: reference/optimize.md
     - Utils: reference/utils.md
   - FAQ: faq.md
