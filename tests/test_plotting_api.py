@@ -20,7 +20,7 @@ from jaxley.synapses import IonotropicSynapse
 
 def test_cell():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph.swc")
     cell = jx.read_swc(fname, nseg=4)
 
     # Plot 1.
@@ -37,7 +37,7 @@ def test_cell():
 
 def test_network():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph.swc")
     cell1 = jx.read_swc(fname, nseg=4)
     cell2 = jx.read_swc(fname, nseg=4)
     cell3 = jx.read_swc(fname, nseg=4)
@@ -120,7 +120,7 @@ def test_vis_networks_built_from_scartch():
 
 def test_mixed_network():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph.swc")
     cell1 = jx.read_swc(fname, nseg=4)
 
     comp = jx.Compartment()

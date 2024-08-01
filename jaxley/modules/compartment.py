@@ -46,6 +46,17 @@ class Compartment(Module):
             dict(parent_branch_index=[], child_branch_index=[])
         )
 
+        # For morphology indexing.
+        self.child_inds = np.asarray([]).astype(int)
+        self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
+        self.par_inds = np.asarray([]).astype(int)
+        self.total_nbranchpoints = 0
+        self.branchpoint_group_inds = np.asarray([]).astype(int)
+
+        self.children_in_level = []
+        self.parents_in_level = []
+        self.root_inds = jnp.asarray([0])
+
         # Initialize the module.
         self.initialize()
         self.init_syns()
@@ -54,15 +65,16 @@ class Compartment(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        cond_params = {
-            "branch_conds_fwd": jnp.asarray([]),
-            "branch_conds_bwd": jnp.asarray([]),
-            "coupling_conds_fwd": jnp.asarray([[]]),
-            "coupling_conds_bwd": jnp.asarray([[]]),
-            "summed_coupling_conds": jnp.asarray([[0.0]]),
+    def init_conds(self, params):
+        return {
+            "branchpoint_conds_children": jnp.asarray([]),
+            "branchpoint_conds_parents": jnp.asarray([]),
+            "branchpoint_weights_children": jnp.asarray([]),
+            "branchpoint_weights_parents": jnp.asarray([]),
+            "branch_uppers": jnp.asarray([]),
+            "branch_lowers": jnp.asarray([]),
+            "branch_diags": jnp.asarray([0.0]),
         }
-        return cond_params
 
 
 class CompartmentView(View):

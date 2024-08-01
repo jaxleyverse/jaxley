@@ -22,10 +22,10 @@ from jaxley.utils.cell_utils import (
     _compute_num_children,
     compute_levels,
     convert_point_process_to_distributed,
-    flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
 )
+from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
@@ -103,6 +103,10 @@ class Module(ABC):
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
 
+        # For debugging the solver. Will be empty by default and only filled if
+        # `self._init_morph_for_debugging` is run.
+        self.debug_states = {}
+
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
@@ -164,7 +168,6 @@ class Module(ABC):
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             inds = jnp.arange(len(value))
-            inds = flip_comp_indices(inds, self.nseg)  # See #305
             self.jaxnodes[key] = jnp.asarray(value)[inds]
 
         # `jaxedges` contains only parameters (no indices).
@@ -509,8 +512,6 @@ class Module(ABC):
         for parameter in pstate:
             key = parameter["key"]
             inds = parameter["indices"]
-            if key not in self.synapse_param_names:
-                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
@@ -551,8 +552,6 @@ class Module(ABC):
         for parameter in pstate:
             key = parameter["key"]
             inds = parameter["indices"]
-            if key not in self.synapse_state_names:
-                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
             if key in states:  # Only initial states, not parameters.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
@@ -592,7 +591,6 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
             voltages = channel_nodes.loc[indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
@@ -606,6 +604,74 @@ class Module(ABC):
             # returned are updated here.
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
+
+    def _init_morph_for_debugging(self):
+        """Instandiates row and column inds which can be used to solve the voltage eqs.
+
+        This is important only for expert users who try to modify the solver for the
+        voltage equations. By default, this function is never run.
+
+        This is useful for debugging the solver because one can use
+        `scipy.linalg.sparse.spsolve` after every step of the solve.
+
+        Here is the code snippet that can be used for debugging then (to be inserted in
+        `solver_voltage`):
+        ```python
+        from scipy.sparse import csc_matrix
+        from scipy.sparse.linalg import spsolve
+        from jaxley.utils.debug_solver import build_voltage_matrix_elements
+
+        elements, solve, num_entries, start_ind_for_branchpoints = (
+            build_voltage_matrix_elements(
+                uppers,
+                lowers,
+                diags,
+                solves,
+                branchpoint_conds_children[debug_states["child_inds"]],
+                branchpoint_conds_parents[debug_states["par_inds"]],
+                branchpoint_weights_children[debug_states["child_inds"]],
+                branchpoint_weights_parents[debug_states["par_inds"]],
+                branchpoint_diags,
+                branchpoint_solves,
+                debug_states["nseg"],
+                nbranches,
+            )
+        )
+        sparse_matrix = csc_matrix(
+            (elements, (debug_states["row_inds"], debug_states["col_inds"])),
+            shape=(num_entries, num_entries),
+        )
+        solution = spsolve(sparse_matrix, solve)
+        solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.
+        solves = jnp.reshape(solution, (debug_states["nseg"], nbranches))
+        return solves
+        ```
+        """
+        # For scipy and jax.scipy.
+        row_and_col_inds = compute_morphology_indices(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+            self.nseg,
+            self.total_nbranches,
+        )
+
+        num_elements = len(row_and_col_inds["row_inds"])
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=num_elements,
+            row_ind=row_and_col_inds["row_inds"],
+            col_ind=row_and_col_inds["col_inds"],
+        )
+        self.debug_states["row_inds"] = row_and_col_inds["row_inds"]
+        self.debug_states["col_inds"] = row_and_col_inds["col_inds"]
+        self.debug_states["data_inds"] = data_inds
+        self.debug_states["indices"] = indices
+        self.debug_states["indptr"] = indptr
+
+        self.debug_states["nseg"] = self.nseg
+        self.debug_states["child_inds"] = self.child_inds
+        self.debug_states["par_inds"] = self.par_inds
 
     def record(self, state: str = "v", verbose: bool = True):
         """Insert a recording into the compartment.
@@ -759,7 +825,7 @@ class Module(ABC):
         externals: Dict[str, jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
-        tridiag_solver: str = "stone",
+        voltage_solver: str = "jaxley.stone",
     ) -> Dict[str, jnp.ndarray]:
         """One step of solving the Ordinary Differential Equation.
 
@@ -774,8 +840,9 @@ class Module(ABC):
             externals: The external inputs.
             params: The parameters of the module.
             solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
-            tridiag_solver: The tridiagonal solver to used to diagonalize the
-            coefficient matrix of the ODE system. Either "thomas" or "stone".
+            voltage_solver: The tridiagonal solver to used to diagonalize the
+                coefficient matrix of the ODE system. Either "jaxley.thomas",
+                "jaxley.stone", or "jax.scipy.sparse".
 
         Returns:
             The updated state of the module.
@@ -818,16 +885,23 @@ class Module(ABC):
                 voltages=voltages,
                 voltage_terms=(v_terms + syn_v_terms) / cm,
                 constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                summed_coupling_conds=params["summed_coupling_conds"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
+                coupling_conds_upper=params["branch_uppers"],
+                coupling_conds_lower=params["branch_lowers"],
+                summed_coupling_conds=params["branch_diags"],
+                branchpoint_conds_children=params["branchpoint_conds_children"],
+                branchpoint_conds_parents=params["branchpoint_conds_parents"],
+                branchpoint_weights_children=params["branchpoint_weights_children"],
+                branchpoint_weights_parents=params["branchpoint_weights_parents"],
+                par_inds=self.par_inds,
+                child_inds=self.child_inds,
                 nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                branches_in_each_level=self.comb_branches_in_each_level,
-                tridiag_solver=tridiag_solver,
+                solver=voltage_solver,
                 delta_t=delta_t,
+                children_in_level=self.children_in_level,
+                parents_in_level=self.parents_in_level,
+                root_inds=self.root_inds,
+                branchpoint_group_inds=self.branchpoint_group_inds,
+                debug_states=self.debug_states,
             )
         else:
             new_voltages = step_voltage_explicit(
@@ -886,24 +960,23 @@ class Module(ABC):
 
         # Update states of the channels.
         indices = channel_nodes["comp_index"].to_numpy()
-        flipped_indices = flip_comp_indices(indices, self.nseg)  # See #305
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += ["radius", "length", "axial_resistivity"]
             channel_state_names = list(channel.channel_states)
             channel_state_names += self.membrane_current_names
-            indices = flipped_indices[channel_nodes[channel._name].astype(bool)]
+            channel_indices = indices[channel_nodes[channel._name].astype(bool)]
 
-            channel_params = query(params, channel_param_names, indices)
-            channel_states = query(states, channel_state_names, indices)
+            channel_params = query(params, channel_param_names, channel_indices)
+            channel_states = query(states, channel_state_names, channel_indices)
 
             states_updated = channel.update_states(
-                channel_states, delta_t, voltages[indices], channel_params
+                channel_states, delta_t, voltages[channel_indices], channel_params
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in states_updated.items():
-                states[key] = states[key].at[indices].set(val)
+                states[key] = states[key].at[channel_indices].set(val)
 
         return states
 
@@ -937,7 +1010,6 @@ class Module(ABC):
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
 
             channel_params = {}
             for p in channel_param_names:

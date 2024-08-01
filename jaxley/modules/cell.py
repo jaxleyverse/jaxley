@@ -15,10 +15,17 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
-    compute_branches_in_level,
+    build_branchpoint_group_inds,
+    compute_children_in_level,
+    compute_children_indices,
     compute_coupling_cond,
+    compute_coupling_cond_branchpoint,
+    compute_impact_on_node,
     compute_levels,
+    compute_morphology_indices_in_levels,
+    compute_parents_in_level,
     loc_of_index,
+    remap_to_consecutive,
 )
 from jaxley.utils.swc import swc_to_jaxley
 
@@ -88,6 +95,7 @@ class Cell(Module):
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
+        self.comb_children = compute_children_indices(self.comb_parents)
         self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
@@ -113,7 +121,18 @@ class Cell(Module):
             )
         )
 
+        # For morphology indexing.
+        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
+        self.child_inds = self.branch_edges["child_branch_index"].to_numpy()
+        self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
+
+        # TODO: does order have to be preserved?
+        self.par_inds = np.unique(par_inds)
+        self.total_nbranchpoints = len(self.par_inds)
+        self.root_inds = jnp.asarray([0])
+
         self.initialize()
+
         self.init_syns()
         self.initialized_conds = False
 
@@ -140,10 +159,29 @@ class Cell(Module):
 
     def init_morph(self):
         """Initialize morphology."""
+
+        # For Jaxley custom implementation.
+        children_and_parents = compute_morphology_indices_in_levels(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+        )
+        self.branchpoint_group_inds = build_branchpoint_group_inds(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.nseg,
+            self.total_nbranches,
+        )
         parents = self.comb_parents
+        children_inds = children_and_parents["children"]
+        parents_inds = children_and_parents["parents"]
 
         levels = compute_levels(parents)
-        self.comb_branches_in_each_level = compute_branches_in_level(levels)
+        self.children_in_level = compute_children_in_level(levels, children_inds)
+        self.parents_in_level = compute_parents_in_level(
+            levels, self.par_inds, parents_inds
+        )
 
         self.initialized_morph = True
 
@@ -151,7 +189,6 @@ class Cell(Module):
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
-        parents = self.comb_parents
 
         axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
         radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
@@ -164,90 +201,65 @@ class Cell(Module):
         coupling_conds_bwd = conds[1]
         summed_coupling_conds = conds[2]
 
-        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
-        child_inds = self.branch_edges["child_branch_index"].to_numpy()
-
-        conds = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
-            axial_resistivity[child_inds, -1],
-            axial_resistivity[par_inds, 0],
-            radiuses[child_inds, -1],
-            radiuses[par_inds, 0],
-            lengths[child_inds, -1],
-            lengths[par_inds, 0],
+        # The conductance from the children to the branch point.
+        branchpoint_conds_children = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
         )
-        branch_conds_fwd = jnp.zeros((nbranches))
-        branch_conds_bwd = jnp.zeros((nbranches))
-        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
-        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
+        # The conductance from the parents to the branch point.
+        branchpoint_conds_parents = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
+        )
+
+        # Weights with which the compartments influence their nearby node.
+        # The impact of the children on the branch point.
+        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
+        )
+        # The impact of parents on the branch point.
+        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
+        )
 
         summed_coupling_conds = self.update_summed_coupling_conds(
             summed_coupling_conds,
-            child_inds,
-            branch_conds_fwd,
-            branch_conds_bwd,
-            parents,
+            self.child_inds,
+            self.par_inds,
+            branchpoint_conds_children,
+            branchpoint_conds_parents,
         )
 
         cond_params = {
-            "coupling_conds_fwd": coupling_conds_fwd,
-            "coupling_conds_bwd": coupling_conds_bwd,
-            "summed_coupling_conds": summed_coupling_conds,
-            "branch_conds_fwd": branch_conds_fwd,
-            "branch_conds_bwd": branch_conds_bwd,
+            "branch_uppers": coupling_conds_bwd,
+            "branch_lowers": coupling_conds_fwd,
+            "branch_diags": summed_coupling_conds,
+            "branchpoint_conds_children": branchpoint_conds_children,
+            "branchpoint_conds_parents": branchpoint_conds_parents,
+            "branchpoint_weights_children": branchpoint_weights_children,
+            "branchpoint_weights_parents": branchpoint_weights_parents,
         }
         return cond_params
 
     @staticmethod
-    def init_cell_conds(
-        ra_parent: jnp.ndarray,
-        ra_child: jnp.ndarray,
-        r_parent: jnp.ndarray,
-        r_child: jnp.ndarray,
-        l_parent: jnp.ndarray,
-        l_child: jnp.ndarray,
-    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        """Initializes the cell conductances, i.e., the ones at branch points.
-
-        This method is used via vmap. Inputs should be scalar.
-
-        `radius`: um
-        `r_a`: ohm cm
-        `length_single_compartment`: um
-        `coupling_conds`: S * um / cm / um^2 = S / cm / um
-
-        Args:
-            ra_parent: Axial resistivity of the parent compartment.
-            ra_child: Axial resistivity of the child compartment.
-            r_parent: Radius of the parent compartment.
-            r_child: Radius of the child compartment.
-            l_parent: Length of the parent compartment.
-            l_child: Length of the child compartment.
-
-        Returns:
-            Tuple of forward coupling conductances and backward coupling conductances.
-        """
-        branch_conds_fwd = compute_coupling_cond(
-            r_child, r_parent, ra_child, ra_parent, l_child, l_parent
-        )
-        branch_conds_bwd = compute_coupling_cond(
-            r_parent, r_child, ra_parent, ra_child, l_parent, l_child
-        )
-
-        # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10**7
-        branch_conds_bwd *= 10**7
-
-        return branch_conds_fwd, branch_conds_bwd
-
-    @staticmethod
     def update_summed_coupling_conds(
-        summed_conds: jnp.ndarray,
-        child_inds: jnp.ndarray,
-        conds_fwd: jnp.ndarray,
-        conds_bwd: jnp.ndarray,
-        parents: jnp.ndarray,
-    ) -> jnp.ndarray:
-        """Perform updates on `summed_coupling_conds`.
+        summed_conds,
+        child_inds,
+        par_inds,
+        branchpoint_conds_children,
+        branchpoint_conds_parents,
+    ):
+        """Perform updates on the diagonal based on conductances of the branchpoints.
 
         Args:
             summed_conds: shape [num_branches, nseg]
@@ -259,20 +271,8 @@ class Cell(Module):
         Returns:
             Updated `summed_coupling_conds`.
         """
-
-        summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds])
-
-        dnums = ScatterDimensionNumbers(
-            update_window_dims=(),
-            inserted_window_dims=(0, 1),
-            scatter_dims_to_operand_dims=(0, 1),
-        )
-        summed_conds = scatter_add(
-            summed_conds,
-            jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
-            conds_fwd[child_inds],
-            dnums,
-        )
+        summed_conds = summed_conds.at[child_inds, 0].add(branchpoint_conds_children)
+        summed_conds = summed_conds.at[par_inds, -1].add(branchpoint_conds_parents)
         return summed_conds
 
 

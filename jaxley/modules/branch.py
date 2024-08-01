@@ -76,6 +76,18 @@ class Branch(Module):
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+
+        # For morphology indexing.
+        self.child_inds = np.asarray([]).astype(int)
+        self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
+        self.par_inds = np.asarray([]).astype(int)
+        self.total_nbranchpoints = 0
+        self.branchpoint_group_inds = np.asarray([]).astype(int)
+
+        self.children_in_level = []
+        self.parents_in_level = []
+        self.root_inds = jnp.asarray([0])
+
         self.initialize()
         self.init_syns()
         self.initialized_conds = False
@@ -110,12 +122,14 @@ class Branch(Module):
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
         cond_params = {
-            "branch_conds_fwd": jnp.asarray([]),
-            "branch_conds_bwd": jnp.asarray([]),
+            "branchpoint_conds_children": jnp.asarray([]),
+            "branchpoint_conds_parents": jnp.asarray([]),
+            "branchpoint_weights_children": jnp.asarray([]),
+            "branchpoint_weights_parents": jnp.asarray([]),
         }
-        cond_params["coupling_conds_fwd"] = conds[0]
-        cond_params["coupling_conds_bwd"] = conds[1]
-        cond_params["summed_coupling_conds"] = conds[2]
+        cond_params["branch_lowers"] = conds[0]
+        cond_params["branch_uppers"] = conds[1]
+        cond_params["branch_diags"] = conds[2]
 
         return cond_params
 
@@ -151,10 +165,6 @@ class Branch(Module):
         l2 = lengths[1:]
         coupling_conds_bwd = compute_coupling_cond(r1, r2, r_a1, r_a2, l1, l2)
         coupling_conds_fwd = compute_coupling_cond(r2, r1, r_a2, r_a1, l2, l1)
-
-        # Convert (S / cm / um) -> (mS / cm^2)
-        coupling_conds_fwd *= 10**7
-        coupling_conds_bwd *= 10**7
 
         # Compute the summed coupling conductances of each compartment.
         summed_coupling_conds = jnp.zeros((nseg))
