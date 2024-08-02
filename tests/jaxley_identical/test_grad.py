@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from jax import config
 
 config.update("jax_enable_x64", True)
@@ -15,7 +18,7 @@ from jax import value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connection import fully_connect
+from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -70,37 +73,31 @@ def test_network_grad():
     grad_fn = value_and_grad(simulate)
     v, g = grad_fn(params)
 
-    value_080424 = jnp.asarray(-595.26727325)
-    max_error = np.max(np.abs(v - value_080424))
+    value_300724 = jnp.asarray(-592.26920963)
+    max_error = np.max(np.abs(v - value_300724))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
-    grad_080424 = [
-        {"HH_gNa": jnp.asarray([-1535.22449953])},
-        {"HH_gK": jnp.asarray([35.48478889, 14.32112752, 121.63791342])},
+    grad_300724 = [
+        {"HH_gNa": jnp.asarray([-1420.82493379])},
+        {"HH_gK": jnp.asarray([36.76796492, 14.50837022, 127.31361882])},
         {
             "HH_gLeak": jnp.asarray(
                 [
-                    -1455.10679072,
-                    -653.562989,
-                    -295.76687787,
-                    -379.81105237,
-                    -10324.49675834,
-                    -1344.91808099,
-                    -277680.15914084,
+                    -1511.83061117,
+                    -657.06543355,
+                    -276.59064858,
+                    -348.48049676,
+                    -10613.6754718,
+                    -1240.62600873,
+                    -268475.23225046,
                 ]
             )
         },
-        {
-            "IonotropicSynapse_gS": jnp.asarray([-91.88927175883443])
-            * point_process_to_dist_factor
-        },
-        {
-            "TestSynapse_gC": jnp.asarray([-0.05350404, -0.11460676])
-            * point_process_to_dist_factor
-        },
+        {"IonotropicSynapse_gS": jnp.asarray([-149134.15237682])},
+        {"TestSynapse_gC": jnp.asarray([-75.34438431, -163.50398586])},
     ]
 
-    for true_g, new_g in zip(grad_080424, g):
+    for true_g, new_g in zip(grad_300724, g):
         for key in true_g:
             max_error = np.max(np.abs(true_g[key] - new_g[key]))
             tolerance = 1e-3  # Leak cond has a huge gradient...

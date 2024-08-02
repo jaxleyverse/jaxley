@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -9,7 +12,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connection import connect
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 

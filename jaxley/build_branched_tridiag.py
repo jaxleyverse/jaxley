@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from math import pi
 
 import jax.numpy as jnp
@@ -9,8 +12,8 @@ def define_all_tridiags(
     voltage_terms: jnp.asarray,
     i_ext: jnp.ndarray,
     num_branches: int,
-    coupling_conds_fwd: float,
-    coupling_conds_bwd: float,
+    coupling_conds_upper: float,
+    coupling_conds_lower: float,
     summed_coupling_conds: float,
     dt: float,
 ):
@@ -29,8 +32,8 @@ def define_all_tridiags(
         voltage_terms,
         i_ext,
         dt,
-        coupling_conds_fwd,
-        coupling_conds_bwd,
+        coupling_conds_upper,
+        coupling_conds_lower,
         summed_coupling_conds,
     )
 
@@ -42,8 +45,8 @@ def _define_tridiag_for_branch(
     voltage_terms: jnp.ndarray,
     i_ext: jnp.ndarray,
     dt: float,
-    coupling_conds_fwd: float,
-    coupling_conds_bwd: float,
+    coupling_conds_upper: float,
+    coupling_conds_lower: float,
     summed_coupling_conds: float,
 ):
     """
@@ -55,6 +58,6 @@ def _define_tridiag_for_branch(
     b_v = voltages + dt * i_ext
 
     # Subdiagonals.
-    upper = jnp.asarray(-dt * coupling_conds_fwd)
-    lower = jnp.asarray(-dt * coupling_conds_bwd)
+    upper = jnp.asarray(-dt * coupling_conds_upper)
+    lower = jnp.asarray(-dt * coupling_conds_lower)
     return lower, a_v, upper, b_v

@@ -1,21 +1,27 @@
 site_name: jaxley
-site_url: "https://mackelab.org/jaxley/"
+site_url: "https://jaxleyverse.github.io/jaxley"
 
 nav:
   - Home: index.md
   - Tutorials:
-    - Getting started: tutorial/01_small_network.md
-    - Run a network simulation: tutorial/01_small_network.md
-    - Set parameters: tutorial/02_setting_parameters.md
-    - Obtain gradient and train: tutorial/03_gradient.md
-    - Define groups: tutorial/04_groups.md
-    - Define your own channels: tutorial/05_new_mechanisms.md
-    - Use diverse channels: tutorial/06_diverse_channels.md
+    - Getting started: tutorial/01_morph_neurons.md
+    - Run a network simulation: tutorial/02_small_network.md
+    - Set parameters: tutorial/03_setting_parameters.md
+    - Accelerate simulations: tutorial/04_jit_and_vmap.md
+    - Define your own channels: tutorial/05_channel_and_synapse_models.md
+    - Define groups: tutorial/06_groups.md
+    - Optimization: tutorial/07_gradient_descent.md
   - Installation: install.md
   - Contributing: 
     - Guide: contribute.md
     - Code of Conduct: code_of_conduct.md
-  - API Reference: reference.md
+  - API Reference: 
+    - Modules: reference/modules.md
+    - Simulation: reference/integration.md
+    - Mechansims: reference/mechanisms.md
+    - Connecting Cells: reference/connect.md
+    - Optimization: reference/optimize.md
+    - Utils: reference/utils.md
   - FAQ: faq.md
   - Credits: credits.md
 
@@ -24,9 +30,12 @@ repo_url: http://github.com/jaxleyverse/jaxley
 
 theme:
   name: 'material'
+  features:
+  - content.code.copy
   palette:
     primary: 'indigo'
     accent: 'indigo'
+  logo: logo_white.png
   collapse_navigation: False
 
 markdown_extensions:
@@ -65,9 +74,10 @@ plugins:
       default_handler: python
       handlers:
         python:
-          rendering:
+          options:
             show_source: true
             heading_level: 3
+          paths: [..]
   
 watch:
   - ../jaxley

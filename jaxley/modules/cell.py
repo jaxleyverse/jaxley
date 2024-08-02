@@ -1,6 +1,9 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import time
 from copy import deepcopy
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -12,39 +15,66 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
-    compute_branches_in_level,
+    build_branchpoint_group_inds,
+    compute_children_in_level,
+    compute_children_indices,
     compute_coupling_cond,
+    compute_coupling_cond_branchpoint,
+    compute_impact_on_node,
     compute_levels,
+    compute_morphology_indices_in_levels,
+    compute_parents_in_level,
     loc_of_index,
+    remap_to_consecutive,
 )
 from jaxley.utils.swc import swc_to_jaxley
 
 
 class Cell(Module):
-    """Cell."""
+    """Cell class.
+
+    This class defines a single cell that can be simulated by itself or
+    connected with synapses to build a network. A cell is made up of several branches
+    and supports intricate cell morphologies.
+    """
 
     cell_params: Dict = {}
     cell_states: Dict = {}
 
     def __init__(
         self,
-        branches: Union[Branch, List[Branch]],
-        parents: List,
+        branches: Optional[Union[Branch, List[Branch]]] = None,
+        parents: Optional[List[int]] = None,
         xyzr: Optional[List[np.ndarray]] = None,
     ):
         """Initialize a cell.
 
         Args:
-            branches:
-            parents:
+            branches: A single branch or a list of branches that make up the cell.
+                If a single branch is provided, then the branch is repeated `len(parents)`
+                times to create the cell.
+            parents: The parent branch index for each branch. The first branch has no
+                parent and is therefore set to -1.
             xyzr: For every branch, the x, y, and z coordinates and the radius at the
                 traced coordinates. Note that this is the full tracing (from SWC), not
                 the stick representation coordinates.
         """
         super().__init__()
-        assert isinstance(branches, Branch) or len(parents) == len(
-            branches
-        ), "If `branches` is a list then you have to provide equally many parents, i.e. len(branches) == len(parents)."
+        assert (
+            isinstance(branches, (Branch, List)) or branches is None
+        ), "Only Branch or List[Branch] is allowed."
+        if branches is not None:
+            assert (
+                parents is not None
+            ), "If `branches` is not a list then you have to set `parents`."
+        if isinstance(branches, List):
+            assert len(parents) == len(
+                branches
+            ), "Ensure equally many parents, i.e. len(branches) == len(parents)."
+
+        branches = Branch() if branches is None else branches
+        parents = [-1] if parents is None else parents
+
         if isinstance(branches, Branch):
             branch_list = [branches for _ in range(len(parents))]
         else:
@@ -65,6 +95,7 @@ class Cell(Module):
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
+        self.comb_children = compute_children_indices(self.comb_parents)
         self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
@@ -90,11 +121,22 @@ class Cell(Module):
             )
         )
 
+        # For morphology indexing.
+        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
+        self.child_inds = self.branch_edges["child_branch_index"].to_numpy()
+        self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
+
+        # TODO: does order have to be preserved?
+        self.par_inds = np.unique(par_inds)
+        self.total_nbranchpoints = len(self.par_inds)
+        self.root_inds = jnp.asarray([0])
+
         self.initialize()
-        self.init_syns(None)
+
+        self.init_syns()
         self.initialized_conds = False
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -117,18 +159,36 @@ class Cell(Module):
 
     def init_morph(self):
         """Initialize morphology."""
+
+        # For Jaxley custom implementation.
+        children_and_parents = compute_morphology_indices_in_levels(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+        )
+        self.branchpoint_group_inds = build_branchpoint_group_inds(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.nseg,
+            self.total_nbranches,
+        )
         parents = self.comb_parents
+        children_inds = children_and_parents["children"]
+        parents_inds = children_and_parents["parents"]
 
         levels = compute_levels(parents)
-        self.comb_branches_in_each_level = compute_branches_in_level(levels)
+        self.children_in_level = compute_children_in_level(levels, children_inds)
+        self.parents_in_level = compute_parents_in_level(
+            levels, self.par_inds, parents_inds
+        )
 
         self.initialized_morph = True
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
-        parents = self.comb_parents
 
         axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
         radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
@@ -141,68 +201,65 @@ class Cell(Module):
         coupling_conds_bwd = conds[1]
         summed_coupling_conds = conds[2]
 
-        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
-        child_inds = self.branch_edges["child_branch_index"].to_numpy()
-
-        conds = vmap(self.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
-            axial_resistivity[child_inds, -1],
-            axial_resistivity[par_inds, 0],
-            radiuses[child_inds, -1],
-            radiuses[par_inds, 0],
-            lengths[child_inds, -1],
-            lengths[par_inds, 0],
+        # The conductance from the children to the branch point.
+        branchpoint_conds_children = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
         )
-        branch_conds_fwd = jnp.zeros((nbranches))
-        branch_conds_bwd = jnp.zeros((nbranches))
-        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
-        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
+        # The conductance from the parents to the branch point.
+        branchpoint_conds_parents = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
+        )
+
+        # Weights with which the compartments influence their nearby node.
+        # The impact of the children on the branch point.
+        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
+        )
+        # The impact of parents on the branch point.
+        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
+        )
 
         summed_coupling_conds = self.update_summed_coupling_conds(
             summed_coupling_conds,
-            child_inds,
-            branch_conds_fwd,
-            branch_conds_bwd,
-            parents,
+            self.child_inds,
+            self.par_inds,
+            branchpoint_conds_children,
+            branchpoint_conds_parents,
         )
 
         cond_params = {
-            "coupling_conds_fwd": coupling_conds_fwd,
-            "coupling_conds_bwd": coupling_conds_bwd,
-            "summed_coupling_conds": summed_coupling_conds,
-            "branch_conds_fwd": branch_conds_fwd,
-            "branch_conds_bwd": branch_conds_bwd,
+            "branch_uppers": coupling_conds_bwd,
+            "branch_lowers": coupling_conds_fwd,
+            "branch_diags": summed_coupling_conds,
+            "branchpoint_conds_children": branchpoint_conds_children,
+            "branchpoint_conds_parents": branchpoint_conds_parents,
+            "branchpoint_weights_children": branchpoint_weights_children,
+            "branchpoint_weights_parents": branchpoint_weights_parents,
         }
         return cond_params
 
     @staticmethod
-    def init_cell_conds(ra_parent, ra_child, r_parent, r_child, l_parent, l_child):
-        """Initializes the cell conductances, i.e., the ones at branch points.
-
-        This method is used via vmap. Inputs should be scalar.
-
-        `radius`: um
-        `r_a`: ohm cm
-        `length_single_compartment`: um
-        `coupling_conds`: S * um / cm / um^2 = S / cm / um
-        """
-        branch_conds_fwd = compute_coupling_cond(
-            r_child, r_parent, ra_child, ra_parent, l_child, l_parent
-        )
-        branch_conds_bwd = compute_coupling_cond(
-            r_parent, r_child, ra_parent, ra_child, l_parent, l_child
-        )
-
-        # Convert (S / cm / um) -> (mS / cm^2)
-        branch_conds_fwd *= 10**7
-        branch_conds_bwd *= 10**7
-
-        return branch_conds_fwd, branch_conds_bwd
-
-    @staticmethod
     def update_summed_coupling_conds(
-        summed_conds, child_inds, conds_fwd, conds_bwd, parents
+        summed_conds,
+        child_inds,
+        par_inds,
+        branchpoint_conds_children,
+        branchpoint_conds_parents,
     ):
-        """Perform updates on `summed_coupling_conds`.
+        """Perform updates on the diagonal based on conductances of the branchpoints.
 
         Args:
             summed_conds: shape [num_branches, nseg]
@@ -210,28 +267,19 @@ class Cell(Module):
             conds_fwd: shape [num_branches - 1]
             conds_bwd: shape [num_branches - 1]
             parents: shape [num_branches]
+
+        Returns:
+            Updated `summed_coupling_conds`.
         """
-
-        summed_conds = summed_conds.at[child_inds, -1].add(conds_bwd[child_inds])
-
-        dnums = ScatterDimensionNumbers(
-            update_window_dims=(),
-            inserted_window_dims=(0, 1),
-            scatter_dims_to_operand_dims=(0, 1),
-        )
-        summed_conds = scatter_add(
-            summed_conds,
-            jnp.stack([parents[child_inds], jnp.zeros_like(parents[child_inds])]).T,
-            conds_fwd[child_inds],
-            dnums,
-        )
+        summed_conds = summed_conds.at[child_inds, 0].add(branchpoint_conds_children)
+        summed_conds = summed_conds.at[par_inds, -1].add(branchpoint_conds_parents)
         return summed_conds
 
 
 class CellView(View):
     """CellView."""
 
-    def __init__(self, pointer, view):
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         view = view.assign(controlled_by_param=view.global_cell_index)
         super().__init__(pointer, view)
 
@@ -245,7 +293,7 @@ class CellView(View):
         new_view = super().adjust_view("cell_index", index)
         return new_view
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         assert key == "branch"
         return BranchView(self.pointer, self.view)
 
@@ -266,7 +314,7 @@ def read_swc(
     max_branch_len: float = 300.0,
     min_radius: Optional[float] = None,
     assign_groups: bool = False,
-):
+) -> Cell:
     """Reads SWC file into a `jx.Cell`.
 
     Jaxley assumes cylindrical compartments and therefore defines length and radius
@@ -284,6 +332,9 @@ def read_swc(
             file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
             `apical`, `custom`. See here:
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+
+    Returns:
+        A `jx.Cell` object.
     """
     parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None

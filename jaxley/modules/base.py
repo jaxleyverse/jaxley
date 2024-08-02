@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -17,13 +20,13 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
-    childview,
     compute_levels,
     convert_point_process_to_distributed,
-    flip_comp_indices,
     interpolate_xyz,
     loc_of_index,
 )
+from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
+from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
 
@@ -100,6 +103,10 @@ class Module(ABC):
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
 
+        # For debugging the solver. Will be empty by default and only filled if
+        # `self._init_morph_for_debugging` is run.
+        self.debug_states = {}
+
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
@@ -121,7 +128,7 @@ class Module(ABC):
         base_dir = object.__dir__(self)
         return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
 
-    def _append_params_and_states(self, param_dict, state_dict):
+    def _append_params_and_states(self, param_dict: Dict, state_dict: Dict):
         """Insert the default params of the module (e.g. radius, length).
 
         This is run at `__init__()`. It does not deal with channels.
@@ -131,7 +138,7 @@ class Module(ABC):
         for state_name, state_value in state_dict.items():
             self.nodes[state_name] = state_value
 
-    def _gather_channels_from_constituents(self, constituents: List) -> None:
+    def _gather_channels_from_constituents(self, constituents: List):
         """Modify `self.channels` and `self.nodes` with channel info from constituents.
 
         This is run at `__init__()`. It takes all branches of constituents (e.g.
@@ -161,7 +168,6 @@ class Module(ABC):
         self.jaxnodes = {}
         for key, value in self.nodes.to_dict(orient="list").items():
             inds = jnp.arange(len(value))
-            inds = flip_comp_indices(inds, self.nseg)  # See #305
             self.jaxnodes[key] = jnp.asarray(value)[inds]
 
         # `jaxedges` contains only parameters (no indices).
@@ -184,15 +190,28 @@ class Module(ABC):
         params: bool = True,
         states: bool = True,
         channel_names: Optional[List[str]] = None,
-    ):
-        """Print detailed information about the Module or a view of it."""
+    ) -> pd.DataFrame:
+        """Print detailed information about the Module or a view of it.
+
+        Args:
+            param_names: The names of the parameters to show. If `None`, all parameters
+                are shown. NOT YET IMPLEMENTED.
+            indices: Whether to show the indices of the compartments.
+            params: Whether to show the parameters of the compartments.
+            states: Whether to show the states of the compartments.
+            channel_names: The names of the channels to show. If `None`, all channels are
+                shown.
+
+        Returns:
+            A `pd.DataFrame` with the requested information.
+        """
         return self._show(
             self.nodes, param_names, indices, params, states, channel_names
         )
 
     def _show(
         self,
-        view,
+        view: pd.DataFrame,
         param_names: Optional[Union[str, List[str]]] = None,
         indices: bool = True,
         params: bool = True,
@@ -223,7 +242,7 @@ class Module(ABC):
         return printable_nodes
 
     @abstractmethod
-    def init_conds(self, params):
+    def init_conds(self, params: Dict):
         """Initialize coupling conductances.
 
         Args:
@@ -232,7 +251,7 @@ class Module(ABC):
         """
         raise NotImplementedError
 
-    def _append_channel_to_nodes(self, view, channel: "jx.Channel"):
+    def _append_channel_to_nodes(self, view: pd.DataFrame, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
         name = channel._name
 
@@ -367,7 +386,7 @@ class Module(ABC):
 
     def _make_trainable(
         self,
-        view,
+        view: pd.DataFrame,
         key: str,
         init_val: Optional[Union[float, list]] = None,
         verbose: bool = True,
@@ -423,7 +442,7 @@ class Module(ABC):
         self.trainable_params: List[Dict[str, jnp.ndarray]] = []
         self.num_trainable_params: int = 0
 
-    def add_to_group(self, group_name):
+    def add_to_group(self, group_name: str):
         """Add a view of the module to a group.
 
         Groups can then be indexed. For example:
@@ -437,44 +456,64 @@ class Module(ABC):
         """
         raise ValueError("`add_to_group()` makes no sense for an entire module.")
 
-    def _add_to_group(self, group_name, view):
-        if group_name in self.group_nodes.keys():
+    def _add_to_group(self, group_name: str, view: pd.DataFrame):
+        if group_name in self.group_nodes:
             view = pd.concat([self.group_nodes[group_name], view])
         self.group_nodes[group_name] = view
 
-    def get_parameters(self):
+    def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
 
         The returned parameters should be passed to `jx.integrate(..., params=params).
+
+        Returns:
+            A list of all trainable parameters in the form of
+                [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
         """
         return self.trainable_params
 
-    def get_all_parameters(self, trainable_params):
+    def get_all_parameters(self, pstate: List[Dict]) -> Dict[str, jnp.ndarray]:
         """Return all parameters (and coupling conductances) needed to simulate.
+
+        Runs `init_conds()` and return every parameter that is needed to solve the ODE.
+        This includes conductances, radiuses, lengths, axial_resistivities, but also
+        coupling conductances.
 
         This is done by first obtaining the current value of every parameter (not only
         the trainable ones) and then replacing the trainable ones with the value
         in `trainable_params()`. This function is run within `jx.integrate()`.
+
+        pstate can be obtained by calling `params_to_pstate()`.
+        ```
+        params = module.get_parameters() # i.e. [0, 1, 2]
+        pstate = params_to_pstate(params, module.indices_set_by_trainables)
+        module.to_jax() # needed for call to module.jaxnodes
+        ```
+
+        Args:
+            pstate: The state of the trainable parameters. pstate takes the form
+                [{"key": "gNa", "indices": jnp.array([0, 1, 2]), "val": jnp.array([0.1, 0.2, 0.3])}, ...].
+
+        Returns:
+            A dictionary of all module parameters.
         """
         params = {}
         for key in ["radius", "length", "axial_resistivity", "capacitance"]:
             params[key] = self.jaxnodes[key]
 
         for channel in self.channels:
-            for channel_params in list(channel.channel_params.keys()):
+            for channel_params in channel.channel_params:
                 params[channel_params] = self.jaxnodes[channel_params]
 
         for synapse_params in self.synapse_param_names:
             params[synapse_params] = self.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
-        for parameter in trainable_params:
+        for parameter in pstate:
             key = parameter["key"]
             inds = parameter["indices"]
-            if key not in self.synapse_param_names:
-                inds = flip_comp_indices(parameter["indices"], self.nseg)  # See #305
             set_param = parameter["val"]
-            if key in list(params.keys()):  # Only parameters, not initial states.
+            if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
@@ -488,6 +527,50 @@ class Module(ABC):
 
         return params
 
+    def get_all_states(
+        self, pstate: List[Dict], all_params, delta_t: float
+    ) -> Dict[str, jnp.ndarray]:
+        """Get the full initial state of the module from jaxnodes and trainables.
+
+        Args:
+            pstate: The state of the trainable parameters.
+            all_params: All parameters of the module.
+            delta_t: The time step.
+
+        Returns:
+            A dictionary of all states of the module.
+        """
+        # Join node and edge states into a single state dictionary.
+        states = {"v": self.jaxnodes["v"]}
+        for channel in self.channels:
+            for channel_states in channel.channel_states:
+                states[channel_states] = self.jaxnodes[channel_states]
+        for synapse_states in self.synapse_state_names:
+            states[synapse_states] = self.jaxedges[synapse_states]
+
+        # Override with the initial states set by `.make_trainable()`.
+        for parameter in pstate:
+            key = parameter["key"]
+            inds = parameter["indices"]
+            set_param = parameter["val"]
+            if key in states:  # Only initial states, not parameters.
+                # `inds` is of shape `(num_params, num_comps_per_param)`.
+                # `set_param` is of shape `(num_params,)`
+                # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
+                # `.set()` to work. This is done with `[:, None]`.
+                states[key] = states[key].at[inds].set(set_param[:, None])
+
+        # Add to the states the initial current through every channel.
+        states, _ = self._channel_currents(
+            states, delta_t, self.channels, self.nodes, all_params
+        )
+
+        # Add to the states the initial current through every synapse.
+        states, _ = self._synapse_currents(
+            states, self.synapses, all_params, delta_t, self.edges
+        )
+        return states
+
     @property
     def initialized(self):
         """Whether the `Module` is ready to be solved or not."""
@@ -498,7 +581,7 @@ class Module(ABC):
         self.init_morph()
         return self
 
-    def init_states(self) -> None:
+    def init_states(self):
         """Initialize all mechanisms in their steady state.
 
         This considers the voltages and parameters of each compartment."""
@@ -508,7 +591,6 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
             voltages = channel_nodes.loc[indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
@@ -523,15 +605,87 @@ class Module(ABC):
             for key, val in init_state.items():
                 self.nodes.loc[indices, key] = val
 
+    def _init_morph_for_debugging(self):
+        """Instandiates row and column inds which can be used to solve the voltage eqs.
+
+        This is important only for expert users who try to modify the solver for the
+        voltage equations. By default, this function is never run.
+
+        This is useful for debugging the solver because one can use
+        `scipy.linalg.sparse.spsolve` after every step of the solve.
+
+        Here is the code snippet that can be used for debugging then (to be inserted in
+        `solver_voltage`):
+        ```python
+        from scipy.sparse import csc_matrix
+        from scipy.sparse.linalg import spsolve
+        from jaxley.utils.debug_solver import build_voltage_matrix_elements
+
+        elements, solve, num_entries, start_ind_for_branchpoints = (
+            build_voltage_matrix_elements(
+                uppers,
+                lowers,
+                diags,
+                solves,
+                branchpoint_conds_children[debug_states["child_inds"]],
+                branchpoint_conds_parents[debug_states["par_inds"]],
+                branchpoint_weights_children[debug_states["child_inds"]],
+                branchpoint_weights_parents[debug_states["par_inds"]],
+                branchpoint_diags,
+                branchpoint_solves,
+                debug_states["nseg"],
+                nbranches,
+            )
+        )
+        sparse_matrix = csc_matrix(
+            (elements, (debug_states["row_inds"], debug_states["col_inds"])),
+            shape=(num_entries, num_entries),
+        )
+        solution = spsolve(sparse_matrix, solve)
+        solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.
+        solves = jnp.reshape(solution, (debug_states["nseg"], nbranches))
+        return solves
+        ```
+        """
+        # For scipy and jax.scipy.
+        row_and_col_inds = compute_morphology_indices(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.par_inds,
+            self.child_inds,
+            self.nseg,
+            self.total_nbranches,
+        )
+
+        num_elements = len(row_and_col_inds["row_inds"])
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=num_elements,
+            row_ind=row_and_col_inds["row_inds"],
+            col_ind=row_and_col_inds["col_inds"],
+        )
+        self.debug_states["row_inds"] = row_and_col_inds["row_inds"]
+        self.debug_states["col_inds"] = row_and_col_inds["col_inds"]
+        self.debug_states["data_inds"] = data_inds
+        self.debug_states["indices"] = indices
+        self.debug_states["indptr"] = indptr
+
+        self.debug_states["nseg"] = self.nseg
+        self.debug_states["child_inds"] = self.child_inds
+        self.debug_states["par_inds"] = self.par_inds
+
     def record(self, state: str = "v", verbose: bool = True):
-        """Insert a recording into the compartment."""
+        """Insert a recording into the compartment.
+
+        Args:
+            state: The name of the state to record.
+            verbose: Whether to print number of inserted recordings."""
         view = deepcopy(self.nodes)
         view["state"] = state
         recording_view = view[["comp_index", "state"]]
         recording_view = recording_view.rename(columns={"comp_index": "rec_index"})
         self._record(recording_view, verbose=verbose)
 
-    def _record(self, view, verbose: bool = True):
+    def _record(self, view: pd.DataFrame, verbose: bool = True):
         self.recordings = pd.concat([self.recordings, view], ignore_index=True)
         if verbose:
             print(f"Added {len(view)} recordings. See `.recordings` for details.")
@@ -540,9 +694,7 @@ class Module(ABC):
         """Removes all recordings from the module."""
         self.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(
-        self, current: Optional[jnp.ndarray] = None, verbose: bool = True
-    ) -> None:
+    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -558,9 +710,7 @@ class Module(ABC):
         """
         self._external_input("i", current, self.nodes, verbose=verbose)
 
-    def clamp(
-        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
-    ) -> None:
+    def clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool = True):
         """Clamp a state to a given value across specified compartments.
 
         Args:
@@ -601,10 +751,10 @@ class Module(ABC):
 
     def data_stimulate(
         self,
-        current,
+        current: jnp.ndarray,
         data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
         verbose: bool = False,
-    ):
+    ) -> Tuple[jnp.ndarray, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
 
         Args:
@@ -682,14 +832,17 @@ class Module(ABC):
         self.externals.pop(state_name, None)
         self.external_inds.pop(state_name, None)
 
-    def insert(self, channel):
-        """Insert a channel."""
+    def insert(self, channel: Channel):
+        """Insert a channel into the module.
+
+        Args:
+            channel: The channel to insert."""
         self._insert(channel, self.nodes)
 
     def _insert(self, channel, view):
         self._append_channel_to_nodes(view, channel)
 
-    def init_syns(self, connectivities):
+    def init_syns(self):
         self.initialized_syns = True
 
     def init_morph(self):
@@ -697,15 +850,34 @@ class Module(ABC):
 
     def step(
         self,
-        u,
-        delta_t,
-        external_inds,
+        u: Dict[str, jnp.ndarray],
+        delta_t: float,
+        external_inds: Dict[str, jnp.ndarray],
         externals: Dict[str, jnp.ndarray],
         params: Dict[str, jnp.ndarray],
         solver: str = "bwd_euler",
-        tridiag_solver: str = "stone",
-    ):
-        """One step of solving the Ordinary Differential Equation."""
+        voltage_solver: str = "jaxley.stone",
+    ) -> Dict[str, jnp.ndarray]:
+        """One step of solving the Ordinary Differential Equation.
+
+        This function is called inside of `integrate` and increments the state of the
+        module by one time step. Calls `_step_channels` and `_step_synapse` to update
+        the states of the channels and synapses using fwd_euler.
+
+        Args:
+            u: The state of the module. voltages = u["v"]
+            delta_t: The time step.
+            external_inds: The indices of the external inputs.
+            externals: The external inputs.
+            params: The parameters of the module.
+            solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
+            voltage_solver: The tridiagonal solver to used to diagonalize the
+                coefficient matrix of the ODE system. Either "jaxley.thomas",
+                "jaxley.stone", or "jax.scipy.sparse".
+
+        Returns:
+            The updated state of the module.
+        """
 
         # Extract the voltages
         voltages = u["v"]
@@ -744,16 +916,23 @@ class Module(ABC):
                 voltages=voltages,
                 voltage_terms=(v_terms + syn_v_terms) / cm,
                 constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                summed_coupling_conds=params["summed_coupling_conds"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
+                coupling_conds_upper=params["branch_uppers"],
+                coupling_conds_lower=params["branch_lowers"],
+                summed_coupling_conds=params["branch_diags"],
+                branchpoint_conds_children=params["branchpoint_conds_children"],
+                branchpoint_conds_parents=params["branchpoint_conds_parents"],
+                branchpoint_weights_children=params["branchpoint_weights_children"],
+                branchpoint_weights_parents=params["branchpoint_weights_parents"],
+                par_inds=self.par_inds,
+                child_inds=self.child_inds,
                 nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                branches_in_each_level=self.comb_branches_in_each_level,
-                tridiag_solver=tridiag_solver,
+                solver=voltage_solver,
                 delta_t=delta_t,
+                children_in_level=self.children_in_level,
+                parents_in_level=self.parents_in_level,
+                root_inds=self.root_inds,
+                branchpoint_group_inds=self.branchpoint_group_inds,
+                debug_states=self.debug_states,
             )
         else:
             new_voltages = step_voltage_explicit(
@@ -779,12 +958,12 @@ class Module(ABC):
 
     def _step_channels(
         self,
-        states,
-        delta_t,
+        states: Dict[str, jnp.ndarray],
+        delta_t: float,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
-    ):
+    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         """One step of integration of the channels and of computing their current."""
         states = self._step_channels_state(
             states, delta_t, channels, channel_nodes, params
@@ -801,7 +980,7 @@ class Module(ABC):
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
-    ):
+    ) -> Dict[str, jnp.ndarray]:
         """One integration step of the channels."""
         voltages = states["v"]
 
@@ -812,35 +991,34 @@ class Module(ABC):
 
         # Update states of the channels.
         indices = channel_nodes["comp_index"].to_numpy()
-        flipped_indices = flip_comp_indices(indices, self.nseg)  # See #305
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += ["radius", "length", "axial_resistivity"]
             channel_state_names = list(channel.channel_states)
             channel_state_names += self.membrane_current_names
-            indices = flipped_indices[channel_nodes[channel._name].astype(bool)]
+            channel_indices = indices[channel_nodes[channel._name].astype(bool)]
 
-            channel_params = query(params, channel_param_names, indices)
-            channel_states = query(states, channel_state_names, indices)
+            channel_params = query(params, channel_param_names, channel_indices)
+            channel_states = query(states, channel_state_names, channel_indices)
 
             states_updated = channel.update_states(
-                channel_states, delta_t, voltages[indices], channel_params
+                channel_states, delta_t, voltages[channel_indices], channel_params
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in states_updated.items():
-                states[key] = states[key].at[indices].set(val)
+                states[key] = states[key].at[channel_indices].set(val)
 
         return states
 
     def _channel_currents(
         self,
-        states,
-        delta_t,
+        states: Dict[str, jnp.ndarray],
+        delta_t: float,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
         params: Dict[str, jnp.ndarray],
-    ):
+    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         """Return the current through each channel.
 
         This is also updates `state` because the `state` also contains the current.
@@ -863,7 +1041,6 @@ class Module(ABC):
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
             indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            indices = flip_comp_indices(indices, self.nseg)  # See #305
 
             channel_params = {}
             for p in channel_param_names:
@@ -902,12 +1079,12 @@ class Module(ABC):
 
     def _step_synapse(
         self,
-        u,
-        syn_channels,
-        params,
-        delta_t,
-        edges,
-    ):
+        u: Dict[str, jnp.ndarray],
+        syn_channels: List[Channel],
+        params: Dict[str, jnp.ndarray],
+        delta_t: float,
+        edges: pd.DataFrame,
+    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         """One step of integration of the channels.
 
         `Network` overrides this method (because it actually has synapses), whereas
@@ -918,7 +1095,7 @@ class Module(ABC):
 
     def _synapse_currents(
         self, states, syn_channels, params, delta_t, edges: pd.DataFrame
-    ):
+    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         return states, (None, None)
 
     @staticmethod
@@ -928,7 +1105,7 @@ class Module(ABC):
         i_stim: jnp.ndarray,
         radius: float,
         length_single_compartment: float,
-    ):
+    ) -> jnp.ndarray:
         """
         Return external input to each compartment in uA / cm^2.
 
@@ -958,7 +1135,7 @@ class Module(ABC):
         dims: Tuple[int] = (0, 1),
         type: str = "line",
         morph_plot_kwargs: Dict = {},
-    ) -> None:
+    ) -> Axes:
         """Visualize the module.
 
         Args:
@@ -977,7 +1154,15 @@ class Module(ABC):
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def _vis(self, ax, col, dims, view, type, morph_plot_kwargs):
+    def _vis(
+        self,
+        ax: Axes,
+        col: str,
+        dims: Tuple[int],
+        view: pd.DataFrame,
+        type: str,
+        morph_plot_kwargs: Dict,
+    ) -> Axes:
         branches_inds = view["branch_index"].to_numpy()
         coords = []
         for branch_ind in branches_inds:
@@ -1082,7 +1267,15 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
-        """Move cells or networks by adding to their (x, y, z) coordinates."""
+        """Move cells or networks by adding to their (x, y, z) coordinates.
+
+        This function is used only for visualization. It does not affect the simulation.
+
+        Args:
+            x: The amount to move in the x direction in um.
+            y: The amount to move in the y direction in um.
+            z: The amount to move in the z direction in um.
+        """
         self._move(x, y, z, self.nodes)
 
     def _move(self, x: float, y: float, z: float, view):
@@ -1100,7 +1293,7 @@ class Module(ABC):
         x: Union[float, np.ndarray] = 0.0,
         y: Union[float, np.ndarray] = 0.0,
         z: Union[float, np.ndarray] = 0.0,
-    ) -> None:
+    ):
         """Move cells or networks to a location (x, y, z).
 
         If x, y, and z are floats, then the first compartment of the first branch
@@ -1169,6 +1362,8 @@ class Module(ABC):
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
 
+        This function is used only for visualization. It does not affect the simulation.
+
         Args:
             degrees: How many degrees to rotate the module by.
             rotation_axis: Either of {`xy` | `xz` | `yz`}.
@@ -1195,7 +1390,7 @@ class Module(ABC):
             self.xyzr[i][:, dims] = rot
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int]:
         """Returns the number of submodules contained in a module.
 
         ```
@@ -1276,7 +1471,21 @@ class View:
         params: bool = True,
         states: bool = True,
         channel_names: Optional[List[str]] = None,
-    ):
+    ) -> pd.DataFrame:
+        """Print detailed information about the Module or a view of it.
+
+        Args:
+            param_names: The names of the parameters to show. If `None`, all parameters
+                are shown. NOT YET IMPLEMENTED.
+            indices: Whether to show the indices of the compartments.
+            params: Whether to show the parameters of the compartments.
+            states: Whether to show the states of the compartments.
+            channel_names: The names of the channels to show. If `None`, all channels are
+                shown.
+
+        Returns:
+            A `pd.DataFrame` with the requested information.
+        """
         view = self.pointer._show(
             self.view, param_names, indices, params, states, channel_names
         )
@@ -1291,7 +1500,7 @@ class View:
                     view = view.drop(name, axis=1)
         return view
 
-    def set_global_index_and_index(self, nodes):
+    def set_global_index_and_index(self, nodes: pd.DataFrame) -> pd.DataFrame:
         """Use the global compartment, branch, and cell index as the index."""
         nodes = nodes.drop("controlled_by_param", axis=1)
         nodes = nodes.drop("comp_index", axis=1)
@@ -1306,8 +1515,12 @@ class View:
         )
         return nodes
 
-    def insert(self, channel):
-        """Insert a channel."""
+    def insert(self, channel: Channel):
+        """Insert a channel into the module at the currently viewed location(s).
+
+        Args:
+            channel: The channel to insert.
+        """
         assert not inspect.isclass(
             channel
         ), """
@@ -1318,7 +1531,11 @@ class View:
         self.pointer._insert(channel, nodes)
 
     def record(self, state: str = "v", verbose: bool = True):
-        """Record a state."""
+        """Record a state variable of the compartment(s) at the currently view location(s).
+
+        Args:
+            state: The name of the state to record.
+            verbose: Whether to print number of inserted recordings."""
         nodes = self.set_global_index_and_index(self.view)
         view = deepcopy(nodes)
         view["state"] = state
@@ -1332,19 +1549,23 @@ class View:
 
     def data_stimulate(
         self,
-        current,
+        current: jnp.ndarray,
         data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
         verbose: bool = False,
     ):
-        """Insert a stimulus into the module within jit (or grad)."""
+        """Insert a stimulus into the module within jit (or grad).
+
+        Args:
+            current: Current in `nA`.
+            verbose: Whether or not to print the number of inserted stimuli. `False`
+                by default because this method is meant to be jitted.
+        """
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._data_external_input(
             "i", current, data_stimuli, nodes, verbose=verbose
         )
 
-    def clamp(
-        self, state_name: str, state_array: jnp.ndarray, verbose: bool = True
-    ) -> None:
+    def clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool = True):
         """Clamp a state to a given value across specified compartments.
 
         Args:
@@ -1402,7 +1623,16 @@ class View:
         dims: Tuple[int] = (0, 1),
         type: str = "line",
         morph_plot_kwargs: Dict = {},
-    ):
+    ) -> Axes:
+        """Visualize the module.
+
+        Args:
+            ax: An axis into which to plot.
+            col: The color for all branches.
+            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+                two of them.
+            morph_plot_kwargs: Keyword arguments passed to the plotting function.
+        """
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._vis(
             ax=ax,
@@ -1414,16 +1644,49 @@ class View:
         )
 
     def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        """Move cells or networks by adding to their (x, y, z) coordinates.
+
+        This function is used only for visualization. It does not affect the simulation.
+
+        Args:
+            x: The amount to move in the x direction in um.
+            y: The amount to move in the y direction in um.
+            z: The amount to move in the z direction in um.
+        """
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move(x, y, z, nodes)
 
     def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        """Move cells or networks to a location (x, y, z).
+
+        If x, y, and z are floats, then the first compartment of the first branch
+        of the first cell is moved to that float coordinate, and everything else is
+        shifted by the difference between that compartment's previous coordinate and
+        the new float location.
+
+        If x, y, and z are arrays, then they must each have a length equal to the number
+        of cells being moved. Then the first compartment of the first branch of each
+        cell is moved to the specified location.
+        """
         # Ensuring here that the branch indices in the view passed are global
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._move_to(x, y, z, nodes)
 
-    def adjust_view(self, key: str, index: Union[int, str, list, range, slice]):
-        """Update view."""
+    def adjust_view(
+        self, key: str, index: Union[int, str, list, range, slice]
+    ) -> "View":
+        """Update view.
+
+        Select a subset, range, slice etc. of the self.view based on the index key,
+        i.e. (cell_index, [1,2]). returns a view of all compartments of cell 1 and 2.
+
+        Args:
+            key: The key to adjust the view by.
+            index: The index to adjust the view by.
+
+        Returns:
+            A new view.
+        """
         if isinstance(index, int) or isinstance(index, np.int64):
             self.view = self.view[self.view[key] == index]
         elif isinstance(index, list) or isinstance(index, range):
@@ -1436,7 +1699,7 @@ class View:
         self.view["controlled_by_param"] -= self.view["controlled_by_param"].iloc[0]
         return self
 
-    def _get_local_indices(self):
+    def _get_local_indices(self) -> pd.DataFrame:
         """Computes local from global indices.
 
         #cell_index, branch_index, comp_index
@@ -1478,7 +1741,14 @@ class View:
         )
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int]:
+        """Returns the number of elements currently in view.
+
+        ```
+        network.shape = (num_cells, num_branches, num_compartments)
+        cell.shape = (num_branches, num_compartments)
+        branch.shape = (num_compartments,)
+        ```"""
         local_idcs = self._get_local_indices()
         return tuple(local_idcs.nunique())
 
@@ -1498,10 +1768,17 @@ class View:
 
     def _append_multiple_synapses(
         self, pre_rows: pd.DataFrame, post_rows: pd.DataFrame, synapse_type: Synapse
-    ) -> None:
+    ):
         """Append multiple rows to the `self.edges` table.
 
         This is used, e.g. by `fully_connect` and `connect`.
+
+        Args:
+            pre_rows: The pre-synaptic compartments.
+            post_rows: The post-synaptic compartments.
+            synapse_type: The synapse to append.
+
+        both `pre_rows` and `post_rows` can be obtained from self.view.
         """
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name
@@ -1530,7 +1807,7 @@ class View:
         )
 
         # Update edges.
-        self.pointer.edges = pd.concat(
+        self.pointer.edges = concat_and_ignore_empty(
             [self.pointer.edges, pd.DataFrame(new_rows)],
             ignore_index=True,
         )
@@ -1545,19 +1822,30 @@ class View:
         `module`.
 
         Used during `self._append_multiple_synapses`.
+
+        Args:
+            synapse_name: The name of the synapse.
+
+        Returns:
+            type_ind: Index referencing the synapse type in self.synapses.
+            is_new_type: Whether the synapse is new to the module.
         """
         syn_names = self.pointer.synapse_names
         is_new_type = False if synapse_name in syn_names else True
         type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
         return type_ind, is_new_type
 
-    def _add_params_to_edges(self, synapse_type: Synapse, indices: list) -> None:
+    def _add_params_to_edges(self, synapse_type: Synapse, indices: list):
         """Fills parameter and state columns of new synapses in the `edges` table.
 
         This method does not create new rows in the `.edges` table. It only fills
         columns of already existing rows.
 
         Used during `self._append_multiple_synapses`.
+
+        Args:
+            synapse_type: The synapse to append.
+            indices: The indices of the synapses according to self.synapses.
         """
         # Add parameters and states to the `.edges` table.
         for key, param_val in synapse_type.synapse_params.items():
@@ -1567,10 +1855,13 @@ class View:
         for key, state_val in synapse_type.synapse_states.items():
             self.pointer.edges.loc[indices, key] = state_val
 
-    def _update_synapse_state_names(self, synapse_type: Synapse) -> None:
+    def _update_synapse_state_names(self, synapse_type: Synapse):
         """Update attributes with information about the synapses.
 
         Used during `self._append_multiple_synapses`.
+
+        Args:
+            synapse_type: The synapse to append.
         """
         # (Potentially) update variables that track meta information about synapses.
         self.pointer.synapse_names.append(synapse_type._name)
@@ -1593,7 +1884,7 @@ class GroupView(View):
         view: pd.DataFrame,
         childview: type,
         childview_keys: List[str],
-    ) -> None:
+    ):
         """Initialize group.
 
         Args:

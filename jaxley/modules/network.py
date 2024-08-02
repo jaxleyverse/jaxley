@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import itertools
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, Union
@@ -13,15 +16,21 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import (
+    build_branchpoint_group_inds,
+    compute_coupling_cond_branchpoint,
+    compute_impact_on_node,
     convert_point_process_to_distributed,
-    flip_comp_indices,
     merge_cells,
+    remap_to_consecutive,
 )
 from jaxley.utils.syn_utils import gather_synapes
 
 
 class Network(Module):
-    """Network."""
+    """Network class.
+
+    This class defines a network of cells that can be connected with synapses.
+    """
 
     network_params: Dict = {}
     network_states: Dict = {}
@@ -33,7 +42,7 @@ class Network(Module):
         """Initialize network of cells and synapses.
 
         Args:
-            cells: _description_
+            cells: A list of cells that make up the network.
         """
         super().__init__()
         for cell in cells:
@@ -41,12 +50,17 @@ class Network(Module):
 
         self.cells = cells
         self.nseg = cells[0].nseg
+        self._append_params_and_states(self.network_params, self.network_states)
 
-        self.initialize()
-        self.init_syns()
+        self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
+        self.nbranchpoints_per_cell = [cell.total_nbranchpoints for cell in self.cells]
+        self.total_nbranches = sum(self.nbranches_per_cell)
+        self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
+        self.cumsum_nbranchpoints = jnp.cumsum(
+            jnp.asarray([0] + self.nbranchpoints_per_cell)
+        )
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
-        self._append_params_and_states(self.network_params, self.network_states)
         self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
         self.nodes["branch_index"] = (
             np.arange(self.nseg * self.total_nbranches) // self.nseg
@@ -57,11 +71,39 @@ class Network(Module):
             )
         )
 
+        parents = [cell.comb_parents for cell in self.cells]
+        self.comb_parents = jnp.concatenate(
+            [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
+        )
+
+        # Two columns: `parent_branch_index` and `child_branch_index`. One row per
+        # branch, apart from those branches which do not have a parent (i.e.
+        # -1 in parents). For every branch, tracks the global index of that branch
+        # (`child_branch_index`) and the global index of its parent
+        # (`parent_branch_index`).
+        self.branch_edges = pd.DataFrame(
+            dict(
+                parent_branch_index=self.comb_parents[self.comb_parents != -1],
+                child_branch_index=np.where(self.comb_parents != -1)[0],
+            )
+        )
+
+        # For morphology indexing.
+        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
+        self.child_inds = self.branch_edges["child_branch_index"].to_numpy()
+        self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
+        self.par_inds = np.unique(par_inds)  # TODO: does order have to be preserved?
+        self.total_nbranchpoints = len(self.par_inds)
+        self.root_inds = self.cumsum_nbranches[:-1]
+
         # Channels.
         self._gather_channels_from_constituents(cells)
+
+        self.initialize()
+        self.init_syns()
         self.initialized_conds = False
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -86,23 +128,27 @@ class Network(Module):
             raise KeyError(f"Key {key} not recognized.")
 
     def init_morph(self):
-        self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
-        self.total_nbranches = sum(self.nbranches_per_cell)
-        self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
-
-        parents = [cell.comb_parents for cell in self.cells]
-        self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
+        self.branchpoint_group_inds = build_branchpoint_group_inds(
+            len(self.par_inds),
+            self.child_belongs_to_branchpoint,
+            self.nseg,
+            self.total_nbranches,
         )
-        self.comb_branches_in_each_level = merge_cells(
+        self.children_in_level = merge_cells(
             self.cumsum_nbranches,
-            [cell.comb_branches_in_each_level for cell in self.cells],
+            self.cumsum_nbranchpoints,
+            [cell.children_in_level for cell in self.cells],
             exclude_first=False,
         )
-
+        self.parents_in_level = merge_cells(
+            self.cumsum_nbranches,
+            self.cumsum_nbranchpoints,
+            [cell.parents_in_level for cell in self.cells],
+            exclude_first=False,
+        )
         self.initialized_morph = True
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
@@ -119,41 +165,58 @@ class Network(Module):
         coupling_conds_bwd = conds[1]
         summed_coupling_conds = conds[2]
 
-        par_inds = self.branch_edges["parent_branch_index"].to_numpy()
-        child_inds = self.branch_edges["child_branch_index"].to_numpy()
-
-        conds = vmap(Cell.init_cell_conds, in_axes=(0, 0, 0, 0, 0, 0))(
-            axial_resistivity[child_inds, -1],
-            axial_resistivity[par_inds, 0],
-            radiuses[child_inds, -1],
-            radiuses[par_inds, 0],
-            lengths[child_inds, -1],
-            lengths[par_inds, 0],
+        # The conductance from the children to the branch point.
+        branchpoint_conds_children = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
         )
-        branch_conds_fwd = jnp.zeros((nbranches))
-        branch_conds_bwd = jnp.zeros((nbranches))
-        branch_conds_fwd = branch_conds_fwd.at[child_inds].set(conds[0])
-        branch_conds_bwd = branch_conds_bwd.at[child_inds].set(conds[1])
+        # The conductance from the parents to the branch point.
+        branchpoint_conds_parents = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
+        )
+
+        # Weights with which the compartments influence their nearby node.
+        # The impact of the children on the branch point.
+        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
+        )
+        # The impact of parents on the branch point.
+        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
+        )
 
         summed_coupling_conds = Cell.update_summed_coupling_conds(
             summed_coupling_conds,
-            child_inds,
-            branch_conds_fwd,
-            branch_conds_bwd,
-            parents,
+            self.child_inds,
+            self.par_inds,
+            branchpoint_conds_children,
+            branchpoint_conds_parents,
         )
 
         cond_params = {
-            "coupling_conds_fwd": coupling_conds_fwd,
-            "coupling_conds_bwd": coupling_conds_bwd,
-            "summed_coupling_conds": summed_coupling_conds,
-            "branch_conds_fwd": branch_conds_fwd,
-            "branch_conds_bwd": branch_conds_bwd,
+            "branch_uppers": coupling_conds_bwd,
+            "branch_lowers": coupling_conds_fwd,
+            "branch_diags": summed_coupling_conds,
+            "branchpoint_conds_children": branchpoint_conds_children,
+            "branchpoint_conds_parents": branchpoint_conds_parents,
+            "branchpoint_weights_children": branchpoint_weights_children,
+            "branchpoint_weights_parents": branchpoint_weights_parents,
         }
-
         return cond_params
 
     def init_syns(self):
+        """Initialize synapses."""
         self.synapses = []
 
         # TODO(@michaeldeistler): should we also track this for channels?
@@ -161,27 +224,16 @@ class Network(Module):
         self.synapse_param_names = []
         self.synapse_state_names = []
 
-        # Two columns: `parent_branch_index` and `child_branch_index`. One row per
-        # branch, apart from those branches which do not have a parent (i.e.
-        # -1 in parents). For every branch, tracks the global index of that branch
-        # (`child_branch_index`) and the global index of its parent
-        # (`parent_branch_index`).
-        self.branch_edges = pd.DataFrame(
-            dict(
-                parent_branch_index=self.comb_parents[self.comb_parents != -1],
-                child_branch_index=np.where(self.comb_parents != -1)[0],
-            )
-        )
         self.initialized_syns = True
 
     def _step_synapse(
         self,
-        states,
-        syn_channels,
-        params,
-        delta_t,
+        states: Dict,
+        syn_channels: List,
+        params: Dict,
+        delta_t: float,
         edges: pd.DataFrame,
-    ):
+    ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
         states, current_terms = self._synapse_currents(
@@ -190,8 +242,13 @@ class Network(Module):
         return states, current_terms
 
     def _step_synapse_state(
-        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
-    ):
+        self,
+        states: Dict,
+        syn_channels: List,
+        params: Dict,
+        delta_t: float,
+        edges: pd.DataFrame,
+    ) -> Dict:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -216,9 +273,6 @@ class Network(Module):
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
-            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
-            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
-
             # State updates.
             states_updated = synapse_type.update_states(
                 synapse_states,
@@ -235,8 +289,13 @@ class Network(Module):
         return states
 
     def _synapse_currents(
-        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
-    ):
+        self,
+        states: Dict,
+        syn_channels: List,
+        params: Dict,
+        delta_t: float,
+        edges: pd.DataFrame,
+    ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -266,9 +325,6 @@ class Network(Module):
             # Get pre and post indexes of the current synapse type.
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
-
-            pre_inds = flip_comp_indices(pre_inds, self.nseg)  # See #305
-            post_inds = flip_comp_indices(post_inds, self.nseg)  # See #305
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
@@ -329,7 +385,7 @@ class Network(Module):
         synapse_scatter_kwargs: Dict = {},
         networkx_options: Dict = {},
         layer_kwargs: Dict = {},
-    ) -> None:
+    ) -> Axes:
         """Visualize the module.
 
         Args:
@@ -506,7 +562,7 @@ class SynapseView(View):
         indices: bool = True,
         params: bool = True,
         states: bool = True,
-    ):
+    ) -> pd.DataFrame:
         """Show synapses."""
         printable_nodes = deepcopy(self.view[["type", "type_ind"]])
 
@@ -547,7 +603,7 @@ class SynapseView(View):
         self.view = self.view.set_index("global_index", drop=False)
         self.pointer._set(key, val, self.view, self.pointer.edges)
 
-    def _assert_key_in_params_or_states(self, key):
+    def _assert_key_in_params_or_states(self, key: str):
         synapse_index = self.view["type_ind"].values[0]
         synapse_type = self.pointer.synapses[synapse_index]
         synapse_param_names = list(synapse_type.synapse_params.keys())

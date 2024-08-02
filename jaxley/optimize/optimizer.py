@@ -1,4 +1,7 @@
-from typing import Any, Callable, Dict, List, Optional
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jax.numpy as jnp
 
@@ -11,7 +14,7 @@ class TypeOptimizer:
         optimizer: Callable,
         optimizer_args: Dict[str, Any],
         opt_params: List[Dict[str, jnp.ndarray]],
-    ) -> None:
+    ):
         """Create the optimizers.
 
         This requires access to `opt_params` in order to know how many optimizers
@@ -53,7 +56,7 @@ class TypeOptimizer:
             optimizer = self.base_optimizer(optimizer_args[name])
             self.optimizers.append({name: optimizer})
 
-    def init(self, opt_params: List[Dict[str, jnp.ndarray]]):
+    def init(self, opt_params: List[Dict[str, jnp.ndarray]]) -> List:
         """Initialize the optimizers. Equivalent to `optax.optimizers.init()`."""
         opt_states = []
         for params, optimizer in zip(opt_params, self.optimizers):
@@ -62,7 +65,7 @@ class TypeOptimizer:
             opt_states.append(opt_state)
         return opt_states
 
-    def update(self, gradient, opt_state):
+    def update(self, gradient: jnp.ndarray, opt_state: List) -> Tuple[List, List]:
         """Update the optimizers. Equivalent to `optax.optimizers.update()`."""
         all_updates = []
         new_opt_states = []

@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 from jax import vmap
 
 
@@ -43,7 +44,12 @@ def linear_segments(
     return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
 
 
-def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
+def merge_cells(
+    cumsum_num_branches: List[int],
+    cumsum_num_branchpoints: List[int],
+    arrs: List[List[jnp.ndarray]],
+    exclude_first: bool = True,
+) -> jnp.ndarray:
     """
     Build full list of which branches are solved in which iteration.
 
@@ -67,9 +73,14 @@ def merge_cells(cumsum_num_branches, arrs, exclude_first=True):
     for i, att in enumerate(arrs):
         p = att
         if exclude_first:
+            raise NotImplementedError
             p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
         else:
-            p = [p_in_level + cumsum_num_branches[i] for p_in_level in p]
+            p = [
+                p_in_level
+                + jnp.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]])
+                for p_in_level in p
+            ]
         ps.append(p)
 
     max_len = max([len(att) for att in arrs])
@@ -95,17 +106,29 @@ def compute_levels(parents):
     return levels
 
 
-def compute_branches_in_level(levels):
+def compute_children_in_level(
+    levels: jnp.ndarray, children_row_and_col: jnp.ndarray
+) -> List[jnp.ndarray]:
     num_branches = len(levels)
-    branches_in_each_level = []
-    for l in range(np.max(levels) + 1):
-        branches_in_current_level = []
+    children_in_each_level = []
+    for l in range(1, np.max(levels) + 1):
+        children_in_current_level = []
         for b in range(num_branches):
             if levels[b] == l:
-                branches_in_current_level.append(b)
-        branches_in_current_level = jnp.asarray(branches_in_current_level)
-        branches_in_each_level.append(branches_in_current_level)
-    return branches_in_each_level
+                children_in_current_level.append(children_row_and_col[b - 1])
+        children_in_current_level = jnp.asarray(children_in_current_level)
+        children_in_each_level.append(children_in_current_level)
+    return children_in_each_level
+
+
+def compute_parents_in_level(levels, par_inds, parents_row_and_col):
+    level_of_parent = levels[par_inds]
+    parents_in_each_level = []
+    for l in range(np.max(levels)):
+        parents_inds_in_current_level = jnp.where(level_of_parent == l)[0]
+        parents_in_current_level = parents_row_and_col[parents_inds_in_current_level]
+        parents_in_each_level.append(parents_in_current_level)
+    return parents_in_each_level
 
 
 def _compute_num_children(parents):
@@ -118,6 +141,14 @@ def _compute_num_children(parents):
 
 
 def _compute_index_of_child(parents):
+    """For every branch, it returns the how many-eth child of its parent it is.
+
+    Example:
+    ```
+    parents = [-1, 0, 0, 1, 1, 1]
+    _compute_index_of_child(parents) -> [-1, 0, 1, 0, 1, 2]
+    ```
+    """
     num_branches = len(parents)
     current_num_children_for_each_branch = np.zeros((num_branches,), np.dtype("int"))
     index_of_child = [-1]
@@ -125,6 +156,22 @@ def _compute_index_of_child(parents):
         index_of_child.append(current_num_children_for_each_branch[parents[b]])
         current_num_children_for_each_branch[parents[b]] += 1
     return index_of_child
+
+
+def compute_children_indices(parents) -> List[jnp.ndarray]:
+    """Return all children indices of every branch.
+
+    Example:
+    ```
+    parents = [-1, 0, 0]
+    compute_children_indices(parents) -> [[1, 2], [], []]
+    ```
+    """
+    num_branches = len(parents)
+    child_indices = []
+    for b in range(num_branches):
+        child_indices.append(np.where(parents == b)[0])
+    return child_indices
 
 
 def get_num_neighbours(
@@ -170,26 +217,65 @@ def loc_of_index(global_comp_index, nseg):
     return possible_locs[index]
 
 
-def flip_comp_indices(indices: np.ndarray, nseg: int):
-    """Flip ordering of compartments because the solver treats 0 as last compartment.
-
-    E.g with nseg=8, this function will do:
-    [2] -> [5]
-    [13] -> [10] because this is the second branch (it only flips within branch).
-
-    This is required to hide the weird compartment ordering from the user (#30) and is
-    introduced in PR #305.
-    """
-    remainder = indices % nseg
-    corrected_comp_ind = nseg - remainder - 1
-    integer_division = indices // nseg * nseg
-    return integer_division + corrected_comp_ind
-
-
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
-    midpoint_r_a = 0.5 * (r_a1 + r_a2)
-    return rad1 * rad2**2 / midpoint_r_a / (rad2**2 * l1 + rad1**2 * l2) / l1
-    # return midpoint_radius ** 2 / 2.0 / midpoint_axial_resistivity / rad1 / dx ** 2
+    """Return the coupling conductance between two compartments.
+
+    Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
+
+    `radius`: um
+    `r_a`: ohm cm
+    `length_single_compartment`: um
+    `coupling_conds`: S * um / cm / um^2 = S / cm / um -> *10**7 -> mS / cm^2
+    """
+    # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
+    return rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
+
+
+def compute_coupling_cond_branchpoint(rad, r_a, l):
+    """Return the coupling conductance between one compartment and a comp with l=0.
+
+    From https://en.wikipedia.org/wiki/Compartmental_neuron_models
+
+    If one compartment has l=0.0 then the equations simplify.
+
+    R_long = \sum_i r_a * L_i/2 / crosssection_i
+
+    with crosssection = pi * r**2
+
+    For a single compartment with L>0, this turns into:
+    R_long = r_a * L/2 / crosssection
+
+    Then, g_long = crosssection * 2 / L / r_a
+
+    Then, the effective conductance is g_long / zylinder_area. So:
+    g = pi * r**2 * 2 / L / r_a / 2 / pi / r / L
+    g = r / r_a / L**2
+    """
+    return rad / r_a / l**2 * 10**7  # Convert (S / cm / um) -> (mS / cm^2)
+
+
+def compute_impact_on_node(rad, r_a, l):
+    """Compute the weight with which a compartment influences its node.
+
+    In order to satisfy Kirchhoffs current law, the current at a branch point must be
+    proportional to the crosssection of the compartment. We only require proportionality
+    here because the branch point equation reads:
+    `g_1 * (V_1 - V_b) + g_2 * (V_2 - V_b) = 0.0`
+
+    Because R_long = r_a * L/2 / crosssection, we get
+    g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a
+
+    This equation can be multiplied by any constant."""
+    return rad**2 / r_a / l
+
+
+def remap_to_consecutive(arr):
+    """Maps an array of integers to an array of consecutive integers.
+
+    E.g. `[0, 0, 1, 4, 4, 6, 6] -> [0, 0, 1, 2, 2, 3, 3]`
+    """
+    _, inverse_indices = jnp.unique(arr, return_inverse=True)
+    return inverse_indices
 
 
 def interpolate_xyz(loc: float, coords: np.ndarray):
@@ -244,21 +330,61 @@ def convert_point_process_to_distributed(
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
 
 
-def childview(
-    module,
-    index: Union[int, str, list, range, slice],
-    child_name: Optional[str] = None,
+def build_branchpoint_group_inds(
+    num_branchpoints,
+    child_belongs_to_branchpoint,
+    nseg,
+    nbranches,
 ):
-    """Return the child view of the current module.
+    start_ind_for_branchpoints = nseg * nbranches
+    branchpoint_inds_parents = start_ind_for_branchpoints + jnp.arange(num_branchpoints)
+    branchpoint_inds_children = (
+        start_ind_for_branchpoints + child_belongs_to_branchpoint
+    )
 
-    network.cell(index) at network level.
-    cell.branch(index) at cell level.
-    branch.comp(index) at branch level."""
-    if child_name is None:
-        parent_name = module.__class__.__name__.lower()
-        views = np.array(["net", "cell", "branch", "comp", "/"])
-        child_idx = np.roll([v in parent_name for v in views], 1)
-        child_name = views[child_idx][0]
-    if child_name != "/":
-        return module.__getattr__(child_name)(index)
-    raise AttributeError("Compartment does not support indexing")
+    all_branchpoint_inds = jnp.concatenate(
+        [branchpoint_inds_parents, branchpoint_inds_children]
+    )
+    branchpoint_group_inds = remap_to_consecutive(all_branchpoint_inds)
+    return branchpoint_group_inds
+
+
+def compute_morphology_indices_in_levels(
+    num_branchpoints,
+    child_belongs_to_branchpoint,
+    par_inds,
+    child_inds,
+):
+    """Return (row, col) to build the sparse matrix defining the voltage eqs.
+
+    This is run at `init`, not during runtime.
+    """
+    branchpoint_inds_parents = jnp.arange(num_branchpoints)
+    branchpoint_inds_children = child_belongs_to_branchpoint
+    branch_inds_parents = par_inds
+    branch_inds_children = child_inds
+
+    children = jnp.stack([branch_inds_children, branchpoint_inds_children])
+    parents = jnp.stack([branch_inds_parents, branchpoint_inds_parents])
+
+    return {"children": children.T, "parents": parents.T}
+
+
+def group_and_sum(
+    values_to_sum: jnp.ndarray, inds_to_group_by: jnp.ndarray, num_branchpoints: int
+) -> jnp.ndarray:
+    """Group values by whether they have the same integer and sum values within group.
+
+    This is used to construct the last diagonals at the branch points.
+
+    Written by ChatGPT.
+    """
+    # Initialize an array to hold the sum of each group
+    group_sums = jnp.zeros(num_branchpoints)
+
+    # `.at[inds]` requires that `inds` is not empty, so we need an if-case here.
+    # `len(inds) == 0` is the case for branches and compartments.
+    if num_branchpoints > 0:
+        group_sums = group_sums.at[inds_to_group_by].add(values_to_sum)
+
+    return group_sums

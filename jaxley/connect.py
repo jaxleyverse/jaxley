@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from typing import Tuple
 
 import numpy as np
@@ -44,15 +47,13 @@ def connect(
 ):
     """Connect two compartments with a chemical synapse.
 
-    High-level strategy:
+    The pre- and postsynaptic compartments must be different compartments of the
+    same network.
 
-    We need to first check if the network already has a type of this synapse, else
-    we need to register it as a new synapse in a bunch of dictionaries which track
-    synapse parameters, state and meta information.
-
-    Next, we register the new connection in the synapse dataframe (`.edges`).
-    Then, we update synapse parameter and state arrays with the new connection.
-    Finally, we update synapse meta information.
+    Args:
+        pre: View of the presynaptic compartment.
+        post: View of the postsynaptic compartment.
+        synapse_type: The synapse to append
     """
     assert is_same_network(
         pre, post
@@ -72,6 +73,11 @@ def fully_connect(
     """Appends multiple connections which build a fully connected layer.
 
     Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+
+    Args:
+        pre_cell_view: View of the presynaptic cell.
+        post_cell_view: View of the postsynaptic cell.
+        synapse_type: The synapse to append.
     """
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
@@ -98,11 +104,17 @@ def sparse_connect(
     pre_cell_view: "CellView",
     post_cell_view: "CellView",
     synapse_type: "Synapse",
-    p,
+    p: float,
 ):
     """Appends multiple connections which build a sparse, randomly connected layer.
 
     Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+
+    Args:
+        pre_cell_view: View of the presynaptic cell.
+        post_cell_view: View of the postsynaptic cell.
+        synapse_type: The synapse to append.
+        p: Probability of connection.
     """
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
@@ -143,6 +155,12 @@ def connectivity_matrix_connect(
     Connects pre- and postsynaptic cells according to a custom connectivity matrix.
     Entries > 0 in the matrix indicate a connection between the corresponding cells.
     Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+
+    Args:
+        pre_cell_view: View of the presynaptic cell.
+        post_cell_view: View of the postsynaptic cell.
+        synapse_type: The synapse to append.
+        connectivity_matrix: A boolean matrix indicating the connections between cells.
     """
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)

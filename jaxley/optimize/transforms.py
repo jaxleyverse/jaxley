@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from typing import Dict, List
 
 import jax.numpy as jnp
@@ -38,7 +41,7 @@ class ParamTransform:
 
     """
 
-    def __init__(self, lowers: Dict[str, float], uppers: Dict[str, float]) -> None:
+    def __init__(self, lowers: Dict[str, float], uppers: Dict[str, float]):
         """Initialize the bounds.
 
         Args:

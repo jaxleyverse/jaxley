@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -159,7 +162,7 @@ def test_move_to_cellview():
 
 def test_move_to_swc_cell():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph.swc")
     cell1 = jx.read_swc(fname, nseg=4)
     cell2 = jx.read_swc(fname, nseg=4)
     cell3 = jx.read_swc(fname, nseg=4)

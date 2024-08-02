@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from typing import Callable, Dict, List, Optional, Tuple
 
 import jax.numpy as jnp
@@ -10,6 +13,12 @@ from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
 
 
 class Compartment(Module):
+    """Compartment class.
+
+    This class defines a single compartment that can be simulated by itself or
+    connected up into branches. It is the basic building block of a neuron model.
+    """
+
     compartment_params: Dict = {
         "length": 10.0,  # um
         "radius": 1.0,  # um
@@ -37,29 +46,41 @@ class Compartment(Module):
             dict(parent_branch_index=[], child_branch_index=[])
         )
 
+        # For morphology indexing.
+        self.child_inds = np.asarray([]).astype(int)
+        self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
+        self.par_inds = np.asarray([]).astype(int)
+        self.total_nbranchpoints = 0
+        self.branchpoint_group_inds = np.asarray([]).astype(int)
+
+        self.children_in_level = []
+        self.parents_in_level = []
+        self.root_inds = jnp.asarray([0])
+
         # Initialize the module.
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = True
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
     def init_conds(self, params):
-        cond_params = {
-            "branch_conds_fwd": jnp.asarray([]),
-            "branch_conds_bwd": jnp.asarray([]),
-            "coupling_conds_fwd": jnp.asarray([[]]),
-            "coupling_conds_bwd": jnp.asarray([[]]),
-            "summed_coupling_conds": jnp.asarray([[0.0]]),
+        return {
+            "branchpoint_conds_children": jnp.asarray([]),
+            "branchpoint_conds_parents": jnp.asarray([]),
+            "branchpoint_weights_children": jnp.asarray([]),
+            "branchpoint_weights_parents": jnp.asarray([]),
+            "branch_uppers": jnp.asarray([]),
+            "branch_lowers": jnp.asarray([]),
+            "branch_diags": jnp.asarray([0.0]),
         }
-        return cond_params
 
 
 class CompartmentView(View):
     """CompartmentView."""
 
-    def __init__(self, pointer, view):
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         view = view.assign(controlled_by_param=view.global_comp_index)
         super().__init__(pointer, view)
 
@@ -72,7 +93,7 @@ class CompartmentView(View):
             "'CompartmentView' object has no attribute 'comp' or 'loc'."
         )
 
-    def loc(self, loc: float):
+    def loc(self, loc: float) -> "CompartmentView":
         if loc != "all":
             assert (
                 loc >= 0.0 and loc <= 1.0
@@ -82,7 +103,7 @@ class CompartmentView(View):
         view._has_been_called = True
         return view
 
-    def distance(self, endpoint: "CompartmentView"):
+    def distance(self, endpoint: "CompartmentView") -> float:
         """Return the direct distance between two compartments.
 
         This does not compute the pathwise distance (which is currently not
@@ -111,7 +132,7 @@ class CompartmentView(View):
         col: str = "k",
         dims: Tuple[int] = (0, 1),
         morph_plot_kwargs: Dict = {},
-    ):
+    ) -> Axes:
         nodes = self.set_global_index_and_index(self.view)
         return self.pointer._scatter(
             ax=ax,

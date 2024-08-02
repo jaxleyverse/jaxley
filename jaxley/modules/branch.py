@@ -1,5 +1,8 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from copy import deepcopy
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -11,23 +14,43 @@ from jaxley.utils.cell_utils import compute_coupling_cond
 
 
 class Branch(Module):
+    """Branch class.
+
+    This class defines a single branch that can be simulated by itself or
+    connected to build a cell. A branch is linear segment of several compartments
+    and can be connected to no, one or more other branches at each end to build more
+    intricate cell morphologies.
+    """
+
     branch_params: Dict = {}
     branch_states: Dict = {}
 
     def __init__(
         self,
-        compartments: Union[Compartment, List[Compartment]],
+        compartments: Optional[Union[Compartment, List[Compartment]]] = None,
         nseg: Optional[int] = None,
     ):
+        """
+        Args:
+            compartments: A single compartment or a list of compartments that make up the
+                branch.
+            nseg: Number of segments to divide the branch into. If `compartments` is an
+                a single compartment, than the compartment is repeated `nseg` times to
+                create the branch.
+        """
         super().__init__()
         assert (
-            isinstance(compartments, Compartment) or nseg is None
-        ), "If `compartments` is a list then you cannot set `nseg`."
-        assert (
-            isinstance(compartments, List) or nseg is not None
-        ), "If `compartments` is not a list then you have to set `nseg`."
+            isinstance(compartments, (Compartment, List)) or compartments is None
+        ), "Only Compartment or List[Compartment] is allowed."
         if isinstance(compartments, Compartment):
-            compartment_list = [compartments for _ in range(nseg)]
+            assert (
+                nseg is not None
+            ), "If `compartments` is not a list then you have to set `nseg`."
+        compartments = Compartment() if compartments is None else compartments
+        nseg = 1 if nseg is None else nseg
+
+        if isinstance(compartments, Compartment):
+            compartment_list = [compartments] * nseg
         else:
             compartment_list = compartments
 
@@ -53,14 +76,26 @@ class Branch(Module):
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
+
+        # For morphology indexing.
+        self.child_inds = np.asarray([]).astype(int)
+        self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
+        self.par_inds = np.asarray([]).astype(int)
+        self.total_nbranchpoints = 0
+        self.branchpoint_group_inds = np.asarray([]).astype(int)
+
+        self.children_in_level = []
+        self.parents_in_level = []
+        self.root_inds = jnp.asarray([0])
+
         self.initialize()
-        self.init_syns(None)
+        self.init_syns()
         self.initialized_conds = False
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str):
         # Ensure that hidden methods such as `__deepcopy__` still work.
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -82,23 +117,40 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def init_conds(self, params):
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
         conds = self.init_branch_conds(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
         cond_params = {
-            "branch_conds_fwd": jnp.asarray([]),
-            "branch_conds_bwd": jnp.asarray([]),
+            "branchpoint_conds_children": jnp.asarray([]),
+            "branchpoint_conds_parents": jnp.asarray([]),
+            "branchpoint_weights_children": jnp.asarray([]),
+            "branchpoint_weights_parents": jnp.asarray([]),
         }
-        cond_params["coupling_conds_fwd"] = conds[0]
-        cond_params["coupling_conds_bwd"] = conds[1]
-        cond_params["summed_coupling_conds"] = conds[2]
+        cond_params["branch_lowers"] = conds[0]
+        cond_params["branch_uppers"] = conds[1]
+        cond_params["branch_diags"] = conds[2]
 
         return cond_params
 
     @staticmethod
-    def init_branch_conds(axial_resistivity, radiuses, lengths, nseg):
-        """Given an axial resisitivity, set the coupling conductances."""
+    def init_branch_conds(
+        axial_resistivity: jnp.ndarray,
+        radiuses: jnp.ndarray,
+        lengths: jnp.ndarray,
+        nseg: int,
+    ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+        """Given an axial resisitivity, set the coupling conductances.
+
+        Args:
+            axial_resistivity: Axial resistivity of each compartment.
+            radiuses: Radius of each compartment.
+            lengths: Length of each compartment.
+            nseg: Number of compartments in the branch.
+
+        Returns:
+            Tuple of forward coupling conductances, backward coupling conductances, and summed coupling conductances.
+        """
 
         # Compute coupling conductance for segments within a branch.
         # `radius`: um
@@ -114,22 +166,20 @@ class Branch(Module):
         coupling_conds_bwd = compute_coupling_cond(r1, r2, r_a1, r_a2, l1, l2)
         coupling_conds_fwd = compute_coupling_cond(r2, r1, r_a2, r_a1, l2, l1)
 
-        # Convert (S / cm / um) -> (mS / cm^2)
-        coupling_conds_fwd *= 10**7
-        coupling_conds_bwd *= 10**7
-
         # Compute the summed coupling conductances of each compartment.
         summed_coupling_conds = jnp.zeros((nseg))
         summed_coupling_conds = summed_coupling_conds.at[1:].add(coupling_conds_fwd)
         summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
         return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.nseg
 
 
 class BranchView(View):
-    def __init__(self, pointer, view):
+    """BranchView."""
+
+    def __init__(self, pointer: Module, view: pd.DataFrame):
         view = view.assign(controlled_by_param=view.global_branch_index)
         super().__init__(pointer, view)
 

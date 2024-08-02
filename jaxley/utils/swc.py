@@ -1,3 +1,7 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
+from copy import copy
 from typing import Callable, List, Optional, Tuple
 from warnings import warn
 
@@ -9,7 +13,7 @@ def swc_to_jaxley(
     max_branch_len: float = 100.0,
     sort: bool = True,
     num_lines: Optional[int] = None,
-):
+) -> Tuple[List[int], List[float], List[Callable], List[float], List[np.ndarray]]:
     """Read an SWC file and bring morphology into `jaxley` compatible formats.
 
     Args:
@@ -20,12 +24,27 @@ def swc_to_jaxley(
         num_lines: Number of lines of the SWC file to read.
     """
     content = np.loadtxt(fname)[:num_lines]
+    types = content[:, 1]
+    is_single_point_soma = types[0] == 1 and types[1] != 1
+
+    if is_single_point_soma:
+        # Warn here, but the conversion of the length happens in `_compute_pathlengths`.
+        warn(
+            "Found a soma which consists of a single traced point. `Jaxley` "
+            "interprets this soma as a spherical compartment with radius "
+            "specified in the SWC file, i.e. with surface area 4*pi*r*r."
+        )
     sorted_branches, types = _split_into_branches_and_sort(
-        content, max_branch_len=max_branch_len, sort=sort
+        content,
+        max_branch_len=max_branch_len,
+        is_single_point_soma=is_single_point_soma,
+        sort=sort,
     )
 
     parents = _build_parents(sorted_branches)
-    each_length = _compute_pathlengths(sorted_branches, content[:, 2:6])
+    each_length = _compute_pathlengths(
+        sorted_branches, content[:, 1:6], is_single_point_soma=is_single_point_soma
+    )
     pathlengths = [np.sum(length_traced) for length_traced in each_length]
     for i, pathlen in enumerate(pathlengths):
         if pathlen == 0.0:
@@ -64,10 +83,19 @@ def swc_to_jaxley(
 
 
 def _split_into_branches_and_sort(
-    content: np.ndarray, max_branch_len: float, sort: bool = True
+    content: np.ndarray,
+    max_branch_len: float,
+    is_single_point_soma: bool,
+    sort: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    branches, types = _split_into_branches(content)
-    branches, types = _split_long_branches(branches, types, content, max_branch_len)
+    branches, types = _split_into_branches(content, is_single_point_soma)
+    branches, types = _split_long_branches(
+        branches,
+        types,
+        content,
+        max_branch_len,
+        is_single_point_soma=is_single_point_soma,
+    )
 
     if sort:
         first_val = np.asarray([b[0] for b in branches])
@@ -81,9 +109,15 @@ def _split_into_branches_and_sort(
 
 
 def _split_long_branches(
-    branches, types, content, max_branch_len
+    branches: np.ndarray,
+    types: np.ndarray,
+    content: np.ndarray,
+    max_branch_len: float,
+    is_single_point_soma: bool,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    pathlengths = _compute_pathlengths(branches, content[:, 2:6])
+    pathlengths = _compute_pathlengths(
+        branches, content[:, 1:6], is_single_point_soma=is_single_point_soma
+    )
     pathlengths = [np.sum(length_traced) for length_traced in pathlengths]
     split_branches = []
     split_types = []
@@ -94,7 +128,9 @@ def _split_long_branches(
             num_subbranches += 1
             split_branch = _split_branch_equally(branch, num_subbranches)
             lengths_of_subbranches = _compute_pathlengths(
-                split_branch, coords=content[:, 2:6]
+                split_branch,
+                coords=content[:, 1:6],
+                is_single_point_soma=is_single_point_soma,
             )
             lengths_of_subbranches = [
                 np.sum(length_traced) for length_traced in lengths_of_subbranches
@@ -113,7 +149,7 @@ def _split_long_branches(
     return split_branches, split_types
 
 
-def _split_branch_equally(branch, num_subbranches):
+def _split_branch_equally(branch: np.ndarray, num_subbranches: int) -> List[np.ndarray]:
     num_points_each = len(branch) // num_subbranches
     branches = [branch[:num_points_each]]
     for i in range(1, num_subbranches - 1):
@@ -122,10 +158,15 @@ def _split_branch_equally(branch, num_subbranches):
     return branches
 
 
-def _split_into_branches(content: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _split_into_branches(
+    content: np.ndarray, is_single_point_soma: bool
+) -> Tuple[np.ndarray, np.ndarray]:
     prev_ind = None
     prev_type = None
     n_branches = 0
+
+    # Branch inds will contain the row identifier at which a branch point occurs
+    # (i.e. the row of the parent of two branches).
     branch_inds = []
     for c in content:
         current_ind = c[0]
@@ -140,53 +181,37 @@ def _split_into_branches(content: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     all_branches = []
     current_branch = []
     all_types = []
+
+    # Loop over every line in the SWC file.
     for c in content:
-        current_ind = c[0]
-        current_parent = c[-1]
+        current_ind = c[0]  # First col is row_identifier
+        current_parent = c[-1]  # Last col is parent in SWC specification.
         if current_parent == -1:
             all_types.append(c[1])
         else:
-            # `-1` because SWC starts counting at 1.
             current_type = c[1]
+
+        if current_parent == -1 and is_single_point_soma and current_ind == 1:
+            all_branches.append([int(current_ind)])
+            all_types.append(int(current_type))
+
+        # Either append the current point to the branch, or add the branch to
+        # `all_branches`.
         if current_parent in branch_inds[1:]:
-            if len(current_branch) > 1 or _single_point_soma(current_branch, content):
+            if len(current_branch) > 1:
                 all_branches.append(current_branch)
                 all_types.append(current_type)
             current_branch = [int(current_parent), int(current_ind)]
         else:
             current_branch.append(int(current_ind))
 
+    # Append the final branch (intermediate branches are already appended five lines
+    # above.)
     all_branches.append(current_branch)
     return all_branches, all_types
 
 
-def _single_point_soma(current_branch: np.ndarray, content: np.ndarray) -> bool:
-    """Return True if the `current_branch` is the only point traced as `soma`."""
-    # Current branch must have consist of a single traced point.
-    if len(current_branch) > 1:
-        return False
-
-    # Traced point must be of type "soma" (i.e. have type == 1)
-    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-    traced_point = content[int(current_branch[0]) - 1]
-    if int(traced_point[1]) != 1:
-        return False
-
-    # There can only be a single soma value.
-    all_types = content[:, 1]
-    if np.sum(np.where(all_types == 1.0)[0]) > 1:
-        return False
-
-    # Warn here, but the conversion of the length happens in `_compute_pathlengths`.
-    warn(
-        "Found a soma which consists of a single traced point. `Jaxley` "
-        "interprets this soma as a spherical compartment with radius "
-        "specified in the SWC file, i.e. with surface area 4*pi*r*r."
-    )
-    return True
-
-
-def _build_parents(all_branches):
+def _build_parents(all_branches: List[np.ndarray]) -> List[int]:
     parents = [None] * len(all_branches)
     all_last_inds = [b[-1] for b in all_branches]
     for i, branch in enumerate(all_branches):
@@ -205,7 +230,11 @@ def _build_parents(all_branches):
 
 
 def _radius_generating_fns(
-    all_branches, radiuses, each_length, parents, types
+    all_branches: np.ndarray,
+    radiuses: np.ndarray,
+    each_length: np.ndarray,
+    parents: np.ndarray,
+    types: np.ndarray,
 ) -> List[Callable]:
     """For all branches in a cell, returns callable that return radius given loc."""
     radius_fns = []
@@ -241,7 +270,7 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     if len(radiuses) == 1:
         radiuses = np.tile(radiuses, 2)
 
-    def radius(loc):
+    def radius(loc: float) -> float:
         """Function which returns the radius via linear interpolation."""
         index = np.digitize(loc, cutoffs, right=False)
         left_rad = radiuses[index - 1]
@@ -254,21 +283,38 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     return radius
 
 
-def _compute_pathlengths(all_branches, coords):
+def _compute_pathlengths(
+    all_branches: np.ndarray, coords: np.ndarray, is_single_point_soma: bool
+) -> List[np.ndarray]:
+    """
+    Args:
+        coords: Has shape (num_traced_points, 5), where `5` is (type, x, y, z, radius).
+    """
     branch_pathlengths = []
     for b in all_branches:
         coords_in_branch = coords[np.asarray(b) - 1]
         if len(coords_in_branch) > 1:
+            # If the branch starts at a different neurite (e.g. the soma) then NEURON
+            # ignores the distance from that initial point. To reproduce, use the
+            # following SWC dummy file and read it in NEURON (and Jaxley):
+            # 1 1 0.00 0.0 0.0 6.0 -1
+            # 2 2 9.00 0.0 0.0 0.5 1
+            # 3 2 10.0 0.0 0.0 0.3 2
+            types = coords_in_branch[:, 0]
+            if int(types[0]) == 1 and int(types[1]) != 1 and is_single_point_soma:
+                coords_in_branch[0] = coords_in_branch[1]
+
+            # Compute distances between all traced points in a branch.
             point_diffs = np.diff(coords_in_branch, axis=0)
             dists = np.sqrt(
-                point_diffs[:, 0] ** 2 + point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2
+                point_diffs[:, 1] ** 2 + point_diffs[:, 2] ** 2 + point_diffs[:, 3] ** 2
             )
         else:
             # Jaxley uses length and radius for every compartment and assumes the
             # surface area to be 2*pi*r*length. For branches consisting of a single
             # traced point we assume for them to have area 4*pi*r*r. Therefore, we have
             # to set length = 2*r.
-            radius = coords_in_branch[0, 3]  # xyzr -> 3 is radius.
+            radius = coords_in_branch[0, 4]  # txyzr -> 4 is radius.
             dists = np.asarray([2 * radius])
         branch_pathlengths.append(dists)
     return branch_pathlengths

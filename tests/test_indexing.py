@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from copy import deepcopy
 
 import jax
@@ -11,31 +14,8 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.utils.cell_utils import (
-    childview,
-    flip_comp_indices,
-    index_of_loc,
-    loc_of_index,
-)
-
-
-def test_flip_compartment_indices():
-    nseg = 4
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg)
-    cell1 = jx.Cell(branch, parents=[-1, 0, 0])
-    cell2 = jx.Cell(branch, parents=[-1, 0, 0])
-
-    indices = [0, 1, 2, 3]
-    flipped_inds = flip_comp_indices(np.asarray(indices), nseg).tolist()
-    radii = np.random.rand(nseg)
-
-    for counter, i in enumerate(flipped_inds):
-        cell1[1, i].set("radius", radii[counter])
-    for counter, i in enumerate(indices):
-        cell2[1, i].set("radius", np.flip(radii)[counter])
-    assert all(cell1.nodes == cell2.nodes)
+from jaxley.utils.cell_utils import index_of_loc, loc_of_index
+from jaxley.utils.misc_utils import childview
 
 
 def test_getitem():

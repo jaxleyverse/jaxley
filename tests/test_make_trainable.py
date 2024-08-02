@@ -1,3 +1,6 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -8,7 +11,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
-from jaxley.connection import connect
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
 
@@ -227,7 +230,7 @@ def get_params_subset_trainable(net):
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(trainable_params=pstate)
+    return net.get_all_parameters(pstate)
 
 
 def get_params_set_subset(net):
@@ -235,7 +238,7 @@ def get_params_set_subset(net):
     params = net.get_parameters()
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(trainable_params=pstate)
+    return net.get_all_parameters(pstate)
 
 
 def get_params_all_trainable(net):
@@ -244,7 +247,7 @@ def get_params_all_trainable(net):
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(trainable_params=pstate)
+    return net.get_all_parameters(pstate)
 
 
 def get_params_set(net):
@@ -252,7 +255,7 @@ def get_params_set(net):
     params = net.get_parameters()
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(trainable_params=pstate)
+    return net.get_all_parameters(pstate)
 
 
 def test_make_trainable_corresponds_to_set_pospischil():
@@ -265,7 +268,7 @@ def test_make_trainable_corresponds_to_set_pospischil():
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
     pstate1 = params_to_pstate(params1, net1.indices_set_by_trainables)
-    all_params1 = net1.get_all_parameters(trainable_params=pstate1)
+    all_params1 = net1.get_all_parameters(pstate1)
 
     net2.cell(0).insert(Na())
     net2.insert(K())
@@ -274,7 +277,7 @@ def test_make_trainable_corresponds_to_set_pospischil():
     params2[0]["vt"] = params2[0]["vt"].at[:].set(0.05)
     net2.to_jax()
     pstate2 = params_to_pstate(params2, net2.indices_set_by_trainables)
-    all_params2 = net2.get_all_parameters(trainable_params=pstate2)
+    all_params2 = net2.get_all_parameters(pstate2)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
     assert np.array_equal(all_params1["Na_gNa"], all_params2["Na_gNa"], equal_nan=True)
     assert np.array_equal(all_params1["K_gK"], all_params2["K_gK"], equal_nan=True)
@@ -331,14 +334,14 @@ def test_data_set_vs_make_trainable_pospischil():
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
     pstate1 = params_to_pstate(params1, net1.indices_set_by_trainables)
-    all_params1 = net1.get_all_parameters(trainable_params=pstate1)
+    all_params1 = net1.get_all_parameters(pstate1)
 
     net2.cell(0).insert(Na())
     net2.insert(K())
     val = params1[0]["vt"]
     pstate = net2.cell("all").branch("all").loc("all").data_set("vt", val.item(), None)
     net2.to_jax()
-    all_params2 = net2.get_all_parameters(trainable_params=pstate)
+    all_params2 = net2.get_all_parameters(pstate)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
     assert np.array_equal(all_params1["Na_gNa"], all_params2["Na_gNa"], equal_nan=True)
     assert np.array_equal(all_params1["K_gK"], all_params2["K_gK"], equal_nan=True)

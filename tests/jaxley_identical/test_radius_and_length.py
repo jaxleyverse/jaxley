@@ -1,6 +1,9 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from jax import config
 
-from jaxley.connection import connect
+from jaxley.connect import connect
 
 config.update("jax_enable_x64", True)
 config.update("jax_platform_name", "cpu")
@@ -76,24 +79,24 @@ def test_radius_and_length_branch():
 
     voltages = jx.integrate(branch, delta_t=dt)
 
-    voltages_081123 = jnp.asarray(
+    voltages_300724 = jnp.asarray(
         [
             [
                 -70.0,
-                -66.53085703,
-                57.69711962,
-                27.50364167,
-                -20.26260571,
-                -44.421609,
-                -70.6396421,
-                -75.76980478,
-                -75.74539948,
-                -75.46741856,
-                -75.12962902,
+                -66.53085703217397,
+                57.69711962162869,
+                27.503641673097068,
+                -20.26260571077068,
+                -44.42160900167978,
+                -70.6396420990157,
+                -75.76980477606747,
+                -75.7453994826729,
+                -75.46741856343822,
+                -75.1296290199045,
             ]
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_300724))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
@@ -125,24 +128,24 @@ def test_radius_and_length_cell():
 
     voltages = jx.integrate(cell, delta_t=dt)
 
-    voltages_081123 = jnp.asarray(
+    voltages_300724 = jnp.asarray(
         [
             [
                 -70.0,
-                -66.53085703,
-                1.40098029,
-                41.85849945,
-                -3.29312727,
-                -30.32559832,
-                -54.3463986,
-                -73.94743834,
-                -75.74328911,
-                -75.58138665,
-                -75.27029656,
+                -66.53085703217234,
+                -1.8726881060703575,
+                39.98176090770511,
+                -2.853384097766068,
+                -30.048377518182228,
+                -54.259868414343295,
+                -73.9359886731972,
+                -75.74042745179534,
+                -75.5791988501548,
+                -75.26829188655702,
             ]
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_300724))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
@@ -199,36 +202,36 @@ def test_radius_and_length_net():
 
     voltages = jx.integrate(network, delta_t=dt)
 
-    voltages_040224 = jnp.asarray(
+    voltages_300724 = jnp.asarray(
         [
             [
                 -70.0,
-                -66.53085703,
-                1.40098029,
-                41.85849945,
-                -3.29312727,
-                -30.32559832,
-                -54.3463986,
-                -73.94743834,
-                -75.74328911,
-                -75.58138665,
-                -75.27029656,
+                -66.53085703217131,
+                -1.8726881060701073,
+                39.98176090770495,
+                -2.8533840977659226,
+                -30.04837751818565,
+                -54.25986841434464,
+                -73.93598867319699,
+                -75.74042745179538,
+                -75.57919885015413,
+                -75.2682918865562,
             ],
             [
                 -70.0,
-                -66.46902476,
-                -14.64500976,
-                43.9244311,
-                3.3488237,
-                -25.54186113,
-                -48.97168575,
-                -71.86634877,
-                -75.5702194,
-                -75.49141107,
-                -75.16913904,
+                -66.47133094286725,
+                -22.42632884453572,
+                42.81477131595844,
+                5.7572444690008036,
+                -23.81466327013234,
+                -47.82796157947444,
+                -71.80106951477758,
+                -75.57738636633145,
+                -75.49698994483342,
+                -75.17441392712844,
             ],
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_040224))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_300724))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
