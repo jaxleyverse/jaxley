@@ -9,10 +9,11 @@ requires-python = ">=3.10"
 
 dependencies = [
     "jax[cpu]",
-    "numpy",
-    "pandas>=2.2.0",
     "matplotlib",
     "networkx",
+    "numpy",
+    "pandas>=2.2.0",
+    "tridiax",
 ]
 
 [project.optional-dependencies]
