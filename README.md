@@ -1,6 +1,6 @@
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)
 [![Tests](https://github.com/jaxleyverse/jaxley/workflows/Tests/badge.svg?branch=main)](https://github.com/jaxleyverse/jaxley/actions)
-[![GitHub license](https://img.shields.io/badge/license-MIT-green)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/sbi-dev/sbi)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
 
 <p align="center">
