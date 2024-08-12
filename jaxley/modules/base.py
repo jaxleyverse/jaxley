@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
-from jax import vmap
+from jax import jit, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
@@ -110,8 +110,9 @@ class Module(ABC):
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
+        jit_interp = jit(interpolate_xyz)
         xyz = (
-            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
+            [jit_interp(loc, xyzr).T for xyzr in self.xyzr]
             if len(loc) > 0
             else [self.xyzr]
         )
