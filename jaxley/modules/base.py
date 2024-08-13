@@ -776,7 +776,10 @@ class Module(ABC):
         """Insert a clamp into the module within jit (or grad).
 
         Args:
-            state_array: State variable in the default Jaxley unit.
+            state_name: Name of the state variable to set.
+            state_array: Time series of the state variable in the default Jaxley unit.
+                State array should be of shape (num_clamps, simulation_time) or
+                (simulation_time, ) for a single clamp.
             verbose: Whether or not to print the number of inserted clamps. `False`
                 by default because this method is meant to be jitted.
         """
@@ -787,7 +790,7 @@ class Module(ABC):
     def _data_external_input(
         self,
         state_name: str,
-        state_array,
+        state_array: jnp.ndarray,
         data_external_input: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
         view,
         verbose: bool = False,

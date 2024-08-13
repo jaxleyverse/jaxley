@@ -94,10 +94,6 @@ def integrate(
         else:
             externals[state_name] = clamps
             external_inds[state_name] = inds.comp_index.to_numpy()
-        # Need to inject a null current for integration if there isn't one
-        if "i" not in module.externals.keys() and data_stimuli is None:
-            externals["i"] = data_clamps[1] * 0.0
-            external_inds["i"] = data_clamps[2].comp_index.to_numpy()
 
     if not externals.keys():
         # No stimulus was inserted and no clamp was set.
