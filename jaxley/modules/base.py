@@ -792,7 +792,7 @@ class Module(ABC):
         state_name: str,
         state_array: jnp.ndarray,
         data_external_input: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
-        view,
+        view: pd.DataFrame,
         verbose: bool = False,
     ):
         state_array = (
