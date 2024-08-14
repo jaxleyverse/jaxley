@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
-from jax import vmap
+from jax import jit, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
@@ -110,8 +110,9 @@ class Module(ABC):
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
+        jit_interp = jit(interpolate_xyz)
         xyz = (
-            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
+            [jit_interp(loc, xyzr).T for xyzr in self.xyzr]
             if len(loc) > 0
             else [self.xyzr]
         )
@@ -1269,7 +1270,9 @@ class Module(ABC):
                 # Dummy to keey the index `endpoints[parent[b]]` above working.
                 endpoints.append(np.zeros((2,)))
 
-    def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+    def move(
+        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = True
+    ):
         """Move cells or networks by adding to their (x, y, z) coordinates.
 
         This function is used only for visualization. It does not affect the simulation.
@@ -1278,10 +1281,13 @@ class Module(ABC):
             x: The amount to move in the x direction in um.
             y: The amount to move in the y direction in um.
             z: The amount to move in the z direction in um.
+            update_nodes: Whether `.nodes` should be updated or not. Setting this to
+                `False` largely speeds up moving, especially for big networks, but
+                `.nodes` or `.show` will not show the new xyz coordinates.
         """
-        self._move(x, y, z, self.nodes)
+        self._move(x, y, z, self.nodes, update_nodes)
 
-    def _move(self, x: float, y: float, z: float, view):
+    def _move(self, x: float, y: float, z: float, view, update_nodes: bool):
         # Need to cast to set because this will return one columnn per compartment,
         # not one column per branch.
         indizes = set(view["branch_index"].to_numpy().tolist())
@@ -1289,13 +1295,15 @@ class Module(ABC):
             self.xyzr[i][:, 0] += x
             self.xyzr[i][:, 1] += y
             self.xyzr[i][:, 2] += z
-        self._update_nodes_with_xyz()
+        if update_nodes:
+            self._update_nodes_with_xyz()
 
     def move_to(
         self,
         x: Union[float, np.ndarray] = 0.0,
         y: Union[float, np.ndarray] = 0.0,
         z: Union[float, np.ndarray] = 0.0,
+        update_nodes: bool = True,
     ):
         """Move cells or networks to a location (x, y, z).
 
@@ -1307,8 +1315,13 @@ class Module(ABC):
         If x, y, and z are arrays, then they must each have a length equal to the number
         of cells being moved. Then the first compartment of the first branch of each
         cell is moved to the specified location.
+
+        Args:
+            update_nodes: Whether `.nodes` should be updated or not. Setting this to
+                `False` largely speeds up moving, especially for big networks, but
+                `.nodes` or `.show` will not show the new xyz coordinates.
         """
-        self._move_to(x, y, z, self.nodes)
+        self._move_to(x, y, z, self.nodes, update_nodes)
 
     def _move_to(
         self,
@@ -1316,6 +1329,7 @@ class Module(ABC):
         y: Union[float, np.ndarray],
         z: Union[float, np.ndarray],
         view: pd.DataFrame,
+        update_nodes: bool,
     ):
         # Test if any coordinate values are NaN which would greatly affect moving
         if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
@@ -1360,7 +1374,8 @@ class Module(ABC):
             for b in branches:
                 self.xyzr[b][:, :3] += shift_amounts[i]
 
-        self._update_nodes_with_xyz()
+        if update_nodes:
+            self._update_nodes_with_xyz()
 
     def rotate(self, degrees: float, rotation_axis: str = "xy"):
         """Rotate jaxley modules clockwise. Used only for visualization.
@@ -1646,7 +1661,9 @@ class View:
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
-    def move(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+    def move(
+        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = True
+    ):
         """Move cells or networks by adding to their (x, y, z) coordinates.
 
         This function is used only for visualization. It does not affect the simulation.
@@ -1657,9 +1674,11 @@ class View:
             z: The amount to move in the z direction in um.
         """
         nodes = self.set_global_index_and_index(self.view)
-        self.pointer._move(x, y, z, nodes)
+        self.pointer._move(x, y, z, nodes, update_nodes=update_nodes)
 
-    def move_to(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+    def move_to(
+        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = True
+    ):
         """Move cells or networks to a location (x, y, z).
 
         If x, y, and z are floats, then the first compartment of the first branch
@@ -1673,7 +1692,7 @@ class View:
         """
         # Ensuring here that the branch indices in the view passed are global
         nodes = self.set_global_index_and_index(self.view)
-        self.pointer._move_to(x, y, z, nodes)
+        self.pointer._move_to(x, y, z, nodes, update_nodes=update_nodes)
 
     def adjust_view(
         self, key: str, index: Union[int, str, list, range, slice]
