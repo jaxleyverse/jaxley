@@ -109,15 +109,14 @@ class Module(ABC):
 
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
-        loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
-        jit_interp = jit(interpolate_xyz)
-        xyz = (
-            [jit_interp(loc, xyzr).T for xyzr in self.xyzr]
-            if len(loc) > 0
-            else [self.xyzr]
-        )
+        num_branches = len(self.xyzr)
+        x = np.linspace(0.5 / self.nseg, (num_branches*1 - 0.5 / self.nseg), num_branches*self.nseg)
+        x += np.arange(num_branches).repeat(self.nseg) # add offset to prevent branch loc overlap
+        xp = np.hstack([np.linspace(0, 1, x.shape[0])+2*i for i,x in enumerate(self.xyzr)])
+        xyz = v_interp(x, xp, np.vstack(self.xyzr)[:,:3])
         idcs = self.nodes["comp_index"]
-        self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
+        self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
+        return xyz.T
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
