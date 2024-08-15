@@ -24,6 +24,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     interpolate_xyz,
     loc_of_index,
+    v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
@@ -110,10 +111,18 @@ class Module(ABC):
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
         num_branches = len(self.xyzr)
-        x = np.linspace(0.5 / self.nseg, (num_branches*1 - 0.5 / self.nseg), num_branches*self.nseg)
-        x += np.arange(num_branches).repeat(self.nseg) # add offset to prevent branch loc overlap
-        xp = np.hstack([np.linspace(0, 1, x.shape[0])+2*i for i,x in enumerate(self.xyzr)])
-        xyz = v_interp(x, xp, np.vstack(self.xyzr)[:,:3])
+        x = np.linspace(
+            0.5 / self.nseg,
+            (num_branches * 1 - 0.5 / self.nseg),
+            num_branches * self.nseg,
+        )
+        x += np.arange(num_branches).repeat(
+            self.nseg
+        )  # add offset to prevent branch loc overlap
+        xp = np.hstack(
+            [np.linspace(0, 1, x.shape[0]) + 2 * i for i, x in enumerate(self.xyzr)]
+        )
+        xyz = v_interp(x, xp, np.vstack(self.xyzr)[:, :3])
         idcs = self.nodes["comp_index"]
         self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
         return xyz.T
