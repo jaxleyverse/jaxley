@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Union
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap, jit
+from jax import jit, vmap
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
