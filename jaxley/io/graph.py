@@ -180,7 +180,7 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
 is_leaf = lambda graph, n: graph.out_degree(n) == 0 and graph.in_degree(n) == 1
 is_branching = lambda graph, n: graph.out_degree(n) > 1
 has_same_id = lambda graph, i, j: graph.nodes[i]["id"] == graph.nodes[j]["id"]
-path_e2n = lambda path: [path[0][0]] + [e[1] for e in path]
+path_e2n = lambda path: [path[0][0]] + [e[1] for e in path] if path.shape[0] > 1 else [path[0,0], path[0,1]]
 path_n2e = lambda path: [e for e in zip(path[:-1], path[1:])]
 unpack = lambda d, keys: [d[k] for k in keys]
 has_node_attr = lambda graph, attr: all(attr in graph.nodes[n] for n in graph.nodes)
