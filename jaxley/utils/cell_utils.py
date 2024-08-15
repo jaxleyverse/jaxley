@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Union
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
+from jax import jit, vmap
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
@@ -388,3 +388,6 @@ def group_and_sum(
         group_sums = group_sums.at[inds_to_group_by].add(values_to_sum)
 
     return group_sums
+
+
+v_interp = jit(vmap(jnp.interp, in_axes=(None, None, 1)))
