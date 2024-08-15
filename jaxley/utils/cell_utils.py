@@ -232,7 +232,7 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
 
 
 def compute_coupling_cond_branchpoint(rad, r_a, l):
-    """Return the coupling conductance between one compartment and a comp with l=0.
+    r"""Return the coupling conductance between one compartment and a comp with l=0.
 
     From https://en.wikipedia.org/wiki/Compartmental_neuron_models
 
@@ -255,7 +255,7 @@ def compute_coupling_cond_branchpoint(rad, r_a, l):
 
 
 def compute_impact_on_node(rad, r_a, l):
-    """Compute the weight with which a compartment influences its node.
+    r"""Compute the weight with which a compartment influences its node.
 
     In order to satisfy Kirchhoffs current law, the current at a branch point must be
     proportional to the crosssection of the compartment. We only require proportionality
