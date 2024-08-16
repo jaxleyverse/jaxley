@@ -887,12 +887,14 @@ class Module(ABC):
         voltages = u["v"]
 
         # Extract the external inputs
-        has_current = "i" in externals.keys()
-        i_current = externals["i"] if has_current else jnp.asarray([]).astype("float")
-        i_inds = external_inds["i"] if has_current else jnp.asarray([]).astype("int32")
-        i_ext = self._get_external_input(
-            voltages, i_inds, i_current, params["radius"], params["length"]
-        )
+        if "i" in externals.keys():
+            i_current = externals["i"]
+            i_inds = external_inds["i"]
+            i_ext = self._get_external_input(
+                voltages, i_inds, i_current, params["radius"], params["length"]
+            )
+        else:
+            i_ext = 0.0
 
         # Step of the channels.
         u, (v_terms, const_terms) = self._step_channels(
