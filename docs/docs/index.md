@@ -17,6 +17,7 @@
 We currently have tutorials on how to:
 
 - [simulate morphologically detailed neurons](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons.md)
+- [read and handle SWC files](https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies.md)
 - [simulate networks of such neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network.md)
 - [set parameters of cells and networks](https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters.md)
 - [speed up simulations with jit and vmap](https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap.md)
