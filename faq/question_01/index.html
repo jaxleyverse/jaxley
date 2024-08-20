@@ -18,7 +18,7 @@
     
     
       
-        <title>What makes jaxley different from other libraries? - Jaxley</title>
+        <title>How can I save and load cells and networks? - Jaxley</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#what-makes-jaxley-different-from-other-libraries" class="md-skip">
+        <a href="#how-can-i-save-and-load-cells-and-networks" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              What makes jaxley different from other libraries?
+              How can I save and load cells and networks?
             
           </span>
         </div>
@@ -792,8 +792,22 @@
   
 
 
-<h1 id="what-makes-jaxley-different-from-other-libraries">What makes <code>jaxley</code> different from other libraries?<a class="headerlink" href="#what-makes-jaxley-different-from-other-libraries" title="Permanent link">&para;</a></h1>
-<p>Differentiable, jit-compilable, and implements implicit Euler for multicompartment models.</p>
+<h1 id="how-can-i-save-and-load-cells-and-networks">How can I save and load cells and networks?<a class="headerlink" href="#how-can-i-save-and-load-cells-and-networks" title="Permanent link">&para;</a></h1>
+<p>All <code>module</code>s (i.e., compartments, branches, cells, and networks) in <code>Jaxley</code> can be saved and loaded with pickle:
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="c1"># ... define network, cell, etc.</span>
+<span class="n">network</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell1</span><span class="p">,</span> <span class="n">cell2</span><span class="p">])</span>
+
+<span class="c1"># Save.</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;path/to/file.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
+
+<span class="c1"># Load.</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;path/to/file.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+    <span class="n">network</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+</code></pre></div></p>
 
 
 
