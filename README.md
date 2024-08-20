@@ -4,7 +4,7 @@
 
 
 <p align="center">
-  <img src="docs/logo.png?raw=true" width="360">
+  <img src="https://raw.githubusercontent.com/jaxleyverse/jaxley/main/docs/logo.png" width="360">
 </p>
 
 `Jaxley` is a differentiable simulator for biophysical neuron models in [JAX](https://github.com/google/jax). Its key features are:
