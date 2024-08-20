@@ -11,11 +11,4 @@
 
 ## Important dependencies and prior art
 
-* `NEURON`
-
-
-## Citation
-If you use `jaxley` consider citing the corresponding paper:
-```
-@article{}
-```
+* We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [NEURON](https://github.com/neuronsimulator/nrn)
