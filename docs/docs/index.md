@@ -1,62 +1,64 @@
 
-![jaxley_logo](logo.png)
+<p align="center">
+  <img src="logo.png?raw=true" width="360">
+</p>
 
-`jaxley` is a differentiable simulator for networks of multicompartment neurons in [JAX](https://github.com/google/jax). Its key features are:
+`Jaxley` is a differentiable simulator for biophysical neuron models in [JAX](https://github.com/google/jax). Its key features are:
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
-- support for CPU and GPU without any changes to the code  
+- support for CPU, GPU, or TPU without any changes to the code  
 - `jit`-compilation, making it as fast as other packages while being fully written in python  
 - backward-Euler solver for stable numerical solution of multicompartment neurons  
 - elegant mechanisms for parameter sharing
 
 
-### Tutorial
+## Tutorials
 
-Tutorial notebooks with some explanation are in [`tutorials`](https://github.com/jaxleyverse/jaxley/tree/main/tutorials). We currently have tutorials on how to:
+We currently have tutorials on how to:
 
-- [simulate morphologically detailed neurons](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/01_morph_neurons.ipynb)
-- [simulate networks of such neurons](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/02_small_network.ipynb)
-- [set parameters of cells and networks](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/03_setting_parameters.ipynb)
-- [speed up simulations with jit and vmap](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/04_jit_and_vmap.ipynb)
-- [define your own channels and synapses](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/05_channel_and_synapse_models.ipynb)
-- [define groups](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/06_groups.ipynb)
-- [train biophysical models](https://github.com/jaxleyverse/jaxley/blob/main/tutorials/07_gradient_descent.ipynb)
-
-
-### Units
-
-`jaxley` uses the same [units as `NEURON`](https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html).
+- [simulate morphologically detailed neurons](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons.md)
+- [simulate networks of such neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network.md)
+- [set parameters of cells and networks](https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters.md)
+- [speed up simulations with jit and vmap](https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap.md)
+- [define your own channels and synapses](https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models.md)
+- [define groups](https://jaxleyverse.github.io/jaxley/tutorial/06_groups.md)
+- [train biophysical models](https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent.md)
 
 
-### Installation
-`jaxley` requires that you first download and install [tridiax](https://github.com/jaxleyverse/tridiax). Then, install `jaxley` via:
+## Units
+
+`Jaxley` uses the same [units as `NEURON`](https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html).
+
+
+## Installation
+`Jaxley` is available on [`pypi`](https://pypi.org/project/jaxley/):
 ```sh
-git clone https://github.com/jaxleyverse/jaxley.git
-cd jaxley
-pip install -e .
+pip install jaxley
+```
+This will install `Jaxley` with CPU support. If you want GPU support, follow the instructions on the [`JAX` github repository](https://github.com/google/jax) to install `JAX` with GPU support (in addition to installing `Jaxley`). For example, for NVIDIA GPUs, run
+```sh
+pip install -U "jax[cuda12]"
 ```
 
-Note that `pip>=21.3` is required to install the editable version with `pyproject.toml` see [pip docs](https://pip.pypa.io/en/latest/reference/build-system/pyproject-toml/#editable-installation). 
+
+## Feedback and Contributions
+
+We welcome any feedback on how `Jaxley` is working for your neuron models and are happy to receive bug reports, pull requests and other feedback (see [contribute](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)). We wish to maintain a positive community, please read our [Code of Conduct](https://github.com/jaxleyverse/jaxley/blob/main/CODE_OF_CONDUCT.md).
 
 
-### Feedback and Contributions
-
-We welcome any feedback on how jaxley is working for your neuron models and are happy to receive bug reports, pull requests and other feedback (see [contribute](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)). We wish to maintain a positive community, please read our [Code of Conduct](https://github.com/jaxleyverse/jaxley/blob/main/CODE_OF_CONDUCT.md).
-
-
-### Acknowledgements
+## Acknowledgements
 
 We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [NEURON](https://github.com/neuronsimulator/nrn).
 
 
-### License
+## License
 
 [Apache License](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
 
-### Citation
+## Citation
 
-If you use `jaxley`, consider citing the corresponding paper:
+If you use `Jaxley`, consider citing the corresponding paper:
 ```
 @article{}
 ```
