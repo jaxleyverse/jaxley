@@ -65,4 +65,44 @@
          <lastmod>2024-08-20</lastmod>
          <changefreq>daily</changefreq>
     </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/06_groups/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies/</loc>
+         <lastmod>2024-08-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
 </urlset>
