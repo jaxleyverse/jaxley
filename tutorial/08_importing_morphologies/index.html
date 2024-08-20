@@ -11,6 +11,10 @@
         <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies/">
       
       
+        <link rel="prev" href="../01_morph_neurons/">
+      
+      
+        <link rel="next" href="../02_small_network/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Working with morphologies - Jaxley</title>
+        <title>Read and handle SWC files - Jaxley</title>
       
     
     
@@ -105,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Working with morphologies
+              Read and handle SWC files
             
           </span>
         </div>
@@ -238,17 +242,19 @@
       
   
   
+    
   
   
+  
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -262,7 +268,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Tutorials
@@ -285,6 +291,37 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+  </span>
+  
+
+      </a>
+      
     </li>
   
 
@@ -772,18 +809,24 @@
 
 
 <h1 id="working-with-morphologies">Working with morphologies<a class="headerlink" href="#working-with-morphologies" title="Permanent link">&para;</a></h1>
-<p>To work with more complicated morphologies <code>Jaxley</code> supports importing morphological reconstructions via <code>.swc</code> files.
-<code>.swc</code> is currently the only supported format. Other formats like <code>.asc</code> need to be converted to <code>.swc</code> first, for example using the BlueBrain&rsquo;s <a href="https://github.com/BlueBrain/morph-tool">morph-tool</a>. For more information on the exact specifications of <code>.swc.</code> see <a href="http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html">here</a>.</p>
-<p>In this tutorial, you will learn how to:
-- Load morphologies and make them compatible with <code>Jaxley</code>
-- How to use the visualization features
-- How to assemble a small network of morphologically accurate cells.  </p>
+<p>In this tutorial, you will learn how to:</p>
+<ul>
+<li>Load morphologies and make them compatible with <code>Jaxley</code>  </li>
+<li>How to use the visualization features  </li>
+<li>How to assemble a small network of morphologically accurate cells.  </li>
+</ul>
+<p>Here is a code snippet which you will learn to understand in this tutorial:
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
+
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="s2">&quot;my_cell.swc&quot;</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></p>
+<p>To work with more complicated morphologies, <code>Jaxley</code> supports importing morphological reconstructions via <code>.swc</code> files.
+<code>.swc</code> is currently the only supported format. Other formats like <code>.asc</code> need to be converted to <code>.swc</code> first, for example using the BlueBrain&rsquo;s <a href="https://github.com/BlueBrain/morph-tool">morph-tool</a>. For more information on the exact specifications of <code>.swc</code> see <a href="http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html">here</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 </code></pre></div>
-<p>To work with <code>.swc</code> files, <code>Jaxley</code> implements a custom <code>.swc</code> reader.
-The reader traces the morphology and identifies all linear sections. These are then partitioned into branches, each of which will be approximated by a number of equally long compartments that can be simulated fully in parallel.</p>
+<p>To work with <code>.swc</code> files, <code>Jaxley</code> implements a custom <code>.swc</code> reader. The reader traces the morphology and identifies all uninterrupted sections. These are then partitioned into branches, each of which will be approximated by a number of equally many compartments that can be simulated fully in parallel.</p>
 <p>To demonstrate this, let&rsquo;s import an example morphology of a Layer 5 pyramidal cell and visualize it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># import swc file into jx.Cell object</span>
 <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
@@ -952,7 +995,7 @@ The reader traces the morphology and identifies all linear sections. These are t
 <p>1256 rows × 8 columns</p>
 </div>
 
-<p>As we can see, this yields a morphology that is approximated by 1256 compartments. Depending on the amount of detail that you need, you can also change the number of compartments in each branch.</p>
+<p>As we can see, this yields a morphology that is approximated by 1256 compartments. Depending on the amount of detail that you need, you can also change the number of compartments in each branch:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_branch_len</span><span class="o">=</span><span class="mf">2000.0</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># print shape (num_cells, num_branches, num_comps)</span>
@@ -1140,7 +1183,6 @@ The reader traces the morphology and identifies all linear sections. These are t
 <p>Since <code>Jaxley</code> supports grouping different branches or compartments together, we can also use the <code>id</code> labels provided by the <code>.swc</code> file to assign group labels to the <code>jx.Cell</code> object.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">group_nodes</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
 
-
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">colors</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">tab10</span><span class="o">.</span><span class="n">colors</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">basal</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
@@ -1182,7 +1224,7 @@ The reader traces the morphology and identifies all linear sections. These are t
 </code></pre></div>
 
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_12_1.png" /></p>
-<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutroial on <a href="02_small_network.ipynb">How to build a network</a>.</p>
+<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutroial on <a href="https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/">how to build a network</a>.</p>
 
 
 

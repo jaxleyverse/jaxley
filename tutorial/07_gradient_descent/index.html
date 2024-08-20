@@ -303,6 +303,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../02_small_network/" class="md-nav__link">
         
   
@@ -1042,12 +1063,14 @@
 
 
 <h1 id="training-biophysical-models">Training biophysical models<a class="headerlink" href="#training-biophysical-models" title="Permanent link">&para;</a></h1>
-<p>In this tutorial, you will learn how to train biophysical models in Jaxley. This includes the following:
-- compute the gradient with respect to parameters<br />
-- use parameter transformations<br />
-- use multi-level checkpointing<br />
-- define optimizers<br />
-- write dataloaders and parallelize across data  </p>
+<p>In this tutorial, you will learn how to train biophysical models in <code>Jaxley</code>. This includes the following:</p>
+<ul>
+<li>compute the gradient with respect to parameters  </li>
+<li>use parameter transformations  </li>
+<li>use multi-level checkpointing  </li>
+<li>define optimizers  </li>
+<li>write dataloaders and parallelize across data  </li>
+</ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span><span class="p">,</span> <span class="n">value_and_grad</span>
 <span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
@@ -1117,7 +1140,7 @@
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">TanhRateSynapse</span>
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
 </code></pre></div>
-<p>First, we define a network as you saw in the <a href="">previous tutorial</a>:</p>
+<p>First, we define a network as you saw in the <a href="https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/">previous tutorial</a>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># For synaptic locations.</span>
 
 <span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
@@ -1235,8 +1258,6 @@ Added 1 recordings. See `.recordings` for details.
 <div class="highlight"><pre><span></span><code><span class="n">jitted_grad</span> <span class="o">=</span> <span class="n">jit</span><span class="p">(</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">value</span><span class="p">,</span> <span class="n">gradient</span> <span class="o">=</span> <span class="n">jitted_grad</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">[:</span><span class="mi">4</span><span class="p">],</span> <span class="n">labels</span><span class="p">[:</span><span class="mi">4</span><span class="p">])</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code>
 </code></pre></div>
 <h3 id="defining-parameter-transformations">Defining parameter transformations<a class="headerlink" href="#defining-parameter-transformations" title="Permanent link">&para;</a></h3>
 <p>Before training, however, we will enforce for all parameters to be within a prespecified range (such that, e.g., conductances can not become negative)</p>
@@ -1358,7 +1379,7 @@ epoch 9, loss 6.5030439519558865
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Label&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Prediction&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../07_gradient_descent_files/07_gradient_descent_59_0.png" /></p>
+<p><img alt="png" src="../07_gradient_descent_files/07_gradient_descent_58_0.png" /></p>
 <p>Indeed, the loss goes down and the network successfully classifies the patterns.</p>
 <h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>Puh, this was a pretty dense tutorial with a lot of material. You should have learned how to:
@@ -1367,9 +1388,7 @@ epoch 9, loss 6.5030439519558865
 - use multi-level checkpointing<br />
 - define optimizers<br />
 - write dataloaders and parallelize across data  </p>
-<p>This was the last tutorial of the <code>Jaxley</code> toolbox. If anything is still unclear please create a <a href="">discussion</a>. If you find any bugs, please open an <a href="https://github.com/jaxleyverse/jaxley/issues">issue</a>. Happy coding!</p>
-<div class="highlight"><pre><span></span><code>
-</code></pre></div>
+<p>This was the last tutorial of the <code>Jaxley</code> toolbox. If anything is still unclear please create a <a href="https://github.com/jaxleyverse/jaxley/discussions">discussion</a>. If you find any bugs, please open an <a href="https://github.com/jaxleyverse/jaxley/issues">issue</a>. Happy coding!</p>
 
 
 

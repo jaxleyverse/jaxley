@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/">
       
       
-        <link rel="prev" href="../01_morph_neurons/">
+        <link rel="prev" href="../08_importing_morphologies/">
       
       
         <link rel="next" href="../03_setting_parameters/">
@@ -287,6 +287,27 @@
   
   <span class="md-ellipsis">
     Getting started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
   </span>
   
 
@@ -862,9 +883,11 @@
 
 
 <h1 id="network-simulations-in-jaxley">Network simulations in Jaxley<a class="headerlink" href="#network-simulations-in-jaxley" title="Permanent link">&para;</a></h1>
-<p>In this tutorial, you will learn how to:
-- connect neurons into a network    <br />
-- visualize networks</p>
+<p>In this tutorial, you will learn how to:</p>
+<ul>
+<li>connect neurons into a network  </li>
+<li>visualize networks  </li>
+</ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
@@ -902,7 +925,7 @@
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span><span class="p">,</span> <span class="n">connect</span>
 </code></pre></div>
 <h3 id="define-the-network">Define the network<a class="headerlink" href="#define-the-network" title="Permanent link">&para;</a></h3>
-<p>First, we define a cell as you saw in the <a href="">previous tutorial</a>.</p>
+<p>First, we define a cell as you saw in the <a href="https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/">previous tutorial</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
 <span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
@@ -990,9 +1013,7 @@ Added 1 recordings. See `.recordings` for details.
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_28_0.png" /></p>
-<p>That&rsquo;s it! You now know how to simulate networks of morphologically detailed neurons. Next, you should learn how to modify parameters of your simulation in <a href="">this tutorial</a>.</p>
-<div class="highlight"><pre><span></span><code>
-</code></pre></div>
+<p>That&rsquo;s it! You now know how to simulate networks of morphologically detailed neurons. Next, you should learn how to modify parameters of your simulation in <a href="https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters/">this tutorial</a>.</p>
 
 
 

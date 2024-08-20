@@ -14,7 +14,7 @@
         <link rel="prev" href="../..">
       
       
-        <link rel="next" href="../02_small_network/">
+        <link rel="next" href="../08_importing_morphologies/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -394,6 +394,27 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -952,12 +973,14 @@
 
 
 <h1 id="basics-of-running-simulations-in-jaxley">Basics of running simulations in Jaxley<a class="headerlink" href="#basics-of-running-simulations-in-jaxley" title="Permanent link">&para;</a></h1>
-<p>In this tutorial, you will learn how to:
-- build your first morphologically detailed cell or read it from SWC<br />
-- stimulate the cell<br />
-- record from the cell<br />
-- visualize cells
-- run your first simulation</p>
+<p>In this tutorial, you will learn how to:</p>
+<ul>
+<li>build your first morphologically detailed cell or read it from SWC  </li>
+<li>stimulate the cell  </li>
+<li>record from the cell  </li>
+<li>visualize cells  </li>
+<li>run your first simulation  </li>
+</ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 <span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
@@ -1090,7 +1113,7 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_29_0.png" /></p>
 <p>At the location of the first recording (in blue) the cell spiked, whereas at the second recording, it did not. This makes sense because we only inserted sodium and potassium channels into the first branch, but not in the entire cell.</p>
-<p>Congrats! You have just run your first morphologically detailed neuron simulation in <code>Jaxley</code>. We suggest to continue by learning how to <a href="02_small_network.ipynb">build networks</a>. If you are only interested in single cell simulations, you can directly jump to learning how to <a href="03_setting_parameters.ipynb">modify parameters of your simulation</a>. If you want to simulate even more detailed morphologies that are too complex to define by hand checkout our tutorial on <a href="08_importing_morphologies.ipynb">working with detailed morphologies</a>.</p>
+<p>Congrats! You have just run your first morphologically detailed neuron simulation in <code>Jaxley</code>. We suggest to continue by learning how to <a href="https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/">build networks</a>. If you are only interested in single cell simulations, you can directly jump to learning how to <a href="https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters/">modify parameters of your simulation</a>. If you want to simulate detailed morphologies from SWC files, checkout our tutorial on <a href="https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies/">working with detailed morphologies</a>.</p>
 
 
 

@@ -303,6 +303,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../02_small_network/" class="md-nav__link">
         
   
@@ -970,10 +991,12 @@
 
 
 <h1 id="speeding-up-simulations-with-jit-compilation-and-gpus">Speeding up simulations with JIT-compilation and GPUs<a class="headerlink" href="#speeding-up-simulations-with-jit-compilation-and-gpus" title="Permanent link">&para;</a></h1>
-<p>In this tutorial, you will learn how to:<br />
-- make parameter sweeps in <code>Jaxley</code>
-- use <code>jit</code> to compile your simulations and make them faster
-- use <code>vmap</code> to parallelize simulations on GPUs</p>
+<p>In this tutorial, you will learn how to:</p>
+<ul>
+<li>make parameter sweeps in <code>Jaxley</code>  </li>
+<li>use <code>jit</code> to compile your simulations and make them faster  </li>
+<li>use <code>vmap</code> to parallelize simulations on GPUs  </li>
+</ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
 
@@ -1108,10 +1131,8 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <p>That&rsquo;s all you have to know about <code>jit</code> and <code>vmap</code>! If you have worked through this and the previous tutorials, you should be ready to set up your first network simulations.</p>
 <h3 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h3>
-<p>If you want to learn more, we recommend you to read the <a href="">tutorial on building channel and synapse models</a> or to read the <a href="">tutorial on groups</a>, which allow to make your <code>Jaxley</code> simulations more elegant and convenient to interact with.</p>
-<p>Alternatively, you can also directly jump ahead to the <a href="">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
-<div class="highlight"><pre><span></span><code>
-</code></pre></div>
+<p>If you want to learn more, we recommend you to read the <a href="https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models/">tutorial on building channel and synapse models</a> or to read the <a href="https://jaxleyverse.github.io/jaxley/tutorial/06_groups/">tutorial on groups</a>, which allow to make your <code>Jaxley</code> simulations more elegant and convenient to interact with.</p>
+<p>Alternatively, you can also directly jump ahead to the <a href="https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
 
 
 

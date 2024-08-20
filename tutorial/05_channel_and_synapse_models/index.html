@@ -303,6 +303,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../02_small_network/" class="md-nav__link">
         
   
@@ -862,9 +883,11 @@
 
 
 <h1 id="building-and-using-ion-channel-models">Building and using ion channel models<a class="headerlink" href="#building-and-using-ion-channel-models" title="Permanent link">&para;</a></h1>
-<p>In this tutorial, you will learn how to:<br />
-- define your own ion channel models beyond the preconfigured channels in <code>jaxley</code></p>
-<p>This tutorial assumes that you have already learned how to <a href="">build basic simulations of morphologically detailed neurons</a>.</p>
+<p>In this tutorial, you will learn how to:</p>
+<ul>
+<li>define your own ion channel models beyond the preconfigured channels in <code>Jaxley</code>  </li>
+</ul>
+<p>This tutorial assumes that you have already learned how to <a href="https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/">build basic simulations</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">config</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_platform_name&quot;</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
@@ -877,7 +900,7 @@
 
 <span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 </code></pre></div>
-<p>First, we define a cell as you saw in the <a href="">previous tutorial</a>:</p>
+<p>First, we define a cell as you saw in the <a href="https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/">previous tutorial</a>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
 <span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
@@ -993,7 +1016,7 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_12_0.png" /></p>
 <h3 id="your-own-synapse">Your own synapse<a class="headerlink" href="#your-own-synapse" title="Permanent link">&para;</a></h3>
-<p>The parts below assume that you have already learned how to <a href="">build network simulations in <code>Jaxley</code></a>.</p>
+<p>The parts below assume that you have already learned how to <a href="https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/">build network simulations in <code>Jaxley</code></a>.</p>
 <p>The below is an example of how to define your own synapse model in <code>Jaxley</code>:`</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
 <span class="kn">from</span> <span class="nn">jaxley.synapses.synapse</span> <span class="kn">import</span> <span class="n">Synapse</span>
@@ -1052,10 +1075,8 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_20_0.png" /></p>
 <p>That&rsquo;s it! You are now ready to build your own custom simulations and equip them with channel and synapse models!</p>
-<p>This tutorial does not have an immediate follow-up tutorial. You could read the <a href="">tutorial on groups</a>, which allow to make your <code>Jaxley</code> simulations more elegant and convenient to interact with.</p>
-<p>Alternatively, you can also directly jump ahead to the <a href="">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
-<div class="highlight"><pre><span></span><code>
-</code></pre></div>
+<p>This tutorial does not have an immediate follow-up tutorial. You could read the <a href="https://jaxleyverse.github.io/jaxley/tutorial/06_groups/">tutorial on groups</a>, which allow to make your <code>Jaxley</code> simulations more elegant and convenient to interact with.</p>
+<p>Alternatively, you can also directly jump ahead to the <a href="https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
 
 
 
