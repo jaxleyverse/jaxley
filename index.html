@@ -20,7 +20,7 @@
     
     
       
-        <title>jaxley</title>
+        <title>Jaxley</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tutorial" class="md-skip">
+        <a href="#tutorials" class="md-skip">
           Skip to content
         </a>
       
@@ -88,7 +88,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="jaxley" class="md-header__button md-logo" aria-label="jaxley" data-md-component="logo">
+    <a href="." title="Jaxley" class="md-header__button md-logo" aria-label="Jaxley" data-md-component="logo">
       
   <img src="logo_white.png" alt="logo">
 
@@ -101,7 +101,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            jaxley
+            Jaxley
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -194,12 +194,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="jaxley" class="md-nav__button md-logo" aria-label="jaxley" data-md-component="logo">
+    <a href="." title="Jaxley" class="md-nav__button md-logo" aria-label="Jaxley" data-md-component="logo">
       
   <img src="logo_white.png" alt="logo">
 
     </a>
-    jaxley
+    Jaxley
   </label>
   
     <div class="md-nav__source">
@@ -265,9 +265,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#tutorial" class="md-nav__link">
+  <a href="#tutorials" class="md-nav__link">
     <span class="md-ellipsis">
-      Tutorial
+      Tutorials
     </span>
   </a>
   
@@ -507,7 +507,7 @@
         
   
   <span class="md-ellipsis">
-    Optimization
+    Training models
   </span>
   
 
@@ -861,9 +861,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#tutorial" class="md-nav__link">
+  <a href="#tutorials" class="md-nav__link">
     <span class="md-ellipsis">
-      Tutorial
+      Tutorials
     </span>
   </a>
   
@@ -943,43 +943,46 @@
 
   <h1>Home</h1>
 
-<p><img alt="jaxley_logo" src="logo.png" /></p>
-<p><code>jaxley</code> is a differentiable simulator for networks of multicompartment neurons in <a href="https://github.com/google/jax">JAX</a>. Its key features are:</p>
+<p align="center">
+  <img src="logo.png?raw=true" width="360">
+</p>
+
+<p><code>Jaxley</code> is a differentiable simulator for biophysical neuron models in <a href="https://github.com/google/jax">JAX</a>. Its key features are:</p>
 <ul>
 <li>automatic differentiation, allowing gradient-based optimization of thousands of parameters  </li>
-<li>support for CPU and GPU without any changes to the code  </li>
+<li>support for CPU, GPU, or TPU without any changes to the code  </li>
 <li><code>jit</code>-compilation, making it as fast as other packages while being fully written in python  </li>
 <li>backward-Euler solver for stable numerical solution of multicompartment neurons  </li>
 <li>elegant mechanisms for parameter sharing</li>
 </ul>
-<h3 id="tutorial">Tutorial<a class="headerlink" href="#tutorial" title="Permanent link">&para;</a></h3>
-<p>Tutorial notebooks with some explanation are in <a href="https://github.com/jaxleyverse/jaxley/tree/main/tutorials"><code>tutorials</code></a>. We currently have tutorials on how to:</p>
+<h2 id="tutorials">Tutorials<a class="headerlink" href="#tutorials" title="Permanent link">&para;</a></h2>
+<p>We currently have tutorials on how to:</p>
 <ul>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/01_morph_neurons.ipynb">simulate morphologically detailed neurons</a></li>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/02_small_network.ipynb">simulate networks of such neurons</a></li>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/03_setting_parameters.ipynb">set parameters of cells and networks</a></li>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/04_jit_and_vmap.ipynb">speed up simulations with jit and vmap</a></li>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/05_channel_and_synapse_models.ipynb">define your own channels and synapses</a></li>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/06_groups.ipynb">define groups</a></li>
-<li><a href="https://github.com/jaxleyverse/jaxley/blob/main/tutorials/07_gradient_descent.ipynb">train biophysical models</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons.md">simulate morphologically detailed neurons</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/02_small_network.md">simulate networks of such neurons</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters.md">set parameters of cells and networks</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap.md">speed up simulations with jit and vmap</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models.md">define your own channels and synapses</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/06_groups.md">define groups</a></li>
+<li><a href="https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent.md">train biophysical models</a></li>
 </ul>
-<h3 id="units">Units<a class="headerlink" href="#units" title="Permanent link">&para;</a></h3>
-<p><code>jaxley</code> uses the same <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">units as <code>NEURON</code></a>.</p>
-<h3 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h3>
-<p><code>jaxley</code> requires that you first download and install <a href="https://github.com/jaxleyverse/tridiax">tridiax</a>. Then, install <code>jaxley</code> via:
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/jaxleyverse/jaxley.git
-<span class="nb">cd</span><span class="w"> </span>jaxley
-pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+<h2 id="units">Units<a class="headerlink" href="#units" title="Permanent link">&para;</a></h2>
+<p><code>Jaxley</code> uses the same <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">units as <code>NEURON</code></a>.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<p><code>Jaxley</code> is available on <a href="https://pypi.org/project/jaxley/"><code>pypi</code></a>:
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>jaxley
+</code></pre></div>
+This will install <code>Jaxley</code> with CPU support. If you want GPU support, follow the instructions on the <a href="https://github.com/google/jax"><code>JAX</code> github repository</a> to install <code>JAX</code> with GPU support (in addition to installing <code>Jaxley</code>). For example, for NVIDIA GPUs, run
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s2">&quot;jax[cuda12]&quot;</span>
 </code></pre></div></p>
-<p>Note that <code>pip&gt;=21.3</code> is required to install the editable version with <code>pyproject.toml</code> see <a href="https://pip.pypa.io/en/latest/reference/build-system/pyproject-toml/#editable-installation">pip docs</a>. </p>
-<h3 id="feedback-and-contributions">Feedback and Contributions<a class="headerlink" href="#feedback-and-contributions" title="Permanent link">&para;</a></h3>
-<p>We welcome any feedback on how jaxley is working for your neuron models and are happy to receive bug reports, pull requests and other feedback (see <a href="https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md">contribute</a>). We wish to maintain a positive community, please read our <a href="https://github.com/jaxleyverse/jaxley/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a>.</p>
-<h3 id="acknowledgements">Acknowledgements<a class="headerlink" href="#acknowledgements" title="Permanent link">&para;</a></h3>
+<h2 id="feedback-and-contributions">Feedback and Contributions<a class="headerlink" href="#feedback-and-contributions" title="Permanent link">&para;</a></h2>
+<p>We welcome any feedback on how <code>Jaxley</code> is working for your neuron models and are happy to receive bug reports, pull requests and other feedback (see <a href="https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md">contribute</a>). We wish to maintain a positive community, please read our <a href="https://github.com/jaxleyverse/jaxley/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a>.</p>
+<h2 id="acknowledgements">Acknowledgements<a class="headerlink" href="#acknowledgements" title="Permanent link">&para;</a></h2>
 <p>We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular <a href="https://github.com/neuronsimulator/nrn">NEURON</a>.</p>
-<h3 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h3>
+<h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
 <p><a href="https://github.com/jaxleyverse/jaxley/blob/main/LICENSE">Apache License</a></p>
-<h3 id="citation">Citation<a class="headerlink" href="#citation" title="Permanent link">&para;</a></h3>
-<p>If you use <code>jaxley</code>, consider citing the corresponding paper:
+<h2 id="citation">Citation<a class="headerlink" href="#citation" title="Permanent link">&para;</a></h2>
+<p>If you use <code>Jaxley</code>, consider citing the corresponding paper:
 <div class="highlight"><pre><span></span><code>@article{}
 </code></pre></div></p>
 
