@@ -1,4 +1,4 @@
-site_name: jaxley
+site_name: Jaxley
 site_url: "https://jaxleyverse.github.io/jaxley"
 
 nav:
@@ -10,7 +10,7 @@ nav:
     - Accelerate simulations: tutorial/04_jit_and_vmap.md
     - Define your own channels: tutorial/05_channel_and_synapse_models.md
     - Define groups: tutorial/06_groups.md
-    - Optimization: tutorial/07_gradient_descent.md
+    - Training models: tutorial/07_gradient_descent.md
   - Installation: install.md
   - Contributing: 
     - Guide: contribute.md
