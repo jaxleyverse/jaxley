@@ -1020,9 +1020,11 @@
 <span class="n">vmapped_simulate</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">jitted_simulate</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
 <span class="n">voltages</span> <span class="o">=</span> <span class="n">vmapped_simulate</span><span class="p">(</span><span class="n">all_params</span><span class="p">)</span>
 </code></pre></div></p>
-<p>In the previous two tutorials, you learned how to build single cells or networks and how to simulate them. In this tutorial, you will learn how to speed up such simulations by many orders of magnitude. This can be achieved in to ways:
-- by using JIT compilation<br />
-- by using GPU parallelization</p>
+<p>In the previous tutorials, you learned how to build single cells or networks and how to change their parameters. In this tutorial, you will learn how to speed up such simulations by many orders of magnitude. This can be achieved in to ways:</p>
+<ul>
+<li>by using JIT compilation  </li>
+<li>by using GPU parallelization  </li>
+</ul>
 <p>Let&rsquo;s get started!</p>
 <h3 id="using-gpu-or-cpu">Using GPU or CPU<a class="headerlink" href="#using-gpu-or-cpu" title="Permanent link">&para;</a></h3>
 <p>In <code>Jaxley</code> you can set whether you want to use <code>gpu</code> or <code>cpu</code> with the following lines at the beginning of your script:</p>
@@ -1073,8 +1075,8 @@ Added 1 recordings. See `.recordings` for details.
     <span class="n">param_state</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">data_set</span><span class="p">(</span><span class="s2">&quot;K_gK&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">param_state</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">param_state</span><span class="o">=</span><span class="n">param_state</span><span class="p">)</span>
 </code></pre></div>
-<p>The <code>.data_set()</code> method takes three arguments: 
-1) the name of the parameter you want to set. <code>Jaxley</code> allows to set the following parameters:
+<p>The <code>.data_set()</code> method takes three arguments: </p>
+<p>1) the name of the parameter you want to set. <code>Jaxley</code> allows to set the following parameters: &ldquo;radius&rdquo;, &ldquo;length&rdquo;, &ldquo;axial_resistivity&rdquo;, as well as all parameters of channels and synapses.<br />
 2) the value of the parameter.<br />
 3) a <code>param_state</code> which is initialized as <code>None</code> and is modified by <code>.data_set()</code>. This has to be passed to <code>jx.integrate()</code>.  </p>
 <p>Having done this, the simplest (but least efficient) way to perform the parameter sweep is to run a for-loop over many parameter sets:</p>

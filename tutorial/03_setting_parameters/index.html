@@ -991,9 +991,7 @@
 <span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
 <span class="n">net</span><span class="o">.</span><span class="n">IonotropicSynapse</span><span class="p">()</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
 </code></pre></div></p>
-<p>In the previous two tutorials, you learned how to build single cells or networks and how to simulate them. In this tutorial, you will learn how to speed up such simulations by many orders of magnitude. This can be achieved in to ways:
-- by using JIT compilation<br />
-- by using GPU parallelization</p>
+<p>In the previous two tutorials, you learned how to build single cells or networks and how to simulate them. In this tutorial, you will learn how to change parameters of such simulations.</p>
 <p>Let&rsquo;s get started!</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -1024,10 +1022,12 @@ or even of compartments:
 </code></pre></div></p>
 <p>You can always inspect the current parameters by inspecting <code>cell.nodes</code>, which is a pandas Dataframe that contains all information about the cell. You can use <code>.set()</code> to set morphological parameters, channel parameters, synaptic parameters, and initial states, as outlined below:</p>
 <h3 id="setting-morphological-parameters">Setting morphological parameters<a class="headerlink" href="#setting-morphological-parameters" title="Permanent link">&para;</a></h3>
-<p><code>Jaxley</code> allows to set the following morphological parameters:
-- <code>radius</code>: the radius of the (zylindrical) compartment (in micrometer)
-- <code>length</code>: the length of the zylindrical compartment (in micrometer)
-- <code>axial_resistivity</code>: the resistivity of current flow between compartments (in ohm centimeter)</p>
+<p><code>Jaxley</code> allows to set the following morphological parameters:</p>
+<ul>
+<li><code>radius</code>: the radius of the (zylindrical) compartment (in micrometer)  </li>
+<li><code>length</code>: the length of the zylindrical compartment (in micrometer)  </li>
+<li><code>axial_resistivity</code>: the resistivity of current flow between compartments (in ohm centimeter)  </li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">)</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;length&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># This will set every compartment in the cell to have length 1.0.</span>
 </code></pre></div>
