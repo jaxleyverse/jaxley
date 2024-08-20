@@ -5,12 +5,12 @@ nav:
   - Home: index.md
   - Tutorials:
     - Getting started: tutorial/01_morph_neurons.md
-    - Read and handle SWC files: tutorial/08_importing_morphologies.md
     - Run a network simulation: tutorial/02_small_network.md
     - Set parameters: tutorial/03_setting_parameters.md
     - Accelerate simulations: tutorial/04_jit_and_vmap.md
     - Define your own channels: tutorial/05_channel_and_synapse_models.md
     - Define groups: tutorial/06_groups.md
+    - Read and handle SWC files: tutorial/08_importing_morphologies.md
     - Training models: tutorial/07_gradient_descent.md
   - Installation: install.md
   - Contributing: 

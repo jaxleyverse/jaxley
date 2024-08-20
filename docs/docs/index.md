@@ -16,14 +16,14 @@
 
 We currently have tutorials on how to:
 
-- [simulate morphologically detailed neurons](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons.md)
-- [read and handle SWC files](https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies.md)
-- [simulate networks of such neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network.md)
-- [set parameters of cells and networks](https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters.md)
-- [speed up simulations with jit and vmap](https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap.md)
-- [define your own channels and synapses](https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models.md)
-- [define groups](https://jaxleyverse.github.io/jaxley/tutorial/06_groups.md)
-- [train biophysical models](https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent.md)
+- [simulate morphologically detailed neurons](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/)
+- [simulate networks of such neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/)
+- [set parameters of cells and networks](https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters/)
+- [speed up simulations with jit and vmap](https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap/)
+- [define your own channels and synapses](https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models/)
+- [define groups](https://jaxleyverse.github.io/jaxley/tutorial/06_groups/)
+- [read and handle SWC files](https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies/)
+- [train biophysical models](https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/)
 
 
 ## Units
