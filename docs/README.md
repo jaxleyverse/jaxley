@@ -1,6 +1,6 @@
 # Documentation
 
-The documentation is available at: <http://mackelab.org/jaxley>
+The documentation is available at: <https://jaxleyverse.github.io/jaxley/>
 
 ## Building the Documentation
 

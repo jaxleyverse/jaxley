@@ -35,7 +35,7 @@ and run them locally.
 
 ## Online documentation
 
-Most of [the documentation](http://mackelab.org/jaxley) is written in markdown ([basic
+Most of [the documentation](https://jaxleyverse.github.io/jaxley/) is written in markdown ([basic
 markdown guide](https://guides.github.com/features/mastering-markdown/)).
 
 You can directly fix mistakes and suggest clearer formulations in markdown files simply
