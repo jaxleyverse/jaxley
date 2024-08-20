@@ -14,5 +14,5 @@ with open("path/to/file.pkl", "wb") as handle:
 
 # Load.
 with open("path/to/file.pkl", "rb") as handle:
-    network = pickle.dump(handle)
+    network = pickle.load(handle)
 ```
