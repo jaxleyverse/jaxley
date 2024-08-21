@@ -36,11 +36,11 @@ Tutorials are available [on our website](https://jaxleyverse.github.io/jaxley/).
 
 
 ### Installation
-`Jaxley` is available on [`pypi`](https://pypi.org/project/jaxley/):
+`Jaxley` is available on [`PyPI`](https://pypi.org/project/jaxley/):
 ```sh
 pip install jaxley
 ```
-This will install `Jaxley` with CPU support. If you want GPU support, follow the instructions on the [`JAX` github repository](https://github.com/google/jax) to install `JAX` with GPU support (in addition to installing `Jaxley`). For example, for NVIDIA GPUs, run
+This will install `Jaxley` with CPU support. If you want GPU support, follow the instructions on the [`JAX` Github repository](https://github.com/google/jax) to install `JAX` with GPU support (in addition to installing `Jaxley`). For example, for NVIDIA GPUs, run
 ```sh
 pip install -U "jax[cuda12]"
 ```
