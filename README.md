@@ -7,6 +7,8 @@
   <img src="https://raw.githubusercontent.com/jaxleyverse/jaxley/main/docs/logo.png" width="360">
 </p>
 
+[Getting Started](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/) | [Documentation](https://jaxleyverse.github.io/jaxley/)
+
 `Jaxley` is a differentiable simulator for biophysical neuron models in [JAX](https://github.com/google/jax). Its key features are:
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
