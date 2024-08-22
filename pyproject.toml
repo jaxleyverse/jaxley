@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jaxley"
+name = "Jaxley"
 version = "0.1.2"
 description = "Differentiable neuron simulations."
 authors = [
@@ -35,15 +35,20 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "black",
-    "isort",
-    "jupyter",
+doc = [
+    "jupyter_contrib_nbextensions",
+    "notebook <= 6.4.12",
+    "traitlets <= 5.9.0",
+    "ipython <= 8.9.0",
     "mkdocs",
     "mkdocs-material",
     "markdown-include",
     "mkdocs-redirects",
     "mkdocstrings[python]>=0.18",
+]
+dev = [
+    "black",
+    "isort",
     "neuron",
     "pytest",
     "pyright",

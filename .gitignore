@@ -1,6 +1,4 @@
 # Project specific
-/docs/docs/tutorial/*
-/docs/docs/examples/*
 /docs/site/*
 **/.DS_Store
 
