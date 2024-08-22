@@ -1,15 +1,24 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jaxleyverse/jaxley/main/docs/logo.png" width="360">
+</p>
+
+<h1 align="center">Differentiable neuron simulations on CPU, GPU, or TPU</h1>
+
 [![PyPI version](https://badge.fury.io/py/jaxley.svg)](https://badge.fury.io/py/jaxley)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)
 [![Tests](https://github.com/jaxleyverse/jaxley/workflows/Tests/badge.svg?branch=main)](https://github.com/jaxleyverse/jaxley/actions)
 [![GitHub license](https://img.shields.io/github/license/jaxleyverse/jaxley)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
-[Getting Started](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/) | [Documentation](https://jaxleyverse.github.io/jaxley/)
+[**Documentation**](https://jaxleyverse.github.io/jaxley/)
+ | [**Getting Started**](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/)
+ | [**Install guide**](https://jaxleyverse.github.io/jaxley/install/)
+ | [**Reference docs**](https://jaxleyverse.github.io/jaxley/reference/modules/)
+ | [**FAQ**](https://jaxleyverse.github.io/jaxley/faq/)
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jaxleyverse/jaxley/main/docs/logo.png" width="360">
-</p>
 
-`Jaxley` is a differentiable simulator for biophysical neuron models in [JAX](https://github.com/google/jax). Its key features are:
+## What is Jaxley?
+
+`Jaxley` is a differentiable simulator for biophysical neuron models in the Python library [JAX](https://github.com/google/jax). Its key features are:
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
 - support for CPU, GPU, or TPU without any changes to the code  
@@ -19,7 +28,6 @@
 
 
 ## Getting started
-
 
 `Jaxley` allows to simulate biophysical neuron models on CPU, GPU, or TPU:
 ```python
