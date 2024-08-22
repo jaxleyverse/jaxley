@@ -1,7 +1,7 @@
+[![PyPI version](https://badge.fury.io/py/jaxley.svg)](https://badge.fury.io/py/jaxley)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)
 [![Tests](https://github.com/jaxleyverse/jaxley/workflows/Tests/badge.svg?branch=main)](https://github.com/jaxleyverse/jaxley/actions)
-[![GitHub license](https://img.shields.io/github/license/sbi-dev/sbi)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
-
+[![GitHub license](https://img.shields.io/github/license/jaxleyverse/jaxley)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
 [Getting Started](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/) | [Documentation](https://jaxleyverse.github.io/jaxley/)
 
