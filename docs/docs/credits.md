@@ -4,11 +4,16 @@
 
 ## License
 
-`Jaxley` is licensed under the [Apache License](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE) and
+`Jaxley` is licensed under the [Apache License Version 2.0 (Apache-2.0)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE) and
 
 > Copyright (C) 2024 Michael Deistler, Jakob H. Macke, Pedro J. Goncalves, Philipp Berens.
 
 
 ## Important dependencies and prior art
 
-* We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [NEURON](https://github.com/neuronsimulator/nrn)
+* We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [NEURON](https://github.com/neuronsimulator/nrn).
+
+
+## Funding
+
+This work was supported by the German Research Foundation (DFG) through Germany's Excellence Strategy (EXC 2064 – Project number 390727645) and the CRC 1233 "Robust Vision", the German Federal Ministry of Education and Research (Tübingen AI Center, FKZ: 01IS18039A), the 'Certification and Foundations of Safe Machine Learning Systems in Healthcare' project funded by the Carl Zeiss Foundation, and the European Union (ERC, "DeepCoMechTome", ref. 101089288, "NextMechMod", ref. 101039115).

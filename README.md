@@ -18,26 +18,41 @@
 - elegant mechanisms for parameter sharing
 
 
-### Tutorials
+## Getting started
 
-Tutorials are available [on our website](https://jaxleyverse.github.io/jaxley/). We currently have tutorials on how to:
 
-- [simulate morphologically detailed neurons](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/)
-- [simulate networks of such neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/)
-- [set parameters of cells and networks](https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters/)
-- [speed up simulations with jit and vmap](https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap/)
+`Jaxley` allows to simulate biophysical neuron models on CPU, GPU, or TPU:
+```python
+import matplotlib.pyplot as plt
+from jax import config
+
+import jaxley as jx
+from jaxley.channels import HH
+
+config.update("jax_platform_name", "cpu")  # Or "gpu" / "tpu".
+
+cell = jx.Cell()  # Define cell.
+cell.insert(HH())  # Insert channels.
+
+current = jx.step_current(i_delay=1.0, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=10.0)
+cell.stimulate(current)  # Stimulate with step current.
+cell.record("v")  # Record voltage.
+
+v = jx.integrate(cell)  # Run simulation.
+plt.plot(v.T)  # Plot voltage trace.
+```
+
+If you want to learn more, we recommend you to check out our tutorials on how to:
+
+- [get started with `Jaxley`](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/)
+- [simulate networks of neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/)
+- [speed up simulations with GPUs and `jit`](https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap/)
 - [define your own channels and synapses](https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models/)
-- [define groups](https://jaxleyverse.github.io/jaxley/tutorial/06_groups/)
-- [read and handle SWC files](https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies/)
-- [train biophysical models](https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/)
+- [compute the gradient and train biophysical models](https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/)
 
 
-### Units
+## Installation
 
-`Jaxley` uses the same [units as `NEURON`](https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html).
-
-
-### Installation
 `Jaxley` is available on [`PyPI`](https://pypi.org/project/jaxley/):
 ```sh
 pip install jaxley
@@ -48,22 +63,17 @@ pip install -U "jax[cuda12]"
 ```
 
 
-### Feedback and Contributions
+## Feedback and Contributions
 
 We welcome any feedback on how Jaxley is working for your neuron models and are happy to receive bug reports, pull requests and other feedback (see [contribute](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)). We wish to maintain a positive community, please read our [Code of Conduct](https://github.com/jaxleyverse/jaxley/blob/main/CODE_OF_CONDUCT.md).
 
 
-### Acknowledgements
+## License
 
-We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [NEURON](https://github.com/neuronsimulator/nrn).
-
-
-### License
-
-[Apache License](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
+[Apache License Version 2.0 (Apache-2.0)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
 
-### Citation
+## Citation
 
 If you use `Jaxley`, consider citing the [corresponding paper](https://www.biorxiv.org/content/10.1101/2024.08.21.608979):
 
