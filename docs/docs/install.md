@@ -1,5 +1,5 @@
 ## Install the most recent stable version
-`Jaxley` is available on [`pypi`](https://pypi.org/project/jaxley/):
+`Jaxley` is available on [`PyPI`](https://pypi.org/project/jaxley/):
 ```sh
 pip install jaxley
 ```
