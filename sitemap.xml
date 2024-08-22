@@ -2,107 +2,107 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/code_of_conduct/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/contribute/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/credits/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/faq/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/install/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/faq/question_01/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/reference/connect/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/reference/integration/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/reference/mechanisms/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/reference/modules/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/reference/optimize/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/reference/utils/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/03_setting_parameters/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/04_jit_and_vmap/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/06_groups/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/07_gradient_descent/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://jaxleyverse.github.io/jaxley/tutorial/08_importing_morphologies/</loc>
-         <lastmod>2024-08-20</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
