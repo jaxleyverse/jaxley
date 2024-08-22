@@ -62,11 +62,12 @@ We greatly benefited from previous toolboxes for simulating multicompartment neu
 If you use `Jaxley`, consider citing the [corresponding paper](https://www.biorxiv.org/content/10.1101/2024.08.21.608979):
 
 ```
-@article {deistler2024differentiable,
-	author = {Deistler, Michael and Kadhim, Kyra L. and Pals, Matthijs and Beck, Jonas and Huang, Ziwei and Gloeckler, Manuel and Lappalainen, Janne K. and Schr{\"o}der, Cornelius and Berens, Philipp and Gon{\c c}alves, Pedro J. and Macke, Jakob H.},
-	title = {Differentiable simulation enables large-scale training of detailed biophysical models of neural dynamics},
-	year = {2024},
-	publisher = {Cold Spring Harbor Laboratory},
-	journal = {bioRxiv}
+@article{deistler2024differentiable,
+  doi = {10.1101/2024.08.21.608979},
+  year = {2024},
+  publisher = {Cold Spring Harbor Laboratory},
+  author = {Deistler, Michael and Kadhim, Kyra L. and Pals, Matthijs and Beck, Jonas and Huang, Ziwei and Gloeckler, Manuel and Lappalainen, Janne K. and Schr{\"o}der, Cornelius and Berens, Philipp and Gon{\c c}alves, Pedro J. and Macke, Jakob H.},
+  title = {Differentiable simulation enables large-scale training of detailed biophysical models of neural dynamics},
+  journal = {bioRxiv}
 }
 ```
