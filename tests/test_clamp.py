@@ -73,6 +73,7 @@ def test_clamp_and_stimulate_api():
 
 
 def test_data_clamp():
+    """Data clamp with no stimuli or data_stimuli, and no t_max (should get defined by the clamp)."""
     comp = jx.Compartment()
     comp.insert(HH())
     comp.record()
@@ -90,3 +91,93 @@ def test_data_clamp():
 
     s = jitted_simulate(clamp)
     assert np.all(s[:, 1:] == -50.0)
+
+
+def test_data_clamp_and_data_stimulate():
+    """In theory people shouldn't use these two together, but at least it shouldn't break."""
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+    clamp = -50.0 * jnp.ones((1000,))
+    stim = 0.1 * jnp.ones((1000,))
+
+    def provide_data(clamp, stim):
+        data_clamps = comp.data_clamp("v", clamp)
+        data_stims = comp.data_stimulate(stim)
+        return data_clamps, data_stims
+
+    def simulate(clamp, stim):
+        data_clamps, data_stims = provide_data(clamp, stim)
+        return jx.integrate(comp, data_clamps=data_clamps, data_stimuli=data_stims)
+
+    jitted_simulate = jax.jit(simulate)
+
+    s = jitted_simulate(clamp, stim)
+    assert np.all(s[:, 1:] == -50.0)
+
+
+def test_data_clamp_and_stimulate():
+    """Test that data clamp overrides a previously set stimulus."""
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+    clamp = -50.0 * jnp.ones((1000,))
+    stim = 0.1 * jnp.ones((800,))
+    t_max = clamp.shape[0] * 0.025  # make sure the stimulus gets padded
+    comp.stimulate(stim)
+
+    def simulate(clamp):
+        data_clamps = comp.data_clamp("v", clamp)  # should override the stimulation
+        return jx.integrate(comp, data_clamps=data_clamps, t_max=t_max)
+
+    jitted_simulate = jax.jit(simulate)
+
+    s = jitted_simulate(clamp)
+    assert np.all(s[:, 1:] == -50.0)
+
+
+def test_data_clamp_and_clamp():
+    """Test that data clamp overrides a previous clamp to the same compartment and can be added to a previous clamp on a different compartment."""
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+    clamp1 = -50.0 * jnp.ones((1000,))
+    clamp2 = -60.0 * jnp.ones((1000,))
+    comp.clamp("v", clamp1)
+
+    def simulate(clamp):
+        data_clamps = comp.data_clamp(
+            "v", clamp, None
+        )  # should override the first clamp
+        return jx.integrate(comp, data_clamps=data_clamps)
+
+    jitted_simulate = jax.jit(simulate)
+
+    # Clamp2 should override clamp1 here
+    s = jitted_simulate(clamp2)
+    assert np.all(s[:, 1:] == -60.0)
+
+    comp2 = jx.Compartment()
+    comp2.insert(HH())
+    branch1 = jx.Branch(comp, 4)
+    branch2 = jx.Branch(comp2, 4)
+    cell = jx.Cell([branch1, branch2], [-1, -1])
+
+    # Apply the clamp1 to the second branch via clamp
+    cell[1, 0].clamp("v", clamp1)
+
+    cell.delete_recordings()
+    cell.branch(0).comp(0).record()
+    cell.branch(1).comp(0).record()
+
+    def simulate(clamp):
+        data_clamps = cell.branch(0).comp(0).data_clamp("v", clamp, None)
+        return jx.integrate(cell, data_clamps=data_clamps)
+
+    jitted_simulate = jax.jit(simulate)
+
+    # Apply clamp2 to the first branch via data_clamp
+    s = jitted_simulate(clamp2)
+
+    assert np.all(s[0, 1:] == -60.0)
+    assert np.all(s[1, 1:] == -50.0)
