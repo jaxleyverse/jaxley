@@ -4,11 +4,12 @@
 from copy import copy
 from typing import Callable, List, Optional, Tuple
 from warnings import warn
-import networkx as nx
-from jaxley.io.graph import from_graph
-import jaxley as jx
 
+import networkx as nx
 import numpy as np
+
+# from jaxley.io.graph import from_graph
+import jaxley as jx
 
 
 def swc_to_jaxley(
@@ -322,32 +323,6 @@ def _compute_pathlengths(
         branch_pathlengths.append(dists)
     return branch_pathlengths
 
-def swc_to_graph(fname, num_lines = None, sort=True) -> nx.DiGraph:
-    content = np.loadtxt(fname)[:num_lines]
-    content = content[content[:, 0].argsort()] if sort else content # sort by idx
-    idxs, ids, xs, ys, zs, rs, parents = content.T
-    ids = ids.astype(int)
-    idxs = idxs.astype(int) - 1
-    root_idx = np.where(parents == -1)[0][0] # in case .swc does not start from root
-    parents = parents.astype(int) - 1
-
-    graph = nx.DiGraph()
-    graph.add_nodes_from({i: {"x": x, "y": y, "z": z, "r": r, "id": id} for i, id, x, y, z, r in zip(idxs, ids, xs, ys, zs, rs)}.items())
-    graph.add_edges_from([(node, idx) for idx, node in enumerate(parents) if idx != root_idx])
-    graph.graph["type"] = "swc"
-    return graph
-
-
-def swc_to_graph_to_jaxley(
-    fname: str,
-    nseg: int = 4,
-    max_branch_len: float = 100.0,
-    sort: bool = True,
-    num_lines: Optional[int] = None,
-):
-    graph = swc_to_graph(fname, num_lines, sort)
-    return from_graph(graph, nseg=nseg, max_branch_len=max_branch_len)
-    
 
 def read_swc(
     fname: str,
@@ -423,3 +398,25 @@ def read_swc(
             if len(indices) > 0:
                 cell.branch(indices).add_to_group(name)
     return cell
+
+
+def swc_to_graph(fname, num_lines=None, sort=True) -> nx.DiGraph:
+    i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
+
+    graph = nx.DiGraph()
+    graph.add_nodes_from(((int(i), {"id": int(id), "x": x, "y": y, "z": z, "r": r}) for i, id, x, y, z, r, p in i_id_xyzr_p))
+    graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:,[-1,0]] if p != -1])
+    graph = nx.relabel_nodes(graph, {i: i - 1 for i in graph.nodes})
+    graph.graph["type"] = "swc"
+    return graph
+
+
+# def swc_to_graph_to_jaxley(
+#     fname: str,
+#     nseg: int = 4,
+#     max_branch_len: float = 100.0,
+#     sort: bool = True,
+#     num_lines: Optional[int] = None,
+# ):
+#     graph = swc_to_graph(fname, num_lines, sort)
+#     return from_graph(graph, nseg=nseg, max_branch_len=max_branch_len)
