@@ -2,7 +2,7 @@
 
 `Jaxley` focuses on biophysical, Hodgkin-Huxley-type models. You can think of `Jaxley` like [the `NEURON` simulator](https://neuron.yale.edu/neuron/) written in `JAX`.
 
-In short, `Jaxley` allows to simulate the following types of models:
+`Jaxley` allows to simulate the following types of models, as well as networks thereof:
 
 - single-compartment (point neuron) Hodgkin-Huxley models
 - multi-compartment Hodgkin-Huxley models

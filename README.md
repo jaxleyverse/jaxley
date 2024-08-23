@@ -18,7 +18,7 @@
 
 ## What is Jaxley?
 
-`Jaxley` is a differentiable simulator for biophysical neuron models, written in the Python library [JAX](https://github.com/google/jax). Its key features are:
+`Jaxley` is a differentiable simulator for [biophysical neuron models](https://jaxleyverse.github.io/jaxley/dev/faq/question_03/), written in the Python library [JAX](https://github.com/google/jax). Its key features are:
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
 - support for CPU, GPU, or TPU without any changes to the code  
@@ -50,7 +50,7 @@ v = jx.integrate(cell)  # Run simulation.
 plt.plot(v.T)  # Plot voltage trace.
 ```
 
-If you want to learn more, we recommend you to check out our tutorials on how to:
+[Here](https://jaxleyverse.github.io/jaxley/dev/faq/question_03/) you can find an overview of what kinds of models can be implemented in `Jaxley`. If you want to learn more, we recommend you to check out our tutorials on how to:
 
 - [get started with `Jaxley`](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/)
 - [simulate networks of neurons](https://jaxleyverse.github.io/jaxley/tutorial/02_small_network/)
