@@ -115,6 +115,41 @@ def test_graph_import_export_cycle():
             edge_match=recursive_compare,
         )
 
+def test_graph_swc_tracer():
+    nseg = 8
+    fname = os.path.join("../tests/swc_files/", "morph.swc")  # n120
+    
+    graph = swc_to_graph(fname)
+    graph = make_jaxley_compatible(graph, nseg=nseg, max_branch_len=2000, ignore_swc_trace_errors=False)
+    cell = from_graph(graph, nseg=nseg, max_branch_len=2000)
+    neuron_cell = import_neuron_morph(fname, nseg=nseg)
+    
+    # remove root branch
+    jaxley_comps = cell.nodes[cell.nodes["branch_index"] != 0].reset_index(drop=True)
+    jaxley_comps["branch_index"] -= 1
+
+    jx_branch_lens = jaxley_comps.groupby("branch_index")["length"].sum().to_numpy()
+
+    # match by branch lengths
+    neuron_xyzd = [np.array(s.psection()["morphology"]["pts3d"]) for s in h.allsec()]
+    neuron_branch_lens = np.array([np.sqrt((np.diff(n[:,:3], axis=0)**2).sum(axis=1)).sum() for n in neuron_xyzd])
+    neuron_inds = np.argsort(neuron_branch_lens)
+    jx_inds = np.argsort(jx_branch_lens)
+
+    errors = pd.DataFrame(columns=["idx_NEURON", "idx_Jaxley", "dxyz", "dl", "dr"])
+    for k in range(len(neuron_inds)):
+        neuron_comp_k = np.array([get_segment_xyzrL(list(h.allsec())[neuron_inds[k]], comp_idx=i) for i in range(nseg)])
+        jx_comp_k = jaxley_comps[jaxley_comps["branch_index"] == jx_inds[k]][["x", "y", "z", "radius", "length"]].to_numpy()
+        dxyz = (((neuron_comp_k[:,:3] - jx_comp_k[:,:3])**2).sum(axis=1)**0.5).max()
+        dl = abs(neuron_comp_k[:,4] - jx_comp_k[:,4]).max()
+        dr = abs(neuron_comp_k[:,3] - jx_comp_k[:,3]).max()
+        errors.loc[k] = [neuron_inds[k], jx_inds[k], dxyz, dl, dr]
+
+    # allow one error, see https://github.com/jaxleyverse/jaxley/issues/140
+    assert len(errors['dxyz'][errors['dxyz'] > 0.001]) <= 1, "traced coords do not match."
+    assert len(errors['dl'][errors['dl'] > 0.001]) <= 1, "traced lengths do not match."
+    assert len(errors['dr'][errors['dr'] > 0.001]) <= 1, "traced radii do not match."
+
 
 def test_graph_to_jaxley():
     comp = jx.Compartment()
@@ -159,3 +194,5 @@ def test_graph_to_jaxley():
 
     #TODO: test if integrate works!
     #TODO: test make compatible for small and large branchlengths
+
+
