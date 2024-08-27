@@ -186,7 +186,7 @@ class Module(ABC):
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
-    
+
     def __eq__(self, other):
         # TODO: Add tests!
         return recursive_compare(self.__dict__, other.__dict__)
