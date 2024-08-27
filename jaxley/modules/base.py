@@ -114,9 +114,8 @@ class Module(ABC):
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
         loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
-        jit_interp = jit(interpolate_xyz)
         xyz = (
-            [jit_interp(loc, xyzr).T for xyzr in self.xyzr]
+            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
             if len(loc) > 0
             else [self.xyzr]
         )

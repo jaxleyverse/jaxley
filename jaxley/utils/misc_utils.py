@@ -36,41 +36,61 @@ def childview(
     raise AttributeError("Compartment does not support indexing")
 
 
-def recursive_compare(a, b):
-    if isinstance(a, (int, float)):
+def recursive_compare(a, b, verbose=False):
+    def verbose_comp(a, b, type):
+        if verbose:
+            print(f"{type} {a} and {b} are not equal.")
+        return False
+
+    if type(a) != type(b):
+        return verbose_comp(a, b, "Types")
+
+    if isinstance(a, (float, int)):
         if abs(a - b) > 1e-5 and not (np.isnan(a) and np.isnan(b)):
-            return False
+            return verbose_comp(a, b, "Floats/Ints")
+
     elif isinstance(a, str):
         if a != b:
-            return False
+            return verbose_comp(a, b, "Strings")
+
     elif isinstance(a, (np.ndarray, jnp.ndarray)):
-        if a.size > 1:
-            for i in range(len(a)):
-                if not recursive_compare(a[i], b[i]):
-                    return False
-        else:
-            if not recursive_compare(a.item(), b.item()):
-                return False
+        if a.dtype.kind in "biufc":  # is numeric
+            if not np.allclose(a, b, equal_nan=True):
+                return verbose_comp(a, b, "Arrays")
+        elif not np.all(a == b):
+            return verbose_comp(a, b, "Arrays")
+
     elif isinstance(a, (list, tuple)):
         if len(a) != len(b):
-            return False
+            return verbose_comp(a, b, "Lists/Tuples")
+
         for i in range(len(a)):
             if not recursive_compare(a[i], b[i]):
-                return False
+                return verbose_comp(a[i], b[i], "Lists/Tuples")
+
     elif isinstance(a, dict):
         if len(a) != len(b) and len(a) != 0:
-            return False
+            return verbose_comp(a, b, "Dicts")
+
         if set(a.keys()) != set(b.keys()):
-            return False
+            return verbose_comp(a, b, "Dicts")
+
         for k in a.keys():
             if not recursive_compare(a[k], b[k]):
-                return False
+                return verbose_comp(a[k], b[k], "Dicts")
+
     elif isinstance(a, pd.DataFrame):
         if not recursive_compare(a.to_dict(), b.to_dict()):
-            return False
+            return verbose_comp(a, b, "DataFrames")
+
     elif a is None or b is None:
         if not (a is None and b is None):
-            return False
+            return verbose_comp(a, b, "None")
     else:
-        raise ValueError(f"Type {type(a)} not supported")
+        try:
+            if not a == b:
+                return verbose_comp(a, b, "Other")
+
+        except AttributeError:
+            raise ValueError(f"Type {type(a)} not supported")
     return True
