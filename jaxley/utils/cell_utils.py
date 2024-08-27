@@ -281,6 +281,9 @@ def remap_to_consecutive(arr):
     return inverse_indices
 
 
+v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
+
+
 def interpolate_xyz(loc: float, coords: np.ndarray):
     """Perform a linear interpolation between xyz-coordinates.
 
@@ -291,9 +294,9 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
     Return:
         Interpolated xyz coordinate at `loc`, shape `(3,).
     """
-    return vmap(lambda x: jnp.interp(loc, jnp.linspace(0, 1, len(x)), x), in_axes=(1,))(
-        coords[:, :3]
-    )
+    lens = np.cumsum(np.sqrt(np.sum(np.diff(coords[:, :3], axis=0) ** 2, axis=1)))
+    lens = np.insert(lens, 0, 0)
+    return v_interp(loc * lens[-1], lens, coords[:, :3])
 
 
 def params_to_pstate(
@@ -391,6 +394,3 @@ def group_and_sum(
         group_sums = group_sums.at[inds_to_group_by].add(values_to_sum)
 
     return group_sums
-
-
-v_interp = jit(vmap(jnp.interp, in_axes=(None, None, 1)))
