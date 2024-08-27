@@ -1,10 +1,19 @@
 import os
 from copy import deepcopy
 
+import jax
+
+jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_platform_name", "cpu")
+
+
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
+
 import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
+import pytest
 
 import jaxley as jx
 from jaxley import connect
@@ -147,11 +156,11 @@ def test_graph_import_export_cycle():
         if isinstance(module, jx.Network):
             jx.integrate(re_module)
 
-
-def test_graph_swc_tracer():
+@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+def test_graph_swc_tracer(file):
     nseg = 8
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files/morph.swc")
+    fname = os.path.join(dirname, "swc_files", file)
 
     graph = swc_to_graph(fname)
     cell = from_graph(
@@ -202,13 +211,7 @@ def test_graph_swc_tracer():
     assert len(errors["dl"][errors["dl"] > 0.001]) <= 1, "traced lengths do not match."
     assert len(errors["dr"][errors["dr"] > 0.001]) <= 1, "traced radii do not match."
 
-
-def test_graph_to_jaxley():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(2)])
-    cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 1, 2, 2]))
-    net = jx.Network([cell] * 3)
-
+def test_edges_only_to_jaxley():
     # test if edge graph can pe imported into to jaxley
     sets_of_edges = [
         [(0, 1), (1, 2), (2, 3)],
@@ -218,9 +221,11 @@ def test_graph_to_jaxley():
         edge_graph = nx.DiGraph(edges)
         edge_module = from_graph(edge_graph)
 
+@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+def test_graph_to_jaxley(file):
     # test whether swc file can be imported into jaxley
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files/morph.swc")
+    fname = os.path.join(dirname, "swc_files", file)
     graph = swc_to_graph(fname)
     swc_module = from_graph(graph)
     for group in ["soma", "apical", "basal"]:
@@ -236,7 +241,8 @@ def test_graph_to_jaxley():
     compare_modules(module_imported_directly, module_imported_after_preprocessing)
 
 
-def test_swc2graph_voltages():
+@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+def test_swc2graph_voltages(file):
     """Check if voltages of SWC recording match.
 
     To match the branch indices between NEURON and jaxley, we rely on comparing the
@@ -246,7 +252,7 @@ def test_swc2graph_voltages():
     than 1.5 mV.
     """
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files/morph.swc")
+    fname = os.path.join(dirname, "swc_files", file)  # n120
 
     nseg = 8
 
