@@ -9,7 +9,7 @@ from warnings import warn
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import jit, vmap
+from jax import vmap
 
 from jaxley.utils.misc_utils import cumsum_leading_zero
 

@@ -404,8 +404,13 @@ def swc_to_graph(fname, num_lines=None, sort=True) -> nx.DiGraph:
     i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
 
     graph = nx.DiGraph()
-    graph.add_nodes_from(((int(i), {"id": int(id), "x": x, "y": y, "z": z, "r": r}) for i, id, x, y, z, r, p in i_id_xyzr_p))
-    graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:,[-1,0]] if p != -1])
+    graph.add_nodes_from(
+        (
+            (int(i), {"id": int(id), "x": x, "y": y, "z": z, "r": r})
+            for i, id, x, y, z, r, p in i_id_xyzr_p
+        )
+    )
+    graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:, [-1, 0]] if p != -1])
     graph = nx.relabel_nodes(graph, {i: i - 1 for i in graph.nodes})
     graph.graph["type"] = "swc"
     return graph
