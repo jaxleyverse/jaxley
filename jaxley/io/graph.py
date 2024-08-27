@@ -564,6 +564,7 @@ def from_graph(
     nseg: int = 4,
     max_branch_len: float = 2000.0,
     assign_groups: bool = True,
+    ignore_swc_trace_errors: bool = True,
 ) -> Union[jx.Network, jx.Cell, jx.Branch, jx.Compartment]:
     """Build a module from a networkx graph.
 
@@ -633,6 +634,8 @@ def from_graph(
             assigned yet.
         assign_groups: Wether to assign groups to nodes based on the the id or groups
             attribute.
+        ignore_swc_trace_errors: Whether to ignore discontinuities in the swc tracing
+            order. If False, this will result in split branches at these points.
 
     Returns:
         A module instance that is populated with the node and egde attributes of
@@ -645,12 +648,20 @@ def from_graph(
     if "type" not in graph.graph:
         try:
             graph = make_jaxley_compatible(
-                graph, nseg=nseg, max_branch_len=max_branch_len
+                graph,
+                nseg=nseg,
+                max_branch_len=max_branch_len,
+                ignore_swc_trace_errors=ignore_swc_trace_errors,
             )
         except:
             raise Exception("Graph appears to be incompatible with jaxley.")
     elif graph.graph["type"] == "swc":
-        graph = make_jaxley_compatible(graph, nseg=nseg, max_branch_len=max_branch_len)
+        graph = make_jaxley_compatible(
+            graph,
+            nseg=nseg,
+            max_branch_len=max_branch_len,
+            ignore_swc_trace_errors=ignore_swc_trace_errors,
+        )
 
     #################################
     ### Import graph as jx.Module ###
@@ -692,7 +703,8 @@ def from_graph(
         acc_parents.append([-1] + parents.tolist())
 
     # drop special attrs from nodes and ignore error if col does not exist
-    optional_attrs = ["recordings", "externals", "groups", "trainable"]
+    # x,y,z can be re-computed from xyzr if needed
+    optional_attrs = ["recordings", "externals", "groups", "trainable", "x", "y", "z"]
     nodes.drop(columns=optional_attrs, inplace=True, errors="ignore")
 
     # build module
@@ -700,11 +712,12 @@ def from_graph(
     module = build_module_scaffold(idxs, graph.graph["type"], acc_parents)
 
     # set global attributes of module
+    graph.graph.pop("type")
     for k, v in graph.graph.items():
         setattr(module, k, v)
 
     module.nodes[nodes.columns] = nodes  # set column-wise. preserves cols not in nodes.
-    module.edges = synapse_edges.T
+    module.edges = synapse_edges.T if not synapse_edges.empty else module.edges
 
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
@@ -727,8 +740,12 @@ def from_graph(
         cached_external_inds = {}
         cached_externals = {}
         for key, data in externals.items():
-            cached_externals[key] = np.stack(data[~data.isna()].explode().values)
-            cached_external_inds[key] = data[~data.isna()].explode().index.to_numpy()
+            cached_externals[key] = jnp.array(
+                np.stack(data[~data.isna()].explode().values)
+            )
+            cached_external_inds[key] = jnp.array(
+                data[~data.isna()].explode().index.to_numpy()
+            )
         module.externals = cached_externals
         module.external_inds = cached_external_inds
 
@@ -773,10 +790,10 @@ def from_graph(
     if not groups.empty and assign_groups:
         groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
         groups = groups[groups["group"] != "undefined"]  # skip undefined comps
-        group_nodes = {k: nodes.loc[v["index"]] for k, v in groups.groupby("group")}
+        # module[:] ensure group nodes in module reflect what is shown in view
+        group_nodes = {
+            k: module[:].view.loc[v["index"]] for k, v in groups.groupby("group")
+        }
         module.group_nodes = group_nodes
-        # update group nodes in module to reflect what is shown in view
-        for group, nodes in module.group_nodes.items():
-            module.group_nodes[group] = module.__getattr__(group).view
 
     return module
