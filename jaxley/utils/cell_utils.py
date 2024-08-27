@@ -294,9 +294,11 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
     Return:
         Interpolated xyz coordinate at `loc`, shape `(3,).
     """
-    lens = np.cumsum(np.sqrt(np.sum(np.diff(coords[:, :3], axis=0) ** 2, axis=1)))
-    lens = np.insert(lens, 0, 0)
-    return v_interp(loc * lens[-1], lens, coords[:, :3])
+    dl = np.sqrt(np.sum(np.diff(coords[:, :3], axis=0) ** 2, axis=1))
+    pathlens = np.insert(np.cumsum(dl), 0, 0) # cummulative length of sections
+    norm_pathlens = pathlens/pathlens[-1]  # path lengths normalized to [0,1]
+
+    return v_interp(loc, norm_pathlens, coords[:, :3])
 
 
 def params_to_pstate(
