@@ -1,13 +1,10 @@
-# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
-# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 from math import pi
 from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import jit, vmap
+from jax import vmap
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
@@ -393,4 +390,4 @@ def group_and_sum(
     return group_sums
 
 
-v_interp = jit(vmap(jnp.interp, in_axes=(None, None, 1)))
+v_interp = vmap(jnp.interp, in_axes=(None, None, 1))

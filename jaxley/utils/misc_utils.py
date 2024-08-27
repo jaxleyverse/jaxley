@@ -3,6 +3,7 @@
 
 from typing import List, Optional, Union
 
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
@@ -33,3 +34,43 @@ def childview(
     if child_name != "/":
         return module.__getattr__(child_name)(index)
     raise AttributeError("Compartment does not support indexing")
+
+
+def recursive_compare(a, b):
+    if isinstance(a, (int, float)):
+        if abs(a - b) > 1e-5 and not (np.isnan(a) and np.isnan(b)):
+            return False
+    elif isinstance(a, str):
+        if a != b:
+            return False
+    elif isinstance(a, (np.ndarray, jnp.ndarray)):
+        if a.size > 1:
+            for i in range(len(a)):
+                if not recursive_compare(a[i], b[i]):
+                    return False
+        else:
+            if not recursive_compare(a.item(), b.item()):
+                return False
+    elif isinstance(a, (list, tuple)):
+        if len(a) != len(b):
+            return False
+        for i in range(len(a)):
+            if not recursive_compare(a[i], b[i]):
+                return False
+    elif isinstance(a, dict):
+        if len(a) != len(b) and len(a) != 0:
+            return False
+        if set(a.keys()) != set(b.keys()):
+            return False
+        for k in a.keys():
+            if not recursive_compare(a[k], b[k]):
+                return False
+    elif isinstance(a, pd.DataFrame):
+        if not recursive_compare(a.to_dict(), b.to_dict()):
+            return False
+    elif a is None or b is None:
+        if not (a is None and b is None):
+            return False
+    else:
+        raise ValueError(f"Type {type(a)} not supported")
+    return True
