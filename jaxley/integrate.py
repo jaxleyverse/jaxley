@@ -38,9 +38,10 @@ def integrate(
             the length of the stimulus input, the stimulus will be padded at the end
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
         delta_t: Time step of the solver in milliseconds.
-        solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", "cranck"].
+        solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler", 
+            "crank_nicolson"].
         tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
-            only affect `bwd_euler` and `cranck` solvers. Either of ["stone",
+            only affect `bwd_euler` and `crank_nicolson` solvers. Either of ["stone",
             "thomas"], where `stone` is much faster on GPU for long branches
             with many compartments and `thomas` is slightly faster on CPU (`thomas` is
             used in NEURON).

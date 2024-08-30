@@ -849,7 +849,7 @@ class Module(ABC):
             externals: The external inputs.
             params: The parameters of the module.
             solver: The solver to use for the voltages. Either of ["bwd_euler",
-                "fwd_euler", "cranck"].
+                "fwd_euler", "crank_nicolson"].
             voltage_solver: The tridiagonal solver to used to diagonalize the
                 coefficient matrix of the ODE system. Either of ["jaxley.thomas",
                 "jaxley.stone"].
@@ -936,12 +936,39 @@ class Module(ABC):
                 branchpoint_group_inds=self.branchpoint_group_inds,
                 debug_states=self.debug_states,
             )
-        elif solver == "cranck":
-            raise NotImplementedError
+        elif solver == "crank_nicolson":
+            # Crank Nicolson advances by half a step of backward and half a step of
+            # forward Euler.
+            half_step_delta_t = delta_t / 2
+            half_step_voltages = step_voltage_implicit(
+                voltages=voltages,
+                voltage_terms=(v_terms + syn_v_terms) / cm,
+                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
+                coupling_conds_upper=params["branch_uppers"],
+                coupling_conds_lower=params["branch_lowers"],
+                summed_coupling_conds=params["branch_diags"],
+                branchpoint_conds_children=params["branchpoint_conds_children"],
+                branchpoint_conds_parents=params["branchpoint_conds_parents"],
+                branchpoint_weights_children=params["branchpoint_weights_children"],
+                branchpoint_weights_parents=params["branchpoint_weights_parents"],
+                par_inds=self.par_inds,
+                child_inds=self.child_inds,
+                nbranches=self.total_nbranches,
+                solver=voltage_solver,
+                delta_t=half_step_delta_t,
+                children_in_level=self.children_in_level,
+                parents_in_level=self.parents_in_level,
+                root_inds=self.root_inds,
+                branchpoint_group_inds=self.branchpoint_group_inds,
+                debug_states=self.debug_states,
+            )
+            # The forward Euler step in Crank Nicolson can be performed easily as
+            # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
+            new_voltages = 2 * half_step_voltages - voltages
         else:
             raise ValueError(
                 f"You specified `solver={solver}`. The only allowed solvers are "
-                "['bwd_euler', 'fwd_euler', 'cranck']."
+                "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
             )
 
         u["v"] = new_voltages.ravel(order="C")

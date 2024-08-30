@@ -237,21 +237,9 @@ def voltage_vectorfield(
 
     # Current through branch points.
     if len(branchpoint_conds_children) > 0:
-        vecfield = vecfield.at[:, -1].add(
-            (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
+        raise NotImplementedError(
+            f"Forward Euler is not implemented for branched morphologies."
         )
-
-        # Several branches might have the same parent, so we have to either update these
-        # entries sequentially or we have to build a matrix with width being the maximum
-        # number of children and then sum.
-        term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
-        inds = jnp.stack([parents, jnp.zeros_like(parents)]).T
-        dnums = ScatterDimensionNumbers(
-            update_window_dims=(),
-            inserted_window_dims=(0, 1),
-            scatter_dims_to_operand_dims=(0, 1),
-        )
-        vecfield = scatter_add(vecfield, inds, term_to_add, dnums)
 
     return vecfield
 
