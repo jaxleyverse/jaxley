@@ -24,7 +24,10 @@ def test_exp_euler(x_inf):
 
 
 def test_fwd_euler_and_crank_nicolson():
-    """FWD Euler does not yet support branched cells, but comps, branches, nets work."""
+    """FWD Euler does not yet support branched cells, but comps, branches, nets work.
+    
+    Tests whether forward Euler and Crank-Nicolson are sufficiently close to implicit
+    Euler."""
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=4)
     branch.insert(HH())
@@ -40,6 +43,8 @@ def test_fwd_euler_and_crank_nicolson():
     connect(pre, post, IonotropicSynapse())
     net.IonotropicSynapse.set("IonotropicSynapse_gS", 0.001)
 
+    # As expected, using significantly shorter compartments or lower r_a leads to NaN
+    # in forward Euler.
     net.set("length", 50.0)
     net.set("axial_resistivity", 200.0)
 
@@ -47,5 +52,8 @@ def test_fwd_euler_and_crank_nicolson():
     fwd_v = jx.integrate(net, solver="fwd_euler")
     crank_v = jx.integrate(net, solver="crank_nicolson")
 
+    # These allowed voltage differences may appear large, but due to the steepness
+    # of a spike these values actually correspond to sub-millisecond spike time
+    # differences.
     assert np.max(np.abs(bwd_v - fwd_v)) < 25.0
     assert np.max(np.abs(bwd_v - crank_v)) < 12.0

@@ -14,6 +14,7 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 import jax.numpy as jnp
 import numpy as np
 from neuron import h
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -22,7 +23,8 @@ _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
 
 
-def test_similarity():
+@pytest.mark.parametrize("solver", ["bwd_euler", "crank_nicolson"])
+def test_similarity(solver):
     """Test similarity of jaxley vs neuron."""
     i_delay = 3.0  # ms
     i_dur = 2.0  # ms
@@ -31,13 +33,13 @@ def test_similarity():
     dt = 0.025  # ms
     t_max = 10.0  # ms
 
-    voltages_jaxley = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max)
-    voltages_neuron = _run_neuron(i_delay, i_dur, i_amp, dt, t_max)
+    voltages_jaxley = _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver)
+    voltages_neuron = _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver)
 
     assert np.mean(np.abs(voltages_jaxley - voltages_neuron)) < 0.05
 
 
-def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
+def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
     nseg_per_branch = 8
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg_per_branch)
@@ -61,11 +63,18 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     cell.branch(1).loc(1.0).record()
     cell.branch(2).loc(1.0).record()
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, solver=solver)
     return voltages
 
 
-def _run_neuron(i_delay, i_dur, i_amp, dt, t_max):
+def _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver):
+    if solver == "bwd_euler":
+        h.secondorder = 0
+    elif solver == "crank_nicolson":
+        h.secondorder = 1
+    else:
+        raise ValueError
+
     nseg_per_branch = 8
     h.dt = dt
 

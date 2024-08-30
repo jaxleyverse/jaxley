@@ -126,6 +126,8 @@ def test_swc_voltages(file):
     nseg_per_branch = 8
 
     ##################### NEURON ##################
+    h.secondorder = 0
+
     for sec in h.allsec():
         h.delete_section(sec=sec)
 
