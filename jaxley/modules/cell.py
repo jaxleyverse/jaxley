@@ -27,6 +27,7 @@ from jaxley.utils.solver_utils import (
 )
 
 
+
 class Cell(Module):
     """Cell class.
 

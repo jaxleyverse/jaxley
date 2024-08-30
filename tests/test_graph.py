@@ -19,8 +19,15 @@ import jaxley as jx
 from jaxley import connect
 from jaxley.channels import HH
 from jaxley.channels.pospischil import K, Leak, Na
-from jaxley.io.graph import from_graph, make_jaxley_compatible, to_graph
-from jaxley.io.swc import swc_to_graph
+from jaxley.io.graph import (
+    from_graph,
+    get_soma_idxs,
+    make_jaxley_compatible,
+    simulate_swc_trace_errors,
+    swc_to_graph,
+    to_graph,
+    trace_branches,
+)
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.misc_utils import recursive_compare
 from tests.helpers import (
@@ -156,8 +163,42 @@ def test_graph_import_export_cycle():
         if isinstance(module, jx.Network):
             jx.integrate(re_module)
 
+
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
-def test_graph_swc_tracer(file):
+def test_trace_branches(file):
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", file)
+    graph = swc_to_graph(fname)
+
+    source_node = 0
+    if len(soma_idxs := get_soma_idxs(graph)) == 1:
+        # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere
+        graph.add_edge(soma_idxs[0], soma_idxs[0], l=2 * graph.nodes[soma_idxs[0]]["r"])
+        soma_edges = [
+            (i, j) for i, j in graph.edges if soma_idxs[0] in [i, j] and i != j
+        ]
+        # edges connecting nodes to soma are considered part of the soma -> l = 0.
+        for i, j in soma_edges:
+            graph.edges[i, j]["l"] = 0
+
+    branches = trace_branches(graph, source_node=source_node)
+    branches = simulate_swc_trace_errors(graph, branches)
+
+    g = graph.to_undirected()
+    nx_branch_lens = np.sort(
+        [sum([g.edges[i, j]["l"] for i, j in branch]) for branch in branches]
+    )
+
+    h, _ = import_neuron_morph(fname)
+    neuron_branch_lens = np.sort([sec.L for sec in h.allsec()])
+
+    errors = np.abs(neuron_branch_lens - nx_branch_lens)
+    # one error is expected, see https://github.com/jaxleyverse/jaxley/issues/140
+    assert sum(errors > 1e-3) <= 1
+
+
+@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+def test_from_graph_vs_NEURON(file):
     nseg = 8
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
@@ -170,8 +211,9 @@ def test_graph_swc_tracer(file):
     h, neuron_cell = import_neuron_morph(fname, nseg=nseg)
 
     # remove root branch
-    jaxley_comps = cell.nodes[cell.nodes["branch_index"] != 0].reset_index(drop=True)
-    jaxley_comps["branch_index"] -= 1
+    jaxley_comps = cell.nodes[
+        ~np.isclose(cell.nodes["length"], 0.1 / nseg)
+    ].reset_index(drop=True)
 
     jx_branch_lens = jaxley_comps.groupby("branch_index")["length"].sum().to_numpy()
 
@@ -186,7 +228,8 @@ def test_graph_swc_tracer(file):
     neuron_inds = np.argsort(neuron_branch_lens)
     jx_inds = np.argsort(jx_branch_lens)
 
-    errors = pd.DataFrame(columns=["idx_NEURON", "idx_Jaxley", "dxyz", "dl", "dr"])
+    neuron_df = pd.DataFrame(columns=["neuron_idx", "x", "y", "z", "radius", "length"])
+    jx_df = pd.DataFrame(columns=["jx_idx", "x", "y", "z", "radius", "length"])
     for k in range(len(neuron_inds)):
         neuron_comp_k = np.array(
             [
@@ -194,22 +237,30 @@ def test_graph_swc_tracer(file):
                 for i in range(nseg)
             ]
         )
+        # make this a dataframe
+        neuron_comp_k = pd.DataFrame(
+            neuron_comp_k, columns=["x", "y", "z", "radius", "length"]
+        )
+        neuron_comp_k["idx"] = neuron_inds[k]
         jx_comp_k = jaxley_comps[jaxley_comps["branch_index"] == jx_inds[k]][
             ["x", "y", "z", "radius", "length"]
-        ].to_numpy()
-        dxyz = (
-            ((neuron_comp_k[:, :3] - jx_comp_k[:, :3]) ** 2).sum(axis=1) ** 0.5
-        ).max()
-        dl = abs(neuron_comp_k[:, 4] - jx_comp_k[:, 4]).max()
-        dr = abs(neuron_comp_k[:, 3] - jx_comp_k[:, 3]).max()
-        errors.loc[k] = [neuron_inds[k], jx_inds[k], dxyz, dl, dr]
+        ]
+        jx_comp_k["idx"] = jx_inds[k]
+        neuron_df = pd.concat([neuron_df, neuron_comp_k], axis=0, ignore_index=True)
+        jx_df = pd.concat([jx_df, jx_comp_k], axis=0, ignore_index=True)
 
-    # allow one error, see https://github.com/jaxleyverse/jaxley/issues/140
-    assert (
-        len(errors["dxyz"][errors["dxyz"] > 0.001]) <= 1
-    ), "traced coords do not match."
-    assert len(errors["dl"][errors["dl"] > 0.001]) <= 1, "traced lengths do not match."
-    assert len(errors["dr"][errors["dr"] > 0.001]) <= 1, "traced radii do not match."
+    errors = neuron_df["neuron_idx"].to_frame()
+    errors["jx_idx"] = jx_df["jx_idx"]
+    errors[["x", "y", "z"]] = neuron_df[["x", "y", "z"]] - jx_df[["x", "y", "z"]]
+    errors["xyz"] = np.sqrt((errors[["x", "y", "z"]] ** 2).sum(axis=1))
+    errors["radius"] = neuron_df["radius"] - jx_df["radius"]
+    errors["length"] = neuron_df["length"] - jx_df["length"]
+
+    # one error is expected, see https://github.com/jaxleyverse/jaxley/issues/140
+    assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) <= 1
+    assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) <= 1
+    assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) <= 1
+
 
 def test_edges_only_to_jaxley():
     # test if edge graph can pe imported into to jaxley
@@ -220,6 +271,7 @@ def test_edges_only_to_jaxley():
     for edges in sets_of_edges:
         edge_graph = nx.DiGraph(edges)
         edge_module = from_graph(edge_graph)
+
 
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
 def test_graph_to_jaxley(file):
