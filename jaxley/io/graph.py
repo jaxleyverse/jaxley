@@ -194,9 +194,12 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
 
 # helper functions
 is_leaf = lambda G, n: G.out_degree(n) == 0 and G.in_degree(n) == 1
+is_root = lambda G, n: G.to_undirected().degree(n) == 1
 is_branching = lambda G, n: G.out_degree(n) > 1
 has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
-soma_idxs = lambda G: [i for i, n in nx.get_node_attributes(G, "id").items() if n == 1]
+get_soma_idxs = lambda G: [
+    i for i, n in nx.get_node_attributes(G, "id").items() if n == 1
+]
 
 unpack = lambda d, keys: [d[k] for k in keys]
 branch_e2n = lambda b: ([b[0][0]] + [e[1] for e in b] if b.shape[0] > 1 else [*b[0]])
@@ -220,24 +223,26 @@ def trace_branches(
         A list of linear paths in the graph. Each path is represented as an array of
         edges."""
     branches, current_branch = [], []
+    # i -> i with length attr means a node can form a branch by itself
+    branches += [[e] for e in nx.selfloop_edges(graph)]
 
     # starting from leaf node avoids need to reconnect multiple root nodes later.
     # graph needs to be undirected for this to work
     leaf = next(n for n in graph.nodes() if is_leaf(graph, n))
     source = leaf if source_node == "leaf" else source_node
 
-    soma = soma_idxs(graph)  # handle single point soma special case
-    branches += [[(soma[0],) * 2]] if len(soma) == 1 else []
-
-    for i, j in nx.dfs_edges(graph.to_undirected(), source):
+    graph_edges = lambda: nx.dfs_edges(graph.to_undirected(), source)
+    for i, j in graph_edges():
         current_branch += [(i, j)]
-        if is_leaf(graph, j) or is_branching(graph, j):  # or is_single_soma(i):
+        if is_leaf(graph, j) or is_branching(graph, j):
             branches.append(current_branch)
             current_branch = []
         elif not has_same_id(graph, i, j):  # start new branch if ids differ
             branches.append(current_branch[:-1])
             current_branch = [current_branch[-1]]
-    return [np.array(p) for p in branches if len(p) > 0]
+    branches = [np.array(p) for p in branches if len(p) > 0]
+
+    return branches
 
 
 def split_branches(
@@ -269,7 +274,11 @@ def add_edge_lens(graph: nx.DiGraph) -> nx.DiGraph:
     """Add edge lengths to graph.edges based on the xyz coordinates of graph.nodes."""
     xyz = lambda i: np.array(unpack(graph.nodes[i], "xyz"))
     for i, j in graph.edges:
-        d_ij = np.sqrt(((xyz(i) - xyz(j)) ** 2).sum())
+        d_ij = (
+            np.sqrt(((xyz(i) - xyz(j)) ** 2).sum())
+            if i != j
+            else 2 * graph.nodes[i]["r"]
+        )
         graph.edges[i, j]["l"] = d_ij
     return graph
 
@@ -315,7 +324,7 @@ def get_nodes_and_parents(graph: nx.DiGraph) -> np.ndarray:
     return np.array(edges)
 
 
-def find_swc_trace_errors(graph: nx.DiGraph) -> np.ndarray:
+def find_swc_trace_errors(graph: nx.DiGraph, ignore: Optional[List] = []) -> np.ndarray:
     """Identify discontinuities in the swc tracing order.
 
     Some swc files contain artefacts, where tracing of the same neurite was done
@@ -324,8 +333,24 @@ def find_swc_trace_errors(graph: nx.DiGraph) -> np.ndarray:
     leads to split branches, which should be one. This function identifies these
     points in the graph.
 
+    Example swc file:
+    # branch 1
+    1 1 0.0 0.0 0.0 1.0 -1
+    2 1 1.0 0.0 0.0 1.0 1
+    3 1 2.0 0.0 0.0 1.0 2
+    # branch 2
+    4 2 3.0 1.0 0.0 1.0 3
+    5 2 4.0 2.0 0.0 1.0 4
+    # branch 3
+    6 3 3.0 -1.0 0.0 1.0 3
+    7 3 4.0 -2.0 0.0 1.0 6
+    8 3 5.0 -3.0 0.0 1.0 7
+    # ammend branch 2
+    9 4 5.0 3.0 0.0 1.0 5
+
     Args:
         graph: graph tracing of swc file (from `swc_to_graph`).
+        ignore: Nodes to ignore.
 
     Returns:
         An array of node indices where tracing is discontinous.
@@ -345,11 +370,12 @@ def find_swc_trace_errors(graph: nx.DiGraph) -> np.ndarray:
     branch_ends = np.array(branch_ends)
     # nodes that end one and start another segment indicate a breakage during tracing
     break_idxs = branch_ends[:, 1][np.isin(branch_ends[:, 1], branch_ends[:, 0])]
+    break_idxs = np.setdiff1d(break_idxs, ignore)
     return break_idxs
 
 
 def simulate_swc_trace_errors(
-    branches: List[np.ndarray], node_idxs: np.ndarray
+    graph: nx.DiGraph, branches: List[np.ndarray], ignore: Optional[List] = []
 ) -> List[np.ndarray]:
     """Simulate swc trace errors in the branches.
 
@@ -361,13 +387,15 @@ def simulate_swc_trace_errors(
     how to identify these points in the graph.
 
     Args:
+        graph: A networkx graph of a traced morphology.
         branches: List of branches represented as arrays of edges.
-        node_idxs: Array of node indices where tracing is discontinous.
-            Can be obtained from `find_swc_trace_errors`.
+        ignore: Nodes to ignore when splitting branches.
 
     Returns:
         A list of branches with simulated trace errors.
     """
+    node_idxs = find_swc_trace_errors(graph)
+
     for node_idx in node_idxs:
         branch_idx = next(i for i, p in enumerate(branches) if node_idx in p)
         b4, branch, after = (
@@ -445,32 +473,31 @@ def make_jaxley_compatible(
         "r": 1,
     }
     # add defaults if not present
+    if "x" not in available_keys:
+        nx.set_edge_attributes(graph, 1, "l")
     for key in set(defaults.keys()).difference(available_keys):
         nx.set_node_attributes(graph, defaults[key], key)
 
-    # add edge lengths to graph just in case
-    graph = add_edge_lens(graph)
-    if np.isnan(next(iter(graph.edges(data=True)))[2]["l"]):
-        nx.set_edge_attributes(graph, 1, "l")
+    # ensures source branch is also a root branch for the tree
+    if source_node != "leaf" and not is_root(graph, source_node):
+        graph.add_edge(source_node, source_node, l=0.1)
+
+    # handles special case of a single soma node
+    if len(soma_idxs := get_soma_idxs(graph)) == 1:
+        # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere
+        graph.add_edge(soma_idxs[0], soma_idxs[0], l=2 * graph.nodes[soma_idxs[0]]["r"])
+        soma_edges = [
+            (i, j) for i, j in graph.edges if soma_idxs[0] in [i, j] and i != j
+        ]
+        # edges connecting nodes to soma are considered part of the soma -> l = 0.
+        for i, j in soma_edges:
+            graph.edges[i, j]["l"] = 0
+
     branches = trace_branches(graph, source_node=source_node)
 
     if not ignore_swc_trace_errors:
-        breaks = find_swc_trace_errors(graph)
-        branches = simulate_swc_trace_errors(branches, breaks)
-
-    # ensures singular root branch
-    if (
-        source_node != "leaf"
-        and graph.out_degree(source_node) + graph.in_degree(source_node) > 1
-    ):
-        branches = [np.array([[source_node, source_node]])] + branches
-        graph.add_edge(source_node, source_node)
-        graph.edges[source_node, source_node]["l"] = 0.01
-
-    # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere
-    if len(soma_idxs(graph)) == 1:
-        soma_idx = soma_idxs(graph)[0]
-        graph.edges[soma_idx, soma_idx]["l"] = 2 * graph.nodes[soma_idx]["r"]
+        # ignore added index by default; only relevant in case it was added
+        branches = simulate_swc_trace_errors(graph, branches)
 
     edge_lens = nx.get_edge_attributes(graph, "l")
     branch_edges = split_branches(branches, edge_lens, max_branch_len)
@@ -485,10 +512,9 @@ def make_jaxley_compatible(
 
     # fix id and r bleed over from neighboring neurites of a different type
     for idx, group in jaxley_branches.groupby("branch_index"):
-        first, second, last = group.index[[0, 1, -1]]
-        if jaxley_branches.loc[first, "id"] != jaxley_branches.loc[second, "id"]:
-            jaxley_branches.loc[first, "r"] = jaxley_branches.loc[second, "r"]
-            jaxley_branches.loc[first, "id"] = jaxley_branches.loc[last, "id"]
+        (_1st, _2nd), attrs = group.index[[0, 1]], ["r", "id"]  # , "x", "y", "z"]
+        if jaxley_branches.loc[_1st, "id"] != jaxley_branches.loc[_2nd, "id"]:
+            jaxley_branches.loc[_1st, attrs] = jaxley_branches.loc[_2nd, attrs]
 
     edge_lens = nx.get_edge_attributes(graph, "l")
     edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})

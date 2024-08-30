@@ -28,6 +28,7 @@ from jaxley.utils.cell_utils import (
     remap_to_consecutive,
 )
 
+
 class Cell(Module):
     """Cell class.
 
