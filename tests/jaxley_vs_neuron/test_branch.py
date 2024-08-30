@@ -13,8 +13,8 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 
 import jax.numpy as jnp
 import numpy as np
-from neuron import h
 import pytest
+from neuron import h
 
 import jaxley as jx
 from jaxley.channels import HH

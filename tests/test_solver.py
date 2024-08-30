@@ -25,7 +25,7 @@ def test_exp_euler(x_inf):
 
 def test_fwd_euler_and_crank_nicolson():
     """FWD Euler does not yet support branched cells, but comps, branches, nets work.
-    
+
     Tests whether forward Euler and Crank-Nicolson are sufficiently close to implicit
     Euler."""
     comp = jx.Compartment()
