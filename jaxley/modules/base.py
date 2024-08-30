@@ -913,6 +913,7 @@ class Module(ABC):
                 branchpoint_group_inds=self.branchpoint_group_inds,
                 debug_states=self.debug_states,
             )
+            u["v"] = new_voltages.ravel(order="C")
         elif solver == "fwd_euler":
             new_voltages = step_voltage_explicit(
                 voltages=voltages,
@@ -936,6 +937,7 @@ class Module(ABC):
                 branchpoint_group_inds=self.branchpoint_group_inds,
                 debug_states=self.debug_states,
             )
+            u["v"] = new_voltages.ravel(order="C")
         elif solver == "crank_nicolson":
             # Crank Nicolson advances by half a step of backward and half a step of
             # forward Euler.
@@ -964,14 +966,12 @@ class Module(ABC):
             )
             # The forward Euler step in Crank Nicolson can be performed easily as
             # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
-            new_voltages = 2 * half_step_voltages - voltages
+            u["v"] = 2 * half_step_voltages.ravel(order="C") - voltages
         else:
             raise ValueError(
                 f"You specified `solver={solver}`. The only allowed solvers are "
                 "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
             )
-
-        u["v"] = new_voltages.ravel(order="C")
 
         # Clamp for voltages.
         if "v" in externals.keys():
