@@ -915,16 +915,26 @@ class Module(ABC):
             )
         elif solver == "fwd_euler":
             new_voltages = step_voltage_explicit(
-                voltages,
-                (v_terms + syn_v_terms) / cm,
-                (const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
+                voltages=voltages,
+                voltage_terms=(v_terms + syn_v_terms) / cm,
+                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
+                coupling_conds_upper=params["branch_uppers"],
+                coupling_conds_lower=params["branch_lowers"],
+                summed_coupling_conds=params["branch_diags"],
+                branchpoint_conds_children=params["branchpoint_conds_children"],
+                branchpoint_conds_parents=params["branchpoint_conds_parents"],
+                branchpoint_weights_children=params["branchpoint_weights_children"],
+                branchpoint_weights_parents=params["branchpoint_weights_parents"],
+                par_inds=self.par_inds,
+                child_inds=self.child_inds,
                 nbranches=self.total_nbranches,
-                parents=self.comb_parents,
+                solver=voltage_solver,
                 delta_t=delta_t,
+                children_in_level=self.children_in_level,
+                parents_in_level=self.parents_in_level,
+                root_inds=self.root_inds,
+                branchpoint_group_inds=self.branchpoint_group_inds,
+                debug_states=self.debug_states,
             )
         elif solver == "cranck":
             raise NotImplementedError

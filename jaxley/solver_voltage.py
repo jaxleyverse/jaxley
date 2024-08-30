@@ -17,13 +17,23 @@ def step_voltage_explicit(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    coupling_conds_bwd: jnp.ndarray,
-    coupling_conds_fwd: jnp.ndarray,
-    branch_cond_fwd: jnp.ndarray,
-    branch_cond_bwd: jnp.ndarray,
-    nbranches: int,
-    parents: jnp.ndarray,
-    delta_t: float,
+    coupling_conds_upper,
+    coupling_conds_lower,
+    summed_coupling_conds,
+    branchpoint_conds_children,
+    branchpoint_conds_parents,
+    branchpoint_weights_children,
+    branchpoint_weights_parents,
+    par_inds,
+    child_inds,
+    nbranches,
+    solver,
+    delta_t,
+    children_in_level,
+    parents_in_level,
+    root_inds,
+    branchpoint_group_inds,
+    debug_states,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
     voltages = jnp.reshape(voltages, (nbranches, -1))
@@ -31,14 +41,26 @@ def step_voltage_explicit(
     constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
 
     update = voltage_vectorfield(
-        parents,
         voltages,
         voltage_terms,
         constant_terms,
-        coupling_conds_bwd,
-        coupling_conds_fwd,
-        branch_cond_fwd,
-        branch_cond_bwd,
+        coupling_conds_upper,
+        coupling_conds_lower,
+        summed_coupling_conds,
+        branchpoint_conds_children,
+        branchpoint_conds_parents,
+        branchpoint_weights_children,
+        branchpoint_weights_parents,
+        par_inds,
+        child_inds,
+        nbranches,
+        solver,
+        delta_t,
+        children_in_level,
+        parents_in_level,
+        root_inds,
+        branchpoint_group_inds,
+        debug_states,
     )
     new_voltates = voltages + delta_t * update
     return new_voltates
@@ -180,14 +202,26 @@ def step_voltage_implicit(
 
 
 def voltage_vectorfield(
-    parents: jnp.ndarray,
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    coupling_conds_bwd: jnp.ndarray,
-    coupling_conds_fwd: jnp.ndarray,
-    branch_cond_fwd: jnp.ndarray,
-    branch_cond_bwd: jnp.ndarray,
+    voltages,
+    voltage_terms,
+    constant_terms,
+    coupling_conds_upper,
+    coupling_conds_lower,
+    summed_coupling_conds,
+    branchpoint_conds_children,
+    branchpoint_conds_parents,
+    branchpoint_weights_children,
+    branchpoint_weights_parents,
+    par_inds,
+    child_inds,
+    nbranches,
+    solver,
+    delta_t,
+    children_in_level,
+    parents_in_level,
+    root_inds,
+    branchpoint_group_inds,
+    debug_states,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
     # Membrane current update.
@@ -195,14 +229,14 @@ def voltage_vectorfield(
 
     # Current through segments within the same branch.
     vecfield = vecfield.at[:, :-1].add(
-        (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_bwd
+        (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_upper
     )
     vecfield = vecfield.at[:, 1:].add(
-        (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_fwd
+        (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_lower
     )
 
     # Current through branch points.
-    if len(branch_cond_bwd) > 0:
+    if len(branchpoint_conds_children) > 0:
         vecfield = vecfield.at[:, -1].add(
             (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
         )
