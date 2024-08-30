@@ -848,10 +848,11 @@ class Module(ABC):
             external_inds: The indices of the external inputs.
             externals: The external inputs.
             params: The parameters of the module.
-            solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
+            solver: The solver to use for the voltages. Either of ["bwd_euler",
+                "fwd_euler", "cranck"].
             voltage_solver: The tridiagonal solver to used to diagonalize the
-                coefficient matrix of the ODE system. Either "jaxley.thomas",
-                "jaxley.stone", or "jax.scipy.sparse".
+                coefficient matrix of the ODE system. Either of ["jaxley.thomas",
+                "jaxley.stone"].
 
         Returns:
             The updated state of the module.
@@ -912,7 +913,7 @@ class Module(ABC):
                 branchpoint_group_inds=self.branchpoint_group_inds,
                 debug_states=self.debug_states,
             )
-        else:
+        elif solver == "fwd_euler":
             new_voltages = step_voltage_explicit(
                 voltages,
                 (v_terms + syn_v_terms) / cm,
@@ -924,6 +925,13 @@ class Module(ABC):
                 nbranches=self.total_nbranches,
                 parents=self.comb_parents,
                 delta_t=delta_t,
+            )
+        elif solver == "cranck":
+            raise NotImplementedError
+        else:
+            raise ValueError(
+                f"You specified `solver={solver}`. The only allowed solvers are "
+                "['bwd_euler', 'fwd_euler', 'cranck']."
             )
 
         u["v"] = new_voltages.ravel(order="C")
