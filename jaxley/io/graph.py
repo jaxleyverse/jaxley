@@ -394,7 +394,7 @@ def simulate_swc_trace_errors(
     Returns:
         A list of branches with simulated trace errors.
     """
-    node_idxs = find_swc_trace_errors(graph)
+    node_idxs = find_swc_trace_errors(graph, ignore=ignore)
 
     for node_idx in node_idxs:
         branch_idx = next(i for i, p in enumerate(branches) if node_idx in p)
