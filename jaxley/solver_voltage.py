@@ -1,11 +1,10 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Tuple
+from typing import List
 
 import jax.numpy as jnp
 from jax import vmap
-from jax.lax import ScatterDimensionNumbers, scatter_add
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
@@ -17,22 +16,22 @@ def step_voltage_explicit(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    coupling_conds_upper,
-    coupling_conds_lower,
-    summed_coupling_conds,
-    branchpoint_conds_children,
-    branchpoint_conds_parents,
-    branchpoint_weights_children,
-    branchpoint_weights_parents,
-    par_inds,
-    child_inds,
-    nbranches,
-    solver,
-    delta_t,
-    children_in_level,
-    parents_in_level,
-    root_inds,
-    branchpoint_group_inds,
+    coupling_conds_upper: jnp.ndarray,
+    coupling_conds_lower: jnp.ndarray,
+    summed_coupling_conds: jnp.ndarray,
+    branchpoint_conds_children: jnp.ndarray,
+    branchpoint_conds_parents: jnp.ndarray,
+    branchpoint_weights_children: jnp.ndarray,
+    branchpoint_weights_parents: jnp.ndarray,
+    par_inds: jnp.ndarray,
+    child_inds: jnp.ndarray,
+    nbranches: int,
+    solver: str,
+    delta_t: float,
+    children_in_level: List[jnp.ndarray],
+    parents_in_level: List[jnp.ndarray],
+    root_inds: jnp.ndarray,
+    branchpoint_group_inds: jnp.ndarray,
     debug_states,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
@@ -67,25 +66,25 @@ def step_voltage_explicit(
 
 
 def step_voltage_implicit(
-    voltages,
-    voltage_terms,
-    constant_terms,
-    coupling_conds_upper,
-    coupling_conds_lower,
-    summed_coupling_conds,
-    branchpoint_conds_children,
-    branchpoint_conds_parents,
-    branchpoint_weights_children,
-    branchpoint_weights_parents,
-    par_inds,
-    child_inds,
-    nbranches,
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    coupling_conds_upper: jnp.ndarray,
+    coupling_conds_lower: jnp.ndarray,
+    summed_coupling_conds: jnp.ndarray,
+    branchpoint_conds_children: jnp.ndarray,
+    branchpoint_conds_parents: jnp.ndarray,
+    branchpoint_weights_children: jnp.ndarray,
+    branchpoint_weights_parents: jnp.ndarray,
+    par_inds: jnp.ndarray,
+    child_inds: jnp.ndarray,
+    nbranches: int,
     solver: str,
-    delta_t,
-    children_in_level,
-    parents_in_level,
-    root_inds,
-    branchpoint_group_inds,
+    delta_t: float,
+    children_in_level: List[jnp.ndarray],
+    parents_in_level: List[jnp.ndarray],
+    root_inds: jnp.ndarray,
+    branchpoint_group_inds: jnp.ndarray,
     debug_states,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
