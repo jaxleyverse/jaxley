@@ -123,9 +123,9 @@ class Module(ABC):
         x += np.arange(num_branches).repeat(
             self.nseg
         )  # add offset to prevent branch loc overlap
-        xp = np.hstack(
-            [np.linspace(0, 1, x.shape[0]) + 2 * i for i, x in enumerate(self.xyzr)]
-        )
+        dl = lambda xyz: np.sqrt(np.sum(np.diff(xyz, axis=0) ** 2, axis=1))
+        pathlens = [np.insert(np.cumsum(dl(xyzr[:, :3])), 0, 0) for xyzr in self.xyzr]
+        xp = np.hstack([pl / pl.max() + 2 * i for i, pl in enumerate(pathlens)])
         xyz = v_interp(x, xp, np.vstack(self.xyzr)[:, :3])
         idcs = self.nodes["comp_index"]
         self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
