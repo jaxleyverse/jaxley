@@ -14,6 +14,7 @@ import pytest
 from neuron import h
 
 import jaxley as jx
+from jaxley import io
 from jaxley.channels import HH
 
 _ = h.load_file("stdlib.hoc")
@@ -27,7 +28,7 @@ def test_swc_reader_lengths(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
+    _, pathlengths, _, _, _ = jx.io.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
     if pathlengths[0] == 0.1:
         pathlengths = pathlengths[1:]
 
@@ -57,7 +58,7 @@ def test_dummy_compartment_length():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_soma_both_ends.swc")
 
-    parents, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(
+    parents, pathlengths, _, _, _ = jx.io.swc.swc_to_jaxley(
         fname, max_branch_len=2000.0
     )
     assert parents == [-1, 0, 0, 1]
@@ -75,7 +76,7 @@ def test_swc_radius(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    _, pathlen, radius_fns, _, _ = jx.utils.swc.swc_to_jaxley(
+    _, pathlen, radius_fns, _, _ = jx.io.swc.swc_to_jaxley(
         fname, max_branch_len=2000.0, sort=False
     )
     jaxley_diams = []
@@ -140,8 +141,8 @@ def test_swc_voltages(file):
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### jaxley ##################
-    _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
-    cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
+    _, pathlengths, _, _, _ = jx.io.swc.swc_to_jaxley(fname, max_branch_len=2_000)
+    cell = io.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
     cell.insert(HH())
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]

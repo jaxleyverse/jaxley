@@ -15,13 +15,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import jaxley as jx
+from jaxley import io
 from jaxley.synapses import IonotropicSynapse
 
 
 def test_cell():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell = jx.read_swc(fname, nseg=4)
+    cell = io.read_swc(fname, nseg=4)
 
     # Plot 1.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -38,9 +39,9 @@ def test_cell():
 def test_network():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
-    cell2 = jx.read_swc(fname, nseg=4)
-    cell3 = jx.read_swc(fname, nseg=4)
+    cell1 = io.read_swc(fname, nseg=4)
+    cell2 = io.read_swc(fname, nseg=4)
+    cell3 = io.read_swc(fname, nseg=4)
 
     net = jx.Network([cell1, cell2, cell3])
     connect(
