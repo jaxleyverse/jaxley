@@ -32,7 +32,6 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     interpolate_xyzr,
     loc_of_index,
-<<<<<<< HEAD
     params_to_pstate,
     query_channel_states_and_params,
     v_interp,
@@ -58,17 +57,6 @@ def only_allow_module(func):
         return func(self, *args, **kwargs)
 
     return wrapper
-=======
-    v_interp,
-)
-from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
-from jaxley.utils.misc_utils import (
-    childview,
-    concat_and_ignore_empty,
-    recursive_compare,
-)
-from jaxley.utils.plot_utils import plot_morph
->>>>>>> fix: rm diff in modules/base
 
 
 class Module(ABC):
@@ -1296,15 +1284,9 @@ class Module(ABC):
         """
         params = {}
         for key in ["radius", "length", "axial_resistivity", "capacitance"]:
-<<<<<<< HEAD
             params[key] = self.base.jaxnodes[key]
 
         for channel in self.base.channels:
-=======
-            params[key] = self.jaxnodes[key]
-
-        for channel in self.channels:
->>>>>>> fix: rm diff in modules/base
             for channel_params in channel.channel_params:
                 params[channel_params] = self.base.jaxnodes[channel_params]
 

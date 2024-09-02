@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
+from jaxley import io
 from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
