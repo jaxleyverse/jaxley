@@ -13,6 +13,7 @@ import numpy as np
 from jax import jit
 
 import jaxley as jx
+from jaxley import io
 
 
 def test_move_cell():
@@ -163,9 +164,9 @@ def test_move_to_cellview():
 def test_move_to_swc_cell():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
-    cell2 = jx.read_swc(fname, nseg=4)
-    cell3 = jx.read_swc(fname, nseg=4)
+    cell1 = io.read_swc(fname, nseg=4)
+    cell2 = io.read_swc(fname, nseg=4)
+    cell3 = io.read_swc(fname, nseg=4)
 
     # Try move_to on a cell
     cell1.move_to(10.0, 20.0, 30.0)

@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
+from jaxley import io
 from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
@@ -29,7 +30,7 @@ def test_swc_cell(file):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", file)
-    cell = jx.read_swc(fname, nseg=2, max_branch_len=300.0, assign_groups=True)
+    cell = io.read_swc(fname, nseg=2, max_branch_len=300.0, assign_groups=True)
     _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
@@ -87,8 +88,8 @@ def test_swc_net():
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files/morph.swc")
-    cell1 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
-    cell2 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
+    cell1 = io.read_swc(fname, nseg=2, max_branch_len=300.0)
+    cell2 = io.read_swc(fname, nseg=2, max_branch_len=300.0)
 
     network = jx.Network([cell1, cell2])
     connect(

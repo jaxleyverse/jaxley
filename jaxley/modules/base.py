@@ -27,7 +27,11 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
-from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
+from jaxley.utils.misc_utils import (
+    childview,
+    concat_and_ignore_empty,
+    recursive_compare,
+)
 from jaxley.utils.plot_utils import plot_morph
 
 
@@ -119,9 +123,9 @@ class Module(ABC):
         x += np.arange(num_branches).repeat(
             self.nseg
         )  # add offset to prevent branch loc overlap
-        xp = np.hstack(
-            [np.linspace(0, 1, x.shape[0]) + 2 * i for i, x in enumerate(self.xyzr)]
-        )
+        dl = lambda xyz: np.sqrt(np.sum(np.diff(xyz, axis=0) ** 2, axis=1))
+        pathlens = [np.insert(np.cumsum(dl(xyzr[:, :3])), 0, 0) for xyzr in self.xyzr]
+        xp = np.hstack([pl / pl.max() + 2 * i for i, pl in enumerate(pathlens)])
         xyz = v_interp(x, xp, np.vstack(self.xyzr)[:, :3])
         idcs = self.nodes["comp_index"]
         self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
@@ -132,6 +136,10 @@ class Module(ABC):
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
+
+    def __eq__(self, other):
+        # TODO: Add tests!
+        return recursive_compare(self.__dict__, other.__dict__)
 
     def __dir__(self):
         base_dir = object.__dir__(self)
