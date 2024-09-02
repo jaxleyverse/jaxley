@@ -24,13 +24,10 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     interpolate_xyz,
     loc_of_index,
+    v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
-from jaxley.utils.misc_utils import (
-    childview,
-    concat_and_ignore_empty,
-    recursive_compare,
-)
+from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
 
@@ -113,24 +110,28 @@ class Module(ABC):
 
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
-        loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
-        xyz = (
-            [interpolate_xyz(loc, xyzr).T for xyzr in self.xyzr]
-            if len(loc) > 0
-            else [self.xyzr]
+        num_branches = len(self.xyzr)
+        x = np.linspace(
+            0.5 / self.nseg,
+            (num_branches * 1 - 0.5 / self.nseg),
+            num_branches * self.nseg,
         )
+        x += np.arange(num_branches).repeat(
+            self.nseg
+        )  # add offset to prevent branch loc overlap
+        xp = np.hstack(
+            [np.linspace(0, 1, x.shape[0]) + 2 * i for i, x in enumerate(self.xyzr)]
+        )
+        xyz = v_interp(x, xp, np.vstack(self.xyzr)[:, :3])
         idcs = self.nodes["comp_index"]
-        self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
+        self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
+        return xyz.T
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
-
-    def __eq__(self, other):
-        # TODO: Add tests!
-        return recursive_compare(self.__dict__, other.__dict__)
 
     def __dir__(self):
         base_dir = object.__dir__(self)
@@ -508,6 +509,7 @@ class Module(ABC):
         params = {}
         for key in ["radius", "length", "axial_resistivity", "capacitance"]:
             params[key] = self.jaxnodes[key]
+
         for channel in self.channels:
             for channel_params in channel.channel_params:
                 params[channel_params] = self.jaxnodes[channel_params]
