@@ -263,7 +263,7 @@ def split_branches(
     edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})
     new_branches = []
     for branch in branches:
-        cum_branch_len = np.cumsum([edge_lens[*e] for e in branch])
+        cum_branch_len = np.cumsum([edge_lens[e[0],e[1]] for e in branch])
         k = cum_branch_len // max_len
         split_branch = [branch[np.where(np.array(k) == kk)[0]] for kk in np.unique(k)]
         new_branches += split_branch
@@ -519,7 +519,7 @@ def make_jaxley_compatible(
     edge_lens = nx.get_edge_attributes(graph, "l")
     edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})
     jaxley_branches["l"] = np.hstack(
-        [np.cumsum([0] + [edge_lens[*e] for e in branch]) for branch in branch_edges]
+        [np.cumsum([0] + [edge_lens[e[0],e[1]] for e in branch]) for branch in branch_edges]
     )
     jaxley_branches.rename(columns={"r": "radius"}, inplace=True)
     grouped_branches = jaxley_branches.groupby("branch_index")
