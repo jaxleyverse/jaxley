@@ -122,7 +122,7 @@ def test_vis_networks_built_from_scartch():
 def test_mixed_network():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
+    cell1 = io.read_swc(fname, nseg=4)
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
