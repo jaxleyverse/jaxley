@@ -848,10 +848,11 @@ class Module(ABC):
             external_inds: The indices of the external inputs.
             externals: The external inputs.
             params: The parameters of the module.
-            solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
-            voltage_solver: The tridiagonal solver to used to diagonalize the
-                coefficient matrix of the ODE system. Either "jaxley.thomas",
-                "jaxley.stone", or "jax.scipy.sparse".
+            solver: The solver to use for the voltages. Either of ["bwd_euler",
+                "fwd_euler", "crank_nicolson"].
+            voltage_solver: The tridiagonal solver used to diagonalize the
+                coefficient matrix of the ODE system. Either of ["jaxley.thomas",
+                "jaxley.stone"].
 
         Returns:
             The updated state of the module.
@@ -889,44 +890,49 @@ class Module(ABC):
 
         # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
-        if solver == "bwd_euler":
-            new_voltages = step_voltage_implicit(
-                voltages=voltages,
-                voltage_terms=(v_terms + syn_v_terms) / cm,
-                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_upper=params["branch_uppers"],
-                coupling_conds_lower=params["branch_lowers"],
-                summed_coupling_conds=params["branch_diags"],
-                branchpoint_conds_children=params["branchpoint_conds_children"],
-                branchpoint_conds_parents=params["branchpoint_conds_parents"],
-                branchpoint_weights_children=params["branchpoint_weights_children"],
-                branchpoint_weights_parents=params["branchpoint_weights_parents"],
-                par_inds=self.par_inds,
-                child_inds=self.child_inds,
-                nbranches=self.total_nbranches,
-                solver=voltage_solver,
-                delta_t=delta_t,
-                children_in_level=self.children_in_level,
-                parents_in_level=self.parents_in_level,
-                root_inds=self.root_inds,
-                branchpoint_group_inds=self.branchpoint_group_inds,
-                debug_states=self.debug_states,
-            )
-        else:
-            new_voltages = step_voltage_explicit(
-                voltages,
-                (v_terms + syn_v_terms) / cm,
-                (const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
-                nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                delta_t=delta_t,
-            )
 
-        u["v"] = new_voltages.ravel(order="C")
+        solver_kwargs = {
+            "voltages": voltages,
+            "voltage_terms": (v_terms + syn_v_terms) / cm,
+            "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+            "coupling_conds_upper": params["branch_uppers"],
+            "coupling_conds_lower": params["branch_lowers"],
+            "summed_coupling_conds": params["branch_diags"],
+            "branchpoint_conds_children": params["branchpoint_conds_children"],
+            "branchpoint_conds_parents": params["branchpoint_conds_parents"],
+            "branchpoint_weights_children": params["branchpoint_weights_children"],
+            "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+            "par_inds": self.par_inds,
+            "child_inds": self.child_inds,
+            "nbranches": self.total_nbranches,
+            "solver": voltage_solver,
+            "children_in_level": self.children_in_level,
+            "parents_in_level": self.parents_in_level,
+            "root_inds": self.root_inds,
+            "branchpoint_group_inds": self.branchpoint_group_inds,
+            "debug_states": self.debug_states,
+        }
+        if solver == "bwd_euler":
+            new_voltages = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
+            u["v"] = new_voltages.ravel(order="C")
+        elif solver == "fwd_euler":
+            new_voltages = step_voltage_explicit(**solver_kwargs, delta_t=delta_t)
+            u["v"] = new_voltages.ravel(order="C")
+        elif solver == "crank_nicolson":
+            # Crank Nicolson advances by half a step of backward and half a step of
+            # forward Euler.
+            half_step_delta_t = delta_t / 2
+            half_step_voltages = step_voltage_implicit(
+                **solver_kwargs, delta_t=half_step_delta_t
+            )
+            # The forward Euler step in Crank Nicolson can be performed easily as
+            # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
+            u["v"] = 2 * half_step_voltages.ravel(order="C") - voltages
+        else:
+            raise ValueError(
+                f"You specified `solver={solver}`. The only allowed solvers are "
+                "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
+            )
 
         # Clamp for voltages.
         if "v" in externals.keys():

@@ -62,6 +62,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
 
 def _run_neuron(i_delay, i_dur, i_amp, dt, t_max):
     h.dt = dt
+    h.secondorder = 0
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
