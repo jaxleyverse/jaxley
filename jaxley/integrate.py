@@ -120,7 +120,7 @@ def integrate(
     if param_state is not None:
         pstate += param_state
 
-    all_params = module.get_all_parameters(pstate)
+    all_params = module.get_all_parameters(pstate, voltage_solver=voltage_solver)
     all_states = (
         module.get_all_states(pstate, all_params, delta_t)
         if all_states is None
