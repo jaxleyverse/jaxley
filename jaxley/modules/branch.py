@@ -73,9 +73,15 @@ class Branch(Module):
         self.syn_edges = pd.DataFrame(
             dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
         )
-        self.branch_edges = pd.DataFrame(
-            dict(parent_branch_index=[], child_branch_index=[])
-        )
+        # Explanation of `type`:
+        # `type == 0`: compartment-to-compartment (within branch)
+        # `type == 1`: compartment-to-branchpoint
+        # `type == 2`: branchpoint-to-compartment
+        self.comp_edges = pd.DataFrame().from_dict({
+            "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
+            "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
+            "type": [0] * (self.nseg - 1) * 2,
+        })
 
         # For morphology indexing.
         self.child_inds = np.asarray([]).astype(int)
