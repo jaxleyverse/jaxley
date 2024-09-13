@@ -1783,7 +1783,7 @@
               Bases: <code><span title="abc.ABC">ABC</span></code></p>
 
 
-      <p>Module base class.</p>
+        <p>Module base class.</p>
 <p>Modules are everything that can be passed to <code>jx.integrate</code>, i.e. compartments,
 branches, cells, and networks.</p>
 <p>This base class defines the scaffold for all jaxley modules (compartments,
@@ -4647,7 +4647,7 @@ branches, cells, networks).</p>
 
     <div class="doc doc-contents ">
 
-      <p>Whether the <code>Module</code> is ready to be solved or not.</p>
+        <p>Whether the <code>Module</code> is ready to be solved or not.</p>
     </div>
 
 </div>
@@ -4668,7 +4668,7 @@ branches, cells, networks).</p>
 
     <div class="doc doc-contents ">
 
-      <p>Returns the number of submodules contained in a module.</p>
+        <p>Returns the number of submodules contained in a module.</p>
 <div class="highlight"><pre><span></span><code>network.shape = (num_cells, num_branches, num_compartments)
 cell.shape = (num_branches, num_compartments)
 branch.shape = (num_compartments,)
@@ -4690,7 +4690,7 @@ branch.shape = (num_compartments,)
 
     <div class="doc doc-contents ">
 
-      <p>Add a view of the module to a group.</p>
+        <p>Add a view of the module to a group.</p>
 <p>Groups can then be indexed. For example:
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">add_to_group</span><span class="p">(</span><span class="s2">&quot;excitatory&quot;</span><span class="p">)</span>
 <span class="n">net</span><span class="o">.</span><span class="n">excitatory</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;radius&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
@@ -4769,7 +4769,7 @@ branch.shape = (num_compartments,)
 
     <div class="doc doc-contents ">
 
-      <p>Clamp a state to a given value across specified compartments.</p>
+        <p>Clamp a state to a given value across specified compartments.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -4826,7 +4826,7 @@ branch.shape = (num_compartments,)
           </tr>
       </tbody>
     </table>
-      <p>This function sets external states for the compartments.</p>
+        <p>This function sets external states for the compartments.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -4872,7 +4872,7 @@ branch.shape = (num_compartments,)
 
     <div class="doc doc-contents ">
 
-      <p>Return xyz coordinates of every branch, based on the branch length.</p>
+        <p>Return xyz coordinates of every branch, based on the branch length.</p>
 <p>This function should not be called if the morphology was read from an <code>.swc</code>
 file. However, for morphologies that were constructed from scratch, this
 function <strong>must</strong> be called before <code>.vis()</code>. The computed <code>xyz</code> coordinates
@@ -5014,7 +5014,7 @@ are only used for plotting.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Set parameter of module (or its view) to a new value within <code>jit</code>.</p>
+        <p>Set parameter of module (or its view) to a new value within <code>jit</code>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5135,7 +5135,7 @@ function does not modify global state.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Insert a stimulus into the module within jit (or grad).</p>
+        <p>Insert a stimulus into the module within jit (or grad).</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5227,7 +5227,7 @@ by default because this method is meant to be jitted.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Removes all recordings from the module.</p>
+        <p>Removes all recordings from the module.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -5253,7 +5253,7 @@ by default because this method is meant to be jitted.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Removes all stimuli from the module.</p>
+        <p>Removes all stimuli from the module.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -5281,7 +5281,7 @@ by default because this method is meant to be jitted.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Removes all trainable parameters from the module.</p>
+        <p>Removes all trainable parameters from the module.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -5311,7 +5311,7 @@ by default because this method is meant to be jitted.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Return all parameters (and coupling conductances) needed to simulate.</p>
+        <p>Return all parameters (and coupling conductances) needed to simulate.</p>
 <p>Runs <code>init_conds()</code> and return every parameter that is needed to solve the ODE.
 This includes conductances, radiuses, lengths, axial_resistivities, but also
 coupling conductances.</p>
@@ -5503,7 +5503,7 @@ module.to_jax() # needed for call to module.jaxnodes
 
     <div class="doc doc-contents ">
 
-      <p>Get the full initial state of the module from jaxnodes and trainables.</p>
+        <p>Get the full initial state of the module from jaxnodes and trainables.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5688,7 +5688,7 @@ module.to_jax() # needed for call to module.jaxnodes
 
     <div class="doc doc-contents ">
 
-      <p>Get all trainable parameters.</p>
+        <p>Get all trainable parameters.</p>
 <p>The returned parameters should be passed to `jx.integrate(&hellip;, params=params).</p>
 
 
@@ -5757,7 +5757,7 @@ module.to_jax() # needed for call to module.jaxnodes
 
     <div class="doc doc-contents ">
 
-      <p>Initialize coupling conductances.</p>
+        <p>Initialize coupling conductances.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5825,7 +5825,7 @@ coupling conductances.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Initialize all mechanisms in their steady state.</p>
+        <p>Initialize all mechanisms in their steady state.</p>
 <p>This considers the voltages and parameters of each compartment.</p>
 
             <details class="quote">
@@ -5892,7 +5892,7 @@ coupling conductances.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Initialize the module.</p>
+        <p>Initialize the module.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -5920,7 +5920,7 @@ coupling conductances.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Insert a channel into the module.</p>
+        <p>Insert a channel into the module.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5981,7 +5981,7 @@ coupling conductances.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Make a parameter trainable.</p>
+        <p>Make a parameter trainable.</p>
 <p>If a parameter is made trainable, it will be returned by <code>get_parameters()</code>
 and should then be passed to <code>jx.integrate(..., params=params)</code>.</p>
 
@@ -6119,7 +6119,7 @@ total number of parameters.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Move cells or networks by adding to their (x, y, z) coordinates.</p>
+        <p>Move cells or networks by adding to their (x, y, z) coordinates.</p>
 <p>This function is used only for visualization. It does not affect the simulation.</p>
 
 
@@ -6245,7 +6245,7 @@ total number of parameters.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Move cells or networks to a location (x, y, z).</p>
+        <p>Move cells or networks to a location (x, y, z).</p>
 <p>If x, y, and z are floats, then the first compartment of the first branch
 of the first cell is moved to that float coordinate, and everything else is
 shifted by the difference between that compartment&rsquo;s previous coordinate and
@@ -6351,7 +6351,7 @@ cell is moved to the specified location.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Insert a recording into the compartment.</p>
+        <p>Insert a recording into the compartment.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -6436,7 +6436,7 @@ cell is moved to the specified location.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Rotate jaxley modules clockwise. Used only for visualization.</p>
+        <p>Rotate jaxley modules clockwise. Used only for visualization.</p>
 <p>This function is used only for visualization. It does not affect the simulation.</p>
 
 
@@ -6520,7 +6520,7 @@ cell is moved to the specified location.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Set parameter of module (or its view) to a new value.</p>
+        <p>Set parameter of module (or its view) to a new value.</p>
 <p>Note that this function can not be called within <code>jax.jit</code> or <code>jax.grad</code>.
 Instead, it should be used set the parameters of the module <strong>before</strong> the
 simulation. Use <code>.data_set()</code> to set parameters during <code>jax.jit</code> or
@@ -6630,7 +6630,7 @@ must be of shape <code>(len(num_compartments))</code>.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Print detailed information about the Module or a view of it.</p>
+        <p>Print detailed information about the Module or a view of it.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -6812,7 +6812,7 @@ shown.</p>
 
     <div class="doc doc-contents ">
 
-      <p>One step of solving the Ordinary Differential Equation.</p>
+        <p>One step of solving the Ordinary Differential Equation.</p>
 <p>This function is called inside of <code>integrate</code> and increments the state of the
 module by one time step. Calls <code>_step_channels</code> and <code>_step_synapse</code> to update
 the states of the channels and synapses using fwd_euler.</p>
@@ -7200,7 +7200,7 @@ coefficient matrix of the ODE system. Either of [&ldquo;jaxley.thomas&rdquo;,
 
     <div class="doc doc-contents ">
 
-      <p>Insert a stimulus into the compartment.</p>
+        <p>Insert a stimulus into the compartment.</p>
 <p>current must be a 1d array or have batch dimension of size <code>(num_compartments, )</code>
 or <code>(1, )</code>. If 1d, the same stimulus is added to all compartments.</p>
 <p>This function cannot be run during <code>jax.jit</code> and <code>jax.grad</code>. Because of this,
@@ -7285,7 +7285,7 @@ on the data and that should not be learned). For stimuli that depend on data
 
     <div class="doc doc-contents ">
 
-      <p>Move <code>.nodes</code> to <code>.jaxnodes</code>.</p>
+        <p>Move <code>.nodes</code> to <code>.jaxnodes</code>.</p>
 <p>Before the actual simulation is run (via <code>jx.integrate</code>), all parameters of
 the <code>jx.Module</code> are stored in <code>.nodes</code> (a <code>pd.DataFrame</code>). However, for
 simulation, these parameters have to be moved to be <code>jnp.ndarrays</code> such that
@@ -7360,7 +7360,7 @@ differentiated. <code>.to_jax()</code> copies the <code>.nodes</code> to <code>.
 
     <div class="doc doc-contents ">
 
-      <p>Visualize the module.</p>
+        <p>Visualize the module.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -7510,7 +7510,7 @@ two of them.</p>
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.modules.base.Module" href="#jaxley.modules.base.Module">Module</a></code></p>
 
 
-      <p>Compartment class.</p>
+        <p>Compartment class.</p>
 <p>This class defines a single compartment that can be simulated by itself or
 connected up into branches. It is the basic building block of a neuron model.</p>
 
@@ -7675,7 +7675,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.modules.base.Module" href="#jaxley.modules.base.Module">Module</a></code></p>
 
 
-      <p>Branch class.</p>
+        <p>Branch class.</p>
 <p>This class defines a single branch that can be simulated by itself or
 connected to build a cell. A branch is linear segment of several compartments
 and can be connected to no, one or more other branches at each end to build more
@@ -8237,7 +8237,7 @@ create the branch.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Given an axial resisitivity, set the coupling conductances.</p>
+        <p>Given an axial resisitivity, set the coupling conductances.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -8435,7 +8435,7 @@ create the branch.</p>
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.modules.base.Module" href="#jaxley.modules.base.Module">Module</a></code></p>
 
 
-      <p>Cell class.</p>
+        <p>Cell class.</p>
 <p>This class defines a single cell that can be simulated by itself or
 connected with synapses to build a network. A cell is made up of several branches
 and supports intricate cell morphologies.</p>
@@ -8955,7 +8955,7 @@ and supports intricate cell morphologies.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Initialize a cell.</p>
+        <p>Initialize a cell.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -9225,7 +9225,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Given an axial resisitivity, set the coupling conductances.</p>
+        <p>Given an axial resisitivity, set the coupling conductances.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
@@ -9375,7 +9375,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Initialize morphology.</p>
+        <p>Initialize morphology.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
@@ -9453,7 +9453,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Perform updates on the diagonal based on conductances of the branchpoints.</p>
+        <p>Perform updates on the diagonal based on conductances of the branchpoints.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -9629,7 +9629,7 @@ the stick representation coordinates.</p>
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.modules.base.Module" href="#jaxley.modules.base.Module">Module</a></code></p>
 
 
-      <p>Network class.</p>
+        <p>Network class.</p>
 <p>This class defines a network of cells that can be connected with synapses.</p>
 
               <details class="quote">
@@ -10669,7 +10669,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Initialize network of cells and synapses.</p>
+        <p>Initialize network of cells and synapses.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -10852,7 +10852,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Given an axial resisitivity, set the coupling conductances.</p>
+        <p>Given an axial resisitivity, set the coupling conductances.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
@@ -11004,7 +11004,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Initialize synapses.</p>
+        <p>Initialize synapses.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
@@ -11044,7 +11044,7 @@ the stick representation coordinates.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Visualize the module.</p>
+        <p>Visualize the module.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>

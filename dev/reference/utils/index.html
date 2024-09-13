@@ -1326,7 +1326,7 @@
 
     <div class="doc doc-contents ">
 
-      <p>Return all children indices of every branch.</p>
+        <p>Return all children indices of every branch.</p>
 <p>Example:
 <div class="highlight"><pre><span></span><code>parents = [-1, 0, 0]
 compute_children_indices(parents) -&gt; [[1, 2], [], []]
@@ -1378,7 +1378,7 @@ compute_children_indices(parents) -&gt; [[1, 2], [], []]
 
     <div class="doc doc-contents ">
 
-      <p>Return the coupling conductance between two compartments.</p>
+        <p>Return the coupling conductance between two compartments.</p>
 <p>Equations taken from <code>https://en.wikipedia.org/wiki/Compartmental_neuron_models</code>.</p>
 <p><code>radius</code>: um
 <code>r_a</code>: ohm cm
@@ -1427,7 +1427,7 @@ compute_children_indices(parents) -&gt; [[1, 2], [], []]
 
     <div class="doc doc-contents ">
 
-      <p>Return the coupling conductance between one compartment and a comp with l=0.</p>
+        <p>Return the coupling conductance between one compartment and a comp with l=0.</p>
 <p>From <a href="https://en.wikipedia.org/wiki/Compartmental_neuron_models">https://en.wikipedia.org/wiki/Compartmental_neuron_models</a></p>
 <p>If one compartment has l=0.0 then the equations simplify.</p>
 <p>R_long = \sum_i r_a * L_i/2 / crosssection_i</p>
@@ -1499,7 +1499,7 @@ g = r / r_a / L**2</p>
 
     <div class="doc doc-contents ">
 
-      <p>Compute the weight with which a compartment influences its node.</p>
+        <p>Compute the weight with which a compartment influences its node.</p>
 <p>In order to satisfy Kirchhoffs current law, the current at a branch point must be
 proportional to the crosssection of the compartment. We only require proportionality
 here because the branch point equation reads:
@@ -1552,7 +1552,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Return (row, col) to build the sparse matrix defining the voltage eqs.</p>
+        <p>Return (row, col) to build the sparse matrix defining the voltage eqs.</p>
 <p>This is run at <code>init</code>, not during runtime.</p>
 
             <details class="quote">
@@ -1611,7 +1611,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Convert current point process (nA) to distributed current (uA/cm2).</p>
+        <p>Convert current point process (nA) to distributed current (uA/cm2).</p>
 <p>This function gets called for synapses and for external stimuli.</p>
 
 
@@ -1730,7 +1730,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Generates segments where some property is the same in each segment.</p>
+        <p>Generates segments where some property is the same in each segment.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1798,7 +1798,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Number of neighbours of each compartment.</p>
+        <p>Number of neighbours of each compartment.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -1846,7 +1846,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Group values by whether they have the same integer and sum values within group.</p>
+        <p>Group values by whether they have the same integer and sum values within group.</p>
 <p>This is used to construct the last diagonals at the branch points.</p>
 <p>Written by ChatGPT.</p>
 
@@ -1904,7 +1904,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Returns the index of a segment given a loc in [0, 1] and the index of a branch.</p>
+        <p>Returns the index of a segment given a loc in [0, 1] and the index of a branch.</p>
 <p>This is used because we specify locations such as synapses as a value between 0 and
 1. We have to convert this onto a discrete segment here.</p>
 
@@ -2042,7 +2042,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Perform a linear interpolation between xyz-coordinates.</p>
+        <p>Perform a linear interpolation between xyz-coordinates.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2120,7 +2120,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">dl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">coords</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
     <span class="n">pathlens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dl</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># cummulative length of sections</span>
-    <span class="n">norm_pathlens</span> <span class="o">=</span> <span class="n">pathlens</span> <span class="o">/</span> <span class="n">pathlens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># path lengths normalized to [0,1]</span>
+    <span class="n">norm_pathlens</span> <span class="o">=</span> <span class="n">pathlens</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">pathlens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>  <span class="c1"># norm lengths to [0,1].</span>
 
     <span class="k">return</span> <span class="n">v_interp</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">norm_pathlens</span><span class="p">,</span> <span class="n">coords</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
@@ -2140,7 +2140,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Generates segments where some property is linearly interpolated.</p>
+        <p>Generates segments where some property is linearly interpolated.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2251,7 +2251,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Return location corresponding to index.</p>
+        <p>Return location corresponding to index.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2281,7 +2281,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
     <div class="doc doc-contents ">
 
-      <p>Build full list of which branches are solved in which iteration.</p>
+        <p>Build full list of which branches are solved in which iteration.</p>
 <p>From the branching pattern of single cells, this &ldquo;merges&rdquo; them into a single
 ordering of branches.</p>
 
@@ -2495,7 +2495,7 @@ be changed.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Make outputs <code>get_parameters()</code> conform with outputs of <code>.data_set()</code>.</p>
+        <p>Make outputs <code>get_parameters()</code> conform with outputs of <code>.data_set()</code>.</p>
 <p><code>make_trainable()</code> followed by <code>params=get_parameters()</code> does not return indices
 because these indices would also be differentiated by <code>jax.grad</code> (as soon as
 the <code>params</code> are passed to <code>def simulate(params)</code>. Therefore, in <code>jx.integrate</code>,
@@ -2550,7 +2550,7 @@ are of the same shape as the outputs of <code>.data_set()</code>.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Maps an array of integers to an array of consecutive integers.</p>
+        <p>Maps an array of integers to an array of consecutive integers.</p>
 <p>E.g. <code>[0, 0, 1, 4, 4, 6, 6] -&gt; [0, 0, 1, 2, 2, 3, 3]</code></p>
 
             <details class="quote">
@@ -2612,7 +2612,7 @@ are of the same shape as the outputs of <code>.data_set()</code>.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Plot morphology.</p>
+        <p>Plot morphology.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2779,7 +2779,7 @@ two of them.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Read an SWC file and bring morphology into <code>jaxley</code> compatible formats.</p>
+        <p>Read an SWC file and bring morphology into <code>jaxley</code> compatible formats.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3029,7 +3029,7 @@ it is split into equal parts such that each subbranch is below
 
     <div class="doc doc-contents ">
 
-      <p>A version of lax.scan that supports recursive gradient checkpointing.</p>
+        <p>A version of lax.scan that supports recursive gradient checkpointing.</p>
 <p>Code taken from: <a href="https://github.com/google/jax/issues/2139">https://github.com/google/jax/issues/2139</a></p>
 <p>The interface of <code>nested_checkpoint_scan</code> exactly matches lax.scan, except for
 the required <code>nested_lengths</code> argument.</p>
@@ -3291,7 +3291,7 @@ provided) and the size of the leading axis for all arrays in <code>xs</code>.</p
 
     <div class="doc doc-contents ">
 
-      <p>Compute current at the post synapse.</p>
+        <p>Compute current at the post synapse.</p>
 <p>All this does it that it sums the synaptic currents that come into a particular
 compartment. It returns an array of as many elements as there are compartments.</p>
 
