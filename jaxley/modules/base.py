@@ -536,6 +536,18 @@ class Module(ABC):
 
         return params
 
+    def get_states_from_nodes_and_edges(self):
+        """Return states as they are set in the `.nodes` and `.edges` tables."""
+        self.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        states = {"v": self.jaxnodes["v"]}
+        # Join node and edge states into a single state dictionary.
+        for channel in self.channels:
+            for channel_states in channel.channel_states:
+                states[channel_states] = self.jaxnodes[channel_states]
+        for synapse_states in self.synapse_state_names:
+            states[synapse_states] = self.jaxedges[synapse_states]
+        return states
+
     def get_all_states(
         self, pstate: List[Dict], all_params, delta_t: float
     ) -> Dict[str, jnp.ndarray]:
@@ -549,13 +561,7 @@ class Module(ABC):
         Returns:
             A dictionary of all states of the module.
         """
-        # Join node and edge states into a single state dictionary.
-        states = {"v": self.jaxnodes["v"]}
-        for channel in self.channels:
-            for channel_states in channel.channel_states:
-                states[channel_states] = self.jaxnodes[channel_states]
-        for synapse_states in self.synapse_state_names:
-            states[synapse_states] = self.jaxedges[synapse_states]
+        states = self.get_states_from_nodes_and_edges()
 
         # Override with the initial states set by `.make_trainable()`.
         for parameter in pstate:
@@ -590,12 +596,17 @@ class Module(ABC):
         self.init_morph()
         return self
 
-    def init_states(self):
+    def init_states(self, delta_t: float = 0.025):
         """Initialize all mechanisms in their steady state.
 
-        This considers the voltages and parameters of each compartment."""
+        This considers the voltages and parameters of each compartment.
+
+        Args:
+            delta_t: Passed on to `channel.init_state()`.
+        """
         # Update states of the channels.
         channel_nodes = self.nodes
+        states = self.get_states_from_nodes_and_edges()
 
         for channel in self.channels:
             name = channel._name
@@ -607,11 +618,14 @@ class Module(ABC):
             for p in channel_param_names:
                 channel_params[p] = channel_nodes[p][indices].to_numpy()
 
-            init_state = channel.init_state(voltages, channel_params)
+            init_state = channel.init_state(states, voltages, channel_params, delta_t)
 
             # `init_state` might not return all channel states. Only the ones that are
             # returned are updated here.
             for key, val in init_state.items():
+                # Note that we are overriding `self.nodes` here, but `self.nodes` is
+                # not used above to actually compute the current states (so there are
+                # no issues with overriding states).
                 self.nodes.loc[indices, key] = val
 
     def _init_morph_for_debugging(self):

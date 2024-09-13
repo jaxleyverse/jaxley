@@ -63,7 +63,7 @@ class HH(Channel):
             + gLeak * (v - params[f"{prefix}_eLeak"])
         )
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
