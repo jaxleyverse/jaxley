@@ -54,10 +54,10 @@ def _define_tridiag_for_branch(
     """
 
     # Diagonal and solve.
-    a_v = 1.0 + dt * voltage_terms + dt * summed_coupling_conds
-    b_v = voltages + dt * i_ext
+    diags = 1.0 + dt * voltage_terms + dt * summed_coupling_conds
+    solves = voltages + dt * i_ext
 
     # Subdiagonals.
     upper = jnp.asarray(-dt * coupling_conds_upper)
     lower = jnp.asarray(-dt * coupling_conds_lower)
-    return lower, a_v, upper, b_v
+    return lower, diags, upper, solves

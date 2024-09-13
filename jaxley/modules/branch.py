@@ -7,10 +7,11 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+from jax import vmap
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import compute_coupling_cond
+from jaxley.utils.cell_utils import comp_edges_to_indices, compute_coupling_cond, compute_axial_conductances
 
 
 class Branch(Module):
@@ -55,6 +56,7 @@ class Branch(Module):
             compartment_list = compartments
 
         self.nseg = len(compartment_list)
+        self.nseg_per_branch = [self.nseg]
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -73,9 +75,6 @@ class Branch(Module):
         self.syn_edges = pd.DataFrame(
             dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
         )
-        self.branch_edges = pd.DataFrame(
-            dict(parent_branch_index=[], child_branch_index=[])
-        )
 
         # For morphology indexing.
         self.child_inds = np.asarray([]).astype(int)
@@ -90,7 +89,6 @@ class Branch(Module):
 
         self.initialize()
         self.init_syns()
-        self.initialized_conds = False
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
@@ -117,8 +115,33 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        conds = self.init_branch_conds(
+    def init_morph_custom_spsolve(self):
+        pass
+
+    def init_morph_jax_spsolve(self):
+        """Initialize morphology for the jax sparse voltage solver.
+
+        Explanation of `type`:
+        `type == 0`: compartment-to-compartment (within branch)
+        `type == 1`: branchpoint-to-compartment
+        `type == 2`: compartment-to-branchpoint
+        """
+        self.internal_node_inds = jnp.arange(self.nseg)
+        self.comp_edges = pd.DataFrame().from_dict(
+            {
+                "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
+                "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
+                "type": [0] * (self.nseg - 1) * 2,
+            }
+        )
+        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self.comp_edges)
+        self.n_nodes = n_nodes
+        self.data_inds = data_inds
+        self.indices = indices
+        self.indptr = indptr
+
+    def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
+        conds = self.init_branch_conds_custom_spsolve(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
         cond_params = {
@@ -133,8 +156,12 @@ class Branch(Module):
 
         return cond_params
 
+    def init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
+        conds = compute_axial_conductances(self.comp_edges, params)
+        return {"axial_conductances": conds}
+
     @staticmethod
-    def init_branch_conds(
+    def init_branch_conds_custom_spsolve(
         axial_resistivity: jnp.ndarray,
         radiuses: jnp.ndarray,
         lengths: jnp.ndarray,

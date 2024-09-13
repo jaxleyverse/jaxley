@@ -15,19 +15,24 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
-from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
+from jaxley.solver_voltage import (
+    step_voltage_explicit,
+    step_voltage_implicit_with_custom_spsolve,
+    step_voltage_implicit_with_jax_spsolve,
+)
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     compute_levels,
     convert_point_process_to_distributed,
+    convert_to_csc,
     interpolate_xyz,
     loc_of_index,
     query_channel_states_and_params,
     v_interp,
 )
-from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
+from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
 
@@ -252,7 +257,17 @@ class Module(ABC):
         return printable_nodes
 
     @abstractmethod
-    def init_conds(self, params: Dict):
+    def init_conds_jax_spsolve(self, params: Dict):
+        """Initialize coupling conductances.
+
+        Args:
+            params: Conductances and morphology parameters, not yet including
+                coupling conductances.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def init_conds_custom_spsolve(self, params: Dict):
         """Initialize coupling conductances.
 
         Args:
@@ -482,7 +497,9 @@ class Module(ABC):
         """
         return self.trainable_params
 
-    def get_all_parameters(self, pstate: List[Dict]) -> Dict[str, jnp.ndarray]:
+    def get_all_parameters(
+        self, pstate: List[Dict], voltage_solver: str
+    ) -> Dict[str, jnp.ndarray]:
         """Return all parameters (and coupling conductances) needed to simulate.
 
         Runs `init_conds()` and return every parameter that is needed to solve the ODE.
@@ -502,7 +519,13 @@ class Module(ABC):
 
         Args:
             pstate: The state of the trainable parameters. pstate takes the form
-                [{"key": "gNa", "indices": jnp.array([0, 1, 2]), "val": jnp.array([0.1, 0.2, 0.3])}, ...].
+                [{
+                    "key": "gNa", "indices": jnp.array([0, 1, 2]),
+                    "val": jnp.array([0.1, 0.2, 0.3])
+                }, ...].
+            voltage_solver: The voltage solver that is used. Since `jax.sparse` and
+                `jaxley.xyz` require different formats of the axial conductances, this
+                function will default to different building methods.
 
         Returns:
             A dictionary of all module parameters.
@@ -531,7 +554,10 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
-        cond_params = self.init_conds(params)
+        if voltage_solver.startswith("jaxley"):
+            cond_params = self.init_conds_custom_spsolve(params)
+        else:
+            cond_params = self.init_conds_jax_spsolve(params)
         for key in cond_params:
             params[key] = cond_params[key]
 
@@ -594,7 +620,9 @@ class Module(ABC):
 
     def initialize(self):
         """Initialize the module."""
-        self.init_morph()
+        self.init_morph_custom_spsolve()
+        self.init_morph_jax_spsolve()
+        self.initialized_morph = True
         return self
 
     def init_states(self, delta_t: float = 0.025):
@@ -611,7 +639,9 @@ class Module(ABC):
 
         # We do not use any `pstate` for initializing. In principle, we could change
         # that by allowing an input `params` and `pstate` to this function.
-        params = self.get_all_parameters([])
+        # `voltage_solver` could also be `jax.sparse` here, because both of them
+        # build the channel parameters in the same way.
+        params = self.get_all_parameters([], voltage_solver="jaxley.thomas")
 
         for channel in self.channels:
             name = channel._name
@@ -918,43 +948,66 @@ class Module(ABC):
         # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
 
-        solver_kwargs = {
-            "voltages": voltages,
-            "voltage_terms": (v_terms + syn_v_terms) / cm,
-            "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-            "coupling_conds_upper": params["branch_uppers"],
-            "coupling_conds_lower": params["branch_lowers"],
-            "summed_coupling_conds": params["branch_diags"],
-            "branchpoint_conds_children": params["branchpoint_conds_children"],
-            "branchpoint_conds_parents": params["branchpoint_conds_parents"],
-            "branchpoint_weights_children": params["branchpoint_weights_children"],
-            "branchpoint_weights_parents": params["branchpoint_weights_parents"],
-            "par_inds": self.par_inds,
-            "child_inds": self.child_inds,
-            "nbranches": self.total_nbranches,
-            "solver": voltage_solver,
-            "children_in_level": self.children_in_level,
-            "parents_in_level": self.parents_in_level,
-            "root_inds": self.root_inds,
-            "branchpoint_group_inds": self.branchpoint_group_inds,
-            "debug_states": self.debug_states,
-        }
+        if voltage_solver == "jax.sparse":
+            solver_kwargs = {
+                "voltages": voltages,
+                "voltage_terms": (v_terms + syn_v_terms) / cm,
+                "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+                "axial_conductances": params["axial_conductances"],
+                "data_inds": self.data_inds,
+                "indices": self.indices,
+                "indptr": self.indptr,
+                "sinks": np.asarray(self.comp_edges["sink"].to_list()),
+                "n_nodes": self.n_nodes,
+                "internal_node_inds": self.internal_node_inds,
+            }
+            # Only for `bwd_euler` and `cranck-nicolson`.
+            step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
+        else:
+            # Our custom sparse solver requires a different format of all conductance
+            # values to perform triangulation and backsubstution optimally.
+            #
+            # Currently, the forward Euler solver also uses this format. However,
+            # this is only for historical reasons and we are planning to change this in
+            # the future.
+            solver_kwargs = {
+                "voltages": voltages,
+                "voltage_terms": (v_terms + syn_v_terms) / cm,
+                "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+                "coupling_conds_upper": params["branch_uppers"],
+                "coupling_conds_lower": params["branch_lowers"],
+                "summed_coupling_conds": params["branch_diags"],
+                "branchpoint_conds_children": params["branchpoint_conds_children"],
+                "branchpoint_conds_parents": params["branchpoint_conds_parents"],
+                "branchpoint_weights_children": params["branchpoint_weights_children"],
+                "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+                "par_inds": self.par_inds,
+                "child_inds": self.child_inds,
+                "nbranches": self.total_nbranches,
+                "solver": voltage_solver,
+                "children_in_level": self.children_in_level,
+                "parents_in_level": self.parents_in_level,
+                "root_inds": self.root_inds,
+                "branchpoint_group_inds": self.branchpoint_group_inds,
+                "debug_states": self.debug_states,
+            }
+            # Only for `bwd_euler` and `cranck-nicolson`.
+            step_voltage_implicit = step_voltage_implicit_with_custom_spsolve
+
         if solver == "bwd_euler":
-            new_voltages = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
-            u["v"] = new_voltages.ravel(order="C")
-        elif solver == "fwd_euler":
-            new_voltages = step_voltage_explicit(**solver_kwargs, delta_t=delta_t)
-            u["v"] = new_voltages.ravel(order="C")
+            u["v"] = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
         elif solver == "crank_nicolson":
-            # Crank Nicolson advances by half a step of backward and half a step of
+            # Crank-Nicolson advances by half a step of backward and half a step of
             # forward Euler.
             half_step_delta_t = delta_t / 2
             half_step_voltages = step_voltage_implicit(
                 **solver_kwargs, delta_t=half_step_delta_t
             )
-            # The forward Euler step in Crank Nicolson can be performed easily as
+            # The forward Euler step in Crank-Nicolson can be performed easily as
             # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
-            u["v"] = 2 * half_step_voltages.ravel(order="C") - voltages
+            u["v"] = 2 * half_step_voltages - voltages
+        elif solver == "fwd_euler":
+            u["v"] = step_voltage_explicit(**solver_kwargs, delta_t=delta_t)
         else:
             raise ValueError(
                 f"You specified `solver={solver}`. The only allowed solvers are "

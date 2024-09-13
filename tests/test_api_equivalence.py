@@ -186,3 +186,46 @@ def test_api_equivalence_continued_simulation():
 
     v2 = jnp.concatenate([v21, v22[:, 1:]], axis=1)
     assert np.max(np.abs(v1 - v2)) < 1e-8
+
+
+def test_api_equivalence_network_matches_cell():
+    """Test whether a network with w=0 synapses equals the individual cells.
+
+    This runs an unequal number of compartments per branch."""
+    dt = 0.025  # ms
+    t_max = 5.0  # ms
+    current = jx.step_current(0.5, 1.0, 0.1, dt, t_max)
+
+    comp = jx.Compartment()
+    branch1 = jx.Branch(comp, nseg=1)
+    branch2 = jx.Branch(comp, nseg=2)
+    branch3 = jx.Branch(comp, nseg=3)
+    cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
+    cell2 = jx.Cell([branch1, branch2], parents=[-1, 0])
+    cell1.insert(HH())
+    cell2.insert(HH())
+
+    net = jx.Network([cell1, cell2])
+    pre = net.cell(0).branch(2).comp(2)
+    post = net.cell(1).branch(1).comp(1)
+    connect(pre, post, IonotropicSynapse())
+    net.IonotropicSynapse("all").set("IonotropicSynapse_gS", 0.0)
+
+    net.cell(0).branch(2).comp(2).stimulate(current)
+    net.cell(0).branch(0).comp(0).record()
+
+    net.cell(1).branch(1).comp(1).stimulate(current)
+    net.cell(1).branch(0).comp(0).record()
+    voltages_net = jx.integrate(net, delta_t=dt, voltage_solver="jax.sparse")
+
+    cell1.branch(2).comp(2).stimulate(current)
+    cell1.branch(0).comp(0).record()
+
+    cell2.branch(1).comp(1).stimulate(current)
+    cell2.branch(0).comp(0).record()
+    voltages_cell1 = jx.integrate(cell1, delta_t=dt, voltage_solver="jax.sparse")
+    voltages_cell2 = jx.integrate(cell2, delta_t=dt, voltage_solver="jax.sparse")
+    voltages_cells = jnp.concatenate([voltages_cell1, voltages_cell2], axis=0)
+
+    max_error = np.max(np.abs(voltages_net - voltages_cells))
+    assert max_error < 1e-8, f"Error is {max_error}"

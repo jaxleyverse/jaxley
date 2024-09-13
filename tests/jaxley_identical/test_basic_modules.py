@@ -14,6 +14,7 @@ from math import pi
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -21,7 +22,8 @@ from jaxley.connect import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
-def test_compartment():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_compartment(voltage_solver: str):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
@@ -31,7 +33,7 @@ def test_compartment():
     comp.record()
     comp.stimulate(current)
 
-    voltages = jx.integrate(comp, delta_t=dt)
+    voltages = jx.integrate(comp, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_081123 = jnp.asarray(
         [
@@ -55,7 +57,8 @@ def test_compartment():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_branch():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_branch(voltage_solver: str):
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
@@ -67,7 +70,7 @@ def test_branch():
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(branch, delta_t=dt)
+    voltages = jx.integrate(branch, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_081123 = jnp.asarray(
         [
@@ -91,7 +94,8 @@ def test_branch():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_cell():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_cell(voltage_solver: str):
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
@@ -107,7 +111,7 @@ def test_cell():
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [
@@ -131,7 +135,42 @@ def test_cell():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_net():
+def test_cell_unequal_compartment_number():
+    """Tests a cell where every branch has a different number of compartments."""
+    dt = 0.025  # ms
+    t_max = 5.0  # ms
+    current = jx.step_current(0.5, 1.0, 0.1, dt, t_max)
+
+    comp = jx.Compartment()
+    branch1 = jx.Branch(comp, nseg=1)
+    branch2 = jx.Branch(comp, nseg=2)
+    branch3 = jx.Branch(comp, nseg=3)
+    branch4 = jx.Branch(comp, nseg=4)
+    cell = jx.Cell([branch1, branch2, branch3, branch4], parents=[-1, 0, 0, 1])
+    cell.set("axial_resistivity", 10_000.0)
+    cell.insert(HH())
+    cell.branch(1).comp(1).stimulate(current)
+    cell.branch(0).comp(0).record()
+    cell.branch(2).comp(2).record()
+    cell.branch(3).comp(1).record()
+    cell.branch(3).comp(3).record()
+
+    voltages = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
+    voltages_170924 = jnp.asarray(
+        [
+            [-70.0, -53.80615874, 22.05497283, -47.39519176, -75.64644816],
+            [-70.0, -61.74975007, 34.11362303, -28.88940829, -75.73717223],
+            [-70.0, -52.99972332, 20.97523461, -47.83840746, -75.66974145],
+            [-70.0, -60.86509139, 35.1106244, -33.89684951, -75.76946014],
+        ]
+    )
+    max_error = np.max(np.abs(voltages[:, ::50] - voltages_170924))
+    tolerance = 1e-8
+    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+
+
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_net(voltage_solver: str):
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
@@ -164,7 +203,7 @@ def test_net():
     network.IonotropicSynapse.set(
         "IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor
     )
-    voltages = jx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [
@@ -202,7 +241,8 @@ def test_net():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_complex_net():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_complex_net(voltage_solver: str):
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=4)
     cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
@@ -238,7 +278,7 @@ def test_complex_net():
 
     net.cell(6).branch(0).loc(0.0).record()
 
-    voltages = jx.integrate(net)
+    voltages = jx.integrate(net, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [

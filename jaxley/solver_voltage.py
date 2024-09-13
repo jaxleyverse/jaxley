@@ -5,6 +5,7 @@ from typing import List
 
 import jax.numpy as jnp
 from jax import vmap
+from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
@@ -62,10 +63,10 @@ def step_voltage_explicit(
         debug_states,
     )
     new_voltates = voltages + delta_t * update
-    return new_voltates
+    return new_voltates.ravel(order="C")
 
 
-def step_voltage_implicit(
+def step_voltage_implicit_with_custom_spsolve(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
@@ -196,8 +197,50 @@ def step_voltage_implicit(
         root_inds,
         debug_states,
     )
+    return solves.ravel(order="C")
 
-    return solves
+
+def step_voltage_implicit_with_jax_spsolve(
+    voltages,
+    voltage_terms,
+    constant_terms,
+    axial_conductances,
+    data_inds,
+    indices,
+    indptr,
+    sinks,
+    delta_t,
+    n_nodes,
+    internal_node_inds,
+):
+    # Build diagonals.
+    diagonal_values = jnp.zeros(n_nodes)
+
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sinks) > 0:
+        diagonal_values = diagonal_values.at[sinks].add(delta_t * axial_conductances)
+
+    diagonal_values = diagonal_values.at[internal_node_inds].add(
+        delta_t * voltage_terms
+    )
+    diagonal_values = diagonal_values.at[internal_node_inds].add(1.0)
+
+    # Build off-diagonals.
+    axial_conductances = -delta_t * axial_conductances
+
+    # Concatenate diagonals and off-diagonals.
+    all_values = jnp.concatenate([diagonal_values, axial_conductances])
+
+    # Build solve.
+    solves = jnp.zeros(n_nodes)
+    solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
+
+    # Solve the voltage equations.
+    solution = jax_spsolve(all_values[data_inds], indices, indptr, solves)[
+        internal_node_inds
+    ]
+    return solution
 
 
 def voltage_vectorfield(
