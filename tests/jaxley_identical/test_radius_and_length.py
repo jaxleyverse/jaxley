@@ -15,13 +15,15 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
 
-def test_radius_and_length_compartment():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_radius_and_length_compartment(voltage_solver: str):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
@@ -36,7 +38,7 @@ def test_radius_and_length_compartment():
     comp.record()
     comp.stimulate(current)
 
-    voltages = jx.integrate(comp, delta_t=dt)
+    voltages = jx.integrate(comp, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_081123 = jnp.asarray(
         [
@@ -60,7 +62,8 @@ def test_radius_and_length_compartment():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_radius_and_length_branch():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_radius_and_length_branch(voltage_solver: str):
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
@@ -77,7 +80,7 @@ def test_radius_and_length_branch():
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(branch, delta_t=dt)
+    voltages = jx.integrate(branch, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [
@@ -101,7 +104,8 @@ def test_radius_and_length_branch():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_radius_and_length_cell():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_radius_and_length_cell(voltage_solver: str):
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
@@ -126,7 +130,7 @@ def test_radius_and_length_cell():
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [
@@ -150,7 +154,8 @@ def test_radius_and_length_cell():
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_radius_and_length_net():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_radius_and_length_net(voltage_solver: str):
     nseg_per_branch = 2
     dt = 0.025  # ms
     t_max = 5.0  # ms
@@ -200,7 +205,7 @@ def test_radius_and_length_net():
     for stim_ind in range(2):
         network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [

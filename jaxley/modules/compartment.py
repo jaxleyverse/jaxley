@@ -9,7 +9,12 @@ import pandas as pd
 from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
-from jaxley.utils.cell_utils import index_of_loc, interpolate_xyz, loc_of_index
+from jaxley.utils.cell_utils import (
+    comp_edges_to_indices,
+    index_of_loc,
+    interpolate_xyz,
+    loc_of_index,
+)
 
 
 class Compartment(Module):
@@ -31,6 +36,7 @@ class Compartment(Module):
         super().__init__()
 
         self.nseg = 1
+        self.nseg_per_branch = [1]
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -60,12 +66,32 @@ class Compartment(Module):
         # Initialize the module.
         self.initialize()
         self.init_syns()
-        self.initialized_conds = True
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def init_conds(self, params):
+    def init_morph_custom_spsolve(self):
+        pass
+
+    def init_morph_jax_spsolve(self):
+        """Initialize morphology for the jax sparse voltage solver.
+
+        Explanation of `type`:
+        `type == 0`: compartment-to-compartment (within branch)
+        `type == 1`: compartment-to-branchpoint
+        `type == 2`: branchpoint-to-compartment
+        """
+        self.internal_node_inds = jnp.asarray([0])
+        self.comp_edges = pd.DataFrame().from_dict(
+            {"source": [], "sink": [], "type": []}
+        )
+        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self.comp_edges)
+        self.n_nodes = n_nodes
+        self.data_inds = data_inds
+        self.indices = indices
+        self.indptr = indptr
+
+    def init_conds_custom_spsolve(self, params):
         return {
             "branchpoint_conds_children": jnp.asarray([]),
             "branchpoint_conds_parents": jnp.asarray([]),
@@ -75,6 +101,9 @@ class Compartment(Module):
             "branch_lowers": jnp.asarray([]),
             "branch_diags": jnp.asarray([0.0]),
         }
+
+    def init_conds_jax_spsolve(self, params):
+        return {"axial_conductances": jnp.asarray([])}
 
 
 class CompartmentView(View):
