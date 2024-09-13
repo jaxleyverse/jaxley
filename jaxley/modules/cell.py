@@ -91,7 +91,8 @@ class Cell(Module):
             # self.xyzr at `.vis()`.
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
-        self.nseg = branch_list[0].nseg
+        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in branch_list])
+        self.cumsum_nseg = jnp.cumsum(self.nseg_per_branch)
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
@@ -101,11 +102,9 @@ class Cell(Module):
         # Indexing.
         self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
         self._append_params_and_states(self.cell_params, self.cell_states)
-        self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
-        self.nodes["branch_index"] = (
-            np.arange(self.nseg * self.total_nbranches) // self.nseg
-        ).tolist()
-        self.nodes["cell_index"] = [0] * (self.nseg * self.total_nbranches)
+        self.nodes["comp_index"] = np.concatenate([branch.nodes["comp_index"].to_numpy() for branch in branch_list])
+        self.nodes["branch_index"] = np.repeat(np.arange(self.total_nbranches), self.nseg_per_branch).tolist()
+        self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
 
         # Channels.
         self._gather_channels_from_constituents(branch_list)
@@ -160,7 +159,6 @@ class Cell(Module):
     def init_morph(self):
         """Initialize morphology."""
 
-        # For Jaxley custom implementation.
         children_and_parents = compute_morphology_indices_in_levels(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
@@ -170,8 +168,7 @@ class Cell(Module):
         self.branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
-            self.nseg,
-            self.total_nbranches,
+            self.cumsum_nseg[-1],
         )
         parents = self.comb_parents
         children_inds = children_and_parents["children"]
