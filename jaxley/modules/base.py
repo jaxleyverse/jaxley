@@ -935,10 +935,12 @@ class Module(ABC):
                 "voltage_terms": (v_terms + syn_v_terms) / cm,
                 "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
                 "axial_conductances": params["axial_conductances"],
+                "data_inds": self.data_inds,
+                "indices": self.indices,
+                "indptr": self.indptr,
                 "sources": np.asarray(self.comp_edges["source"].to_list()),
-                "sinks": np.asarray(self.comp_edges["sink"].to_list()),
-                "n_nodes": self.comp_edges["sink"].max() + 1,
-                "internal_node_inds": np.arange(self.cumsum_nseg[-1]),
+                "n_nodes": self.n_nodes,
+                "internal_node_inds": self.internal_node_inds,
             }
             new_voltages = step_voltage_implicit_sparse(**solver_kwargs, delta_t=delta_t)
             u["v"] = new_voltages

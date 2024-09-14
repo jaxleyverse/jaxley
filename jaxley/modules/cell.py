@@ -28,6 +28,7 @@ from jaxley.utils.cell_utils import (
     remap_to_consecutive,
 )
 from jaxley.utils.swc import swc_to_jaxley
+from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 
 
 class Cell(Module):
@@ -95,6 +96,7 @@ class Cell(Module):
         self.cumsum_nseg = jnp.concatenate(
             [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
         )
+        self.internal_node_inds = np.arange(self.cumsum_nseg[-1])
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
@@ -198,6 +200,28 @@ class Cell(Module):
             ],
             ignore_index=True,
         )
+
+        # Build indices for diagonals.
+        sources = np.asarray(self.comp_edges["source"].to_list())
+        sinks = np.asarray(self.comp_edges["sink"].to_list())
+        self.n_nodes = self.comp_edges["sink"].max() + 1
+        diagonal_inds = jnp.stack([jnp.arange(self.n_nodes), jnp.arange(self.n_nodes)])
+
+        # Build indices for off-diagonals.
+        off_diagonal_inds = jnp.stack([sources, sinks])
+
+        # Concatenate indices of diagonals and off-diagonals.
+        all_inds = jnp.concatenate([diagonal_inds, off_diagonal_inds], axis=1)
+
+        # Cast (row, col) indices to the format required for the `jax` sparse solver.
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=all_inds.shape[1],
+            row_ind=all_inds[0],
+            col_ind=all_inds[1],
+        )
+        self.data_inds = data_inds
+        self.indices = indices
+        self.indptr = indptr
 
         self.initialize()
 

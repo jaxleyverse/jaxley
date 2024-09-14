@@ -11,7 +11,6 @@ from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
 from jaxley.build_branched_tridiag import define_all_tridiags
 from jaxley.utils.cell_utils import group_and_sum
-from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 
 
 def step_voltage_explicit(
@@ -207,41 +206,29 @@ def step_voltage_implicit_sparse(
     voltage_terms,
     constant_terms,
     axial_conductances,
+    data_inds,
+    indices,
+    indptr,
     sources,
-    sinks,
     delta_t,
     n_nodes,
     internal_node_inds,
-):    
+):
     # Build diagonals.
     diagonal_values = jnp.zeros(n_nodes)
     diagonal_values = diagonal_values.at[sources].add(delta_t * axial_conductances)
     diagonal_values = diagonal_values.at[internal_node_inds].add(delta_t * voltage_terms)
     diagonal_values = diagonal_values.at[internal_node_inds].add(1.0)
 
-    # Build indices for diagonals.
-    diagonal_inds = jnp.stack([jnp.arange(n_nodes), jnp.arange(n_nodes)])
-
     # Build off-diagonals.
     axial_conductances = -delta_t * axial_conductances
 
-    # Build indices for off-diagonals.
-    off_diagonal_inds = jnp.stack([sources, sinks])
-
     # Concatenate diagonals and off-diagonals.
     all_values = jnp.concatenate([diagonal_values, axial_conductances])
-    all_inds = jnp.concatenate([diagonal_inds, off_diagonal_inds], axis=1)
 
     # Build solve.
     solves = jnp.zeros(n_nodes)
     solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
-
-    # Cast (row, col) indices to the format required for the `jax` sparse solver.
-    data_inds, indices, indptr = convert_to_csc(
-        num_elements=all_inds.shape[1],
-        row_ind=all_inds[0],
-        col_ind=all_inds[1],
-    )
 
     return jax_spsolve(all_values[data_inds], indices, indptr, solves)[internal_node_inds]
 
