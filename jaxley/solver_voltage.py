@@ -217,7 +217,7 @@ def step_voltage_implicit_sparse(
     diagonal_values = jnp.zeros(n_nodes)
     diagonal_values = diagonal_values.at[sources].add(delta_t * axial_conductances)
     diagonal_values = diagonal_values.at[internal_node_inds].add(delta_t * voltage_terms)
-    diagonal_values = diagonal_values.at[:].add(1.0)
+    diagonal_values = diagonal_values.at[internal_node_inds].add(1.0)
 
     # Build indices for diagonals.
     diagonal_inds = jnp.stack([jnp.arange(n_nodes), jnp.arange(n_nodes)])
@@ -237,7 +237,6 @@ def step_voltage_implicit_sparse(
     solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
 
     # Cast (row, col) indices to the format required for the `jax` sparse solver.
-    print(all_inds)
     data_inds, indices, indptr = convert_to_csc(
         num_elements=all_inds.shape[1],
         row_ind=all_inds[0],

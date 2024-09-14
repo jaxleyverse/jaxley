@@ -930,8 +930,6 @@ class Module(ABC):
             new_voltages = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
             u["v"] = new_voltages.ravel(order="C")
         elif voltage_solver == "jax.sparse":
-            print("params", len(params["axial_conductances"]))
-            print("comp_edges", len(self.comp_edges))
             solver_kwargs = {
                 "voltages": voltages,
                 "voltage_terms": (v_terms + syn_v_terms) / cm,
