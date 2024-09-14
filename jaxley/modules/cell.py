@@ -251,7 +251,7 @@ class Cell(Module):
 
     def init_morph(self):
         """Initialize morphology.
-        
+
         Running this function is only required for custom Jaxley solvers, i.e., for
         `voltage_solver={'jaxley.stone', 'jaxley.thomas'}`.
         """
@@ -343,7 +343,7 @@ class Cell(Module):
             "branchpoint_weights_parents": branchpoint_weights_parents,
         }
         return cond_params
-    
+
     def init_conds_generic_solver(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given length, radius, and r_a, set the coupling conductances."""
         # `Compartment-to-compartment` conductances.
@@ -351,9 +351,7 @@ class Cell(Module):
         source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
         sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
 
-        conds0 = vmap(
-            compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0)
-        )(
+        conds0 = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
             params["radius"][source_comp_inds],
             params["radius"][sink_comp_inds],
             params["axial_resistivity"][source_comp_inds],
@@ -366,9 +364,7 @@ class Cell(Module):
         condition = self.comp_edges["type"].to_numpy() == 1
         sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
 
-        conds1 = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
+        conds1 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
             params["radius"][sink_comp_inds],
             params["axial_resistivity"][sink_comp_inds],
             params["length"][sink_comp_inds],
@@ -378,9 +374,7 @@ class Cell(Module):
         condition = self.comp_edges["type"].to_numpy() == 2
         source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
 
-        conds2 = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
+        conds2 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
             params["radius"][source_comp_inds],
             params["axial_resistivity"][source_comp_inds],
             params["length"][source_comp_inds],
@@ -388,7 +382,7 @@ class Cell(Module):
 
         # All conductances.
         conds = jnp.concatenate([conds0, conds1, conds2])
-        return conds
+        return {"axial_conductances": conds}
 
     @staticmethod
     def update_summed_coupling_conds(

@@ -63,10 +63,10 @@ def step_voltage_explicit(
         debug_states,
     )
     new_voltates = voltages + delta_t * update
-    return new_voltates
+    return new_voltates.ravel(order="C")
 
 
-def step_voltage_implicit(
+def step_voltage_implicit_with_custom_spsolve(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
@@ -198,10 +198,10 @@ def step_voltage_implicit(
         debug_states,
     )
 
-    return solves
+    return solves.ravel(order="C")
 
 
-def step_voltage_implicit_sparse(
+def step_voltage_implicit_with_jax_spsolve(
     voltages,
     voltage_terms,
     constant_terms,
@@ -217,7 +217,9 @@ def step_voltage_implicit_sparse(
     # Build diagonals.
     diagonal_values = jnp.zeros(n_nodes)
     diagonal_values = diagonal_values.at[sources].add(delta_t * axial_conductances)
-    diagonal_values = diagonal_values.at[internal_node_inds].add(delta_t * voltage_terms)
+    diagonal_values = diagonal_values.at[internal_node_inds].add(
+        delta_t * voltage_terms
+    )
     diagonal_values = diagonal_values.at[internal_node_inds].add(1.0)
 
     # Build off-diagonals.
@@ -230,7 +232,10 @@ def step_voltage_implicit_sparse(
     solves = jnp.zeros(n_nodes)
     solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
 
-    return jax_spsolve(all_values[data_inds], indices, indptr, solves)[internal_node_inds]
+    # Solve the voltage equations.
+    return jax_spsolve(all_values[data_inds], indices, indptr, solves)[
+        internal_node_inds
+    ]
 
 
 def voltage_vectorfield(
