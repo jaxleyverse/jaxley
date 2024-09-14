@@ -93,6 +93,7 @@ class Cell(Module):
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
         self.nseg_per_branch = jnp.asarray([branch.nseg for branch in branch_list])
+        self.nseg = jnp.max(self.nseg_per_branch)
         self.cumsum_nseg = jnp.concatenate(
             [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
         )
@@ -283,6 +284,7 @@ class Cell(Module):
         nbranches = self.total_nbranches
         nseg = self.nseg
 
+        print("params", params["axial_resistivity"])
         axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
         radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
         lengths = jnp.reshape(params["length"], (nbranches, nseg))
