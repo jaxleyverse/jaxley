@@ -15,7 +15,7 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
-from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit
+from jaxley.solver_voltage import step_voltage_explicit, step_voltage_implicit, step_voltage_implicit_sparse
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
@@ -530,9 +530,9 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
-        cond_params = self.init_conds(params)
-        for key in cond_params:
-            params[key] = cond_params[key]
+        cond_params = self.init_conds_generic_solver(params)
+        # for key in cond_params:
+        params["axial_conductances"] = cond_params
 
         return params
 
@@ -905,30 +905,49 @@ class Module(ABC):
         # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
 
-        solver_kwargs = {
-            "voltages": voltages,
-            "voltage_terms": (v_terms + syn_v_terms) / cm,
-            "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-            "coupling_conds_upper": params["branch_uppers"],
-            "coupling_conds_lower": params["branch_lowers"],
-            "summed_coupling_conds": params["branch_diags"],
-            "branchpoint_conds_children": params["branchpoint_conds_children"],
-            "branchpoint_conds_parents": params["branchpoint_conds_parents"],
-            "branchpoint_weights_children": params["branchpoint_weights_children"],
-            "branchpoint_weights_parents": params["branchpoint_weights_parents"],
-            "par_inds": self.par_inds,
-            "child_inds": self.child_inds,
-            "nbranches": self.total_nbranches,
-            "solver": voltage_solver,
-            "children_in_level": self.children_in_level,
-            "parents_in_level": self.parents_in_level,
-            "root_inds": self.root_inds,
-            "branchpoint_group_inds": self.branchpoint_group_inds,
-            "debug_states": self.debug_states,
-        }
-        if solver == "bwd_euler":
+        if voltage_solver.startswith("jaxley"):
+            solver_kwargs = {
+                "voltages": voltages,
+                "voltage_terms": (v_terms + syn_v_terms) / cm,
+                "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+                "coupling_conds_upper": params["branch_uppers"],
+                "coupling_conds_lower": params["branch_lowers"],
+                "summed_coupling_conds": params["branch_diags"],
+                "branchpoint_conds_children": params["branchpoint_conds_children"],
+                "branchpoint_conds_parents": params["branchpoint_conds_parents"],
+                "branchpoint_weights_children": params["branchpoint_weights_children"],
+                "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+                "par_inds": self.par_inds,
+                "child_inds": self.child_inds,
+                "nbranches": self.total_nbranches,
+                "solver": voltage_solver,
+                "children_in_level": self.children_in_level,
+                "parents_in_level": self.parents_in_level,
+                "root_inds": self.root_inds,
+                "branchpoint_group_inds": self.branchpoint_group_inds,
+                "debug_states": self.debug_states,
+            }
             new_voltages = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
             u["v"] = new_voltages.ravel(order="C")
+        elif voltage_solver == "jax.sparse":
+            print("params", len(params["axial_conductances"]))
+            print("comp_edges", len(self.comp_edges))
+            solver_kwargs = {
+                "voltages": voltages,
+                "voltage_terms": (v_terms + syn_v_terms) / cm,
+                "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+                "axial_conductances": params["axial_conductances"],
+                "sources": np.asarray(self.comp_edges["source"].to_list()),
+                "sinks": np.asarray(self.comp_edges["sink"].to_list()),
+                "n_nodes": self.comp_edges["sink"].max() + 1,
+                "internal_node_inds": np.arange(self.cumsum_nseg[-1]),
+            }
+            new_voltages = step_voltage_implicit_sparse(**solver_kwargs, delta_t=delta_t)
+            u["v"] = new_voltages
+        
+        if solver == "bwd_euler":
+            # TODO: make this if-else casing nicer.
+            pass
         elif solver == "fwd_euler":
             new_voltages = step_voltage_explicit(**solver_kwargs, delta_t=delta_t)
             u["v"] = new_voltages.ravel(order="C")

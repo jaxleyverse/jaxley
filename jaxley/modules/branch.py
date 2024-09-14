@@ -77,11 +77,13 @@ class Branch(Module):
         # `type == 0`: compartment-to-compartment (within branch)
         # `type == 1`: compartment-to-branchpoint
         # `type == 2`: branchpoint-to-compartment
-        self.comp_edges = pd.DataFrame().from_dict({
-            "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
-            "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
-            "type": [0] * (self.nseg - 1) * 2,
-        })
+        self.comp_edges = pd.DataFrame().from_dict(
+            {
+                "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
+                "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
+                "type": [0] * (self.nseg - 1) * 2,
+            }
+        )
 
         # For morphology indexing.
         self.child_inds = np.asarray([]).astype(int)

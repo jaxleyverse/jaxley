@@ -339,9 +339,7 @@ def convert_point_process_to_distributed(
 
 
 def build_branchpoint_group_inds(
-    num_branchpoints,
-    child_belongs_to_branchpoint,
-    start_ind_for_branchpoints
+    num_branchpoints, child_belongs_to_branchpoint, start_ind_for_branchpoints
 ):
     branchpoint_inds_parents = start_ind_for_branchpoints + jnp.arange(num_branchpoints)
     branchpoint_inds_children = (
