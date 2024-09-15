@@ -4,6 +4,7 @@
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+from jax import vmap
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -55,6 +56,7 @@ class Branch(Module):
             compartment_list = compartments
 
         self.nseg = len(compartment_list)
+        self.nseg_per_branch = [self.nseg]
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -73,17 +75,6 @@ class Branch(Module):
         self.syn_edges = pd.DataFrame(
             dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
         )
-        # Explanation of `type`:
-        # `type == 0`: compartment-to-compartment (within branch)
-        # `type == 1`: compartment-to-branchpoint
-        # `type == 2`: branchpoint-to-compartment
-        self.comp_edges = pd.DataFrame().from_dict(
-            {
-                "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
-                "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
-                "type": [0] * (self.nseg - 1) * 2,
-            }
-        )
 
         # For morphology indexing.
         self.child_inds = np.asarray([]).astype(int)
@@ -98,7 +89,6 @@ class Branch(Module):
 
         self.initialize()
         self.init_syns()
-        self.initialized_conds = False
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
@@ -125,7 +115,26 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
+    def init_morph_custom_spsolve(self):
+        pass
+
+    def init_morph_jax_spsolve(self):
+        """Initialize morphology for the jax sparse voltage solver.
+        
+        Explanation of `type`:
+        `type == 0`: compartment-to-compartment (within branch)
+        `type == 1`: compartment-to-branchpoint
+        `type == 2`: branchpoint-to-compartment
+        """
+        self.comp_edges = pd.DataFrame().from_dict(
+            {
+                "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
+                "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
+                "type": [0] * (self.nseg - 1) * 2,
+            }
+        )
+
+    def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         conds = self.init_branch_conds(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
@@ -140,6 +149,20 @@ class Branch(Module):
         cond_params["branch_diags"] = conds[2]
 
         return cond_params
+    
+    def init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
+        source_comp_inds = np.asarray(self.comp_edges["source"].to_list())
+        sink_comp_inds = np.asarray(self.comp_edges["sink"].to_list())
+
+        conds = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
+            params["radius"][source_comp_inds],
+            params["radius"][sink_comp_inds],
+            params["axial_resistivity"][source_comp_inds],
+            params["axial_resistivity"][sink_comp_inds],
+            params["length"][source_comp_inds],
+            params["length"][sink_comp_inds],
+        )
+        return {"axial_conductances": conds}
 
     @staticmethod
     def init_branch_conds(

@@ -127,7 +127,7 @@ class Network(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def init_morph(self):
+    def init_morph_custom_spsolve(self):
         self.branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
@@ -146,9 +146,29 @@ class Network(Module):
             [cell.parents_in_level for cell in self.cells],
             exclude_first=False,
         )
-        self.initialized_morph = True
 
-    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
+    def init_morph_jax_spsolve(self):
+        self.comp_edges = pd.concat(
+            [
+                [offset, offset, 0] + branch.comp_edges
+                for offset, branch in zip(self.cumsum_nseg, self.branch_list)
+            ]
+        )
+        # `branch_list` is not needed anymore because all information it contained is
+        # now also in `self.comp_edges`.
+        del self.branch_list
+
+        # Cast (row, col) indices to the format required for the `jax` sparse solver.
+        data_inds, indices, indptr = convert_to_csc(
+            num_elements=all_inds.shape[1],
+            row_ind=all_inds[0],
+            col_ind=all_inds[1],
+        )
+        self.data_inds = data_inds
+        self.indices = indices
+        self.indptr = indptr
+
+    def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
@@ -214,6 +234,44 @@ class Network(Module):
             "branchpoint_weights_parents": branchpoint_weights_parents,
         }
         return cond_params
+    
+    def init_conds_jax_spsolve(self, params: Dict):
+        condition = self.comp_edges["type"].to_numpy() == 0
+        source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
+        sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
+
+        conds0 = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
+            params["radius"][source_comp_inds],
+            params["radius"][sink_comp_inds],
+            params["axial_resistivity"][source_comp_inds],
+            params["axial_resistivity"][sink_comp_inds],
+            params["length"][source_comp_inds],
+            params["length"][sink_comp_inds],
+        )
+
+        # `branchpoint-to-compartment` conductances.
+        condition = self.comp_edges["type"].to_numpy() == 1
+        sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
+
+        conds1 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
+            params["radius"][sink_comp_inds],
+            params["axial_resistivity"][sink_comp_inds],
+            params["length"][sink_comp_inds],
+        )
+
+        # `compartment-to-branchpoint` conductances.
+        condition = self.comp_edges["type"].to_numpy() == 2
+        source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
+
+        conds2 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
+            params["radius"][source_comp_inds],
+            params["axial_resistivity"][source_comp_inds],
+            params["length"][source_comp_inds],
+        )
+
+        # All conductances.
+        conds = jnp.concatenate([conds0, conds1, conds2])
+        return {"axial_conductances": conds}
 
     def init_syns(self):
         """Initialize synapses."""
