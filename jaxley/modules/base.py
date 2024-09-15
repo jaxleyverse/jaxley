@@ -255,16 +255,6 @@ class Module(ABC):
         return printable_nodes
 
     @abstractmethod
-    def init_conds_jax_spsolve(self, params: Dict):
-        """Initialize coupling conductances.
-
-        Args:
-            params: Conductances and morphology parameters, not yet including
-                coupling conductances.
-        """
-        raise NotImplementedError
-    
-    @abstractmethod
     def init_conds_custom_spsolve(self, params: Dict):
         """Initialize coupling conductances.
 
@@ -617,7 +607,6 @@ class Module(ABC):
     def initialize(self):
         """Initialize the module."""
         self.init_morph_custom_spsolve()
-        self.init_morph_jax_spsolve()
         self.initialized_morph = True
         return self
 

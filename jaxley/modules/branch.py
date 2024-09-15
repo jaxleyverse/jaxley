@@ -118,22 +118,6 @@ class Branch(Module):
     def init_morph_custom_spsolve(self):
         pass
 
-    def init_morph_jax_spsolve(self):
-        """Initialize morphology for the jax sparse voltage solver.
-        
-        Explanation of `type`:
-        `type == 0`: compartment-to-compartment (within branch)
-        `type == 1`: compartment-to-branchpoint
-        `type == 2`: branchpoint-to-compartment
-        """
-        self.comp_edges = pd.DataFrame().from_dict(
-            {
-                "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
-                "sink": list(range(1, self.nseg)) + list(range(self.nseg - 1)),
-                "type": [0] * (self.nseg - 1) * 2,
-            }
-        )
-
     def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         conds = self.init_branch_conds_custom_spsolve(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
@@ -150,20 +134,6 @@ class Branch(Module):
 
         return cond_params
     
-    def init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        source_comp_inds = np.asarray(self.comp_edges["source"].to_list())
-        sink_comp_inds = np.asarray(self.comp_edges["sink"].to_list())
-
-        conds = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
-            params["radius"][source_comp_inds],
-            params["radius"][sink_comp_inds],
-            params["axial_resistivity"][source_comp_inds],
-            params["axial_resistivity"][sink_comp_inds],
-            params["length"][source_comp_inds],
-            params["length"][sink_comp_inds],
-        )
-        return {"axial_conductances": conds}
-
     @staticmethod
     def init_branch_conds_custom_spsolve(
         axial_resistivity: jnp.ndarray,

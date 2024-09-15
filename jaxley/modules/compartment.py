@@ -68,16 +68,6 @@ class Compartment(Module):
     def init_morph_custom_spsolve(self):
         pass
 
-    def init_morph_jax_spsolve(self):
-        """Initialize morphology for the jax sparse voltage solver.
-        
-        Explanation of `type`:
-        `type == 0`: compartment-to-compartment (within branch)
-        `type == 1`: compartment-to-branchpoint
-        `type == 2`: branchpoint-to-compartment
-        """
-        self.comp_edges = pd.DataFrame().from_dict({})
-
     def init_conds_custom_spsolve(self, params):
         return {
             "branchpoint_conds_children": jnp.asarray([]),
@@ -89,9 +79,6 @@ class Compartment(Module):
             "branch_diags": jnp.asarray([0.0]),
         }
     
-    def init_conds_jax_spsolve(self, params):
-        return {"axial_conductances": jnp.asarray([])}
-
 
 class CompartmentView(View):
     """CompartmentView."""
