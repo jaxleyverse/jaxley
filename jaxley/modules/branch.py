@@ -75,6 +75,9 @@ class Branch(Module):
         self.syn_edges = pd.DataFrame(
             dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
         )
+        self.branch_edges = pd.DataFrame(
+            dict(parent_branch_index=[], child_branch_index=[])
+        )
 
         # For morphology indexing.
         self.child_inds = np.asarray([]).astype(int)

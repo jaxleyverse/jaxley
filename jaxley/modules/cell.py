@@ -77,9 +77,9 @@ class Cell(Module):
         parents = [-1] if parents is None else parents
 
         if isinstance(branches, Branch):
-            self.branch_list = [branches for _ in range(len(parents))]
+            branch_list = [branches for _ in range(len(parents))]
         else:
-            self.branch_list = branches
+            branch_list = branches
 
         if xyzr is not None:
             assert len(xyzr) == len(parents)
@@ -92,23 +92,23 @@ class Cell(Module):
             # self.xyzr at `.vis()`.
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
-        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in self.branch_list])
+        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in branch_list])
         self.nseg = int(jnp.max(self.nseg_per_branch))
         self.cumsum_nseg = jnp.concatenate(
             [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
         )
         self.internal_node_inds = np.arange(self.cumsum_nseg[-1])  # TODO move to jax.sparse parts.
-        self.total_nbranches = len(self.branch_list)
-        self.nbranches_per_cell = [len(self.branch_list)]
+        self.total_nbranches = len(branch_list)
+        self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
-        self.cumsum_nbranches = jnp.asarray([0, len(self.branch_list)])
+        self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
         # Indexing.
-        self.nodes = pd.concat([c.nodes for c in self.branch_list], ignore_index=True)
+        self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
         self._append_params_and_states(self.cell_params, self.cell_states)
         self.nodes["comp_index"] = np.concatenate(
-            [branch.nodes["comp_index"].to_numpy() for branch in self.branch_list]
+            [branch.nodes["comp_index"].to_numpy() for branch in branch_list]
         )
         self.nodes["branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.nseg_per_branch
@@ -116,7 +116,7 @@ class Cell(Module):
         self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
 
         # Channels.
-        self._gather_channels_from_constituents(self.branch_list)
+        self._gather_channels_from_constituents(branch_list)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
