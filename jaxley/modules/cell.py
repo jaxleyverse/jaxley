@@ -97,7 +97,7 @@ class Cell(Module):
         self.cumsum_nseg = jnp.concatenate(
             [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
         )
-        self.internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self.internal_node_inds = np.arange(self.cumsum_nseg[-1])  # TODO move to jax.sparse parts.
         self.total_nbranches = len(self.branch_list)
         self.nbranches_per_cell = [len(self.branch_list)]
         self.comb_parents = jnp.asarray(parents)
@@ -291,7 +291,7 @@ class Cell(Module):
         radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
         lengths = jnp.reshape(params["length"], (nbranches, nseg))
 
-        conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
+        conds = vmap(Branch.init_branch_conds_custom_spsolve, in_axes=(0, 0, 0, None))(
             axial_resistivity, radiuses, lengths, self.nseg
         )
         coupling_conds_fwd = conds[0]

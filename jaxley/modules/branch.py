@@ -135,7 +135,7 @@ class Branch(Module):
         )
 
     def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        conds = self.init_branch_conds(
+        conds = self.init_branch_conds_custom_spsolve(
             params["axial_resistivity"], params["radius"], params["length"], self.nseg
         )
         cond_params = {
@@ -165,7 +165,7 @@ class Branch(Module):
         return {"axial_conductances": conds}
 
     @staticmethod
-    def init_branch_conds(
+    def init_branch_conds_custom_spsolve(
         axial_resistivity: jnp.ndarray,
         radiuses: jnp.ndarray,
         lengths: jnp.ndarray,

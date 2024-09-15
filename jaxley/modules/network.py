@@ -182,7 +182,7 @@ class Network(Module):
         radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
         lengths = jnp.reshape(params["length"], (nbranches, nseg))
 
-        conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
+        conds = vmap(Branch.init_branch_conds_custom_spsolve, in_axes=(0, 0, 0, None))(
             axial_resistivity, radiuses, lengths, self.nseg
         )
         coupling_conds_fwd = conds[0]
