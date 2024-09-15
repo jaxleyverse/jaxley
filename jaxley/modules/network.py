@@ -49,7 +49,11 @@ class Network(Module):
             self.xyzr += deepcopy(cell.xyzr)
 
         self.cells = cells
-        self.nseg = cells[0].nseg
+        self.nseg_per_branch = jnp.concatenate([cell.nseg_per_branch for cell in self.cells])
+        self.nseg = int(jnp.max(self.nseg_per_branch))
+        self.cumsum_nseg = jnp.concatenate(
+            [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
+        )
         self._append_params_and_states(self.network_params, self.network_states)
 
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
@@ -131,8 +135,7 @@ class Network(Module):
         self.branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
-            self.nseg,
-            self.total_nbranches,
+            self.cumsum_nseg[-1],
         )
         self.children_in_level = merge_cells(
             self.cumsum_nbranches,
@@ -148,25 +151,26 @@ class Network(Module):
         )
 
     def init_morph_jax_spsolve(self):
-        self.comp_edges = pd.concat(
-            [
-                [offset, offset, 0] + branch.comp_edges
-                for offset, branch in zip(self.cumsum_nseg, self.branch_list)
-            ]
-        )
-        # `branch_list` is not needed anymore because all information it contained is
-        # now also in `self.comp_edges`.
-        del self.branch_list
+        pass
+        # self.comp_edges = pd.concat(
+        #     [
+        #         [offset, offset, 0] + branch.comp_edges
+        #         for offset, branch in zip(self.cumsum_nseg, self.branch_list)
+        #     ]
+        # )
+        # # `branch_list` is not needed anymore because all information it contained is
+        # # now also in `self.comp_edges`.
+        # del self.branch_list
 
-        # Cast (row, col) indices to the format required for the `jax` sparse solver.
-        data_inds, indices, indptr = convert_to_csc(
-            num_elements=all_inds.shape[1],
-            row_ind=all_inds[0],
-            col_ind=all_inds[1],
-        )
-        self.data_inds = data_inds
-        self.indices = indices
-        self.indptr = indptr
+        # # Cast (row, col) indices to the format required for the `jax` sparse solver.
+        # data_inds, indices, indptr = convert_to_csc(
+        #     num_elements=all_inds.shape[1],
+        #     row_ind=all_inds[0],
+        #     col_ind=all_inds[1],
+        # )
+        # self.data_inds = data_inds
+        # self.indices = indices
+        # self.indptr = indptr
 
     def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
@@ -216,7 +220,7 @@ class Network(Module):
             lengths[self.par_inds, -1],
         )
 
-        summed_coupling_conds = Cell.update_summed_coupling_conds(
+        summed_coupling_conds = Cell.update_summed_coupling_conds_custom_spsolve(
             summed_coupling_conds,
             self.child_inds,
             self.par_inds,
@@ -236,42 +240,43 @@ class Network(Module):
         return cond_params
     
     def init_conds_jax_spsolve(self, params: Dict):
-        condition = self.comp_edges["type"].to_numpy() == 0
-        source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
-        sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
+        pass
+        # condition = self.comp_edges["type"].to_numpy() == 0
+        # source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
+        # sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
 
-        conds0 = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
-            params["radius"][source_comp_inds],
-            params["radius"][sink_comp_inds],
-            params["axial_resistivity"][source_comp_inds],
-            params["axial_resistivity"][sink_comp_inds],
-            params["length"][source_comp_inds],
-            params["length"][sink_comp_inds],
-        )
+        # conds0 = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
+        #     params["radius"][source_comp_inds],
+        #     params["radius"][sink_comp_inds],
+        #     params["axial_resistivity"][source_comp_inds],
+        #     params["axial_resistivity"][sink_comp_inds],
+        #     params["length"][source_comp_inds],
+        #     params["length"][sink_comp_inds],
+        # )
 
-        # `branchpoint-to-compartment` conductances.
-        condition = self.comp_edges["type"].to_numpy() == 1
-        sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
+        # # `branchpoint-to-compartment` conductances.
+        # condition = self.comp_edges["type"].to_numpy() == 1
+        # sink_comp_inds = np.asarray(self.comp_edges[condition]["sink"].to_list())
 
-        conds1 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
-            params["radius"][sink_comp_inds],
-            params["axial_resistivity"][sink_comp_inds],
-            params["length"][sink_comp_inds],
-        )
+        # conds1 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
+        #     params["radius"][sink_comp_inds],
+        #     params["axial_resistivity"][sink_comp_inds],
+        #     params["length"][sink_comp_inds],
+        # )
 
-        # `compartment-to-branchpoint` conductances.
-        condition = self.comp_edges["type"].to_numpy() == 2
-        source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
+        # # `compartment-to-branchpoint` conductances.
+        # condition = self.comp_edges["type"].to_numpy() == 2
+        # source_comp_inds = np.asarray(self.comp_edges[condition]["source"].to_list())
 
-        conds2 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
-            params["radius"][source_comp_inds],
-            params["axial_resistivity"][source_comp_inds],
-            params["length"][source_comp_inds],
-        )
+        # conds2 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
+        #     params["radius"][source_comp_inds],
+        #     params["axial_resistivity"][source_comp_inds],
+        #     params["length"][source_comp_inds],
+        # )
 
-        # All conductances.
-        conds = jnp.concatenate([conds0, conds1, conds2])
-        return {"axial_conductances": conds}
+        # # All conductances.
+        # conds = jnp.concatenate([conds0, conds1, conds2])
+        # return {"axial_conductances": conds}
 
     def init_syns(self):
         """Initialize synapses."""

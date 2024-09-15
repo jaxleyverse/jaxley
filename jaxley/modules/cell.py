@@ -93,7 +93,7 @@ class Cell(Module):
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
         self.nseg_per_branch = jnp.asarray([branch.nseg for branch in self.branch_list])
-        self.nseg = jnp.max(self.nseg_per_branch)
+        self.nseg = int(jnp.max(self.nseg_per_branch))
         self.cumsum_nseg = jnp.concatenate(
             [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
         )
@@ -134,6 +134,7 @@ class Cell(Module):
         self.child_inds = np.arange(1, self.total_nbranches)
         self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
         self.par_inds = np.unique(par_inds)
+        self.total_nbranchpoints = len(self.par_inds)
         self.root_inds = jnp.asarray([0])
 
         self.initialize()
