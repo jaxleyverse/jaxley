@@ -891,6 +891,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#jaxley.utils.cell_utils.query_channel_states_and_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      query_channel_states_and_params
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#jaxley.utils.cell_utils.remap_to_consecutive" class="md-nav__link">
     <span class="md-ellipsis">
       remap_to_consecutive
@@ -1190,6 +1199,15 @@
   <a href="#jaxley.utils.cell_utils.params_to_pstate" class="md-nav__link">
     <span class="md-ellipsis">
       params_to_pstate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.cell_utils.query_channel_states_and_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      query_channel_states_and_params
     </span>
   </a>
   
@@ -2533,6 +2551,58 @@ are of the same shape as the outputs of <code>.data_set()</code>.</p>
         <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;indices&quot;</span><span class="p">:</span> <span class="n">i</span><span class="p">}</span>
         <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">indices_set_by_trainables</span><span class="p">)</span>
     <span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.utils.cell_utils.query_channel_states_and_params" class="doc doc-heading">
+            <code class=" language-python"><span class="n">query_channel_states_and_params</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">idcs</span><span class="p">)</span></code>
+
+<a href="#jaxley.utils.cell_utils.query_channel_states_and_params" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get dict with subset of keys and values from d.</p>
+<p>This is used to restrict a dict where every item contains <strong>all</strong> states to only
+the ones that are relevant for the channel. E.g.</p>
+<p><code>states = {'eCa': Array([ 0.,  0., nan]}</code></p>
+<p>will be
+<code>states = {'eCa': Array([ 0.,  0.]}</code></p>
+<p>Only loops over necessary keys, as opposed to looping over <code>d.items()</code>.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">query_channel_states_and_params</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">idcs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get dict with subset of keys and values from d.</span>
+
+<span class="sd">    This is used to restrict a dict where every item contains __all__ states to only</span>
+<span class="sd">    the ones that are relevant for the channel. E.g.</span>
+
+<span class="sd">    ```states = {&#39;eCa&#39;: Array([ 0.,  0., nan]}```</span>
+
+<span class="sd">    will be</span>
+<span class="sd">    ```states = {&#39;eCa&#39;: Array([ 0.,  0.]}```</span>
+
+<span class="sd">    Only loops over necessary keys, as opposed to looping over `d.items()`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">idcs</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">keys</span><span class="p">))))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
