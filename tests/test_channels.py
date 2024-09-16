@@ -149,9 +149,7 @@ class KCA11(Channel):
         )
         cai = states["CaCon_i"]
         m_inf, _ = self.m_gate(v, cai, q10)
-        return {
-            f"{prefix}_m": m_inf,
-        }
+        return {f"{prefix}_m": m_inf}
 
     @staticmethod
     def m_gate(v, cai, q10):
