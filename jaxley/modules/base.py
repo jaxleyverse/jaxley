@@ -25,6 +25,7 @@ from jaxley.utils.cell_utils import (
     interpolate_xyz,
     loc_of_index,
     v_interp,
+    query_channel_states_and_params,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
@@ -608,17 +609,29 @@ class Module(ABC):
         channel_nodes = self.nodes
         states = self.get_states_from_nodes_and_edges()
 
+        # We do not use any `pstate` for initializing. In principle, we could change
+        # that by allowing an input `params` and `pstate` to this function.
+        params = self.get_all_parameters([])
+
         for channel in self.channels:
             name = channel._name
-            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
-            voltages = channel_nodes.loc[indices, "v"].to_numpy()
+            channel_indices = channel_nodes.loc[channel_nodes[name]][
+                "comp_index"
+            ].to_numpy()
+            voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = channel_nodes[p][indices].to_numpy()
+            channel_state_names = list(channel.channel_states.keys())
+            channel_states = query_channel_states_and_params(
+                states, channel_state_names, channel_indices
+            )
+            channel_params = query_channel_states_and_params(
+                params, channel_param_names, channel_indices
+            )
 
-            init_state = channel.init_state(states, voltages, channel_params, delta_t)
+            init_state = channel.init_state(
+                channel_states, voltages, channel_params, delta_t
+            )
 
             # `init_state` might not return all channel states. Only the ones that are
             # returned are updated here.
@@ -626,7 +639,7 @@ class Module(ABC):
                 # Note that we are overriding `self.nodes` here, but `self.nodes` is
                 # not used above to actually compute the current states (so there are
                 # no issues with overriding states).
-                self.nodes.loc[indices, key] = val
+                self.nodes.loc[channel_indices, key] = val
 
     def _init_morph_for_debugging(self):
         """Instandiates row and column inds which can be used to solve the voltage eqs.
@@ -982,11 +995,6 @@ class Module(ABC):
         """One integration step of the channels."""
         voltages = states["v"]
 
-        query = lambda d, keys, idcs: dict(
-            zip(keys, (v[idcs] for v in map(d.get, keys)))
-        )  # get dict with subset of keys and values from d
-        # only loops over necessary keys, as opposed to looping over d.items()
-
         # Update states of the channels.
         indices = channel_nodes["comp_index"].to_numpy()
         for channel in channels:
@@ -996,8 +1004,12 @@ class Module(ABC):
             channel_state_names += self.membrane_current_names
             channel_indices = indices[channel_nodes[channel._name].astype(bool)]
 
-            channel_params = query(params, channel_param_names, channel_indices)
-            channel_states = query(states, channel_state_names, channel_indices)
+            channel_params = query_channel_states_and_params(
+                params, channel_param_names, channel_indices
+            )
+            channel_states = query_channel_states_and_params(
+                states, channel_state_names, channel_indices
+            )
 
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[channel_indices], channel_params
