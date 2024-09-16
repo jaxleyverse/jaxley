@@ -1,4 +1,15 @@
-`jaxley` requires that you first download and install [tridiax](https://github.com/jaxleyverse/tridiax). Then, install `jaxley` via:
+## Install the most recent stable version
+`Jaxley` is available on [`PyPI`](https://pypi.org/project/jaxley/):
+```sh
+pip install jaxley
+```
+This will install `Jaxley` with CPU support. If you want GPU support, follow the instructions on the [`JAX` github repository](https://github.com/google/jax) to install `JAX` with GPU support (in addition to installing `Jaxley`). For example, for NVIDIA GPUs, run
+```sh
+pip install -U "jax[cuda12]"
+```
+
+## Install from source
+You can also install `Jaxley` from source:
 ```sh
 git clone https://github.com/jaxleyverse/jaxley.git
 cd jaxley

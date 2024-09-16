@@ -1,10 +1,13 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from math import pi
 from typing import Dict, List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
+from jax import jit, vmap
 
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
@@ -232,7 +235,7 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
 
 
 def compute_coupling_cond_branchpoint(rad, r_a, l):
-    """Return the coupling conductance between one compartment and a comp with l=0.
+    r"""Return the coupling conductance between one compartment and a comp with l=0.
 
     From https://en.wikipedia.org/wiki/Compartmental_neuron_models
 
@@ -255,7 +258,7 @@ def compute_coupling_cond_branchpoint(rad, r_a, l):
 
 
 def compute_impact_on_node(rad, r_a, l):
-    """Compute the weight with which a compartment influences its node.
+    r"""Compute the weight with which a compartment influences its node.
 
     In order to satisfy Kirchhoffs current law, the current at a branch point must be
     proportional to the crosssection of the compartment. We only require proportionality
@@ -278,6 +281,9 @@ def remap_to_consecutive(arr):
     return inverse_indices
 
 
+v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
+
+
 def interpolate_xyz(loc: float, coords: np.ndarray):
     """Perform a linear interpolation between xyz-coordinates.
 
@@ -288,9 +294,11 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
     Return:
         Interpolated xyz coordinate at `loc`, shape `(3,).
     """
-    return vmap(lambda x: jnp.interp(loc, jnp.linspace(0, 1, len(x)), x), in_axes=(1,))(
-        coords[:, :3]
-    )
+    dl = np.sqrt(np.sum(np.diff(coords[:, :3], axis=0) ** 2, axis=1))
+    pathlens = np.insert(np.cumsum(dl), 0, 0)  # cummulative length of sections
+    norm_pathlens = pathlens / np.maximum(1e-8, pathlens[-1])  # norm lengths to [0,1].
+
+    return v_interp(loc, norm_pathlens, coords[:, :3])
 
 
 def params_to_pstate(

@@ -24,6 +24,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     interpolate_xyz,
     loc_of_index,
+    v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
@@ -109,15 +110,22 @@ class Module(ABC):
 
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates to nodes."""
-        loc = np.linspace(0.5 / self.nseg, 1 - 0.5 / self.nseg, self.nseg)
-        jit_interp = jit(interpolate_xyz)
-        xyz = (
-            [jit_interp(loc, xyzr).T for xyzr in self.xyzr]
-            if len(loc) > 0
-            else [self.xyzr]
+        num_branches = len(self.xyzr)
+        x = np.linspace(
+            0.5 / self.nseg,
+            (num_branches * 1 - 0.5 / self.nseg),
+            num_branches * self.nseg,
         )
+        x += np.arange(num_branches).repeat(
+            self.nseg
+        )  # add offset to prevent branch loc overlap
+        xp = np.hstack(
+            [np.linspace(0, 1, x.shape[0]) + 2 * i for i, x in enumerate(self.xyzr)]
+        )
+        xyz = v_interp(x, xp, np.vstack(self.xyzr)[:, :3])
         idcs = self.nodes["comp_index"]
-        self.nodes.loc[idcs, ["x", "y", "z"]] = np.vstack(xyz)
+        self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
+        return xyz.T
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
@@ -528,6 +536,18 @@ class Module(ABC):
 
         return params
 
+    def get_states_from_nodes_and_edges(self):
+        """Return states as they are set in the `.nodes` and `.edges` tables."""
+        self.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        states = {"v": self.jaxnodes["v"]}
+        # Join node and edge states into a single state dictionary.
+        for channel in self.channels:
+            for channel_states in channel.channel_states:
+                states[channel_states] = self.jaxnodes[channel_states]
+        for synapse_states in self.synapse_state_names:
+            states[synapse_states] = self.jaxedges[synapse_states]
+        return states
+
     def get_all_states(
         self, pstate: List[Dict], all_params, delta_t: float
     ) -> Dict[str, jnp.ndarray]:
@@ -541,13 +561,7 @@ class Module(ABC):
         Returns:
             A dictionary of all states of the module.
         """
-        # Join node and edge states into a single state dictionary.
-        states = {"v": self.jaxnodes["v"]}
-        for channel in self.channels:
-            for channel_states in channel.channel_states:
-                states[channel_states] = self.jaxnodes[channel_states]
-        for synapse_states in self.synapse_state_names:
-            states[synapse_states] = self.jaxedges[synapse_states]
+        states = self.get_states_from_nodes_and_edges()
 
         # Override with the initial states set by `.make_trainable()`.
         for parameter in pstate:
@@ -582,12 +596,17 @@ class Module(ABC):
         self.init_morph()
         return self
 
-    def init_states(self):
+    def init_states(self, delta_t: float = 0.025):
         """Initialize all mechanisms in their steady state.
 
-        This considers the voltages and parameters of each compartment."""
+        This considers the voltages and parameters of each compartment.
+
+        Args:
+            delta_t: Passed on to `channel.init_state()`.
+        """
         # Update states of the channels.
         channel_nodes = self.nodes
+        states = self.get_states_from_nodes_and_edges()
 
         for channel in self.channels:
             name = channel._name
@@ -599,11 +618,14 @@ class Module(ABC):
             for p in channel_param_names:
                 channel_params[p] = channel_nodes[p][indices].to_numpy()
 
-            init_state = channel.init_state(voltages, channel_params)
+            init_state = channel.init_state(states, voltages, channel_params, delta_t)
 
             # `init_state` might not return all channel states. Only the ones that are
             # returned are updated here.
             for key, val in init_state.items():
+                # Note that we are overriding `self.nodes` here, but `self.nodes` is
+                # not used above to actually compute the current states (so there are
+                # no issues with overriding states).
                 self.nodes.loc[indices, key] = val
 
     def _init_morph_for_debugging(self):
@@ -874,10 +896,11 @@ class Module(ABC):
             external_inds: The indices of the external inputs.
             externals: The external inputs.
             params: The parameters of the module.
-            solver: The solver to use for the voltages. Either "bwd_euler" or "fwd_euler".
-            voltage_solver: The tridiagonal solver to used to diagonalize the
-                coefficient matrix of the ODE system. Either "jaxley.thomas",
-                "jaxley.stone", or "jax.scipy.sparse".
+            solver: The solver to use for the voltages. Either of ["bwd_euler",
+                "fwd_euler", "crank_nicolson"].
+            voltage_solver: The tridiagonal solver used to diagonalize the
+                coefficient matrix of the ODE system. Either of ["jaxley.thomas",
+                "jaxley.stone"].
 
         Returns:
             The updated state of the module.
@@ -917,44 +940,49 @@ class Module(ABC):
 
         # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
-        if solver == "bwd_euler":
-            new_voltages = step_voltage_implicit(
-                voltages=voltages,
-                voltage_terms=(v_terms + syn_v_terms) / cm,
-                constant_terms=(const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_upper=params["branch_uppers"],
-                coupling_conds_lower=params["branch_lowers"],
-                summed_coupling_conds=params["branch_diags"],
-                branchpoint_conds_children=params["branchpoint_conds_children"],
-                branchpoint_conds_parents=params["branchpoint_conds_parents"],
-                branchpoint_weights_children=params["branchpoint_weights_children"],
-                branchpoint_weights_parents=params["branchpoint_weights_parents"],
-                par_inds=self.par_inds,
-                child_inds=self.child_inds,
-                nbranches=self.total_nbranches,
-                solver=voltage_solver,
-                delta_t=delta_t,
-                children_in_level=self.children_in_level,
-                parents_in_level=self.parents_in_level,
-                root_inds=self.root_inds,
-                branchpoint_group_inds=self.branchpoint_group_inds,
-                debug_states=self.debug_states,
-            )
-        else:
-            new_voltages = step_voltage_explicit(
-                voltages,
-                (v_terms + syn_v_terms) / cm,
-                (const_terms + i_ext + syn_const_terms) / cm,
-                coupling_conds_bwd=params["coupling_conds_bwd"],
-                coupling_conds_fwd=params["coupling_conds_fwd"],
-                branch_cond_fwd=params["branch_conds_fwd"],
-                branch_cond_bwd=params["branch_conds_bwd"],
-                nbranches=self.total_nbranches,
-                parents=self.comb_parents,
-                delta_t=delta_t,
-            )
 
-        u["v"] = new_voltages.ravel(order="C")
+        solver_kwargs = {
+            "voltages": voltages,
+            "voltage_terms": (v_terms + syn_v_terms) / cm,
+            "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+            "coupling_conds_upper": params["branch_uppers"],
+            "coupling_conds_lower": params["branch_lowers"],
+            "summed_coupling_conds": params["branch_diags"],
+            "branchpoint_conds_children": params["branchpoint_conds_children"],
+            "branchpoint_conds_parents": params["branchpoint_conds_parents"],
+            "branchpoint_weights_children": params["branchpoint_weights_children"],
+            "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+            "par_inds": self.par_inds,
+            "child_inds": self.child_inds,
+            "nbranches": self.total_nbranches,
+            "solver": voltage_solver,
+            "children_in_level": self.children_in_level,
+            "parents_in_level": self.parents_in_level,
+            "root_inds": self.root_inds,
+            "branchpoint_group_inds": self.branchpoint_group_inds,
+            "debug_states": self.debug_states,
+        }
+        if solver == "bwd_euler":
+            new_voltages = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
+            u["v"] = new_voltages.ravel(order="C")
+        elif solver == "fwd_euler":
+            new_voltages = step_voltage_explicit(**solver_kwargs, delta_t=delta_t)
+            u["v"] = new_voltages.ravel(order="C")
+        elif solver == "crank_nicolson":
+            # Crank Nicolson advances by half a step of backward and half a step of
+            # forward Euler.
+            half_step_delta_t = delta_t / 2
+            half_step_voltages = step_voltage_implicit(
+                **solver_kwargs, delta_t=half_step_delta_t
+            )
+            # The forward Euler step in Crank Nicolson can be performed easily as
+            # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
+            u["v"] = 2 * half_step_voltages.ravel(order="C") - voltages
+        else:
+            raise ValueError(
+                f"You specified `solver={solver}`. The only allowed solvers are "
+                "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
+            )
 
         # Clamp for voltages.
         if "v" in externals.keys():

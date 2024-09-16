@@ -1,11 +1,10 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Tuple
+from typing import List
 
 import jax.numpy as jnp
 from jax import vmap
-from jax.lax import ScatterDimensionNumbers, scatter_add
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
@@ -17,13 +16,23 @@ def step_voltage_explicit(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    coupling_conds_bwd: jnp.ndarray,
-    coupling_conds_fwd: jnp.ndarray,
-    branch_cond_fwd: jnp.ndarray,
-    branch_cond_bwd: jnp.ndarray,
+    coupling_conds_upper: jnp.ndarray,
+    coupling_conds_lower: jnp.ndarray,
+    summed_coupling_conds: jnp.ndarray,
+    branchpoint_conds_children: jnp.ndarray,
+    branchpoint_conds_parents: jnp.ndarray,
+    branchpoint_weights_children: jnp.ndarray,
+    branchpoint_weights_parents: jnp.ndarray,
+    par_inds: jnp.ndarray,
+    child_inds: jnp.ndarray,
     nbranches: int,
-    parents: jnp.ndarray,
+    solver: str,
     delta_t: float,
+    children_in_level: List[jnp.ndarray],
+    parents_in_level: List[jnp.ndarray],
+    root_inds: jnp.ndarray,
+    branchpoint_group_inds: jnp.ndarray,
+    debug_states,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
     voltages = jnp.reshape(voltages, (nbranches, -1))
@@ -31,39 +40,51 @@ def step_voltage_explicit(
     constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
 
     update = voltage_vectorfield(
-        parents,
         voltages,
         voltage_terms,
         constant_terms,
-        coupling_conds_bwd,
-        coupling_conds_fwd,
-        branch_cond_fwd,
-        branch_cond_bwd,
+        coupling_conds_upper,
+        coupling_conds_lower,
+        summed_coupling_conds,
+        branchpoint_conds_children,
+        branchpoint_conds_parents,
+        branchpoint_weights_children,
+        branchpoint_weights_parents,
+        par_inds,
+        child_inds,
+        nbranches,
+        solver,
+        delta_t,
+        children_in_level,
+        parents_in_level,
+        root_inds,
+        branchpoint_group_inds,
+        debug_states,
     )
     new_voltates = voltages + delta_t * update
     return new_voltates
 
 
 def step_voltage_implicit(
-    voltages,
-    voltage_terms,
-    constant_terms,
-    coupling_conds_upper,
-    coupling_conds_lower,
-    summed_coupling_conds,
-    branchpoint_conds_children,
-    branchpoint_conds_parents,
-    branchpoint_weights_children,
-    branchpoint_weights_parents,
-    par_inds,
-    child_inds,
-    nbranches,
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    coupling_conds_upper: jnp.ndarray,
+    coupling_conds_lower: jnp.ndarray,
+    summed_coupling_conds: jnp.ndarray,
+    branchpoint_conds_children: jnp.ndarray,
+    branchpoint_conds_parents: jnp.ndarray,
+    branchpoint_weights_children: jnp.ndarray,
+    branchpoint_weights_parents: jnp.ndarray,
+    par_inds: jnp.ndarray,
+    child_inds: jnp.ndarray,
+    nbranches: int,
     solver: str,
-    delta_t,
-    children_in_level,
-    parents_in_level,
-    root_inds,
-    branchpoint_group_inds,
+    delta_t: float,
+    children_in_level: List[jnp.ndarray],
+    parents_in_level: List[jnp.ndarray],
+    root_inds: jnp.ndarray,
+    branchpoint_group_inds: jnp.ndarray,
     debug_states,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
@@ -180,14 +201,26 @@ def step_voltage_implicit(
 
 
 def voltage_vectorfield(
-    parents: jnp.ndarray,
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    coupling_conds_bwd: jnp.ndarray,
-    coupling_conds_fwd: jnp.ndarray,
-    branch_cond_fwd: jnp.ndarray,
-    branch_cond_bwd: jnp.ndarray,
+    voltages,
+    voltage_terms,
+    constant_terms,
+    coupling_conds_upper,
+    coupling_conds_lower,
+    summed_coupling_conds,
+    branchpoint_conds_children,
+    branchpoint_conds_parents,
+    branchpoint_weights_children,
+    branchpoint_weights_parents,
+    par_inds,
+    child_inds,
+    nbranches,
+    solver,
+    delta_t,
+    children_in_level,
+    parents_in_level,
+    root_inds,
+    branchpoint_group_inds,
+    debug_states,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
     # Membrane current update.
@@ -195,29 +228,17 @@ def voltage_vectorfield(
 
     # Current through segments within the same branch.
     vecfield = vecfield.at[:, :-1].add(
-        (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_bwd
+        (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_upper
     )
     vecfield = vecfield.at[:, 1:].add(
-        (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_fwd
+        (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_lower
     )
 
     # Current through branch points.
-    if len(branch_cond_bwd) > 0:
-        vecfield = vecfield.at[:, -1].add(
-            (voltages[parents, 0] - voltages[:, -1]) * branch_cond_bwd
+    if len(branchpoint_conds_children) > 0:
+        raise NotImplementedError(
+            f"Forward Euler is not implemented for branched morphologies."
         )
-
-        # Several branches might have the same parent, so we have to either update these
-        # entries sequentially or we have to build a matrix with width being the maximum
-        # number of children and then sum.
-        term_to_add = (voltages[:, -1] - voltages[parents, 0]) * branch_cond_fwd
-        inds = jnp.stack([parents, jnp.zeros_like(parents)]).T
-        dnums = ScatterDimensionNumbers(
-            update_window_dims=(),
-            inserted_window_dims=(0, 1),
-            scatter_dims_to_operand_dims=(0, 1),
-        )
-        vecfield = scatter_add(vecfield, inds, term_to_add, dnums)
 
     return vecfield
 

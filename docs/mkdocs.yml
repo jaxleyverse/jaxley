@@ -1,4 +1,4 @@
-site_name: jaxley
+site_name: Jaxley
 site_url: "https://jaxleyverse.github.io/jaxley"
 
 nav:
@@ -10,7 +10,8 @@ nav:
     - Accelerate simulations: tutorial/04_jit_and_vmap.md
     - Define your own channels: tutorial/05_channel_and_synapse_models.md
     - Define groups: tutorial/06_groups.md
-    - Optimization: tutorial/07_gradient_descent.md
+    - Read and handle SWC files: tutorial/08_importing_morphologies.md
+    - Training models: tutorial/07_gradient_descent.md
   - Installation: install.md
   - Contributing: 
     - Guide: contribute.md
@@ -38,10 +39,16 @@ theme:
   logo: logo_white.png
   collapse_navigation: False
 
+extra:
+  version:
+    provider: mike
+
 markdown_extensions:
   - extra
   - smarty
   - admonition
+  - attr_list
+  - md_in_html
   - codehilite:
       guess_lang: false
   - toc:
@@ -56,8 +63,7 @@ markdown_extensions:
   - pymdownx.caret
   - pymdownx.critic
   - pymdownx.details
-  - pymdownx.emoji:
-      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.emoji
   - pymdownx.inlinehilite
   - pymdownx.magiclink
   - pymdownx.mark
@@ -70,6 +76,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - mike
   - mkdocstrings:
       default_handler: python
       handlers:

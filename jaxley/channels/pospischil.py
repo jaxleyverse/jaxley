@@ -64,7 +64,7 @@ class Leak(Channel):
         gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         return {}
 
 
@@ -109,7 +109,7 @@ class Na(Channel):
         current = gNa * (v - params["eNa"])
         return current
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v, params["vt"])
@@ -177,7 +177,7 @@ class K(Channel):
 
         return gK * (v - params["eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_n, beta_n = self.n_gate(v, params["vt"])
@@ -233,7 +233,7 @@ class Km(Channel):
         gKm = params[f"{prefix}_gKm"] * p * 1000  # mS/cm^2
         return gKm * (v - params["eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_p, beta_p = self.p_gate(v, params[f"{prefix}_taumax"])
@@ -288,7 +288,7 @@ class CaL(Channel):
 
         return gCaL * (v - params["eCa"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_q, beta_q = self.q_gate(v)
@@ -359,7 +359,7 @@ class CaT(Channel):
 
         return gCaT * (v - params["eCa"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_u, beta_u = self.u_gate(v, params[f"{prefix}_vx"])

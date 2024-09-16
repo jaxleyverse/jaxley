@@ -1,3 +1,3 @@
-# What makes `jaxley` different from other libraries?
+# What units does `Jaxley` use?
 
-Differentiable, jit-compilable, and implements implicit Euler for multicompartment models.
+`Jaxley` uses the same units as the `NEURON` simulator, which are listed [here](https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html).
