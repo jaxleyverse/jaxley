@@ -36,7 +36,6 @@ dependencies = [
 
 [project.optional-dependencies]
 doc = [
-    "jaxley-mech",
     "jupyter_contrib_nbextensions",
     "notebook <= 6.4.12",
     "traitlets <= 5.9.0",
@@ -51,6 +50,7 @@ doc = [
 dev = [
     "black",
     "isort",
+    "jaxley-mech",
     "neuron",
     "pytest",
     "pyright",
