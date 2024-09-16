@@ -5,14 +5,16 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
-from typing import Optional
+from typing import Dict, Optional
 
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.l5pc import CaNernstReversal, CaPump
 
 import jaxley as jx
 from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
+from jaxley.solver_gate import save_exp, solve_inf_gate_exponential
 
 
 def test_channel_set_name():
@@ -99,6 +101,94 @@ def test_init_states():
 
     v = jx.integrate(cell, t_max=10.0)
     assert np.abs(v[0, 0] - v[0, -1]) < 0.02
+
+
+class KCA11(Channel):
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        prefix = self._name
+        self.channel_params = {
+            f"{prefix}_q10_ch": 3,
+            f"{prefix}_q10_ch0": 22,
+            "celsius": 22,
+        }
+        self.channel_states = {f"{prefix}_m": 0.02, "CaCon_i": 1e-4}
+        self.current_name = f"i_K"
+
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
+    ):
+        """Update state."""
+        prefix = self._name
+        m = states[f"{prefix}_m"]
+        q10 = params[f"{prefix}_q10_ch"] ** (
+            (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
+        )
+        cai = states["CaCon_i"]
+        new_m = solve_inf_gate_exponential(m, dt, *self.m_gate(v, cai, q10))
+        return {f"{prefix}_m": new_m}
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        """Return current."""
+        prefix = self._name
+        m = states[f"{prefix}_m"]
+        g = 0.03 * m * 1000  # mS/cm^2
+        return g * (v + 80.0)
+
+    def init_state(self, states, v, params, dt):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        q10 = params[f"{prefix}_q10_ch"] ** (
+            (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
+        )
+        cai = states["CaCon_i"]
+        m_inf, _ = self.m_gate(v, cai, q10)
+        return {
+            f"{prefix}_m": m_inf,
+        }
+
+    @staticmethod
+    def m_gate(v, cai, q10):
+        cai = cai * 1e3
+        v_half = -66 + 137 * save_exp(-0.3044 * cai) + 30.24 * save_exp(-0.04141 * cai)
+        alpha = 25.0
+
+        beta = 0.075 / save_exp((v - v_half) / 10)
+        m_inf = alpha / (alpha + beta)
+        tau_m = 1.0 * q10
+        return m_inf, tau_m
+
+
+def test_init_states_complex_channel():
+    """Test for `init_states()` with a more complicated channel model.
+
+    The channel model used for this test uses the `states` in `init_state` and it also
+    uses `q10`. The model inserts the channel only is some branches. This test follows
+    an issue I had with Jaxley in v0.2.0 (fixed in v0.2.1).
+    """
+    ## Create cell
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=1)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+
+    # CA channels.
+    cell.branch([0, 1]).insert(CaNernstReversal())
+    cell.branch([0, 1]).insert(CaPump())
+    cell.branch([0, 1]).insert(KCA11())
+
+    cell.init_states()
+
+    current = jx.step_current(1.0, 1.0, 0.1, 0.025, 3.0)
+    cell.branch(2).comp(0).stimulate(current)
+    cell.branch(2).comp(0).record()
+    voltages = jx.integrate(cell)
+    assert np.invert(np.any(np.isnan(voltages))), "NaN voltage found"
 
 
 def test_multiple_channel_currents():

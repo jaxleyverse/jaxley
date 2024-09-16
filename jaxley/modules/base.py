@@ -24,8 +24,8 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     interpolate_xyz,
     loc_of_index,
-    v_interp,
     query_channel_states_and_params,
+    v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices, convert_to_csc
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
