@@ -396,3 +396,18 @@ def group_and_sum(
         group_sums = group_sums.at[inds_to_group_by].add(values_to_sum)
 
     return group_sums
+
+
+def query_channel_states_and_params(d, keys, idcs):
+    """Get dict with subset of keys and values from d.
+
+    This is used to restrict a dict where every item contains __all__ states to only
+    the ones that are relevant for the channel. E.g.
+
+    ```states = {'eCa': Array([ 0.,  0., nan]}```
+
+    will be
+    ```states = {'eCa': Array([ 0.,  0.]}```
+
+    Only loops over necessary keys, as opposed to looping over `d.items()`."""
+    return dict(zip(keys, (v[idcs] for v in map(d.get, keys))))

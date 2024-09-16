@@ -79,3 +79,13 @@ class Channel:
             Current in `uA/cm2`.
         """
         raise NotImplementedError
+
+    def init_state(
+        self,
+        states: Dict[str, jnp.ndarray],
+        v: jnp.ndarray,
+        params: Dict[str, jnp.ndarray],
+        delta_t: float,
+    ):
+        """Initialize states of channel."""
+        return {}
