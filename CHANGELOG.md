@@ -1,3 +1,10 @@
+# v0.2.1
+
+- Bugfix for using `states` in `init_state` of the channel (#421, @michaeldeistler)
+- Bugfix for tutorial on building custom channels (#421, @michaeldeistler)
+- Add `jaxley-mech` as `dev` dependency to use it in testsing (#421, @michaeldeistler)
+
+
 # v0.2.0
 
 ### New features
