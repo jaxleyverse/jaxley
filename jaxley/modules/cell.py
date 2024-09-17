@@ -106,10 +106,22 @@ class Cell(Module):
         # Indexing.
         self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
         self._append_params_and_states(self.cell_params, self.cell_states)
+
+        # --------------- Does not work ---------------
         self.nodes["comp_index"] = np.arange(self.nseg * self.total_nbranches).tolist()
         self.nodes["branch_index"] = (
             np.arange(self.nseg * self.total_nbranches) // self.nseg
         ).tolist()
+
+        # # --------------- Does not work ---------------
+        # self.nodes["comp_index"] = np.concatenate(
+        #     [branch.nodes["comp_index"].to_numpy() for branch in branch_list]
+        # )
+        # self.nodes["branch_index"] = np.repeat(
+        #     np.arange(self.total_nbranches), self.nseg_per_branch
+        # ).tolist()
+
+        # All good
         self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
 
         # Channels.
