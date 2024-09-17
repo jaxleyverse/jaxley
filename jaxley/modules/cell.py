@@ -92,7 +92,11 @@ class Cell(Module):
             # self.xyzr at `.vis()`.
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
-        self.nseg = branch_list[0].nseg
+        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in branch_list])
+        self.nseg = int(jnp.max(self.nseg_per_branch))
+        self.cumsum_nseg = jnp.concatenate(
+            [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
+        )
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
@@ -106,7 +110,7 @@ class Cell(Module):
         self.nodes["branch_index"] = (
             np.arange(self.nseg * self.total_nbranches) // self.nseg
         ).tolist()
-        self.nodes["cell_index"] = [0] * (self.nseg * self.total_nbranches)
+        self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
 
         # Channels.
         self._gather_channels_from_constituents(branch_list)
