@@ -196,8 +196,6 @@ class Cell(Module):
         Running this function is only required for generic sparse solvers, i.e., for
         `voltage_solver='jax.sparse'`.
         """
-        self.internal_node_inds = np.arange(self.cumsum_nseg[-1])
-
         # Edges between compartments within the branches.
         # `[offset, offset, 0]` because we want to offset `source` and `sink`, but
         # not `type`.
@@ -265,8 +263,36 @@ class Cell(Module):
         self.indices = indices
         self.indptr = indptr
 
+        # Helper methods for dealing with the masking.
+        # This is actually used for the custom solver, but it requires info only
+        # obtained here.
+        nsegs = jnp.concatenate(
+            [
+                jnp.asarray([0]),
+                jnp.cumsum(self.nseg_per_branch),
+            ]
+        )
+        def remap_index_to_masked(index):
+            """Convert actual index of the compartment to the index in the masked system.
+            
+            E.g. if `nsegs = [2, 4]`, then the index `3` would be mapped to `5` because the
+            masked `nsegs` are `[4, 4]`.
+            """
+            branch_inds = self.nodes.loc[index, "branch_index"].to_numpy()
+            remainders = index - nsegs[branch_inds]
+            return branch_inds * self.nseg + remainders
+        
+        self.internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self.remapped_indices = remap_index_to_masked(self.internal_node_inds)
+        # branchpoint_inds = np.arange(self.n_nodes - np.max(self.internal_node_inds))
+        # self.remapped_indices = np.concatenate([
+        #     remapped_node_indices, branchpoint_inds + 1 + remapped_node_indices[-1]
+        # ])
+        print("self.remapped_indices", self.remapped_indices)
+
     def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
+
         nbranches = self.total_nbranches
         nseg = self.nseg
 
@@ -289,7 +315,7 @@ class Cell(Module):
             axial_resistivity[self.child_inds, 0],
             lengths[self.child_inds, 0],
         )
-        # The conductance from the parents to the branch point.
+
         branchpoint_conds_parents = vmap(
             compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
         )(
@@ -305,6 +331,7 @@ class Cell(Module):
             axial_resistivity[self.child_inds, 0],
             lengths[self.child_inds, 0],
         )
+
         # The impact of parents on the branch point.
         branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
             radiuses[self.par_inds, -1],
@@ -319,7 +346,6 @@ class Cell(Module):
             branchpoint_conds_children,
             branchpoint_conds_parents,
         )
-
         cond_params = {
             "branch_uppers": coupling_conds_bwd,
             "branch_lowers": coupling_conds_fwd,
@@ -327,8 +353,72 @@ class Cell(Module):
             "branchpoint_conds_children": branchpoint_conds_children,
             "branchpoint_conds_parents": branchpoint_conds_parents,
             "branchpoint_weights_children": branchpoint_weights_children,
+            "branchpoint_conds_children": branchpoint_conds_children,
+            "branchpoint_conds_parents": branchpoint_conds_parents,
+            "branchpoint_weights_children": branchpoint_weights_children,
             "branchpoint_weights_parents": branchpoint_weights_parents,
         }
+
+        ###################################################################### 
+        ###################################################################### 
+        ###################################################################### 
+        ###################################################################### 
+        ############################### NEW ################################### 
+        ###################################################################### 
+        ###################################################################### 
+        ###################################################################### 
+        ###################################################################### 
+        # axial_resistivity = params["axial_resistivity"]
+        # radiuses = params["radius"]
+        # lengths = params["length"]
+
+        # nsegs = jnp.concatenate(
+        #     [
+        #         jnp.asarray([0]),
+        #         self.nseg_per_branch,
+        #     ]
+        # )
+
+        # child_comp_ind = nsegs[self.child_inds]
+        # par_comp_ind = nsegs[self.par_inds]
+
+        # # The conductance from the children to the branch point.
+        # branchpoint_conds_children = vmap(
+        #     compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        # )(
+        #     radiuses[child_comp_ind],
+        #     axial_resistivity[child_comp_ind],
+        #     lengths[child_comp_ind],
+        # )
+        # # The conductance from the parents to the branch point.
+        # branchpoint_conds_parents = vmap(
+        #     compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        # )(
+        #     radiuses[par_comp_ind],
+        #     axial_resistivity[par_comp_ind],
+        #     lengths[par_comp_ind],
+        # )
+
+        # # Weights with which the compartments influence their nearby node.
+        # # The impact of the children on the branch point.
+        # branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+        #     radiuses[child_comp_ind],
+        #     axial_resistivity[child_comp_ind],
+        #     lengths[child_comp_ind],
+        # )
+        # # The impact of parents on the branch point.
+        # branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+        #     radiuses[par_comp_ind],
+        #     axial_resistivity[par_comp_ind],
+        #     lengths[par_comp_ind],
+        # )
+
+        # cond_params = {
+        #     "branchpoint_conds_children": branchpoint_conds_children,
+        #     "branchpoint_conds_parents": branchpoint_conds_parents,
+        #     "branchpoint_weights_children": branchpoint_weights_children,
+        #     "branchpoint_weights_parents": branchpoint_weights_parents,
+        # }
         return cond_params
 
     def init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:

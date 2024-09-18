@@ -555,6 +555,9 @@ class Module(ABC):
 
         # Compute conductance params and append them.
         if voltage_solver.startswith("jaxley"):
+            cond_params = self.init_conds_jax_spsolve(params)
+            for key in cond_params:
+                params[key] = cond_params[key]
             cond_params = self.init_conds_custom_spsolve(params)
         else:
             cond_params = self.init_conds_jax_spsolve(params)
@@ -981,6 +984,15 @@ class Module(ABC):
                 "branchpoint_conds_parents": params["branchpoint_conds_parents"],
                 "branchpoint_weights_children": params["branchpoint_weights_children"],
                 "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+                "axial_conductances": params["axial_conductances"],
+                "sources": np.asarray(self.comp_edges["source"].to_list()),
+                "sinks": np.asarray(self.comp_edges["sink"].to_list()),
+                "types": np.asarray(self.comp_edges["type"].to_list()),
+                "internal_node_inds": self.internal_node_inds,
+                "masked_node_inds": self.remapped_indices,
+                "n_nodes": self.n_nodes,
+                "nseg_per_branch": self.nseg_per_branch,
+                "nseg": self.nseg,
                 "par_inds": self.par_inds,
                 "child_inds": self.child_inds,
                 "nbranches": self.total_nbranches,

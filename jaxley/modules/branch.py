@@ -134,6 +134,7 @@ class Branch(Module):
                 "type": [0] * (self.nseg - 1) * 2,
             }
         )
+        self.remapped_indices = self.internal_node_inds
         n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self.comp_edges)
         self.n_nodes = n_nodes
         self.data_inds = data_inds
