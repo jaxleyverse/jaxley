@@ -555,7 +555,7 @@ class Module(ABC):
 
         # Compute conductance params and append them.
         if voltage_solver.startswith("jaxley"):
-            cond_params = self.init_conds_custom_spsolve(params)
+            cond_params = self.init_conds_jax_spsolve(params)
         else:
             cond_params = self.init_conds_jax_spsolve(params)
         for key in cond_params:
@@ -974,13 +974,13 @@ class Module(ABC):
                 "voltages": voltages,
                 "voltage_terms": (v_terms + syn_v_terms) / cm,
                 "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-                "coupling_conds_upper": params["branch_uppers"],
-                "coupling_conds_lower": params["branch_lowers"],
-                "summed_coupling_conds": params["branch_diags"],
-                "branchpoint_conds_children": params["branchpoint_conds_children"],
-                "branchpoint_conds_parents": params["branchpoint_conds_parents"],
-                "branchpoint_weights_children": params["branchpoint_weights_children"],
-                "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+                "axial_conductances": params["axial_conductances"],
+                "sources": np.asarray(self.comp_edges["source"].to_list()),
+                "sinks": np.asarray(self.comp_edges["source"].to_list()),
+                "types": np.asarray(self.comp_edges["source"].to_list()),
+                "internal_node_inds": self.internal_node_inds,
+                "n_nodes": self.n_nodes,
+                "nseg": self.nseg,
                 "par_inds": self.par_inds,
                 "child_inds": self.child_inds,
                 "nbranches": self.total_nbranches,

@@ -70,13 +70,13 @@ def step_voltage_implicit_with_custom_spsolve(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    coupling_conds_upper: jnp.ndarray,
-    coupling_conds_lower: jnp.ndarray,
-    summed_coupling_conds: jnp.ndarray,
-    branchpoint_conds_children: jnp.ndarray,
-    branchpoint_conds_parents: jnp.ndarray,
-    branchpoint_weights_children: jnp.ndarray,
-    branchpoint_weights_parents: jnp.ndarray,
+    axial_conductances,
+    sources,
+    sinks,
+    types,
+    internal_node_inds,
+    n_nodes,
+    nseg,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -89,24 +89,51 @@ def step_voltage_implicit_with_custom_spsolve(
     debug_states,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
-    voltages = jnp.reshape(voltages, (nbranches, -1))
-    voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
-    constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
-    coupling_conds_upper = jnp.reshape(coupling_conds_upper, (nbranches, -1))
-    coupling_conds_lower = jnp.reshape(coupling_conds_lower, (nbranches, -1))
-    summed_coupling_conds = jnp.reshape(summed_coupling_conds, (nbranches, -1))
+    def remap_index_to_masked(index):
+        return index
 
-    # Define quasi-tridiagonal system.
-    lowers, diags, uppers, solves = define_all_tridiags(
-        voltages,
-        voltage_terms,
-        constant_terms,
-        nbranches,
-        coupling_conds_upper,
-        coupling_conds_lower,
-        summed_coupling_conds,
-        delta_t,
+    # Build diagonals.
+    diagonal_values = jnp.ones(nbranches * nseg)
+
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sources) > 0:
+        diagonal_values = diagonal_values.at[remap_index_to_masked(sources)].add(delta_t * axial_conductances)
+
+    diagonal_values = diagonal_values.at[remap_index_to_masked(internal_node_inds)].add(
+        delta_t * voltage_terms
     )
+
+    # Build upper and lower within the branch.
+    c2c = type == 0  # c2c = compartment-to-compartment.
+    def remap_index_to_masked_upper_and_lower(index):
+        """Need to take into account that there are only nseg-1 entries."""
+        return index
+    
+    uppers = jnp.zeros(nbranches * (nseg-1))
+    upper_inds = sources > sinks
+    sources_upper = sources[upper_inds]
+    uppers = uppers.at[remap_index_to_masked_upper_and_lower(sources_upper)].add(-delta_t * axial_conductances[upper_inds])
+
+    lowers = jnp.zeros(nbranches * (nseg-1))
+    lower_inds = sources < sinks
+    sinks_lower = sinks[lower_inds]
+    uppers = uppers.at[remap_index_to_masked_upper_and_lower(sinks_lower)].add(-delta_t * axial_conductances[lower_inds])
+
+    solves = jnp.zeros(nbranches * nseg)
+    solves = solves.at[remap_index_to_masked(internal_node_inds)].add(voltages + delta_t * constant_terms)
+
+    # Build branchpoint-to-compartment terms (i.e., upper terms).
+    bp2c = type == 1  # bp2c = branchpoint-to-compartment.
+    branchpoint_to_comp_terms = -delta_t * axial_conductances[bp2c]
+
+    # Build compartment-to-branchpoint_terms
+    c2bp = type == 2  # c2bp = compartment-to-branchpoint.
+    comp_to_branchpoint_terms = -delta_t * axial_conductances[c2bp]
+    branchpoint_diags = jnp.zeros((num_branchpoints,))
+    branchpoint_diags = branchpoint_diags.at[sources - n_nodes].add(axial_conductances[c2bp])
+    branchpoint_solves = jnp.zeros((num_branchpoints,))
+
     all_branchpoint_vals = jnp.concatenate(
         [branchpoint_weights_parents, branchpoint_weights_children]
     )
