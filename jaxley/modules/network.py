@@ -25,6 +25,7 @@ from jaxley.utils.cell_utils import (
     compute_impact_on_node,
     convert_point_process_to_distributed,
     merge_cells,
+    remap_index_to_masked,
     remap_to_consecutive,
 )
 from jaxley.utils.syn_utils import gather_synapes
@@ -98,6 +99,7 @@ class Network(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         # `nbranchpoints` in each cell == cell.par_inds (because `par_inds` are unique).
         nbranchpoints = jnp.asarray([len(cell.par_inds) for cell in self.cells])
@@ -155,6 +157,15 @@ class Network(Module):
         )
         self.root_inds = self.cumsum_nbranches[:-1]
 
+        # Generate mapping to dealing with the masking which allows using the custom
+        # sparse solver to deal with different nseg per branch.
+        self._remapped_node_indices = remap_index_to_masked(
+            self._internal_node_inds,
+            self.nodes,
+            self.nseg,
+            self.nseg_per_branch,
+        )
+
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for networks.
 
@@ -167,7 +178,6 @@ class Network(Module):
         loop over all branchpoints and append those. The code for building the indices
         from the `comp_edges` is identical to `jx.Cell`.
         """
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
         self._cumsum_nseg_per_cell = jnp.concatenate(
             [
                 jnp.asarray([0]),

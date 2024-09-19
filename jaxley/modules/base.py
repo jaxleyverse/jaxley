@@ -275,7 +275,11 @@ class Module(ABC):
     def init_conds(self, params: Dict, voltage_solver: str):
         """Given radius, length, r_a, compute the axial coupling conductances."""
         if voltage_solver.startswith("jaxley"):
-            return self._init_conds_custom_spsolve(params)
+            all_conds = self._init_conds_custom_spsolve(params)
+            conds = self._init_conds_jax_spsolve(params)
+            for key in conds.keys():
+                all_conds[key] = conds[key]
+            return all_conds
         else:
             return self._init_conds_jax_spsolve(params)
 
@@ -989,13 +993,19 @@ class Module(ABC):
                 "voltages": voltages,
                 "voltage_terms": (v_terms + syn_v_terms) / cm,
                 "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-                "coupling_conds_upper": params["branch_uppers"],
-                "coupling_conds_lower": params["branch_lowers"],
-                "summed_coupling_conds": params["branch_diags"],
                 "branchpoint_conds_children": params["branchpoint_conds_children"],
                 "branchpoint_conds_parents": params["branchpoint_conds_parents"],
                 "branchpoint_weights_children": params["branchpoint_weights_children"],
                 "branchpoint_weights_parents": params["branchpoint_weights_parents"],
+                "axial_conductances": params["axial_conductances"],
+                "sources": np.asarray(self._comp_edges["source"].to_list()),
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "types": np.asarray(self._comp_edges["type"].to_list()),
+                "internal_node_inds": self._internal_node_inds,
+                "masked_node_inds": self._remapped_node_indices,
+                "n_nodes": self._n_nodes,
+                "nseg_per_branch": self.nseg_per_branch,
+                "nseg": self.nseg,
                 "par_inds": self.par_inds,
                 "child_inds": self.child_inds,
                 "nbranches": self.total_nbranches,

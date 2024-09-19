@@ -57,7 +57,7 @@ class Compartment(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-        self.root_inds = jnp.asarray([0])
+        self._internal_node_inds = jnp.asarray([0])
 
         # Initialize the module.
         self.initialize()
@@ -68,6 +68,8 @@ class Compartment(Module):
 
     def _init_morph_custom_spsolve(self):
         self.branchpoint_group_inds = np.asarray([]).astype(int)
+        self.root_inds = jnp.asarray([0])
+        self._remapped_node_indices = self._internal_node_inds
         self.children_in_level = []
         self.parents_in_level = []
 
@@ -79,7 +81,6 @@ class Compartment(Module):
         `type == 1`: compartment-to-branchpoint
         `type == 2`: branchpoint-to-compartment
         """
-        self._internal_node_inds = jnp.asarray([0])
         self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}
         )

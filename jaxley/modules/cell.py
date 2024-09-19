@@ -28,6 +28,7 @@ from jaxley.utils.cell_utils import (
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
     loc_of_index,
+    remap_index_to_masked,
     remap_to_consecutive,
 )
 from jaxley.utils.swc import swc_to_jaxley
@@ -132,6 +133,7 @@ class Cell(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         self.initialize()
         self.init_syns()
@@ -185,6 +187,15 @@ class Cell(Module):
         )
         self.root_inds = jnp.asarray([0])
 
+        # Generate mapping to dealing with the masking which allows using the custom
+        # sparse solver to deal with different nseg per branch.
+        self._remapped_node_indices = remap_index_to_masked(
+            self._internal_node_inds,
+            self.nodes,
+            self.nseg,
+            self.nseg_per_branch,
+        )
+
     def _init_morph_jax_spsolve(self):
         """For morphology indexing with the `jax.sparse` voltage volver.
 
@@ -196,7 +207,6 @@ class Cell(Module):
         Running this function is only required for generic sparse solvers, i.e., for
         `voltage_solver='jax.sparse'`.
         """
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         # Edges between compartments within the branches.
         # `[offset, offset, 0]` because we want to offset `source` and `sink`, but
@@ -263,63 +273,52 @@ class Cell(Module):
 
     def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
-        nbranches = self.total_nbranches
-        nseg = self.nseg
+        axial_resistivity = params["axial_resistivity"]
+        radiuses = params["radius"]
+        lengths = params["length"]
 
-        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
-        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(params["length"], (nbranches, nseg))
-
-        conds = vmap(Branch.init_branch_conds_custom_spsolve, in_axes=(0, 0, 0, None))(
-            axial_resistivity, radiuses, lengths, self.nseg
+        nsegs = jnp.concatenate(
+            [
+                jnp.asarray([0]),
+                jnp.cumsum(self.nseg_per_branch),
+            ]
         )
-        coupling_conds_fwd = conds[0]
-        coupling_conds_bwd = conds[1]
-        summed_coupling_conds = conds[2]
+
+        child_comp_ind = nsegs[self.child_inds]
+        par_comp_ind = nsegs[self.par_inds + 1] - 1
 
         # The conductance from the children to the branch point.
         branchpoint_conds_children = vmap(
             compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
         )(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
+            radiuses[child_comp_ind],
+            axial_resistivity[child_comp_ind],
+            lengths[child_comp_ind],
         )
         # The conductance from the parents to the branch point.
         branchpoint_conds_parents = vmap(
             compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
         )(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
+            radiuses[par_comp_ind],
+            axial_resistivity[par_comp_ind],
+            lengths[par_comp_ind],
         )
 
         # Weights with which the compartments influence their nearby node.
         # The impact of the children on the branch point.
         branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
+            radiuses[child_comp_ind],
+            axial_resistivity[child_comp_ind],
+            lengths[child_comp_ind],
         )
         # The impact of parents on the branch point.
         branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        summed_coupling_conds = self.update_summed_coupling_conds_custom_spsolve(
-            summed_coupling_conds,
-            self.child_inds,
-            self.par_inds,
-            branchpoint_conds_children,
-            branchpoint_conds_parents,
+            radiuses[par_comp_ind],
+            axial_resistivity[par_comp_ind],
+            lengths[par_comp_ind],
         )
 
         cond_params = {
-            "branch_uppers": coupling_conds_bwd,
-            "branch_lowers": coupling_conds_fwd,
-            "branch_diags": summed_coupling_conds,
             "branchpoint_conds_children": branchpoint_conds_children,
             "branchpoint_conds_parents": branchpoint_conds_parents,
             "branchpoint_weights_children": branchpoint_weights_children,

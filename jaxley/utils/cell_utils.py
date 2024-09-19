@@ -487,14 +487,17 @@ def compute_axial_conductances(
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
-    conds_c2c = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
-        params["radius"][sink_comp_inds],
-        params["radius"][source_comp_inds],
-        params["axial_resistivity"][sink_comp_inds],
-        params["axial_resistivity"][source_comp_inds],
-        params["length"][sink_comp_inds],
-        params["length"][source_comp_inds],
-    )
+    if len(sink_comp_inds) > 0:
+        conds_c2c = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
+            params["radius"][sink_comp_inds],
+            params["radius"][source_comp_inds],
+            params["axial_resistivity"][sink_comp_inds],
+            params["axial_resistivity"][source_comp_inds],
+            params["length"][sink_comp_inds],
+            params["length"][source_comp_inds],
+        )
+    else:
+        conds_c2c = jnp.asarray([])
 
     # `branchpoint-to-compartment` (bp2c) conductances.
     condition = comp_edges["type"].to_numpy() == 1
@@ -538,3 +541,22 @@ def compute_children_and_parents(
     child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
     par_inds = np.unique(par_inds)
     return par_inds, child_inds, child_belongs_to_branchpoint
+
+
+def remap_index_to_masked(
+    index, nodes: pd.DataFrame, max_nseg: int, nseg_per_branch: jnp.ndarray
+):
+    """Convert actual index of the compartment to the index in the masked system.
+
+    E.g. if `nsegs = [2, 4]`, then the index `3` would be mapped to `5` because the
+    masked `nsegs` are `[4, 4]`.
+    """
+    cumsum_nseg_per_branch = jnp.concatenate(
+        [
+            jnp.asarray([0]),
+            jnp.cumsum(nseg_per_branch),
+        ]
+    )
+    branch_inds = nodes.loc[index, "branch_index"].to_numpy()
+    remainders = index - cumsum_nseg_per_branch[branch_inds]
+    return branch_inds * max_nseg + remainders

@@ -4,12 +4,12 @@
 from typing import List
 
 import jax.numpy as jnp
+import numpy as np
 from jax import vmap
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
-from jaxley.build_branched_tridiag import define_all_tridiags
 from jaxley.utils.cell_utils import group_and_sum
 
 
@@ -24,6 +24,15 @@ def step_voltage_explicit(
     branchpoint_conds_parents: jnp.ndarray,
     branchpoint_weights_children: jnp.ndarray,
     branchpoint_weights_parents: jnp.ndarray,
+    axial_conductances,
+    sources,
+    sinks,
+    types,
+    internal_node_inds,
+    masked_node_inds,
+    n_nodes,
+    nseg_per_branch,
+    nseg,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -70,13 +79,19 @@ def step_voltage_implicit_with_custom_spsolve(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    coupling_conds_upper: jnp.ndarray,
-    coupling_conds_lower: jnp.ndarray,
-    summed_coupling_conds: jnp.ndarray,
     branchpoint_conds_children: jnp.ndarray,
     branchpoint_conds_parents: jnp.ndarray,
     branchpoint_weights_children: jnp.ndarray,
     branchpoint_weights_parents: jnp.ndarray,
+    axial_conductances,
+    sources,
+    sinks,
+    types,
+    internal_node_inds,
+    masked_node_inds,
+    n_nodes,
+    nseg_per_branch,
+    nseg,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -89,24 +104,57 @@ def step_voltage_implicit_with_custom_spsolve(
     debug_states,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
-    voltages = jnp.reshape(voltages, (nbranches, -1))
-    voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
-    constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
-    coupling_conds_upper = jnp.reshape(coupling_conds_upper, (nbranches, -1))
-    coupling_conds_lower = jnp.reshape(coupling_conds_lower, (nbranches, -1))
-    summed_coupling_conds = jnp.reshape(summed_coupling_conds, (nbranches, -1))
+    # Build diagonals.
+    c2c = np.logical_or(types == 0, types == 1)
+    diags = jnp.ones(nbranches * nseg)
 
-    # Define quasi-tridiagonal system.
-    lowers, diags, uppers, solves = define_all_tridiags(
-        voltages,
-        voltage_terms,
-        constant_terms,
-        nbranches,
-        coupling_conds_upper,
-        coupling_conds_lower,
-        summed_coupling_conds,
-        delta_t,
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sinks[c2c]) > 0:
+        diags = diags.at[masked_node_inds[sinks[c2c]]].add(
+            delta_t * axial_conductances[c2c]
+        )
+
+    # print("sinks[c2c]", sinks[c2c])
+    # print("masked_node_inds[internal_node_inds]", masked_node_inds[internal_node_inds])
+    diags = diags.at[masked_node_inds[internal_node_inds]].add(delta_t * voltage_terms)
+
+    # Build solves.
+    solves = jnp.zeros(nbranches * nseg)
+    solves = solves.at[masked_node_inds[internal_node_inds]].add(
+        voltages + delta_t * constant_terms
     )
+
+    # Build upper and lower within the branch.
+    c2c = types == 0  # c2c = compartment-to-compartment.
+
+    # Build uppers.
+    uppers = jnp.zeros(nbranches * nseg)
+    upper_inds = sources[c2c] > sinks[c2c]
+    sinks_upper = sinks[c2c][upper_inds]
+    if len(sinks_upper) > 0:
+        uppers = uppers.at[masked_node_inds[sinks_upper]].add(
+            -delta_t * axial_conductances[c2c][upper_inds]
+        )
+
+    # Build lowers.
+    lowers = jnp.zeros(nbranches * nseg)
+    lower_inds = sources[c2c] < sinks[c2c]
+    sinks_lower = sinks[c2c][lower_inds]
+    if len(sinks_lower) > 0:
+        lowers = lowers.at[masked_node_inds[sinks_lower]].add(
+            -delta_t * axial_conductances[c2c][lower_inds]
+        )
+
+    # Reshape all diags, lowers, uppers, and solves into a "per-branch" format.
+    diags = jnp.reshape(diags, (nbranches, -1))
+    solves = jnp.reshape(solves, (nbranches, -1))
+    uppers = jnp.reshape(uppers, (nbranches, -1))
+    lowers = jnp.reshape(lowers, (nbranches, -1))
+    # lowers and uppers were built to have length `nseg` above for simplicity.
+    uppers = uppers[:, :-1]
+    lowers = lowers[:, 1:]
+
     all_branchpoint_vals = jnp.concatenate(
         [branchpoint_weights_parents, branchpoint_weights_children]
     )
@@ -169,6 +217,7 @@ def step_voltage_implicit_with_custom_spsolve(
         children_in_level,
         parents_in_level,
         root_inds,
+        nseg_per_branch,
         debug_states,
     )
 
@@ -195,9 +244,10 @@ def step_voltage_implicit_with_custom_spsolve(
         children_in_level,
         parents_in_level,
         root_inds,
+        nseg_per_branch,
         debug_states,
     )
-    return solves.ravel(order="C")
+    return solves.ravel(order="C")[masked_node_inds[internal_node_inds]]
 
 
 def step_voltage_implicit_with_jax_spsolve(
@@ -301,6 +351,7 @@ def _triang_branched(
     children_in_level,
     parents_in_level,
     root_inds,
+    nseg_per_branch,
     debug_states,
 ):
     """Triangulation."""
@@ -329,6 +380,7 @@ def _triang_branched(
             branchpoint_weights_parents,
             branchpoint_diags,
             branchpoint_solves,
+            nseg_per_branch,
         )
     # At last level, we do not want to eliminate anymore.
     diags, lowers, solves, uppers = _triang_level(
@@ -361,6 +413,7 @@ def _backsub_branched(
     children_in_level,
     parents_in_level,
     root_inds,
+    nseg_per_branch,
     debug_states,
 ):
     """
@@ -378,6 +431,7 @@ def _backsub_branched(
             solves,
             branchpoint_weights_parents,
             branchpoint_solves,
+            nseg_per_branch,
         )
         branchpoint_conds_children, solves = _eliminate_children_upper(
             cil,
@@ -484,6 +538,7 @@ def _eliminate_parents_upper(
     branchpoint_weights_parents,
     branchpoint_diags,
     branchpoint_solves,
+    nseg_per_branch: jnp.ndarray,
 ):
     bil = pil[:, 0]
     bpil = pil[:, 1]
@@ -495,8 +550,8 @@ def _eliminate_parents_upper(
     )
 
     # Update the diagonal elements and `b` in `Ax=b` (called `solves`).
-    diags = diags.at[bil, -1].add(new_diag)
-    solves = solves.at[bil, -1].add(new_solve)
+    diags = diags.at[bil, nseg_per_branch[bil] - 1].add(new_diag)
+    solves = solves.at[bil, nseg_per_branch[bil] - 1].add(new_solve)
     branchpoint_conds_parents = branchpoint_conds_parents.at[bil].set(0.0)
 
     return diags, solves, branchpoint_conds_parents
@@ -521,11 +576,14 @@ def _eliminate_parents_lower(
     solves,
     branchpoint_weights_parents,
     branchpoint_solves,
+    nseg_per_branch: jnp.ndarray,
 ):
     bil = pil[:, 0]
     bpil = pil[:, 1]
     branchpoint_solves = branchpoint_solves.at[bpil].add(
-        -solves[bil, -1] * branchpoint_weights_parents[bil] / diags[bil, -1]
+        -solves[bil, nseg_per_branch[bil] - 1]
+        * branchpoint_weights_parents[bil]
+        / diags[bil, nseg_per_branch[bil] - 1]
     )
     branchpoint_weights_parents = branchpoint_weights_parents.at[bil].set(0.0)
     return branchpoint_weights_parents, branchpoint_solves

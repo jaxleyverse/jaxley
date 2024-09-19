@@ -27,13 +27,7 @@ def test_compartment(voltage_solver: str):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
-
-    comp = jx.Compartment()
-    comp.insert(HH())
-    comp.record()
-    comp.stimulate(current)
-
-    voltages = jx.integrate(comp, delta_t=dt, voltage_solver=voltage_solver)
+    tolerance = 1e-8
 
     voltages_081123 = jnp.asarray(
         [
@@ -52,9 +46,43 @@ def test_compartment(voltage_solver: str):
             ]
         ]
     )
+
+    # Test compartment.
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+    comp.stimulate(current)
+    voltages = jx.integrate(comp, delta_t=dt, voltage_solver=voltage_solver)
     max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
-    tolerance = 1e-8
-    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+    assert max_error <= tolerance, f"Compartment error is {max_error} > {tolerance}"
+
+    # Test branch of a single compartment.
+    branch = jx.Branch()
+    branch.insert(HH())
+    branch.record()
+    branch.stimulate(current)
+    voltages = jx.integrate(branch, delta_t=dt, voltage_solver=voltage_solver)
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    assert max_error <= tolerance, f"Branch error is {max_error} > {tolerance}"
+
+    # Test cell of a single compartment.
+    cell = jx.Cell()
+    cell.insert(HH())
+    cell.record()
+    cell.stimulate(current)
+    voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    assert max_error <= tolerance, f"Cell error is {max_error} > {tolerance}"
+
+    # Test net of a single compartment.
+    cell = jx.Cell()
+    net = jx.Network([cell])
+    net.insert(HH())
+    net.record()
+    net.stimulate(current)
+    voltages = jx.integrate(net, delta_t=dt, voltage_solver=voltage_solver)
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    assert max_error <= tolerance, f"Network error is {max_error} > {tolerance}"
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
