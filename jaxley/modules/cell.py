@@ -17,6 +17,8 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     comp_edges_to_indices,
+    compute_axial_conductances,
+    compute_children_and_parents,
     compute_children_in_level,
     compute_children_indices,
     compute_coupling_cond,
@@ -27,7 +29,6 @@ from jaxley.utils.cell_utils import (
     compute_parents_in_level,
     loc_of_index,
     remap_to_consecutive,
-    compute_axial_conductances,
 )
 from jaxley.utils.swc import swc_to_jaxley
 
@@ -128,12 +129,9 @@ class Cell(Module):
         )
 
         # For morphology indexing.
-        par_inds = self.comb_parents[1:]
-        self.child_inds = np.arange(1, self.total_nbranches)
-        self.child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
-        self.par_inds = np.unique(par_inds)
-        self.total_nbranchpoints = len(self.par_inds)
-        self.root_inds = jnp.asarray([0])
+        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+            compute_children_and_parents(self.branch_edges)
+        )
 
         self.initialize()
         self.init_syns()
@@ -159,7 +157,7 @@ class Cell(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def init_morph_custom_spsolve(self):
+    def _init_morph_custom_spsolve(self):
         """Initialize morphology for the custom sparse solver.
 
         Running this function is only required for custom Jaxley solvers, i.e., for
@@ -185,8 +183,9 @@ class Cell(Module):
         self.parents_in_level = compute_parents_in_level(
             levels, self.par_inds, parents_inds
         )
+        self.root_inds = jnp.asarray([0])
 
-    def init_morph_jax_spsolve(self):
+    def _init_morph_jax_spsolve(self):
         """For morphology indexing with the `jax.sparse` voltage volver.
 
         Explanation of `type`:
@@ -197,19 +196,19 @@ class Cell(Module):
         Running this function is only required for generic sparse solvers, i.e., for
         `voltage_solver='jax.sparse'`.
         """
-        self.internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         # Edges between compartments within the branches.
         # `[offset, offset, 0]` because we want to offset `source` and `sink`, but
         # not `type`.
-        self.comp_edges = pd.concat(
+        self._comp_edges = pd.concat(
             [
-                [offset, offset, 0] + branch.comp_edges
+                [offset, offset, 0] + branch._comp_edges
                 for offset, branch in zip(self.cumsum_nseg, self.branch_list)
             ]
         )
         # `branch_list` is not needed anymore because all information it contained is
-        # now also in `self.comp_edges`.
+        # now also in `self._comp_edges`.
         del self.branch_list
 
         # Edges from branchpoints to compartments.
@@ -227,9 +226,9 @@ class Cell(Module):
                 "type": 1,
             }
         )
-        self.comp_edges = pd.concat(
+        self._comp_edges = pd.concat(
             [
-                self.comp_edges,
+                self._comp_edges,
                 branchpoint_to_parent_edges,
                 branchpoint_to_child_edges,
             ],
@@ -237,36 +236,32 @@ class Cell(Module):
         )
 
         # Edges from compartments to branchpoints.
-        child_to_branchpoint_edges = pd.DataFrame().from_dict(
-            {
-                "source": self.cumsum_nseg[self.child_inds],
-                "sink": self.child_belongs_to_branchpoint + self.cumsum_nseg[-1],
-                "type": 2,
-            }
+        child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
+            columns={"sink": "source", "source": "sink"}
         )
-        parent_to_branchpoint_edges = pd.DataFrame().from_dict(
-            {
-                "source": self.cumsum_nseg[self.par_inds + 1] - 1,
-                "sink": np.arange(len(self.par_inds)) + self.cumsum_nseg[-1],
-                "type": 2,
-            }
+        child_to_branchpoint_edges["type"] = 2
+
+        parent_to_branchpoint_edges = branchpoint_to_parent_edges.rename(
+            columns={"sink": "source", "source": "sink"}
         )
-        self.comp_edges = pd.concat(
+        parent_to_branchpoint_edges["type"] = 2
+
+        self._comp_edges = pd.concat(
             [
-                self.comp_edges,
+                self._comp_edges,
                 parent_to_branchpoint_edges,
                 child_to_branchpoint_edges,
             ],
             ignore_index=True,
         )
 
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self.comp_edges)
-        self.n_nodes = n_nodes
-        self.data_inds = data_inds
-        self.indices = indices
-        self.indptr = indptr
+        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        self._n_nodes = n_nodes
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
 
-    def init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
+    def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given an axial resisitivity, set the coupling conductances."""
         nbranches = self.total_nbranches
         nseg = self.nseg
@@ -332,9 +327,9 @@ class Cell(Module):
         }
         return cond_params
 
-    def init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
+    def _init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
         """Given length, radius, and r_a, set the coupling conductances."""
-        conds = compute_axial_conductances(self.comp_edges, params)
+        conds = compute_axial_conductances(self._comp_edges, params)
         return {"axial_conductances": conds}
 
     @staticmethod

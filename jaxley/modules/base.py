@@ -256,8 +256,31 @@ class Module(ABC):
 
         return printable_nodes
 
+    def init_morph(self):
+        """Initialize the morphology such that it can be processed by the solvers."""
+        self._init_morph_custom_spsolve()
+        self._init_morph_jax_spsolve()
+        self.initialized_morph = True
+
     @abstractmethod
-    def init_conds_jax_spsolve(self, params: Dict):
+    def _init_morph_jax_spsolve(self):
+        """Initialize the morphology for the JAX sparse solver."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _init_morph_custom_spsolve(self):
+        """Initialize the morphology for the custom Jaxley solver."""
+        raise NotImplementedError
+
+    def init_conds(self, params: Dict, voltage_solver: str):
+        """Given radius, length, r_a, compute the axial coupling conductances."""
+        if voltage_solver.startswith("jaxley"):
+            return self._init_conds_custom_spsolve(params)
+        else:
+            return self._init_conds_jax_spsolve(params)
+
+    @abstractmethod
+    def _init_conds_jax_spsolve(self, params: Dict):
         """Initialize coupling conductances.
 
         Args:
@@ -267,7 +290,7 @@ class Module(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def init_conds_custom_spsolve(self, params: Dict):
+    def _init_conds_custom_spsolve(self, params: Dict):
         """Initialize coupling conductances.
 
         Args:
@@ -554,10 +577,7 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and append them.
-        if voltage_solver.startswith("jaxley"):
-            cond_params = self.init_conds_custom_spsolve(params)
-        else:
-            cond_params = self.init_conds_jax_spsolve(params)
+        cond_params = self.init_conds(params=params, voltage_solver=voltage_solver)
         for key in cond_params:
             params[key] = cond_params[key]
 
@@ -620,9 +640,7 @@ class Module(ABC):
 
     def initialize(self):
         """Initialize the module."""
-        self.init_morph_custom_spsolve()
-        self.init_morph_jax_spsolve()
-        self.initialized_morph = True
+        self.init_morph()
         return self
 
     def init_states(self, delta_t: float = 0.025):
@@ -880,9 +898,6 @@ class Module(ABC):
     def init_syns(self):
         self.initialized_syns = True
 
-    def init_morph(self):
-        self.initialized_morph = True
-
     def step(
         self,
         u: Dict[str, jnp.ndarray],
@@ -954,12 +969,12 @@ class Module(ABC):
                 "voltage_terms": (v_terms + syn_v_terms) / cm,
                 "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
                 "axial_conductances": params["axial_conductances"],
-                "data_inds": self.data_inds,
-                "indices": self.indices,
-                "indptr": self.indptr,
-                "sinks": np.asarray(self.comp_edges["sink"].to_list()),
-                "n_nodes": self.n_nodes,
-                "internal_node_inds": self.internal_node_inds,
+                "data_inds": self._data_inds,
+                "indices": self._indices_jax_spsolve,
+                "indptr": self._indptr_jax_spsolve,
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "n_nodes": self._n_nodes,
+                "internal_node_inds": self._internal_node_inds,
             }
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve

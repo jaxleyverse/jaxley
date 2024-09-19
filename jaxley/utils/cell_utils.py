@@ -415,8 +415,7 @@ def convert_to_csc(
     """Convert between two representations for sparse systems.
 
     This is needed because `jax.scipy.linalg.spsolve` requires the `(ind, indptr)`
-    representation, but for `scipy` (and for intuition) we build the `(row, col)`
-    representation.
+    representation, but the `(row, col)` is more intuitive and easier to build.
 
     This function uses `np` instead of `jnp` because it only deals with indexing which
     can be dealt with only based on the branch structure (i.e. independent of any
@@ -483,12 +482,12 @@ def compute_axial_conductances(
     comp_edges: pd.DataFrame, params: Dict[str, jnp.ndarray]
 ) -> jnp.ndarray:
     """Given `comp_edges`, radius, length, r_a, compute the axial conductances."""
-    # `Compartment-to-compartment` conductances.
+    # `Compartment-to-compartment` (c2c) conductances.
     condition = comp_edges["type"].to_numpy() == 0
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
-    conds0 = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
+    conds_c2c = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
         params["radius"][sink_comp_inds],
         params["radius"][source_comp_inds],
         params["axial_resistivity"][sink_comp_inds],
@@ -497,34 +496,45 @@ def compute_axial_conductances(
         params["length"][source_comp_inds],
     )
 
-    # `branchpoint-to-compartment` conductances.
+    # `branchpoint-to-compartment` (bp2c) conductances.
     condition = comp_edges["type"].to_numpy() == 1
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
     if len(sink_comp_inds) > 0:
-        conds1 = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
+        conds_bp2c = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
             params["radius"][sink_comp_inds],
             params["axial_resistivity"][sink_comp_inds],
             params["length"][sink_comp_inds],
         )
     else:
-        conds1 = jnp.asarray([])
+        conds_bp2c = jnp.asarray([])
 
-    # `compartment-to-branchpoint` conductances.
+    # `compartment-to-branchpoint` (c2bp) conductances.
     condition = comp_edges["type"].to_numpy() == 2
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
 
     if len(source_comp_inds) > 0:
-        conds2 = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+        conds_c2bp = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
             params["radius"][source_comp_inds],
             params["axial_resistivity"][source_comp_inds],
             params["length"][source_comp_inds],
         )
         # For numerical stability. These values are very small, but their scale
         # does not matter.
-        conds2 *= 1_000
+        conds_c2bp *= 1_000
     else:
-        conds2 = jnp.asarray([])
+        conds_c2bp = jnp.asarray([])
 
     # All conductances.
-    return jnp.concatenate([conds0, conds1, conds2])
+    return jnp.concatenate([conds_c2c, conds_bp2c, conds_c2bp])
+
+
+def compute_children_and_parents(
+    branch_edges: pd.DataFrame,
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, int]:
+    """Build indices used during `._init_morph_custom_spsolve()."""
+    par_inds = branch_edges["parent_branch_index"].to_numpy()
+    child_inds = branch_edges["child_branch_index"].to_numpy()
+    child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
+    par_inds = np.unique(par_inds)
+    return par_inds, child_inds, child_belongs_to_branchpoint
