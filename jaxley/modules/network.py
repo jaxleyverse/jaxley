@@ -17,16 +17,11 @@ from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
-    comp_edges_to_indices,
-    compute_axial_conductances,
     compute_children_and_parents,
-    compute_coupling_cond,
-    compute_coupling_cond_branchpoint,
-    compute_impact_on_node,
     convert_point_process_to_distributed,
     merge_cells,
-    remap_to_consecutive,
 )
+from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -98,6 +93,7 @@ class Network(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         # `nbranchpoints` in each cell == cell.par_inds (because `par_inds` are unique).
         nbranchpoints = jnp.asarray([len(cell.par_inds) for cell in self.cells])
@@ -135,7 +131,7 @@ class Network(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         self.branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
@@ -155,19 +151,34 @@ class Network(Module):
         )
         self.root_inds = self.cumsum_nbranches[:-1]
 
+        # Generate mapping to dealing with the masking which allows using the custom
+        # sparse solver to deal with different nseg per branch.
+        self._remapped_node_indices = remap_index_to_masked(
+            self._internal_node_inds,
+            self.nodes,
+            self.nseg,
+            self.nseg_per_branch,
+        )
+
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for networks.
 
-        The reason that this is a bit involved is that Jaxley considers branchpoint
-        nodes to be at the very end of __all__ nodes (i.e. the branchpoints of the
-        first cell are even after the compartments of the second cell. The reason for
-        this is that, otherwise, `cumsum_nseg` becomes tricky).
+        The reason that this function is a bit involved for a `Network` is that Jaxley
+        considers branchpoint nodes to be at the very end of __all__ nodes (i.e. the
+        branchpoints of the first cell are even after the compartments of the second
+        cell. The reason for this is that, otherwise, `cumsum_nseg` becomes tricky).
 
         To achieve this, we first loop over all compartments and append them, and then
         loop over all branchpoints and append those. The code for building the indices
         from the `comp_edges` is identical to `jx.Cell`.
+
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
         """
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
         self._cumsum_nseg_per_cell = jnp.concatenate(
             [
                 jnp.asarray([0]),
@@ -191,7 +202,7 @@ class Network(Module):
             self._cumsum_nseg_per_cell, self.cumsum_nbranchpoints_per_cell, self.cells
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
-            condition = cell._comp_edges["type"].to_numpy() == 1
+            condition = np.isin(cell._comp_edges["type"].to_numpy(), [1, 2])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
                 [
@@ -211,7 +222,7 @@ class Network(Module):
             self._cumsum_nseg_per_cell, self.cumsum_nbranchpoints_per_cell, self.cells
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
-            condition = cell._comp_edges["type"].to_numpy() == 2
+            condition = np.isin(cell._comp_edges["type"].to_numpy(), [3, 4])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
                 [
@@ -235,78 +246,6 @@ class Network(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-    def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances."""
-        nbranches = self.total_nbranches
-        nseg = self.nseg
-        parents = self.comb_parents
-
-        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
-        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(params["length"], (nbranches, nseg))
-
-        conds = vmap(Branch.init_branch_conds_custom_spsolve, in_axes=(0, 0, 0, None))(
-            axial_resistivity, radiuses, lengths, self.nseg
-        )
-        coupling_conds_fwd = conds[0]
-        coupling_conds_bwd = conds[1]
-        summed_coupling_conds = conds[2]
-
-        # The conductance from the children to the branch point.
-        branchpoint_conds_children = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The conductance from the parents to the branch point.
-        branchpoint_conds_parents = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        # Weights with which the compartments influence their nearby node.
-        # The impact of the children on the branch point.
-        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The impact of parents on the branch point.
-        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        summed_coupling_conds = Cell.update_summed_coupling_conds_custom_spsolve(
-            summed_coupling_conds,
-            self.child_inds,
-            self.par_inds,
-            branchpoint_conds_children,
-            branchpoint_conds_parents,
-        )
-
-        cond_params = {
-            "branch_uppers": coupling_conds_bwd,
-            "branch_lowers": coupling_conds_fwd,
-            "branch_diags": summed_coupling_conds,
-            "branchpoint_conds_children": branchpoint_conds_children,
-            "branchpoint_conds_parents": branchpoint_conds_parents,
-            "branchpoint_weights_children": branchpoint_weights_children,
-            "branchpoint_weights_parents": branchpoint_weights_parents,
-        }
-        return cond_params
-
-    def _init_conds_jax_spsolve(self, params: Dict):
-        """Given length, radius, and r_a, set the coupling conductances."""
-        conds = compute_axial_conductances(self._comp_edges, params)
-        return {"axial_conductances": conds}
 
     def init_syns(self):
         """Initialize synapses."""
