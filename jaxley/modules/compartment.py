@@ -11,6 +11,7 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import (
     comp_edges_to_indices,
+    compute_children_and_parents,
     index_of_loc,
     interpolate_xyz,
     loc_of_index,
@@ -53,14 +54,9 @@ class Compartment(Module):
         )
 
         # For morphology indexing.
-        self.child_inds = np.asarray([]).astype(int)
-        self.child_belongs_to_branchpoint = np.asarray([]).astype(int)
-        self.par_inds = np.asarray([]).astype(int)
-        self.total_nbranchpoints = 0
-        self.branchpoint_group_inds = np.asarray([]).astype(int)
-
-        self.children_in_level = []
-        self.parents_in_level = []
+        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+            compute_children_and_parents(self.branch_edges)
+        )
         self.root_inds = jnp.asarray([0])
 
         # Initialize the module.
@@ -70,10 +66,12 @@ class Compartment(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def init_morph_custom_spsolve(self):
-        pass
+    def _init_morph_custom_spsolve(self):
+        self.branchpoint_group_inds = np.asarray([]).astype(int)
+        self.children_in_level = []
+        self.parents_in_level = []
 
-    def init_morph_jax_spsolve(self):
+    def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.
 
         Explanation of `type`:
@@ -81,17 +79,17 @@ class Compartment(Module):
         `type == 1`: compartment-to-branchpoint
         `type == 2`: branchpoint-to-compartment
         """
-        self.internal_node_inds = jnp.asarray([0])
-        self.comp_edges = pd.DataFrame().from_dict(
+        self._internal_node_inds = jnp.asarray([0])
+        self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}
         )
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self.comp_edges)
-        self.n_nodes = n_nodes
-        self.data_inds = data_inds
-        self.indices = indices
-        self.indptr = indptr
+        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        self._n_nodes = n_nodes
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
 
-    def init_conds_custom_spsolve(self, params):
+    def _init_conds_custom_spsolve(self, params):
         return {
             "branchpoint_conds_children": jnp.asarray([]),
             "branchpoint_conds_parents": jnp.asarray([]),
@@ -102,7 +100,7 @@ class Compartment(Module):
             "branch_diags": jnp.asarray([0.0]),
         }
 
-    def init_conds_jax_spsolve(self, params):
+    def _init_conds_jax_spsolve(self, params):
         return {"axial_conductances": jnp.asarray([])}
 
 
