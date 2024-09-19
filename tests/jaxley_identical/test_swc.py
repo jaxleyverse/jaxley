@@ -21,8 +21,9 @@ from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
 
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
-def test_swc_cell(file):
+def test_swc_cell(voltage_solver: str, file: str):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.2, dt, t_max)
@@ -35,7 +36,7 @@ def test_swc_cell(file):
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(cell, delta_t=dt)
+    voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
 
     if file == "morph_single_point_soma.swc":
         voltages_300724 = jnp.asarray(
@@ -80,7 +81,8 @@ def test_swc_cell(file):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_swc_net():
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_swc_net(voltage_solver: str):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.2, dt, t_max)
@@ -111,7 +113,7 @@ def test_swc_net():
     for stim_ind in range(2):
         network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(network, delta_t=dt)
+    voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [

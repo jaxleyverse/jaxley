@@ -1,35 +1,26 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import time
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
-from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
-    comp_edges_to_indices,
-    compute_axial_conductances,
     compute_children_and_parents,
     compute_children_in_level,
     compute_children_indices,
-    compute_coupling_cond,
-    compute_coupling_cond_branchpoint,
-    compute_impact_on_node,
     compute_levels,
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
-    loc_of_index,
-    remap_to_consecutive,
 )
+from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
 from jaxley.utils.swc import swc_to_jaxley
 
 
@@ -132,6 +123,7 @@ class Cell(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         self.initialize()
         self.init_syns()
@@ -157,11 +149,13 @@ class Cell(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         """Initialize morphology for the custom sparse solver.
 
         Running this function is only required for custom Jaxley solvers, i.e., for
-        `voltage_solver={'jaxley.stone', 'jaxley.thomas'}`.
+        `voltage_solver={'jaxley.stone', 'jaxley.thomas'}`. However, because at
+        `.__init__()` (when the function is run), we do not yet know which solver the
+        user will use. Therefore, we always run this function at `.__init__()`.
         """
         children_and_parents = compute_morphology_indices_in_levels(
             len(self.par_inds),
@@ -185,18 +179,28 @@ class Cell(Module):
         )
         self.root_inds = jnp.asarray([0])
 
+        # Generate mapping to dealing with the masking which allows using the custom
+        # sparse solver to deal with different nseg per branch.
+        self._remapped_node_indices = remap_index_to_masked(
+            self._internal_node_inds,
+            self.nodes,
+            self.nseg,
+            self.nseg_per_branch,
+        )
+
     def _init_morph_jax_spsolve(self):
         """For morphology indexing with the `jax.sparse` voltage volver.
 
-        Explanation of `type`:
-        `type == 0`: compartment-to-compartment (within branch)
-        `type == 1`: branchpoint-to-compartment
-        `type == 2`: compartment-to-branchpoint
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
 
         Running this function is only required for generic sparse solvers, i.e., for
         `voltage_solver='jax.sparse'`.
         """
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         # Edges between compartments within the branches.
         # `[offset, offset, 0]` because we want to offset `source` and `sink`, but
@@ -212,18 +216,18 @@ class Cell(Module):
         del self.branch_list
 
         # Edges from branchpoints to compartments.
-        branchpoint_to_child_edges = pd.DataFrame().from_dict(
-            {
-                "source": self.child_belongs_to_branchpoint + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self.child_inds],
-                "type": 1,
-            }
-        )
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
             {
                 "source": np.arange(len(self.par_inds)) + self.cumsum_nseg[-1],
                 "sink": self.cumsum_nseg[self.par_inds + 1] - 1,
                 "type": 1,
+            }
+        )
+        branchpoint_to_child_edges = pd.DataFrame().from_dict(
+            {
+                "source": self.child_belongs_to_branchpoint + self.cumsum_nseg[-1],
+                "sink": self.cumsum_nseg[self.child_inds],
+                "type": 2,
             }
         )
         self._comp_edges = pd.concat(
@@ -236,15 +240,14 @@ class Cell(Module):
         )
 
         # Edges from compartments to branchpoints.
-        child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
-            columns={"sink": "source", "source": "sink"}
-        )
-        child_to_branchpoint_edges["type"] = 2
-
         parent_to_branchpoint_edges = branchpoint_to_parent_edges.rename(
             columns={"sink": "source", "source": "sink"}
         )
-        parent_to_branchpoint_edges["type"] = 2
+        parent_to_branchpoint_edges["type"] = 3
+        child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
+            columns={"sink": "source", "source": "sink"}
+        )
+        child_to_branchpoint_edges["type"] = 4
 
         self._comp_edges = pd.concat(
             [
@@ -261,79 +264,8 @@ class Cell(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-    def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances."""
-        nbranches = self.total_nbranches
-        nseg = self.nseg
-
-        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
-        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(params["length"], (nbranches, nseg))
-
-        conds = vmap(Branch.init_branch_conds_custom_spsolve, in_axes=(0, 0, 0, None))(
-            axial_resistivity, radiuses, lengths, self.nseg
-        )
-        coupling_conds_fwd = conds[0]
-        coupling_conds_bwd = conds[1]
-        summed_coupling_conds = conds[2]
-
-        # The conductance from the children to the branch point.
-        branchpoint_conds_children = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The conductance from the parents to the branch point.
-        branchpoint_conds_parents = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        # Weights with which the compartments influence their nearby node.
-        # The impact of the children on the branch point.
-        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The impact of parents on the branch point.
-        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        summed_coupling_conds = self.update_summed_coupling_conds_custom_spsolve(
-            summed_coupling_conds,
-            self.child_inds,
-            self.par_inds,
-            branchpoint_conds_children,
-            branchpoint_conds_parents,
-        )
-
-        cond_params = {
-            "branch_uppers": coupling_conds_bwd,
-            "branch_lowers": coupling_conds_fwd,
-            "branch_diags": summed_coupling_conds,
-            "branchpoint_conds_children": branchpoint_conds_children,
-            "branchpoint_conds_parents": branchpoint_conds_parents,
-            "branchpoint_weights_children": branchpoint_weights_children,
-            "branchpoint_weights_parents": branchpoint_weights_parents,
-        }
-        return cond_params
-
-    def _init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given length, radius, and r_a, set the coupling conductances."""
-        conds = compute_axial_conductances(self._comp_edges, params)
-        return {"axial_conductances": conds}
-
     @staticmethod
-    def update_summed_coupling_conds_custom_spsolve(
+    def update_summed_coupling_conds_jaxley_spsolve(
         summed_conds,
         child_inds,
         par_inds,

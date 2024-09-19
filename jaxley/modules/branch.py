@@ -7,16 +7,11 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import (
-    comp_edges_to_indices,
-    compute_axial_conductances,
-    compute_children_and_parents,
-    compute_coupling_cond,
-)
+from jaxley.utils.cell_utils import compute_children_and_parents
+from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
 class Branch(Module):
@@ -88,7 +83,7 @@ class Branch(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-        self.root_inds = jnp.asarray([0])
+        self._internal_node_inds = jnp.arange(self.nseg)
 
         self.initialize()
         self.init_syns()
@@ -118,20 +113,23 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         self.branchpoint_group_inds = np.asarray([]).astype(int)
+        self.root_inds = jnp.asarray([0])
+        self._remapped_node_indices = self._internal_node_inds
         self.children_in_level = []
         self.parents_in_level = []
 
     def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.
 
-        Explanation of `type`:
-        `type == 0`: compartment-to-compartment (within branch)
-        `type == 1`: branchpoint-to-compartment
-        `type == 2`: compartment-to-branchpoint
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
         """
-        self._internal_node_inds = jnp.arange(self.nseg)
         self._comp_edges = pd.DataFrame().from_dict(
             {
                 "source": list(range(self.nseg - 1)) + list(range(1, self.nseg)),
@@ -144,65 +142,6 @@ class Branch(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-    def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        conds = self.init_branch_conds_custom_spsolve(
-            params["axial_resistivity"], params["radius"], params["length"], self.nseg
-        )
-        cond_params = {
-            "branchpoint_conds_children": jnp.asarray([]),
-            "branchpoint_conds_parents": jnp.asarray([]),
-            "branchpoint_weights_children": jnp.asarray([]),
-            "branchpoint_weights_parents": jnp.asarray([]),
-        }
-        cond_params["branch_lowers"] = conds[0]
-        cond_params["branch_uppers"] = conds[1]
-        cond_params["branch_diags"] = conds[2]
-
-        return cond_params
-
-    def _init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        conds = compute_axial_conductances(self._comp_edges, params)
-        return {"axial_conductances": conds}
-
-    @staticmethod
-    def init_branch_conds_custom_spsolve(
-        axial_resistivity: jnp.ndarray,
-        radiuses: jnp.ndarray,
-        lengths: jnp.ndarray,
-        nseg: int,
-    ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances.
-
-        Args:
-            axial_resistivity: Axial resistivity of each compartment.
-            radiuses: Radius of each compartment.
-            lengths: Length of each compartment.
-            nseg: Number of compartments in the branch.
-
-        Returns:
-            Tuple of forward coupling conductances, backward coupling conductances, and summed coupling conductances.
-        """
-
-        # Compute coupling conductance for segments within a branch.
-        # `radius`: um
-        # `r_a`: ohm cm
-        # `length_single_compartment`: um
-        # `coupling_conds`: S * um / cm / um^2 = S / cm / um
-        r1 = radiuses[:-1]
-        r2 = radiuses[1:]
-        r_a1 = axial_resistivity[:-1]
-        r_a2 = axial_resistivity[1:]
-        l1 = lengths[:-1]
-        l2 = lengths[1:]
-        coupling_conds_bwd = compute_coupling_cond(r1, r2, r_a1, r_a2, l1, l2)
-        coupling_conds_fwd = compute_coupling_cond(r2, r1, r_a2, r_a1, l2, l1)
-
-        # Compute the summed coupling conductances of each compartment.
-        summed_coupling_conds = jnp.zeros((nseg))
-        summed_coupling_conds = summed_coupling_conds.at[1:].add(coupling_conds_fwd)
-        summed_coupling_conds = summed_coupling_conds.at[:-1].add(coupling_conds_bwd)
-        return coupling_conds_fwd, coupling_conds_bwd, summed_coupling_conds
 
     def __len__(self) -> int:
         return self.nseg
