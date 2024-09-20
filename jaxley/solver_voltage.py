@@ -103,7 +103,7 @@ def step_voltage_implicit_with_custom_spsolve(
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
     # Build diagonals.
-    c2c = np.logical_or(types == 0, types == 1)
+    c2c = np.isin(types, [0, 1, 2])
     diags = jnp.ones(nbranches * nseg)
 
     # if-case needed because `.at` does not allow empty inputs, but the input is

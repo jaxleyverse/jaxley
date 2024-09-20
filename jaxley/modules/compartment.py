@@ -76,10 +76,12 @@ class Compartment(Module):
     def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.
 
-        Explanation of `type`:
-        `type == 0`: compartment-to-compartment (within branch)
-        `type == 1`: compartment-to-branchpoint
-        `type == 2`: branchpoint-to-compartment
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
         """
         self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}

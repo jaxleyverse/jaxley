@@ -169,14 +169,21 @@ class Network(Module):
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for networks.
 
-        The reason that this is a bit involved is that Jaxley considers branchpoint
-        nodes to be at the very end of __all__ nodes (i.e. the branchpoints of the
-        first cell are even after the compartments of the second cell. The reason for
-        this is that, otherwise, `cumsum_nseg` becomes tricky).
+        The reason that this function is a bit involved for a `Network` is that Jaxley
+        considers branchpoint nodes to be at the very end of __all__ nodes (i.e. the
+        branchpoints of the first cell are even after the compartments of the second
+        cell. The reason for this is that, otherwise, `cumsum_nseg` becomes tricky).
 
         To achieve this, we first loop over all compartments and append them, and then
         loop over all branchpoints and append those. The code for building the indices
         from the `comp_edges` is identical to `jx.Cell`.
+
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
         """
         self._cumsum_nseg_per_cell = jnp.concatenate(
             [
@@ -201,7 +208,7 @@ class Network(Module):
             self._cumsum_nseg_per_cell, self.cumsum_nbranchpoints_per_cell, self.cells
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
-            condition = cell._comp_edges["type"].to_numpy() == 1
+            condition = np.isin(cell._comp_edges["type"].to_numpy(), [1, 2])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
                 [
@@ -221,7 +228,7 @@ class Network(Module):
             self._cumsum_nseg_per_cell, self.cumsum_nbranchpoints_per_cell, self.cells
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
-            condition = cell._comp_edges["type"].to_numpy() == 2
+            condition = np.isin(cell._comp_edges["type"].to_numpy(), [3, 4])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
                 [
@@ -247,7 +254,10 @@ class Network(Module):
         self._indptr_jax_spsolve = indptr
 
     def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances."""
+        """Given an axial resisitivity, set the coupling conductances.
+        
+        TODO: This will still break!!! Merge with Cell.
+        """
         nbranches = self.total_nbranches
         nseg = self.nseg
         parents = self.comb_parents
