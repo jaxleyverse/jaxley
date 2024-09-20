@@ -17,9 +17,6 @@ def step_voltage_explicit(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    coupling_conds_upper: jnp.ndarray,
-    coupling_conds_lower: jnp.ndarray,
-    summed_coupling_conds: jnp.ndarray,
     branchpoint_conds_children: jnp.ndarray,
     branchpoint_conds_parents: jnp.ndarray,
     branchpoint_weights_children: jnp.ndarray,
@@ -53,13 +50,14 @@ def step_voltage_explicit(
         voltages,
         voltage_terms,
         constant_terms,
-        coupling_conds_upper,
-        coupling_conds_lower,
-        summed_coupling_conds,
         branchpoint_conds_children,
         branchpoint_conds_parents,
         branchpoint_weights_children,
         branchpoint_weights_parents,
+        types,
+        sources,
+        sinks,
+        axial_conductances,
         par_inds,
         child_inds,
         nbranches,
@@ -115,8 +113,6 @@ def step_voltage_implicit_with_custom_spsolve(
             delta_t * axial_conductances[c2c]
         )
 
-    # print("sinks[c2c]", sinks[c2c])
-    # print("masked_node_inds[internal_node_inds]", masked_node_inds[internal_node_inds])
     diags = diags.at[masked_node_inds[internal_node_inds]].add(delta_t * voltage_terms)
 
     # Build solves.
@@ -297,13 +293,14 @@ def voltage_vectorfield(
     voltages,
     voltage_terms,
     constant_terms,
-    coupling_conds_upper,
-    coupling_conds_lower,
-    summed_coupling_conds,
     branchpoint_conds_children,
     branchpoint_conds_parents,
     branchpoint_weights_children,
     branchpoint_weights_parents,
+    types,
+    sources,
+    sinks,
+    axial_conductances,
     par_inds,
     child_inds,
     nbranches,
@@ -316,22 +313,39 @@ def voltage_vectorfield(
     debug_states,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
-    # Membrane current update.
-    vecfield = -voltage_terms * voltages + constant_terms
-
-    # Current through segments within the same branch.
-    vecfield = vecfield.at[:, :-1].add(
-        (voltages[:, 1:] - voltages[:, :-1]) * coupling_conds_upper
-    )
-    vecfield = vecfield.at[:, 1:].add(
-        (voltages[:, :-1] - voltages[:, 1:]) * coupling_conds_lower
-    )
-
     # Current through branch points.
     if len(branchpoint_conds_children) > 0:
         raise NotImplementedError(
             f"Forward Euler is not implemented for branched morphologies."
         )
+
+    # Membrane current update.
+    vecfield = -voltage_terms * voltages + constant_terms
+
+    # Build upper and lower within the branch.
+    c2c = types == 0  # c2c = compartment-to-compartment.
+
+    # Build uppers.
+    upper_inds = sources[c2c] > sinks[c2c]
+    if len(upper_inds) > 0:
+        uppers = axial_conductances[c2c][upper_inds]
+    else:
+        uppers = jnp.asarray([])
+
+    # Build lowers.
+    lower_inds = sources[c2c] < sinks[c2c]
+    if len(lower_inds) > 0:
+        lowers = axial_conductances[c2c][lower_inds]
+    else:
+        lowers = jnp.asarray([])
+
+    # For networks consisting of branches.
+    uppers = jnp.reshape(uppers, (nbranches, -1))
+    lowers = jnp.reshape(lowers, (nbranches, -1))
+
+    # Current through segments within the same branch.
+    vecfield = vecfield.at[:, :-1].add((voltages[:, 1:] - voltages[:, :-1]) * uppers)
+    vecfield = vecfield.at[:, 1:].add((voltages[:, :-1] - voltages[:, 1:]) * lowers)
 
     return vecfield
 

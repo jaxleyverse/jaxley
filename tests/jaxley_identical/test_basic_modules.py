@@ -122,6 +122,44 @@ def test_branch(voltage_solver: str):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
+def test_branch_fwd_euler_uneven_radiuses():
+    dt = 0.025  # ms
+    t_max = 10.0  # ms
+    current = jx.step_current(0.5, 1.0, 2.0, dt, t_max)
+
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 8)
+    branch.set("axial_resistivity", 500.0)
+
+    rands1 = np.linspace(20, 300, 8)
+    rands2 = np.linspace(1, 5, 8)
+    branch.set("length", rands1)
+    branch.set("radius", rands2)
+
+    branch.insert(HH())
+    branch.loc(1.0).stimulate(current)
+    branch.loc(0.0).record()
+
+    voltages = jx.integrate(branch, delta_t=dt, solver="fwd_euler")
+
+    voltages_240920 = jnp.asarray(
+        [
+            -70.0,
+            -64.319374,
+            -61.61975,
+            -56.971237,
+            25.785686,
+            -42.466354,
+            -75.86178,
+            -75.06558,
+            -73.95041,
+        ]
+    )
+    tolerance = 1e-5
+    max_error = jnp.max(jnp.abs(voltages_240920 - voltages[0, ::50]))
+    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+
+
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_cell(voltage_solver: str):
     nseg_per_branch = 2
