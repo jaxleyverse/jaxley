@@ -17,12 +17,11 @@ from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
-    comp_edges_to_indices,
     compute_children_and_parents,
     convert_point_process_to_distributed,
     merge_cells,
-    remap_index_to_masked,
 )
+from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
 from jaxley.utils.syn_utils import gather_synapes
 
 

@@ -13,15 +13,14 @@ from jaxley.modules.branch import Branch, BranchView, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
-    comp_edges_to_indices,
     compute_children_and_parents,
     compute_children_in_level,
     compute_children_indices,
     compute_levels,
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
-    remap_index_to_masked,
 )
+from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
 from jaxley.utils.swc import swc_to_jaxley
 
 

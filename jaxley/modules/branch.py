@@ -10,7 +10,8 @@ import pandas as pd
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
-from jaxley.utils.cell_utils import comp_edges_to_indices, compute_children_and_parents
+from jaxley.utils.cell_utils import compute_children_and_parents
+from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
 class Branch(Module):

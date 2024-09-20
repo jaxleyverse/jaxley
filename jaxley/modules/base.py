@@ -26,7 +26,6 @@ from jaxley.utils.cell_utils import (
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
-    convert_to_csc,
     interpolate_xyz,
     loc_of_index,
     query_channel_states_and_params,
@@ -35,6 +34,7 @@ from jaxley.utils.cell_utils import (
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
 from jaxley.utils.plot_utils import plot_morph
+from jaxley.utils.solver_utils import convert_to_csc
 
 
 class Module(ABC):

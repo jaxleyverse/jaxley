@@ -10,12 +10,12 @@ from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import (
-    comp_edges_to_indices,
     compute_children_and_parents,
     index_of_loc,
     interpolate_xyz,
     loc_of_index,
 )
+from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
 class Compartment(Module):
