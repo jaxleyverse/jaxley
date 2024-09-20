@@ -1,15 +1,12 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import time
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
-from jax.lax import ScatterDimensionNumbers, scatter_add
 
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.branch import Branch, BranchView, Compartment
@@ -17,19 +14,13 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     comp_edges_to_indices,
-    compute_axial_conductances,
     compute_children_and_parents,
     compute_children_in_level,
     compute_children_indices,
-    compute_coupling_cond,
-    compute_coupling_cond_branchpoint,
-    compute_impact_on_node,
     compute_levels,
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
-    loc_of_index,
     remap_index_to_masked,
-    remap_to_consecutive,
 )
 from jaxley.utils.swc import swc_to_jaxley
 
@@ -159,7 +150,7 @@ class Cell(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         """Initialize morphology for the custom sparse solver.
 
         Running this function is only required for custom Jaxley solvers, i.e., for
@@ -274,68 +265,8 @@ class Cell(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-    def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances."""
-        axial_resistivity = params["axial_resistivity"]
-        radiuses = params["radius"]
-        lengths = params["length"]
-
-        nsegs = jnp.concatenate(
-            [
-                jnp.asarray([0]),
-                jnp.cumsum(self.nseg_per_branch),
-            ]
-        )
-
-        child_comp_ind = nsegs[self.child_inds]
-        par_comp_ind = nsegs[self.par_inds + 1] - 1
-
-        # The conductance from the children to the branch point.
-        branchpoint_conds_children = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[child_comp_ind],
-            axial_resistivity[child_comp_ind],
-            lengths[child_comp_ind],
-        )
-        # The conductance from the parents to the branch point.
-        branchpoint_conds_parents = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[par_comp_ind],
-            axial_resistivity[par_comp_ind],
-            lengths[par_comp_ind],
-        )
-
-        # Weights with which the compartments influence their nearby node.
-        # The impact of the children on the branch point.
-        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[child_comp_ind],
-            axial_resistivity[child_comp_ind],
-            lengths[child_comp_ind],
-        )
-        # The impact of parents on the branch point.
-        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[par_comp_ind],
-            axial_resistivity[par_comp_ind],
-            lengths[par_comp_ind],
-        )
-
-        cond_params = {
-            "branchpoint_conds_children": branchpoint_conds_children,
-            "branchpoint_conds_parents": branchpoint_conds_parents,
-            "branchpoint_weights_children": branchpoint_weights_children,
-            "branchpoint_weights_parents": branchpoint_weights_parents,
-        }
-        return cond_params
-
-    def _init_conds_jax_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given length, radius, and r_a, set the coupling conductances."""
-        conds = compute_axial_conductances(self._comp_edges, params)
-        return {"axial_conductances": conds}
-
     @staticmethod
-    def update_summed_coupling_conds_custom_spsolve(
+    def update_summed_coupling_conds_jaxley_spsolve(
         summed_conds,
         child_inds,
         par_inds,

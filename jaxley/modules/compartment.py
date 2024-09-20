@@ -66,7 +66,7 @@ class Compartment(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         self.branchpoint_group_inds = np.asarray([]).astype(int)
         self.root_inds = jnp.asarray([0])
         self._remapped_node_indices = self._internal_node_inds
@@ -92,18 +92,10 @@ class Compartment(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-    def _init_conds_custom_spsolve(self, params):
-        return {
-            "branchpoint_conds_children": jnp.asarray([]),
-            "branchpoint_conds_parents": jnp.asarray([]),
-            "branchpoint_weights_children": jnp.asarray([]),
-            "branchpoint_weights_parents": jnp.asarray([]),
-            "branch_uppers": jnp.asarray([]),
-            "branch_lowers": jnp.asarray([]),
-            "branch_diags": jnp.asarray([0.0]),
-        }
+    def init_conds(self, params: Dict[str, jnp.ndarray]):
+        """Override `Base.init_axial_conds()`.
 
-    def _init_conds_jax_spsolve(self, params):
+        This is because compartments do not have any axial conductances."""
         return {"axial_conductances": jnp.asarray([])}
 
 

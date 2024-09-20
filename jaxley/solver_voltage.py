@@ -17,19 +17,14 @@ def step_voltage_explicit(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    branchpoint_conds_children: jnp.ndarray,
-    branchpoint_conds_parents: jnp.ndarray,
-    branchpoint_weights_children: jnp.ndarray,
-    branchpoint_weights_parents: jnp.ndarray,
-    axial_conductances,
-    sources,
-    sinks,
-    types,
-    internal_node_inds,
-    masked_node_inds,
-    n_nodes,
-    nseg_per_branch,
-    nseg,
+    axial_conductances: jnp.ndarray,
+    internal_node_inds: jnp.ndarray,
+    sinks: jnp.ndarray,
+    sources: jnp.ndarray,
+    types: jnp.ndarray,
+    masked_node_inds: jnp.ndarray,
+    nseg_per_branch: jnp.ndarray,
+    nseg: int,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -46,14 +41,10 @@ def step_voltage_explicit(
     voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
     constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
 
-    update = voltage_vectorfield(
+    update = _voltage_vectorfield(
         voltages,
         voltage_terms,
         constant_terms,
-        branchpoint_conds_children,
-        branchpoint_conds_parents,
-        branchpoint_weights_children,
-        branchpoint_weights_parents,
         types,
         sources,
         sinks,
@@ -73,23 +64,18 @@ def step_voltage_explicit(
     return new_voltates.ravel(order="C")
 
 
-def step_voltage_implicit_with_custom_spsolve(
+def step_voltage_implicit_with_jaxley_spsolve(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    branchpoint_conds_children: jnp.ndarray,
-    branchpoint_conds_parents: jnp.ndarray,
-    branchpoint_weights_children: jnp.ndarray,
-    branchpoint_weights_parents: jnp.ndarray,
-    axial_conductances,
-    sources,
-    sinks,
-    types,
-    internal_node_inds,
-    masked_node_inds,
-    n_nodes,
-    nseg_per_branch,
-    nseg,
+    axial_conductances: jnp.ndarray,
+    internal_node_inds: jnp.ndarray,
+    sinks: jnp.ndarray,
+    sources: jnp.ndarray,
+    types: jnp.ndarray,
+    masked_node_inds: jnp.ndarray,
+    nseg_per_branch: jnp.ndarray,
+    nseg: int,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -151,6 +137,11 @@ def step_voltage_implicit_with_custom_spsolve(
     uppers = uppers[:, :-1]
     lowers = lowers[:, 1:]
 
+    # Build branchpoint conductances.
+    branchpoint_conds_parents = axial_conductances[types == 1]
+    branchpoint_conds_children = axial_conductances[types == 2]
+    branchpoint_weights_parents = axial_conductances[types == 3]
+    branchpoint_weights_children = axial_conductances[types == 4]
     all_branchpoint_vals = jnp.concatenate(
         [branchpoint_weights_parents, branchpoint_weights_children]
     )
@@ -259,24 +250,22 @@ def step_voltage_implicit_with_jax_spsolve(
     n_nodes,
     internal_node_inds,
 ):
+    axial_conductances = delta_t * axial_conductances
+
     # Build diagonals.
     diagonal_values = jnp.zeros(n_nodes)
 
     # if-case needed because `.at` does not allow empty inputs, but the input is
     # empty for compartments.
     if len(sinks) > 0:
-        diagonal_values = diagonal_values.at[sinks].add(delta_t * axial_conductances)
+        diagonal_values = diagonal_values.at[sinks].add(axial_conductances)
 
     diagonal_values = diagonal_values.at[internal_node_inds].add(
-        delta_t * voltage_terms
+        1.0 + delta_t * voltage_terms
     )
-    diagonal_values = diagonal_values.at[internal_node_inds].add(1.0)
 
-    # Build off-diagonals.
-    axial_conductances = -delta_t * axial_conductances
-
-    # Concatenate diagonals and off-diagonals.
-    all_values = jnp.concatenate([diagonal_values, axial_conductances])
+    # Concatenate diagonals and off-diagonals (which are just `-axial_conductances`).
+    all_values = jnp.concatenate([diagonal_values, -axial_conductances])
 
     # Build solve.
     solves = jnp.zeros(n_nodes)
@@ -289,32 +278,27 @@ def step_voltage_implicit_with_jax_spsolve(
     return solution
 
 
-def voltage_vectorfield(
-    voltages,
-    voltage_terms,
-    constant_terms,
-    branchpoint_conds_children,
-    branchpoint_conds_parents,
-    branchpoint_weights_children,
-    branchpoint_weights_parents,
-    types,
-    sources,
-    sinks,
-    axial_conductances,
-    par_inds,
-    child_inds,
-    nbranches,
-    solver,
-    delta_t,
-    children_in_level,
-    parents_in_level,
-    root_inds,
-    branchpoint_group_inds,
+def _voltage_vectorfield(
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    types: jnp.ndarray,
+    sources: jnp.ndarray,
+    sinks: jnp.ndarray,
+    axial_conductances: jnp.ndarray,
+    par_inds: jnp.ndarray,
+    child_inds: jnp.ndarray,
+    nbranches: int,
+    solver: str,
+    delta_t: float,
+    children_in_level: List[jnp.ndarray],
+    parents_in_level: List[jnp.ndarray],
+    root_inds: jnp.ndarray,
+    branchpoint_group_inds: jnp.ndarray,
     debug_states,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
-    # Current through branch points.
-    if len(branchpoint_conds_children) > 0:
+    if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
         raise NotImplementedError(
             f"Forward Euler is not implemented for branched morphologies."
         )

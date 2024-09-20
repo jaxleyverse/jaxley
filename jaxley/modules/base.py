@@ -7,7 +7,6 @@ from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
-import networkx as nx
 import numpy as np
 import pandas as pd
 from jax import jit, vmap
@@ -17,13 +16,14 @@ from matplotlib.axes import Axes
 from jaxley.channels import Channel
 from jaxley.solver_voltage import (
     step_voltage_explicit,
-    step_voltage_implicit_with_custom_spsolve,
     step_voltage_implicit_with_jax_spsolve,
+    step_voltage_implicit_with_jaxley_spsolve,
 )
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
+    compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
     convert_to_csc,
@@ -258,7 +258,7 @@ class Module(ABC):
 
     def init_morph(self):
         """Initialize the morphology such that it can be processed by the solvers."""
-        self._init_morph_custom_spsolve()
+        self._init_morph_jaxley_spsolve()
         self._init_morph_jax_spsolve()
         self.initialized_morph = True
 
@@ -268,40 +268,13 @@ class Module(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         """Initialize the morphology for the custom Jaxley solver."""
         raise NotImplementedError
 
-    def init_conds(self, params: Dict, voltage_solver: str):
+    def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
         """Given radius, length, r_a, compute the axial coupling conductances."""
-        if voltage_solver.startswith("jaxley"):
-            all_conds = self._init_conds_custom_spsolve(params)
-            conds = self._init_conds_jax_spsolve(params)
-            for key in conds.keys():
-                all_conds[key] = conds[key]
-            return all_conds
-        else:
-            return self._init_conds_jax_spsolve(params)
-
-    @abstractmethod
-    def _init_conds_jax_spsolve(self, params: Dict):
-        """Initialize coupling conductances.
-
-        Args:
-            params: Conductances and morphology parameters, not yet including
-                coupling conductances.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _init_conds_custom_spsolve(self, params: Dict):
-        """Initialize coupling conductances.
-
-        Args:
-            params: Conductances and morphology parameters, not yet including
-                coupling conductances.
-        """
-        raise NotImplementedError
+        return compute_axial_conductances(self._comp_edges, params)
 
     def _append_channel_to_nodes(self, view: pd.DataFrame, channel: "jx.Channel"):
         """Adds channel nodes from constituents to `self.channel_nodes`."""
@@ -529,9 +502,9 @@ class Module(ABC):
     ) -> Dict[str, jnp.ndarray]:
         """Return all parameters (and coupling conductances) needed to simulate.
 
-        Runs `init_conds()` and return every parameter that is needed to solve the ODE.
-        This includes conductances, radiuses, lengths, axial_resistivities, but also
-        coupling conductances.
+        Runs `_compute_axial_conductances()` and return every parameter that is needed
+        to solve the ODE. This includes conductances, radiuses, lengths,
+        axial_resistivities, but also coupling conductances.
 
         This is done by first obtaining the current value of every parameter (not only
         the trainable ones) and then replacing the trainable ones with the value
@@ -580,11 +553,8 @@ class Module(ABC):
                 # `.set()` to work. This is done with `[:, None]`.
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
-        # Compute conductance params and append them.
-        cond_params = self.init_conds(params=params, voltage_solver=voltage_solver)
-        for key in cond_params:
-            params[key] = cond_params[key]
-
+        # Compute conductance params and add them to the params dictionary.
+        params["axial_conductances"] = self._compute_axial_conductances(params=params)
         return params
 
     def get_states_from_nodes_and_edges(self):
@@ -967,19 +937,26 @@ class Module(ABC):
         # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
 
+        # Arguments used by all solvers.
+        solver_kwargs = {
+            "voltages": voltages,
+            "voltage_terms": (v_terms + syn_v_terms) / cm,
+            "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
+            "axial_conductances": params["axial_conductances"],
+            "internal_node_inds": self._internal_node_inds,
+        }
+
+        # Add solver specific arguments.
         if voltage_solver == "jax.sparse":
-            solver_kwargs = {
-                "voltages": voltages,
-                "voltage_terms": (v_terms + syn_v_terms) / cm,
-                "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-                "axial_conductances": params["axial_conductances"],
-                "data_inds": self._data_inds,
-                "indices": self._indices_jax_spsolve,
-                "indptr": self._indptr_jax_spsolve,
-                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "n_nodes": self._n_nodes,
-                "internal_node_inds": self._internal_node_inds,
-            }
+            solver_kwargs.update(
+                {
+                    "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                    "data_inds": self._data_inds,
+                    "indices": self._indices_jax_spsolve,
+                    "indptr": self._indptr_jax_spsolve,
+                    "n_nodes": self._n_nodes,
+                }
+            )
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
         else:
@@ -989,35 +966,27 @@ class Module(ABC):
             # Currently, the forward Euler solver also uses this format. However,
             # this is only for historical reasons and we are planning to change this in
             # the future.
-            solver_kwargs = {
-                "voltages": voltages,
-                "voltage_terms": (v_terms + syn_v_terms) / cm,
-                "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-                "branchpoint_conds_children": params["branchpoint_conds_children"],
-                "branchpoint_conds_parents": params["branchpoint_conds_parents"],
-                "branchpoint_weights_children": params["branchpoint_weights_children"],
-                "branchpoint_weights_parents": params["branchpoint_weights_parents"],
-                "axial_conductances": params["axial_conductances"],
-                "sources": np.asarray(self._comp_edges["source"].to_list()),
-                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "types": np.asarray(self._comp_edges["type"].to_list()),
-                "internal_node_inds": self._internal_node_inds,
-                "masked_node_inds": self._remapped_node_indices,
-                "n_nodes": self._n_nodes,
-                "nseg_per_branch": self.nseg_per_branch,
-                "nseg": self.nseg,
-                "par_inds": self.par_inds,
-                "child_inds": self.child_inds,
-                "nbranches": self.total_nbranches,
-                "solver": voltage_solver,
-                "children_in_level": self.children_in_level,
-                "parents_in_level": self.parents_in_level,
-                "root_inds": self.root_inds,
-                "branchpoint_group_inds": self.branchpoint_group_inds,
-                "debug_states": self.debug_states,
-            }
+            solver_kwargs.update(
+                {
+                    "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                    "sources": np.asarray(self._comp_edges["source"].to_list()),
+                    "types": np.asarray(self._comp_edges["type"].to_list()),
+                    "masked_node_inds": self._remapped_node_indices,
+                    "nseg_per_branch": self.nseg_per_branch,
+                    "nseg": self.nseg,
+                    "par_inds": self.par_inds,
+                    "child_inds": self.child_inds,
+                    "nbranches": self.total_nbranches,
+                    "solver": voltage_solver,
+                    "children_in_level": self.children_in_level,
+                    "parents_in_level": self.parents_in_level,
+                    "root_inds": self.root_inds,
+                    "branchpoint_group_inds": self.branchpoint_group_inds,
+                    "debug_states": self.debug_states,
+                }
+            )
             # Only for `bwd_euler` and `cranck-nicolson`.
-            step_voltage_implicit = step_voltage_implicit_with_custom_spsolve
+            step_voltage_implicit = step_voltage_implicit_with_jaxley_spsolve
 
         if solver == "bwd_euler":
             u["v"] = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)

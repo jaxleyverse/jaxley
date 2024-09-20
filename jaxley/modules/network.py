@@ -18,15 +18,10 @@ from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     comp_edges_to_indices,
-    compute_axial_conductances,
     compute_children_and_parents,
-    compute_coupling_cond,
-    compute_coupling_cond_branchpoint,
-    compute_impact_on_node,
     convert_point_process_to_distributed,
     merge_cells,
     remap_index_to_masked,
-    remap_to_consecutive,
 )
 from jaxley.utils.syn_utils import gather_synapes
 
@@ -137,7 +132,7 @@ class Network(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
-    def _init_morph_custom_spsolve(self):
+    def _init_morph_jaxley_spsolve(self):
         self.branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
@@ -252,81 +247,6 @@ class Network(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-    def _init_conds_custom_spsolve(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances.
-        
-        TODO: This will still break!!! Merge with Cell.
-        """
-        nbranches = self.total_nbranches
-        nseg = self.nseg
-        parents = self.comb_parents
-
-        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
-        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(params["length"], (nbranches, nseg))
-
-        conds = vmap(Branch.init_branch_conds_custom_spsolve, in_axes=(0, 0, 0, None))(
-            axial_resistivity, radiuses, lengths, self.nseg
-        )
-        coupling_conds_fwd = conds[0]
-        coupling_conds_bwd = conds[1]
-        summed_coupling_conds = conds[2]
-
-        # The conductance from the children to the branch point.
-        branchpoint_conds_children = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The conductance from the parents to the branch point.
-        branchpoint_conds_parents = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        # Weights with which the compartments influence their nearby node.
-        # The impact of the children on the branch point.
-        branchpoint_weights_children = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The impact of parents on the branch point.
-        branchpoint_weights_parents = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
-        )
-
-        summed_coupling_conds = Cell.update_summed_coupling_conds_custom_spsolve(
-            summed_coupling_conds,
-            self.child_inds,
-            self.par_inds,
-            branchpoint_conds_children,
-            branchpoint_conds_parents,
-        )
-
-        cond_params = {
-            "branch_uppers": coupling_conds_bwd,
-            "branch_lowers": coupling_conds_fwd,
-            "branch_diags": summed_coupling_conds,
-            "branchpoint_conds_children": branchpoint_conds_children,
-            "branchpoint_conds_parents": branchpoint_conds_parents,
-            "branchpoint_weights_children": branchpoint_weights_children,
-            "branchpoint_weights_parents": branchpoint_weights_parents,
-        }
-        return cond_params
-
-    def _init_conds_jax_spsolve(self, params: Dict):
-        """Given length, radius, and r_a, set the coupling conductances."""
-        conds = compute_axial_conductances(self._comp_edges, params)
-        return {"axial_conductances": conds}
 
     def init_syns(self):
         """Initialize synapses."""
