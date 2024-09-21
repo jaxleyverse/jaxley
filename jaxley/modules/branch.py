@@ -3,6 +3,7 @@
 
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 import jax.numpy as jnp
 import numpy as np
@@ -113,6 +114,64 @@ class Branch(Module):
         else:
             raise KeyError(f"Key {key} not recognized.")
 
+    def set_ncomp(self, ncomp: int):
+        """Set the number of compartments with which the branch is discretized."""
+        radius_generating_functions = lambda x: 0.5
+        within_branch_radiuses = self.nodes["radius"]
+
+        if ~np.all_equal(within_branch_radiuses) and radius_generating_functions is None:
+            warn(
+                f"You previously modified the radius of individual compartments, but now"
+                f"you are modifying the number of compartments in this branch. We are"
+                f"resetting every radius in this branch to 1um. To avoid this, first"
+                f"set the number of compartments in every branch and then modify their radius."
+            )
+            within_branch_radiuses = 1.0 * np.ones_like(within_branch_radiuses)
+
+        if ~np.all_equal(within_branch_lengths):
+            warn(
+                f"You previously modified the length of individual compartments, but now"
+                f"you are modifying the number of compartments in this branch. We are"
+                f"now assuming that the lenght of every compartment in this branch is equal,"
+                f"such that the branch has the same length as with the old number of compartments."
+                f"To avoid this, first set the number of compartments in every branch and then modify their radius."
+            )
+
+        # Compute new compartment lengths.
+        comp_lengths = np.sum(compartment_lengths) / ncomp
+        
+        # Compute new compartment radiuses.
+        if radius_generating_functions is not None:
+            comp_radiuses = radius_generating_functions(np.linspace(0, 1, ncomps))
+        else:
+            comp_radiuses = within_branch_radiuses
+
+        # Add new row as the average of all rows.
+        df = self.nodes
+        average_row = df.mean(skipna=False)
+        average_row = average_row.to_frame().T
+        df = pd.concat([df, average_row], axis="rows")
+
+        # Set the correct datatype after having performed an average which cast
+        # everything to float.
+        integer_cols = ["comp_index", "branch_index", "cell_index"]
+        df[integer_cols] = df[integer_cols].astype(int)
+
+        # Update the comp_index, branch_index, cell_index.
+        # TODO.
+
+        # Special treatment for channels. Channels will only be added to the new nseg
+        # if **all** other segments in the branch also had that channel.
+        channel_cols = ["HH"]
+        df[channel_cols] = np.floor(df[channel_cols]).astype(bool)
+
+        # Special treatment for the lengths.
+        df["length"] = comp_lengths
+
+        # Special treatment for the radiuses.
+        df["radius"] = comp_radiuses
+
+        
     def _init_morph_jaxley_spsolve(self):
         self.branchpoint_group_inds = np.asarray([]).astype(int)
         self.root_inds = jnp.asarray([0])
