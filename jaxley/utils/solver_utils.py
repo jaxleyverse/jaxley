@@ -14,7 +14,10 @@ def remap_index_to_masked(
     """Convert actual index of the compartment to the index in the masked system.
 
     E.g. if `nsegs = [2, 4]`, then the index `3` would be mapped to `5` because the
-    masked `nsegs` are `[4, 4]`.
+    masked `nsegs` are `[4, 4]`. I.e.:
+
+    original: [0, 1,           2, 3, 4, 5]
+    masked:   [0, 1, (2) ,(3) ,4, 5, 6, 7]
     """
     cumsum_nseg_per_branch = jnp.concatenate(
         [

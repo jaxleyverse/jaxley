@@ -202,7 +202,7 @@ class Network(Module):
             self._cumsum_nseg_per_cell, self.cumsum_nbranchpoints_per_cell, self.cells
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
-            condition = np.isin(cell._comp_edges["type"].to_numpy(), [1, 2])
+            condition = cell._comp_edges["type"].isin([1, 2])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
                 [
@@ -222,7 +222,7 @@ class Network(Module):
             self._cumsum_nseg_per_cell, self.cumsum_nbranchpoints_per_cell, self.cells
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
-            condition = np.isin(cell._comp_edges["type"].to_numpy(), [3, 4])
+            condition = cell._comp_edges["type"].isin([3, 4])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
                 [
