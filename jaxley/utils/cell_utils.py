@@ -438,7 +438,7 @@ def compute_axial_conductances(
         conds_c2c = jnp.asarray([])
 
     # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
-    condition = np.isin(comp_edges["type"].to_numpy(), [1, 2])
+    condition = comp_edges["type"].isin([1, 2])
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
     if len(sink_comp_inds) > 0:
@@ -454,7 +454,7 @@ def compute_axial_conductances(
         conds_bp2c = jnp.asarray([])
 
     # `compartment-to-branchpoint` (c2bp) axial coupling conductances.
-    condition = np.isin(comp_edges["type"].to_numpy(), [3, 4])
+    condition = comp_edges["type"].isin([3, 4])
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
 
     if len(source_comp_inds) > 0:

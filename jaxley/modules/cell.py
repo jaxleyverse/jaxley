@@ -179,7 +179,7 @@ class Cell(Module):
         )
         self.root_inds = jnp.asarray([0])
 
-        # Generate mapping to dealing with the masking which allows using the custom
+        # Generate mapping to deal with the masking which allows using the custom
         # sparse solver to deal with different nseg per branch.
         self._remapped_node_indices = remap_index_to_masked(
             self._internal_node_inds,
