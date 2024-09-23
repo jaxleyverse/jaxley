@@ -412,20 +412,27 @@ def query_channel_states_and_params(d, keys, idcs):
 def compute_axial_conductances(
     comp_edges: pd.DataFrame, params: Dict[str, jnp.ndarray]
 ) -> jnp.ndarray:
-    """Given `comp_edges`, radius, length, r_a, compute the axial conductances."""
+    """Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.
+
+    Note that the resulting axial conductances will already by divided by the
+    capacitance `cm`.
+    """
     # `Compartment-to-compartment` (c2c) axial coupling conductances.
     condition = comp_edges["type"].to_numpy() == 0
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
     if len(sink_comp_inds) > 0:
-        conds_c2c = vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
-            params["radius"][sink_comp_inds],
-            params["radius"][source_comp_inds],
-            params["axial_resistivity"][sink_comp_inds],
-            params["axial_resistivity"][source_comp_inds],
-            params["length"][sink_comp_inds],
-            params["length"][source_comp_inds],
+        conds_c2c = (
+            vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
+                params["radius"][sink_comp_inds],
+                params["radius"][source_comp_inds],
+                params["axial_resistivity"][sink_comp_inds],
+                params["axial_resistivity"][source_comp_inds],
+                params["length"][sink_comp_inds],
+                params["length"][source_comp_inds],
+            )
+            / params["capacitance"][sink_comp_inds]
         )
     else:
         conds_c2c = jnp.asarray([])
@@ -435,10 +442,13 @@ def compute_axial_conductances(
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
     if len(sink_comp_inds) > 0:
-        conds_bp2c = vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
-            params["radius"][sink_comp_inds],
-            params["axial_resistivity"][sink_comp_inds],
-            params["length"][sink_comp_inds],
+        conds_bp2c = (
+            vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
+                params["radius"][sink_comp_inds],
+                params["axial_resistivity"][sink_comp_inds],
+                params["length"][sink_comp_inds],
+            )
+            / params["capacitance"][sink_comp_inds]
         )
     else:
         conds_bp2c = jnp.asarray([])
