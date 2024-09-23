@@ -1046,7 +1046,12 @@ class Module(ABC):
         indices = channel_nodes["comp_index"].to_numpy()
         for channel in channels:
             channel_param_names = list(channel.channel_params)
-            channel_param_names += ["radius", "length", "axial_resistivity"]
+            channel_param_names += [
+                "radius",
+                "length",
+                "axial_resistivity",
+                "capacitance",
+            ]
             channel_state_names = list(channel.channel_states)
             channel_state_names += self.membrane_current_names
             channel_indices = indices[channel_nodes[channel._name].astype(bool)]

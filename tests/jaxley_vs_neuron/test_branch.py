@@ -54,6 +54,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
 
     branch.set("length", 10.0)
     branch.set("axial_resistivity", 1_000.0)
+    branch.set("capacitance", 5.0)
 
     branch.set("HH_gNa", 0.120)
     branch.set("HH_gK", 0.036)
@@ -90,6 +91,7 @@ def _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver):
     branch.nseg = nseg_per_branch
     branch.Ra = 1_000.0
     branch.L = 10.0 * nseg_per_branch
+    branch.cm = 5.0
 
     radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
     for i, comp in enumerate(branch):
@@ -163,13 +165,18 @@ def test_similarity_complex(solver):
         0.9684275792140471,
         0.8000000119209283,
     ]
-    voltages_jaxley = _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver)
-    voltages_neuron = _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver)
+    capacitances = np.linspace(1.0, 10.0, 16)
+    voltages_jaxley = _jaxley_complex(
+        i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solver
+    )
+    voltages_neuron = _neuron_complex(
+        i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solver
+    )
 
     assert np.mean(np.abs(voltages_jaxley - voltages_neuron)) < 0.05
 
 
-def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver):
+def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solver):
     nseg = 16
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg)
@@ -196,9 +203,8 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver):
     counter = 0
     for loc in np.linspace(0, 1, nseg):
         branch.loc(loc).set("radius", diams[counter] / 2)
+        branch.loc(loc).set("capacitance", capacitances[counter])
         counter += 1
-
-    branch = branch
 
     # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for jaxley.
     branch.loc(0.02).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
@@ -210,7 +216,7 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver):
     return s
 
 
-def _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver):
+def _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solver):
     if solver == "bwd_euler":
         h.secondorder = 0
     elif solver == "crank_nicolson":
@@ -246,6 +252,7 @@ def _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams, solver):
 
         for i, seg in enumerate(sec):
             seg.diam = diams[counter]
+            seg.cm = capacitances[counter]
             counter += 1
 
     # 0.05 is fine here because nseg=8, but nseg=16 for jaxley.

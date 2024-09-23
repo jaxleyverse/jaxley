@@ -49,6 +49,7 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
     cell.set("radius", 5.0)
     cell.set("length", 10.0)
     cell.set("axial_resistivity", 1_000.0)
+    cell.set("capacitance", 7.0)
 
     cell.set("HH_gNa", 0.120)
     cell.set("HH_gK", 0.036)
@@ -94,6 +95,7 @@ def _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver):
         sec.Ra = 1_000.0
         sec.L = 10.0 * nseg_per_branch
         sec.diam = 2 * 5.0
+        sec.cm = 7.0
 
         sec.insert("hh")
         sec.gnabar_hh = 0.120  # S/cm2
@@ -160,6 +162,8 @@ def _run_jaxley_unequal_ncomp(i_delay, i_dur, i_amp, dt, t_max):
     cell.set("radius", 5.0)
     cell.set("length", 20.0)
     cell.set("axial_resistivity", 1_000.0)
+    cell.branch(1).set("capacitance", 10.0)
+    cell.branch(3).set("capacitance", 20.0)
 
     cell.set("HH_gNa", 0.120)
     cell.set("HH_gK", 0.036)
@@ -211,6 +215,11 @@ def _run_neuron_unequal_ncomp(i_delay, i_dur, i_amp, dt, t_max):
         sec.ena = 50  # mV
         sec.ek = -77.0  # mV
         sec.el_hh = -54.3  # mV
+
+        if i == 1:
+            sec.cm = 10.0
+        if i == 3:
+            sec.cm = 20.0
 
     stim = h.IClamp(branch2(0.6))  # The second out of two.
     stim.delay = i_delay
