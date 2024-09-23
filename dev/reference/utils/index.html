@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.35">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.36">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.35f28582.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.06209087.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -756,15 +756,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils.comp_edges_to_indices" class="md-nav__link">
-    <span class="md-ellipsis">
-      comp_edges_to_indices
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#jaxley.utils.cell_utils.compute_axial_conductances" class="md-nav__link">
     <span class="md-ellipsis">
       compute_axial_conductances
@@ -831,15 +822,6 @@
   <a href="#jaxley.utils.cell_utils.convert_point_process_to_distributed" class="md-nav__link">
     <span class="md-ellipsis">
       convert_point_process_to_distributed
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils.convert_to_csc" class="md-nav__link">
-    <span class="md-ellipsis">
-      convert_to_csc
     </span>
   </a>
   
@@ -1106,15 +1088,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils.comp_edges_to_indices" class="md-nav__link">
-    <span class="md-ellipsis">
-      comp_edges_to_indices
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#jaxley.utils.cell_utils.compute_axial_conductances" class="md-nav__link">
     <span class="md-ellipsis">
       compute_axial_conductances
@@ -1181,15 +1154,6 @@
   <a href="#jaxley.utils.cell_utils.convert_point_process_to_distributed" class="md-nav__link">
     <span class="md-ellipsis">
       convert_point_process_to_distributed
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils.convert_to_csc" class="md-nav__link">
-    <span class="md-ellipsis">
-      convert_to_csc
     </span>
   </a>
   
@@ -1408,92 +1372,54 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="jaxley.utils.cell_utils.comp_edges_to_indices" class="doc doc-heading">
-            <code class=" language-python"><span class="n">comp_edges_to_indices</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">)</span></code>
+<h3 id="jaxley.utils.cell_utils.compute_axial_conductances" class="doc doc-heading">
+            <code class=" language-python"><span class="n">compute_axial_conductances</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
 
-<a href="#jaxley.utils.cell_utils.comp_edges_to_indices" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#jaxley.utils.cell_utils.compute_axial_conductances" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Generates sparse matrix indices from the table of node edges.</p>
-<p>This is only used for the <code>jax.sparse</code> voltage solver.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td><code>comp_edges</code></td>
-            <td>
-                  <code><span title="pandas.DataFrame">DataFrame</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Dataframe with three columns (sink, source, type).</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-<th>Name</th>          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-<td><code>n_nodes</code></td>            <td>
-                  <code>int</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The number of total nodes (including branchpoints).</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-<td><code>data_inds</code></td>            <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The indices to reorder the data.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-<td></td>            <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>indices and indptr: Indices passed to the sparse matrix solver.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <p>Given <code>comp_edges</code>, radius, length, r_a, cm, compute the axial conductances.</p>
+<p>Note that the resulting axial conductances will already by divided by the
+capacitance <code>cm</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">445</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
 <span class="normal">446</span>
 <span class="normal">447</span>
 <span class="normal">448</span>
@@ -1521,147 +1447,52 @@
 <span class="normal">470</span>
 <span class="normal">471</span>
 <span class="normal">472</span>
-<span class="normal">473</span>
-<span class="normal">474</span>
-<span class="normal">475</span>
-<span class="normal">476</span>
-<span class="normal">477</span>
-<span class="normal">478</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">comp_edges_to_indices</span><span class="p">(</span>
-    <span class="n">comp_edges</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates sparse matrix indices from the table of node edges.</span>
-
-<span class="sd">    This is only used for the `jax.sparse` voltage solver.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        comp_edges: Dataframe with three columns (sink, source, type).</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        n_nodes: The number of total nodes (including branchpoints).</span>
-<span class="sd">        data_inds: The indices to reorder the data.</span>
-<span class="sd">        indices and indptr: Indices passed to the sparse matrix solver.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Build indices for diagonals.</span>
-    <span class="n">sources</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
-    <span class="n">sinks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;sink&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
-    <span class="n">n_nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sinks</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sinks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span>
-    <span class="n">diagonal_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_nodes</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_nodes</span><span class="p">)])</span>
-
-    <span class="c1"># Build indices for off-diagonals.</span>
-    <span class="n">off_diagonal_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">sources</span><span class="p">,</span> <span class="n">sinks</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-
-    <span class="c1"># Concatenate indices of diagonals and off-diagonals.</span>
-    <span class="n">all_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">diagonal_inds</span><span class="p">,</span> <span class="n">off_diagonal_inds</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="c1"># Cast (row, col) indices to the format required for the `jax` sparse solver.</span>
-    <span class="n">data_inds</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span> <span class="o">=</span> <span class="n">convert_to_csc</span><span class="p">(</span>
-        <span class="n">num_elements</span><span class="o">=</span><span class="n">all_inds</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-        <span class="n">row_ind</span><span class="o">=</span><span class="n">all_inds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-        <span class="n">col_ind</span><span class="o">=</span><span class="n">all_inds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">n_nodes</span><span class="p">,</span> <span class="n">data_inds</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="jaxley.utils.cell_utils.compute_axial_conductances" class="doc doc-heading">
-            <code class=" language-python"><span class="n">compute_axial_conductances</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
-
-<a href="#jaxley.utils.cell_utils.compute_axial_conductances" class="headerlink" title="Permanent link">&para;</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Given <code>comp_edges</code>, radius, length, r_a, compute the axial conductances.</p>
-
-            <details class="quote">
-              <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">481</span>
-<span class="normal">482</span>
-<span class="normal">483</span>
-<span class="normal">484</span>
-<span class="normal">485</span>
-<span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span>
-<span class="normal">493</span>
-<span class="normal">494</span>
-<span class="normal">495</span>
-<span class="normal">496</span>
-<span class="normal">497</span>
-<span class="normal">498</span>
-<span class="normal">499</span>
-<span class="normal">500</span>
-<span class="normal">501</span>
-<span class="normal">502</span>
-<span class="normal">503</span>
-<span class="normal">504</span>
-<span class="normal">505</span>
-<span class="normal">506</span>
-<span class="normal">507</span>
-<span class="normal">508</span>
-<span class="normal">509</span>
-<span class="normal">510</span>
-<span class="normal">511</span>
-<span class="normal">512</span>
-<span class="normal">513</span>
-<span class="normal">514</span>
-<span class="normal">515</span>
-<span class="normal">516</span>
-<span class="normal">517</span>
-<span class="normal">518</span>
-<span class="normal">519</span>
-<span class="normal">520</span>
-<span class="normal">521</span>
-<span class="normal">522</span>
-<span class="normal">523</span>
-<span class="normal">524</span>
-<span class="normal">525</span>
-<span class="normal">526</span>
-<span class="normal">527</span>
-<span class="normal">528</span>
-<span class="normal">529</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_axial_conductances</span><span class="p">(</span>
+<span class="normal">473</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_axial_conductances</span><span class="p">(</span>
     <span class="n">comp_edges</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Given `comp_edges`, radius, length, r_a, compute the axial conductances.&quot;&quot;&quot;</span>
-    <span class="c1"># `Compartment-to-compartment` (c2c) conductances.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.</span>
+
+<span class="sd">    Note that the resulting axial conductances will already by divided by the</span>
+<span class="sd">    capacitance `cm`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># `Compartment-to-compartment` (c2c) axial coupling conductances.</span>
     <span class="n">condition</span> <span class="o">=</span> <span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
     <span class="n">source_comp_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">][</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
     <span class="n">sink_comp_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">][</span><span class="s2">&quot;sink&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
 
-    <span class="n">conds_c2c</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">compute_coupling_cond</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))(</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">][</span><span class="n">source_comp_inds</span><span class="p">],</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">][</span><span class="n">source_comp_inds</span><span class="p">],</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">][</span><span class="n">source_comp_inds</span><span class="p">],</span>
-    <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sink_comp_inds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">conds_c2c</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">vmap</span><span class="p">(</span><span class="n">compute_coupling_cond</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))(</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">][</span><span class="n">source_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">][</span><span class="n">source_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">][</span><span class="n">source_comp_inds</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;capacitance&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">]</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">conds_c2c</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span>
 
-    <span class="c1"># `branchpoint-to-compartment` (bp2c) conductances.</span>
-    <span class="n">condition</span> <span class="o">=</span> <span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="c1"># `branchpoint-to-compartment` (bp2c) axial coupling conductances.</span>
+    <span class="n">condition</span> <span class="o">=</span> <span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
     <span class="n">sink_comp_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">][</span><span class="s2">&quot;sink&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sink_comp_inds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">conds_bp2c</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">compute_coupling_cond_branchpoint</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))(</span>
-            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
-            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
-            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+        <span class="n">conds_bp2c</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">vmap</span><span class="p">(</span><span class="n">compute_coupling_cond_branchpoint</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))(</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;capacitance&quot;</span><span class="p">][</span><span class="n">sink_comp_inds</span><span class="p">]</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">conds_bp2c</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span>
 
-    <span class="c1"># `compartment-to-branchpoint` (c2bp) conductances.</span>
-    <span class="n">condition</span> <span class="o">=</span> <span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="c1"># `compartment-to-branchpoint` (c2bp) axial coupling conductances.</span>
+    <span class="n">condition</span> <span class="o">=</span> <span class="n">comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
     <span class="n">source_comp_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">][</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_comp_inds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -1676,7 +1507,7 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">conds_c2bp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span>
 
-    <span class="c1"># All conductances.</span>
+    <span class="c1"># All axial coupling conductances.</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">conds_c2c</span><span class="p">,</span> <span class="n">conds_bp2c</span><span class="p">,</span> <span class="n">conds_c2bp</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -1699,15 +1530,15 @@
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">532</span>
-<span class="normal">533</span>
-<span class="normal">534</span>
-<span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
-<span class="normal">538</span>
-<span class="normal">539</span>
-<span class="normal">540</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_children_and_parents</span><span class="p">(</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_children_and_parents</span><span class="p">(</span>
     <span class="n">branch_edges</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build indices used during `._init_morph_custom_spsolve().&quot;&quot;&quot;</span>
@@ -2120,94 +1951,6 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
     <span class="n">area</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">length</span>
     <span class="n">current</span> <span class="o">/=</span> <span class="n">area</span>  <span class="c1"># nA / um^2</span>
     <span class="k">return</span> <span class="n">current</span> <span class="o">*</span> <span class="mi">100_000</span>  <span class="c1"># Convert (nA / um^2) to (uA / cm^2)</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="jaxley.utils.cell_utils.convert_to_csc" class="doc doc-heading">
-            <code class=" language-python"><span class="n">convert_to_csc</span><span class="p">(</span><span class="n">num_elements</span><span class="p">,</span> <span class="n">row_ind</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">)</span></code>
-
-<a href="#jaxley.utils.cell_utils.convert_to_csc" class="headerlink" title="Permanent link">&para;</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convert between two representations for sparse systems.</p>
-<p>This is needed because <code>jax.scipy.linalg.spsolve</code> requires the <code>(ind, indptr)</code>
-representation, but the <code>(row, col)</code> is more intuitive and easier to build.</p>
-<p>This function uses <code>np</code> instead of <code>jnp</code> because it only deals with indexing which
-can be dealt with only based on the branch structure (i.e. independent of any
-parameter values).</p>
-<p>Written by ChatGPT.</p>
-
-            <details class="quote">
-              <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">412</span>
-<span class="normal">413</span>
-<span class="normal">414</span>
-<span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
-<span class="normal">418</span>
-<span class="normal">419</span>
-<span class="normal">420</span>
-<span class="normal">421</span>
-<span class="normal">422</span>
-<span class="normal">423</span>
-<span class="normal">424</span>
-<span class="normal">425</span>
-<span class="normal">426</span>
-<span class="normal">427</span>
-<span class="normal">428</span>
-<span class="normal">429</span>
-<span class="normal">430</span>
-<span class="normal">431</span>
-<span class="normal">432</span>
-<span class="normal">433</span>
-<span class="normal">434</span>
-<span class="normal">435</span>
-<span class="normal">436</span>
-<span class="normal">437</span>
-<span class="normal">438</span>
-<span class="normal">439</span>
-<span class="normal">440</span>
-<span class="normal">441</span>
-<span class="normal">442</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_to_csc</span><span class="p">(</span>
-    <span class="n">num_elements</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">row_ind</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert between two representations for sparse systems.</span>
-
-<span class="sd">    This is needed because `jax.scipy.linalg.spsolve` requires the `(ind, indptr)`</span>
-<span class="sd">    representation, but the `(row, col)` is more intuitive and easier to build.</span>
-
-<span class="sd">    This function uses `np` instead of `jnp` because it only deals with indexing which</span>
-<span class="sd">    can be dealt with only based on the branch structure (i.e. independent of any</span>
-<span class="sd">    parameter values).</span>
-
-<span class="sd">    Written by ChatGPT.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">data_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_elements</span><span class="p">)</span>
-    <span class="c1"># Step 1: Sort by (col_ind, row_ind)</span>
-    <span class="n">sorted_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">lexsort</span><span class="p">((</span><span class="n">row_ind</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">))</span>
-    <span class="n">data_inds</span> <span class="o">=</span> <span class="n">data_inds</span><span class="p">[</span><span class="n">sorted_indices</span><span class="p">]</span>
-    <span class="n">row_ind</span> <span class="o">=</span> <span class="n">row_ind</span><span class="p">[</span><span class="n">sorted_indices</span><span class="p">]</span>
-    <span class="n">col_ind</span> <span class="o">=</span> <span class="n">col_ind</span><span class="p">[</span><span class="n">sorted_indices</span><span class="p">]</span>
-
-    <span class="c1"># Step 2: Create indptr array</span>
-    <span class="n">n_cols</span> <span class="o">=</span> <span class="n">col_ind</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
-    <span class="n">indptr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_cols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">indptr</span><span class="p">,</span> <span class="n">col_ind</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">indptr</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">indptr</span><span class="p">)</span>
-
-    <span class="c1"># Step 3: The row indices are already sorted</span>
-    <span class="n">indices</span> <span class="o">=</span> <span class="n">row_ind</span>
-
-    <span class="k">return</span> <span class="n">data_inds</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
