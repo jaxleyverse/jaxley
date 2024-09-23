@@ -1,3 +1,21 @@
+# v0.3.0
+
+### New features
+
+- New solver: `jx.integrate(..., voltage_solver="jax.sparse")` which has very low
+compile time (#418, @michaeldeistler)
+- Support for different number of compartments per branch at initilization (modifying
+the number of compartments after initialization is not yet supported, #418, #426, 
+@michaeldeistler)
+
+
+### Bugfixes
+
+- Bugfix for capacitances and their interplay with axial conductances (Thanks @Tunenip, 
+#426, @michaeldeistler)
+- Bugfixes for tutorials on website
+
+
 # v0.2.1
 
 - Bugfix for using `states` in `init_state` of the channel (#421, @michaeldeistler)
