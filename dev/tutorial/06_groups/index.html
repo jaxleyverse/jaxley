@@ -8,21 +8,25 @@
       
       
       
-        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/dev/tutorials/06_groups/">
+        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/dev/tutorial/06_groups/">
       
       
+        <link rel="prev" href="../05_channel_and_synapse_models/">
+      
+      
+        <link rel="next" href="../08_importing_morphologies/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.36">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.34">
     
     
       
-        <title>Defining groups for easier handling of complex networks - Jaxley</title>
+        <title>Define groups - Jaxley</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.06209087.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.35f28582.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -109,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Defining groups for easier handling of complex networks
+              Define groups
             
           </span>
         </div>
@@ -242,17 +246,19 @@
       
   
   
+    
   
   
+  
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -266,7 +272,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Tutorials
@@ -280,7 +286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/01_morph_neurons.md" class="md-nav__link">
+      <a href="../01_morph_neurons/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -301,7 +307,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/02_small_network.md" class="md-nav__link">
+      <a href="../02_small_network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -322,7 +328,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/03_setting_parameters.md" class="md-nav__link">
+      <a href="../03_setting_parameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -343,7 +349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/04_jit_and_vmap.md" class="md-nav__link">
+      <a href="../04_jit_and_vmap/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -364,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/05_channel_and_synapse_models.md" class="md-nav__link">
+      <a href="../05_channel_and_synapse_models/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -382,10 +388,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../tutorial/06_groups.md" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Define groups
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -394,6 +420,71 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#group-apical-dendrites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Group: apical dendrites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#group-fast-spiking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Group: fast spiking
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#groups-from-swc-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Groups from SWC files
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-groups-are-interpreted-by-make_trainable" class="md-nav__link">
+    <span class="md-ellipsis">
+      How groups are interpreted by .make_trainable()
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -406,7 +497,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/08_importing_morphologies.md" class="md-nav__link">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -427,7 +518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/07_gradient_descent.md" class="md-nav__link">
+      <a href="../07_gradient_descent/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1773,7 +1864,7 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.07f07601.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.56dfad97.min.js"></script>

@@ -8,21 +8,25 @@
       
       
       
-        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/dev/tutorials/07_gradient_descent/">
+        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/dev/tutorial/07_gradient_descent/">
       
       
+        <link rel="prev" href="../08_importing_morphologies/">
+      
+      
+        <link rel="next" href="../../install/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.36">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.34">
     
     
       
-        <title>Training biophysical models - Jaxley</title>
+        <title>Training models - Jaxley</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.06209087.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.35f28582.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -109,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Training biophysical models
+              Training models
             
           </span>
         </div>
@@ -242,17 +246,19 @@
       
   
   
+    
   
   
+  
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -266,7 +272,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Tutorials
@@ -280,7 +286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/01_morph_neurons.md" class="md-nav__link">
+      <a href="../01_morph_neurons/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -301,7 +307,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/02_small_network.md" class="md-nav__link">
+      <a href="../02_small_network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -322,7 +328,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/03_setting_parameters.md" class="md-nav__link">
+      <a href="../03_setting_parameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -343,7 +349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/04_jit_and_vmap.md" class="md-nav__link">
+      <a href="../04_jit_and_vmap/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -364,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/05_channel_and_synapse_models.md" class="md-nav__link">
+      <a href="../05_channel_and_synapse_models/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -385,7 +391,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/06_groups.md" class="md-nav__link">
+      <a href="../06_groups/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -406,7 +412,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorial/08_importing_morphologies.md" class="md-nav__link">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -424,10 +430,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../tutorial/07_gradient_descent.md" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Training models
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -436,6 +462,134 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defining-a-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      Defining a dataset
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#defining-trainable-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Defining trainable parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#making-synaptic-parameters-trainable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Making synaptic parameters trainable
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the simulation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stimulating-the-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stimulating the network
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#defining-a-loss-function" class="md-nav__link">
+    <span class="md-ellipsis">
+      Defining a loss function
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#defining-parameter-transformations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Defining parameter transformations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-checkpointing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using checkpointing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-dataloader" class="md-nav__link">
+    <span class="md-ellipsis">
+      Writing a dataloader
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training loop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1287,7 +1441,7 @@ epoch 9, loss 6.5030439519558865
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.07f07601.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.56dfad97.min.js"></script>
