@@ -61,35 +61,35 @@
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/01_morph_neurons/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/01_morph_neurons/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/02_small_network/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/02_small_network/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/03_setting_parameters/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/03_setting_parameters/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/04_jit_and_vmap/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/04_jit_and_vmap/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/05_channel_and_synapse_models/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/05_channel_and_synapse_models/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/06_groups/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/06_groups/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/07_gradient_descent/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/07_gradient_descent/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
     <url>
-         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorials/08_importing_morphologies/</loc>
+         <loc>https://jaxleyverse.github.io/jaxley/v0.3.0/tutorial/08_importing_morphologies/</loc>
          <lastmod>2024-09-24</lastmod>
     </url>
 </urlset>
