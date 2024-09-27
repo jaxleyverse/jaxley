@@ -33,8 +33,8 @@ from jaxley.utils.cell_utils import (
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
-from jaxley.utils.plot_utils import plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
+from jaxley.utils.plot_utils import plot_comps, plot_morph
 
 
 class Module(ABC):
@@ -1226,6 +1226,10 @@ class Module(ABC):
         morph_plot_kwargs: Dict,
     ) -> Axes:
         branches_inds = view["branch_index"].to_numpy()
+        
+        if type == "volume":
+            return plot_comps(self, dims, ax, **morph_plot_kwargs)
+        
         coords = []
         for branch_ind in branches_inds:
             assert not np.any(
