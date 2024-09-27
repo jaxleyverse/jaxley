@@ -2,7 +2,8 @@
 
 To build the sphinx documentation, run
 ```
-cd docs/
 make html
+cd _build/html
+python -m http.server
 ```
-This will find all the jupyter notebooks, run them, collect the output, and incorporate it into the documentation.
+This will find all jupyter notebooks, run them, collect the output, and incorporate them into the documentation.
