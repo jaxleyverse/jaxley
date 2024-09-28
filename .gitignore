@@ -1,6 +1,6 @@
 # Project specific
 /mkdocs/site/*
-/docs/_build/*
+/mkdocs/docs/tutorial/*
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
