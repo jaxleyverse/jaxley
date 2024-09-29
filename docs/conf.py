@@ -35,7 +35,6 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_math_dollar",
     "sphinx.ext.mathjax",
-    'sphinx_rtd_size',
     "myst_nb",
 ]
 
@@ -76,7 +75,7 @@ nb_execution_mode = "cache"
 #
 html_title = ""
 html_logo = "logo.png"
-html_theme = 'sphinx_book_theme'  # sphinx_rtd_theme, sphinx_book_theme
+html_theme = 'sphinx_book_theme'
 html_theme_options = {
     'repository_url': 'https://github.com/jaxleyverse/jaxley',
     "use_repository_button": True,
