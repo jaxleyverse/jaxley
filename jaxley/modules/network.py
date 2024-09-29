@@ -21,6 +21,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     merge_cells,
 )
+from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
 from jaxley.utils.syn_utils import gather_synapes
 
@@ -52,14 +53,13 @@ class Network(Module):
             [cell.nseg_per_branch for cell in self.cells]
         )
         self.nseg = int(jnp.max(self.nseg_per_branch))
-        self.cumsum_nseg = jnp.concatenate(
-            [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
-        )
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
         self._append_params_and_states(self.network_params, self.network_states)
 
         self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
-        self.cumsum_nbranches = jnp.cumsum(jnp.asarray([0] + self.nbranches_per_cell))
+        self.cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self.nodes["comp_index"] = np.arange(self.cumsum_nseg[-1])
@@ -93,13 +93,10 @@ class Network(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         # `nbranchpoints` in each cell == cell.par_inds (because `par_inds` are unique).
         nbranchpoints = jnp.asarray([len(cell.par_inds) for cell in self.cells])
-        self.cumsum_nbranchpoints_per_cell = jnp.concatenate(
-            [jnp.asarray([0]), jnp.cumsum(nbranchpoints)]
-        )
+        self.cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
         # Channels.
         self._gather_channels_from_constituents(cells)
@@ -179,13 +176,9 @@ class Network(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
-        self._cumsum_nseg_per_cell = jnp.concatenate(
-            [
-                jnp.asarray([0]),
-                jnp.cumsum(jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells])),
-            ]
+        self._cumsum_nseg_per_cell = cumsum_leading_zero(
+            jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells])
         )
-
         self._comp_edges = pd.DataFrame()
 
         # Add all the internal nodes.
