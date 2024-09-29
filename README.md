@@ -9,16 +9,16 @@
 [![Tests](https://github.com/jaxleyverse/jaxley/workflows/Tests/badge.svg?branch=main)](https://github.com/jaxleyverse/jaxley/actions)
 [![GitHub license](https://img.shields.io/github/license/jaxleyverse/jaxley)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
-[**Documentation**](https://jaxleyverse.github.io/jaxley/latest/)
- | [**Getting Started**](https://jaxleyverse.github.io/jaxley/latest/tutorial/01_morph_neurons/)
- | [**Install guide**](https://jaxleyverse.github.io/jaxley/latest/install/)
- | [**Reference docs**](https://jaxleyverse.github.io/jaxley/latest/reference/modules/)
- | [**FAQ**](https://jaxleyverse.github.io/jaxley/latest/faq/)
+[**Documentation**](https://jaxley.readthedocs.io/en/latest/)
+ | [**Getting Started**](https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html)
+ | [**Install guide**](https://jaxley.readthedocs.io/en/latest/installation.html)
+ | [**Reference docs**](https://jaxley.readthedocs.io/en/latest/jaxley.html)
+ | [**FAQ**](https://jaxley.readthedocs.io/en/latest/faq.html)
 
 
 ## What is Jaxley?
 
-`Jaxley` is a differentiable simulator for [biophysical neuron models](https://jaxleyverse.github.io/jaxley/latest/faq/question_03/), written in the Python library [JAX](https://github.com/google/jax). Its key features are:
+`Jaxley` is a differentiable simulator for [biophysical neuron models](https://jaxley.readthedocs.io/en/latest/faq/question_03.html), written in the Python library [JAX](https://github.com/google/jax). Its key features are:
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
 - support for CPU, GPU, or TPU without any changes to the code  
@@ -50,13 +50,13 @@ v = jx.integrate(cell)  # Run simulation.
 plt.plot(v.T)  # Plot voltage trace.
 ```
 
-[Here](https://jaxleyverse.github.io/jaxley/latest/faq/question_03/) you can find an overview of what kinds of models can be implemented in `Jaxley`. If you want to learn more, we recommend you to check out our tutorials on how to:
+[Here](https://jaxley.readthedocs.io/en/latest/faq/question_03.html) you can find an overview of what kinds of models can be implemented in `Jaxley`. If you want to learn more, we recommend you to check out our tutorials on how to:
 
-- [get started with `Jaxley`](https://jaxleyverse.github.io/jaxley/latest/tutorial/01_morph_neurons/)
-- [simulate networks of neurons](https://jaxleyverse.github.io/jaxley/latest/tutorial/02_small_network/)
-- [speed up simulations with GPUs and `jit`](https://jaxleyverse.github.io/jaxley/latest/tutorial/04_jit_and_vmap/)
-- [define your own channels and synapses](https://jaxleyverse.github.io/jaxley/latest/tutorial/05_channel_and_synapse_models/)
-- [compute the gradient and train biophysical models](https://jaxleyverse.github.io/jaxley/latest/tutorial/07_gradient_descent/)
+- [get started with `Jaxley`](https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html)
+- [simulate networks of neurons](https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html)
+- [speed up simulations with GPUs and `jit`](https://jaxley.readthedocs.io/en/latest/tutorials/04_jit_and_vmap.html)
+- [define your own channels and synapses](https://jaxley.readthedocs.io/en/latest/tutorials/05_channel_and_synapse_models.html)
+- [compute the gradient and train biophysical models](https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html)
 
 
 ## Installation
