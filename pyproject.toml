@@ -46,6 +46,13 @@ doc = [
     "mkdocs-redirects",
     "mkdocstrings[python]>=0.18",
     "mike",
+    "sphinx",
+    "sphinx-autobuild",
+    "sphinx_autodoc_typehints",
+    "sphinx-math-dollar",
+    "myst-nb",
+    "jupytext",
+    "sphinx-book-theme",
 ]
 dev = [
     "black",
