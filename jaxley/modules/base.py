@@ -1242,7 +1242,9 @@ class Module(ABC):
         branches_inds = view["branch_index"].to_numpy()
 
         if type == "volume":
-            return plot_comps(self[:], dims, ax, **morph_plot_kwargs)
+            return plot_comps(
+                self, view, dims=dims, ax=ax, col=col, **morph_plot_kwargs
+            )
 
         coords = []
         for branch_ind in branches_inds:

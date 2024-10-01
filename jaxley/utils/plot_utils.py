@@ -1,7 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -122,7 +122,7 @@ def plot_cylinder_projection(
         Plot of the cylinder projection.
     """
     if ax is None:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(3, 3))
         ax = fig.add_subplot(111)
 
     # Normalize axis vector
@@ -164,8 +164,10 @@ def plot_cylinder_projection(
 
 
 def plot_comps(
-    view,
+    module_or_view: Union["jx.Module", "jx.View"],
+    view: "jx.View",
     dims: Tuple[int] = (0, 1),
+    col: str = "k",
     ax: Optional[Axes] = None,
     comp_plot_kwargs: Dict = {},
     true_comp_length: bool = True,
@@ -175,6 +177,7 @@ def plot_comps(
     Plots the projection of the cylindrical compartments.
 
     Args:
+        module_or_view: The module or view to plot.
         view: The view of the module.
         dims: The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.
         ax: The matplotlib axis to plot on.
@@ -190,35 +193,46 @@ def plot_comps(
         Plot of the compartmentalized morphology.
     """
     if ax is None:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(3, 3))
         ax = fig.add_subplot(111)
 
-    assert not np.any(np.isnan(view.xyzr[0][:, :3])), "missing xyz coordinates."
-    if "x" not in view.pointer.nodes.columns:
-        view.pointer._update_nodes_with_xyz()
+    module = (
+        module_or_view.pointer
+        if "pointer" in module_or_view.__dict__
+        else module_or_view
+    )
+    assert not np.any(np.isnan(module.xyzr[0][:, :3])), "missing xyz coordinates."
+    if "x" not in module.nodes.columns:
+        module._update_nodes_with_xyz()
 
-    branches_inds = np.unique(view.view["branch_index"].to_numpy())
+    branches_inds = np.unique(view["branch_index"].to_numpy())
     for idx in branches_inds:
-        locs = view.pointer.xyzr[idx][:, :3]
+        locs = module.xyzr[idx][:, :3]
         if locs.shape[0] == 1:  # assume spherical comp
-            radius = view.pointer.branch(idx).view["radius"].iloc[0]
-            ax.add_artist(plt.Circle(locs[0, dims], radius))
+            radius = module.xyzr[idx][:, -1]
+            ax.add_artist(plt.Circle(locs[0, dims], radius, color=col))
         else:
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
             comp_ends = v_interp(
-                np.linspace(0, lens[-1], view.pointer.nseg + 1), lens, locs
+                np.linspace(0, lens[-1], module.nseg + 1), lens, locs
             ).T
             axes = np.diff(comp_ends, axis=0)
             cylinder_lens = np.sqrt(np.sum(axes**2, axis=1))
 
-            for l, axis, (i, comp) in zip(
-                cylinder_lens, axes, view.pointer.branch(idx).view.iterrows()
-            ):
+            branch_df = view[view["branch_index"] == idx]
+            for l, axis, (i, comp) in zip(cylinder_lens, axes, branch_df.iterrows()):
                 center = comp[["x", "y", "z"]]
                 radius = comp["radius"]
                 length = comp["length"] if true_comp_length else l
                 ax = plot_cylinder_projection(
-                    axis, length, radius, center, np.array(dims), ax, **comp_plot_kwargs
+                    axis,
+                    length,
+                    radius,
+                    center,
+                    np.array(dims),
+                    ax,
+                    color=col,
+                    **comp_plot_kwargs,
                 )
     return ax
