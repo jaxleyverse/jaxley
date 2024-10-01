@@ -1712,6 +1712,8 @@ class View:
         Args:
             ax: An axis into which to plot.
             col: The color for all branches.
+            type: Whether to plot as points ("scatter"), a line ("line") or the
+                actual volume of the compartment("volume").
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             morph_plot_kwargs: Keyword arguments passed to the plotting function.

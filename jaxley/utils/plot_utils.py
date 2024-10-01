@@ -204,6 +204,7 @@ def plot_comps(
     assert not np.any(np.isnan(module.xyzr[0][:, :3])), "missing xyz coordinates."
     if "x" not in module.nodes.columns:
         module._update_nodes_with_xyz()
+        view[["x", "y", "z"]] = module.nodes.loc[view.index, ["x", "y", "z"]]
 
     branches_inds = np.unique(view["branch_index"].to_numpy())
     for idx in branches_inds:
