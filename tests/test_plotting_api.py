@@ -153,3 +153,21 @@ def test_mixed_network():
         assert np.allclose(b[:, 1], a[:, 0], atol=1e-6)
 
     _ = net.vis(detail="full")
+
+
+def test_volume_plotting():
+    comp = jx.Compartment()
+    comp.compute_xyz()
+    branch = jx.Branch(comp, 4)
+    branch.compute_xyz()
+    cell = jx.Cell([branch] * 3, [-1, 0, 0])
+    cell.compute_xyz()
+    net = jx.Network([cell] * 4)
+    net.compute_xyz()
+
+    fig, ax = plt.subplots()
+    for module in [comp, branch, cell, net]:
+        module.vis(type="volume", ax=ax)
+        if not isinstance(module, jx.Compartment):
+            module[0].vis(type="volume", ax=ax)
+    plt.close(fig)
