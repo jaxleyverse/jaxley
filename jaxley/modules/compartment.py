@@ -152,10 +152,31 @@ class CompartmentView(View):
         self,
         ax: Optional[Axes] = None,
         col: str = "k",
+        type: str = "scatter",
         dims: Tuple[int] = (0, 1),
         morph_plot_kwargs: Dict = {},
     ) -> Axes:
+        """Visualize the compartment.
+
+        Args:
+            ax: An axis into which to plot.
+            col: The color for all branches.
+            type: Whether to plot as point ("scatter") or the projected volume ("volume").
+            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+                two of them.
+            morph_plot_kwargs: Keyword arguments passed to the plotting function.
+        """
         nodes = self.set_global_index_and_index(self.view)
+        if type == "volume":
+            return self.pointer._vis(
+                ax=ax,
+                col=col,
+                dims=dims,
+                view=nodes,
+                type="volume",
+                morph_plot_kwargs=morph_plot_kwargs,
+            )
+
         return self.pointer._scatter(
             ax=ax,
             col=col,

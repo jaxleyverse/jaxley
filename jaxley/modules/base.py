@@ -33,7 +33,7 @@ from jaxley.utils.cell_utils import (
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
-from jaxley.utils.plot_utils import plot_morph
+from jaxley.utils.plot_utils import plot_comps, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
 
 
@@ -115,23 +115,37 @@ class Module(ABC):
         self.debug_states = {}
 
     def _update_nodes_with_xyz(self):
-        """Add xyz coordinates to nodes."""
+        """Add xyz coordinates of compartment centers to nodes.
+
+        Note: For sake of performance, interpolation is not done for each branch,
+        but once along a concatenated (and padded) array of all branches.
+        """
         num_branches = len(self.xyzr)
-        x = np.linspace(
-            0.5 / self.nseg,
-            (num_branches * 1 - 0.5 / self.nseg),
-            num_branches * self.nseg,
+        comp_ends = (
+            np.linspace(0, 1, self.nseg + 1).reshape(1, -1).repeat(num_branches, 0)
         )
-        x += np.arange(num_branches).repeat(
-            self.nseg
-        )  # add offset to prevent branch loc overlap
-        xp = np.hstack(
-            [np.linspace(0, 1, x.shape[0]) + 2 * i for i, x in enumerate(self.xyzr)]
+        comp_ends = comp_ends + 2 * np.arange(num_branches).reshape(
+            -1, 1
+        )  # inter-branch padding
+        comp_ends = comp_ends.reshape(-1)
+        branch_lens = []
+        for i, xyzr in enumerate(self.xyzr):
+            branch_len = np.sqrt(
+                np.sum(np.diff(xyzr[:, :3], axis=0) ** 2, axis=1)
+            ).cumsum()
+            branch_len = np.hstack([np.array([0]), branch_len])
+            branch_len = branch_len / branch_len.max() + 2 * i  # add padding like above
+            branch_len[np.isnan(branch_len)] = 0
+            branch_lens.append(branch_len)
+        branch_lens = np.hstack(branch_lens)
+        xyz = np.vstack(self.xyzr)[:, :3]
+        xyz = v_interp(comp_ends, branch_lens, xyz).reshape(
+            3, num_branches, self.nseg + 1
         )
-        xyz = v_interp(x, xp, np.vstack(self.xyzr)[:, :3])
+        centers = ((xyz[:, :, 1:] + xyz[:, :, :-1]) / 2).reshape(3, -1).T
         idcs = self.nodes["comp_index"]
-        self.nodes.loc[idcs, ["x", "y", "z"]] = xyz.T
-        return xyz.T
+        self.nodes.loc[idcs, ["x", "y", "z"]] = centers
+        return centers, xyz
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
@@ -1226,6 +1240,12 @@ class Module(ABC):
         morph_plot_kwargs: Dict,
     ) -> Axes:
         branches_inds = view["branch_index"].to_numpy()
+
+        if type == "volume":
+            return plot_comps(
+                self, view, dims=dims, ax=ax, col=col, **morph_plot_kwargs
+            )
+
         coords = []
         for branch_ind in branches_inds:
             assert not np.any(
@@ -1692,6 +1712,8 @@ class View:
         Args:
             ax: An axis into which to plot.
             col: The color for all branches.
+            type: Whether to plot as points ("scatter"), a line ("line") or the
+                actual volume of the compartment("volume").
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
