@@ -17,6 +17,7 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
+from jaxley.pumps import Pump
 from jaxley.solver_voltage import (
     step_voltage_explicit,
     step_voltage_implicit_with_jax_spsolve,
@@ -153,6 +154,13 @@ class Module(ABC):
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
         self.membrane_current_names: List[str] = []
+
+        # List of all pumps.
+        self.pumped_ions: List[str] = []
+        self.pumps: List[Pump] = []
+
+        # List of all states (exluding voltage) that are being diffused.
+        self.diffusion_states: List[str] = []
 
         # For trainable parameters.
         self.indices_set_by_trainables: List[jnp.ndarray] = []
@@ -720,13 +728,24 @@ class Module(ABC):
         `.nodes` for the relevant channels.
         """
         for module in constituents:
+            assert len(module.diffusion_states) == 0, (
+                "Cannot have diffusion in subpartsof a module. As a workaround, set the"
+                "diffusion constant for all parts that should not have ion diffusion to"
+                "zero."
+            )
             for channel in module.channels:
                 if channel._name not in [c._name for c in self.channels]:
                     self.base.channels.append(channel)
                 if channel.current_name not in self.membrane_current_names:
                     self.base.membrane_current_names.append(channel.current_name)
-        # Setting columns of channel names to `False` instead of `NaN`.
-        for channel in self.base.channels:
+            for pump in module.pumps:
+                if pump._name not in [c._name for c in self.pumps]:
+                    self.base.pumps.append(pump)
+                if pump.current_name not in self.membrane_current_names:
+                    self.base.membrane_current_names.append(pump.current_name)
+
+        # Setting columns of channel and pump names to `False` instead of `NaN`.
+        for channel in self.base.channels + self.base.pumps:
             name = channel._name
             self.base.nodes.loc[self.nodes[name].isna(), name] = False
 
@@ -823,8 +842,14 @@ class Module(ABC):
         raise NotImplementedError
 
     def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
-        """Given radius, length, r_a, compute the axial coupling conductances."""
-        return compute_axial_conductances(self._comp_edges, params)
+        """Given radius, length, r_a, compute the axial coupling conductances.
+
+        If ion diffusion was activated by the user (with `cell.diffuse()`) then this
+        function also compute the axial conductances for every ion.
+        """
+        return compute_axial_conductances(
+            self._comp_edges, params, self.diffusion_states
+        )
 
     def set(self, key: str, val: Union[float, jnp.ndarray]):
         """Set parameter of module (or its view) to a new value.
@@ -1289,7 +1314,12 @@ class Module(ABC):
         for key in ["radius", "length", "axial_resistivity", "capacitance"]:
             params[key] = self.base.jaxnodes[key]
 
-        for channel in self.base.channels:
+        for key in self.diffusion_states:
+            params[f"axial_resistivity_{key}"] = self.jaxnodes[
+                f"axial_resistivity_{key}"
+            ]
+
+        for channel in self.base.channels + self.base.pumps:
             for channel_params in channel.channel_params:
                 params[channel_params] = self.base.jaxnodes[channel_params]
 
@@ -1333,7 +1363,7 @@ class Module(ABC):
         self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
         states = {"v": self.base.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
-        for channel in self.base.channels:
+        for channel in self.base.channels + self.base.pumps:
             for channel_states in channel.channel_states:
                 states[channel_states] = self.base.jaxnodes[channel_states]
         for synapse_states in self.base.synapse_state_names:
@@ -1371,7 +1401,7 @@ class Module(ABC):
 
         # Add to the states the initial current through every channel.
         states, _ = self.base._channel_currents(
-            states, delta_t, self.channels, self.nodes, all_params
+            states, delta_t, self.channels + self.pumps, self.nodes, all_params
         )
 
         # Add to the states the initial current through every synapse.
@@ -1410,7 +1440,7 @@ class Module(ABC):
         # build the channel parameters in the same way.
         params = self.base.get_all_parameters([], voltage_solver="jaxley.thomas")
 
-        for channel in self.base.channels:
+        for channel in self.base.channels + self.base.pumps:
             name = channel._name
             channel_indices = channel_nodes.loc[channel_nodes[name]][
                 "global_comp_index"
@@ -1734,19 +1764,29 @@ class Module(ABC):
             else:
                 pass  # does not have to be deleted if not in externals
 
-    def insert(self, channel: Channel):
-        """Insert a channel into the module.
+    def insert(self, channel: Union[Channel, Pump]):
+        """Insert a channel or pump into the module.
 
         Args:
             channel: The channel to insert."""
         name = channel._name
 
         # Channel does not yet exist in the `jx.Module` at all.
-        if name not in [c._name for c in self.base.channels]:
+        if isinstance(channel, Channel) and name not in [
+            c._name for c in self.base.channels
+        ]:
             self.base.channels.append(channel)
             self.base.nodes[name] = (
                 False  # Previous columns do not have the new channel.
             )
+        # Pump does not exist yet in the `jx.Module` at all.
+        if isinstance(channel, Pump) and name not in [c._name for c in self.base.pumps]:
+            self.base.pumps.append(channel)
+            self.base.nodes[name] = (
+                False  # Previous columns do not have the new channel.
+            )
+            if channel.ion_name not in self.base.pumped_ions:
+                self.base.pumped_ions.append(channel.ion_name)
 
         if channel.current_name not in self.base.membrane_current_names:
             self.base.membrane_current_names.append(channel.current_name)
@@ -1761,6 +1801,24 @@ class Module(ABC):
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
+
+    @only_allow_module
+    def diffuse(self, state: str):
+        """Diffuse a particular state across compartments with Fickian diffusion.
+
+        Args:
+            state: Name of the state that should be diffused.
+        """
+        self.base.diffusion_states.append(state)
+        self.base.nodes.loc[self._nodes_in_view, f"axial_resistivity_{state}"] = 1.0
+
+        # The diffused state might not exist in all compartments that across which
+        # we are diffusing (e.g. there are active calcium mechanisms only in the soma,
+        # but calcium should still diffuse into the dendrites). Here, we ensure that
+        # the state is not `NaN` in every compartment across which we are diffusing.
+        state_is_nan = pd.isna(self.base.nodes.loc[self._nodes_in_view, state])
+        average_state_value = self.base.nodes.loc[self._nodes_in_view, state].mean()
+        self.base.nodes.loc[state_is_nan, state] = average_state_value
 
     def delete_channel(self, channel: Channel):
         """Remove a channel from the module.
@@ -1799,7 +1857,7 @@ class Module(ABC):
 
         This function is called inside of `integrate` and increments the state of the
         module by one time step. Calls `_step_channels` and `_step_synapse` to update
-        the states of the channels and synapses using fwd_euler.
+        the states of the channels and synapses.
 
         Args:
             u: The state of the module. voltages = u["v"]
@@ -1816,27 +1874,24 @@ class Module(ABC):
         Returns:
             The updated state of the module.
         """
-
-        # Extract the voltages
-        voltages = u["v"]
-
         # Extract the external inputs
         if "i" in externals.keys():
             i_current = externals["i"]
             i_inds = external_inds["i"]
             i_ext = self._get_external_input(
-                voltages, i_inds, i_current, params["radius"], params["length"]
+                u["v"], i_inds, i_current, params["radius"], params["length"]
             )
         else:
             i_ext = 0.0
 
-        # Step of the channels.
-        u, (v_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels, self.nodes, params
+        # Steps of the channel & pump states and computes the current through these
+        # channels and pumps.
+        u, (linear_terms, const_terms) = self._step_channels(
+            u, delta_t, self.channels + self.pumps, self.nodes, params
         )
 
         # Step of the synapse.
-        u, (syn_v_terms, syn_const_terms) = self._step_synapse(
+        u, (v_syn_linear_terms, v_syn_const_terms) = self._step_synapse(
             u,
             self.synapses,
             params,
@@ -1844,34 +1899,81 @@ class Module(ABC):
             self.edges,
         )
 
+        # Voltage steps.
+        cm = params["capacitance"]  # Abbreviation.
+
+        # Arguments used by all solvers.
+        state_vals = {
+            "voltages": [u["v"]],
+            "voltage_terms": [(linear_terms["v"] + v_syn_linear_terms) / cm],
+            "constant_terms": [(const_terms["v"] + i_ext + v_syn_const_terms) / cm],
+            # The axial conductances have already been divided by `cm` in the
+            # `cell_utils.py` in the `compute_axial_conductances` method.
+            "axial_conductances": [params["axial_conductances"]["v"]],
+        }
+
+        for ion_name in self.pumped_ions:
+            if ion_name not in self.diffusion_states:
+                # If an ion is pumped but _not_ diffused, we update the state of the ion
+                # (i.e., its concentration) with implicit Euler. We could also use
+                # exponential-euler here, but we use implicit Euler for consistency with
+                # the case of the ion being diffused. TODO: In the long run, we should
+                # give the user the option to specify the solver.
+                #
+                # Implicit Euler for diagonal system (i.e. all compartments are
+                # independent):
+                #
+                # v_dot = const + v * linear
+                # v_n = v_{n+1} - dt * (const + v_{n+1} * linear)
+                # ...
+                # v_{n+1} = (v_n + dt * const) / (1 - dt * linear)
+                u[ion_name] = (u[ion_name] + delta_t * const_terms[ion_name]) / (
+                    1 + delta_t * linear_terms[ion_name]
+                )
+
+        for ion_name in self.diffusion_states:
+            if ion_name not in self.pumped_ions:
+                # Ions that are not pumped have no active component.
+                ion_linear_term = jnp.zeros_like(u[ion_name])
+                ion_const_term = jnp.zeros_like(u[ion_name])
+            else:
+                ion_linear_term = linear_terms[ion_name]
+                ion_const_term = const_terms[ion_name]
+            # Append the states of the pumps if they are diffusing (the user must
+            # manually specify ion diffusion with `cell.diffuse(ion_state_name)`). Note
+            # that these values are _not_ divided by the capacitance `cm`.
+            if ion_name in self.diffusion_states:
+                state_vals["voltages"] += [u[ion_name]]
+                state_vals["voltage_terms"] += [ion_linear_term]
+                state_vals["constant_terms"] += [ion_const_term]
+                state_vals["axial_conductances"] += [
+                    params[f"axial_conductances"][ion_name]
+                ]
+
+        # Stack all states such that they can be handled by `vmap` in the solve.
+        for state_name in [
+            "voltages",
+            "voltage_terms",
+            "constant_terms",
+            "axial_conductances",
+        ]:
+            state_vals[state_name] = jnp.stack(state_vals[state_name])
+
         # Clamp for channels and synapses.
         for key in externals.keys():
             if key not in ["i", "v"]:
                 u[key] = u[key].at[external_inds[key]].set(externals[key])
 
-        # Voltage steps.
-        cm = params["capacitance"]  # Abbreviation.
-
-        # Arguments used by all solvers.
-        solver_kwargs = {
-            "voltages": voltages,
-            "voltage_terms": (v_terms + syn_v_terms) / cm,
-            "constant_terms": (const_terms + i_ext + syn_const_terms) / cm,
-            "axial_conductances": params["axial_conductances"],
-            "internal_node_inds": self._internal_node_inds,
-        }
-
         # Add solver specific arguments.
         if voltage_solver == "jax.sparse":
-            solver_kwargs.update(
-                {
-                    "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                    "data_inds": self._data_inds,
-                    "indices": self._indices_jax_spsolve,
-                    "indptr": self._indptr_jax_spsolve,
-                    "n_nodes": self._n_nodes,
-                }
-            )
+            solver_kwargs = {
+                "internal_node_inds": self._internal_node_inds,
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "data_inds": self._data_inds,
+                "indices": self._indices_jax_spsolve,
+                "indptr": self._indptr_jax_spsolve,
+                "n_nodes": self._n_nodes,
+            }
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
         else:
@@ -1881,42 +1983,73 @@ class Module(ABC):
             # Currently, the forward Euler solver also uses this format. However,
             # this is only for historical reasons and we are planning to change this in
             # the future.
-            solver_kwargs.update(
-                {
-                    "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                    "sources": np.asarray(self._comp_edges["source"].to_list()),
-                    "types": np.asarray(self._comp_edges["type"].to_list()),
-                    "ncomp_per_branch": self.ncomp_per_branch,
-                    "par_inds": self._par_inds,
-                    "child_inds": self._child_inds,
-                    "nbranches": self.total_nbranches,
-                    "solver": voltage_solver,
-                    "idx": self._solve_indexer,
-                    "debug_states": self.debug_states,
-                }
-            )
+            solver_kwargs = {
+                "internal_node_inds": self._internal_node_inds,
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "sources": np.asarray(self._comp_edges["source"].to_list()),
+                "types": np.asarray(self._comp_edges["type"].to_list()),
+                "ncomp_per_branch": self.ncomp_per_branch,
+                "par_inds": self._par_inds,
+                "child_inds": self._child_inds,
+                "nbranches": self.total_nbranches,
+                "solver": voltage_solver,
+                "idx": self._solve_indexer,
+                "debug_states": self.debug_states,
+            }
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jaxley_spsolve
 
-        if solver == "bwd_euler":
-            u["v"] = step_voltage_implicit(**solver_kwargs, delta_t=delta_t)
-        elif solver == "crank_nicolson":
+        if solver in ["bwd_euler", "crank_nicolson"]:
             # Crank-Nicolson advances by half a step of backward and half a step of
             # forward Euler.
-            half_step_delta_t = delta_t / 2
-            half_step_voltages = step_voltage_implicit(
-                **solver_kwargs, delta_t=half_step_delta_t
-            )
-            # The forward Euler step in Crank-Nicolson can be performed easily as
-            # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
-            u["v"] = 2 * half_step_voltages - voltages
+            dt = delta_t / 2 if solver == "crank_nicolson" else delta_t
+
+            if voltage_solver == "jax.sparse":
+                # The `jax.sparse` solver does not allow `vmap` (because it uses) the
+                # scipy sparse solver, so we just loop here.
+                num_ions = state_vals["voltages"].shape[0]
+                updated_states = []
+                for ion_ind in range(num_ions):
+                    updated_states.append(
+                        step_voltage_implicit(
+                            state_vals["voltages"][ion_ind],
+                            state_vals["voltage_terms"][ion_ind],
+                            state_vals["constant_terms"][ion_ind],
+                            state_vals["axial_conductances"][ion_ind],
+                            *solver_kwargs.values(),
+                            dt,
+                        )
+                    )
+                updated_states = jnp.stack(updated_states)
+            else:
+                nones = [None] * len(solver_kwargs)
+                vmapped = vmap(
+                    step_voltage_implicit, in_axes=(0, 0, 0, 0, *nones, None)
+                )
+                updated_states = vmapped(
+                    *state_vals.values(), *solver_kwargs.values(), dt
+                )
+            if solver == "crank_nicolson":
+                # The forward Euler step in Crank-Nicolson can be performed easily as
+                # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
+                updated_states = 2 * updated_states - state_vals["voltages"]
         elif solver == "fwd_euler":
-            u["v"] = step_voltage_explicit(**solver_kwargs, delta_t=delta_t)
+            nones = [None] * len(solver_kwargs)
+            vmapped = vmap(step_voltage_explicit, in_axes=(0, 0, 0, 0, *nones, None))
+            updated_states = vmapped(
+                *state_vals.values(), *solver_kwargs.values(), delta_t
+            )
         else:
             raise ValueError(
                 f"You specified `solver={solver}`. The only allowed solvers are "
                 "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
             )
+
+        u["v"] = updated_states[0]
+
+        # Assign the diffused ion states.
+        for counter, ion_name in enumerate(self.diffusion_states):
+            u[ion_name] = updated_states[counter + 1]
 
         # Clamp for voltages.
         if "v" in externals.keys():
@@ -1995,55 +2128,48 @@ class Module(ABC):
 
         This is also updates `state` because the `state` also contains the current.
         """
-        voltages = states["v"]
-
         # Compute current through channels.
-        voltage_terms = jnp.zeros_like(voltages)
-        constant_terms = jnp.zeros_like(voltages)
-        # Run with two different voltages that are `diff` apart to infer the slope and
-        # offset.
-        diff = 1e-3
+        linear_terms = {}
+        const_terms = {}
+        for name in ["v"] + self.pumped_ions:
+            modified_state = states[name]
+            linear_terms[name] = jnp.zeros_like(states[name])
+            const_terms[name] = jnp.zeros_like(states[name])
 
         current_states = {}
         for name in self.membrane_current_names:
-            current_states[name] = jnp.zeros_like(voltages)
+            current_states[name] = jnp.zeros_like(modified_state)
 
         for channel in channels:
             name = channel._name
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
+            if isinstance(channel, Channel):
+                modified_state_name_name = "v"
+            else:
+                modified_state_name_name = channel.ion_name
+            modified_state = states[modified_state_name_name]
+
             indices = channel_nodes.loc[channel_nodes[name]][
                 "global_comp_index"
             ].to_numpy()
-
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = params[p][indices]
-            channel_params["radius"] = params["radius"][indices]
-            channel_params["length"] = params["length"][indices]
-            channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
-
-            channel_states = {}
-            for s in channel_state_names:
-                channel_states[s] = states[s][indices]
-
-            v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
-            membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
-                channel_states, v_and_perturbed, channel_params
+            current, linear_term, const_term = self._channel_current_components(
+                modified_state,
+                states,
+                delta_t,
+                channel,
+                indices,
+                params,
             )
-            voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
-            constant_term = membrane_currents[0] - voltage_term * voltages[indices]
-
-            # * 1000 to convert from mA/cm^2 to uA/cm^2.
-            voltage_terms = voltage_terms.at[indices].add(voltage_term * 1000.0)
-            constant_terms = constant_terms.at[indices].add(-constant_term * 1000.0)
+            linear_terms[modified_state_name_name] = (
+                linear_terms[modified_state_name_name].at[indices].add(linear_term)
+            )
+            const_terms[modified_state_name_name] = (
+                const_terms[modified_state_name_name].at[indices].add(const_term)
+            )
 
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
             current_states[channel.current_name] = (
-                current_states[channel.current_name]
-                .at[indices]
-                .add(membrane_currents[0])
+                current_states[channel.current_name].at[indices].add(current)
             )
 
         # Copy the currents into the `state` dictionary such that they can be
@@ -2051,7 +2177,52 @@ class Module(ABC):
         for name in self.membrane_current_names:
             states[name] = current_states[name]
 
-        return states, (voltage_terms, constant_terms)
+        # * 1_000.0 to convert from mA/cm^2 to uA/cm^2.
+        linear_terms["v"] *= 1000.0
+        const_terms["v"] *= 1000.0
+        return states, (linear_terms, const_terms)
+
+    def _channel_current_components(
+        self,
+        modified_state: jnp.ndarray,
+        states: Dict[str, jnp.ndarray],
+        delta_t: float,
+        channel: Channel,
+        indices: pd.DataFrame,
+        params: Dict[str, jnp.ndarray],
+    ):
+        """Computes current through a channel and its linear and const components.
+
+        The linear and constant components are inferred by running the `compute_current`
+        twice. They are later used for implicit Euler.
+        """
+        # Run with two different voltages that are `diff` apart to infer the slope and
+        # offset.
+        diff = 1e-3
+
+        channel_param_names = list(channel.channel_params.keys())
+        channel_state_names = list(channel.channel_states.keys())
+
+        channel_params = {}
+        for p in channel_param_names:
+            channel_params[p] = params[p][indices]
+        channel_params["radius"] = params["radius"][indices]
+        channel_params["length"] = params["length"][indices]
+        channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
+
+        channel_states = {}
+        for s in channel_state_names:
+            channel_states[s] = states[s][indices]
+
+        v_and_perturbed = jnp.stack(
+            [modified_state[indices], modified_state[indices] + diff]
+        )
+        membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
+            channel_states, v_and_perturbed, channel_params
+        )
+        voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
+        constant_term = membrane_currents[0] - voltage_term * modified_state[indices]
+        return membrane_currents[0], voltage_term, -constant_term
 
     def _step_synapse(
         self,
@@ -2476,6 +2647,13 @@ class View(Module):
         )
 
         self.channels = self._channels_in_view(pointer)
+        self.pumps = self._pumps_in_view(pointer)
+        self.pumped_ions = []
+        for pump in self.pumps:
+            if pump.ion_name not in self.pumped_ions:
+                self.pumped_ions.append(pump.ion_name)
+        # Diffusion always in entire module.
+        self.diffusion_states = pointer.diffusion_states
         self.membrane_current_names = [c.current_name for c in self.channels]
         self.synapse_current_names = pointer.synapse_current_names
         self._set_trainables_in_view()  # run after synapses and channels
@@ -2665,6 +2843,13 @@ class View(Module):
         channel_in_view = self.nodes[names].any(axis=0)
         channel_in_view = channel_in_view[channel_in_view].index
         return [c for c in pointer.channels if c._name in channel_in_view]
+
+    def _pumps_in_view(self, pointer: Union[Module, View]) -> List[Pump]:
+        """Set channels to show only those in view."""
+        names = [name._name for name in pointer.pumps]
+        pump_in_view = self.nodes[names].any(axis=0)
+        pump_in_view = pump_in_view[pump_in_view].index
+        return [c for c in pointer.pumps if c._name in pump_in_view]
 
     def _set_synapses_in_view(self, pointer: Union[Module, View]):
         """Set synapses to show only those in view."""
