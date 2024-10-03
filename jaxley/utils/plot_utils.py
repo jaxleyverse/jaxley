@@ -2,9 +2,11 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Dict, Optional, Tuple, Union
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.axes import Axes
 from numpy import ndarray
 from scipy.spatial import ConvexHull
@@ -12,8 +14,8 @@ from scipy.spatial import ConvexHull
 from jaxley.utils.cell_utils import v_interp
 
 
-def plot_morph(
-    xyzr,
+def plot_graph(
+    xyzr: ndarray,
     dims: Tuple[int] = (0, 1),
     col: str = "k",
     ax: Optional[Axes] = None,
@@ -23,22 +25,26 @@ def plot_morph(
     """Plot morphology.
 
     Args:
+        xyzr: The coordinates of the morphology.
         dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
-            two of them.
-        type: Either `line` or `scatter`.
+            two or three of them.
         col: The color for all branches.
+        ax: The matplotlib axis to plot on.
+        type: Either `line` or `scatter`.
+        morph_plot_kwargs: The plot kwargs for plt.plot or plt.scatter.
     """
 
     if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(3, 3))
+        fig = plt.figure(figsize=(3, 3))
+        ax = fig.add_subplot(111) if len(dims) < 3 else plt.axes(projection="3d")
 
     for coords_of_branch in xyzr:
-        x1, x2 = coords_of_branch[:, dims].T
+        points = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
-            _ = ax.plot(x1, x2, color=col, **morph_plot_kwargs)
+            _ = ax.plot(*points, color=col, **morph_plot_kwargs)
         elif "scatter" in type.lower():
-            _ = ax.scatter(x1, x2, color=col, **morph_plot_kwargs)
+            _ = ax.scatter(*points, color=col, **morph_plot_kwargs)
         else:
             raise NotImplementedError
 
@@ -91,16 +97,132 @@ def compute_rotation_matrix(axis: ndarray, angle: float) -> ndarray:
     )
 
 
-def plot_cylinder_projection(
-    orientation: ndarray,
+def create_cone_frustum_mesh(
     length: float,
-    radius: float,
+    radius_bottom: float,
+    radius_top: float,
+    bottom_dome: bool = False,
+    top_dome: bool = False,
+) -> ndarray:
+    """Generates mesh points for a cone frustum, with optional domes at either end.
+
+    Args:
+        length: The length of the frustum.
+        radius_bottom: The radius of the bottom of the frustum.
+        radius_top: The radius of the top of the frustum.
+        bottom_dome: If True, a dome is added to the bottom of the frustum.
+            The dome is a hemisphere with radius `radius_bottom`.
+        top_dome: If True, a dome is added to the top of the frustum.
+            The dome is a hemisphere with radius `radius_top`.
+
+    Returns:
+        An array of mesh points.
+    """
+
+    resolution = 100
+    t = np.linspace(0, 2 * np.pi, resolution)
+
+    # Determine the total height including domes
+    total_height = length
+    total_height += radius_bottom if bottom_dome else 0
+    total_height += radius_top if top_dome else 0
+
+    z = np.linspace(0, total_height, resolution)
+    T, Z = np.meshgrid(t, z)
+
+    # Initialize arrays
+    X = np.zeros_like(T)
+    Y = np.zeros_like(T)
+    R = np.zeros_like(T)
+
+    # Bottom hemisphere
+    if bottom_dome:
+        dome_mask = Z < radius_bottom
+        arg = 1 - Z[dome_mask] / radius_bottom
+        arg[np.isclose(arg, 1, atol=1e-6, rtol=1e-6)] = 1
+        arg[np.isclose(arg, -1, atol=1e-6, rtol=1e-6)] = -1
+        phi = np.arccos(1 - Z[dome_mask] / radius_bottom)
+        R[dome_mask] = radius_bottom * np.sin(phi)
+        Z[dome_mask] = Z[dome_mask]
+
+    # Frustum
+    frustum_start = radius_bottom if bottom_dome else 0
+    frustum_end = total_height - (radius_top if top_dome else 0)
+    frustum_mask = (Z >= frustum_start) & (Z <= frustum_end)
+    Z_frustum = Z[frustum_mask] - frustum_start
+    R[frustum_mask] = radius_bottom + (radius_top - radius_bottom) * (
+        Z_frustum / length
+    )
+
+    # Top hemisphere
+    if top_dome:
+        dome_mask = Z > (total_height - radius_top)
+        arg = (Z[dome_mask] - (total_height - radius_top)) / radius_top
+        arg[np.isclose(arg, 1, atol=1e-6, rtol=1e-6)] = 1
+        arg[np.isclose(arg, -1, atol=1e-6, rtol=1e-6)] = -1
+        phi = np.arccos(arg)
+        R[dome_mask] = radius_top * np.sin(phi)
+
+    X = R * np.cos(T)
+    Y = R * np.sin(T)
+
+    return np.stack([X, Y, Z])
+
+
+def create_cylinder_mesh(length: float, radius: float) -> ndarray:
+    """Generates mesh points for a cylinder.
+
+    Args:
+        length: The length of the cylinder.
+        radius: The radius of the cylinder.
+
+    Returns:
+        An array of mesh points.
+    """
+    # Define cylinder
+    resolution = 100
+    t = np.linspace(0, 2 * np.pi, resolution)
+    z = np.linspace(-length / 2, length / 2, resolution)
+    T, Z = np.meshgrid(t, z)
+
+    X = radius * np.cos(T)
+    Y = radius * np.sin(T)
+    return np.stack([X, Y, Z])
+
+
+def create_sphere_mesh(radius: float) -> np.ndarray:
+    """Generates mesh points for a sphere.
+
+    Args:
+        radius: The radius of the sphere.
+
+    Returns:
+        An array of mesh points.
+    """
+    resolution = 100
+    phi = np.linspace(0, np.pi, resolution)
+    theta = np.linspace(0, 2 * np.pi, resolution)
+
+    # Create a 2D meshgrid for phi and theta
+    PHI, THETA = np.meshgrid(phi, theta)
+
+    # Convert spherical coordinates to Cartesian coordinates
+    X = radius * np.sin(PHI) * np.cos(THETA)
+    Y = radius * np.sin(PHI) * np.sin(THETA)
+    Z = radius * np.cos(PHI)
+
+    return np.stack([X, Y, Z])
+
+
+def plot_mesh(
+    XYZ: ndarray,
+    orientation: ndarray,
     center: ndarray,
     dims: Tuple[int],
     ax: Axes = None,
     **kwargs,
 ) -> Axes:
-    """Plot the 2D projection of a cylinder on a cardinal plane.
+    """Plot the 2D projection of a volume mesh on a cardinal plane.
 
     Project the projection of a cylinder that is oriented in 3D space.
     - Create cylinder mesh
@@ -111,11 +233,11 @@ def plot_cylinder_projection(
     - fill area inside the outline
 
     Args:
+        XYZ: coordinates of the xyz mesh that define the volume
         orientation: orientation vector. The cylinder will be oriented along this vector.
-        length: The length of the cylinder.
-        radius: The radius of the cylinder.
         center: The x,y,z coordinates of the center of the cylinder.
-        dims: The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.
+        dims: The dimensions to plot / to project the cylinder onto,
+        i.e. [0,1] xy-plane or [0,1,2] for 3D.
         ax: The matplotlib axis to plot on.
 
     Returns:
@@ -123,7 +245,7 @@ def plot_cylinder_projection(
     """
     if ax is None:
         fig = plt.figure(figsize=(3, 3))
-        ax = fig.add_subplot(111)
+        ax = fig.add_subplot(111) if len(dims) < 3 else plt.axes(projection="3d")
 
     # Normalize axis vector
     orientation = np.array(orientation)
@@ -139,16 +261,8 @@ def plot_cylinder_projection(
     else:
         rotation_matrix = compute_rotation_matrix(rotation_axis, rotation_angle)
 
-    # Define cylinder
-    resolution = 100
-    t = np.linspace(0, 2 * np.pi, resolution)
-    z = np.linspace(-length / 2, length / 2, resolution)
-    T, Z = np.meshgrid(t, z)
-
-    X = radius * np.cos(T)
-    Y = radius * np.sin(T)
-
-    # Rotate cylinder
+    # Rotate mesh
+    X, Y, Z = XYZ
     points = np.dot(rotation_matrix, np.array([X.flatten(), Y.flatten(), Z.flatten()]))
     X = points.reshape(3, -1)
 
@@ -156,16 +270,19 @@ def plot_cylinder_projection(
     X = X[dims]
     X += np.array(center)[dims, np.newaxis]
 
-    # get outline of cylinder mesh
-    X = extract_outline(X.T).T
-
-    ax.fill(X[0].flatten(), X[1].flatten(), **kwargs)
+    if len(dims) < 3:
+        # get outline of cylinder mesh
+        X = extract_outline(X.T).T
+        ax.fill(*X.reshape(X.shape[0], -1), **kwargs)
+    else:
+        # plot 3d mesh
+        ax.plot_surface(*X.reshape(*XYZ.shape), **kwargs)
     return ax
 
 
 def plot_comps(
     module_or_view: Union["jx.Module", "jx.View"],
-    view: "jx.View",
+    view: pd.DataFrame,
     dims: Tuple[int] = (0, 1),
     col: str = "k",
     ax: Optional[Axes] = None,
@@ -179,7 +296,9 @@ def plot_comps(
     Args:
         module_or_view: The module or view to plot.
         view: The view of the module.
-        dims: The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.
+        dims: The dimensions to plot / to project the cylinder onto,
+            i.e. [0,1] xy-plane or [0,1,2] for 3D.
+        col: The color for all compartments
         ax: The matplotlib axis to plot on.
         comp_plot_kwargs: The plot kwargs for plt.fill.
         true_comp_length: If True, the length of the compartment is used, i.e. the
@@ -194,7 +313,7 @@ def plot_comps(
     """
     if ax is None:
         fig = plt.figure(figsize=(3, 3))
-        ax = fig.add_subplot(111)
+        ax = fig.add_subplot(111) if len(dims) < 3 else plt.axes(projection="3d")
 
     module = (
         module_or_view.pointer
@@ -211,7 +330,20 @@ def plot_comps(
         locs = module.xyzr[idx][:, :3]
         if locs.shape[0] == 1:  # assume spherical comp
             radius = module.xyzr[idx][:, -1]
-            ax.add_artist(plt.Circle(locs[0, dims], radius, color=col))
+            center = module.xyzr[idx][0, :3]
+            if len(dims) == 3:
+                xyz = create_sphere_mesh(radius)
+                ax = plot_mesh(
+                    xyz,
+                    np.zeros(3),
+                    center,
+                    np.array(dims),
+                    ax,
+                    color=col,
+                    **comp_plot_kwargs,
+                )
+            else:
+                ax.add_artist(plt.Circle(locs[0, dims], radius, color=col))
         else:
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
@@ -226,14 +358,93 @@ def plot_comps(
                 center = comp[["x", "y", "z"]]
                 radius = comp["radius"]
                 length = comp["length"] if true_comp_length else l
-                ax = plot_cylinder_projection(
+                xyz = create_cylinder_mesh(length, radius)
+                ax = plot_mesh(
+                    xyz,
                     axis,
-                    length,
-                    radius,
                     center,
                     np.array(dims),
                     ax,
                     color=col,
                     **comp_plot_kwargs,
                 )
+    return ax
+
+
+def plot_morph(
+    module_or_view: Union["jx.Module", "jx.View"],
+    view: pd.DataFrame,
+    dims: Tuple[int] = (0, 1),
+    col: str = "k",
+    ax: Optional[Axes] = None,
+    morph_plot_kwargs: Dict = {},
+) -> Axes:
+    """Plot the detailed morphology.
+
+    Plots the traced morphology it was traced. That means at every point that was
+    traced a disc of radius `r` is plotted. The outline of the discs are then
+    connected to form the morphology. This means every trace segement can be
+    represented by a cone frustum. To prevent breaks in the morphology, each
+    segement is connected with a ball joint.
+
+    Args:
+        module_or_view: The module or view to plot.
+        view: The view dataframe of the module.
+        dims: The dimensions to plot / to project the cylinder onto,
+            i.e. [0,1] xy-plane or [0,1,2] for 3D.
+        col: The color for all branches
+        ax: The matplotlib axis to plot on.
+        morph_plot_kwargs: The plot kwargs for plt.fill.
+
+    Returns:
+        Plot of the detailed morphology."""
+    if ax is None:
+        fig = plt.figure(figsize=(3, 3))
+        ax = fig.add_subplot(111) if len(dims) < 3 else plt.axes(projection="3d")
+    if len(dims) == 3:
+        warn(
+            "rendering large morphologies in 3D can take a while. Consider projecting to 2D instead."
+        )
+
+    module = (
+        module_or_view.pointer
+        if "pointer" in module_or_view.__dict__
+        else module_or_view
+    )
+    assert not np.any(np.isnan(module.xyzr[0][:, :3])), "missing xyz coordinates."
+
+    branches_inds = np.unique(view["branch_index"].to_numpy())
+
+    for idx in branches_inds:
+        xyzrs = module.xyzr[idx]
+        if len(xyzrs) > 1:
+            for xyzr1, xyzr2 in zip(xyzrs[1:, :], xyzrs[:-1, :]):
+                dxyz = xyzr2[:3] - xyzr1[:3]
+                length = np.sqrt(np.sum(dxyz**2))
+                points = create_cone_frustum_mesh(
+                    length, xyzr1[-1], xyzr2[-1], bottom_dome=True, top_dome=True
+                )
+                plot_mesh(
+                    points,
+                    dxyz,
+                    xyzr1[:3],
+                    np.array(dims),
+                    color=col,
+                    ax=ax,
+                    **morph_plot_kwargs,
+                )
+        else:
+            points = create_cone_frustum_mesh(
+                0, xyzrs[:, -1], xyzrs[:, -1], bottom_dome=True, top_dome=True
+            )
+            plot_mesh(
+                points,
+                np.ones(3),
+                xyzrs[0, :3],
+                dims=np.array(dims),
+                color=col,
+                ax=ax,
+                **morph_plot_kwargs,
+            )
+
     return ax

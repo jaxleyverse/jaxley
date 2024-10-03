@@ -33,7 +33,7 @@ from jaxley.utils.cell_utils import (
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import childview, concat_and_ignore_empty
-from jaxley.utils.plot_utils import plot_comps, plot_morph
+from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
 
 
@@ -1219,6 +1219,7 @@ class Module(ABC):
             col: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
+            type: The type of plot. One of ["line", "scatter", "comp", "morph"].
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
         """
         return self._vis(
@@ -1241,8 +1242,12 @@ class Module(ABC):
     ) -> Axes:
         branches_inds = view["branch_index"].to_numpy()
 
-        if type == "volume":
+        if "comp" in type.lower():
             return plot_comps(
+                self, view, dims=dims, ax=ax, col=col, **morph_plot_kwargs
+            )
+        if "morph" in type.lower():
+            return plot_morph(
                 self, view, dims=dims, ax=ax, col=col, **morph_plot_kwargs
             )
 
@@ -1253,7 +1258,7 @@ class Module(ABC):
             ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
             coords.append(self.xyzr[branch_ind])
 
-        ax = plot_morph(
+        ax = plot_graph(
             coords,
             dims=dims,
             col=col,
@@ -1277,7 +1282,7 @@ class Module(ABC):
         coords = self.xyzr[branch_ind]
         interpolated_xyz = interpolate_xyz(comp_fraction, coords)
 
-        ax = plot_morph(
+        ax = plot_graph(
             np.asarray([[interpolated_xyz]]),
             dims=dims,
             col=col,
@@ -1712,8 +1717,7 @@ class View:
         Args:
             ax: An axis into which to plot.
             col: The color for all branches.
-            type: Whether to plot as points ("scatter"), a line ("line") or the
-                actual volume of the compartment("volume").
+            type: The type of plot. One of ["line", "scatter", "comp", "morph"].
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
