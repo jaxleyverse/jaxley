@@ -120,7 +120,10 @@ class CompartmentView(View):
             assert (
                 loc >= 0.0 and loc <= 1.0
             ), "Compartments must be indexed by a continuous value between 0 and 1."
-        index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
+        branch_ind = np.unique(self.view["global_branch_index"].to_numpy())
+        nseg_of_branches = self.pointer.nseg_per_branch[branch_ind]
+        print("nseg_of_branches", nseg_of_branches)
+        index = index_of_loc(loc, nseg_of_branches) if loc != "all" else "all"
         view = self(index)
         view._has_been_called = True
         return view
@@ -137,13 +140,15 @@ class CompartmentView(View):
         start_branch = self.view["global_branch_index"].item()
         start_comp = self.view["comp_index"].item()
         start_xyz = interpolate_xyz(
-            loc_of_index(start_comp, self.pointer.nseg), self.pointer.xyzr[start_branch]
+            loc_of_index(start_comp, self.pointer.cumsum_nseg),
+            self.pointer.xyzr[start_branch],
         )
 
         end_branch = endpoint.view["global_branch_index"].item()
         end_comp = endpoint.view["comp_index"].item()
         end_xyz = interpolate_xyz(
-            loc_of_index(end_comp, self.pointer.nseg), self.pointer.xyzr[end_branch]
+            loc_of_index(end_comp, self.pointer.cumsum_nseg),
+            self.pointer.xyzr[end_branch],
         )
 
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))

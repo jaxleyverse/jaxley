@@ -55,7 +55,7 @@ def test_connect():
     connect(net2[1, 0], net2[2, 0], TestSynapse())
 
     # test after all connections are made, to catch "overwritten" connections
-    get_comps = lambda locs: [index_of_loc(0, idx, net2.nseg) for idx in locs]
+    get_comps = lambda locs: [index_of_loc(idx, net2.nseg) for idx in locs]
 
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]

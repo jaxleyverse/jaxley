@@ -136,9 +136,7 @@ def sparse_connect(
     post_rows = post_cell_view.view.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    idcs_to_zero = np.zeros_like(num_pre)
-    get_global_idx = pre_cell_view.pointer._local_inds_to_global
-    global_pre_indices = get_global_idx(pre_syn_neurons, idcs_to_zero, idcs_to_zero)
+    global_pre_indices = pre_cell_view.pointer._cumsum_nseg_per_cell[pre_cell_inds]
     pre_rows = pre_cell_view.view.loc[global_pre_indices]
 
     pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
@@ -182,9 +180,8 @@ def connectivity_matrix_connect(
     ]
     post_rows = post_cell_view.view.loc[global_post_indices]
 
-    idcs_to_zero = np.zeros_like(from_idx)
-    get_global_idx = post_cell_view.pointer._local_inds_to_global
-    global_pre_indices = get_global_idx(pre_cell_inds, idcs_to_zero, idcs_to_zero)
+    # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+    global_pre_indices = pre_cell_view.pointer._cumsum_nseg_per_cell[pre_cell_inds]
     pre_rows = pre_cell_view.view.loc[global_pre_indices]
 
     pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)

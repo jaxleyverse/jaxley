@@ -193,37 +193,47 @@ def get_num_neighbours(
     return num_neighbours
 
 
-def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
+def index_of_loc(loc: float, nseg_of_branch: int) -> int:
     """Returns the index of a segment given a loc in [0, 1] and the index of a branch.
+
+    Note that this function returns the local index within the branch, **not** the
+    global index.
 
     This is used because we specify locations such as synapses as a value between 0 and
     1. We have to convert this onto a discrete segment here.
 
     Args:
-        branch_ind: Index of the branch.
         loc: Location (in [0, 1]) along that branch.
-        nseg_per_branch: Number of segments of each branch.
+        nseg_per_branch: Number of segments of each branch that is queried.
 
     Returns:
         The index of the compartment within the entire cell.
     """
-    nseg = nseg_per_branch  # only for convenience.
+    nseg = nseg_of_branch  # Only for convenience.
+
+    # All branches have the same number of segments. In this case we can vectorize.
     possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
-    ind_along_branch = np.argmin(np.abs(possible_locs - loc))
-    return branch_ind * nseg + ind_along_branch
+    return np.argmin(np.abs(possible_locs - loc))
 
 
 def loc_of_index(
-    global_comp_index: jnp.ndarray,
-    global_branch_index: jnp.ndarray,
-    cumsum_nseg_per_branch: jnp.ndarray,
+    comp_index: jnp.ndarray,
     nseg_per_branch: jnp.ndarray,
 ) -> jnp.ndarray:
-    """Return location corresponding to index."""
-    index = global_comp_index - cumsum_nseg_per_branch[global_branch_index]
-    nseg = nseg_per_branch[global_branch_index]
-    possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
-    return possible_locs[index]
+    """Return location corresponding to index.
+
+    Used only for plotting the SWC morphology in `jx.Network`.
+
+    Args:
+        comp_index: Array of integers of shape `(number_of_queried_indices)`.
+        cumsum_nseg_per_branch: Array of integers of shape `(number_of_branches)`.
+
+    Returns:
+        Array of floats of shape `(number_of_queried_indices)`.
+    """
+    # Find number of compartments in that branch.
+    offsets = 0.5 / nseg_per_branch
+    return offsets + comp_index / nseg_per_branch
 
 
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):

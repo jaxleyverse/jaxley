@@ -1416,9 +1416,7 @@ class Module(ABC):
             np.isnan(self.xyzr[branch_ind][:, dims])
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
-        comp_fraction = loc_of_index(
-            comp_ind, branch_ind, self.cumsum_nseg, self.nseg_per_branch
-        )
+        comp_fraction = loc_of_index(comp_ind, self.cumsum_nseg)
         coords = self.xyzr[branch_ind]
         interpolated_xyz = interpolate_xyz(comp_fraction, coords)
 
@@ -1986,7 +1984,7 @@ class View:
         """
         idxs = self.view.global_branch_index.unique()
         if self.__class__.__name__ == "CompartmentView":
-            loc = loc_of_index(self.view.comp_index, self.pointer.nseg)
+            loc = loc_of_index(self.view.comp_index, self.pointer.cumsum_nseg)
             return list(interpolate_xyz(loc, self.pointer.xyzr[idxs[0]]))
         else:
             return [self.pointer.xyzr[i] for i in idxs]
@@ -2012,8 +2010,17 @@ class View:
         if is_new:  # synapse is not known
             self._update_synapse_state_names(synapse_type)
 
-        post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
-        pre_loc = loc_of_index(pre_rows["comp_index"].to_numpy(), self.pointer.nseg)
+        post_loc = loc_of_index(
+            post_rows["comp_index"].to_numpy(),
+            self.pointer.nseg_per_branch[post_rows["global_branch_index"].to_numpy()],
+        )
+        pre_loc = loc_of_index(
+            pre_rows["comp_index"].to_numpy(),
+            self.pointer.nseg_per_branch[pre_rows["global_branch_index"].to_numpy()],
+        )
+
+        print("post_rows", len(post_rows))
+        print("pre_rows", len(pre_rows))
 
         # Define new synapses. Each row is one synapse.
         new_rows = dict(
