@@ -106,6 +106,12 @@ def create_cone_frustum_mesh(
 ) -> ndarray:
     """Generates mesh points for a cone frustum, with optional domes at either end.
 
+    This is used to render the traced morphology in 3D (and to project it to 2D)
+    as part of `plot_morph`. Sections between two traced coordinates with two
+    different radii can be represented by a cone frustum. Additionally, the ends
+    of the frustum can be capped with hemispheres to ensure that two neighbouring
+    frustums are connected smoothly (like ball joints).
+
     Args:
         length: The length of the frustum.
         radius_bottom: The radius of the bottom of the frustum.
@@ -127,50 +133,53 @@ def create_cone_frustum_mesh(
     total_height += radius_bottom if bottom_dome else 0
     total_height += radius_top if top_dome else 0
 
-    z = np.linspace(0, total_height, resolution)
-    T, Z = np.meshgrid(t, z)
+    z_coords = np.linspace(0, total_height, resolution)
+    t, z_coords = np.meshgrid(t, z_coords)
 
     # Initialize arrays
-    X = np.zeros_like(T)
-    Y = np.zeros_like(T)
-    R = np.zeros_like(T)
+    x_coords = np.zeros_like(t)
+    y_coords = np.zeros_like(t)
+    r_coords = np.zeros_like(t)
 
     # Bottom hemisphere
     if bottom_dome:
-        dome_mask = Z < radius_bottom
-        arg = 1 - Z[dome_mask] / radius_bottom
+        dome_mask = z_coords < radius_bottom
+        arg = 1 - z_coords[dome_mask] / radius_bottom
         arg[np.isclose(arg, 1, atol=1e-6, rtol=1e-6)] = 1
         arg[np.isclose(arg, -1, atol=1e-6, rtol=1e-6)] = -1
-        phi = np.arccos(1 - Z[dome_mask] / radius_bottom)
-        R[dome_mask] = radius_bottom * np.sin(phi)
-        Z[dome_mask] = Z[dome_mask]
+        phi = np.arccos(1 - z_coords[dome_mask] / radius_bottom)
+        r_coords[dome_mask] = radius_bottom * np.sin(phi)
+        z_coords[dome_mask] = z_coords[dome_mask]
 
     # Frustum
     frustum_start = radius_bottom if bottom_dome else 0
     frustum_end = total_height - (radius_top if top_dome else 0)
-    frustum_mask = (Z >= frustum_start) & (Z <= frustum_end)
-    Z_frustum = Z[frustum_mask] - frustum_start
-    R[frustum_mask] = radius_bottom + (radius_top - radius_bottom) * (
-        Z_frustum / length
+    frustum_mask = (z_coords >= frustum_start) & (z_coords <= frustum_end)
+    z_frustum = z_coords[frustum_mask] - frustum_start
+    z_coords[frustum_mask] = radius_bottom + (radius_top - radius_bottom) * (
+        z_frustum / length
     )
 
     # Top hemisphere
     if top_dome:
-        dome_mask = Z > (total_height - radius_top)
-        arg = (Z[dome_mask] - (total_height - radius_top)) / radius_top
+        dome_mask = z_coords > (total_height - radius_top)
+        arg = (z_coords[dome_mask] - (total_height - radius_top)) / radius_top
         arg[np.isclose(arg, 1, atol=1e-6, rtol=1e-6)] = 1
         arg[np.isclose(arg, -1, atol=1e-6, rtol=1e-6)] = -1
         phi = np.arccos(arg)
-        R[dome_mask] = radius_top * np.sin(phi)
+        r_coords[dome_mask] = radius_top * np.sin(phi)
 
-    X = R * np.cos(T)
-    Y = R * np.sin(T)
+    x_coords = r_coords * np.cos(t)
+    y_coords = r_coords * np.sin(t)
 
-    return np.stack([X, Y, Z])
+    return np.stack([x_coords, y_coords, z_coords])
 
 
 def create_cylinder_mesh(length: float, radius: float) -> ndarray:
     """Generates mesh points for a cylinder.
+
+    This is used to render cylindrical compartments in 3D (and to project it to 2D)
+    as part of `plot_comps`.
 
     Args:
         length: The length of the cylinder.
@@ -182,16 +191,19 @@ def create_cylinder_mesh(length: float, radius: float) -> ndarray:
     # Define cylinder
     resolution = 100
     t = np.linspace(0, 2 * np.pi, resolution)
-    z = np.linspace(-length / 2, length / 2, resolution)
-    T, Z = np.meshgrid(t, z)
+    z_coords = np.linspace(-length / 2, length / 2, resolution)
+    t, z_coords = np.meshgrid(t, z_coords)
 
-    X = radius * np.cos(T)
-    Y = radius * np.sin(T)
-    return np.stack([X, Y, Z])
+    x_coords = radius * np.cos(t)
+    y_coords = radius * np.sin(t)
+    return np.stack([x_coords, y_coords, z_coords])
 
 
 def create_sphere_mesh(radius: float) -> np.ndarray:
     """Generates mesh points for a sphere.
+
+    This is used to render spherical compartments in 3D (and to project it to 2D)
+    as part of `plot_comps`.
 
     Args:
         radius: The radius of the sphere.
@@ -204,18 +216,18 @@ def create_sphere_mesh(radius: float) -> np.ndarray:
     theta = np.linspace(0, 2 * np.pi, resolution)
 
     # Create a 2D meshgrid for phi and theta
-    PHI, THETA = np.meshgrid(phi, theta)
+    phi_coords, theta_coords = np.meshgrid(phi, theta)
 
     # Convert spherical coordinates to Cartesian coordinates
-    X = radius * np.sin(PHI) * np.cos(THETA)
-    Y = radius * np.sin(PHI) * np.sin(THETA)
-    Z = radius * np.cos(PHI)
+    x_coords = radius * np.sin(phi_coords) * np.cos(theta_coords)
+    y_coords = radius * np.sin(phi_coords) * np.sin(theta_coords)
+    z_coords = radius * np.cos(phi_coords)
 
-    return np.stack([X, Y, Z])
+    return np.stack([x_coords, y_coords, z_coords])
 
 
 def plot_mesh(
-    XYZ: ndarray,
+    mesh_points: ndarray,
     orientation: ndarray,
     center: ndarray,
     dims: Tuple[int],
@@ -233,7 +245,7 @@ def plot_mesh(
     - fill area inside the outline
 
     Args:
-        XYZ: coordinates of the xyz mesh that define the volume
+        mesh_points: coordinates of the xyz mesh that define the volume
         orientation: orientation vector. The cylinder will be oriented along this vector.
         center: The x,y,z coordinates of the center of the cylinder.
         dims: The dimensions to plot / to project the cylinder onto,
@@ -262,21 +274,24 @@ def plot_mesh(
         rotation_matrix = compute_rotation_matrix(rotation_axis, rotation_angle)
 
     # Rotate mesh
-    X, Y, Z = XYZ
-    points = np.dot(rotation_matrix, np.array([X.flatten(), Y.flatten(), Z.flatten()]))
-    X = points.reshape(3, -1)
+    x_mesh, y_mesh, z_mesh = mesh_points
+    rotated_mesh_points = np.dot(
+        rotation_matrix,
+        np.array([x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten()]),
+    )
+    rotated_mesh_points = rotated_mesh_points.reshape(3, -1)
 
     # project onto plane and move
-    X = X[dims]
-    X += np.array(center)[dims, np.newaxis]
+    rotated_mesh_points = rotated_mesh_points[dims]
+    rotated_mesh_points += np.array(center)[dims, np.newaxis]
 
     if len(dims) < 3:
         # get outline of cylinder mesh
-        X = extract_outline(X.T).T
-        ax.fill(*X.reshape(X.shape[0], -1), **kwargs)
+        mesh_outline = extract_outline(rotated_mesh_points.T).T
+        ax.fill(*mesh_outline.reshape(mesh_outline.shape[0], -1), **kwargs)
     else:
         # plot 3d mesh
-        ax.plot_surface(*X.reshape(*XYZ.shape), **kwargs)
+        ax.plot_surface(*rotated_mesh_points.reshape(*mesh_points.shape), **kwargs)
     return ax
 
 
