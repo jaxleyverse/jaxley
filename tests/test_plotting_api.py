@@ -167,7 +167,7 @@ def test_volume_plotting():
     net.compute_xyz()
 
     morph_cell = jx.read_swc(
-        os.path.join(os.path.dirname(__file__), "swc_files", "morph_minimal.swc"),
+        os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc"),
         nseg=1,
     )
 
@@ -186,6 +186,6 @@ def test_volume_plotting():
             plt.close(fig)
 
     # test morph plotting (does not work if no radii in xyzr)
-    morph_cell.branch(1).vis(type="morph")
-    morph_cell.branch(1).vis(type="morph", dims=[0, 1, 2])
+    morph_cell.vis(type="morph")
+    morph_cell.branch(1).vis(type="morph", dims=[0, 1, 2]) # plotting whole thing takes too long
     plt.close()

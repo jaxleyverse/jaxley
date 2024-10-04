@@ -133,13 +133,13 @@ def create_cone_frustum_mesh(
     total_height += radius_bottom if bottom_dome else 0
     total_height += radius_top if top_dome else 0
 
-    z_coords = np.linspace(0, total_height, resolution)
-    t, z_coords = np.meshgrid(t, z_coords)
+    z = np.linspace(0, total_height, resolution)
+    t_grid, z_coords = np.meshgrid(t, z)
 
     # Initialize arrays
-    x_coords = np.zeros_like(t)
-    y_coords = np.zeros_like(t)
-    r_coords = np.zeros_like(t)
+    x_coords = np.zeros_like(t_grid)
+    y_coords = np.zeros_like(t_grid)
+    r_coords = np.zeros_like(t_grid)
 
     # Bottom hemisphere
     if bottom_dome:
@@ -156,7 +156,7 @@ def create_cone_frustum_mesh(
     frustum_end = total_height - (radius_top if top_dome else 0)
     frustum_mask = (z_coords >= frustum_start) & (z_coords <= frustum_end)
     z_frustum = z_coords[frustum_mask] - frustum_start
-    z_coords[frustum_mask] = radius_bottom + (radius_top - radius_bottom) * (
+    r_coords[frustum_mask] = radius_bottom + (radius_top - radius_bottom) * (
         z_frustum / length
     )
 
@@ -169,8 +169,8 @@ def create_cone_frustum_mesh(
         phi = np.arccos(arg)
         r_coords[dome_mask] = radius_top * np.sin(phi)
 
-    x_coords = r_coords * np.cos(t)
-    y_coords = r_coords * np.sin(t)
+    x_coords = r_coords * np.cos(t_grid)
+    y_coords = r_coords * np.sin(t_grid)
 
     return np.stack([x_coords, y_coords, z_coords])
 
@@ -192,10 +192,10 @@ def create_cylinder_mesh(length: float, radius: float) -> ndarray:
     resolution = 100
     t = np.linspace(0, 2 * np.pi, resolution)
     z_coords = np.linspace(-length / 2, length / 2, resolution)
-    t, z_coords = np.meshgrid(t, z_coords)
+    t_grid, z_coords = np.meshgrid(t, z_coords)
 
-    x_coords = radius * np.cos(t)
-    y_coords = radius * np.sin(t)
+    x_coords = radius * np.cos(t_grid)
+    y_coords = radius * np.sin(t_grid)
     return np.stack([x_coords, y_coords, z_coords])
 
 
