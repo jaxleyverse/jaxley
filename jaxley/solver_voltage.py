@@ -80,12 +80,12 @@ def step_voltage_implicit_with_jaxley_spsolve(
     child_inds: jnp.ndarray,
     nbranches: int,
     solver: str,
-    delta_t: float,
     children_in_level: List[jnp.ndarray],
     parents_in_level: List[jnp.ndarray],
     root_inds: jnp.ndarray,
     branchpoint_group_inds: jnp.ndarray,
     debug_states,
+    delta_t: float,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
     # Build diagonals.
@@ -149,7 +149,7 @@ def step_voltage_implicit_with_jaxley_spsolve(
     num_branchpoints = len(branchpoint_conds_parents)
     branchpoint_diags = -group_and_sum(
         all_branchpoint_vals, branchpoint_group_inds, num_branchpoints
-    )
+    ) + 1e-14  # For numerical stability if axial_conductances == 0.0
     branchpoint_solves = jnp.zeros((num_branchpoints,))
 
     branchpoint_conds_children = -delta_t * branchpoint_conds_children
@@ -246,9 +246,9 @@ def step_voltage_implicit_with_jax_spsolve(
     indices,
     indptr,
     sinks,
-    delta_t,
     n_nodes,
     internal_node_inds,
+    delta_t,
 ):
     axial_conductances = delta_t * axial_conductances
 
