@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from copy import deepcopy
+from itertools import chain
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
@@ -56,7 +57,7 @@ class Branch(Module):
             compartment_list = compartments
 
         self.nseg = len(compartment_list)
-        self.nseg_per_branch = [self.nseg]
+        self.nseg_per_branch = jnp.asarray([self.nseg])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -146,6 +147,51 @@ class Branch(Module):
     def __len__(self) -> int:
         return self.nseg
 
+    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
+        """Set the number of compartments with which the branch is discretized.
+
+        Args:
+            ncomp: The number of compartments that the branch should be discretized
+                into.
+
+        Raises:
+            - When the Module is a Network.
+            - When there are stimuli in any compartment in the Module.
+            - When there are recordings in any compartment in the Module.
+            - When the channels of the compartments are not the same within the branch
+            that is modified.
+            - When the lengths of the compartments are not the same within the branch
+            that is modified.
+            - Unless the morphology was read from an SWC file, when the radiuses of the
+            compartments are not the same within the branch that is modified.
+        """
+        assert len(self.externals) == 0, "No stimuli allowed!"
+        assert len(self.recordings) == 0, "No recordings allowed!"
+        assert len(self.trainable_params) == 0, "No trainables allowed!"
+
+        # Update all attributes that are affected by compartment structure.
+        (
+            self.nodes,
+            self.nseg_per_branch,
+            self.nseg,
+            self.cumsum_nseg,
+            self._internal_node_inds,
+        ) = self._set_ncomp(
+            ncomp,
+            self.nodes,
+            self.nodes,
+            self.nodes["comp_index"].to_numpy()[0],
+            self.nseg_per_branch,
+            [c._name for c in self.channels],
+            list(chain(*[c.channel_params for c in self.channels])),
+            list(chain(*[c.channel_states for c in self.channels])),
+            self._radius_generating_fns,
+            min_radius,
+        )
+
+        # Update the morphology indexing (e.g., `.comp_edges`).
+        self.initialize()
+
 
 class BranchView(View):
     """BranchView."""
@@ -167,3 +213,60 @@ class BranchView(View):
         assert key in ["comp", "loc"]
         compview = CompartmentView(self.pointer, self.view)
         return compview if key == "comp" else compview.loc
+
+    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
+        """Set the number of compartments with which the branch is discretized.
+
+        Args:
+            ncomp: The number of compartments that the branch should be discretized
+                into.
+            min_radius: Only used if the morphology was read from an SWC file. If passed
+                the radius is capped to be at least this value.
+
+        Raises:
+            - When there are stimuli in any compartment in the module.
+            - When there are recordings in any compartment in the module.
+            - When the channels of the compartments are not the same within the branch
+            that is modified.
+            - When the lengths of the compartments are not the same within the branch
+            that is modified.
+            - Unless the morphology was read from an SWC file, when the radiuses of the
+            compartments are not the same within the branch that is modified.
+        """
+        if self.pointer._module_type == "network":
+            raise NotImplementedError(
+                "`.set_ncomp` is not yet supported for a `Network`. To overcome this, "
+                "first build individual cells with the desired `ncomp` and then "
+                "assemble them into a network."
+            )
+
+        error_msg = lambda name: (
+            f"Your module contains a {name}. This is not allowed. First build the "
+            "morphology with `set_ncomp()` and then insert stimuli, recordings, and "
+            "define trainables."
+        )
+        assert len(self.pointer.externals) == 0, error_msg("stimulus")
+        assert len(self.pointer.recordings) == 0, error_msg("recording")
+        assert len(self.pointer.trainable_params) == 0, error_msg("trainable parameter")
+        # Update all attributes that are affected by compartment structure.
+        (
+            self.pointer.nodes,
+            self.pointer.nseg_per_branch,
+            self.pointer.nseg,
+            self.pointer.cumsum_nseg,
+            self.pointer._internal_node_inds,
+        ) = self.pointer._set_ncomp(
+            ncomp,
+            self.view,
+            self.pointer.nodes,
+            self.view["global_comp_index"].to_numpy()[0],
+            self.pointer.nseg_per_branch,
+            [c._name for c in self.pointer.channels],
+            list(chain(*[c.channel_params for c in self.pointer.channels])),
+            list(chain(*[c.channel_states for c in self.pointer.channels])),
+            self.pointer._radius_generating_fns,
+            min_radius,
+        )
+
+        # Update the morphology indexing (e.g., `.comp_edges`).
+        self.pointer.initialize()

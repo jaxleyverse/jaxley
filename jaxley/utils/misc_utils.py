@@ -3,6 +3,7 @@
 
 from typing import List, Optional, Union
 
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
@@ -33,3 +34,10 @@ def childview(
     if child_name != "/":
         return module.__getattr__(child_name)(index)
     raise AttributeError("Compartment does not support indexing")
+
+
+def cumsum_leading_zero(array: Union[jnp.ndarray, List]) -> jnp.ndarray:
+    """Return the `cumsum` of a jax array and pad with a leading zero."""
+    return jnp.concatenate([jnp.asarray([0]), jnp.cumsum(jnp.asarray(array))]).astype(
+        int
+    )

@@ -20,8 +20,9 @@ from jaxley.utils.cell_utils import (
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
 )
+from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
-from jaxley.utils.swc import swc_to_jaxley
+from jaxley.utils.swc import build_radiuses_from_xyzr, swc_to_jaxley
 
 
 class Cell(Module):
@@ -70,9 +71,9 @@ class Cell(Module):
         parents = [-1] if parents is None else parents
 
         if isinstance(branches, Branch):
-            self.branch_list = [branches for _ in range(len(parents))]
+            branch_list = [branches for _ in range(len(parents))]
         else:
-            self.branch_list = branches
+            branch_list = branches
 
         if xyzr is not None:
             assert len(xyzr) == len(parents)
@@ -85,28 +86,33 @@ class Cell(Module):
             # self.xyzr at `.vis()`.
             self.xyzr = [float("NaN") * np.zeros((2, 4)) for _ in range(len(parents))]
 
-        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in self.branch_list])
-        self.nseg = int(jnp.max(self.nseg_per_branch))
-        self.cumsum_nseg = jnp.concatenate(
-            [jnp.asarray([0]), jnp.cumsum(self.nseg_per_branch)]
-        )
-        self.total_nbranches = len(self.branch_list)
-        self.nbranches_per_cell = [len(self.branch_list)]
+        self.total_nbranches = len(branch_list)
+        self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
-        self.cumsum_nbranches = jnp.asarray([0, len(self.branch_list)])
+        self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
 
-        # Indexing.
-        self.nodes = pd.concat([c.nodes for c in self.branch_list], ignore_index=True)
-        self._append_params_and_states(self.cell_params, self.cell_states)
+        # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
+        # is run.
+        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in branch_list])
+        self.nseg = int(jnp.max(self.nseg_per_branch))
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
+
+        # Build nodes. Has to be changed when `.set_ncomp()` is run.
+        self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
         self.nodes["comp_index"] = np.arange(self.cumsum_nseg[-1])
         self.nodes["branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.nseg_per_branch
         ).tolist()
         self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
 
+        # Appending general parameters (radius, length, r_a, cm) and channel parameters,
+        # as well as the states (v, and channel states).
+        self._append_params_and_states(self.cell_params, self.cell_states)
+
         # Channels.
-        self._gather_channels_from_constituents(self.branch_list)
+        self._gather_channels_from_constituents(branch_list)
 
         # Synapse indexing.
         self.syn_edges = pd.DataFrame(
@@ -123,7 +129,6 @@ class Cell(Module):
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
         self.initialize()
         self.init_syns()
@@ -203,17 +208,22 @@ class Cell(Module):
         """
 
         # Edges between compartments within the branches.
-        # `[offset, offset, 0]` because we want to offset `source` and `sink`, but
-        # not `type`.
         self._comp_edges = pd.concat(
             [
-                [offset, offset, 0] + branch._comp_edges
-                for offset, branch in zip(self.cumsum_nseg, self.branch_list)
+                pd.DataFrame()
+                .from_dict(
+                    {
+                        "source": list(range(cumsum_nseg, nseg - 1 + cumsum_nseg))
+                        + list(range(1 + cumsum_nseg, nseg + cumsum_nseg)),
+                        "sink": list(range(1 + cumsum_nseg, nseg + cumsum_nseg))
+                        + list(range(cumsum_nseg, nseg - 1 + cumsum_nseg)),
+                    }
+                )
+                .astype(int)
+                for nseg, cumsum_nseg in zip(self.nseg_per_branch, self.cumsum_nseg)
             ]
         )
-        # `branch_list` is not needed anymore because all information it contained is
-        # now also in `self._comp_edges`.
-        del self.branch_list
+        self._comp_edges["type"] = 0
 
         # Edges from branchpoints to compartments.
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
@@ -288,6 +298,13 @@ class Cell(Module):
         summed_conds = summed_conds.at[par_inds, -1].add(branchpoint_conds_parents)
         return summed_conds
 
+    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
+        """Raise an explict error if `set_ncomp` is set for an entire cell."""
+        raise NotImplementedError(
+            "`cell.set_ncomp()` is not supported. Loop over all branches with "
+            "`for b in range(cell.total_nbranches): cell.branch(b).set_ncomp(n)`."
+        )
+
 
 class CellView(View):
     """CellView."""
@@ -354,27 +371,24 @@ def read_swc(
     )
     nbranches = len(parents)
 
-    non_split = 1 / nseg
-    range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
-
     comp = Compartment()
     branch = Branch([comp for _ in range(nseg)])
     cell = Cell(
         [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
     )
-
-    radiuses = np.asarray([radius_fns[b](range_) for b in range(len(parents))])
-    radiuses_each = radiuses.ravel(order="C")
-    if min_radius is None:
-        assert np.all(
-            radiuses_each > 0.0
-        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
-    else:
-        radiuses_each[radiuses_each < min_radius] = min_radius
+    # Also save the radius generating functions in case users post-hoc modify the number
+    # of compartments with `.set_ncomp()`.
+    cell._radius_generating_fns = radius_fns
 
     lengths_each = np.repeat(pathlengths, nseg) / nseg
-
     cell.set("length", lengths_each)
+
+    radiuses_each = build_radiuses_from_xyzr(
+        radius_fns,
+        range(len(parents)),
+        min_radius,
+        nseg,
+    )
     cell.set("radius", radiuses_each)
 
     # Description of SWC file format:
