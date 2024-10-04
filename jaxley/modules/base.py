@@ -1213,6 +1213,21 @@ class Module(ABC):
         morph_plot_kwargs: Dict = {},
     ) -> Axes:
         """Visualize the module.
+        
+        Modules can be visualized on one of the cardinal planes (xy, xz, yz) or
+        even in 3D.
+
+        Several options are available:
+        - `line`: All points from the traced morphology (`xyzr`), are connected 
+        with a line plot.
+        - `scatter`: All traced points, are plotted as scatter points.
+        - `comp`: Plots the compartmentalized morphology, including radius
+        and shape. (shows the true compartment lengths per default, but this can 
+        be changed via the `morph_plot_kwargs`, for details see 
+        `jaxley.utils.plot_utils.plot_comps`).
+        - `morph`: Reconstructs the 3D shape of the traced morphology. For details see 
+        `jaxley.utils.plot_utils.plot_morph`. Warning: For 3D plots and morphologies
+        with many traced points this can be very slow.
 
         Args:
             ax: An axis into which to plot.
@@ -1713,6 +1728,21 @@ class View:
         morph_plot_kwargs: Dict = {},
     ) -> Axes:
         """Visualize the module.
+
+        Modules can be visualized on one of the cardinal planes (xy, xz, yz) or
+        even in 3D.
+
+        Several options are available:
+        - `line`: All points from the traced morphology (`xyzr`), are connected 
+        with a line plot.
+        - `scatter`: All traced points, are plotted as scatter points.
+        - `comp`: Plots the compartmentalized morphology, including radius
+        and shape. (shows the true compartment lengths per default, but this can 
+        be changed via the `morph_plot_kwargs`, for details see 
+        `jaxley.utils.plot_utils.plot_comps`).
+        - `morph`: Reconstructs the 3D shape of the traced morphology. For details see 
+        `jaxley.utils.plot_utils.plot_morph`. Warning: For 3D plots and morphologies
+        with many traced points this can be very slow.
 
         Args:
             ax: An axis into which to plot.
