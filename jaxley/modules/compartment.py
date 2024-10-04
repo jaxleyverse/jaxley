@@ -122,7 +122,6 @@ class CompartmentView(View):
             ), "Compartments must be indexed by a continuous value between 0 and 1."
         branch_ind = np.unique(self.view["global_branch_index"].to_numpy())
         nseg_of_branches = self.pointer.nseg_per_branch[branch_ind]
-        print("nseg_of_branches", nseg_of_branches)
         index = index_of_loc(loc, nseg_of_branches) if loc != "all" else "all"
         view = self(index)
         view._has_been_called = True

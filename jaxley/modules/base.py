@@ -2019,9 +2019,6 @@ class View:
             self.pointer.nseg_per_branch[pre_rows["global_branch_index"].to_numpy()],
         )
 
-        print("post_rows", len(post_rows))
-        print("pre_rows", len(pre_rows))
-
         # Define new synapses. Each row is one synapse.
         new_rows = dict(
             pre_locs=pre_loc,

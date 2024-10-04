@@ -139,6 +139,9 @@ def sparse_connect(
     global_pre_indices = pre_cell_view.pointer._cumsum_nseg_per_cell[pre_cell_inds]
     pre_rows = pre_cell_view.view.loc[global_pre_indices]
 
+    print("pre_rows", len(pre_rows))
+    print("post_rows", len(post_rows))
+
     pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
 
