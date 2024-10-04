@@ -213,9 +213,15 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
     return branch_ind * nseg + ind_along_branch
 
 
-def loc_of_index(global_comp_index, nseg):
+def loc_of_index(
+    global_comp_index: jnp.ndarray,
+    global_branch_index: jnp.ndarray,
+    cumsum_nseg_per_branch: jnp.ndarray,
+    nseg_per_branch: jnp.ndarray,
+) -> jnp.ndarray:
     """Return location corresponding to index."""
-    index = global_comp_index % nseg
+    index = global_comp_index - cumsum_nseg_per_branch[global_branch_index]
+    nseg = nseg_per_branch[global_branch_index]
     possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
     return possible_locs[index]
 

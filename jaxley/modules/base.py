@@ -1416,7 +1416,9 @@ class Module(ABC):
             np.isnan(self.xyzr[branch_ind][:, dims])
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
-        comp_fraction = loc_of_index(comp_ind, self.nseg)
+        comp_fraction = loc_of_index(
+            comp_ind, branch_ind, self.cumsum_nseg, self.nseg_per_branch
+        )
         coords = self.xyzr[branch_ind]
         interpolated_xyz = interpolate_xyz(comp_fraction, coords)
 
@@ -1677,15 +1679,6 @@ class Module(ABC):
     def __iter__(self):
         for i in range(self.shape[0]):
             yield self[i]
-
-    def _local_inds_to_global(
-        self, cell_inds: np.ndarray, branch_inds: np.ndarray, comp_inds: np.ndarray
-    ):
-        """Given local inds of cell, branch, and comp, return the global comp index."""
-        global_ind = (
-            self.cumsum_nbranches[cell_inds] + branch_inds
-        ) * self.nseg + comp_inds
-        return global_ind.astype(int)
 
 
 class View:
