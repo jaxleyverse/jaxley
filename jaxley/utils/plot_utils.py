@@ -350,7 +350,7 @@ def plot_comps(
                 xyz = create_sphere_mesh(radius)
                 ax = plot_mesh(
                     xyz,
-                    np.zeros(3),
+                    np.array([0, 0, 1]),
                     center,
                     np.array(dims),
                     ax,
