@@ -134,7 +134,10 @@ class Module(ABC):
                 np.sum(np.diff(xyzr[:, :3], axis=0) ** 2, axis=1)
             ).cumsum()
             branch_len = np.hstack([np.array([0]), branch_len])
-            branch_len = branch_len / branch_len.max() + 2 * i  # add padding like above
+            max_len = branch_len.max()
+            branch_len = (
+                branch_len / (max_len if max_len > 0 else 1) + 2 * i
+            )  # add padding like above
             branch_len[np.isnan(branch_len)] = 0
             branch_lens.append(branch_len)
         branch_lens = np.hstack(branch_lens)
