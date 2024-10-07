@@ -1165,15 +1165,15 @@
 <p>314 rows × 8 columns</p>
 </div>
 
+<p>Once imported the compartmentalized morphology can be viewed using <code>vis</code>.  </p>
 <div class="highlight"><pre><span></span><code><span class="c1"># visualize the cell</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;L5PC&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_6_0.png" /></p>
-<p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. This is stored in the <code>cell.xyzr</code> attribute in a per branch fashion.</p>
-<p>To highlight each branch seperately, we can iterate over them.</p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_7_0.png" /></p>
+<p><code>vis</code> can be called on any <code>jx.Module</code> and every <code>View</code> of the module. This means we can also for example use <code>vis</code> to highlight each branch. This can be done by iterating over each branch index and calling <code>cell.branch(i).vis()</code>. Within the loop.</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="c1"># define colorwheel with 10 colors</span>
 <span class="n">colors</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">tab10</span><span class="o">.</span><span class="n">colors</span>
@@ -1183,7 +1183,30 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Branches&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_8_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_9_0.png" /></p>
+<p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. The morphology lives seperately in the <code>cell.xyzr</code> attribute in a per branch fashion. </p>
+<p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. These can either be projected onto 2D or also rendered in 3D. For details see the documentation of <code>vis</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># visualize the cell</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;comp&quot;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;line&quot;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Comparison of plot types&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_11_0.png" /></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># set to interactive mode</span>
+<span class="c1"># %matplotlib notebook</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># plot in 3D</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s1">&#39;3d&#39;</span><span class="p">)</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;line&quot;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">view_init</span><span class="p">(</span><span class="n">elev</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">azim</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_13_0.png" /></p>
 <p>Since <code>Jaxley</code> supports grouping different branches or compartments together, we can also use the <code>id</code> labels provided by the <code>.swc</code> file to assign group labels to the <code>jx.Cell</code> object.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">group_nodes</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
 
@@ -1199,7 +1222,7 @@
 <div class="codehilite"><pre><span></span><code>[&#39;soma&#39;, &#39;basal&#39;, &#39;apical&#39;, &#39;custom&#39;]
 </code></pre></div>
 
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_10_1.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_15_1.png" /></p>
 <p>To build a network of morphologically detailed cells, we can now connect several reconstructed cells together and also visualize the network. However, since all cells are going to have the same center, <code>Jaxley</code> will naively plot all of them on top of each other. To seperate out the cells, we therefore have to move them to a new location first.</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span><span class="p">]</span><span class="o">*</span><span class="mi">5</span><span class="p">)</span>
 <span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
@@ -1223,11 +1246,7 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>/home/jnsbck/Uni/PhD/projects/jaxleyverse/jaxley/jaxley/modules/base.py:1528: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
-  self.pointer.edges = pd.concat(
-</code></pre></div>
-
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_12_1.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_17_0.png" /></p>
 <p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutroial on <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/02_small_network/">how to build a network</a>.</p>
 
 

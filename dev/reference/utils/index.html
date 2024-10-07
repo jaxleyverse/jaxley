@@ -945,6 +945,33 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.create_cone_frustum_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_cone_frustum_mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.create_cylinder_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_cylinder_mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.create_sphere_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_sphere_mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#jaxley.utils.plot_utils.extract_outline" class="md-nav__link">
     <span class="md-ellipsis">
       extract_outline
@@ -963,9 +990,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.plot_utils.plot_cylinder_projection" class="md-nav__link">
+  <a href="#jaxley.utils.plot_utils.plot_graph" class="md-nav__link">
     <span class="md-ellipsis">
-      plot_cylinder_projection
+      plot_graph
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.plot_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot_mesh
     </span>
   </a>
   
@@ -1322,6 +1358,33 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.create_cone_frustum_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_cone_frustum_mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.create_cylinder_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_cylinder_mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.create_sphere_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_sphere_mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#jaxley.utils.plot_utils.extract_outline" class="md-nav__link">
     <span class="md-ellipsis">
       extract_outline
@@ -1340,9 +1403,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.plot_utils.plot_cylinder_projection" class="md-nav__link">
+  <a href="#jaxley.utils.plot_utils.plot_graph" class="md-nav__link">
     <span class="md-ellipsis">
-      plot_cylinder_projection
+      plot_graph
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.utils.plot_utils.plot_mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot_mesh
     </span>
   </a>
   
@@ -3065,13 +3137,7 @@ matrix.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">71</span>
 <span class="normal">72</span>
 <span class="normal">73</span>
 <span class="normal">74</span>
@@ -3091,7 +3157,13 @@ matrix.</p>
 <span class="normal">88</span>
 <span class="normal">89</span>
 <span class="normal">90</span>
-<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_rotation_matrix</span><span class="p">(</span><span class="n">axis</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">angle</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_rotation_matrix</span><span class="p">(</span><span class="n">axis</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">angle</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return the rotation matrix associated with counterclockwise rotation about</span>
 <span class="sd">    the given axis by the given angle.</span>
@@ -3118,6 +3190,549 @@ matrix.</p>
             <span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">bd</span> <span class="o">+</span> <span class="n">ac</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">cd</span> <span class="o">-</span> <span class="n">ab</span><span class="p">),</span> <span class="n">aa</span> <span class="o">+</span> <span class="n">dd</span> <span class="o">-</span> <span class="n">bb</span> <span class="o">-</span> <span class="n">cc</span><span class="p">],</span>
         <span class="p">]</span>
     <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.utils.plot_utils.create_cone_frustum_mesh" class="doc doc-heading">
+            <code class=" language-python"><span class="n">create_cone_frustum_mesh</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">radius_bottom</span><span class="p">,</span> <span class="n">radius_top</span><span class="p">,</span> <span class="n">bottom_dome</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">top_dome</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#jaxley.utils.plot_utils.create_cone_frustum_mesh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generates mesh points for a cone frustum, with optional domes at either end.</p>
+<p>This is used to render the traced morphology in 3D (and to project it to 2D)
+as part of <code>plot_morph</code>. Sections between two traced coordinates with two
+different radii can be represented by a cone frustum. Additionally, the ends
+of the frustum can be capped with hemispheres to ensure that two neighbouring
+frustums are connected smoothly (like ball joints).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>length</code></td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The length of the frustum.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>radius_bottom</code></td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The radius of the bottom of the frustum.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>radius_top</code></td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The radius of the top of the frustum.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>bottom_dome</code></td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, a dome is added to the bottom of the frustum.
+The dome is a hemisphere with radius <code>radius_bottom</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>top_dome</code></td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, a dome is added to the top of the frustum.
+The dome is a hemisphere with radius <code>radius_top</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An array of mesh points.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_cone_frustum_mesh</span><span class="p">(</span>
+    <span class="n">length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">radius_bottom</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">radius_top</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">bottom_dome</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">top_dome</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates mesh points for a cone frustum, with optional domes at either end.</span>
+
+<span class="sd">    This is used to render the traced morphology in 3D (and to project it to 2D)</span>
+<span class="sd">    as part of `plot_morph`. Sections between two traced coordinates with two</span>
+<span class="sd">    different radii can be represented by a cone frustum. Additionally, the ends</span>
+<span class="sd">    of the frustum can be capped with hemispheres to ensure that two neighbouring</span>
+<span class="sd">    frustums are connected smoothly (like ball joints).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        length: The length of the frustum.</span>
+<span class="sd">        radius_bottom: The radius of the bottom of the frustum.</span>
+<span class="sd">        radius_top: The radius of the top of the frustum.</span>
+<span class="sd">        bottom_dome: If True, a dome is added to the bottom of the frustum.</span>
+<span class="sd">            The dome is a hemisphere with radius `radius_bottom`.</span>
+<span class="sd">        top_dome: If True, a dome is added to the top of the frustum.</span>
+<span class="sd">            The dome is a hemisphere with radius `radius_top`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An array of mesh points.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resolution</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+
+    <span class="c1"># Determine the total height including domes</span>
+    <span class="n">total_height</span> <span class="o">=</span> <span class="n">length</span>
+    <span class="n">total_height</span> <span class="o">+=</span> <span class="n">radius_bottom</span> <span class="k">if</span> <span class="n">bottom_dome</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">total_height</span> <span class="o">+=</span> <span class="n">radius_top</span> <span class="k">if</span> <span class="n">top_dome</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_height</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="n">t_grid</span><span class="p">,</span> <span class="n">z_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+    <span class="c1"># Initialize arrays</span>
+    <span class="n">x_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+    <span class="n">y_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+    <span class="n">r_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+
+    <span class="c1"># Bottom hemisphere</span>
+    <span class="k">if</span> <span class="n">bottom_dome</span><span class="p">:</span>
+        <span class="n">dome_mask</span> <span class="o">=</span> <span class="n">z_coords</span> <span class="o">&lt;</span> <span class="n">radius_bottom</span>
+        <span class="n">arg</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">z_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span> <span class="o">/</span> <span class="n">radius_bottom</span>
+        <span class="n">arg</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">arg</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">z_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span> <span class="o">/</span> <span class="n">radius_bottom</span><span class="p">)</span>
+        <span class="n">r_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">radius_bottom</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">z_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span>
+
+    <span class="c1"># Frustum</span>
+    <span class="n">frustum_start</span> <span class="o">=</span> <span class="n">radius_bottom</span> <span class="k">if</span> <span class="n">bottom_dome</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">frustum_end</span> <span class="o">=</span> <span class="n">total_height</span> <span class="o">-</span> <span class="p">(</span><span class="n">radius_top</span> <span class="k">if</span> <span class="n">top_dome</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">frustum_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_coords</span> <span class="o">&gt;=</span> <span class="n">frustum_start</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">z_coords</span> <span class="o">&lt;=</span> <span class="n">frustum_end</span><span class="p">)</span>
+    <span class="n">z_frustum</span> <span class="o">=</span> <span class="n">z_coords</span><span class="p">[</span><span class="n">frustum_mask</span><span class="p">]</span> <span class="o">-</span> <span class="n">frustum_start</span>
+    <span class="n">r_coords</span><span class="p">[</span><span class="n">frustum_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">radius_bottom</span> <span class="o">+</span> <span class="p">(</span><span class="n">radius_top</span> <span class="o">-</span> <span class="n">radius_bottom</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span>
+        <span class="n">z_frustum</span> <span class="o">/</span> <span class="n">length</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Top hemisphere</span>
+    <span class="k">if</span> <span class="n">top_dome</span><span class="p">:</span>
+        <span class="n">dome_mask</span> <span class="o">=</span> <span class="n">z_coords</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">total_height</span> <span class="o">-</span> <span class="n">radius_top</span><span class="p">)</span>
+        <span class="n">arg</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">total_height</span> <span class="o">-</span> <span class="n">radius_top</span><span class="p">))</span> <span class="o">/</span> <span class="n">radius_top</span>
+        <span class="n">arg</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">arg</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="n">r_coords</span><span class="p">[</span><span class="n">dome_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">radius_top</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+
+    <span class="n">x_coords</span> <span class="o">=</span> <span class="n">r_coords</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+    <span class="n">y_coords</span> <span class="o">=</span> <span class="n">r_coords</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x_coords</span><span class="p">,</span> <span class="n">y_coords</span><span class="p">,</span> <span class="n">z_coords</span><span class="p">])</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.utils.plot_utils.create_cylinder_mesh" class="doc doc-heading">
+            <code class=" language-python"><span class="n">create_cylinder_mesh</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span></code>
+
+<a href="#jaxley.utils.plot_utils.create_cylinder_mesh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generates mesh points for a cylinder.</p>
+<p>This is used to render cylindrical compartments in 3D (and to project it to 2D)
+as part of <code>plot_comps</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>length</code></td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The length of the cylinder.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>radius</code></td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The radius of the cylinder.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An array of mesh points.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_cylinder_mesh</span><span class="p">(</span><span class="n">length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates mesh points for a cylinder.</span>
+
+<span class="sd">    This is used to render cylindrical compartments in 3D (and to project it to 2D)</span>
+<span class="sd">    as part of `plot_comps`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        length: The length of the cylinder.</span>
+<span class="sd">        radius: The radius of the cylinder.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An array of mesh points.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Define cylinder</span>
+    <span class="n">resolution</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="n">z_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="n">length</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">length</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="n">t_grid</span><span class="p">,</span> <span class="n">z_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">z_coords</span><span class="p">)</span>
+
+    <span class="n">x_coords</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+    <span class="n">y_coords</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">t_grid</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x_coords</span><span class="p">,</span> <span class="n">y_coords</span><span class="p">,</span> <span class="n">z_coords</span><span class="p">])</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.utils.plot_utils.create_sphere_mesh" class="doc doc-heading">
+            <code class=" language-python"><span class="n">create_sphere_mesh</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span></code>
+
+<a href="#jaxley.utils.plot_utils.create_sphere_mesh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generates mesh points for a sphere.</p>
+<p>This is used to render spherical compartments in 3D (and to project it to 2D)
+as part of <code>plot_comps</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>radius</code></td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The radius of the sphere.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An array of mesh points.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_sphere_mesh</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates mesh points for a sphere.</span>
+
+<span class="sd">    This is used to render spherical compartments in 3D (and to project it to 2D)</span>
+<span class="sd">    as part of `plot_comps`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        radius: The radius of the sphere.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An array of mesh points.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">resolution</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+
+    <span class="c1"># Create a 2D meshgrid for phi and theta</span>
+    <span class="n">phi_coords</span><span class="p">,</span> <span class="n">theta_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+
+    <span class="c1"># Convert spherical coordinates to Cartesian coordinates</span>
+    <span class="n">x_coords</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi_coords</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta_coords</span><span class="p">)</span>
+    <span class="n">y_coords</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi_coords</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta_coords</span><span class="p">)</span>
+    <span class="n">z_coords</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi_coords</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x_coords</span><span class="p">,</span> <span class="n">y_coords</span><span class="p">,</span> <span class="n">z_coords</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3193,13 +3808,7 @@ the input points.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">54</span>
 <span class="normal">55</span>
 <span class="normal">56</span>
 <span class="normal">57</span>
@@ -3207,7 +3816,13 @@ the input points.</p>
 <span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span>
-<span class="normal">62</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">extract_outline</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">extract_outline</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the outline of a 2D/3D shape.</span>
 
 <span class="sd">    Extracts the subset of points which form the convex hull, i.e. the outline of</span>
@@ -3271,7 +3886,7 @@ the input points.</p>
           <tr class="doc-section-item">
             <td><code>view</code></td>
             <td>
-                  <code><span title="jx.View">View</span></code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3289,11 +3904,26 @@ the input points.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.</p>
+                <p>The dimensions to plot / to project the cylinder onto,
+i.e. [0,1] xy-plane or [0,1,2] for 3D.</p>
               </div>
             </td>
             <td>
                   <code>(0, 1)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>col</code></td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The color for all compartments</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;k&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -3371,82 +4001,97 @@ distance instead for nicer plots.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_comps</span><span class="p">(</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_comps</span><span class="p">(</span>
     <span class="n">module_or_view</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;jx.Module&quot;</span><span class="p">,</span> <span class="s2">&quot;jx.View&quot;</span><span class="p">],</span>
-    <span class="n">view</span><span class="p">:</span> <span class="s2">&quot;jx.View&quot;</span><span class="p">,</span>
+    <span class="n">view</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -3460,7 +4105,9 @@ distance instead for nicer plots.</p>
 <span class="sd">    Args:</span>
 <span class="sd">        module_or_view: The module or view to plot.</span>
 <span class="sd">        view: The view of the module.</span>
-<span class="sd">        dims: The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.</span>
+<span class="sd">        dims: The dimensions to plot / to project the cylinder onto,</span>
+<span class="sd">            i.e. [0,1] xy-plane or [0,1,2] for 3D.</span>
+<span class="sd">        col: The color for all compartments</span>
 <span class="sd">        ax: The matplotlib axis to plot on.</span>
 <span class="sd">        comp_plot_kwargs: The plot kwargs for plt.fill.</span>
 <span class="sd">        true_comp_length: If True, the length of the compartment is used, i.e. the</span>
@@ -3475,7 +4122,7 @@ distance instead for nicer plots.</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
 
     <span class="n">module</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">module_or_view</span><span class="o">.</span><span class="n">pointer</span>
@@ -3492,7 +4139,20 @@ distance instead for nicer plots.</p>
         <span class="n">locs</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">idx</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">locs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># assume spherical comp</span>
             <span class="n">radius</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">idx</span><span class="p">][:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span><span class="n">locs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">dims</span><span class="p">],</span> <span class="n">radius</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">))</span>
+            <span class="n">center</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">xyz</span> <span class="o">=</span> <span class="n">create_sphere_mesh</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_mesh</span><span class="p">(</span>
+                    <span class="n">xyz</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">center</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
+                    <span class="n">ax</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">comp_plot_kwargs</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span><span class="n">locs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">dims</span><span class="p">],</span> <span class="n">radius</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">locs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
             <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">([</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">lens</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
@@ -3507,10 +4167,10 @@ distance instead for nicer plots.</p>
                 <span class="n">center</span> <span class="o">=</span> <span class="n">comp</span><span class="p">[[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">]]</span>
                 <span class="n">radius</span> <span class="o">=</span> <span class="n">comp</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">]</span>
                 <span class="n">length</span> <span class="o">=</span> <span class="n">comp</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">true_comp_length</span> <span class="k">else</span> <span class="n">l</span>
-                <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_cylinder_projection</span><span class="p">(</span>
+                <span class="n">xyz</span> <span class="o">=</span> <span class="n">create_cylinder_mesh</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_mesh</span><span class="p">(</span>
+                    <span class="n">xyz</span><span class="p">,</span>
                     <span class="n">axis</span><span class="p">,</span>
-                    <span class="n">length</span><span class="p">,</span>
-                    <span class="n">radius</span><span class="p">,</span>
                     <span class="n">center</span><span class="p">,</span>
                     <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
                     <span class="n">ax</span><span class="p">,</span>
@@ -3527,15 +4187,205 @@ distance instead for nicer plots.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="jaxley.utils.plot_utils.plot_cylinder_projection" class="doc doc-heading">
-            <code class=" language-python"><span class="n">plot_cylinder_projection</span><span class="p">(</span><span class="n">orientation</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h3 id="jaxley.utils.plot_utils.plot_graph" class="doc doc-heading">
+            <code class=" language-python"><span class="n">plot_graph</span><span class="p">(</span><span class="n">xyzr</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
 
-<a href="#jaxley.utils.plot_utils.plot_cylinder_projection" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#jaxley.utils.plot_utils.plot_graph" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Plot the 2D projection of a cylinder on a cardinal plane.</p>
+        <p>Plot morphology.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>xyzr</code></td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The coordinates of the morphology.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>dims</code></td>
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[int]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+two or three of them.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(0, 1)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>col</code></td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The color for all branches.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;k&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>ax</code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="matplotlib.axes.Axes">Axes</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The matplotlib axis to plot on.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>type</code></td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Either <code>line</code> or <code>scatter</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;line&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>morph_plot_kwargs</code></td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The plot kwargs for plt.plot or plt.scatter.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_graph</span><span class="p">(</span>
+    <span class="n">xyzr</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
+    <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot morphology.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        xyzr: The coordinates of the morphology.</span>
+<span class="sd">        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
+<span class="sd">            two or three of them.</span>
+<span class="sd">        col: The color for all branches.</span>
+<span class="sd">        ax: The matplotlib axis to plot on.</span>
+<span class="sd">        type: Either `line` or `scatter`.</span>
+<span class="sd">        morph_plot_kwargs: The plot kwargs for plt.plot or plt.scatter.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">coords_of_branch</span> <span class="ow">in</span> <span class="n">xyzr</span><span class="p">:</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">coords_of_branch</span><span class="p">[:,</span> <span class="n">dims</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="k">if</span> <span class="s2">&quot;line&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;scatter&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">return</span> <span class="n">ax</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.utils.plot_utils.plot_mesh" class="doc doc-heading">
+            <code class=" language-python"><span class="n">plot_mesh</span><span class="p">(</span><span class="n">mesh_points</span><span class="p">,</span> <span class="n">orientation</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#jaxley.utils.plot_utils.plot_mesh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Plot the 2D projection of a volume mesh on a cardinal plane.</p>
 <p>Project the projection of a cylinder that is oriented in 3D space.
 - Create cylinder mesh
 - rotate cylinder mesh to orient it lengthwise along a given orientation vector.
@@ -3557,6 +4407,20 @@ distance instead for nicer plots.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
+            <td><code>mesh_points</code></td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>coordinates of the xyz mesh that define the volume</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
             <td><code>orientation</code></td>
             <td>
                   <code><span title="numpy.ndarray">ndarray</span></code>
@@ -3564,34 +4428,6 @@ distance instead for nicer plots.</p>
             <td>
               <div class="doc-md-description">
                 <p>orientation vector. The cylinder will be oriented along this vector.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code>length</code></td>
-            <td>
-                  <code>float</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The length of the cylinder.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code>radius</code></td>
-            <td>
-                  <code>float</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The radius of the cylinder.</p>
               </div>
             </td>
             <td>
@@ -3619,7 +4455,7 @@ distance instead for nicer plots.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.</p>
+                <p>The dimensions to plot / to project the cylinder onto,</p>
               </div>
             </td>
             <td>
@@ -3668,85 +4504,81 @@ distance instead for nicer plots.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_cylinder_projection</span><span class="p">(</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_mesh</span><span class="p">(</span>
+    <span class="n">mesh_points</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
     <span class="n">orientation</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">center</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot the 2D projection of a cylinder on a cardinal plane.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot the 2D projection of a volume mesh on a cardinal plane.</span>
 
 <span class="sd">    Project the projection of a cylinder that is oriented in 3D space.</span>
 <span class="sd">    - Create cylinder mesh</span>
@@ -3757,11 +4589,11 @@ distance instead for nicer plots.</p>
 <span class="sd">    - fill area inside the outline</span>
 
 <span class="sd">    Args:</span>
+<span class="sd">        mesh_points: coordinates of the xyz mesh that define the volume</span>
 <span class="sd">        orientation: orientation vector. The cylinder will be oriented along this vector.</span>
-<span class="sd">        length: The length of the cylinder.</span>
-<span class="sd">        radius: The radius of the cylinder.</span>
 <span class="sd">        center: The x,y,z coordinates of the center of the cylinder.</span>
-<span class="sd">        dims: The dimensions to project the cylinder onto, i.e. [0,1] xy-plane.</span>
+<span class="sd">        dims: The dimensions to plot / to project the cylinder onto,</span>
+<span class="sd">        i.e. [0,1] xy-plane or [0,1,2] for 3D.</span>
 <span class="sd">        ax: The matplotlib axis to plot on.</span>
 
 <span class="sd">    Returns:</span>
@@ -3769,7 +4601,7 @@ distance instead for nicer plots.</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
 
     <span class="c1"># Normalize axis vector</span>
     <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">orientation</span><span class="p">)</span>
@@ -3785,27 +4617,25 @@ distance instead for nicer plots.</p>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">compute_rotation_matrix</span><span class="p">(</span><span class="n">rotation_axis</span><span class="p">,</span> <span class="n">rotation_angle</span><span class="p">)</span>
 
-    <span class="c1"># Define cylinder</span>
-    <span class="n">resolution</span> <span class="o">=</span> <span class="mi">100</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
-    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="n">length</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">length</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
-    <span class="n">T</span><span class="p">,</span> <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
-
-    <span class="n">X</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
-    <span class="n">Y</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
-
-    <span class="c1"># Rotate cylinder</span>
-    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">X</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">Y</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">Z</span><span class="o">.</span><span class="n">flatten</span><span class="p">()]))</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Rotate mesh</span>
+    <span class="n">x_mesh</span><span class="p">,</span> <span class="n">y_mesh</span><span class="p">,</span> <span class="n">z_mesh</span> <span class="o">=</span> <span class="n">mesh_points</span>
+    <span class="n">rotated_mesh_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+        <span class="n">rotation_matrix</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x_mesh</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">y_mesh</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">z_mesh</span><span class="o">.</span><span class="n">flatten</span><span class="p">()]),</span>
+    <span class="p">)</span>
+    <span class="n">rotated_mesh_points</span> <span class="o">=</span> <span class="n">rotated_mesh_points</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="c1"># project onto plane and move</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">dims</span><span class="p">]</span>
-    <span class="n">X</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">center</span><span class="p">)[</span><span class="n">dims</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">rotated_mesh_points</span> <span class="o">=</span> <span class="n">rotated_mesh_points</span><span class="p">[</span><span class="n">dims</span><span class="p">]</span>
+    <span class="n">rotated_mesh_points</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">center</span><span class="p">)[</span><span class="n">dims</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
 
-    <span class="c1"># get outline of cylinder mesh</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">extract_outline</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
-
-    <span class="n">ax</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="c1"># get outline of cylinder mesh</span>
+        <span class="n">mesh_outline</span> <span class="o">=</span> <span class="n">extract_outline</span><span class="p">(</span><span class="n">rotated_mesh_points</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="o">*</span><span class="n">mesh_outline</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mesh_outline</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># plot 3d mesh</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot_surface</span><span class="p">(</span><span class="o">*</span><span class="n">rotated_mesh_points</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">mesh_points</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">ax</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -3817,14 +4647,19 @@ distance instead for nicer plots.</p>
 
 
 <h3 id="jaxley.utils.plot_utils.plot_morph" class="doc doc-heading">
-            <code class=" language-python"><span class="n">plot_morph</span><span class="p">(</span><span class="n">xyzr</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+            <code class=" language-python"><span class="n">plot_morph</span><span class="p">(</span><span class="n">module_or_view</span><span class="p">,</span> <span class="n">view</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
 
 <a href="#jaxley.utils.plot_utils.plot_morph" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Plot morphology.</p>
+        <p>Plot the detailed morphology.</p>
+<p>Plots the traced morphology it was traced. That means at every point that was
+traced a disc of radius <code>r</code> is plotted. The outline of the discs are then
+connected to form the morphology. This means every trace segement can be
+represented by a cone frustum. To prevent breaks in the morphology, each
+segement is connected with a ball joint.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3839,32 +4674,46 @@ distance instead for nicer plots.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
+            <td><code>module_or_view</code></td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="jx.Module">Module</span>, <span title="jx.View">View</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The module or view to plot.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>view</code></td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The view dataframe of the module.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
             <td><code>dims</code></td>
             <td>
                   <code><span title="typing.Tuple">Tuple</span>[int]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
-two of them.</p>
+                <p>The dimensions to plot / to project the cylinder onto,
+i.e. [0,1] xy-plane or [0,1,2] for 3D.</p>
               </div>
             </td>
             <td>
                   <code>(0, 1)</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code>type</code></td>
-            <td>
-                  <code>str</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Either <code>line</code> or <code>scatter</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;line&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -3874,11 +4723,62 @@ two of them.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The color for all branches.</p>
+                <p>The color for all branches</p>
               </div>
             </td>
             <td>
                   <code>&#39;k&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>ax</code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="matplotlib.axes.Axes">Axes</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The matplotlib axis to plot on.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>morph_plot_kwargs</code></td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The plot kwargs for plt.fill.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="matplotlib.axes.Axes">Axes</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Plot of the detailed morphology.</p>
+              </div>
             </td>
           </tr>
       </tbody>
@@ -3886,65 +4786,157 @@ two of them.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_morph</span><span class="p">(</span>
-    <span class="n">xyzr</span><span class="p">,</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_morph</span><span class="p">(</span>
+    <span class="n">module_or_view</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;jx.Module&quot;</span><span class="p">,</span> <span class="s2">&quot;jx.View&quot;</span><span class="p">],</span>
+    <span class="n">view</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
     <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot morphology.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot the detailed morphology.</span>
+
+<span class="sd">    Plots the traced morphology it was traced. That means at every point that was</span>
+<span class="sd">    traced a disc of radius `r` is plotted. The outline of the discs are then</span>
+<span class="sd">    connected to form the morphology. This means every trace segement can be</span>
+<span class="sd">    represented by a cone frustum. To prevent breaks in the morphology, each</span>
+<span class="sd">    segement is connected with a ball joint.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
-<span class="sd">            two of them.</span>
-<span class="sd">        type: Either `line` or `scatter`.</span>
-<span class="sd">        col: The color for all branches.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        module_or_view: The module or view to plot.</span>
+<span class="sd">        view: The view dataframe of the module.</span>
+<span class="sd">        dims: The dimensions to plot / to project the cylinder onto,</span>
+<span class="sd">            i.e. [0,1] xy-plane or [0,1,2] for 3D.</span>
+<span class="sd">        col: The color for all branches</span>
+<span class="sd">        ax: The matplotlib axis to plot on.</span>
+<span class="sd">        morph_plot_kwargs: The plot kwargs for plt.fill.</span>
 
+<span class="sd">    Returns:</span>
+<span class="sd">        Plot of the detailed morphology.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;rendering large morphologies in 3D can take a while. Consider projecting to 2D instead.&quot;</span>
+        <span class="p">)</span>
 
-    <span class="k">for</span> <span class="n">coords_of_branch</span> <span class="ow">in</span> <span class="n">xyzr</span><span class="p">:</span>
-        <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">coords_of_branch</span><span class="p">[:,</span> <span class="n">dims</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">module</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">module_or_view</span><span class="o">.</span><span class="n">pointer</span>
+        <span class="k">if</span> <span class="s2">&quot;pointer&quot;</span> <span class="ow">in</span> <span class="n">module_or_view</span><span class="o">.</span><span class="vm">__dict__</span>
+        <span class="k">else</span> <span class="n">module_or_view</span>
+    <span class="p">)</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])),</span> <span class="s2">&quot;missing xyz coordinates.&quot;</span>
 
-        <span class="k">if</span> <span class="s2">&quot;line&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="s2">&quot;scatter&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+    <span class="n">branches_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">branches_inds</span><span class="p">:</span>
+        <span class="n">xyzrs</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">xyzrs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">xyzr1</span><span class="p">,</span> <span class="n">xyzr2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">xyzrs</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:],</span> <span class="n">xyzrs</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]):</span>
+                <span class="n">dxyz</span> <span class="o">=</span> <span class="n">xyzr2</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">xyzr1</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
+                <span class="n">length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dxyz</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+                <span class="n">points</span> <span class="o">=</span> <span class="n">create_cone_frustum_mesh</span><span class="p">(</span>
+                    <span class="n">length</span><span class="p">,</span> <span class="n">xyzr1</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">xyzr2</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">bottom_dome</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">top_dome</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+                <span class="n">plot_mesh</span><span class="p">(</span>
+                    <span class="n">points</span><span class="p">,</span>
+                    <span class="n">dxyz</span><span class="p">,</span>
+                    <span class="n">xyzr1</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+                    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+                <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">create_cone_frustum_mesh</span><span class="p">(</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="n">xyzrs</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">xyzrs</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">bottom_dome</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">top_dome</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">plot_mesh</span><span class="p">(</span>
+                <span class="n">points</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+                <span class="n">xyzrs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span>
+                <span class="n">dims</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+                <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ax</span>
 </code></pre></div></td></tr></table></div>
