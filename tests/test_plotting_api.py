@@ -187,5 +187,7 @@ def test_volume_plotting():
 
     # test morph plotting (does not work if no radii in xyzr)
     morph_cell.vis(type="morph")
-    morph_cell.branch(1).vis(type="morph", dims=[0, 1, 2]) # plotting whole thing takes too long
+    morph_cell.branch(1).vis(
+        type="morph", dims=[0, 1, 2]
+    )  # plotting whole thing takes too long
     plt.close()
