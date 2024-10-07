@@ -37,7 +37,7 @@ class Compartment(Module):
         super().__init__()
 
         self.nseg = 1
-        self.nseg_per_branch = [1]
+        self.nseg_per_branch = jnp.asarray([1])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])

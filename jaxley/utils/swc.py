@@ -5,6 +5,7 @@ from copy import copy
 from typing import Callable, List, Optional, Tuple
 from warnings import warn
 
+import jax.numpy as jnp
 import numpy as np
 
 
@@ -318,3 +319,36 @@ def _compute_pathlengths(
             dists = np.asarray([2 * radius])
         branch_pathlengths.append(dists)
     return branch_pathlengths
+
+
+def build_radiuses_from_xyzr(
+    radius_fns: List[Callable],
+    branch_indices: List[int],
+    min_radius: Optional[float],
+    nseg: int,
+) -> jnp.ndarray:
+    """Return the radiuses of branches given SWC file xyzr.
+
+    Returns an array of shape `(num_branches, nseg)`.
+
+    Args:
+        radius_fns: Functions which, given compartment locations return the radius.
+        branch_indices: The indices of the branches for which to return the radiuses.
+        min_radius: If passed, the radiuses are clipped to be at least as large.
+        nseg: The number of compartments that every branch is discretized into.
+    """
+    # Compartment locations are at the center of the internal nodes.
+    non_split = 1 / nseg
+    range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
+
+    # Build radiuses.
+    radiuses = np.asarray([radius_fns[b](range_) for b in branch_indices])
+    radiuses_each = radiuses.ravel(order="C")
+    if min_radius is None:
+        assert np.all(
+            radiuses_each > 0.0
+        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
+    else:
+        radiuses_each[radiuses_each < min_radius] = min_radius
+
+    return radiuses_each
