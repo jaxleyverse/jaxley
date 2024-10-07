@@ -231,7 +231,13 @@ def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
     `coupling_conds`: S * um / cm / um^2 = S / cm / um -> *10**7 -> mS / cm^2
     """
     # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-    return rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
+    return (
+        rad1
+        * rad2**2
+        / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2)
+        / l1
+        * 10**7
+    )
 
 
 def compute_coupling_cond_branchpoint(rad, r_a, l):

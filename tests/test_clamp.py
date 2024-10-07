@@ -137,7 +137,7 @@ def test_data_clamp_and_stimulate():
 
 
 def test_data_clamp_and_clamp():
-    """Test that data clamp overrides a previous clamp to the same compartment and can be added to a previous clamp on a different compartment."""
+    """Test that data clamp can override (same loc.) and add (another loc.) to clamp."""
     comp = jx.Compartment()
     comp.insert(HH())
     comp.record()
