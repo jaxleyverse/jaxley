@@ -285,9 +285,9 @@ class CellView(View):
 
     def __call__(self, index: float):
         local_idcs = self._get_local_indices()
-        self.view[
-            local_idcs.columns
-        ] = local_idcs  # set indexes locally. enables net[0:2,0:2]
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
         if index == "all":
             self.allow_make_trainable = False
         new_view = super().adjust_view("cell_index", index)
