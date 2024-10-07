@@ -13,6 +13,7 @@ jax.config.update("jax_platform_name", "cpu")
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.synapses import IonotropicSynapse
@@ -165,9 +166,28 @@ def test_volume_plotting():
     net = jx.Network([cell] * 4)
     net.compute_xyz()
 
+    morph_cell = jx.read_swc(
+        os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc"),
+        nseg=1,
+    )
+
     fig, ax = plt.subplots()
-    for module in [comp, branch, cell, net]:
-        module.vis(type="volume", ax=ax)
+    for module in [comp, branch, cell, net, morph_cell]:
+        module.vis(type="comp", ax=ax)
         if not isinstance(module, jx.Compartment):
-            module[0].vis(type="volume", ax=ax)
+            module[0].vis(type="comp", ax=ax)
     plt.close(fig)
+
+    # test 3D plotting
+    for module in [comp, branch, cell, net, morph_cell]:
+        module.vis(type="comp", dims=[0, 1, 2])
+        if not isinstance(module, jx.Compartment):
+            module[0].vis(type="comp")
+            plt.close(fig)
+
+    # test morph plotting (does not work if no radii in xyzr)
+    morph_cell.vis(type="morph")
+    morph_cell.branch(1).vis(
+        type="morph", dims=[0, 1, 2]
+    )  # plotting whole thing takes too long
+    plt.close()
