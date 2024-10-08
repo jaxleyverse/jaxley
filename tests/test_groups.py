@@ -67,12 +67,10 @@ def test_subclassing_groups_net_set_equivalence():
     net1.excitatory.cell([0, 3]).branch(0).comp("all").set("radius", 0.14)
     net1.excitatory.cell([0, 5]).branch(1).comp("all").set("length", 0.16)
     net1.excitatory.cell("all").branch(1).comp(2).set("axial_resistivity", 1100.0)
-    net1.excitatory.cell("all").branch(1).loc(0.0).set("axial_resistivity", 1300.0)
 
     net2.cell([0, 3]).branch(0).comp("all").set("radius", 0.14)
     net2.cell([0, 5]).branch(1).comp("all").set("length", 0.16)
     net2.cell([0, 3, 5]).branch(1).comp(2).set("axial_resistivity", 1100.0)
-    net2.cell([0, 3, 5]).branch(1).loc(0.0).set("axial_resistivity", 1300.0)
 
     assert all(net1.nodes == net2.nodes)
 

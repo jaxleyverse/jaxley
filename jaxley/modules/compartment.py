@@ -11,10 +11,11 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module, View
 from jaxley.utils.cell_utils import (
     compute_children_and_parents,
-    index_of_loc,
     interpolate_xyz,
     loc_of_index,
+    local_index_of_loc,
 )
+from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
@@ -41,6 +42,7 @@ class Compartment(Module):
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
@@ -120,7 +122,21 @@ class CompartmentView(View):
             assert (
                 loc >= 0.0 and loc <= 1.0
             ), "Compartments must be indexed by a continuous value between 0 and 1."
-        index = index_of_loc(0, loc, self.pointer.nseg) if loc != "all" else "all"
+
+        branch_ind = np.unique(self.view["global_branch_index"].to_numpy())
+        if loc != "all" and len(branch_ind) != 1:
+            raise NotImplementedError(
+                "Using `.loc()` to index a single compartment of multiple branches is "
+                "not supported. Use a for loop or use `.comp` to index."
+            )
+        branch_ind = np.squeeze(branch_ind)  # shape == (1,) --> shape == ()
+
+        # Cast nseg to numpy because in `local_index_of_loc` we instatiate an array
+        # of length `nseg`. However, if we use `.data_set()` or `.data_stimulate()`,
+        # the `local_index_of_loc()` method must be compatible with `jit`. Therefore,
+        # we have to stop this from being traced here and cast to numpy.
+        nsegs = np.asarray(self.pointer.nseg_per_branch)
+        index = local_index_of_loc(loc, branch_ind, nsegs) if loc != "all" else "all"
         view = self(index)
         view._has_been_called = True
         return view
@@ -135,15 +151,25 @@ class CompartmentView(View):
             endpoint: The compartment to which to compute the distance to.
         """
         start_branch = self.view["global_branch_index"].item()
-        start_comp = self.view["comp_index"].item()
+        start_comp = self.view["global_comp_index"].item()
         start_xyz = interpolate_xyz(
-            loc_of_index(start_comp, self.pointer.nseg), self.pointer.xyzr[start_branch]
+            loc_of_index(
+                start_comp,
+                start_branch,
+                self.pointer.nseg_per_branch,
+            ),
+            self.pointer.xyzr[start_branch],
         )
 
         end_branch = endpoint.view["global_branch_index"].item()
-        end_comp = endpoint.view["comp_index"].item()
+        end_comp = endpoint.view["global_comp_index"].item()
         end_xyz = interpolate_xyz(
-            loc_of_index(end_comp, self.pointer.nseg), self.pointer.xyzr[end_branch]
+            loc_of_index(
+                end_comp,
+                end_branch,
+                self.pointer.nseg_per_branch,
+            ),
+            self.pointer.xyzr[end_branch],
         )
 
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))

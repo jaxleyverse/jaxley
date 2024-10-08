@@ -3,7 +3,7 @@
 
 import jax
 
-from jaxley.utils.cell_utils import index_of_loc
+from jaxley.utils.cell_utils import local_index_of_loc
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -55,7 +55,9 @@ def test_connect():
     connect(net2[1, 0], net2[2, 0], TestSynapse())
 
     # test after all connections are made, to catch "overwritten" connections
-    get_comps = lambda locs: [index_of_loc(0, idx, net2.nseg) for idx in locs]
+    get_comps = lambda locs: [
+        local_index_of_loc(loc, 0, net2.nseg_per_branch) for loc in locs
+    ]
 
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
