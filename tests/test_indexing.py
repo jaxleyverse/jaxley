@@ -14,7 +14,7 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.utils.cell_utils import index_of_loc, loc_of_index
+from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
 from jaxley.utils.misc_utils import childview
 
 
@@ -56,11 +56,18 @@ def test_loc_v_comp():
     comp = jx.Compartment()
     branch = jx.Branch([comp for _ in range(4)])
 
+    cum_nseg = branch.cumsum_nseg
+    nsegs = branch.nseg_per_branch
+    branch_ind = 0
+
     assert np.all(branch.comp(0).show() == branch.loc(0.0).show())
     assert np.all(branch.comp(3).show() == branch.loc(1.0).show())
 
-    assert np.all(branch.loc(loc_of_index(2, 4)).show() == branch.comp(2).show())
-    assert np.all(branch.comp(index_of_loc(0, 0.4, 4)).show() == branch.loc(0.4).show())
+    inferred_loc = loc_of_index(2, branch_ind, nsegs)
+    assert np.all(branch.loc(inferred_loc).show() == branch.comp(2).show())
+
+    inferred_ind = local_index_of_loc(0.4, branch_ind, nsegs)
+    assert np.all(branch.comp(inferred_ind).show() == branch.loc(0.4).show())
 
 
 def test_shape():
@@ -228,3 +235,31 @@ def test_comp_indexing_exception_handling():
         branch.loc(0.0).comp(0)
     with pytest.raises(AttributeError):
         branch.loc(0.0).loc(0.0)
+
+
+def test_indexing_a_compartment_of_many_branches():
+    comp = jx.Compartment()
+    branch1 = jx.Branch(comp, nseg=3)
+    branch2 = jx.Branch(comp, nseg=4)
+    branch3 = jx.Branch(comp, nseg=5)
+    cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
+    cell2 = jx.Cell([branch3, branch2], parents=[-1, 0])
+    net = jx.Network([cell1, cell2])
+
+    # Indexing a single compartment of multiple branches is not supported with `loc`.
+    with pytest.raises(NotImplementedError):
+        net.cell("all").branch("all").loc(0.0)
+    with pytest.raises(NotImplementedError):
+        net.cell(0).branch("all").loc(0.0)
+    with pytest.raises(NotImplementedError):
+        net.cell("all").branch(0).loc(0.0)
+
+    # Indexing a single compartment of multiple branches is still supported with `comp`.
+    net.cell("all").branch("all").comp(0)
+    net.cell(0).branch("all").comp(0)
+    net.cell("all").branch(0).comp(0)
+
+    # Indexing many single compartment of multiple branches is always supported.
+    net.cell("all").branch("all").loc("all")
+    net.cell(0).branch("all").loc("all")
+    net.cell("all").branch(0).loc("all")

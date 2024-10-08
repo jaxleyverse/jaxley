@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from jax import jit, vmap
 
+from jaxley.utils.misc_utils import cumsum_leading_zero
+
 
 def equal_segments(branch_property: list, nseg_per_branch: int):
     """Generates segments where some property is the same in each segment.
@@ -193,8 +195,8 @@ def get_num_neighbours(
     return num_neighbours
 
 
-def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
-    """Returns the index of a segment given a loc in [0, 1] and the index of a branch.
+def local_index_of_loc(loc: float, global_branch_ind: int, nseg_per_branch: int) -> int:
+    """Returns the local index of a comp given a loc [0, 1] and the index of a branch.
 
     This is used because we specify locations such as synapses as a value between 0 and
     1. We have to convert this onto a discrete segment here.
@@ -205,19 +207,20 @@ def index_of_loc(branch_ind: int, loc: float, nseg_per_branch: int) -> int:
         nseg_per_branch: Number of segments of each branch.
 
     Returns:
-        The index of the compartment within the entire cell.
+        The local index of the compartment.
     """
-    nseg = nseg_per_branch  # only for convenience.
+    nseg = nseg_per_branch[global_branch_ind]  # only for convenience.
     possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
     ind_along_branch = np.argmin(np.abs(possible_locs - loc))
-    return branch_ind * nseg + ind_along_branch
+    return ind_along_branch
 
 
-def loc_of_index(global_comp_index, nseg):
-    """Return location corresponding to index."""
-    index = global_comp_index % nseg
-    possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
-    return possible_locs[index]
+def loc_of_index(global_comp_index, global_branch_index, nseg_per_branch):
+    """Return location corresponding to global compartment index."""
+    cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
+    index = global_comp_index - cumsum_nseg[global_branch_index]
+    nseg = nseg_per_branch[global_branch_index]
+    return (0.5 + index) / nseg
 
 
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):

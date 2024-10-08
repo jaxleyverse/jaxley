@@ -583,6 +583,16 @@ class Module(ABC):
         if key in view.columns:
             view = view[~np.isnan(view[key])]
             grouped_view = view.groupby("controlled_by_param")
+            num_elements_being_set = grouped_view.apply(len).to_numpy()
+            assert np.all(num_elements_being_set == num_elements_being_set[0]), (
+                "You are using `make_trainable()` with parameter sharing (e.g. same "
+                "parameter for an entire cell, or same parameter for entire branches). "
+                "This error is caused because you are trying to share a parameter "
+                "across an inhomogenous number of compartments. To overcome this "
+                "error, write a for-loop across cells (or branches). For example, "
+                "change `net.cell('all').make_trainable('HH_gNa')` to "
+                "`for i in range(num_cells): net.cell(i).make_trainable('HH_gNa')`"
+            )
             # Because of this `x.index.values` we cannot support `make_trainable()` on
             # the module level for synapse parameters (but only for `SynapseView`).
             inds_of_comps = list(grouped_view.apply(lambda x: x.index.values))
@@ -1439,7 +1449,11 @@ class Module(ABC):
             np.isnan(self.xyzr[branch_ind][:, dims])
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
-        comp_fraction = loc_of_index(comp_ind, self.nseg)
+        comp_fraction = loc_of_index(
+            comp_ind,
+            branch_ind,
+            self.nseg_per_branch,
+        )
         coords = self.xyzr[branch_ind]
         interpolated_xyz = interpolate_xyz(comp_fraction, coords)
 
@@ -1700,15 +1714,6 @@ class Module(ABC):
     def __iter__(self):
         for i in range(self.shape[0]):
             yield self[i]
-
-    def _local_inds_to_global(
-        self, cell_inds: np.ndarray, branch_inds: np.ndarray, comp_inds: np.ndarray
-    ):
-        """Given local inds of cell, branch, and comp, return the global comp index."""
-        global_ind = (
-            self.cumsum_nbranches[cell_inds] + branch_inds
-        ) * self.nseg + comp_inds
-        return global_ind.astype(int)
 
 
 class View:
@@ -2030,7 +2035,11 @@ class View:
         """
         idxs = self.view.global_branch_index.unique()
         if self.__class__.__name__ == "CompartmentView":
-            loc = loc_of_index(self.view.comp_index, self.pointer.nseg)
+            loc = loc_of_index(
+                self.view["global_comp_index"].to_numpy(),
+                self.view["global_branch_index"].to_numpy(),
+                self.pointer.nseg_per_branch,
+            )
             return list(interpolate_xyz(loc, self.pointer.xyzr[idxs[0]]))
         else:
             return [self.pointer.xyzr[i] for i in idxs]
@@ -2056,8 +2065,16 @@ class View:
         if is_new:  # synapse is not known
             self._update_synapse_state_names(synapse_type)
 
-        post_loc = loc_of_index(post_rows["comp_index"].to_numpy(), self.pointer.nseg)
-        pre_loc = loc_of_index(pre_rows["comp_index"].to_numpy(), self.pointer.nseg)
+        post_loc = loc_of_index(
+            post_rows["global_comp_index"].to_numpy(),
+            post_rows["global_branch_index"].to_numpy(),
+            self.pointer.nseg_per_branch,
+        )
+        pre_loc = loc_of_index(
+            pre_rows["global_comp_index"].to_numpy(),
+            pre_rows["global_branch_index"].to_numpy(),
+            self.pointer.nseg_per_branch,
+        )
 
         # Define new synapses. Each row is one synapse.
         new_rows = dict(

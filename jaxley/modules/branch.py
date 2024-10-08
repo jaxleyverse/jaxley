@@ -12,6 +12,7 @@ import pandas as pd
 from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
 from jaxley.utils.cell_utils import compute_children_and_parents
+from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
@@ -61,6 +62,7 @@ class Branch(Module):
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         # Indexing.
         self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
