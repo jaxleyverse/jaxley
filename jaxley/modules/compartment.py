@@ -16,7 +16,7 @@ from jaxley.utils.cell_utils import (
     local_index_of_loc,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import comp_edges_to_indices
+from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Compartment(Module):
@@ -38,7 +38,7 @@ class Compartment(Module):
         super().__init__()
 
         self.nseg = 1
-        self.nseg_per_branch = jnp.asarray([1])
+        self.nseg_per_branch = np.asarray([1])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -69,11 +69,14 @@ class Compartment(Module):
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
     def _init_morph_jaxley_spsolve(self):
-        self.branchpoint_group_inds = np.asarray([]).astype(int)
-        self.root_inds = jnp.asarray([0])
-        self._remapped_node_indices = self._internal_node_inds
-        self.children_in_level = []
-        self.parents_in_level = []
+        self.solve_indexer = JaxleySolveIndexer(
+            cumsum_nseg=self.cumsum_nseg,
+            branchpoint_group_inds=np.asarray([]).astype(int),
+            children_in_level=[],
+            parents_in_level=[],
+            root_inds=np.asarray([0]),
+            remapped_node_indices=self._internal_node_inds,
+        )
 
     def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.

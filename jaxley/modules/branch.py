@@ -13,7 +13,7 @@ from jaxley.modules.base import GroupView, Module, View
 from jaxley.modules.compartment import Compartment, CompartmentView
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import comp_edges_to_indices
+from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Branch(Module):
@@ -58,7 +58,7 @@ class Branch(Module):
             compartment_list = compartments
 
         self.nseg = len(compartment_list)
-        self.nseg_per_branch = jnp.asarray([self.nseg])
+        self.nseg_per_branch = np.asarray([self.nseg])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self.cumsum_nbranches = jnp.asarray([0, 1])
@@ -117,11 +117,14 @@ class Branch(Module):
             raise KeyError(f"Key {key} not recognized.")
 
     def _init_morph_jaxley_spsolve(self):
-        self.branchpoint_group_inds = np.asarray([]).astype(int)
-        self.root_inds = jnp.asarray([0])
-        self._remapped_node_indices = self._internal_node_inds
-        self.children_in_level = []
-        self.parents_in_level = []
+        self.solve_indexer = JaxleySolveIndexer(
+            cumsum_nseg=self.cumsum_nseg,
+            branchpoint_group_inds=np.asarray([]).astype(int),
+            remapped_node_indices=self._internal_node_inds,
+            children_in_level=[],
+            parents_in_level=[],
+            root_inds=np.asarray([0]),
+        )
 
     def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.

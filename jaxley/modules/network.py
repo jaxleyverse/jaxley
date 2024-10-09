@@ -13,7 +13,6 @@ from jax import vmap
 from matplotlib.axes import Axes
 
 from jaxley.modules.base import GroupView, Module, View
-from jaxley.modules.branch import Branch
 from jaxley.modules.cell import Cell, CellView
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
@@ -22,7 +21,11 @@ from jaxley.utils.cell_utils import (
     merge_cells,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
+from jaxley.utils.solver_utils import (
+    JaxleySolveIndexer,
+    comp_edges_to_indices,
+    remap_index_to_masked,
+)
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -49,10 +52,10 @@ class Network(Module):
             self.xyzr += deepcopy(cell.xyzr)
 
         self.cells = cells
-        self.nseg_per_branch = jnp.concatenate(
+        self.nseg_per_branch = np.concatenate(
             [cell.nseg_per_branch for cell in self.cells]
         )
-        self.nseg = int(jnp.max(self.nseg_per_branch))
+        self.nseg = int(np.max(self.nseg_per_branch))
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
         self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
         self._append_params_and_states(self.network_params, self.network_states)
@@ -129,32 +132,44 @@ class Network(Module):
             raise KeyError(f"Key {key} not recognized.")
 
     def _init_morph_jaxley_spsolve(self):
-        self.branchpoint_group_inds = build_branchpoint_group_inds(
+        branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
         )
-        self.children_in_level = merge_cells(
+        children_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.children_in_level for cell in self.cells],
+            [cell.solve_indexer.children_in_level for cell in self.cells],
             exclude_first=False,
         )
-        self.parents_in_level = merge_cells(
+        parents_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.parents_in_level for cell in self.cells],
+            [cell.solve_indexer.parents_in_level for cell in self.cells],
             exclude_first=False,
         )
-        self.root_inds = self.cumsum_nbranches[:-1]
+        padded_cumsum_nseg = cumsum_leading_zero(
+            np.concatenate(
+                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self.cells]
+            )
+        )
 
         # Generate mapping to dealing with the masking which allows using the custom
         # sparse solver to deal with different nseg per branch.
-        self._remapped_node_indices = remap_index_to_masked(
+        remapped_node_indices = remap_index_to_masked(
             self._internal_node_inds,
             self.nodes,
-            self.nseg,
+            padded_cumsum_nseg,
             self.nseg_per_branch,
+        )
+        self.solve_indexer = JaxleySolveIndexer(
+            cumsum_nseg=padded_cumsum_nseg,
+            branchpoint_group_inds=branchpoint_group_inds,
+            children_in_level=children_in_level,
+            parents_in_level=parents_in_level,
+            root_inds=self.cumsum_nbranches[:-1],
+            remapped_node_indices=remapped_node_indices,
         )
 
     def _init_morph_jax_spsolve(self):
