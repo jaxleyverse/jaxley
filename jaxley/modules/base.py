@@ -82,7 +82,6 @@ class Module(ABC):
         self.cumsum_nbranches: Optional[jnp.ndarray] = None
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
-        self.comb_branches_in_each_level: List[jnp.ndarray] = [jnp.asarray([0])]
 
         self.initialized_morph: bool = False
         self.initialized_syns: bool = False
@@ -534,8 +533,8 @@ class Module(ABC):
         all_nodes["comp_index"] = np.arange(len(all_nodes))
 
         # Update compartment structure arguments.
-        nseg_per_branch = nseg_per_branch.at[branch_indices].set(ncomp)
-        nseg = int(jnp.max(nseg_per_branch))
+        nseg_per_branch[branch_indices] = ncomp
+        nseg = int(np.max(nseg_per_branch))
         cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
         internal_node_inds = np.arange(cumsum_nseg[-1])
 
@@ -1141,17 +1140,12 @@ class Module(ABC):
                     "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                     "sources": np.asarray(self._comp_edges["source"].to_list()),
                     "types": np.asarray(self._comp_edges["type"].to_list()),
-                    "masked_node_inds": self._remapped_node_indices,
                     "nseg_per_branch": self.nseg_per_branch,
-                    "nseg": self.nseg,
                     "par_inds": self.par_inds,
                     "child_inds": self.child_inds,
                     "nbranches": self.total_nbranches,
                     "solver": voltage_solver,
-                    "children_in_level": self.children_in_level,
-                    "parents_in_level": self.parents_in_level,
-                    "root_inds": self.root_inds,
-                    "branchpoint_group_inds": self.branchpoint_group_inds,
+                    "idx": self.solve_indexer,
                     "debug_states": self.debug_states,
                 }
             )

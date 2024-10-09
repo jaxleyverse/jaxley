@@ -21,7 +21,11 @@ from jaxley.utils.cell_utils import (
     compute_parents_in_level,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import comp_edges_to_indices, remap_index_to_masked
+from jaxley.utils.solver_utils import (
+    JaxleySolveIndexer,
+    comp_edges_to_indices,
+    remap_index_to_masked,
+)
 from jaxley.utils.swc import build_radiuses_from_xyzr, swc_to_jaxley
 
 
@@ -94,8 +98,8 @@ class Cell(Module):
 
         # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
         # is run.
-        self.nseg_per_branch = jnp.asarray([branch.nseg for branch in branch_list])
-        self.nseg = int(jnp.max(self.nseg_per_branch))
+        self.nseg_per_branch = np.asarray([branch.nseg for branch in branch_list])
+        self.nseg = int(np.max(self.nseg_per_branch))
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
         self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
 
@@ -168,7 +172,7 @@ class Cell(Module):
             self.par_inds,
             self.child_inds,
         )
-        self.branchpoint_group_inds = build_branchpoint_group_inds(
+        branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
@@ -178,19 +182,36 @@ class Cell(Module):
         parents_inds = children_and_parents["parents"]
 
         levels = compute_levels(parents)
-        self.children_in_level = compute_children_in_level(levels, children_inds)
-        self.parents_in_level = compute_parents_in_level(
-            levels, self.par_inds, parents_inds
+        children_in_level = compute_children_in_level(levels, children_inds)
+        parents_in_level = compute_parents_in_level(levels, self.par_inds, parents_inds)
+        levels_and_nseg = pd.DataFrame().from_dict(
+            {
+                "levels": levels,
+                "nsegs": self.nseg_per_branch,
+            }
         )
-        self.root_inds = jnp.asarray([0])
+        levels_and_nseg["max_nseg_in_level"] = levels_and_nseg.groupby("levels")[
+            "nsegs"
+        ].transform("max")
+        padded_cumsum_nseg = cumsum_leading_zero(
+            levels_and_nseg["max_nseg_in_level"].to_numpy()
+        )
 
         # Generate mapping to deal with the masking which allows using the custom
         # sparse solver to deal with different nseg per branch.
-        self._remapped_node_indices = remap_index_to_masked(
+        remapped_node_indices = remap_index_to_masked(
             self._internal_node_inds,
             self.nodes,
-            self.nseg,
+            padded_cumsum_nseg,
             self.nseg_per_branch,
+        )
+        self.solve_indexer = JaxleySolveIndexer(
+            cumsum_nseg=padded_cumsum_nseg,
+            branchpoint_group_inds=branchpoint_group_inds,
+            children_in_level=children_in_level,
+            parents_in_level=parents_in_level,
+            root_inds=np.asarray([0]),
+            remapped_node_indices=remapped_node_indices,
         )
 
     def _init_morph_jax_spsolve(self):

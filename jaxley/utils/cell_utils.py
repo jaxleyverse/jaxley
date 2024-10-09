@@ -52,9 +52,9 @@ def linear_segments(
 def merge_cells(
     cumsum_num_branches: List[int],
     cumsum_num_branchpoints: List[int],
-    arrs: List[List[jnp.ndarray]],
+    arrs: List[List[np.ndarray]],
     exclude_first: bool = True,
-) -> jnp.ndarray:
+) -> np.ndarray:
     """
     Build full list of which branches are solved in which iteration.
 
@@ -83,7 +83,7 @@ def merge_cells(
         else:
             p = [
                 p_in_level
-                + jnp.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]])
+                + np.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]])
                 for p_in_level in p
             ]
         ps.append(p)
@@ -95,7 +95,7 @@ def merge_cells(
         for p in ps:
             if len(p) > i:
                 current_ps.append(p[i])
-        combined_parents_in_level.append(jnp.concatenate(current_ps))
+        combined_parents_in_level.append(np.concatenate(current_ps))
 
     return combined_parents_in_level
 
@@ -112,8 +112,8 @@ def compute_levels(parents):
 
 
 def compute_children_in_level(
-    levels: jnp.ndarray, children_row_and_col: jnp.ndarray
-) -> List[jnp.ndarray]:
+    levels: np.ndarray, children_row_and_col: np.ndarray
+) -> List[np.ndarray]:
     num_branches = len(levels)
     children_in_each_level = []
     for l in range(1, np.max(levels) + 1):
@@ -121,7 +121,7 @@ def compute_children_in_level(
         for b in range(num_branches):
             if levels[b] == l:
                 children_in_current_level.append(children_row_and_col[b - 1])
-        children_in_current_level = jnp.asarray(children_in_current_level)
+        children_in_current_level = np.asarray(children_in_current_level)
         children_in_each_level.append(children_in_current_level)
     return children_in_each_level
 
@@ -130,8 +130,9 @@ def compute_parents_in_level(levels, par_inds, parents_row_and_col):
     level_of_parent = levels[par_inds]
     parents_in_each_level = []
     for l in range(np.max(levels)):
-        parents_inds_in_current_level = jnp.where(level_of_parent == l)[0]
+        parents_inds_in_current_level = np.where(level_of_parent == l)[0]
         parents_in_current_level = parents_row_and_col[parents_inds_in_current_level]
+        parents_in_current_level = np.asarray(parents_in_current_level)
         parents_in_each_level.append(parents_in_current_level)
     return parents_in_each_level
 

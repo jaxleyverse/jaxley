@@ -11,6 +11,7 @@ from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
 from jaxley.utils.cell_utils import group_and_sum
+from jaxley.utils.solver_utils import JaxleySolveIndexer
 
 
 def step_voltage_explicit(
@@ -22,18 +23,13 @@ def step_voltage_explicit(
     sinks: jnp.ndarray,
     sources: jnp.ndarray,
     types: jnp.ndarray,
-    masked_node_inds: jnp.ndarray,
     nseg_per_branch: jnp.ndarray,
-    nseg: int,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
     solver: str,
     delta_t: float,
-    children_in_level: List[jnp.ndarray],
-    parents_in_level: List[jnp.ndarray],
-    root_inds: jnp.ndarray,
-    branchpoint_group_inds: jnp.ndarray,
+    idx: JaxleySolveIndexer,
     debug_states,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
@@ -54,10 +50,7 @@ def step_voltage_explicit(
         nbranches,
         solver,
         delta_t,
-        children_in_level,
-        parents_in_level,
-        root_inds,
-        branchpoint_group_inds,
+        idx,
         debug_states,
     )
     new_voltates = voltages + delta_t * update
@@ -73,37 +66,31 @@ def step_voltage_implicit_with_jaxley_spsolve(
     sinks: jnp.ndarray,
     sources: jnp.ndarray,
     types: jnp.ndarray,
-    masked_node_inds: jnp.ndarray,
     nseg_per_branch: jnp.ndarray,
-    nseg: int,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
     solver: str,
     delta_t: float,
-    children_in_level: List[jnp.ndarray],
-    parents_in_level: List[jnp.ndarray],
-    root_inds: jnp.ndarray,
-    branchpoint_group_inds: jnp.ndarray,
+    idx: JaxleySolveIndexer,
     debug_states,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
     # Build diagonals.
     c2c = np.isin(types, [0, 1, 2])
-    diags = jnp.ones(nbranches * nseg)
+    total_ncomp = idx.cumsum_nseg[-1]
+    diags = jnp.ones(total_ncomp)
 
     # if-case needed because `.at` does not allow empty inputs, but the input is
     # empty for compartments.
     if len(sinks[c2c]) > 0:
-        diags = diags.at[masked_node_inds[sinks[c2c]]].add(
-            delta_t * axial_conductances[c2c]
-        )
+        diags = diags.at[idx.mask(sinks[c2c])].add(delta_t * axial_conductances[c2c])
 
-    diags = diags.at[masked_node_inds[internal_node_inds]].add(delta_t * voltage_terms)
+    diags = diags.at[idx.mask(internal_node_inds)].add(delta_t * voltage_terms)
 
     # Build solves.
-    solves = jnp.zeros(nbranches * nseg)
-    solves = solves.at[masked_node_inds[internal_node_inds]].add(
+    solves = jnp.zeros(total_ncomp)
+    solves = solves.at[idx.mask(internal_node_inds)].add(
         voltages + delta_t * constant_terms
     )
 
@@ -111,31 +98,22 @@ def step_voltage_implicit_with_jaxley_spsolve(
     c2c = types == 0  # c2c = compartment-to-compartment.
 
     # Build uppers.
-    uppers = jnp.zeros(nbranches * nseg)
+    uppers = jnp.zeros(total_ncomp)
     upper_inds = sources[c2c] > sinks[c2c]
     sinks_upper = sinks[c2c][upper_inds]
     if len(sinks_upper) > 0:
-        uppers = uppers.at[masked_node_inds[sinks_upper]].add(
+        uppers = uppers.at[idx.mask(sinks_upper)].add(
             -delta_t * axial_conductances[c2c][upper_inds]
         )
 
     # Build lowers.
-    lowers = jnp.zeros(nbranches * nseg)
+    lowers = jnp.zeros(total_ncomp)
     lower_inds = sources[c2c] < sinks[c2c]
     sinks_lower = sinks[c2c][lower_inds]
     if len(sinks_lower) > 0:
-        lowers = lowers.at[masked_node_inds[sinks_lower]].add(
+        lowers = lowers.at[idx.mask(sinks_lower)].add(
             -delta_t * axial_conductances[c2c][lower_inds]
         )
-
-    # Reshape all diags, lowers, uppers, and solves into a "per-branch" format.
-    diags = jnp.reshape(diags, (nbranches, -1))
-    solves = jnp.reshape(solves, (nbranches, -1))
-    uppers = jnp.reshape(uppers, (nbranches, -1))
-    lowers = jnp.reshape(lowers, (nbranches, -1))
-    # lowers and uppers were built to have length `nseg` above for simplicity.
-    uppers = uppers[:, :-1]
-    lowers = lowers[:, 1:]
 
     # Build branchpoint conductances.
     branchpoint_conds_parents = axial_conductances[types == 1]
@@ -148,7 +126,7 @@ def step_voltage_implicit_with_jaxley_spsolve(
     # Find unique group identifiers
     num_branchpoints = len(branchpoint_conds_parents)
     branchpoint_diags = -group_and_sum(
-        all_branchpoint_vals, branchpoint_group_inds, num_branchpoints
+        all_branchpoint_vals, idx.branchpoint_group_inds, num_branchpoints
     )
     branchpoint_solves = jnp.zeros((num_branchpoints,))
 
@@ -201,10 +179,8 @@ def step_voltage_implicit_with_jaxley_spsolve(
         branchpoint_diags,
         branchpoint_solves,
         solver,
-        children_in_level,
-        parents_in_level,
-        root_inds,
         nseg_per_branch,
+        idx,
         debug_states,
     )
 
@@ -228,13 +204,11 @@ def step_voltage_implicit_with_jaxley_spsolve(
         branchpoint_diags,
         branchpoint_solves,
         solver,
-        children_in_level,
-        parents_in_level,
-        root_inds,
         nseg_per_branch,
+        idx,
         debug_states,
     )
-    return solves.ravel(order="C")[masked_node_inds[internal_node_inds]]
+    return solves.ravel(order="C")[idx.mask(internal_node_inds)]
 
 
 def step_voltage_implicit_with_jax_spsolve(
@@ -291,10 +265,7 @@ def _voltage_vectorfield(
     nbranches: int,
     solver: str,
     delta_t: float,
-    children_in_level: List[jnp.ndarray],
-    parents_in_level: List[jnp.ndarray],
-    root_inds: jnp.ndarray,
-    branchpoint_group_inds: jnp.ndarray,
+    idx: JaxleySolveIndexer,
     debug_states,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
@@ -346,16 +317,22 @@ def _triang_branched(
     branchpoint_diags,
     branchpoint_solves,
     tridiag_solver,
-    children_in_level,
-    parents_in_level,
-    root_inds,
     nseg_per_branch,
+    idx,
     debug_states,
 ):
     """Triangulation."""
-    for cil, pil in zip(reversed(children_in_level), reversed(parents_in_level)):
+    for cil, pil in zip(
+        reversed(idx.children_in_level), reversed(idx.parents_in_level)
+    ):
         diags, lowers, solves, uppers = _triang_level(
-            cil[:, 0], lowers, diags, uppers, solves, tridiag_solver
+            cil[:, 0],
+            lowers,
+            diags,
+            uppers,
+            solves,
+            tridiag_solver,
+            idx,
         )
         (
             branchpoint_diags,
@@ -369,6 +346,7 @@ def _triang_branched(
             branchpoint_weights_children,
             branchpoint_diags,
             branchpoint_solves,
+            idx,
         )
         diags, solves, branchpoint_conds_parents = _eliminate_parents_upper(
             pil,
@@ -379,10 +357,11 @@ def _triang_branched(
             branchpoint_diags,
             branchpoint_solves,
             nseg_per_branch,
+            idx,
         )
     # At last level, we do not want to eliminate anymore.
     diags, lowers, solves, uppers = _triang_level(
-        root_inds, lowers, diags, uppers, solves, tridiag_solver
+        idx.root_inds, lowers, diags, uppers, solves, tridiag_solver, idx
     )
     return (
         diags,
@@ -408,10 +387,8 @@ def _backsub_branched(
     branchpoint_diags,
     branchpoint_solves,
     tridiag_solver,
-    children_in_level,
-    parents_in_level,
-    root_inds,
     nseg_per_branch,
+    idx,
     debug_states,
 ):
     """
@@ -419,10 +396,15 @@ def _backsub_branched(
     """
     # At first level, we do not want to eliminate.
     solves, lowers, diags = _backsub_level(
-        root_inds, diags, lowers, solves, tridiag_solver
+        idx.root_inds,
+        diags,
+        lowers,
+        solves,
+        tridiag_solver,
+        idx,
     )
     counter = 0
-    for cil, pil in zip(children_in_level, parents_in_level):
+    for cil, pil in zip(idx.children_in_level, idx.parents_in_level):
         branchpoint_weights_parents, branchpoint_solves = _eliminate_parents_lower(
             pil,
             diags,
@@ -430,6 +412,7 @@ def _backsub_branched(
             branchpoint_weights_parents,
             branchpoint_solves,
             nseg_per_branch,
+            idx,
         )
         branchpoint_conds_children, solves = _eliminate_children_upper(
             cil,
@@ -437,9 +420,10 @@ def _backsub_branched(
             branchpoint_conds_children,
             branchpoint_diags,
             branchpoint_solves,
+            idx,
         )
         solves, lowers, diags = _backsub_level(
-            cil[:, 0], diags, lowers, solves, tridiag_solver
+            cil[:, 0], diags, lowers, solves, tridiag_solver, idx
         )
         counter += 1
     return (
@@ -452,7 +436,7 @@ def _backsub_branched(
     )
 
 
-def _triang_level(cil, lowers, diags, uppers, solves, tridiag_solver):
+def _triang_level(cil, lowers, diags, uppers, solves, tridiag_solver, idx):
     if tridiag_solver == "jaxley.stone":
         triang_fn = stone_triang_upper
     elif tridiag_solver == "jaxley.thomas":
@@ -460,12 +444,15 @@ def _triang_level(cil, lowers, diags, uppers, solves, tridiag_solver):
     else:
         raise NameError
     new_diags, new_lowers, new_solves = vmap(triang_fn, in_axes=(0, 0, 0, 0))(
-        lowers[cil], diags[cil], uppers[cil], solves[cil]
+        lowers[idx.lower(cil)],
+        diags[idx.branch(cil)],
+        uppers[idx.upper(cil)],
+        solves[idx.branch(cil)],
     )
-    diags = diags.at[cil].set(new_diags)
-    lowers = lowers.at[cil].set(new_lowers)
-    solves = solves.at[cil].set(new_solves)
-    uppers = uppers.at[cil].set(0.0)
+    diags = diags.at[idx.branch(cil)].set(new_diags)
+    lowers = lowers.at[idx.lower(cil)].set(new_lowers)
+    solves = solves.at[idx.branch(cil)].set(new_solves)
+    uppers = uppers.at[idx.upper(cil)].set(0.0)
 
     return diags, lowers, solves, uppers
 
@@ -476,6 +463,7 @@ def _backsub_level(
     lowers: jnp.ndarray,
     solves: jnp.ndarray,
     tridiag_solver: str,
+    idx,
 ) -> jnp.ndarray:
     bil = cil
     if tridiag_solver == "jaxley.stone":
@@ -484,11 +472,13 @@ def _backsub_level(
         backsub_fn = thomas_backsub_lower
     else:
         raise NameError
-    solves = solves.at[bil].set(
-        vmap(backsub_fn, in_axes=(0, 0, 0))(solves[bil], lowers[bil], diags[bil])
+    solves = solves.at[idx.branch(bil)].set(
+        vmap(backsub_fn, in_axes=(0, 0, 0))(
+            solves[idx.branch(bil)], lowers[idx.lower(bil)], diags[idx.branch(bil)]
+        )
     )
-    lowers = lowers.at[bil].set(0.0)
-    diags = diags.at[bil].set(1.0)
+    lowers = lowers.at[idx.lower(bil)].set(0.0)
+    diags = diags.at[idx.branch(bil)].set(1.0)
     return solves, lowers, diags
 
 
@@ -500,12 +490,13 @@ def _eliminate_children_lower(
     branchpoint_weights_children,
     branchpoint_diags,
     branchpoint_solves,
+    idx,
 ):
     bil = cil[:, 0]
     bpil = cil[:, 1]
     new_diag, new_solve = vmap(_eliminate_single_child_lower, in_axes=(0, 0, 0, 0))(
-        diags[bil, 0],
-        solves[bil, 0],
+        diags[idx.first(bil)],
+        solves[idx.first(bil)],
         branchpoint_conds_children[bil],
         branchpoint_weights_children[bil],
     )
@@ -537,6 +528,7 @@ def _eliminate_parents_upper(
     branchpoint_diags,
     branchpoint_solves,
     nseg_per_branch: jnp.ndarray,
+    idx,
 ):
     bil = pil[:, 0]
     bpil = pil[:, 1]
@@ -548,8 +540,8 @@ def _eliminate_parents_upper(
     )
 
     # Update the diagonal elements and `b` in `Ax=b` (called `solves`).
-    diags = diags.at[bil, nseg_per_branch[bil] - 1].add(new_diag)
-    solves = solves.at[bil, nseg_per_branch[bil] - 1].add(new_solve)
+    diags = diags.at[idx.last(bil)].add(new_diag)
+    solves = solves.at[idx.last(bil)].add(new_solve)
     branchpoint_conds_parents = branchpoint_conds_parents.at[bil].set(0.0)
 
     return diags, solves, branchpoint_conds_parents
@@ -575,13 +567,12 @@ def _eliminate_parents_lower(
     branchpoint_weights_parents,
     branchpoint_solves,
     nseg_per_branch: jnp.ndarray,
+    idx,
 ):
     bil = pil[:, 0]
     bpil = pil[:, 1]
     branchpoint_solves = branchpoint_solves.at[bpil].add(
-        -solves[bil, nseg_per_branch[bil] - 1]
-        * branchpoint_weights_parents[bil]
-        / diags[bil, nseg_per_branch[bil] - 1]
+        -solves[idx.last(bil)] * branchpoint_weights_parents[bil] / diags[idx.last(bil)]
     )
     branchpoint_weights_parents = branchpoint_weights_parents.at[bil].set(0.0)
     return branchpoint_weights_parents, branchpoint_solves
@@ -593,10 +584,11 @@ def _eliminate_children_upper(
     branchpoint_conds_children,
     branchpoint_diags,
     branchpoint_solves,
+    idx,
 ):
     bil = cil[:, 0]
     bpil = cil[:, 1]
-    solves = solves.at[bil, 0].add(
+    solves = solves.at[idx.first(bil)].add(
         -branchpoint_solves[bpil]
         * branchpoint_conds_children[bil]
         / branchpoint_diags[bpil]

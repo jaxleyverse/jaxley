@@ -15,7 +15,8 @@ import numpy as np
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
-from jaxley.utils.misc_utils import childview
+from jaxley.utils.misc_utils import childview, cumsum_leading_zero
+from jaxley.utils.solver_utils import JaxleySolveIndexer
 
 
 def test_getitem():
@@ -263,3 +264,15 @@ def test_indexing_a_compartment_of_many_branches():
     net.cell("all").branch("all").loc("all")
     net.cell(0).branch("all").loc("all")
     net.cell("all").branch(0).loc("all")
+
+
+def test_solve_indexer():
+    nsegs = [4, 3, 4, 2, 2, 3, 3]
+    cumsum_nseg = cumsum_leading_zero(nsegs)
+    idx = JaxleySolveIndexer(cumsum_nseg)
+    branch_inds = np.asarray([0, 2])
+    assert np.all(idx.first(branch_inds) == np.asarray([0, 7]))
+    assert np.all(idx.last(branch_inds) == np.asarray([3, 10]))
+    assert np.all(idx.branch(branch_inds) == np.asarray([[0, 1, 2, 3], [7, 8, 9, 10]]))
+    assert np.all(idx.lower(branch_inds) == np.asarray([[1, 2, 3], [8, 9, 10]]))
+    assert np.all(idx.upper(branch_inds) == np.asarray([[0, 1, 2], [7, 8, 9]]))

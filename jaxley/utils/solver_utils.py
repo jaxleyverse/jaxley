@@ -9,7 +9,7 @@ import pandas as pd
 
 
 def remap_index_to_masked(
-    index, nodes: pd.DataFrame, max_nseg: int, nseg_per_branch: jnp.ndarray
+    index, nodes: pd.DataFrame, padded_cumsum_nseg, nseg_per_branch: jnp.ndarray
 ):
     """Convert actual index of the compartment to the index in the masked system.
 
@@ -27,7 +27,7 @@ def remap_index_to_masked(
     )
     branch_inds = nodes.loc[index, "branch_index"].to_numpy()
     remainders = index - cumsum_nseg_per_branch[branch_inds]
-    return branch_inds * max_nseg + remainders
+    return padded_cumsum_nseg[branch_inds] + remainders
 
 
 def convert_to_csc(
@@ -97,3 +97,105 @@ def comp_edges_to_indices(
         col_ind=all_inds[1],
     )
     return n_nodes, data_inds, indices, indptr
+
+
+class JaxleySolveIndexer:
+    """Indexer for easy access to compartment indices given a branch index.
+
+    Used only by the custom Jaxley solvers. This class has two purposes:
+
+    1) It simplifies indexing. Indexing is difficult because every branch has a
+    different number of compartments (in the solve, every branch within a level has
+    the same number of compartments, but the number can still differ between levels).
+
+    2) It stores several attributes such that we do not have to track all of them
+    separately before they are used in `step()`.
+    """
+
+    def __init__(
+        self,
+        cumsum_nseg: np.ndarray,
+        branchpoint_group_inds: Optional[np.ndarray] = None,
+        children_in_level: Optional[np.ndarray] = None,
+        parents_in_level: Optional[np.ndarray] = None,
+        root_inds: Optional[np.ndarray] = None,
+        remapped_node_indices: Optional[np.ndarray] = None,
+    ):
+        self.cumsum_nseg = np.asarray(cumsum_nseg)
+
+        # Save items for easier access.
+        self.branchpoint_group_inds = branchpoint_group_inds
+        self.children_in_level = children_in_level
+        self.parents_in_level = parents_in_level
+        self.root_inds = root_inds
+        self.remapped_node_indices = remapped_node_indices
+
+    def first(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return the indices of the first compartment of all `branch_inds`."""
+        return self.cumsum_nseg[branch_inds]
+
+    def last(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return the indices of the last compartment of all `branch_inds`."""
+        return self.cumsum_nseg[branch_inds + 1] - 1
+
+    def branch(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return indices of all compartments in all `branch_inds`."""
+        start_inds = self.first(branch_inds)
+        end_inds = self.last(branch_inds) + 1
+        return self._consecutive_indices(start_inds, end_inds)
+
+    def lower(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return indices of all lowers in all `branch_inds`.
+
+        This is needed because the `lowers` array in the voltage solve is instantiated
+        to have as many elements as the `diagonal`. In this method, we get rid of
+        this additional element."""
+        start_inds = self.first(branch_inds) + 1
+        end_inds = self.last(branch_inds) + 1
+        return self._consecutive_indices(start_inds, end_inds)
+
+    def upper(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return indices of all uppers in all `branch_inds`.
+
+        This is needed because the `uppers` array in the voltage solve is instantiated
+        to have as many elements as the `diagonal`. In this method, we get rid of
+        this additional element."""
+        start_inds = self.first(branch_inds)
+        end_inds = self.last(branch_inds)
+        return self._consecutive_indices(start_inds, end_inds)
+
+    def _consecutive_indices(
+        self, start_inds: np.ndarray, end_inds: np.ndarray
+    ) -> np.ndarray:
+        """Return array of all indices in [start, end], for every start, end.
+
+        It also reshape the indices to `(nbranches, nseg)`.
+
+        E.g.:
+        ```
+        start_inds = [0, 6]
+        end_inds = [3, 9]
+        -->
+        [[0, 1, 2], [6, 7, 8]]
+        ```
+        """
+        n_inds = end_inds - start_inds
+        assert np.all(n_inds[0] == n_inds), (
+            "The indexer only supports indexing into branches with the same number "
+            "of compartments."
+        )
+        if n_inds[0] > 0:
+            repeated_starts = np.reshape(np.repeat(start_inds, n_inds), (-1, n_inds[0]))
+            # For single compartment neurons there are no uppers or lowers, so `n_inds`
+            # can be zero.
+            return repeated_starts + np.arange(n_inds[0]).astype(int)
+        else:
+            return np.asarray([[]] * len(start_inds)).astype(int)
+
+    def mask(self, indices: np.ndarray) -> np.ndarray:
+        """Return the masked index given the global compartment index.
+
+        The masked index is the one which occurs because all branches within a level
+        must have the same number of compartments for the solve.
+        """
+        return self.remapped_node_indices[indices]

@@ -36,8 +36,7 @@ def childview(
     raise AttributeError("Compartment does not support indexing")
 
 
-def cumsum_leading_zero(array: Union[jnp.ndarray, List]) -> jnp.ndarray:
-    """Return the `cumsum` of a jax array and pad with a leading zero."""
-    return jnp.concatenate([jnp.asarray([0]), jnp.cumsum(jnp.asarray(array))]).astype(
-        int
-    )
+def cumsum_leading_zero(array: Union[np.ndarray, List]) -> np.ndarray:
+    """Return the `cumsum` of a numpy array and pad with a leading zero."""
+    arr = np.asarray(array)
+    return np.concatenate([np.asarray([0]), np.cumsum(arr)]).astype(arr.dtype)
