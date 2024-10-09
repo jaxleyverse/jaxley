@@ -1,3 +1,19 @@
+# 0.4.0
+
+### New features
+
+- Changing the number of compartments: `cell.branch(0).set_ncomp(4)` (#436, #440,
+@michaeldeistler)
+- New options for plotting: `cell.vis(type='comp')` and `cell.vis(type='morph')` (#437,
+@jnsbck)
+- Speed optimization for `jx.integrate(..., voltage_solver="jaxley.stone")` (#442,
+@michaeldeistler)
+
+### Documentation
+
+- new website powered by sphinx: `jaxley.readthedocs.io` (#434, #435, @michaeldeistler)
+
+
 # v0.3.0
 
 ### New features
