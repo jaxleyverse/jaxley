@@ -18,6 +18,7 @@ def integrate(
     *,
     param_state: Optional[List[Dict]] = None,
     data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+    data_clamps: Optional[Tuple[str, jnp.ndarray, pd.DataFrame]] = None,
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
@@ -34,6 +35,8 @@ def integrate(
         param_state: Parameters returned by `data_set`.
         data_stimuli: Outputs of `.data_stimulate()`, only needed if stimuli change
             across function calls.
+        data_clamps: Outputs of `.data_clamp()`, only needed if clamps change across
+            function calls.
         t_max: Duration of the simulation in milliseconds. If `t_max` is greater than
             the length of the stimulus input, the stimulus will be padded at the end
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
@@ -70,16 +73,25 @@ def integrate(
     if "i" in module.externals.keys() or data_stimuli is not None:
         if "i" in module.externals.keys():
             if data_stimuli is not None:
-                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[0]])
+                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
                 external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[1].comp_index.to_numpy()]
+                    [external_inds["i"], data_stimuli[2].comp_index.to_numpy()]
                 )
         else:
-            externals["i"] = data_stimuli[0]
-            external_inds["i"] = data_stimuli[1].comp_index.to_numpy()
-    else:
-        externals["i"] = jnp.asarray([[]]).astype("float")
-        external_inds["i"] = jnp.asarray([]).astype("int32")
+            externals["i"] = data_stimuli[1]
+            external_inds["i"] = data_stimuli[2].comp_index.to_numpy()
+
+    # If a clamp is inserted, add it to the external inputs.
+    if data_clamps is not None:
+        state_name, clamps, inds = data_clamps
+        if state_name in module.externals.keys():
+            externals[state_name] = jnp.concatenate([externals[state_name], clamps])
+            external_inds[state_name] = jnp.concatenate(
+                [external_inds[state_name], inds.comp_index.to_numpy()]
+            )
+        else:
+            externals[state_name] = clamps
+            external_inds[state_name] = inds.comp_index.to_numpy()
 
     if not externals.keys():
         # No stimulus was inserted and no clamp was set.
@@ -98,17 +110,17 @@ def integrate(
         t_max_steps = int(t_max // delta_t + 1)
 
         # Pad or truncate the stimulus.
-        if "i" in externals.keys() and t_max_steps > externals["i"].shape[0]:
-            pad = jnp.zeros(
-                (t_max_steps - externals["i"].shape[0], externals["i"].shape[1])
-            )
-            externals["i"] = jnp.concatenate((externals["i"], pad))
-
         for key in externals.keys():
             if t_max_steps > externals[key].shape[0]:
-                raise NotImplementedError(
-                    "clamp must be at least as long as simulation."
-                )
+                if key == "i":
+                    pad = jnp.zeros(
+                        (t_max_steps - externals["i"].shape[0], externals["i"].shape[1])
+                    )
+                    externals["i"] = jnp.concatenate((externals["i"], pad))
+                else:
+                    raise NotImplementedError(
+                        "clamp must be at least as long as simulation."
+                    )
             else:
                 externals[key] = externals[key][:t_max_steps, :]
 
@@ -148,20 +160,27 @@ def integrate(
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
     # The total simulation length will be `prod(checkpoint_lengths)`. At the end, we
     # return only the first `nsteps_to_return` elements (plus the initial state).
-    example_key = list(externals.keys())[0]
-    nsteps_to_return = len(externals[example_key])
+    if externals:
+        example_key = list(externals.keys())[0]
+        nsteps_to_return = len(externals[example_key])
+    else:
+        nsteps_to_return = t_max_steps
+
     if checkpoint_lengths is None:
-        checkpoint_lengths = [len(externals[example_key])]
-        length = len(externals[example_key])
+        checkpoint_lengths = [nsteps_to_return]
+        length = nsteps_to_return
     else:
         length = prod(checkpoint_lengths)
-        size_difference = length - len(externals[example_key])
-        dummy_external = jnp.zeros((size_difference, externals[example_key].shape[1]))
+        size_difference = length - nsteps_to_return
         assert (
-            len(externals[example_key]) <= length
+            nsteps_to_return <= length
         ), "The desired simulation duration is longer than `prod(nested_length)`."
-        for key in externals.keys():
-            externals[key] = jnp.concatenate([externals[key], dummy_external])
+        if externals:
+            dummy_external = jnp.zeros(
+                (size_difference, externals[example_key].shape[1])
+            )
+            for key in externals.keys():
+                externals[key] = jnp.concatenate([externals[key], dummy_external])
 
     # Record the initial state.
     init_recs = jnp.asarray(

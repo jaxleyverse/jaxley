@@ -996,44 +996,78 @@ class Module(ABC):
             verbose: Whether or not to print the number of inserted stimuli. `False`
                 by default because this method is meant to be jitted.
         """
-        return self._data_stimulate(current, data_stimuli, self.nodes, verbose=verbose)
+        return self._data_external_input(
+            "i", current, data_stimuli, self.nodes, verbose=verbose
+        )
 
-    def _data_stimulate(
+    def data_clamp(
         self,
-        current: jnp.ndarray,
-        data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        state_name: str,
+        state_array: jnp.ndarray,
+        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+        verbose: bool = False,
+    ):
+        """Insert a clamp into the module within jit (or grad).
+
+        Args:
+            state_name: Name of the state variable to set.
+            state_array: Time series of the state variable in the default Jaxley unit.
+                State array should be of shape (num_clamps, simulation_time) or
+                (simulation_time, ) for a single clamp.
+            verbose: Whether or not to print the number of inserted clamps. `False`
+                by default because this method is meant to be jitted.
+        """
+        return self._data_external_input(
+            state_name, state_array, data_clamps, self.nodes, verbose=verbose
+        )
+
+    def _data_external_input(
+        self,
+        state_name: str,
+        state_array: jnp.ndarray,
+        data_external_input: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
         view: pd.DataFrame,
         verbose: bool = False,
-    ) -> Tuple[jnp.ndarray, pd.DataFrame]:
-        current = current if current.ndim == 2 else jnp.expand_dims(current, axis=0)
-        batch_size = current.shape[0]
+    ):
+        state_array = (
+            state_array
+            if state_array.ndim == 2
+            else jnp.expand_dims(state_array, axis=0)
+        )
+        batch_size = state_array.shape[0]
         is_multiple = len(view) == batch_size
-        current = current if is_multiple else jnp.repeat(current, len(view), axis=0)
-        assert batch_size in [1, len(view)], "Number of comps and stimuli do not match."
+        state_array = (
+            state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
+        )
+        assert batch_size in [1, len(view)], "Number of comps and clamps do not match."
 
-        if data_stimuli is not None:
-            currents = data_stimuli[0]
-            inds = data_stimuli[1]
+        if data_external_input is not None:
+            external_input = data_external_input[1]
+            external_input = jnp.concatenate([external_input, state_array])
+            inds = data_external_input[2]
         else:
-            currents = None
+            external_input = state_array
             inds = pd.DataFrame().from_dict({})
 
-        # Same as in `.stimulate()`.
-        if currents is not None:
-            currents = jnp.concatenate([currents, current])
-        else:
-            currents = current
         inds = pd.concat([inds, view])
 
         if verbose:
-            print(f"Added {len(view)} stimuli.")
+            if state_name == "i":
+                print(f"Added {len(view)} stimuli.")
+            else:
+                print(f"Added {len(view)} clamps.")
 
-        return (currents, inds)
+        return (state_name, external_input, inds)
 
     def delete_stimuli(self):
         """Removes all stimuli from the module."""
         self.externals.pop("i", None)
         self.external_inds.pop("i", None)
+
+    def delete_clamps(self, state_name: str):
+        """Removes all clamps of the given state from the module."""
+        self.externals.pop(state_name, None)
+        self.external_inds.pop(state_name, None)
 
     def insert(self, channel: Channel):
         """Insert a channel into the module.
@@ -1084,12 +1118,14 @@ class Module(ABC):
         voltages = u["v"]
 
         # Extract the external inputs
-        has_current = "i" in externals.keys()
-        i_current = externals["i"] if has_current else jnp.asarray([]).astype("float")
-        i_inds = external_inds["i"] if has_current else jnp.asarray([]).astype("int32")
-        i_ext = self._get_external_input(
-            voltages, i_inds, i_current, params["radius"], params["length"]
-        )
+        if "i" in externals.keys():
+            i_current = externals["i"]
+            i_inds = external_inds["i"]
+            i_ext = self._get_external_input(
+                voltages, i_inds, i_current, params["radius"], params["length"]
+            )
+        else:
+            i_ext = 0.0
 
         # Step of the channels.
         u, (v_terms, const_terms) = self._step_channels(
@@ -1829,8 +1865,8 @@ class View:
                 by default because this method is meant to be jitted.
         """
         nodes = self.set_global_index_and_index(self.view)
-        return self.pointer._data_stimulate(
-            current, data_stimuli, nodes, verbose=verbose
+        return self.pointer._data_external_input(
+            "i", current, data_stimuli, nodes, verbose=verbose
         )
 
     def clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool = True):
@@ -1845,6 +1881,19 @@ class View:
         """
         nodes = self.set_global_index_and_index(self.view)
         self.pointer._external_input(state_name, state_array, nodes, verbose=verbose)
+
+    def data_clamp(
+        self,
+        state_name: str,
+        state_array: jnp.ndarray,
+        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        verbose: bool = False,
+    ):
+        """Insert a clamp into the module within jit (or grad)."""
+        nodes = self.set_global_index_and_index(self.view)
+        return self.pointer._data_external_input(
+            state_name, state_array, data_clamps, nodes, verbose=verbose
+        )
 
     def set(self, key: str, val: float):
         """Set parameters of the pointer."""
