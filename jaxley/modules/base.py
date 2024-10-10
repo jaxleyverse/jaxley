@@ -137,7 +137,8 @@ class Module(ABC):
         avoid overlapping branch_lens i.e. norm_cum_branch_len = [0,1,1,2] for only
         incrementing.
         """
-        nsegs = np.diff(self.cumsum_nseg)
+        nsegs = self.nodes.groupby("branch_index")["comp_index"].nunique().to_numpy()
+
         comp_ends = np.hstack(
             [np.linspace(0, 1, nseg + 1) + 2 * i for i, nseg in enumerate(nsegs)]
         )
@@ -155,10 +156,9 @@ class Module(ABC):
         xyz = np.vstack(self.xyzr)[:, :3]
         xyz = v_interp(comp_ends, cum_branch_lens, xyz).T
         centers = (xyz[:-1] + xyz[1:]) / 2  # unaware of inter vs intra comp centers
+        cum_nsegs = np.cumsum(nsegs)
         # this means centers between comps have to be removed here
-        between_comp_inds = (np.cumsum(nsegs) + np.arange(len(self.cumsum_nseg[:-1])))[
-            :-1
-        ]
+        between_comp_inds = (cum_nsegs + np.arange(len(cum_nsegs)))[:-1]
         centers = np.delete(centers, between_comp_inds, axis=0)
         idcs = self.nodes["comp_index"]
         self.nodes.loc[idcs, ["x", "y", "z"]] = centers
