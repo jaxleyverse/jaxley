@@ -105,14 +105,15 @@ class Cell(Module):
 
         # Build nodes. Has to be changed when `.set_ncomp()` is run.
         self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
+        self.nodes["comp_index"] = np.arange(self.cumsum_nseg[-1])
+        self.nodes["branch_index"] = np.repeat(
+            np.arange(self.total_nbranches), self.nseg_per_branch
+        ).tolist()
+        self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
+
+        # Appending general parameters (radius, length, r_a, cm) and channel parameters,
+        # as well as the states (v, and channel states).
         self._append_params_and_states(self.cell_params, self.cell_states)
-        self.nodes["global_comp_index"] = np.arange(
-            self.nseg * self.total_nbranches
-        ).tolist()
-        self.nodes["global_branch_index"] = (
-            np.arange(self.nseg * self.total_nbranches) // self.nseg
-        ).tolist()
-        self.nodes["global_cell_index"] = [0] * (self.nseg * self.total_nbranches)
 
         # Channels.
         self._gather_channels_from_constituents(branch_list)
@@ -128,10 +129,6 @@ class Cell(Module):
             )
         )
 
-        self.nodes["controlled_by_param"] = 0
-        self._in_view = self.nodes.index.to_numpy()
-        self._update_local_indices()
-
         # For morphology indexing.
         self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
@@ -140,10 +137,29 @@ class Cell(Module):
         self.initialize()
         self.init_syns()
 
-    # TODO: update with new functionality?
-    # TODO: Verify that this works
-    def init_morph(self):
-        """Initialize morphology."""
+    def __getattr__(self, key: str):
+        # Ensure that hidden methods such as `__deepcopy__` still work.
+        if key.startswith("__"):
+            return super().__getattribute__(key)
+
+        if key == "branch":
+            view = deepcopy(self.nodes)
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return BranchView(self, view)
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            view = self.nodes.loc[inds]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return GroupView(self, view, BranchView, ["branch"])
+        else:
+            raise KeyError(f"Key {key} not recognized.")
+
+    def _init_morph_jaxley_spsolve(self):
+        """Initialize morphology for the custom sparse solver.
 
         Running this function is only required for custom Jaxley solvers, i.e., for
         `voltage_solver={'jaxley.stone', 'jaxley.thomas'}`. However, because at
@@ -311,8 +327,36 @@ class Cell(Module):
         )
 
 
-class CellView:
-    pass
+class CellView(View):
+    """CellView."""
+
+    def __init__(self, pointer: Module, view: pd.DataFrame):
+        view = view.assign(controlled_by_param=view.global_cell_index)
+        super().__init__(pointer, view)
+
+    def __call__(self, index: float):
+        local_idcs = self._get_local_indices()
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
+        if index == "all":
+            self.allow_make_trainable = False
+        new_view = super().adjust_view("cell_index", index)
+        return new_view
+
+    def __getattr__(self, key: str):
+        assert key == "branch"
+        return BranchView(self.pointer, self.view)
+
+    def rotate(self, degrees: float, rotation_axis: str = "xy"):
+        """Rotate jaxley modules clockwise. Used only for visualization.
+
+        Args:
+            degrees: How many degrees to rotate the module by.
+            rotation_axis: Either of {`xy` | `xz` | `yz`}.
+        """
+        nodes = self.set_global_index_and_index(self.view)
+        self.pointer._rotate(degrees=degrees, rotation_axis=rotation_axis, view=nodes)
 
 
 def read_swc(

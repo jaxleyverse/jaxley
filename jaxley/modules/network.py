@@ -51,29 +51,31 @@ class Network(Module):
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
 
-        self.cell_list = cells # TODO: THIS IS A TEMPORARY HOTFIX
-        self.nseg = cells[0].nseg
+        self.cells = cells
+        self.nseg_per_branch = np.concatenate(
+            [cell.nseg_per_branch for cell in self.cells]
+        )
+        self.nseg = int(np.max(self.nseg_per_branch))
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
         self._append_params_and_states(self.network_params, self.network_states)
 
-        self.nbranches_per_cell = [cell.total_nbranches for cell in cells]
-        self.nbranchpoints_per_cell = [cell.total_nbranchpoints for cell in cells]
+        self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
         self.cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
-        self.nodes["global_comp_index"] = np.arange(
-            self.nseg * self.total_nbranches
+        self.nodes["comp_index"] = np.arange(self.cumsum_nseg[-1])
+        self.nodes["branch_index"] = np.repeat(
+            np.arange(self.total_nbranches), self.nseg_per_branch
         ).tolist()
-        self.nodes["global_branch_index"] = (
-            np.arange(self.nseg * self.total_nbranches) // self.nseg
-        ).tolist()
-        self.nodes["global_cell_index"] = list(
+        self.nodes["cell_index"] = list(
             itertools.chain(
                 *[[i] * int(cell.cumsum_nseg[-1]) for i, cell in enumerate(self.cells)]
             )
         )
 
-        parents = [cell.comb_parents for cell in cells]
+        parents = [cell.comb_parents for cell in self.cells]
         self.comb_parents = jnp.concatenate(
             [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
         )
@@ -99,69 +101,58 @@ class Network(Module):
         nbranchpoints = jnp.asarray([len(cell.par_inds) for cell in self.cells])
         self.cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
-        self.nodes["controlled_by_param"] = 0
-        self._in_view = self.nodes.index.to_numpy()
-        self._update_local_indices()
-
         # Channels.
         self._gather_channels_from_constituents(cells)
 
         self.initialize()
         self.init_syns()
 
-    def init_morph(self):
-        self.branchpoint_group_inds = build_branchpoint_group_inds(
+    def __getattr__(self, key: str):
+        # Ensure that hidden methods such as `__deepcopy__` still work.
+        if key.startswith("__"):
+            return super().__getattribute__(key)
+
+        if key == "cell":
+            view = deepcopy(self.nodes)
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return CellView(self, view)
+        elif key in self.synapse_names:
+            type_index = self.synapse_names.index(key)
+            return SynapseView(self, self.edges, key, self.synapses[type_index])
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            view = self.nodes.loc[inds]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return GroupView(self, view, CellView, ["cell"])
+        else:
+            raise KeyError(f"Key {key} not recognized.")
+
+    def _init_morph_jaxley_spsolve(self):
+        branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),
             self.child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
         )
         children_in_level = merge_cells(
             self.cumsum_nbranches,
-            self.cumsum_nbranchpoints,
-            [cell.children_in_level for cell in self.cell_list],
+            self.cumsum_nbranchpoints_per_cell,
+            [cell.solve_indexer.children_in_level for cell in self.cells],
             exclude_first=False,
         )
         parents_in_level = merge_cells(
             self.cumsum_nbranches,
-            self.cumsum_nbranchpoints,
-            [cell.parents_in_level for cell in self.cell_list],
+            self.cumsum_nbranchpoints_per_cell,
+            [cell.solve_indexer.parents_in_level for cell in self.cells],
             exclude_first=False,
         )
-        del self.cell_list
-        self.initialized_morph = True
-
-    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        """Given an axial resisitivity, set the coupling conductances."""
-        nbranches = self.total_nbranches
-        nseg = self.nseg
-        parents = self.comb_parents
-
-        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
-        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
-        lengths = jnp.reshape(params["length"], (nbranches, nseg))
-
-        conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
-            axial_resistivity, radiuses, lengths, self.nseg
-        )
-        coupling_conds_fwd = conds[0]
-        coupling_conds_bwd = conds[1]
-        summed_coupling_conds = conds[2]
-
-        # The conductance from the children to the branch point.
-        branchpoint_conds_children = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.child_inds, 0],
-            axial_resistivity[self.child_inds, 0],
-            lengths[self.child_inds, 0],
-        )
-        # The conductance from the parents to the branch point.
-        branchpoint_conds_parents = vmap(
-            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
-        )(
-            radiuses[self.par_inds, -1],
-            axial_resistivity[self.par_inds, -1],
-            lengths[self.par_inds, -1],
+        padded_cumsum_nseg = cumsum_leading_zero(
+            np.concatenate(
+                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self.cells]
+            )
         )
 
         # Generate mapping to dealing with the masking which allows using the custom
@@ -420,58 +411,6 @@ class Network(Module):
 
         return states, (syn_voltage_terms, syn_constant_terms)
 
-    # def _infer_synapse_type_ind(self, synapse_name):
-    #     syn_names = self.base.synapse_names
-    #     is_new_type = False if synapse_name in syn_names else True
-    #     type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
-    #     return type_ind, is_new_type
-
-    # def _update_synapse_state_names(self, synapse_type):
-    #     # (Potentially) update variables that track meta information about synapses.
-    #     self.base.synapse_names.append(synapse_type._name)
-    #     self.base.synapse_param_names += list(synapse_type.synapse_params.keys())
-    #     self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
-    #     self.base.synapses.append(synapse_type)
-
-    # def _append_multiple_synapses(self, pre, post, synapse_type):
-    #     # Add synapse types to the module and infer their unique identifier.
-    #     synapse_name = synapse_type._name
-    #     type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
-    #     if is_new:  # synapse is not known
-    #         self._update_synapse_state_names(synapse_type)
-
-    #     index = len(self.base.edges)
-    #     post_loc = loc_of_index(post._comps_in_view, self.nseg)
-    #     pre_loc = loc_of_index(pre._comps_in_view, self.nseg)
-
-    #     # Define new synapses. Each row is one synapse.
-    #     cols = ["comp_index", "branch_index", "cell_index"]
-    #     pre_nodes = pre.nodes[[f"{scope}_{col}" for col in cols for scope in ["local", "global"]]]
-    #     pre_nodes.columns = [f"{scope}_pre_{col}" for col in cols for scope in ["local", "global"]]
-    #     post_nodes = post.nodes[[f"{scope}_{col}" for col in cols for scope in ["local", "global"]]]
-    #     post_nodes.columns = [f"{scope}_post_{col}" for col in cols for scope in ["local", "global"]]
-    #     new_rows = pd.concat([pre_nodes.reset_index(drop=True), post_nodes.reset_index(drop=True)], axis=1)
-    #     new_rows["type"] = synapse_name
-    #     new_rows["type_ind"] = type_ind
-    #     new_rows["pre_loc"] = pre_loc
-    #     new_rows["post_loc"] = post_loc
-    #     self.base.edges = concat_and_ignore_empty(
-    #         [self.base.edges, new_rows],
-    #         ignore_index=True, axis=0
-    #     )
-
-    #     indices = [idx for idx in range(index, index + len(pre_loc))]
-    #     self._add_params_to_edges(synapse_type, indices)
-
-    # def _add_params_to_edges(self, synapse_type, indices):
-    #     # Add parameters and states to the `.edges` table.
-    #     for key, param_val in synapse_type.synapse_params.items():
-    #         self.base.edges.loc[indices, key] = param_val
-
-    #     # Update synaptic state array.
-    #     for key, state_val in synapse_type.synapse_states.items():
-    #         self.base.edges.loc[indices, key] = state_val
-
     def vis(
         self,
         detail: str = "full",
@@ -611,29 +550,140 @@ class Network(Module):
 
         return ax
 
-    # TODO: CHECK IF THIS WORKS
-    # def _build_graph(self, layers: Optional[List] = None, **options):
-    #     graph = nx.DiGraph()
+    def _build_graph(self, layers: Optional[List] = None, **options):
+        graph = nx.DiGraph()
 
-    #     def build_extents(*subset_sizes):
-    #         return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
+        def build_extents(*subset_sizes):
+            return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
 
-    #     if layers is not None:
-    #         extents = build_extents(*layers)
-    #         layers = [range(start, end) for start, end in extents]
-    #         for i, layer in enumerate(layers):
-    #             graph.add_nodes_from(layer, layer=i)
-    #     else:
-    #         graph.add_nodes_from(range(len(cell.view._cells_in_view)))
+        if layers is not None:
+            extents = build_extents(*layers)
+            layers = [range(start, end) for start, end in extents]
+            for i, layer in enumerate(layers):
+                graph.add_nodes_from(layer, layer=i)
+        else:
+            graph.add_nodes_from(range(len(self.cells)))
 
-    #     pre_cell = self.edges["pre_cell_index"].to_numpy()
-    #     post_cell = self.edges["post_cell_index"].to_numpy()
+        pre_cell = self.edges["pre_cell_index"].to_numpy()
+        post_cell = self.edges["post_cell_index"].to_numpy()
 
-    #     inds = np.stack([pre_cell, post_cell]).T
-    #     graph.add_edges_from(inds)
+        inds = np.stack([pre_cell, post_cell]).T
+        graph.add_edges_from(inds)
 
-    #     return graph
+        return graph
 
 
-class SynapseView:
-    pass
+class SynapseView(View):
+    """SynapseView."""
+
+    def __init__(self, pointer, view, key, synapse: "jx.Synapse"):
+        self.synapse = synapse
+        view = deepcopy(view[view["type"] == key])
+        view = view.assign(controlled_by_param=0)
+
+        # Used for `.set()`.
+        view["global_index"] = view.index.values
+        # Used for `__call__()`.
+        view["index"] = list(range(len(view)))
+        # Because `make_trainable` needs to access the rows of `jaxedges` (which does
+        # not contain `NaNa` rows) we need to reset the index here. We undo this for
+        # `.set()`. `.index.values` is used for `make_trainable`.
+        view = view.reset_index(drop=True)
+
+        super().__init__(pointer, view)
+
+    def __call__(self, index: int):
+        self.view["controlled_by_param"] = self.view.index.values
+        return self.adjust_view("index", index)
+
+    def show(
+        self,
+        *,
+        indices: bool = True,
+        params: bool = True,
+        states: bool = True,
+    ) -> pd.DataFrame:
+        """Show synapses."""
+        printable_nodes = deepcopy(self.view[["type", "type_ind"]])
+
+        if indices:
+            names = [
+                "pre_locs",
+                "pre_branch_index",
+                "pre_cell_index",
+                "post_locs",
+                "post_branch_index",
+                "post_cell_index",
+            ]
+            printable_nodes[names] = self.view[names]
+
+        if params:
+            for key in self.synapse.synapse_params.keys():
+                printable_nodes[key] = self.view[key]
+
+        if states:
+            for key in self.synapse.synapse_states.keys():
+                printable_nodes[key] = self.view[key]
+
+        printable_nodes["controlled_by_param"] = self.view["controlled_by_param"]
+        return printable_nodes
+
+    def set(self, key: str, val: float):
+        """Set parameters of the pointer."""
+        synapse_index = self.view["type_ind"].values[0]
+        synapse_type = self.pointer.synapses[synapse_index]
+        synapse_param_names = list(synapse_type.synapse_params.keys())
+        synapse_state_names = list(synapse_type.synapse_states.keys())
+
+        assert (
+            key in synapse_param_names or key in synapse_state_names
+        ), f"{key} does not exist in synapse of type {synapse_type._name}."
+
+        # Reset index to global index because we are writing to `self.edges`.
+        self.view = self.view.set_index("global_index", drop=False)
+        self.pointer._set(key, val, self.view, self.pointer.edges)
+
+    def _assert_key_in_params_or_states(self, key: str):
+        synapse_index = self.view["type_ind"].values[0]
+        synapse_type = self.pointer.synapses[synapse_index]
+        synapse_param_names = list(synapse_type.synapse_params.keys())
+        synapse_state_names = list(synapse_type.synapse_states.keys())
+
+        assert (
+            key in synapse_param_names or key in synapse_state_names
+        ), f"{key} does not exist in synapse of type {synapse_type._name}."
+
+    def make_trainable(
+        self,
+        key: str,
+        init_val: Optional[Union[float, list]] = None,
+        verbose: bool = True,
+    ):
+        """Make a parameter trainable."""
+        self._assert_key_in_params_or_states(key)
+        # Use `.index.values` for indexing because we are memorizing the indices for
+        # `jaxedges`.
+        self.pointer._make_trainable(self.view, key, init_val, verbose=verbose)
+
+    def data_set(
+        self,
+        key: str,
+        val: Union[float, jnp.ndarray],
+        param_state: Optional[List[Dict]] = None,
+    ):
+        """Set parameter of module (or its view) to a new value within `jit`."""
+        self._assert_key_in_params_or_states(key)
+        return self.pointer._data_set(key, val, self.view, param_state=param_state)
+
+    def record(self, state: str = "v"):
+        """Record a state."""
+        assert (
+            state in self.pointer.synapse_state_names[self.view["type_ind"].values[0]]
+        ), f"State {state} does not exist in synapse of type {self.view['type'].values[0]}."
+
+        view = deepcopy(self.view)
+        view["state"] = state
+
+        recording_view = view[["state"]]
+        recording_view = recording_view.assign(rec_index=view.index)
+        self.pointer._record(recording_view)

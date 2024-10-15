@@ -65,15 +65,11 @@ class Branch(Module):
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         # Indexing.
-        # TODO: Might have to be self.base.nodes
         self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
         self._append_params_and_states(self.branch_params, self.branch_states)
-        self.nodes["global_comp_index"] = np.arange(self.nseg).tolist()
-        self.nodes["global_branch_index"] = [0] * self.nseg
-        self.nodes["global_cell_index"] = [0] * self.nseg
-        self.nodes["controlled_by_param"] = 0
-        self._in_view = self.nodes.index.to_numpy()
-        self._update_local_indices()
+        self.nodes["comp_index"] = np.arange(self.nseg).tolist()
+        self.nodes["branch_index"] = [0] * self.nseg
+        self.nodes["cell_index"] = [0] * self.nseg
 
         # Channels.
         self._gather_channels_from_constituents(compartment_list)
@@ -98,9 +94,36 @@ class Branch(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
-        conds = self.init_branch_conds(
-            params["axial_resistivity"], params["radius"], params["length"], self.nseg
+    def __getattr__(self, key: str):
+        # Ensure that hidden methods such as `__deepcopy__` still work.
+        if key.startswith("__"):
+            return super().__getattribute__(key)
+
+        if key in ["comp", "loc"]:
+            view = deepcopy(self.nodes)
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            compview = CompartmentView(self, view)
+            return compview if key == "comp" else compview.loc
+        elif key in self.group_nodes:
+            inds = self.group_nodes[key].index.values
+            view = self.nodes.loc[inds]
+            view["global_comp_index"] = view["comp_index"]
+            view["global_branch_index"] = view["branch_index"]
+            view["global_cell_index"] = view["cell_index"]
+            return GroupView(self, view, CompartmentView, ["comp", "loc"])
+        else:
+            raise KeyError(f"Key {key} not recognized.")
+
+    def _init_morph_jaxley_spsolve(self):
+        self.solve_indexer = JaxleySolveIndexer(
+            cumsum_nseg=self.cumsum_nseg,
+            branchpoint_group_inds=np.asarray([]).astype(int),
+            remapped_node_indices=self._internal_node_inds,
+            children_in_level=[],
+            parents_in_level=[],
+            root_inds=np.asarray([0]),
         )
 
     def _init_morph_jax_spsolve(self):
@@ -175,5 +198,80 @@ class Branch(Module):
         self.initialize()
 
 
-class BranchView:
-    pass
+class BranchView(View):
+    """BranchView."""
+
+    def __init__(self, pointer: Module, view: pd.DataFrame):
+        view = view.assign(controlled_by_param=view.global_branch_index)
+        super().__init__(pointer, view)
+
+    def __call__(self, index: float):
+        local_idcs = self._get_local_indices()
+        self.view[local_idcs.columns] = (
+            local_idcs  # set indexes locally. enables net[0:2,0:2]
+        )
+        self.allow_make_trainable = True
+        new_view = super().adjust_view("branch_index", index)
+        return new_view
+
+    def __getattr__(self, key):
+        assert key in ["comp", "loc"]
+        compview = CompartmentView(self.pointer, self.view)
+        return compview if key == "comp" else compview.loc
+
+    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
+        """Set the number of compartments with which the branch is discretized.
+
+        Args:
+            ncomp: The number of compartments that the branch should be discretized
+                into.
+            min_radius: Only used if the morphology was read from an SWC file. If passed
+                the radius is capped to be at least this value.
+
+        Raises:
+            - When there are stimuli in any compartment in the module.
+            - When there are recordings in any compartment in the module.
+            - When the channels of the compartments are not the same within the branch
+            that is modified.
+            - When the lengths of the compartments are not the same within the branch
+            that is modified.
+            - Unless the morphology was read from an SWC file, when the radiuses of the
+            compartments are not the same within the branch that is modified.
+        """
+        if self.pointer._module_type == "network":
+            raise NotImplementedError(
+                "`.set_ncomp` is not yet supported for a `Network`. To overcome this, "
+                "first build individual cells with the desired `ncomp` and then "
+                "assemble them into a network."
+            )
+
+        error_msg = lambda name: (
+            f"Your module contains a {name}. This is not allowed. First build the "
+            "morphology with `set_ncomp()` and then insert stimuli, recordings, and "
+            "define trainables."
+        )
+        assert len(self.pointer.externals) == 0, error_msg("stimulus")
+        assert len(self.pointer.recordings) == 0, error_msg("recording")
+        assert len(self.pointer.trainable_params) == 0, error_msg("trainable parameter")
+        # Update all attributes that are affected by compartment structure.
+        (
+            self.pointer.nodes,
+            self.pointer.nseg_per_branch,
+            self.pointer.nseg,
+            self.pointer.cumsum_nseg,
+            self.pointer._internal_node_inds,
+        ) = self.pointer._set_ncomp(
+            ncomp,
+            self.view,
+            self.pointer.nodes,
+            self.view["global_comp_index"].to_numpy()[0],
+            self.pointer.nseg_per_branch,
+            [c._name for c in self.pointer.channels],
+            list(chain(*[c.channel_params for c in self.pointer.channels])),
+            list(chain(*[c.channel_states for c in self.pointer.channels])),
+            self.pointer._radius_generating_fns,
+            min_radius,
+        )
+
+        # Update the morphology indexing (e.g., `.comp_edges`).
+        self.pointer.initialize()
