@@ -8,8 +8,8 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
-from jaxley.modules.base import GroupView, Module, View
-from jaxley.modules.branch import Branch, BranchView, Compartment
+from jaxley.modules.base import Module
+from jaxley.modules.branch import Branch, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
@@ -307,12 +307,6 @@ class Cell(Module):
             "`cell.set_ncomp()` is not supported. Loop over all branches with "
             "`for b in range(cell.total_nbranches): cell.branch(b).set_ncomp(n)`."
         )
-
-
-class CellView:
-    # KEEP AROUND FOR NOW TO NOT BREAK EXISTING CODE
-    pass
-
 
 def read_swc(
     fname: str,

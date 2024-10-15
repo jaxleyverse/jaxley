@@ -12,8 +12,8 @@ import pandas as pd
 from jax import vmap
 from matplotlib.axes import Axes
 
-from jaxley.modules.base import GroupView, Module, View
-from jaxley.modules.cell import Cell, CellView
+from jaxley.modules.base import Module
+from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     compute_children_and_parents,
@@ -472,7 +472,7 @@ class Network(Module):
 
                         self.cell(global_counter).move_to(x=x_offset, y=y_offset, z=0)
                         global_counter += 1
-            ax = self._vis(
+            ax = super().vis(
                 dims=dims,
                 col=col,
                 ax=ax,
@@ -531,30 +531,24 @@ class Network(Module):
 
         return ax
 
-    # TODO: MAKE SURE THIS WORKS
-    # def _build_graph(self, layers: Optional[List] = None, **options):
-    #     graph = nx.DiGraph()
+    def _build_graph(self, layers: Optional[List] = None, **options):
+        graph = nx.DiGraph()
 
-    #     def build_extents(*subset_sizes):
-    #         return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
+        def build_extents(*subset_sizes):
+            return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
 
-    #     if layers is not None:
-    #         extents = build_extents(*layers)
-    #         layers = [range(start, end) for start, end in extents]
-    #         for i, layer in enumerate(layers):
-    #             graph.add_nodes_from(layer, layer=i)
-    #     else:
-    #         graph.add_nodes_from(range(len(self.cells_list)))
+        if layers is not None:
+            extents = build_extents(*layers)
+            layers = [range(start, end) for start, end in extents]
+            for i, layer in enumerate(layers):
+                graph.add_nodes_from(layer, layer=i)
+        else:
+            graph.add_nodes_from(range(len(self.cells_list)))
 
-    #     pre_cell = self.edges["pre_cell_index"].to_numpy()
-    #     post_cell = self.edges["post_cell_index"].to_numpy()
+        pre_cell = self.edges["pre_cell_index"].to_numpy()
+        post_cell = self.edges["post_cell_index"].to_numpy()
 
-    #     inds = np.stack([pre_cell, post_cell]).T
-    #     graph.add_edges_from(inds)
+        inds = np.stack([pre_cell, post_cell]).T
+        graph.add_edges_from(inds)
 
-    #     return graph
-
-
-class SynapseView:
-    # KEEP AROUND FOR NOW TO NOT BREAK EXISTING CODE
-    pass
+        return graph

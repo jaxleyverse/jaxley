@@ -9,8 +9,8 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
-from jaxley.modules.base import GroupView, Module, View
-from jaxley.modules.compartment import Compartment, CompartmentView
+from jaxley.modules.base import Module
+from jaxley.modules.compartment import Compartment
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
@@ -177,8 +177,3 @@ class Branch(Module):
 
         # Update the morphology indexing (e.g., `.comp_edges`).
         self.initialize()
-
-
-class BranchView:
-    # KEEP AROUND FOR NOW TO NOT BREAK EXISTING CODE
-    pass

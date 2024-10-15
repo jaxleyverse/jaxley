@@ -1959,8 +1959,3 @@ class View(Module):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         pass
-
-
-class GroupView:
-    # KEEP AROUND FOR NOW TO NOT BREAK EXISTING CODE
-    pass

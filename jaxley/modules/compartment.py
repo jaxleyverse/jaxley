@@ -8,12 +8,9 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 
-from jaxley.modules.base import Module, View
+from jaxley.modules.base import Module
 from jaxley.utils.cell_utils import (
     compute_children_and_parents,
-    interpolate_xyz,
-    loc_of_index,
-    local_index_of_loc,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
@@ -105,8 +102,3 @@ class Compartment(Module):
 
         This is because compartments do not have any axial conductances."""
         return {"axial_conductances": jnp.asarray([])}
-
-
-class CompartmentView:
-    # KEEP AROUND FOR NOW TO NOT BREAK EXISTING CODE
-    pass
