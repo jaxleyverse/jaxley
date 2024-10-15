@@ -24,12 +24,15 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
-    compute_axial_conductances,
+    build_branchpoint_group_inds,
+    compute_children_in_level,
     compute_levels,
+    compute_morphology_indices_in_levels,
+    compute_parents_in_level,
     convert_point_process_to_distributed,
     interpolate_xyz,
     loc_of_index,
-    query_channel_states_and_params,
+    remap_to_consecutive,
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
@@ -1686,6 +1689,8 @@ class View(Module):
             k: np.intersect1d(v, self._in_view) for k, v in pointer.groups.items()
         }
 
+        self.children_in_level, self.parents_in_level = self._levels_in_view()
+
         # TODO:
         # self.debug_states
 
@@ -1796,6 +1801,12 @@ class View(Module):
         for i, loc in zip(incomplete_inds, locs):
             xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
         return xyzr
+    
+    #TODO: Implement this!
+    def _levels_in_view(self):
+        children_in_level = []
+        parents_in_level = []
+        return children_in_level, parents_in_level
 
     @property
     def _nodes_in_view(self):

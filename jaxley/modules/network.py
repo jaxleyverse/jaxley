@@ -51,16 +51,12 @@ class Network(Module):
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
 
-        self.cells = cells
-        self.nseg_per_branch = np.concatenate(
-            [cell.nseg_per_branch for cell in self.cells]
-        )
-        self.nseg = int(np.max(self.nseg_per_branch))
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self.cell_list = cells # TODO: THIS IS A TEMPORARY HOTFIX
+        self.nseg = cells[0].nseg
         self._append_params_and_states(self.network_params, self.network_states)
 
-        self.nbranches_per_cell = [cell.total_nbranches for cell in self.cells]
+        self.nbranches_per_cell = [cell.total_nbranches for cell in cells]
+        self.nbranchpoints_per_cell = [cell.total_nbranchpoints for cell in cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
         self.cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
@@ -77,7 +73,7 @@ class Network(Module):
             )
         )
 
-        parents = [cell.comb_parents for cell in self.cells]
+        parents = [cell.comb_parents for cell in cells]
         self.comb_parents = jnp.concatenate(
             [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
         )
@@ -105,7 +101,7 @@ class Network(Module):
 
         self.nodes["controlled_by_param"] = 0
         self._in_view = self.nodes.index.to_numpy()
-        self._add_local_indices()
+        self._update_local_indices()
 
         # Channels.
         self._gather_channels_from_constituents(cells)
@@ -121,20 +117,51 @@ class Network(Module):
         )
         children_in_level = merge_cells(
             self.cumsum_nbranches,
-            self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.children_in_level for cell in self.cells],
+            self.cumsum_nbranchpoints,
+            [cell.children_in_level for cell in self.cell_list],
             exclude_first=False,
         )
         parents_in_level = merge_cells(
             self.cumsum_nbranches,
-            self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.parents_in_level for cell in self.cells],
+            self.cumsum_nbranchpoints,
+            [cell.parents_in_level for cell in self.cell_list],
             exclude_first=False,
         )
-        padded_cumsum_nseg = cumsum_leading_zero(
-            np.concatenate(
-                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self.cells]
-            )
+        del self.cell_list
+        self.initialized_morph = True
+
+    def init_conds(self, params: Dict) -> Dict[str, jnp.ndarray]:
+        """Given an axial resisitivity, set the coupling conductances."""
+        nbranches = self.total_nbranches
+        nseg = self.nseg
+        parents = self.comb_parents
+
+        axial_resistivity = jnp.reshape(params["axial_resistivity"], (nbranches, nseg))
+        radiuses = jnp.reshape(params["radius"], (nbranches, nseg))
+        lengths = jnp.reshape(params["length"], (nbranches, nseg))
+
+        conds = vmap(Branch.init_branch_conds, in_axes=(0, 0, 0, None))(
+            axial_resistivity, radiuses, lengths, self.nseg
+        )
+        coupling_conds_fwd = conds[0]
+        coupling_conds_bwd = conds[1]
+        summed_coupling_conds = conds[2]
+
+        # The conductance from the children to the branch point.
+        branchpoint_conds_children = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.child_inds, 0],
+            axial_resistivity[self.child_inds, 0],
+            lengths[self.child_inds, 0],
+        )
+        # The conductance from the parents to the branch point.
+        branchpoint_conds_parents = vmap(
+            compute_coupling_cond_branchpoint, in_axes=(0, 0, 0)
+        )(
+            radiuses[self.par_inds, -1],
+            axial_resistivity[self.par_inds, -1],
+            lengths[self.par_inds, -1],
         )
 
         # Generate mapping to dealing with the masking which allows using the custom
@@ -584,27 +611,28 @@ class Network(Module):
 
         return ax
 
-    def _build_graph(self, layers: Optional[List] = None, **options):
-        graph = nx.DiGraph()
+    # TODO: CHECK IF THIS WORKS
+    # def _build_graph(self, layers: Optional[List] = None, **options):
+    #     graph = nx.DiGraph()
 
-        def build_extents(*subset_sizes):
-            return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
+    #     def build_extents(*subset_sizes):
+    #         return nx.utils.pairwise(itertools.accumulate((0,) + subset_sizes))
 
-        if layers is not None:
-            extents = build_extents(*layers)
-            layers = [range(start, end) for start, end in extents]
-            for i, layer in enumerate(layers):
-                graph.add_nodes_from(layer, layer=i)
-        else:
-            graph.add_nodes_from(range(len(self.cells)))
+    #     if layers is not None:
+    #         extents = build_extents(*layers)
+    #         layers = [range(start, end) for start, end in extents]
+    #         for i, layer in enumerate(layers):
+    #             graph.add_nodes_from(layer, layer=i)
+    #     else:
+    #         graph.add_nodes_from(range(len(cell.view._cells_in_view)))
 
-        pre_cell = self.edges["pre_cell_index"].to_numpy()
-        post_cell = self.edges["post_cell_index"].to_numpy()
+    #     pre_cell = self.edges["pre_cell_index"].to_numpy()
+    #     post_cell = self.edges["post_cell_index"].to_numpy()
 
-        inds = np.stack([pre_cell, post_cell]).T
-        graph.add_edges_from(inds)
+    #     inds = np.stack([pre_cell, post_cell]).T
+    #     graph.add_edges_from(inds)
 
-        return graph
+    #     return graph
 
 
 class SynapseView:
