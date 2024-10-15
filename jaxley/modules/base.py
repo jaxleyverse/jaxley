@@ -1792,9 +1792,9 @@ class View(Module):
 
         self.nodes = pointer.nodes.loc[self._in_view]
         self.edges = pointer.edges.loc[self._edges_in_view]
-        # self.xyzr = self._xyzr_in_view(pointer)
+        self.xyzr = self._xyzr_in_view(pointer)
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
-        # self.total_nbranches = len(self._branches_in_view)
+        self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
         self.cumsum_nbranches = np.cumsum(self.nbranches_per_cell)
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
@@ -1911,7 +1911,6 @@ class View(Module):
         cell_nodes = self.nodes.groupby("global_cell_index")
         return cell_nodes["global_branch_index"].nunique().to_numpy()
 
-    # TODO: FIX THIS
     def _xyzr_in_view(self, pointer):
         viewed_branch_inds = self._branches_in_view
         prev_branch_inds = pointer._branches_in_view
@@ -1952,6 +1951,18 @@ class View(Module):
     @property
     def _nodes_in_view(self):
         return self._in_view
+    
+    @property
+    def _branches_in_view(self):
+        return self.nodes["global_branch_index"].unique()
+    
+    @property
+    def _cells_in_view(self):
+        return self.nodes["global_cell_index"].unique()
+    
+    @property
+    def _comps_in_view(self):
+        return self.nodes["global_comp_index"].unique()
 
     @property
     def _branch_edges_in_view(self):
