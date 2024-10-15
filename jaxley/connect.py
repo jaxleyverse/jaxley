@@ -16,17 +16,16 @@ def get_pre_post_inds(
 
 
 def pre_comp_not_equal_post_comp(
-    pre: "CompartmentView", post: "CompartmentView"
+    pre: "View", post: "View"
 ) -> np.ndarray[bool]:
     """Check if pre and post compartments are different."""
-    cols = ["cell_index", "branch_index", "comp_index"]
-    return np.any(pre.view[cols].values != post.view[cols].values, axis=1)
+    return np.any(pre._in_view != post._in_view)
 
 
 def is_same_network(pre: "View", post: "View") -> bool:
     """Check if views are from the same network."""
-    is_in_net = "network" in pre.pointer.__class__.__name__.lower()
-    is_in_same_net = pre.pointer is post.pointer
+    is_in_net = "network" in pre.base.__class__.__name__.lower()
+    is_in_same_net = pre.base is post.base
     return is_in_net and is_in_same_net
 
 
@@ -62,7 +61,7 @@ def connect(
         pre_comp_not_equal_post_comp(pre, post)
     ), "Pre and post compartments must be different."
 
-    pre._append_multiple_synapses(pre.view, post.view, synapse_type)
+    pre.base._append_multiple_synapses(pre, post, synapse_type)
 
 
 def fully_connect(

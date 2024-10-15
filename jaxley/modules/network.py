@@ -18,9 +18,10 @@ from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     compute_children_and_parents,
     convert_point_process_to_distributed,
+    loc_of_index,
     merge_cells,
 )
-from jaxley.utils.misc_utils import cumsum_leading_zero
+from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
@@ -552,3 +553,55 @@ class Network(Module):
         graph.add_edges_from(inds)
 
         return graph
+    
+    def _infer_synapse_type_ind(self, synapse_name):
+        syn_names = self.base.synapse_names
+        is_new_type = False if synapse_name in syn_names else True
+        type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
+        return type_ind, is_new_type
+    
+    def _update_synapse_state_names(self, synapse_type):
+        # (Potentially) update variables that track meta information about synapses.
+        self.base.synapse_names.append(synapse_type._name)
+        self.base.synapse_param_names += list(synapse_type.synapse_params.keys())
+        self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
+        self.base.synapses.append(synapse_type)
+
+    def _append_multiple_synapses(self, pre, post, synapse_type):
+        # Add synapse types to the module and infer their unique identifier.
+        synapse_name = synapse_type._name
+        type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
+        if is_new:  # synapse is not known
+            self._update_synapse_state_names(synapse_type)
+
+        index = len(self.base.edges)
+        post_loc = loc_of_index(post._comps_in_view, post._branches_in_view, self.nseg_per_branch)
+        pre_loc = loc_of_index(pre._comps_in_view, pre._branches_in_view, self.nseg_per_branch)
+
+        # Define new synapses. Each row is one synapse.
+        cols = ["comp_index", "branch_index", "cell_index"]
+        pre_nodes = pre.nodes[[f"{scope}_{col}" for col in cols for scope in ["local", "global"]]]
+        pre_nodes.columns = [f"{scope}_pre_{col}" for col in cols for scope in ["local", "global"]]
+        post_nodes = post.nodes[[f"{scope}_{col}" for col in cols for scope in ["local", "global"]]]
+        post_nodes.columns = [f"{scope}_post_{col}" for col in cols for scope in ["local", "global"]]
+        new_rows = pd.concat([pre_nodes.reset_index(drop=True), post_nodes.reset_index(drop=True)], axis=1)
+        new_rows["type"] = synapse_name
+        new_rows["type_ind"] = type_ind
+        new_rows["pre_loc"] = pre_loc
+        new_rows["post_loc"] = post_loc
+        self.base.edges = concat_and_ignore_empty(
+            [self.base.edges, new_rows],
+            ignore_index=True, axis=0
+        )
+
+        indices = [idx for idx in range(index, index + len(pre_loc))]
+        self._add_params_to_edges(synapse_type, indices)
+
+    def _add_params_to_edges(self, synapse_type, indices):
+        # Add parameters and states to the `.edges` table.
+        for key, param_val in synapse_type.synapse_params.items():
+            self.base.edges.loc[indices, key] = param_val
+
+        # Update synaptic state array.
+        for key, state_val in synapse_type.synapse_states.items():
+            self.base.edges.loc[indices, key] = state_val

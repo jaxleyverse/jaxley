@@ -1041,7 +1041,7 @@ class Module(ABC):
         """
         if state_name not in self.nodes.columns:
             raise KeyError(f"{state_name} is not a recognized state in this module.")
-        self._external_input(state_name, state_array, self.nodes, verbose=verbose)
+        self._external_input(state_name, state_array, verbose=verbose)
 
     def _external_input(
         self,
