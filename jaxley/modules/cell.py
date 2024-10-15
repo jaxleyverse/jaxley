@@ -140,6 +140,8 @@ class Cell(Module):
         self.initialize()
         self.init_syns()
 
+    # TODO: update with new functionality?
+    # TODO: Verify that this works
     def init_morph(self):
         """Initialize morphology."""
 

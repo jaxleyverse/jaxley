@@ -182,14 +182,7 @@ class Module(ABC):
         base_dir = object.__dir__(self)
         return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
 
-    @property
-    def _module_type(self):
-        """Return type of the module (compartment, branch, cell, network) as string.
-
-        This is used to perform asserts for some modules (e.g. network cannot use
-        `set_ncomp`) without having to import the module in `base.py`."""
-        return self.__class__.__name__.lower()
-
+    # TODO: update with new functionality?
     def _append_params_and_states(self, param_dict: Dict, state_dict: Dict):
         """Insert the default params of the module (e.g. radius, length).
 
@@ -200,6 +193,7 @@ class Module(ABC):
         for state_name, state_value in state_dict.items():
             self.nodes[state_name] = state_value
 
+    # TODO: update with new functionality?
     def _gather_channels_from_constituents(self, constituents: List):
         """Modify `self.channels` and `self.nodes` with channel info from constituents.
 
@@ -218,6 +212,8 @@ class Module(ABC):
             name = channel._name
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
+    # TODO: update with new functionality?
+    # TODO: verify that this works for view
     def to_jax(self):
         """Move `.nodes` to `.jaxnodes`.
 
@@ -721,7 +717,8 @@ class Module(ABC):
         """
         return self.trainable_params
 
-    # TODO: Verify that this works
+    # TODO: Verify that this works (also for view)
+    # TODO: update with new functionality?
     def get_all_parameters(self, pstate: List[Dict]) -> Dict[str, jnp.ndarray]:
         """Return all parameters (and coupling conductances) needed to simulate.
 
@@ -1658,6 +1655,7 @@ class View(Module):
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
         self.cumsum_nbranches = np.cumsum(self.nbranches_per_cell)
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
+        self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
 
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self.synapses, self.synapse_param_names, self.synapse_state_names = (
@@ -1671,7 +1669,7 @@ class View(Module):
                 pointer.recordings["rec_index"].isin(self._comps_in_view)
             ]
 
-        # self.xyzr = self._xyzr_in_view(pointer)
+        self.xyzr = self._xyzr_in_view(pointer)
         self.channels = self._channels_in_view(pointer)
         self.membrane_current_names = [c._name for c in self.channels]
 
@@ -1771,33 +1769,33 @@ class View(Module):
         cell_nodes = self.nodes.groupby("global_cell_index")
         return cell_nodes["global_branch_index"].nunique().to_numpy()
 
-    # def _xyzr_in_view(self, pointer):
-    #     viewed_branch_inds = self._branches_in_view
-    #     if hasattr(pointer, "_branches_in_view"):
-    #         prev_branch_inds = pointer._branches_in_view
-    #     else:
-    #         prev_branch_inds = pointer.nodes["global_branch_index"].unique()
-    #     if prev_branch_inds is None:
-    #         xyzr = pointer.xyzr.copy() # copy to prevent editing original
-    #     else:
-    #         branches2keep = np.isin(prev_branch_inds, viewed_branch_inds)
-    #         branch_inds2keep = np.where(branches2keep)[0]
-    #         xyzr = [pointer.xyzr[i] for i in branch_inds2keep].copy()
+    def _xyzr_in_view(self, pointer):
+        viewed_branch_inds = self._branches_in_view
+        if hasattr(pointer, "_branches_in_view"):
+            prev_branch_inds = pointer._branches_in_view
+        else:
+            prev_branch_inds = pointer.nodes["global_branch_index"].unique()
+        if prev_branch_inds is None:
+            xyzr = pointer.xyzr.copy() # copy to prevent editing original
+        else:
+            branches2keep = np.isin(prev_branch_inds, viewed_branch_inds)
+            branch_inds2keep = np.where(branches2keep)[0]
+            xyzr = [pointer.xyzr[i] for i in branch_inds2keep].copy()
 
-    #     # Currently viewing with `.loc` will show the closest compartment
-    #     # rather than the actual loc along the branch!
-    #     viewed_nseg_for_branch = self.nodes.groupby("global_branch_index").size()
-    #     incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
-    #     incomplete_branch_inds = viewed_branch_inds[incomplete_inds]
+        # Currently viewing with `.loc` will show the closest compartment
+        # rather than the actual loc along the branch!
+        viewed_nseg_for_branch = self.nodes.groupby("global_branch_index").size()
+        incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
+        incomplete_branch_inds = viewed_branch_inds[incomplete_inds]
 
-    #     cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
-    #     interp_inds = self.nodes.loc[cond]
-    #     local_inds_per_branch = interp_inds.groupby("global_branch_index")["local_comp_index"]
-    #     locs = [loc_of_index(inds.to_numpy(), self.base.nseg) for _, inds in local_inds_per_branch]
+        cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
+        interp_inds = self.nodes.loc[cond]
+        local_inds_per_branch = interp_inds.groupby("global_branch_index")["local_comp_index"]
+        locs = [loc_of_index(inds.to_numpy(), self.base.nseg) for _, inds in local_inds_per_branch]
 
-    #     for i, loc in zip(incomplete_inds, locs):
-    #         xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
-    #     return xyzr
+        for i, loc in zip(incomplete_inds, locs):
+            xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
+        return xyzr
 
     @property
     def _nodes_in_view(self):
