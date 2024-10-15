@@ -61,7 +61,7 @@ class Module(ABC):
         self.groups = {}
 
         self.nodes: Optional[pd.DataFrame] = None
-        self._scope = "local" # defaults to local scope
+        self._scope = "local"  # defaults to local scope
         self._in_view = None
 
         self.edges = pd.DataFrame(
@@ -124,7 +124,6 @@ class Module(ABC):
         # needs to be set at the end
         self.base = self
 
-
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates of compartment centers to nodes.
 
@@ -141,7 +140,11 @@ class Module(ABC):
         avoid overlapping branch_lens i.e. norm_cum_branch_len = [0,1,1,2] for only
         incrementing.
         """
-        nsegs = self.nodes.groupby("branch_index")["comp_index"].nunique().to_numpy()
+        nsegs = (
+            self.nodes.groupby("global_branch_index")["global_comp_index"]
+            .nunique()
+            .to_numpy()
+        )
 
         comp_ends = np.hstack(
             [np.linspace(0, 1, nseg + 1) + 2 * i for i, nseg in enumerate(nsegs)]
@@ -176,7 +179,7 @@ class Module(ABC):
     def __dir__(self):
         base_dir = object.__dir__(self)
         return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
-    
+
     def _update_local_indices(self) -> pd.DataFrame:
         idx_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
         self.nodes.rename(
@@ -199,7 +202,7 @@ class Module(ABC):
     def _reformat_index(self, idx):
         idx = np.array([], dtype=int) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (int, np.int64)) else idx
-        idx = np.array(idx) if isinstance(idx, (list,range)) else idx
+        idx = np.array(idx) if isinstance(idx, (list, range)) else idx
         idx = np.arange(len(self._in_view) + 1)[idx] if isinstance(idx, slice) else idx
         if isinstance(idx, str):
             assert idx == "all", "Only 'all' is allowed"
@@ -229,10 +232,10 @@ class Module(ABC):
         view = self.view
         view.set_scope(scope)
         return view
-    
+
     def _at_level(self, level: str, idx):
         idx = self._reformat_index(idx)
-        where = self.nodes[self._scope+f"_{level}_index"].isin(idx)
+        where = self.nodes[self._scope + f"_{level}_index"].isin(idx)
         inds = np.where(where)[0]
         view = self.at(inds)
         view._set_controlled_by_param(level)
@@ -240,15 +243,15 @@ class Module(ABC):
 
     def cell(self, idx):
         return self._at_level("cell", idx)
-    
+
     def branch(self, idx):
         return self._at_level("branch", idx)
-    
+
     def comp(self, idx):
         return self._at_level("comp", idx)
-    
+
     def loc(self, at: float):
-        comp_edges = np.linspace(0, 1, self.base.nseg+1)
+        comp_edges = np.linspace(0, 1, self.base.nseg + 1)
         idx = np.digitize(at, comp_edges)
         view = self.comp(idx)
         return view
@@ -256,12 +259,12 @@ class Module(ABC):
     def __getattr__(self, key):
         if key.startswith("__"):
             return super().__getattribute__(key)
-        
+
         if key in self.base.groups:
             view = self.at(self.groups[key]) if key in self.groups else self.at(None)
             view._set_controlled_by_param(key)
             return view
-        
+
         if key in [c._name for c in self.base.channels]:
             channel_names = [c._name for c in self.channels]
             inds = self.nodes.index[self.nodes[key]].to_numpy()
@@ -282,24 +285,24 @@ class Module(ABC):
             view = self.at(inds) if key in self.synapse_names else self.at(None)
             view._set_controlled_by_param(key)
             return view
-    
+
     def _iter_level(self, level):
         col = self._scope + f"_{level}_index"
         idxs = self.nodes[col].unique()
         for idx in idxs:
             yield self._at_level(level, idx)
-    
+
     @property
     def cells(self):
         yield from self._iter_level("cell")
-    
+
     @property
     def branches(self):
         yield from self._iter_level("branch")
 
     @property
     def comps(self):
-        yield from self._iter_level("comp")    
+        yield from self._iter_level("comp")
 
     @property
     def shape(self) -> Tuple[int]:
@@ -319,7 +322,7 @@ class Module(ABC):
         module = "comp" if module == "compartment" else module
         shape = tuple(raw_shape[levels.index(module) :])
         return shape
-    
+
     def copy(self, reset_index=False, as_module=False):
         view = deepcopy(self)
         # TODO: add reset_index, i.e. for parents, nodes, edges etc. such that they
@@ -328,7 +331,7 @@ class Module(ABC):
             # TODO: initialize a new module with the same attributes
             pass
         return view
-    
+
     @property
     def view(self):
         return View(self, self._in_view)
@@ -543,7 +546,7 @@ class Module(ABC):
         within_branch_radiuses = view["radius"].to_numpy()
         compartment_lengths = view["length"].to_numpy()
         num_previous_ncomp = len(within_branch_radiuses)
-        branch_indices = pd.unique(view["branch_index"])
+        branch_indices = pd.unique(view["global_branch_index"])
 
         error_msg = lambda name: (
             f"You previously modified the {name} of individual compartments, but "
@@ -603,7 +606,7 @@ class Module(ABC):
 
         # Set the correct datatype after having performed an average which cast
         # everything to float.
-        integer_cols = ["comp_index", "branch_index", "cell_index"]
+        integer_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
         view[integer_cols] = view[integer_cols].astype(int)
 
         # Whether or not a channel exists in a compartment is a boolean.
@@ -644,7 +647,7 @@ class Module(ABC):
         all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
 
         # Override `comp_index` to just be a consecutive list.
-        all_nodes["comp_index"] = np.arange(len(all_nodes))
+        all_nodes["global_comp_index"] = np.arange(len(all_nodes))
 
         # Update compartment structure arguments.
         nseg_per_branch[branch_indices] = ncomp
@@ -722,7 +725,7 @@ class Module(ABC):
             print(
                 f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.num_trainable_params}"
             )
-    
+
     # TODO: MAKE THIS WORK FOR VIEW?
     def delete_trainables(self):
         """Removes all trainable parameters from the module."""
@@ -877,7 +880,7 @@ class Module(ABC):
         """Initialize the module."""
         self.init_morph()
         return self
-    
+
     # TODO: ENSURE THIS WORKS FOR VIEW?
     def init_states(self, delta_t: float = 0.025):
         """Initialize all mechanisms in their steady state.
@@ -900,7 +903,7 @@ class Module(ABC):
         for channel in self.channels:
             name = channel._name
             channel_indices = channel_nodes.loc[channel_nodes[name]][
-                "comp_index"
+                "global_comp_index"
             ].to_numpy()
             voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
@@ -1001,7 +1004,9 @@ class Module(ABC):
         has_duplicates = self.base.recordings.duplicated()
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
         if verbose:
-            print(f"Added {len(self._in_view)-sum(has_duplicates)} recordings. See `.recordings` for details.")
+            print(
+                f"Added {len(self._in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
+            )
 
     # TODO: MAKE THIS WORK FOR VIEW?
     def delete_recordings(self):
@@ -1126,8 +1131,13 @@ class Module(ABC):
         batch_size = state_array.shape[0]
         num_inserted = len(self._in_view)
         is_multiple = num_inserted == batch_size
-        state_array = state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
-        assert batch_size in [1, num_inserted], "Number of comps and clamps do not match."
+        state_array = (
+            state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
+        )
+        assert batch_size in [
+            1,
+            num_inserted,
+        ], "Number of comps and clamps do not match."
 
         if data_external_input is not None:
             external_input = data_external_input[1]
@@ -1358,7 +1368,7 @@ class Module(ABC):
         voltages = states["v"]
 
         # Update states of the channels.
-        indices = channel_nodes["comp_index"].to_numpy()
+        indices = channel_nodes["global_comp_index"].to_numpy()
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += [
@@ -1417,7 +1427,9 @@ class Module(ABC):
             name = channel._name
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
-            indices = channel_nodes.loc[channel_nodes[name]]["comp_index"].to_numpy()
+            indices = channel_nodes.loc[channel_nodes[name]][
+                "global_comp_index"
+            ].to_numpy()
 
             channel_params = {}
             for p in channel_param_names:
@@ -1538,36 +1550,17 @@ class Module(ABC):
             type: The type of plot. One of ["line", "scatter", "comp", "morph"].
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
         """
-        return self._vis(
-            dims=dims,
-            col=col,
-            ax=ax,
-            view=self.nodes,
-            type=type,
-            morph_plot_kwargs=morph_plot_kwargs,
-        )
-
-    def _vis(
-        self,
-        ax: Axes,
-        col: str,
-        dims: Tuple[int],
-        view: pd.DataFrame,
-        type: str,
-        morph_plot_kwargs: Dict,
-    ) -> Axes:
-        branches_inds = view["branch_index"].to_numpy()
-
         if "comp" in type.lower():
             return plot_comps(
-                self, view, dims=dims, ax=ax, col=col, **morph_plot_kwargs
+                self, self.nodes, dims=dims, ax=ax, col=col, **morph_plot_kwargs
             )
         if "morph" in type.lower():
             return plot_morph(
-                self, view, dims=dims, ax=ax, col=col, **morph_plot_kwargs
+                self, self.nodes, dims=dims, ax=ax, col=col, **morph_plot_kwargs
             )
 
         coords = []
+        branches_inds = self.view._branches_in_view
         for branch_ind in branches_inds:
             assert not np.any(
                 np.isnan(self.xyzr[branch_ind][:, dims])
@@ -1580,34 +1573,6 @@ class Module(ABC):
             col=col,
             ax=ax,
             type=type,
-            morph_plot_kwargs=morph_plot_kwargs,
-        )
-
-        return ax
-
-    def _scatter(self, ax, col, dims, view, morph_plot_kwargs):
-        """Scatter visualization (used only for compartments)."""
-        assert len(view) == 1, "Scatter only deals with compartments."
-        branch_ind = view["branch_index"].to_numpy().item()
-        comp_ind = view["comp_index"].to_numpy().item()
-        assert not np.any(
-            np.isnan(self.xyzr[branch_ind][:, dims])
-        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
-
-        comp_fraction = loc_of_index(
-            comp_ind,
-            branch_ind,
-            self.nseg_per_branch,
-        )
-        coords = self.xyzr[branch_ind]
-        interpolated_xyz = interpolate_xyz(comp_fraction, coords)
-
-        ax = plot_graph(
-            np.asarray([[interpolated_xyz]]),
-            dims=dims,
-            col=col,
-            ax=ax,
-            type="scatter",
             morph_plot_kwargs=morph_plot_kwargs,
         )
 
@@ -1630,7 +1595,9 @@ class Module(ABC):
         levels = compute_levels(parents)
 
         # Extract branch.
-        inds_branch = self.nodes.groupby("branch_index")["comp_index"].apply(list)
+        inds_branch = self.nodes.groupby("global_branch_index")[
+            "global_comp_index"
+        ].apply(list)
         branch_lens = [np.sum(self.nodes["length"][np.asarray(i)]) for i in inds_branch]
         endpoints = []
 
@@ -1822,6 +1789,7 @@ class View(Module):
             [len(inds) for inds in self.indices_set_by_trainables]
         )
 
+        self.nseg_per_branch = pointer.base.nseg_per_branch[self._branches_in_view]
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self.externals, self.external_inds = self._externals_in_view()
         self.groups = {
@@ -1927,20 +1895,21 @@ class View(Module):
         incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
         incomplete_branch_inds = viewed_branch_inds[incomplete_inds]
 
-        cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
-        interp_inds = self.nodes.loc[cond]
-        local_inds_per_branch = interp_inds.groupby("global_branch_index")[
-            "local_comp_index"
-        ]
-        locs = [
-            loc_of_index(inds.to_numpy(), self.base.nseg)
-            for _, inds in local_inds_per_branch
-        ]
+        # TODO: FIX THIS
+        # cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
+        # interp_inds = self.nodes.loc[cond]
+        # local_inds_per_branch = interp_inds.groupby("global_branch_index")[
+        #     "local_comp_index"
+        # ]
+        # locs = [
+        #     loc_of_index(inds.to_numpy(), self. self.nseg_per_branch[i])
+        #     for _, inds in local_inds_per_branch
+        # ]
 
-        for i, loc in zip(incomplete_inds, locs):
-            xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
+        # for i, loc in zip(incomplete_inds, locs):
+        #     xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
         return xyzr
-    
+
     # needs abstract method to allow init of View
     # forward to self.base for now
     def _init_morph_jax_spsolve(self):
@@ -1948,18 +1917,19 @@ class View(Module):
 
     def _init_morph_jaxley_spsolve(self):
         return self.base._init_morph_jax_spsolve()
+
     @property
     def _nodes_in_view(self):
         return self._in_view
-    
+
     @property
     def _branches_in_view(self):
         return self.nodes["global_branch_index"].unique()
-    
+
     @property
     def _cells_in_view(self):
         return self.nodes["global_cell_index"].unique()
-    
+
     @property
     def _comps_in_view(self):
         return self.nodes["global_comp_index"].unique()

@@ -46,13 +46,13 @@ class Compartment(Module):
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
-            dict(comp_index=[0], branch_index=[0], cell_index=[0])
+            dict(global_comp_index=[0], global_branch_index=[0], global_cell_index=[0])
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
         self._in_view = self.nodes.index.to_numpy()
         self.nodes["controlled_by_param"] = 0
         self._update_local_indices()
-        
+
         # Synapses.
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
