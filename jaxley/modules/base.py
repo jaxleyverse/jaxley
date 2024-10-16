@@ -261,6 +261,10 @@ class Module(ABC):
         view = self.comp(idx)
         return view
 
+    @property
+    def _branches_in_view(self):
+        return self.nodes["global_branch_index"].unique()
+
     def __getattr__(self, key):
         if key.startswith("__"):
             return super().__getattribute__(key)
@@ -1580,24 +1584,16 @@ class Module(ABC):
             morph_plot_kwargs: Keyword arguments passed to the plotting function.
         """
         if "comp" in type.lower():
-            return plot_comps(
-                self, self.nodes, dims=dims, ax=ax, col=col, **morph_plot_kwargs
-            )
+            return plot_comps(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
         if "morph" in type.lower():
-            return plot_morph(
-                self, self.nodes, dims=dims, ax=ax, col=col, **morph_plot_kwargs
-            )
+            return plot_morph(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
 
-        coords = []
-        branches_inds = self.view._branches_in_view
-        for branch_ind in branches_inds:
-            assert not np.any(
-                np.isnan(self.xyzr[branch_ind][:, dims])
-            ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
-            coords.append(self.xyzr[branch_ind])
+        assert not np.any(
+            [np.isnan(xyzr[:, dims]).any() for xyzr in self.xyzr]
+        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
         ax = plot_graph(
-            coords,
+            self.xyzr,
             dims=dims,
             col=col,
             ax=ax,
@@ -1684,9 +1680,8 @@ class Module(ABC):
                 `False` largely speeds up moving, especially for big networks, but
                 `.nodes` or `.show` will not show the new xyz coordinates.
         """
-        indizes = self.nodes["global_branch_index"].unique()
-        for i in indizes:
-            self.base.xyzr[i][:, :3] += np.array([x, x, y])
+        for i in self._branches_in_view:
+            self.base.xyzr[i][:, :3] += np.array([x, y, z])
         if update_nodes:
             self._update_nodes_with_xyz()
 
@@ -1719,12 +1714,11 @@ class Module(ABC):
                 "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
             )
 
-        indizes = self.nodes["global_branch_index"].unique()
         move_by = (
             np.array([x, y, z]).T - self.xyzr[0][0, :3]
         )  # move with respect to root idx
 
-        for idx in indizes:
+        for idx in self._branches_in_view:
             self.base.xyzr[idx][:, :3] += move_by
         if update_nodes:
             self._update_nodes_with_xyz()
@@ -1753,8 +1747,7 @@ class Module(ABC):
         rotation_matrix = np.asarray(
             [[np.cos(degrees), np.sin(degrees)], [-np.sin(degrees), np.cos(degrees)]]
         )
-        indizes = self.nodes["global_branch_index"].unique()
-        for i in indizes:
+        for i in self._branches_in_view:
             rot = np.dot(rotation_matrix, self.base.xyzr[i][:, dims].T).T
             self.base.xyzr[i][:, dims] = rot
         if update_nodes:
@@ -1788,7 +1781,7 @@ class View(Module):
 
         self.nodes = pointer.nodes.loc[self._in_view]
         self.edges = pointer.edges.loc[self._edges_in_view]
-        self.xyzr = self._xyzr_in_view(pointer)
+        self.xyzr = self._xyzr_in_view()
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
@@ -1908,21 +1901,14 @@ class View(Module):
         cell_nodes = self.nodes.groupby("global_cell_index")
         return cell_nodes["global_branch_index"].nunique().to_numpy()
 
-    def _xyzr_in_view(self, pointer):
-        viewed_branch_inds = self._branches_in_view
-        prev_branch_inds = pointer._branches_in_view
-        if prev_branch_inds is None:
-            xyzr = pointer.xyzr.copy()  # copy to prevent editing original
-        else:
-            branches2keep = np.isin(prev_branch_inds, viewed_branch_inds)
-            branch_inds2keep = np.where(branches2keep)[0]
-            xyzr = [pointer.xyzr[i] for i in branch_inds2keep].copy()
+    def _xyzr_in_view(self):
+        xyzr = [self.base.xyzr[i] for i in self._branches_in_view].copy()
 
         # Currently viewing with `.loc` will show the closest compartment
         # rather than the actual loc along the branch!
         viewed_nseg_for_branch = self.nodes.groupby("global_branch_index").size()
         incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
-        incomplete_branch_inds = viewed_branch_inds[incomplete_inds]
+        incomplete_branch_inds = self._branches_in_view[incomplete_inds]
 
         cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
         interp_inds = self.nodes.loc[cond]
@@ -1930,8 +1916,8 @@ class View(Module):
             "local_comp_index"
         ]
         locs = [
-            loc_of_index(inds.to_numpy(), i, self.base.nseg_per_branch)
-            for i, inds in local_inds_per_branch
+            loc_of_index(inds.to_numpy(), 0, self.base.nseg_per_branch)
+            for _, inds in local_inds_per_branch
         ]
 
         for i, loc in zip(incomplete_inds, locs):

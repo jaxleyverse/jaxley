@@ -297,7 +297,6 @@ def plot_mesh(
 
 def plot_comps(
     module_or_view: Union["jx.Module", "jx.View"],
-    view: pd.DataFrame,
     dims: Tuple[int] = (0, 1),
     col: str = "k",
     ax: Optional[Axes] = None,
@@ -310,7 +309,6 @@ def plot_comps(
 
     Args:
         module_or_view: The module or view to plot.
-        view: The view of the module.
         dims: The dimensions to plot / to project the cylinder onto,
             i.e. [0,1] xy-plane or [0,1,2] for 3D.
         col: The color for all compartments
@@ -330,22 +328,17 @@ def plot_comps(
         fig = plt.figure(figsize=(3, 3))
         ax = fig.add_subplot(111) if len(dims) < 3 else plt.axes(projection="3d")
 
-    module = (
-        module_or_view.pointer
-        if "pointer" in module_or_view.__dict__
-        else module_or_view
-    )
-    assert not np.any(np.isnan(module.xyzr[0][:, :3])), "missing xyz coordinates."
-    if "x" not in module.nodes.columns:
-        module._update_nodes_with_xyz()
-        view[["x", "y", "z"]] = module.nodes.loc[view.index, ["x", "y", "z"]]
+    assert not np.any(
+        np.isnan(module_or_view.xyzr[0][:, :3])
+    ), "missing xyz coordinates."
+    if "x" not in module_or_view.nodes.columns:
+        module_or_view._update_nodes_with_xyz()
 
-    branches_inds = np.unique(view["branch_index"].to_numpy())
-    for idx in branches_inds:
-        locs = module.xyzr[idx][:, :3]
+    for idx, xyzr in zip(module_or_view._branches_in_view, module_or_view.xyzr):
+        locs = xyzr[:, :3]
         if locs.shape[0] == 1:  # assume spherical comp
-            radius = module.xyzr[idx][:, -1]
-            center = module.xyzr[idx][0, :3]
+            radius = xyzr[:, -1]
+            center = xyzr[0, :3]
             if len(dims) == 3:
                 xyz = create_sphere_mesh(radius)
                 ax = plot_mesh(
@@ -363,12 +356,14 @@ def plot_comps(
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
             comp_ends = v_interp(
-                np.linspace(0, lens[-1], module.nseg + 1), lens, locs
+                np.linspace(0, lens[-1], module_or_view.nseg + 1), lens, locs
             ).T
             axes = np.diff(comp_ends, axis=0)
             cylinder_lens = np.sqrt(np.sum(axes**2, axis=1))
 
-            branch_df = view[view["branch_index"] == idx]
+            branch_df = module_or_view.nodes[
+                module_or_view.nodes["global_branch_index"] == idx
+            ]
             for l, axis, (i, comp) in zip(cylinder_lens, axes, branch_df.iterrows()):
                 center = comp[["x", "y", "z"]]
                 radius = comp["radius"]
@@ -388,7 +383,6 @@ def plot_comps(
 
 def plot_morph(
     module_or_view: Union["jx.Module", "jx.View"],
-    view: pd.DataFrame,
     dims: Tuple[int] = (0, 1),
     col: str = "k",
     ax: Optional[Axes] = None,
@@ -404,7 +398,6 @@ def plot_morph(
 
     Args:
         module_or_view: The module or view to plot.
-        view: The view dataframe of the module.
         dims: The dimensions to plot / to project the cylinder onto,
             i.e. [0,1] xy-plane or [0,1,2] for 3D.
         col: The color for all branches
@@ -421,19 +414,13 @@ def plot_morph(
             "rendering large morphologies in 3D can take a while. Consider projecting to 2D instead."
         )
 
-    module = (
-        module_or_view.pointer
-        if "pointer" in module_or_view.__dict__
-        else module_or_view
-    )
-    assert not np.any(np.isnan(module.xyzr[0][:, :3])), "missing xyz coordinates."
+    assert not np.any(
+        np.isnan(module_or_view.xyzr[0][:, :3])
+    ), "missing xyz coordinates."
 
-    branches_inds = np.unique(view["branch_index"].to_numpy())
-
-    for idx in branches_inds:
-        xyzrs = module.xyzr[idx]
-        if len(xyzrs) > 1:
-            for xyzr1, xyzr2 in zip(xyzrs[1:, :], xyzrs[:-1, :]):
+    for xyzr in module_or_view.xyzr:
+        if len(xyzr) > 1:
+            for xyzr1, xyzr2 in zip(xyzr[1:, :], xyzr[:-1, :]):
                 dxyz = xyzr2[:3] - xyzr1[:3]
                 length = np.sqrt(np.sum(dxyz**2))
                 points = create_cone_frustum_mesh(
@@ -450,12 +437,12 @@ def plot_morph(
                 )
         else:
             points = create_cone_frustum_mesh(
-                0, xyzrs[:, -1], xyzrs[:, -1], bottom_dome=True, top_dome=True
+                0, xyzr[:, -1], xyzr[:, -1], bottom_dome=True, top_dome=True
             )
             plot_mesh(
                 points,
                 np.ones(3),
-                xyzrs[0, :3],
+                xyzr[0, :3],
                 dims=np.array(dims),
                 color=col,
                 ax=ax,

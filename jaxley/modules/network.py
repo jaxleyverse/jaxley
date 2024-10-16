@@ -544,8 +544,8 @@ class Network(Module):
         else:
             graph.add_nodes_from(range(len(self.cells_list)))
 
-        pre_cell = self.edges["pre_cell_index"].to_numpy()
-        post_cell = self.edges["post_cell_index"].to_numpy()
+        pre_cell = self.edges["global_pre_cell_index"].to_numpy()
+        post_cell = self.edges["global_post_cell_index"].to_numpy()
 
         inds = np.stack([pre_cell, post_cell]).T
         graph.add_edges_from(inds)
@@ -600,8 +600,8 @@ class Network(Module):
         )
         new_rows["type"] = synapse_name
         new_rows["type_ind"] = type_ind
-        new_rows["pre_loc"] = pre_loc
-        new_rows["post_loc"] = post_loc
+        new_rows["pre_locs"] = pre_loc
+        new_rows["post_locs"] = post_loc
         self.base.edges = concat_and_ignore_empty(
             [self.base.edges, new_rows], ignore_index=True, axis=0
         )

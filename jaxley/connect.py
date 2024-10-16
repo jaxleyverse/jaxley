@@ -15,9 +15,7 @@ def get_pre_post_inds(
     return pre_cell_inds, post_cell_inds
 
 
-def pre_comp_not_equal_post_comp(
-    pre: "View", post: "View"
-) -> np.ndarray[bool]:
+def pre_comp_not_equal_post_comp(pre: "View", post: "View") -> np.ndarray[bool]:
     """Check if pre and post compartments are different."""
     return np.any(pre._in_view != post._in_view)
 
