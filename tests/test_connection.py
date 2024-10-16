@@ -61,9 +61,9 @@ def test_connect():
 
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
-    assert (first_set_edges[["pre_branch_index", "post_branch_index"]] == 0).all().all()
-    assert (first_set_edges["pre_cell_index"] == 1).all()
-    assert (first_set_edges["post_cell_index"] == 2).all()
+    assert (first_set_edges[["global_pre_branch_index", "global_post_branch_index"]] == 0).all().all()
+    assert (first_set_edges["global_pre_cell_index"] == 1).all()
+    assert (first_set_edges["global_post_cell_index"] == 2).all()
     assert (
         get_comps(first_set_edges["pre_locs"])
         == get_comps(first_set_edges["post_locs"])
@@ -178,7 +178,7 @@ def test_connectivity_matrix_connect():
     )
     assert len(net.edges.index) == 4
     assert (
-        (net.edges[["pre_cell_index", "post_cell_index"]] == incides_of_connected_cells)
+        (net.edges[["global_pre_cell_index", "global_post_cell_index"]] == incides_of_connected_cells)
         .all()
         .all()
     )
@@ -199,7 +199,7 @@ def test_connectivity_matrix_connect():
     )
     assert len(net.edges.index) == 5
     assert (
-        (net.edges[["pre_cell_index", "post_cell_index"]] == incides_of_connected_cells)
+        (net.edges[["global_pre_cell_index", "global_post_cell_index"]] == incides_of_connected_cells)
         .all()
         .all()
     )

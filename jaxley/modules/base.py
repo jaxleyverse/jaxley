@@ -63,7 +63,8 @@ class Module(ABC):
 
         self.nodes: Optional[pd.DataFrame] = None
         self._scope = "local"  # defaults to local scope
-        self._in_view = None
+        self._nodes_in_view = None
+        self._mod_edges_in_view = None
 
         self.edges = pd.DataFrame(
             columns=[
@@ -168,7 +169,7 @@ class Module(ABC):
         # this means centers between comps have to be removed here
         between_comp_inds = (cum_nsegs + np.arange(len(cum_nsegs)))[:-1]
         centers = np.delete(centers, between_comp_inds, axis=0)
-        self.base.nodes.loc[self._in_view, ["x", "y", "z"]] = centers
+        self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
         return centers, xyz
 
     def __repr__(self):
@@ -202,16 +203,23 @@ class Module(ABC):
             + local_idx_cols
             + [col for col in self.nodes.columns if "index" not in col]
         ]
+
+    def _init_view(self):
+        self._nodes_in_view = self.nodes.index.to_numpy()
         self.nodes["controlled_by_param"] = 0
 
     def _reformat_index(self, idx):
         idx = np.array([], dtype=int) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (int, np.int64)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range)) else idx
-        idx = np.arange(len(self._in_view) + 1)[idx] if isinstance(idx, slice) else idx
+        idx = (
+            np.arange(len(self._nodes_in_view) + 1)[idx]
+            if isinstance(idx, slice)
+            else idx
+        )
         if isinstance(idx, str):
             assert idx == "all", "Only 'all' is allowed"
-            idx = np.arange(len(self._in_view) + 1)
+            idx = np.arange(len(self._nodes_in_view) + 1)
         assert isinstance(idx, np.ndarray), "Invalid type"
         assert idx.dtype == np.int64, "Invalid dtype"
         return idx.reshape(-1)
@@ -226,7 +234,7 @@ class Module(ABC):
 
     def at(self, idx, sorted=False):
         idx = self._reformat_index(idx)
-        new_indices = self._in_view[idx]
+        new_indices = self._nodes_in_view[idx]
         new_indices = np.sort(new_indices) if sorted else new_indices
         return View(self, at=new_indices)
 
@@ -255,6 +263,21 @@ class Module(ABC):
     def comp(self, idx):
         return self._at_level("comp", idx)
 
+    def edge(self, idx):
+        idx = self._reformat_index(idx)
+        # idx = self.edges.index[idx]
+        comp_inds = self.edges.loc[
+            idx, ["global_pre_comp_index", "global_post_comp_index"]
+        ]
+        comp_inds = np.unique(comp_inds.to_numpy().ravel())
+        where = self.nodes[f"global_comp_index"].isin(comp_inds)
+        inds = np.where(where)[0]
+        view = self.at(inds)
+        view._set_controlled_by_param("comp")
+        view._edges_in_view = idx
+        view.edges = self.edges.loc[idx]
+        return view
+
     def loc(self, at: float):
         comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
         idx = np.digitize(at, comp_edges) - 1
@@ -262,16 +285,33 @@ class Module(ABC):
         return view
 
     @property
+    def _comps_in_view(self):
+        # calling self.view._branches_in_view does the same
+        # but this way we avoid instantiating a View object
+        return self.nodes["global_comp_index"].unique()
+
+    @property
     def _branches_in_view(self):
         # calling self.view._branches_in_view does the same
         # but this way we avoid instantiating a View object
         return self.nodes["global_branch_index"].unique()
-    
+
     @property
     def _cells_in_view(self):
         # calling self.view._branches_in_view does the same
         # but this way we avoid instantiating a View object
         return self.nodes["global_cell_index"].unique()
+
+    @property
+    def _edges_in_view(self):
+        if self._mod_edges_in_view is not None:
+            return self._mod_edges_in_view
+        return self.edges.index.to_numpy()
+
+    @_edges_in_view.setter
+    def _edges_in_view(self, idx):
+        self._reformat_index(idx)
+        self._mod_edges_in_view = idx
 
     def __getattr__(self, key):
         if key.startswith("__"):
@@ -290,16 +330,12 @@ class Module(ABC):
             return view
 
         if key in self.base.synapse_names:
-            # if the same 2 nodes are connected by 2 different synapses,
-            # module.SynapseA.edges will still contain both synapses
-            # since view filters based on index ONLY. Returning only the row
-            # that contains SynapseA is not possible currently. For setting
-            # synapse parameters this has no effect however.
             has_syn = self.edges["type"] == key
             where = has_syn, ["global_pre_comp_index", "global_post_comp_index"]
             comp_inds_in_view = pd.unique(self.edges.loc[where].values.ravel("K"))
             inds = np.where(self.nodes["global_comp_index"].isin(comp_inds_in_view))[0]
             view = self.at(inds) if key in self.synapse_names else self.at(None)
+            view._edges_in_view = self.edges.index[has_syn].to_numpy()
             view._set_controlled_by_param(key)
             return view
 
@@ -351,7 +387,7 @@ class Module(ABC):
 
     @property
     def view(self):
-        return View(self, self._in_view)
+        return View(self, self._nodes_in_view)
 
     @property
     def _module_type(self):
@@ -495,10 +531,10 @@ class Module(ABC):
                 must be of shape `(len(num_compartments))`.
         """
         if key in self.nodes.columns:
-            not_nan = ~self.nodes[key].isna()
-            self.base.nodes.loc[self._in_view[not_nan], key] = val
+            not_nan = ~self.nodes[key].isna().to_numpy()
+            self.base.nodes.loc[self._nodes_in_view[not_nan], key] = val
         elif key in self.edges.columns:
-            not_nan = ~self.edges[key].isna()
+            not_nan = ~self.edges[key].isna().to_numpy()
             self.base.edges.loc[self._edges_in_view[not_nan], key] = val
         else:
             raise KeyError(f"Key '{key}' not found in nodes or edges")
@@ -523,7 +559,7 @@ class Module(ABC):
             not_nan = ~self.nodes[key].isna()
             added_param_state = [
                 {
-                    "indices": np.atleast_2d(self._in_view[not_nan]),
+                    "indices": np.atleast_2d(self._nodes_in_view[not_nan]),
                     "key": key,
                     "val": jnp.atleast_1d(jnp.asarray(val)),
                 }
@@ -692,7 +728,7 @@ class Module(ABC):
     #     # Update the morphology indexing (e.g., `.comp_edges`).
     #     self.initialize()
     #     self._update_local_indices()
-    #     self._in_view = self.nodes.index.to_numpy()
+    #     self._nodes_in_view = self.nodes.index.to_numpy()
 
     #     return all_nodes, nseg_per_branch, nseg, cumsum_nseg, internal_node_inds
 
@@ -786,7 +822,7 @@ class Module(ABC):
         Args:
             group_name: The name of the group.
         """
-        self.base.groups[group_name] = self._in_view
+        self.base.groups[group_name] = self._nodes_in_view
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
@@ -1039,14 +1075,14 @@ class Module(ABC):
         self.debug_states["par_inds"] = self.par_inds
 
     def record(self, state: str = "v", verbose=True):
-        new_recs = pd.DataFrame(self._in_view, columns=["rec_index"])
+        new_recs = pd.DataFrame(self._nodes_in_view, columns=["rec_index"])
         new_recs["state"] = state
         self.base.recordings = pd.concat([self.base.recordings, new_recs])
         has_duplicates = self.base.recordings.duplicated()
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
         if verbose:
             print(
-                f"Added {len(self._in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
+                f"Added {len(self._nodes_in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
     # TODO: MAKE THIS WORK FOR VIEW?
@@ -1092,10 +1128,12 @@ class Module(ABC):
     ):
         values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
         batch_size = values.shape[0]
-        num_inserted = len(self._in_view)
+        num_inserted = len(self._nodes_in_view)
         is_multiple = num_inserted == batch_size
         values = (
-            values if is_multiple else jnp.repeat(values, len(self._in_view), axis=0)
+            values
+            if is_multiple
+            else jnp.repeat(values, len(self._nodes_in_view), axis=0)
         )
         assert batch_size in [
             1,
@@ -1107,11 +1145,11 @@ class Module(ABC):
                 [self.base.externals[key], values]
             )
             self.base.external_inds[key] = jnp.concatenate(
-                [self.base.external_inds[key], self._in_view]
+                [self.base.external_inds[key], self._nodes_in_view]
             )
         else:
             self.base.externals[key] = values
-            self.base.external_inds[key] = self._in_view
+            self.base.external_inds[key] = self._nodes_in_view
 
         if verbose:
             print(
@@ -1170,7 +1208,7 @@ class Module(ABC):
             else jnp.expand_dims(state_array, axis=0)
         )
         batch_size = state_array.shape[0]
-        num_inserted = len(self._in_view)
+        num_inserted = len(self._nodes_in_view)
         is_multiple = num_inserted == batch_size
         state_array = (
             state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
@@ -1228,15 +1266,15 @@ class Module(ABC):
             self.base.membrane_current_names.append(channel.current_name)
 
         # Add a binary column that indicates if a channel is present.
-        self.base.nodes.loc[self._in_view, name] = True
+        self.base.nodes.loc[self._nodes_in_view, name] = True
 
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_params:
-            self.base.nodes.loc[self._in_view, key] = channel.channel_params[key]
+            self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_params[key]
 
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_states:
-            self.base.nodes.loc[self._in_view, key] = channel.channel_states[key]
+            self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
     def init_syns(self):
         self.initialized_syns = True
@@ -1763,14 +1801,14 @@ class Module(ABC):
 
     def __getitem__(self, index):
         levels = ["network", "cell", "branch", "comp"]
-        module = self.base.__class__.__name__.lower()  #
+        module = self.base.__class__.__name__.lower()
         module = "comp" if module == "compartment" else module
 
         children = levels[levels.index(module) + 1 :]
         index = index if isinstance(index, tuple) else (index,)
         view = self
-        for i, child in enumerate(children):
-            view = view._at_level(child, index[i])
+        for i, child in zip(index, children):
+            view = view._at_level(child, i)
         return view
 
 
@@ -1785,9 +1823,10 @@ class View(Module):
 
         # attrs affected by view
         self.nseg = pointer.nseg
-        self._in_view = pointer._in_view if at is None else at
+        self._nodes_in_view = pointer._nodes_in_view if at is None else at
+        self._mod_edges_in_view = None  # for setting self._edges_in_view
 
-        self.nodes = pointer.nodes.loc[self._in_view]
+        self.nodes = pointer.nodes.loc[self._nodes_in_view]
         self.edges = pointer.edges.loc[self._edges_in_view]
         self.xyzr = self._xyzr_in_view()
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
@@ -1823,7 +1862,7 @@ class View(Module):
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self.externals, self.external_inds = self._externals_in_view()
         self.groups = {
-            k: np.intersect1d(v, self._in_view) for k, v in pointer.groups.items()
+            k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
         }
 
         # TODO:
@@ -1838,7 +1877,7 @@ class View(Module):
         for (name, inds), data in zip(
             self.base.external_inds.items(), self.base.externals.values()
         ):
-            in_view = np.isin(inds, self._in_view)
+            in_view = np.isin(inds, self._nodes_in_view)
             inds_in_view = inds[in_view]
             if len(inds_in_view) > 0:
                 externals_in_view[name] = data[in_view]
@@ -1852,7 +1891,7 @@ class View(Module):
             if len(trainable_inds) > 0
             else []
         )
-        trainable_inds_in_view = np.intersect1d(trainable_inds, self._in_view)
+        trainable_inds_in_view = np.intersect1d(trainable_inds, self._nodes_in_view)
 
         índices_set_by_trainables_in_view = []
         trainable_params_in_view = []
@@ -1941,10 +1980,6 @@ class View(Module):
         return self.base._init_morph_jax_spsolve()
 
     @property
-    def _nodes_in_view(self):
-        return self._in_view
-
-    @property
     def _branches_in_view(self):
         return self.nodes["global_branch_index"].unique()
 
@@ -1966,11 +2001,17 @@ class View(Module):
 
     @property
     def _edges_in_view(self):
+        if self._mod_edges_in_view is not None:
+            return self._mod_edges_in_view
         incl_comps = self.nodes["global_comp_index"].unique()
         pre = self.base.edges["global_pre_comp_index"].isin(incl_comps).to_numpy()
         post = self.base.edges["global_post_comp_index"].isin(incl_comps).to_numpy()
         viewed_edge_inds = self.base.edges.index.to_numpy()[(pre & post).flatten()]
         return viewed_edge_inds
+
+    @_edges_in_view.setter
+    def _edges_in_view(self, value):
+        self._mod_edges_in_view = value
 
     def __enter__(self):
         return self

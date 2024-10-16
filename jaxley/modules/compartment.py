@@ -46,8 +46,8 @@ class Compartment(Module):
             dict(global_comp_index=[0], global_branch_index=[0], global_cell_index=[0])
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
-        self._in_view = self.nodes.index.to_numpy()
         self._update_local_indices()
+        self._init_view()
 
         # Synapses.
         self.branch_edges = pd.DataFrame(

@@ -73,8 +73,8 @@ class Network(Module):
                 *[[i] * int(cell.cumsum_nseg[-1]) for i, cell in enumerate(cells)]
             )
         )
-        self._in_view = self.nodes.index.to_numpy()
         self._update_local_indices()
+        self._init_view()
 
         parents = [cell.comb_parents for cell in cells]
         self.comb_parents = jnp.concatenate(
@@ -574,10 +574,14 @@ class Network(Module):
 
         index = len(self.base.edges)
         post_loc = loc_of_index(
-            post_nodes["global_comp_index"].to_numpy(), post_nodes["global_branch_index"].to_numpy(), self.nseg_per_branch
+            post_nodes["global_comp_index"].to_numpy(),
+            post_nodes["global_branch_index"].to_numpy(),
+            self.nseg_per_branch,
         )
         pre_loc = loc_of_index(
-            pre_nodes["global_comp_index"].to_numpy(), pre_nodes["global_branch_index"].to_numpy(), self.nseg_per_branch
+            pre_nodes["global_comp_index"].to_numpy(),
+            pre_nodes["global_branch_index"].to_numpy(),
+            self.nseg_per_branch,
         )
 
         # Define new synapses. Each row is one synapse.

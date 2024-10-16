@@ -189,7 +189,7 @@ def test_local_indexing():
     net = jx.Network([cell for _ in range(2)])
 
     local_idxs = net[:]._get_local_indices()
-    idx_cols = ["cell_index", "branch_index", "comp_index"]
+    idx_cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
 
     global_index = 0
     for cell_idx in range(2):

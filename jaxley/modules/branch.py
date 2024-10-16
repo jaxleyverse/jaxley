@@ -70,8 +70,8 @@ class Branch(Module):
         self.nodes["global_comp_index"] = np.arange(self.nseg).tolist()
         self.nodes["global_branch_index"] = [0] * self.nseg
         self.nodes["global_cell_index"] = [0] * self.nseg
-        self._in_view = self.nodes.index.to_numpy()
         self._update_local_indices()
+        self._init_view()
 
         # Channels.
         self._gather_channels_from_constituents(compartment_list)

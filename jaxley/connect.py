@@ -8,7 +8,7 @@ import numpy as np
 
 def pre_comp_not_equal_post_comp(pre: "View", post: "View") -> np.ndarray[bool]:
     """Check if pre and post compartments are different."""
-    return np.any(pre._in_view != post._in_view)
+    return np.any(pre._nodes_in_view != post._nodes_in_view)
 
 
 def is_same_network(pre: "View", post: "View") -> bool:
@@ -122,7 +122,9 @@ def sparse_connect(
     global_post_indices = [
         sample_comp(post_cell_view, cell_idx) for cell_idx in post_syn_neurons
     ]
-    global_post_indices = np.hstack(global_post_indices) if len(global_post_indices) > 1 else []
+    global_post_indices = (
+        np.hstack(global_post_indices) if len(global_post_indices) > 1 else []
+    )
     post_rows = post_cell_view.base.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
@@ -167,9 +169,9 @@ def connectivity_matrix_connect(
     post_cell_inds = post_cell_inds[to_idx]
 
     # Sample random postsynaptic compartments (global comp indices).
-    global_post_indices = np.hstack([
-        sample_comp(post_cell_view, cell_idx) for cell_idx in post_cell_inds
-    ])
+    global_post_indices = np.hstack(
+        [sample_comp(post_cell_view, cell_idx) for cell_idx in post_cell_inds]
+    )
     post_rows = post_cell_view.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.

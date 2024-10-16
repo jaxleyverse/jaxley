@@ -110,8 +110,8 @@ class Cell(Module):
             np.arange(self.total_nbranches), self.nseg_per_branch
         ).tolist()
         self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
-        self._in_view = self.nodes.index.to_numpy()
         self._update_local_indices()
+        self._init_view()
 
         # Appending general parameters (radius, length, r_a, cm) and channel parameters,
         # as well as the states (v, and channel states).
