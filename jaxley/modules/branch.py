@@ -71,7 +71,6 @@ class Branch(Module):
         self.nodes["global_branch_index"] = [0] * self.nseg
         self.nodes["global_cell_index"] = [0] * self.nseg
         self._in_view = self.nodes.index.to_numpy()
-        self.nodes["controlled_by_param"] = 0
         self._update_local_indices()
 
         # Channels.
@@ -132,48 +131,3 @@ class Branch(Module):
 
     def __len__(self) -> int:
         return self.nseg
-
-    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
-        """Set the number of compartments with which the branch is discretized.
-
-        Args:
-            ncomp: The number of compartments that the branch should be discretized
-                into.
-
-        Raises:
-            - When the Module is a Network.
-            - When there are stimuli in any compartment in the Module.
-            - When there are recordings in any compartment in the Module.
-            - When the channels of the compartments are not the same within the branch
-            that is modified.
-            - When the lengths of the compartments are not the same within the branch
-            that is modified.
-            - Unless the morphology was read from an SWC file, when the radiuses of the
-            compartments are not the same within the branch that is modified.
-        """
-        assert len(self.externals) == 0, "No stimuli allowed!"
-        assert len(self.recordings) == 0, "No recordings allowed!"
-        assert len(self.trainable_params) == 0, "No trainables allowed!"
-
-        # Update all attributes that are affected by compartment structure.
-        (
-            self.nodes,
-            self.nseg_per_branch,
-            self.nseg,
-            self.cumsum_nseg,
-            self._internal_node_inds,
-        ) = self._set_ncomp(
-            ncomp,
-            self.nodes,
-            self.nodes,
-            self.nodes["comp_index"].to_numpy()[0],
-            self.nseg_per_branch,
-            [c._name for c in self.channels],
-            list(chain(*[c.channel_params for c in self.channels])),
-            list(chain(*[c.channel_states for c in self.channels])),
-            self._radius_generating_fns,
-            min_radius,
-        )
-
-        # Update the morphology indexing (e.g., `.comp_edges`).
-        self.initialize()

@@ -4,6 +4,7 @@
 import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from itertools import chain
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
@@ -181,23 +182,27 @@ class Module(ABC):
         return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
 
     def _update_local_indices(self) -> pd.DataFrame:
-        idx_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
-        self.nodes.rename(
-            columns={col.replace("global_", ""): col for col in idx_cols}, inplace=True
-        )
-        idcs = self.nodes[idx_cols]
+        index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
+        global_idx_cols = [f"global_{name}" for name in index_names]
+        local_idx_cols = [f"local_{name}" for name in index_names]
+
+        idcs = self.nodes[global_idx_cols]
 
         def reindex_a_by_b(df, a, b):
             df.loc[:, a] = df.groupby(b)[a].rank(method="dense").astype(int) - 1
             return df
 
-        idcs = reindex_a_by_b(idcs, idx_cols[1], idx_cols[2])
-        idcs = reindex_a_by_b(idcs, idx_cols[0], idx_cols[1:])
-        idcs.columns = [col.replace("global", "local") for col in idx_cols]
-        self.nodes[["local_comp_index", "local_branch_index", "local_cell_index"]] = (
-            idcs[["local_comp_index", "local_branch_index", "local_cell_index"]]
-        )
-        # TODO: place indices at the front of the dataframe
+        idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
+        idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
+        idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
+        self.nodes[local_idx_cols] = idcs[local_idx_cols]
+        # move indices to the front of the dataframe; move controlled_by_param to the end
+        self.nodes = self.nodes[
+            global_idx_cols
+            + local_idx_cols
+            + [col for col in self.nodes.columns if "index" not in col]
+        ]
+        self.nodes["controlled_by_param"] = 0
 
     def _reformat_index(self, idx):
         idx = np.array([], dtype=int) if idx is None else idx
@@ -251,8 +256,8 @@ class Module(ABC):
         return self._at_level("comp", idx)
 
     def loc(self, at: float):
-        comp_edges = np.linspace(0, 1, self.base.nseg + 1)
-        idx = np.digitize(at, comp_edges)
+        comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
+        idx = np.digitize(at, comp_edges) - 1
         view = self.comp(idx)
         return view
 
@@ -444,15 +449,6 @@ class Module(ABC):
 
         return nodes[cols]
 
-    def copy(self, reset_index=False, as_module=False):
-        view = deepcopy(self)
-        # TODO: add reset_index, i.e. for parents, nodes, edges etc. such that they
-        # start from 0/-1 and are contiguous
-        if as_module:
-            # TODO: initialize a new module with the same attributes
-            pass
-        return view
-
     def init_morph(self):
         """Initialize the morphology such that it can be processed by the solvers."""
         self._init_morph_jaxley_spsolve()
@@ -529,133 +525,164 @@ class Module(ABC):
         return param_state
 
     # TODO: MAKE SURE THIS WORKS
-    def _set_ncomp(
-        self,
-        ncomp: int,
-        view: pd.DataFrame,
-        all_nodes: pd.DataFrame,
-        start_idx: int,
-        nseg_per_branch: jnp.asarray,
-        channel_names: List[str],
-        channel_param_names: List[str],
-        channel_state_names: List[str],
-        radius_generating_fns: List[Callable],
-        min_radius: Optional[float],
-    ):
-        """Set the number of compartments with which the branch is discretized."""
-        within_branch_radiuses = view["radius"].to_numpy()
-        compartment_lengths = view["length"].to_numpy()
-        num_previous_ncomp = len(within_branch_radiuses)
-        branch_indices = pd.unique(view["global_branch_index"])
+    # def set_ncomp(
+    #     self,
+    #     ncomp: int,
+    #     min_radius: Optional[float] = None,
+    # ):
+    #     """Set the number of compartments with which the branch is discretized.
 
-        error_msg = lambda name: (
-            f"You previously modified the {name} of individual compartments, but "
-            f"now you are modifying the number of compartments in this branch. "
-            f"This is not allowed. First build the morphology with `set_ncomp()` and "
-            f"then modify the radiuses and lengths of compartments."
-        )
+    #     Args:
+    #         ncomp: The number of compartments that the branch should be discretized
+    #             into.
 
-        if (
-            ~np.all(within_branch_radiuses == within_branch_radiuses[0])
-            and radius_generating_fns is None
-        ):
-            raise ValueError(error_msg("radius"))
+    #     Raises:
+    #         - When the Module is a Network.
+    #         - When there are stimuli in any compartment in the Module.
+    #         - When there are recordings in any compartment in the Module.
+    #         - When the channels of the compartments are not the same within the branch
+    #         that is modified.
+    #         - When the lengths of the compartments are not the same within the branch
+    #         that is modified.
+    #         - Unless the morphology was read from an SWC file, when the radiuses of the
+    #         compartments are not the same within the branch that is modified.
+    #     """
 
-        for property_name in ["length", "capacitance", "axial_resistivity"]:
-            compartment_properties = view[property_name].to_numpy()
-            if ~np.all(compartment_properties == compartment_properties[0]):
-                raise ValueError(error_msg(property_name))
+    #     assert len(self.externals) == 0, "No stimuli allowed!"
+    #     assert len(self.recordings) == 0, "No recordings allowed!"
+    #     assert len(self.trainable_params) == 0, "No trainables allowed!"
 
-        if not (view[channel_names].var() == 0.0).all():
-            raise ValueError(
-                "Some channel exists only in some compartments of the branch which you"
-                "are trying to modify. This is not allowed. First specify the number"
-                "of compartments with `.set_ncomp()` and then insert the channels"
-                "accordingly."
-            )
+    #     #TODO: MAKE THIS NICER
+    #     # Update all attributes that are affected by compartment structure.
+    #     view = deepcopy(self.nodes)
+    #     all_nodes = self.base.nodes
+    #     start_idx = self.nodes["global_comp_index"].to_numpy()[0],
+    #     nseg_per_branch = self.nseg_per_branch,
+    #     channel_names = [c._name for c in self.channels],
+    #     channel_param_names = list(chain(*[c.channel_params for c in self.channels])),
+    #     channel_state_names = list(chain(*[c.channel_states for c in self.channels])),
+    #     radius_generating_fns = self._radius_generating_fns,
 
-        if not (view[channel_param_names + channel_state_names].var() == 0.0).all():
-            raise ValueError(
-                "Some channel has different parameters or states between the "
-                "different compartments of the branch which you are trying to modify. "
-                "This is not allowed. First specify the number of compartments with "
-                "`.set_ncomp()` and then insert the channels accordingly."
-            )
+    #     within_branch_radiuses = view["radius"].to_numpy()
+    #     compartment_lengths = view["length"].to_numpy()
+    #     num_previous_ncomp = len(within_branch_radiuses)
+    #     branch_indices = pd.unique(view["global_branch_index"])
 
-        # Add new rows as the average of all rows. Special case for the length is below.
-        average_row = view.mean(skipna=False)
-        average_row = average_row.to_frame().T
-        view = pd.concat([*[average_row] * ncomp], axis="rows")
+    #     error_msg = lambda name: (
+    #         f"You previously modified the {name} of individual compartments, but "
+    #         f"now you are modifying the number of compartments in this branch. "
+    #         f"This is not allowed. First build the morphology with `set_ncomp()` and "
+    #         f"then modify the radiuses and lengths of compartments."
+    #     )
 
-        # If the `view` is not the entire `Module`, but a `View` (i.e. if one changes
-        # the number of comps within a branch of a cell), then the `self.pointer.view`
-        # will contain the additional `global_xyz_index` columns. However, the
-        # `self.nodes` will not have these columns.
-        #
-        # Note that we assert that there are no trainables, so `controlled_by_params`
-        # of the `self.nodes` has to be empty.
-        if "global_comp_index" in view.columns:
-            view = view.drop(
-                columns=[
-                    "global_comp_index",
-                    "global_branch_index",
-                    "global_cell_index",
-                    "controlled_by_param",
-                ]
-            )
+    #     if (
+    #         ~np.all(within_branch_radiuses == within_branch_radiuses[0])
+    #         and radius_generating_fns is None
+    #     ):
+    #         raise ValueError(error_msg("radius"))
 
-        # Set the correct datatype after having performed an average which cast
-        # everything to float.
-        integer_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
-        view[integer_cols] = view[integer_cols].astype(int)
+    #     for property_name in ["length", "capacitance", "axial_resistivity"]:
+    #         compartment_properties = view[property_name].to_numpy()
+    #         if ~np.all(compartment_properties == compartment_properties[0]):
+    #             raise ValueError(error_msg(property_name))
 
-        # Whether or not a channel exists in a compartment is a boolean.
-        boolean_cols = channel_names
-        view[boolean_cols] = view[boolean_cols].astype(bool)
+    #     if not (view[channel_names].var() == 0.0).all():
+    #         raise ValueError(
+    #             "Some channel exists only in some compartments of the branch which you"
+    #             "are trying to modify. This is not allowed. First specify the number"
+    #             "of compartments with `.set_ncomp()` and then insert the channels"
+    #             "accordingly."
+    #         )
 
-        # Special treatment for the lengths and radiuses. These are not being set as
-        # the average because we:
-        # 1) Want to maintain the total length of a branch.
-        # 2) Want to use the SWC inferred radius.
-        #
-        # Compute new compartment lengths.
-        comp_lengths = np.sum(compartment_lengths) / ncomp
-        view["length"] = comp_lengths
+    #     if not (view[channel_param_names + channel_state_names].var() == 0.0).all():
+    #         raise ValueError(
+    #             "Some channel has different parameters or states between the "
+    #             "different compartments of the branch which you are trying to modify. "
+    #             "This is not allowed. First specify the number of compartments with "
+    #             "`.set_ncomp()` and then insert the channels accordingly."
+    #         )
 
-        # Compute new compartment radiuses.
-        if radius_generating_fns is not None:
-            view["radius"] = build_radiuses_from_xyzr(
-                radius_fns=radius_generating_fns,
-                branch_indices=branch_indices,
-                min_radius=min_radius,
-                nseg=ncomp,
-            )
-        else:
-            view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
+    #     # Add new rows as the average of all rows. Special case for the length is below.
+    #     average_row = view.mean(skipna=False)
+    #     average_row = average_row.to_frame().T
+    #     view = pd.concat([*[average_row] * ncomp], axis="rows")
 
-        # Update `.nodes`.
-        #
-        # 1) Delete N rows starting from start_idx
-        number_deleted = num_previous_ncomp
-        all_nodes = all_nodes.drop(index=range(start_idx, start_idx + number_deleted))
+    #     # If the `view` is not the entire `Module`, but a `View` (i.e. if one changes
+    #     # the number of comps within a branch of a cell), then the `self.pointer.view`
+    #     # will contain the additional `global_xyz_index` columns. However, the
+    #     # `self.nodes` will not have these columns.
 
-        # 2) Insert M new rows at the same location
-        df1 = all_nodes.iloc[:start_idx]  # Rows before the insertion point
-        df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
+    #     # @Michael, can I safely remove this?
+    #     # #
+    #     # # Note that we assert that there are no trainables, so `controlled_by_params`
+    #     # # of the `self.nodes` has to be empty.
+    #     # if "global_comp_index" in view.columns:
+    #     #     view = view.drop(
+    #     #         columns=[
+    #     #             "global_comp_index",
+    #     #             "global_branch_index",
+    #     #             "global_cell_index",
+    #     #             "controlled_by_param",
+    #     #         ]
+    #     #     )
 
-        # 3) Combine the parts: before, new rows, and after
-        all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
+    #     # Set the correct datatype after having performed an average which cast
+    #     # everything to float.
+    #     integer_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
+    #     view[integer_cols] = view[integer_cols].astype(int)
 
-        # Override `comp_index` to just be a consecutive list.
-        all_nodes["global_comp_index"] = np.arange(len(all_nodes))
+    #     # Whether or not a channel exists in a compartment is a boolean.
+    #     boolean_cols = channel_names
+    #     view[boolean_cols] = view[boolean_cols].astype(bool)
 
-        # Update compartment structure arguments.
-        nseg_per_branch[branch_indices] = ncomp
-        nseg = int(np.max(nseg_per_branch))
-        cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
-        internal_node_inds = np.arange(cumsum_nseg[-1])
+    #     # Special treatment for the lengths and radiuses. These are not being set as
+    #     # the average because we:
+    #     # 1) Want to maintain the total length of a branch.
+    #     # 2) Want to use the SWC inferred radius.
+    #     #
+    #     # Compute new compartment lengths.
+    #     comp_lengths = np.sum(compartment_lengths) / ncomp
+    #     view["length"] = comp_lengths
 
-        return all_nodes, nseg_per_branch, nseg, cumsum_nseg, internal_node_inds
+    #     # Compute new compartment radiuses.
+    #     if radius_generating_fns is not None:
+    #         view["radius"] = build_radiuses_from_xyzr(
+    #             radius_fns=radius_generating_fns,
+    #             branch_indices=branch_indices,
+    #             min_radius=min_radius,
+    #             nseg=ncomp,
+    #         )
+    #     else:
+    #         view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
+
+    #     # Update `.nodes`.
+    #     #
+    #     # 1) Delete N rows starting from start_idx
+    #     number_deleted = num_previous_ncomp
+    #     all_nodes = all_nodes.drop(index=range(start_idx, start_idx + number_deleted))
+
+    #     # 2) Insert M new rows at the same location
+    #     df1 = all_nodes.iloc[:start_idx]  # Rows before the insertion point
+    #     df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
+
+    #     # 3) Combine the parts: before, new rows, and after
+    #     all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
+
+    #     # Override `comp_index` to just be a consecutive list.
+    #     all_nodes["global_comp_index"] = np.arange(len(all_nodes))
+
+    #     # Update compartment structure arguments.
+    #     nseg_per_branch[branch_indices] = ncomp
+    #     nseg = int(np.max(nseg_per_branch))
+    #     cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
+    #     internal_node_inds = np.arange(cumsum_nseg[-1])
+
+    #     # Update the morphology indexing (e.g., `.comp_edges`).
+    #     self.initialize()
+    #     self._update_local_indices()
+    #     self._in_view = self.nodes.index.to_numpy()
+
+    #     return all_nodes, nseg_per_branch, nseg, cumsum_nseg, internal_node_inds
 
     def make_trainable(
         self,
@@ -721,9 +748,11 @@ class Module(ABC):
             new_params = jnp.mean(param_vals, axis=1)
         self.base.trainable_params.append({key: new_params})
         self.base.indices_set_by_trainables.append(indices_per_param)
+        self.num_trainable_params += num_created_parameters
+        self.base.num_trainable_params += num_created_parameters
         if verbose:
             print(
-                f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.num_trainable_params}"
+                f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.base.num_trainable_params}"
             )
 
     # TODO: MAKE THIS WORK FOR VIEW?
@@ -1787,7 +1816,7 @@ class View(Module):
         )
         self.num_trainable_params = np.sum(
             [len(inds) for inds in self.indices_set_by_trainables]
-        )
+        ).astype(int)
 
         self.nseg_per_branch = pointer.base.nseg_per_branch[self._branches_in_view]
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
@@ -1895,19 +1924,18 @@ class View(Module):
         incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
         incomplete_branch_inds = viewed_branch_inds[incomplete_inds]
 
-        # TODO: FIX THIS
-        # cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
-        # interp_inds = self.nodes.loc[cond]
-        # local_inds_per_branch = interp_inds.groupby("global_branch_index")[
-        #     "local_comp_index"
-        # ]
-        # locs = [
-        #     loc_of_index(inds.to_numpy(), self. self.nseg_per_branch[i])
-        #     for _, inds in local_inds_per_branch
-        # ]
+        cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
+        interp_inds = self.nodes.loc[cond]
+        local_inds_per_branch = interp_inds.groupby("global_branch_index")[
+            "local_comp_index"
+        ]
+        locs = [
+            loc_of_index(inds.to_numpy(), i, self.base.nseg_per_branch)
+            for i, inds in local_inds_per_branch
+        ]
 
-        # for i, loc in zip(incomplete_inds, locs):
-        #     xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
+        for i, loc in zip(incomplete_inds, locs):
+            xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
         return xyzr
 
     # needs abstract method to allow init of View

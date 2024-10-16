@@ -47,7 +47,6 @@ class Compartment(Module):
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
         self._in_view = self.nodes.index.to_numpy()
-        self.nodes["controlled_by_param"] = 0
         self._update_local_indices()
 
         # Synapses.

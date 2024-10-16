@@ -74,7 +74,6 @@ class Network(Module):
             )
         )
         self._in_view = self.nodes.index.to_numpy()
-        self.nodes["controlled_by_param"] = 0
         self._update_local_indices()
 
         parents = [cell.comb_parents for cell in cells]
@@ -478,7 +477,6 @@ class Network(Module):
                 col=col,
                 ax=ax,
                 type=type,
-                view=self.nodes,
                 morph_plot_kwargs=morph_plot_kwargs,
             )
 
@@ -553,13 +551,13 @@ class Network(Module):
         graph.add_edges_from(inds)
 
         return graph
-    
+
     def _infer_synapse_type_ind(self, synapse_name):
         syn_names = self.base.synapse_names
         is_new_type = False if synapse_name in syn_names else True
         type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
         return type_ind, is_new_type
-    
+
     def _update_synapse_state_names(self, synapse_type):
         # (Potentially) update variables that track meta information about synapses.
         self.base.synapse_names.append(synapse_type._name)
@@ -575,23 +573,37 @@ class Network(Module):
             self._update_synapse_state_names(synapse_type)
 
         index = len(self.base.edges)
-        post_loc = loc_of_index(post._comps_in_view, post._branches_in_view, self.nseg_per_branch)
-        pre_loc = loc_of_index(pre._comps_in_view, pre._branches_in_view, self.nseg_per_branch)
+        post_loc = loc_of_index(
+            post._comps_in_view, post._branches_in_view, self.nseg_per_branch
+        )
+        pre_loc = loc_of_index(
+            pre._comps_in_view, pre._branches_in_view, self.nseg_per_branch
+        )
 
         # Define new synapses. Each row is one synapse.
         cols = ["comp_index", "branch_index", "cell_index"]
-        pre_nodes = pre.nodes[[f"{scope}_{col}" for col in cols for scope in ["local", "global"]]]
-        pre_nodes.columns = [f"{scope}_pre_{col}" for col in cols for scope in ["local", "global"]]
-        post_nodes = post.nodes[[f"{scope}_{col}" for col in cols for scope in ["local", "global"]]]
-        post_nodes.columns = [f"{scope}_post_{col}" for col in cols for scope in ["local", "global"]]
-        new_rows = pd.concat([pre_nodes.reset_index(drop=True), post_nodes.reset_index(drop=True)], axis=1)
+        pre_nodes = pre.nodes[
+            [f"{scope}_{col}" for col in cols for scope in ["local", "global"]]
+        ]
+        pre_nodes.columns = [
+            f"{scope}_pre_{col}" for col in cols for scope in ["local", "global"]
+        ]
+        post_nodes = post.nodes[
+            [f"{scope}_{col}" for col in cols for scope in ["local", "global"]]
+        ]
+        post_nodes.columns = [
+            f"{scope}_post_{col}" for col in cols for scope in ["local", "global"]
+        ]
+        new_rows = pd.concat(
+            [pre_nodes.reset_index(drop=True), post_nodes.reset_index(drop=True)],
+            axis=1,
+        )
         new_rows["type"] = synapse_name
         new_rows["type_ind"] = type_ind
         new_rows["pre_loc"] = pre_loc
         new_rows["post_loc"] = post_loc
         self.base.edges = concat_and_ignore_empty(
-            [self.base.edges, new_rows],
-            ignore_index=True, axis=0
+            [self.base.edges, new_rows], ignore_index=True, axis=0
         )
 
         indices = [idx for idx in range(index, index + len(pre_loc))]
