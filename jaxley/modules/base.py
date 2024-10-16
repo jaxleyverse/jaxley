@@ -263,7 +263,15 @@ class Module(ABC):
 
     @property
     def _branches_in_view(self):
+        # calling self.view._branches_in_view does the same
+        # but this way we avoid instantiating a View object
         return self.nodes["global_branch_index"].unique()
+    
+    @property
+    def _cells_in_view(self):
+        # calling self.view._branches_in_view does the same
+        # but this way we avoid instantiating a View object
+        return self.nodes["global_cell_index"].unique()
 
     def __getattr__(self, key):
         if key.startswith("__"):
@@ -1030,7 +1038,7 @@ class Module(ABC):
         self.debug_states["child_inds"] = self.child_inds
         self.debug_states["par_inds"] = self.par_inds
 
-    def record(self, state, verbose=True):
+    def record(self, state: str = "v", verbose=True):
         new_recs = pd.DataFrame(self._in_view, columns=["rec_index"])
         new_recs["state"] = state
         self.base.recordings = pd.concat([self.base.recordings, new_recs])

@@ -565,7 +565,7 @@ class Network(Module):
         self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.base.synapses.append(synapse_type)
 
-    def _append_multiple_synapses(self, pre, post, synapse_type):
+    def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
@@ -574,21 +574,21 @@ class Network(Module):
 
         index = len(self.base.edges)
         post_loc = loc_of_index(
-            post._comps_in_view, post._branches_in_view, self.nseg_per_branch
+            post_nodes["global_comp_index"].to_numpy(), post_nodes["global_branch_index"].to_numpy(), self.nseg_per_branch
         )
         pre_loc = loc_of_index(
-            pre._comps_in_view, pre._branches_in_view, self.nseg_per_branch
+            pre_nodes["global_comp_index"].to_numpy(), pre_nodes["global_branch_index"].to_numpy(), self.nseg_per_branch
         )
 
         # Define new synapses. Each row is one synapse.
         cols = ["comp_index", "branch_index", "cell_index"]
-        pre_nodes = pre.nodes[
+        pre_nodes = pre_nodes[
             [f"{scope}_{col}" for col in cols for scope in ["local", "global"]]
         ]
         pre_nodes.columns = [
             f"{scope}_pre_{col}" for col in cols for scope in ["local", "global"]
         ]
-        post_nodes = post.nodes[
+        post_nodes = post_nodes[
             [f"{scope}_{col}" for col in cols for scope in ["local", "global"]]
         ]
         post_nodes.columns = [
