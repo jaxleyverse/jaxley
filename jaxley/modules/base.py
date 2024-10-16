@@ -1950,10 +1950,6 @@ class View(Module):
         viewed_edge_inds = self.base.edges.index.to_numpy()[(pre & post).flatten()]
         return viewed_edge_inds
 
-    def __getattr__(self, name):
-        # Delegate attribute access to the pointer if not found in View
-        return getattr(self.pointer, name)
-
     def __enter__(self):
         return self
 
