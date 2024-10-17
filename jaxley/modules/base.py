@@ -126,6 +126,87 @@ class Module(ABC):
         # needs to be set at the end
         self.base = self
 
+    def __repr__(self):
+        return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
+
+    def __str__(self):
+        return f"jx.{type(self).__name__}"
+
+    def __dir__(self):
+        base_dir = object.__dir__(self)
+        return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
+
+    def __getattr__(self, key):
+        if key.startswith("__"):
+            return super().__getattribute__(key)
+
+        if key in self.base.groups:
+            view = self.at(self.groups[key]) if key in self.groups else self.at(None)
+            view._set_controlled_by_param(key)
+            return view
+
+        if key in [c._name for c in self.base.channels]:
+            channel_names = [c._name for c in self.channels]
+            inds = self.nodes.index[self.nodes[key]].to_numpy()
+            view = self.at(inds) if key in channel_names else self.at(None)
+            view._set_controlled_by_param(key)
+            return view
+
+        if key in self.base.synapse_names:
+            syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
+            view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
+            return view
+
+    def __getitem__(self, index):
+        levels = ["network", "cell", "branch", "comp"]
+        module = self.base.__class__.__name__.lower()
+        module = "comp" if module == "compartment" else module
+
+        children = levels[levels.index(module) + 1 :]
+        index = index if isinstance(index, tuple) else (index,)
+        view = self
+        for i, child in zip(index, children):
+            view = view._at_level(child, i)
+        return view
+
+    def _update_local_indices(self) -> pd.DataFrame:
+        rerank = lambda df: df.rank(method="dense").astype(int) - 1
+
+        def reorder(df, cols, first=True):
+            new_cols = [col for col in df.columns if first == (col in cols)]
+            new_cols += [col for col in df.columns if first != (col in cols)]
+            return df[new_cols]
+
+        def reindex_a_by_b(df, a, b=None):
+            grouped_df = df.groupby(b) if b is not None else df
+            df.loc[:, a] = rerank(grouped_df[a])
+            return df
+
+        index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
+        for obj, prefix in zip(
+            [self.nodes, self.edges, self.edges], ["", "pre_", "post_"]
+        ):
+            global_idx_cols = [f"global_{prefix}{name}" for name in index_names]
+            local_idx_cols = [f"local_{prefix}{name}" for name in index_names]
+            idcs = obj[global_idx_cols]
+
+            idcs = reindex_a_by_b(idcs, global_idx_cols[0])
+            idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
+            idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
+            idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
+            obj[local_idx_cols] = idcs[local_idx_cols]
+
+        # move indices to the front of the dataframe; move controlled_by_param to the end
+        self.nodes = reorder(self.nodes, [f"{scope}_{name}" for name in index_names for scope in ["global", "local"]])
+        self.nodes = reorder(self.nodes, ["controlled_by_param"], first=False)
+        self.edges["local_edge_index"] = rerank(self.edges["global_edge_index"])
+        self.edges = reorder(self.edges, ["global_edge_index", "local_edge_index"])
+        self.edges = reorder(self.edges, ["controlled_by_param"], first=False)
+
+    def _init_view(self):
+        self._nodes_in_view = self.nodes.index.to_numpy()
+        self.nodes["controlled_by_param"] = 0
+
     def _update_nodes_with_xyz(self):
         """Add xyz coordinates of compartment centers to nodes.
 
@@ -171,54 +252,6 @@ class Module(ABC):
         centers = np.delete(centers, between_comp_inds, axis=0)
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
         return centers, xyz
-
-    def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
-
-    def __str__(self):
-        return f"jx.{type(self).__name__}"
-
-    def __dir__(self):
-        base_dir = object.__dir__(self)
-        return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
-
-    def _update_local_indices(self) -> pd.DataFrame:
-        rerank = lambda df: df.rank(method="dense").astype(int) - 1
-
-        def reorder(df, cols, first=True):
-            new_cols = [col for col in df.columns if first == (col in cols)]
-            new_cols += [col for col in df.columns if first != (col in cols)]
-            return df[new_cols]
-
-        def reindex_a_by_b(df, a, b=None):
-            grouped_df = df.groupby(b) if b is not None else df
-            df.loc[:, a] = rerank(grouped_df[a])
-            return df
-
-        index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
-        for obj, prefix in zip(
-            [self.nodes, self.edges, self.edges], ["", "pre_", "post_"]
-        ):
-            global_idx_cols = [f"global_{prefix}{name}" for name in index_names]
-            local_idx_cols = [f"local_{prefix}{name}" for name in index_names]
-            idcs = obj[global_idx_cols]
-
-            idcs = reindex_a_by_b(idcs, global_idx_cols[0])
-            idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
-            idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
-            idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
-            obj[local_idx_cols] = idcs[local_idx_cols]
-
-        # move indices to the front of the dataframe; move controlled_by_param to the end
-        self.nodes = reorder(self.nodes, [f"{scope}_{name}" for name in index_names for scope in ["global", "local"]])
-        self.nodes = reorder(self.nodes, ["controlled_by_param"], first=False)
-        self.edges["local_edge_index"] = rerank(self.edges["global_edge_index"])
-        self.edges = reorder(self.edges, ["global_edge_index", "local_edge_index"])
-        self.edges = reorder(self.edges, ["controlled_by_param"], first=False)
-
-    def _init_view(self):
-        self._nodes_in_view = self.nodes.index.to_numpy()
-        self.nodes["controlled_by_param"] = 0
 
     def _reformat_index(self, idx):
         idx = np.array([], dtype=int) if idx is None else idx
@@ -330,26 +363,6 @@ class Module(ABC):
         self._reformat_index(idx)
         self._mod_edges_in_view = idx
 
-    def __getattr__(self, key):
-        if key.startswith("__"):
-            return super().__getattribute__(key)
-
-        if key in self.base.groups:
-            view = self.at(self.groups[key]) if key in self.groups else self.at(None)
-            view._set_controlled_by_param(key)
-            return view
-
-        if key in [c._name for c in self.base.channels]:
-            channel_names = [c._name for c in self.channels]
-            inds = self.nodes.index[self.nodes[key]].to_numpy()
-            view = self.at(inds) if key in channel_names else self.at(None)
-            view._set_controlled_by_param(key)
-            return view
-
-        if key in self.base.synapse_names:
-            syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
-            view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
-            return view
 
     def _iter_level(self, level):
         col = self._scope + f"_{level}_index"
@@ -1810,18 +1823,6 @@ class Module(ABC):
             self.base.xyzr[i][:, dims] = rot
         if update_nodes:
             self._update_nodes_with_xyz()
-
-    def __getitem__(self, index):
-        levels = ["network", "cell", "branch", "comp"]
-        module = self.base.__class__.__name__.lower()
-        module = "comp" if module == "compartment" else module
-
-        children = levels[levels.index(module) + 1 :]
-        index = index if isinstance(index, tuple) else (index,)
-        view = self
-        for i, child in zip(index, children):
-            view = view._at_level(child, i)
-        return view
 
 
 class View(Module):

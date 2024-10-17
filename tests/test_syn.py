@@ -36,8 +36,8 @@ def test_set_and_querying_params_one_type():
         assert np.all(net.edges[p].to_numpy() == 0.15)
 
     full_syn_view = net.IonotropicSynapse
-    single_syn_view = net.IonotropicSynapse(1)
-    double_syn_view = net.IonotropicSynapse([2, 3])
+    single_syn_view = net.IonotropicSynapse.edge(1)
+    double_syn_view = net.IonotropicSynapse.edge([2, 3])
 
     # There shouldn't be too many synapse_params otherwise this will take a long time
     for p in syn_params:
