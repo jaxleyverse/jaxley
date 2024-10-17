@@ -573,6 +573,8 @@ class Network(Module):
             self._update_synapse_state_names(synapse_type)
 
         index = len(self.base.edges)
+        indices = [idx for idx in range(index, index + len(pre_nodes))]
+        global_edge_index = pd.DataFrame({"global_edge_index": indices})
         post_loc = loc_of_index(
             post_nodes["global_comp_index"].to_numpy(),
             post_nodes["global_branch_index"].to_numpy(),
@@ -586,22 +588,19 @@ class Network(Module):
 
         # Define new synapses. Each row is one synapse.
         cols = ["comp_index", "branch_index", "cell_index"]
-        pre_nodes = pre_nodes[
-            [f"{scope}_{col}" for col in cols for scope in ["local", "global"]]
-        ]
-        pre_nodes.columns = [
-            f"{scope}_pre_{col}" for col in cols for scope in ["local", "global"]
-        ]
-        post_nodes = post_nodes[
-            [f"{scope}_{col}" for col in cols for scope in ["local", "global"]]
-        ]
-        post_nodes.columns = [
-            f"{scope}_post_{col}" for col in cols for scope in ["local", "global"]
-        ]
+        pre_nodes = pre_nodes[[f"global_{col}" for col in cols]]
+        pre_nodes.columns = [f"global_pre_{col}" for col in cols]
+        post_nodes = post_nodes[[f"global_{col}" for col in cols]]
+        post_nodes.columns = [f"global_post_{col}" for col in cols]
         new_rows = pd.concat(
-            [pre_nodes.reset_index(drop=True), post_nodes.reset_index(drop=True)],
+            [
+                global_edge_index,
+                pre_nodes.reset_index(drop=True),
+                post_nodes.reset_index(drop=True),
+            ],
             axis=1,
         )
+        new_rows["local_edge_index"] = new_rows["global_edge_index"]
         new_rows["type"] = synapse_name
         new_rows["type_ind"] = type_ind
         new_rows["pre_locs"] = pre_loc
@@ -610,7 +609,6 @@ class Network(Module):
             [self.base.edges, new_rows], ignore_index=True, axis=0
         )
 
-        indices = [idx for idx in range(index, index + len(pre_loc))]
         self._add_params_to_edges(synapse_type, indices)
 
     def _add_params_to_edges(self, synapse_type, indices):

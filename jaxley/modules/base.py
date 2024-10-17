@@ -67,8 +67,9 @@ class Module(ABC):
         self._mod_edges_in_view = None
 
         self.edges = pd.DataFrame(
-            columns=[
-                f"{scope}_{lvl}_index"
+            columns=["global_edge_index"]
+            + [
+                f"global_{lvl}_index"
                 for lvl in [
                     "pre_comp",
                     "pre_branch",
@@ -77,7 +78,6 @@ class Module(ABC):
                     "post_branch",
                     "post_cell",
                 ]
-                for scope in ["global", "local"]
             ]
             + ["pre_locs", "post_locs", "type", "type_ind"]
         )
@@ -183,26 +183,34 @@ class Module(ABC):
         return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
 
     def _update_local_indices(self) -> pd.DataFrame:
-        index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
-        global_idx_cols = [f"global_{name}" for name in index_names]
-        local_idx_cols = [f"local_{name}" for name in index_names]
+        rerank = lambda df: df.rank(method="dense").astype(int) - 1
 
-        idcs = self.nodes[global_idx_cols]
+        def reorder(df, cols):
+            return df[cols + [col for col in df.columns if col not in cols]]
 
-        def reindex_a_by_b(df, a, b):
-            df.loc[:, a] = df.groupby(b)[a].rank(method="dense").astype(int) - 1
+        def reindex_a_by_b(df, a, b=None):
+            grouped_df = df.groupby(b) if b is not None else df
+            df.loc[:, a] = rerank(grouped_df[a])
             return df
 
-        idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
-        idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
-        idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
-        self.nodes[local_idx_cols] = idcs[local_idx_cols]
-        # move indices to the front of the dataframe; move controlled_by_param to the end
-        self.nodes = self.nodes[
-            global_idx_cols
-            + local_idx_cols
-            + [col for col in self.nodes.columns if "index" not in col]
-        ]
+        index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
+        for obj, prefix in zip(
+            [self.nodes, self.edges, self.edges], ["", "pre_", "post_"]
+        ):
+            global_idx_cols = [f"global_{prefix}{name}" for name in index_names]
+            local_idx_cols = [f"local_{prefix}{name}" for name in index_names]
+            idcs = obj[global_idx_cols]
+
+            idcs = reindex_a_by_b(idcs, global_idx_cols[0])
+            idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
+            idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
+            idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
+            obj[local_idx_cols] = idcs[local_idx_cols]
+            # move indices to the front of the dataframe; move controlled_by_param to the end
+            obj = reorder(obj, global_idx_cols + local_idx_cols)
+
+        self.edges["local_edge_index"] = rerank(self.edges["global_edge_index"])
+        self.edges = reorder(self.edges, ["global_edge_index", "local_edge_index"])
 
     def _init_view(self):
         self._nodes_in_view = self.nodes.index.to_numpy()
@@ -264,18 +272,20 @@ class Module(ABC):
         return self._at_level("comp", idx)
 
     def edge(self, idx):
-        idx = self._reformat_index(idx)
-        # idx = self.edges.index[idx]
-        comp_inds = self.edges.loc[
+        idx = (
+            np.arange(len(self._edges_in_view) + 1)
+            if idx == "all"
+            else self._reformat_index(idx)
+        )
+        comp_inds = self.edges.set_index(f"{self._scope}_edge_index").loc[
             idx, ["global_pre_comp_index", "global_post_comp_index"]
         ]
         comp_inds = np.unique(comp_inds.to_numpy().ravel())
-        where = self.nodes[f"global_comp_index"].isin(comp_inds)
-        inds = np.where(where)[0]
-        view = self.at(inds)
-        view._set_controlled_by_param("comp")
+        view = self.scope("global").comp(comp_inds).scope(self._scope)
         view._edges_in_view = idx
         view.edges = self.edges.loc[idx]
+        view._set_controlled_by_param("edge")
+        view._update_local_indices()  # needs to be updated after setting edges
         return view
 
     def loc(self, at: float):
@@ -330,13 +340,8 @@ class Module(ABC):
             return view
 
         if key in self.base.synapse_names:
-            has_syn = self.edges["type"] == key
-            where = has_syn, ["global_pre_comp_index", "global_post_comp_index"]
-            comp_inds_in_view = pd.unique(self.edges.loc[where].values.ravel("K"))
-            inds = np.where(self.nodes["global_comp_index"].isin(comp_inds_in_view))[0]
-            view = self.at(inds) if key in self.synapse_names else self.at(None)
-            view._edges_in_view = self.edges.index[has_syn].to_numpy()
-            view._set_controlled_by_param(key)
+            syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
+            view = self.edge(syn_inds) if key in self.synapse_names else self.edge(None)
             return view
 
     def _iter_level(self, level):
@@ -1865,6 +1870,7 @@ class View(Module):
             k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
         }
 
+        self._update_local_indices()
         # TODO:
         # self.debug_states
 

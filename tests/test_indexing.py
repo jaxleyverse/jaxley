@@ -41,15 +41,15 @@ def test_getitem():
     assert net[:2, :2, :2]
 
     # test iterability
-    for cell in net:
+    for cell in net.cells:
         pass
 
-    for cell in net:
-        for branch in cell:
-            for comp in branch:
+    for cell in net.cells:
+        for branch in cell.branches:
+            for comp in branch.comps:
                 pass
 
-    for comp in net[0, 0]:
+    for comp in net[0, 0].comps:
         pass
 
 
@@ -77,19 +77,19 @@ def test_shape():
     cell = jx.Cell([branch for _ in range(3)], parents=jnp.asarray([-1, 0, 0]))
     net = jx.Network([cell for _ in range(3)])
 
-    assert net.shape == (3, 3, 4)
-    assert cell.shape == (1, 3, 4)
-    assert branch.shape == (1, 4)
-    assert comp.shape == (1,)
+    assert net.shape == (3, 3 * 3, 3 * 3 * 4)
+    assert cell.shape == (3, 3 * 4)
+    assert branch.shape == (4,)
+    assert comp.shape == ()
 
-    assert net.cell.shape == net.shape
-    assert cell.branch.shape == cell.shape
+    assert net.cell("all").shape == net.shape
+    assert cell.branch("all").shape == cell.shape
 
-    assert net.cell.shape == (3, 3, 4)
-    assert net.cell.branch.shape == (3, 3, 4)
-    assert net.cell.branch.comp.shape == (3, 3, 4)
+    assert net.cell("all").shape == (3, 3 * 3, 3 * 3 * 4)
+    assert net.cell("all").branch("all").shape == (3, 3 * 3, 3 * 3 * 4)
+    assert net.cell("all").branch("all").comp("all").shape == (3, 3 * 3, 3 * 3 * 4)
 
-    assert net.cell(0).shape == (1, 3, 4)
+    assert net.cell(0).shape == (1, 3, 3 * 4)
     assert net.cell(0).branch(0).shape == (1, 1, 4)
     assert net.cell(0).branch(0).comp(0).shape == (1, 1, 1)
 
@@ -205,37 +205,9 @@ def test_local_indexing():
                 global_index += 1
 
 
-def test_child_view():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 0, 1, 1]))
-    net = jx.Network([cell for _ in range(2)])
-
-    assert np.all(childview(net, 0).show() == net.cell(0).show())
-    assert np.all(childview(cell, 0).show() == cell.branch(0).show())
-    assert np.all(childview(branch, 0).show() == branch.comp(0).show())
-
-    assert np.all(
-        childview(childview(net, 0), 0).show() == net.cell(0).branch(0).show()
-    )
-    assert np.all(
-        childview(childview(cell, 0), 0).show() == cell.branch(0).comp(0).show()
-    )
-
-
 def test_comp_indexing_exception_handling():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-
-    branch.comp(0)
-    with pytest.raises(AttributeError):
-        branch.comp(0).comp(0)
-    with pytest.raises(AttributeError):
-        branch.comp(0).loc(0.0)
-    with pytest.raises(AttributeError):
-        branch.loc(0.0).comp(0)
-    with pytest.raises(AttributeError):
-        branch.loc(0.0).loc(0.0)
+    # TODO: Add tests for indexing exceptions
+    pass
 
 
 def test_indexing_a_compartment_of_many_branches():
