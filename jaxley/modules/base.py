@@ -1796,12 +1796,16 @@ class Module(ABC):
                 "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
             )
 
-        move_by = (
-            np.array([x, y, z]).T - self.xyzr[0][0, :3]
-        )  # move with respect to root idx
-
-        for idx in self._branches_in_view:
-            self.base.xyzr[idx][:, :3] += move_by
+        root_xyz_cells = np.array([c.xyzr[0][0,:3] for c in self.cells])
+        root_xyz = root_xyz_cells[0] if isinstance(x, float) else root_xyz_cells
+        move_by = np.array([x, y, z]).T - root_xyz 
+        
+        if len(move_by.shape) == 1:
+            move_by = np.tile(move_by, (len(self._cells_in_view), 1))
+        
+        for cell, offset in zip(self.cells, move_by):
+            for idx in cell._branches_in_view:
+                self.base.xyzr[idx][:, :3] += offset
         if update_nodes:
             self._update_nodes_with_xyz()
 
