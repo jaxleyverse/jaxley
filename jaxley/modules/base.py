@@ -143,6 +143,7 @@ class Module(ABC):
         if key in self.base.groups:
             view = self.at(self.groups[key]) if key in self.groups else self.at(None)
             view._set_controlled_by_param(key)
+            view._current_view = key
             return view
 
         if key in [c._name for c in self.base.channels]:
@@ -150,22 +151,30 @@ class Module(ABC):
             inds = self.nodes.index[self.nodes[key]].to_numpy()
             view = self.at(inds) if key in channel_names else self.at(None)
             view._set_controlled_by_param(key)
+            view._current_view = "channel"
             return view
 
         if key in self.base.synapse_names:
             syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
             view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
+            view._current_view = "synapse"
             return view
+        
+    def _viewing_levels(self):
+        levels = ["network", "cell", "branch", "comp"]
+        view_lvl = self._current_view
+        children = levels[levels.index(view_lvl) + 1 :]
+        return children
 
     def __getitem__(self, index):
-        levels = ["network", "cell", "branch", "comp"]
-        module = self.base.__class__.__name__.lower()
-        module = "comp" if module == "compartment" else module
-
-        children = levels[levels.index(module) + 1 :]
+        supported_lvls = ["network", "cell", "branch"]
+        assert self._current_view in supported_lvls, "Lazy indexing is not supported for this View/Module."
         index = index if isinstance(index, tuple) else (index,)
+
+        next_lvls = self._viewing_levels()
+        assert len(index) <= len(next_lvls), "Too many indices." 
         view = self
-        for i, child in zip(index, children):
+        for i, child in zip(index, next_lvls):
             view = view._at_level(child, i)
         return view
 
@@ -204,6 +213,8 @@ class Module(ABC):
         self.edges = reorder(self.edges, ["controlled_by_param"], first=False)
 
     def _init_view(self):
+        lvl = self.__class__.__name__.lower()
+        self._current_view = "comp" if lvl == "compartment" else lvl
         self._nodes_in_view = self.nodes.index.to_numpy()
         self.nodes["controlled_by_param"] = 0
 
@@ -297,6 +308,7 @@ class Module(ABC):
         inds = np.where(where)[0]
         view = self.at(inds)
         view._set_controlled_by_param(level)
+        view._current_view = level
         return view
 
     def cell(self, idx):
@@ -326,12 +338,14 @@ class Module(ABC):
         view.edges = self.edges.loc[inds]
         view._set_controlled_by_param("edge")
         view._update_local_indices()  # needs to be updated after setting edges
+        view._current_view = "edge"
         return view
 
     def loc(self, at: float):
         comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
         idx = np.digitize(at, comp_edges) - 1
         view = self.comp(idx)
+        view._current_view = "loc"
         return view
 
     @property
@@ -363,7 +377,6 @@ class Module(ABC):
         self._reformat_index(idx)
         self._mod_edges_in_view = idx
 
-
     def _iter_level(self, level):
         col = self._scope + f"_{level}_index"
         idxs = self.nodes[col].unique()
@@ -381,6 +394,10 @@ class Module(ABC):
     @property
     def comps(self):
         yield from self._iter_level("comp")
+
+    def __iter__(self):
+        next_level = self._viewing_levels()[0]
+        yield from self._iter_level(next_level)
 
     @property
     def shape(self) -> Tuple[int]:
