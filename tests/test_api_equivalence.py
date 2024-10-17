@@ -209,7 +209,7 @@ def test_api_equivalence_network_matches_cell():
     pre = net.cell(0).branch(2).comp(2)
     post = net.cell(1).branch(1).comp(1)
     connect(pre, post, IonotropicSynapse())
-    net.IonotropicSynapse("all").set("IonotropicSynapse_gS", 0.0)
+    net.IonotropicSynapse.edge("all").set("IonotropicSynapse_gS", 0.0)
 
     net.cell(0).branch(2).comp(2).stimulate(current)
     net.cell(0).branch(0).comp(0).record()

@@ -43,16 +43,16 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
     """Access to the synapse view"""
     if synapse_name == "IonotropicSynapse":
         full_syn_view = net.IonotropicSynapse
-        single_syn_view = net.IonotropicSynapse(single_idx)
-        double_syn_view = net.IonotropicSynapse(double_idxs)
+        single_syn_view = net.IonotropicSynapse.edge(single_idx)
+        double_syn_view = net.IonotropicSynapse.edge(double_idxs)
     if synapse_name == "TanhRateSynapse":
         full_syn_view = net.TanhRateSynapse
-        single_syn_view = net.TanhRateSynapse(single_idx)
-        double_syn_view = net.TanhRateSynapse(double_idxs)
+        single_syn_view = net.TanhRateSynapse.edge(single_idx)
+        double_syn_view = net.TanhRateSynapse.edge(double_idxs)
     if synapse_name == "TestSynapse":
         full_syn_view = net.TestSynapse
-        single_syn_view = net.TestSynapse(single_idx)
-        double_syn_view = net.TestSynapse(double_idxs)
+        single_syn_view = net.TestSynapse.edge(single_idx)
+        double_syn_view = net.TestSynapse.edge(double_idxs)
     return full_syn_view, single_syn_view, double_syn_view
 
 
@@ -144,12 +144,12 @@ def test_set_and_querying_params_two_types(synapse_type):
     assert np.all(net.edges[type1_params[0]].to_numpy()[[0, 2]] == 0.32)
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.18)
 
-    net.IonotropicSynapse(1).set(type1_params[0], 0.24)
+    net.IonotropicSynapse.edge(1).set(type1_params[0], 0.24)
     assert net.edges[type1_params[0]][0] == 0.32
     assert net.edges[type1_params[0]][2] == 0.24
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.18)
 
-    net.IonotropicSynapse([0, 1]).set(type1_params[0], 0.27)
+    net.IonotropicSynapse.edge([0, 1]).set(type1_params[0], 0.27)
     assert np.all(net.edges[type1_params[0]].to_numpy()[[0, 2]] == 0.27)
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.18)
 
