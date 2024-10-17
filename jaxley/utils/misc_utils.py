@@ -40,3 +40,11 @@ def cumsum_leading_zero(array: Union[np.ndarray, List]) -> np.ndarray:
     """Return the `cumsum` of a numpy array and pad with a leading zero."""
     arr = np.asarray(array)
     return np.concatenate([np.asarray([0]), np.cumsum(arr)]).astype(arr.dtype)
+
+def index_is_all(idx, force=True):
+    """Check if the index is "all"."""
+    if isinstance(idx, str):
+        if force:
+            assert idx == "all", "Only 'all' is allowed"
+        return idx == "all"
+    return False

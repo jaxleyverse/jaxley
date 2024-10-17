@@ -38,6 +38,7 @@ from jaxley.utils.misc_utils import (
     childview,
     concat_and_ignore_empty,
     cumsum_leading_zero,
+    index_is_all,
 )
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
@@ -64,7 +65,7 @@ class Module(ABC):
         self.nodes: Optional[pd.DataFrame] = None
         self._scope = "local"  # defaults to local scope
         self._nodes_in_view = None
-        self._mod_edges_in_view = None
+        self._edges_in_view = None
 
         self.edges = pd.DataFrame(
             columns=["global_edge_index"]
@@ -143,7 +144,6 @@ class Module(ABC):
         if key in self.base.groups:
             view = self.at(self.groups[key]) if key in self.groups else self.at(None)
             view._set_controlled_by_param(key)
-            view._current_view = key
             return view
 
         if key in [c._name for c in self.base.channels]:
@@ -151,15 +151,13 @@ class Module(ABC):
             inds = self.nodes.index[self.nodes[key]].to_numpy()
             view = self.at(inds) if key in channel_names else self.at(None)
             view._set_controlled_by_param(key)
-            view._current_view = "channel"
             return view
 
         if key in self.base.synapse_names:
             syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
             view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
-            view._current_view = "synapse"
             return view
-        
+
     def _viewing_levels(self):
         levels = ["network", "cell", "branch", "comp"]
         view_lvl = self._current_view
@@ -168,11 +166,13 @@ class Module(ABC):
 
     def __getitem__(self, index):
         supported_lvls = ["network", "cell", "branch"]
-        assert self._current_view in supported_lvls, "Lazy indexing is not supported for this View/Module."
+        assert (
+            self._current_view in supported_lvls
+        ), "Lazy indexing is not supported for this View/Module."
         index = index if isinstance(index, tuple) else (index,)
 
         next_lvls = self._viewing_levels()
-        assert len(index) <= len(next_lvls), "Too many indices." 
+        assert len(index) <= len(next_lvls), "Too many indices."
         view = self
         for i, child in zip(index, next_lvls):
             view = view._at_level(child, i)
@@ -206,7 +206,14 @@ class Module(ABC):
             obj[local_idx_cols] = idcs[local_idx_cols]
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
-        self.nodes = reorder(self.nodes, [f"{scope}_{name}" for name in index_names for scope in ["global", "local"]])
+        self.nodes = reorder(
+            self.nodes,
+            [
+                f"{scope}_{name}"
+                for name in index_names
+                for scope in ["global", "local"]
+            ],
+        )
         self.nodes = reorder(self.nodes, ["controlled_by_param"], first=False)
         self.edges["local_edge_index"] = rerank(self.edges["global_edge_index"])
         self.edges = reorder(self.edges, ["global_edge_index", "local_edge_index"])
@@ -216,6 +223,7 @@ class Module(ABC):
         lvl = self.__class__.__name__.lower()
         self._current_view = "comp" if lvl == "compartment" else lvl
         self._nodes_in_view = self.nodes.index.to_numpy()
+        self._edges_in_view = self.edges.index.to_numpy()
         self.nodes["controlled_by_param"] = 0
 
     def _update_nodes_with_xyz(self):
@@ -273,9 +281,8 @@ class Module(ABC):
             if isinstance(idx, slice)
             else idx
         )
-        if isinstance(idx, str):
-            assert idx == "all", "Only 'all' is allowed"
-            idx = np.arange(len(self._nodes_in_view) + 1)
+        if index_is_all(idx):
+            return idx
         assert isinstance(idx, np.ndarray), "Invalid type"
         assert idx.dtype == np.int64, "Invalid dtype"
         return idx.reshape(-1)
@@ -287,12 +294,18 @@ class Module(ABC):
         else:
             self.nodes["controlled_by_param"] = 0
             self.edges["controlled_by_param"] = 0
+        self._current_view = key
 
-    def at(self, idx, sorted=False):
-        idx = self._reformat_index(idx)
-        new_indices = self._nodes_in_view[idx]
-        new_indices = np.sort(new_indices) if sorted else new_indices
-        return View(self, at=new_indices)
+    def at(self, nodes=None, edges=None, sorted=False):
+        nodes = self._reformat_index(nodes) if nodes is not None else None
+        nodes = self._nodes_in_view if index_is_all(nodes) else nodes
+        nodes = np.sort(nodes) if sorted else nodes
+
+        edges = self._reformat_index(edges) if edges is not None else None
+        edges = self._edges_in_view if index_is_all(edges) else edges
+        edges = np.sort(edges) if sorted else edges
+
+        return View(self, nodes, edges)
 
     def set_scope(self, scope):
         self._scope = scope
@@ -304,11 +317,14 @@ class Module(ABC):
 
     def _at_level(self, level: str, idx):
         idx = self._reformat_index(idx)
-        where = self.nodes[self._scope + f"_{level}_index"].isin(idx)
-        inds = np.where(where)[0]
-        view = self.at(inds)
+        data = self.edges if level == "edge" else self.nodes
+        idx = data[self._scope + f"_{level}_index"] if index_is_all(idx) else idx
+        where = data[self._scope + f"_{level}_index"].isin(idx)
+        inds = data.index[where].to_numpy()
+
+        inds = (None, inds) if level == "edge" else (inds, None)
+        view = View(self, *inds)
         view._set_controlled_by_param(level)
-        view._current_view = level
         return view
 
     def cell(self, idx):
@@ -321,25 +337,7 @@ class Module(ABC):
         return self._at_level("comp", idx)
 
     def edge(self, idx):
-        if isinstance(idx, str):
-            idx = np.arange(len(self._edges_in_view) + 1) if idx == "all" else idx
-        
-        # set view to include all pre and post comps
-        idx = self._reformat_index(idx)
-        where = self.edges[self._scope + f"_edge_index"].isin(idx)
-        comp_inds = self.edges.loc[where, ["global_pre_comp_index", "global_post_comp_index"]]
-        comp_inds = np.unique(comp_inds.to_numpy().ravel())
-        view = self.scope("global").comp(comp_inds).scope(self._scope)
-        
-        # index into appropriate edges of current view
-        where = self.edges[self._scope + f"_edge_index"].isin(idx)
-        inds = self.edges.index[where].to_numpy()
-        view._edges_in_view = inds
-        view.edges = self.edges.loc[inds]
-        view._set_controlled_by_param("edge")
-        view._update_local_indices()  # needs to be updated after setting edges
-        view._current_view = "edge"
-        return view
+        return self._at_level("edge", idx)
 
     def loc(self, at: float):
         comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
@@ -365,17 +363,6 @@ class Module(ABC):
         # calling self.view._branches_in_view does the same
         # but this way we avoid instantiating a View object
         return self.nodes["global_cell_index"].unique()
-
-    @property
-    def _edges_in_view(self):
-        if self._mod_edges_in_view is not None:
-            return self._mod_edges_in_view
-        return self.edges.index.to_numpy()
-
-    @_edges_in_view.setter
-    def _edges_in_view(self, idx):
-        self._reformat_index(idx)
-        self._mod_edges_in_view = idx
 
     def _iter_level(self, level):
         col = self._scope + f"_{level}_index"
@@ -1843,7 +1830,7 @@ class Module(ABC):
 
 
 class View(Module):
-    def __init__(self, pointer, at=None):
+    def __init__(self, pointer, at_nodes=None, at_edges=None):
         # attrs with a static view
         self._scope = pointer._scope
         self.base = pointer.base
@@ -1853,11 +1840,42 @@ class View(Module):
 
         # attrs affected by view
         self.nseg = pointer.nseg
-        self._nodes_in_view = pointer._nodes_in_view if at is None else at
-        self._mod_edges_in_view = None  # for setting self._edges_in_view
+
+        # set nodes and edge indices in view
+        no_node_inds = at_nodes is None
+        no_edge_inds = at_edges is None
+        base_nodes = self.base.nodes
+        base_edges = self.base.edges
+        if no_node_inds and no_edge_inds:
+            self._nodes_in_view = pointer._nodes_in_view
+            self._edges_in_view = pointer._edges_in_view
+        elif no_edge_inds:
+            self._nodes_in_view = at_nodes
+            incl_comps = pointer.nodes.loc[
+                self._nodes_in_view, "global_comp_index"
+            ].unique()
+            pre = base_edges["global_pre_comp_index"].isin(incl_comps).to_numpy()
+            post = base_edges["global_post_comp_index"].isin(incl_comps).to_numpy()
+            self._edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
+        elif no_node_inds:
+            self._edges_in_view = at_edges
+            incl_comps = pointer.edges.loc[
+                self._edges_in_view, ["global_pre_comp_index", "global_post_comp_index"]
+            ]
+            incl_comps = np.unique(incl_comps.to_numpy().flatten())
+            self._nodes_in_view = base_nodes.index[
+                base_nodes["global_comp_index"].isin(incl_comps)
+            ].to_numpy()
+        else:
+            self._edges_in_view = pointer._edges_in_view
+            self._nodes_in_view = pointer._nodes_in_view
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
-        self.edges = pointer.edges.loc[self._edges_in_view]
+        self.edges = (
+            pointer.edges.loc[self._edges_in_view]
+            if not pointer.edges.empty
+            else pointer.edges
+        )
         self.xyzr = self._xyzr_in_view()
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
         self.total_nbranches = len(self._branches_in_view)
@@ -2029,20 +2047,6 @@ class View(Module):
         post = self.base.branch_edges["child_branch_index"].isin(incl_branches)
         viewed_branch_inds = self.base.branch_edges.index.to_numpy()[pre & post]
         return viewed_branch_inds
-
-    @property
-    def _edges_in_view(self):
-        if self._mod_edges_in_view is not None:
-            return self._mod_edges_in_view
-        incl_comps = self.nodes["global_comp_index"].unique()
-        pre = self.base.edges["global_pre_comp_index"].isin(incl_comps).to_numpy()
-        post = self.base.edges["global_post_comp_index"].isin(incl_comps).to_numpy()
-        viewed_edge_inds = self.base.edges.index.to_numpy()[(pre & post).flatten()]
-        return viewed_edge_inds
-
-    @_edges_in_view.setter
-    def _edges_in_view(self, value):
-        self._mod_edges_in_view = value
 
     def __enter__(self):
         return self

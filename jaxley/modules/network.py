@@ -610,6 +610,7 @@ class Network(Module):
         )
 
         self._add_params_to_edges(synapse_type, indices)
+        self._edges_in_view = self.edges.index.to_numpy()
 
     def _add_params_to_edges(self, synapse_type, indices):
         # Add parameters and states to the `.edges` table.
