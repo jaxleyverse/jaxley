@@ -392,7 +392,9 @@ def test_data_set_vs_make_trainable_network():
     pstate = net2.IonotropicSynapse.edge("all").data_set(
         "IonotropicSynapse_gS", 0.15, pstate
     )
-    pstate = net2.IonotropicSynapse.edge(1).data_set("IonotropicSynapse_e_syn", 0.2, pstate)
+    pstate = net2.IonotropicSynapse.edge(1).data_set(
+        "IonotropicSynapse_e_syn", 0.2, pstate
+    )
     pstate = net2.TestSynapse.edge(0).data_set("TestSynapse_gC", 0.3, pstate)
 
     voltages1 = jx.integrate(net1, params=params1)

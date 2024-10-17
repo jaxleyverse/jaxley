@@ -1,8 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from copy import deepcopy
-from itertools import chain
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp

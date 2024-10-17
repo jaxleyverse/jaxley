@@ -1,7 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain
@@ -34,12 +33,7 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
-from jaxley.utils.misc_utils import (
-    childview,
-    concat_and_ignore_empty,
-    cumsum_leading_zero,
-    index_is_all,
-)
+from jaxley.utils.misc_utils import cumsum_leading_zero, index_is_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
 from jaxley.utils.swc import build_radiuses_from_xyzr
@@ -203,7 +197,7 @@ class Module(ABC):
             idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
             idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
             idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
-            obj[local_idx_cols] = idcs[local_idx_cols]
+            obj[local_idx_cols] = idcs[local_idx_cols].astype(int)
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
         self.nodes = reorder(
@@ -609,11 +603,12 @@ class Module(ABC):
         Args:
             ncomp: The number of compartments that the branch should be discretized
                 into.
+            min_radius: Only used if the morphology was read from an SWC file. If passed
+                the radius is capped to be at least this value.
 
         Raises:
-            - When the Module is a Network.
-            - When there are stimuli in any compartment in the Module.
-            - When there are recordings in any compartment in the Module.
+            - When there are stimuli in any compartment in the module.
+            - When there are recordings in any compartment in the module.
             - When the channels of the compartments are not the same within the branch
             that is modified.
             - When the lengths of the compartments are not the same within the branch
@@ -621,21 +616,30 @@ class Module(ABC):
             - Unless the morphology was read from an SWC file, when the radiuses of the
             compartments are not the same within the branch that is modified.
         """
+        assert len(self.base.externals) == 0, "No stimuli allowed!"
+        assert len(self.base.recordings) == 0, "No recordings allowed!"
+        assert len(self.base.trainable_params) == 0, "No trainables allowed!"
 
-        assert len(self.externals) == 0, "No stimuli allowed!"
-        assert len(self.recordings) == 0, "No recordings allowed!"
-        assert len(self.trainable_params) == 0, "No trainables allowed!"
+        assert self.base._module_type != "network", "This is not allowed for networks."
+        assert not (
+            self.base._module_type == "cell"
+            and len(self._branches_in_view) == len(self.base._branches_in_view)
+        ), "This is not allowed for cells."
 
         # TODO: MAKE THIS NICER
         # Update all attributes that are affected by compartment structure.
-        view = deepcopy(self.nodes)
+        view = self.nodes.copy()
         all_nodes = self.base.nodes
         start_idx = self.nodes["global_comp_index"].to_numpy()[0]
-        nseg_per_branch = self.nseg_per_branch
-        channel_names = [c._name for c in self.channels]
-        channel_param_names = list(chain(*[c.channel_params for c in self.channels]))
-        channel_state_names = list(chain(*[c.channel_states for c in self.channels]))
-        radius_generating_fns = self._radius_generating_fns
+        nseg_per_branch = self.base.nseg_per_branch
+        channel_names = [c._name for c in self.base.channels]
+        channel_param_names = list(
+            chain(*[c.channel_params for c in self.base.channels])
+        )
+        channel_state_names = list(
+            chain(*[c.channel_states for c in self.base.channels])
+        )
+        radius_generating_fns = self.base._radius_generating_fns
 
         within_branch_radiuses = view["radius"].to_numpy()
         compartment_lengths = view["length"].to_numpy()
@@ -689,9 +693,9 @@ class Module(ABC):
         # `self.nodes` will not have these columns.
 
         # @Michael, can I safely remove this?
-        # #
-        # # Note that we assert that there are no trainables, so `controlled_by_params`
-        # # of the `self.nodes` has to be empty.
+
+        # Note that we assert that there are no trainables, so `controlled_by_params`
+        # of the `self.nodes` has to be empty.
         # if "global_comp_index" in view.columns:
         #     view = view.drop(
         #         columns=[
@@ -757,12 +761,12 @@ class Module(ABC):
         self.base.nseg_per_branch = nseg_per_branch
         self.base.nseg = nseg
         self.base.cumsum_nseg = cumsum_nseg
-        self.base.internal_node_inds = internal_node_inds
+        self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
-        self.initialize()
-        self._update_local_indices()
-        self._init_view()
+        self.base.initialize()
+        self.base._init_view()
+        self.base._update_local_indices()
 
     def make_trainable(
         self,

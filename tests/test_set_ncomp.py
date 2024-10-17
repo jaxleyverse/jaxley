@@ -54,7 +54,7 @@ def test_raise_for_entire_cells():
     comp = jx.Compartment()
     branch = jx.Branch(comp, nseg=4)
     cell = jx.Cell(branch, parents=[-1, 0, 0])
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AssertionError):
         cell.set_ncomp(2)
 
 
@@ -64,7 +64,7 @@ def test_raise_for_networks():
     cell1 = jx.Cell(branch, parents=[-1, 0, 0])
     cell2 = jx.Cell(branch, parents=[-1, 0, 0])
     net = jx.Network([cell1, cell2])
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AssertionError):
         net.cell(0).branch(1).set_ncomp(2)
 
 

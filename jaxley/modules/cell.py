@@ -1,7 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
@@ -299,13 +298,6 @@ class Cell(Module):
         summed_conds = summed_conds.at[child_inds, 0].add(branchpoint_conds_children)
         summed_conds = summed_conds.at[par_inds, -1].add(branchpoint_conds_parents)
         return summed_conds
-
-    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
-        """Raise an explict error if `set_ncomp` is set for an entire cell."""
-        raise NotImplementedError(
-            "`cell.set_ncomp()` is not supported. Loop over all branches with "
-            "`for b in range(cell.total_nbranches): cell.branch(b).set_ncomp(n)`."
-        )
 
 
 def read_swc(
