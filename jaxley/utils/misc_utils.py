@@ -41,6 +41,7 @@ def cumsum_leading_zero(array: Union[np.ndarray, List]) -> np.ndarray:
     arr = np.asarray(array)
     return np.concatenate([np.asarray([0]), np.cumsum(arr)]).astype(arr.dtype)
 
+
 def index_is_all(idx, force=True):
     """Check if the index is "all"."""
     if isinstance(idx, str):

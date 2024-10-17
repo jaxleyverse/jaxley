@@ -348,20 +348,17 @@ class Module(ABC):
 
     @property
     def _comps_in_view(self):
-        # calling self.view._branches_in_view does the same
-        # but this way we avoid instantiating a View object
+        # method also exists in View. having a copy avoids need to instantiate a View
         return self.nodes["global_comp_index"].unique()
 
     @property
     def _branches_in_view(self):
-        # calling self.view._branches_in_view does the same
-        # but this way we avoid instantiating a View object
+        # method also exists in View. having a copy avoids need to instantiate a View
         return self.nodes["global_branch_index"].unique()
 
     @property
     def _cells_in_view(self):
-        # calling self.view._branches_in_view does the same
-        # but this way we avoid instantiating a View object
+        # method also exists in View. having a copy avoids need to instantiate a View
         return self.nodes["global_cell_index"].unique()
 
     def _iter_level(self, level):
@@ -602,164 +599,170 @@ class Module(ABC):
         return param_state
 
     # TODO: MAKE SURE THIS WORKS
-    # def set_ncomp(
-    #     self,
-    #     ncomp: int,
-    #     min_radius: Optional[float] = None,
-    # ):
-    #     """Set the number of compartments with which the branch is discretized.
+    def set_ncomp(
+        self,
+        ncomp: int,
+        min_radius: Optional[float] = None,
+    ):
+        """Set the number of compartments with which the branch is discretized.
 
-    #     Args:
-    #         ncomp: The number of compartments that the branch should be discretized
-    #             into.
+        Args:
+            ncomp: The number of compartments that the branch should be discretized
+                into.
 
-    #     Raises:
-    #         - When the Module is a Network.
-    #         - When there are stimuli in any compartment in the Module.
-    #         - When there are recordings in any compartment in the Module.
-    #         - When the channels of the compartments are not the same within the branch
-    #         that is modified.
-    #         - When the lengths of the compartments are not the same within the branch
-    #         that is modified.
-    #         - Unless the morphology was read from an SWC file, when the radiuses of the
-    #         compartments are not the same within the branch that is modified.
-    #     """
+        Raises:
+            - When the Module is a Network.
+            - When there are stimuli in any compartment in the Module.
+            - When there are recordings in any compartment in the Module.
+            - When the channels of the compartments are not the same within the branch
+            that is modified.
+            - When the lengths of the compartments are not the same within the branch
+            that is modified.
+            - Unless the morphology was read from an SWC file, when the radiuses of the
+            compartments are not the same within the branch that is modified.
+        """
 
-    #     assert len(self.externals) == 0, "No stimuli allowed!"
-    #     assert len(self.recordings) == 0, "No recordings allowed!"
-    #     assert len(self.trainable_params) == 0, "No trainables allowed!"
+        assert len(self.externals) == 0, "No stimuli allowed!"
+        assert len(self.recordings) == 0, "No recordings allowed!"
+        assert len(self.trainable_params) == 0, "No trainables allowed!"
 
-    #     #TODO: MAKE THIS NICER
-    #     # Update all attributes that are affected by compartment structure.
-    #     view = deepcopy(self.nodes)
-    #     all_nodes = self.base.nodes
-    #     start_idx = self.nodes["global_comp_index"].to_numpy()[0],
-    #     nseg_per_branch = self.nseg_per_branch,
-    #     channel_names = [c._name for c in self.channels],
-    #     channel_param_names = list(chain(*[c.channel_params for c in self.channels])),
-    #     channel_state_names = list(chain(*[c.channel_states for c in self.channels])),
-    #     radius_generating_fns = self._radius_generating_fns,
+        # TODO: MAKE THIS NICER
+        # Update all attributes that are affected by compartment structure.
+        view = deepcopy(self.nodes)
+        all_nodes = self.base.nodes
+        start_idx = self.nodes["global_comp_index"].to_numpy()[0]
+        nseg_per_branch = self.nseg_per_branch
+        channel_names = [c._name for c in self.channels]
+        channel_param_names = list(chain(*[c.channel_params for c in self.channels]))
+        channel_state_names = list(chain(*[c.channel_states for c in self.channels]))
+        radius_generating_fns = self._radius_generating_fns
 
-    #     within_branch_radiuses = view["radius"].to_numpy()
-    #     compartment_lengths = view["length"].to_numpy()
-    #     num_previous_ncomp = len(within_branch_radiuses)
-    #     branch_indices = pd.unique(view["global_branch_index"])
+        within_branch_radiuses = view["radius"].to_numpy()
+        compartment_lengths = view["length"].to_numpy()
+        num_previous_ncomp = len(within_branch_radiuses)
+        branch_indices = pd.unique(view["global_branch_index"])
 
-    #     error_msg = lambda name: (
-    #         f"You previously modified the {name} of individual compartments, but "
-    #         f"now you are modifying the number of compartments in this branch. "
-    #         f"This is not allowed. First build the morphology with `set_ncomp()` and "
-    #         f"then modify the radiuses and lengths of compartments."
-    #     )
+        error_msg = lambda name: (
+            f"You previously modified the {name} of individual compartments, but "
+            f"now you are modifying the number of compartments in this branch. "
+            f"This is not allowed. First build the morphology with `set_ncomp()` and "
+            f"then modify the radiuses and lengths of compartments."
+        )
 
-    #     if (
-    #         ~np.all(within_branch_radiuses == within_branch_radiuses[0])
-    #         and radius_generating_fns is None
-    #     ):
-    #         raise ValueError(error_msg("radius"))
+        if (
+            ~np.all(within_branch_radiuses == within_branch_radiuses[0])
+            and radius_generating_fns is None
+        ):
+            raise ValueError(error_msg("radius"))
 
-    #     for property_name in ["length", "capacitance", "axial_resistivity"]:
-    #         compartment_properties = view[property_name].to_numpy()
-    #         if ~np.all(compartment_properties == compartment_properties[0]):
-    #             raise ValueError(error_msg(property_name))
+        for property_name in ["length", "capacitance", "axial_resistivity"]:
+            compartment_properties = view[property_name].to_numpy()
+            if ~np.all(compartment_properties == compartment_properties[0]):
+                raise ValueError(error_msg(property_name))
 
-    #     if not (view[channel_names].var() == 0.0).all():
-    #         raise ValueError(
-    #             "Some channel exists only in some compartments of the branch which you"
-    #             "are trying to modify. This is not allowed. First specify the number"
-    #             "of compartments with `.set_ncomp()` and then insert the channels"
-    #             "accordingly."
-    #         )
+        if not (self.nodes[channel_names].var() == 0.0).all():
+            raise ValueError(
+                "Some channel exists only in some compartments of the branch which you"
+                "are trying to modify. This is not allowed. First specify the number"
+                "of compartments with `.set_ncomp()` and then insert the channels"
+                "accordingly."
+            )
 
-    #     if not (view[channel_param_names + channel_state_names].var() == 0.0).all():
-    #         raise ValueError(
-    #             "Some channel has different parameters or states between the "
-    #             "different compartments of the branch which you are trying to modify. "
-    #             "This is not allowed. First specify the number of compartments with "
-    #             "`.set_ncomp()` and then insert the channels accordingly."
-    #         )
+        if not (
+            self.nodes[channel_param_names + channel_state_names].var() == 0.0
+        ).all():
+            raise ValueError(
+                "Some channel has different parameters or states between the "
+                "different compartments of the branch which you are trying to modify. "
+                "This is not allowed. First specify the number of compartments with "
+                "`.set_ncomp()` and then insert the channels accordingly."
+            )
 
-    #     # Add new rows as the average of all rows. Special case for the length is below.
-    #     average_row = view.mean(skipna=False)
-    #     average_row = average_row.to_frame().T
-    #     view = pd.concat([*[average_row] * ncomp], axis="rows")
+        # Add new rows as the average of all rows. Special case for the length is below.
+        average_row = self.nodes.mean(skipna=False)
+        average_row = average_row.to_frame().T
+        view = pd.concat([*[average_row] * ncomp], axis="rows")
 
-    #     # If the `view` is not the entire `Module`, but a `View` (i.e. if one changes
-    #     # the number of comps within a branch of a cell), then the `self.pointer.view`
-    #     # will contain the additional `global_xyz_index` columns. However, the
-    #     # `self.nodes` will not have these columns.
+        # If the `view` is not the entire `Module`, but a `View` (i.e. if one changes
+        # the number of comps within a branch of a cell), then the `self.pointer.view`
+        # will contain the additional `global_xyz_index` columns. However, the
+        # `self.nodes` will not have these columns.
 
-    #     # @Michael, can I safely remove this?
-    #     # #
-    #     # # Note that we assert that there are no trainables, so `controlled_by_params`
-    #     # # of the `self.nodes` has to be empty.
-    #     # if "global_comp_index" in view.columns:
-    #     #     view = view.drop(
-    #     #         columns=[
-    #     #             "global_comp_index",
-    #     #             "global_branch_index",
-    #     #             "global_cell_index",
-    #     #             "controlled_by_param",
-    #     #         ]
-    #     #     )
+        # @Michael, can I safely remove this?
+        # #
+        # # Note that we assert that there are no trainables, so `controlled_by_params`
+        # # of the `self.nodes` has to be empty.
+        # if "global_comp_index" in view.columns:
+        #     view = view.drop(
+        #         columns=[
+        #             "global_comp_index",
+        #             "global_branch_index",
+        #             "global_cell_index",
+        #             "controlled_by_param",
+        #         ]
+        #     )
 
-    #     # Set the correct datatype after having performed an average which cast
-    #     # everything to float.
-    #     integer_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
-    #     view[integer_cols] = view[integer_cols].astype(int)
+        # Set the correct datatype after having performed an average which cast
+        # everything to float.
+        integer_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
+        view[integer_cols] = view[integer_cols].astype(int)
 
-    #     # Whether or not a channel exists in a compartment is a boolean.
-    #     boolean_cols = channel_names
-    #     view[boolean_cols] = view[boolean_cols].astype(bool)
+        # Whether or not a channel exists in a compartment is a boolean.
+        boolean_cols = channel_names
+        view[boolean_cols] = view[boolean_cols].astype(bool)
 
-    #     # Special treatment for the lengths and radiuses. These are not being set as
-    #     # the average because we:
-    #     # 1) Want to maintain the total length of a branch.
-    #     # 2) Want to use the SWC inferred radius.
-    #     #
-    #     # Compute new compartment lengths.
-    #     comp_lengths = np.sum(compartment_lengths) / ncomp
-    #     view["length"] = comp_lengths
+        # Special treatment for the lengths and radiuses. These are not being set as
+        # the average because we:
+        # 1) Want to maintain the total length of a branch.
+        # 2) Want to use the SWC inferred radius.
+        #
+        # Compute new compartment lengths.
+        comp_lengths = np.sum(compartment_lengths) / ncomp
+        view["length"] = comp_lengths
 
-    #     # Compute new compartment radiuses.
-    #     if radius_generating_fns is not None:
-    #         view["radius"] = build_radiuses_from_xyzr(
-    #             radius_fns=radius_generating_fns,
-    #             branch_indices=branch_indices,
-    #             min_radius=min_radius,
-    #             nseg=ncomp,
-    #         )
-    #     else:
-    #         view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
+        # Compute new compartment radiuses.
+        if radius_generating_fns is not None:
+            view["radius"] = build_radiuses_from_xyzr(
+                radius_fns=radius_generating_fns,
+                branch_indices=branch_indices,
+                min_radius=min_radius,
+                nseg=ncomp,
+            )
+        else:
+            view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
 
-    #     # Update `.nodes`.
-    #     #
-    #     # 1) Delete N rows starting from start_idx
-    #     number_deleted = num_previous_ncomp
-    #     all_nodes = all_nodes.drop(index=range(start_idx, start_idx + number_deleted))
+        # Update `.nodes`.
+        #
+        # 1) Delete N rows starting from start_idx
+        number_deleted = num_previous_ncomp
+        all_nodes = all_nodes.drop(index=range(start_idx, start_idx + number_deleted))
 
-    #     # 2) Insert M new rows at the same location
-    #     df1 = all_nodes.iloc[:start_idx]  # Rows before the insertion point
-    #     df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
+        # 2) Insert M new rows at the same location
+        df1 = all_nodes.iloc[:start_idx]  # Rows before the insertion point
+        df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
 
-    #     # 3) Combine the parts: before, new rows, and after
-    #     all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
+        # 3) Combine the parts: before, new rows, and after
+        all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
 
-    #     # Override `comp_index` to just be a consecutive list.
-    #     all_nodes["global_comp_index"] = np.arange(len(all_nodes))
+        # Override `comp_index` to just be a consecutive list.
+        all_nodes["global_comp_index"] = np.arange(len(all_nodes))
 
-    #     # Update compartment structure arguments.
-    #     nseg_per_branch[branch_indices] = ncomp
-    #     nseg = int(np.max(nseg_per_branch))
-    #     cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
-    #     internal_node_inds = np.arange(cumsum_nseg[-1])
+        # Update compartment structure arguments.
+        nseg_per_branch[branch_indices] = ncomp
+        nseg = int(np.max(nseg_per_branch))
+        cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
+        internal_node_inds = np.arange(cumsum_nseg[-1])
 
-    #     # Update the morphology indexing (e.g., `.comp_edges`).
-    #     self.initialize()
-    #     self._update_local_indices()
-    #     self._nodes_in_view = self.nodes.index.to_numpy()
+        self.base.nodes = all_nodes
+        self.base.nseg_per_branch = nseg_per_branch
+        self.base.nseg = nseg
+        self.base.cumsum_nseg = cumsum_nseg
+        self.base.internal_node_inds = internal_node_inds
 
-    #     return all_nodes, nseg_per_branch, nseg, cumsum_nseg, internal_node_inds
+        # Update the morphology indexing (e.g., `.comp_edges`).
+        self.initialize()
+        self._update_local_indices()
+        self._init_view()
 
     def make_trainable(
         self,
@@ -1856,16 +1859,21 @@ class View(Module):
             ].unique()
             pre = base_edges["global_pre_comp_index"].isin(incl_comps).to_numpy()
             post = base_edges["global_post_comp_index"].isin(incl_comps).to_numpy()
-            self._edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
+            possible_edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
+            self._edges_in_view = np.intersect1d(
+                possible_edges_in_view, pointer._edges_in_view
+            )
         elif no_node_inds:
             self._edges_in_view = at_edges
             incl_comps = pointer.edges.loc[
                 self._edges_in_view, ["global_pre_comp_index", "global_post_comp_index"]
             ]
             incl_comps = np.unique(incl_comps.to_numpy().flatten())
-            self._nodes_in_view = base_nodes.index[
-                base_nodes["global_comp_index"].isin(incl_comps)
-            ].to_numpy()
+            where_comps = base_nodes["global_comp_index"].isin(incl_comps)
+            possible_nodes_in_view = base_nodes.index[where_comps].to_numpy()
+            self._nodes_in_view = np.intersect1d(
+                possible_nodes_in_view, pointer._nodes_in_view
+            )
         else:
             self._edges_in_view = pointer._edges_in_view
             self._nodes_in_view = pointer._nodes_in_view
