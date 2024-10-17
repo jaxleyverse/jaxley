@@ -160,12 +160,16 @@ class Module(ABC):
 
     def __getitem__(self, index):
         supported_lvls = ["network", "cell", "branch"]
+        
+        # TODO: SHOULD WE ALLOW GROUPVIEW TO BE INDEXED?
+        # IF YES, UNDER WHICH CONDITIONS?
+        is_group_view = self._current_view in self.groups
         assert (
-            self._current_view in supported_lvls
+            self._current_view in supported_lvls or is_group_view
         ), "Lazy indexing is not supported for this View/Module."
         index = index if isinstance(index, tuple) else (index,)
 
-        next_lvls = self._viewing_levels()
+        next_lvls = self.base._viewing_levels() if is_group_view else self._viewing_levels()
         assert len(index) <= len(next_lvls), "Too many indices."
         view = self
         for i, child in zip(index, next_lvls):
