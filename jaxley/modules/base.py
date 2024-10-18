@@ -151,11 +151,6 @@ class Module(ABC):
             syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
             view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
             view._set_controlled_by_param(key)  # overwrites param set by edge
-
-            # Needed to mimic the old SynapseView. to pass make_trainable tests
-            # causes issues with set though.
-            # TODO: restructure trainables for synapses / edges.
-            # view.edges = view.edges.reset_index(drop=True)
             return view
 
     def _viewing_levels(self):
@@ -819,6 +814,7 @@ class Module(ABC):
 
         data = self.nodes if key in self.nodes.columns else None
         data = self.edges if key in self.edges.columns else data
+
         assert data is not None, f"Key '{key}' not found in nodes or edges"
         not_nan = ~data[key].isna()
         data = data.loc[not_nan]
@@ -959,6 +955,19 @@ class Module(ABC):
             key = parameter["key"]
             inds = parameter["indices"]
             set_param = parameter["val"]
+
+            # This is needed since SynapseViews worked differently before.
+            # This mimics the old behaviour and tranformes the new indices
+            # to the old indices.
+            # TODO: Longterm this should be gotten rid of.
+            # Instead edges should work similar to nodes (would also allow for
+            # param sharing).
+            if key in self.base.synapse_param_names:
+                syn_name_from_param = key.split("_")[0]
+                syn_edges = self.__getattr__(syn_name_from_param).edges
+                inds = syn_edges.loc[inds.reshape(-1)]["local_edge_index"].values
+                inds = inds.reshape(-1, 1)
+
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
@@ -1126,12 +1135,12 @@ class Module(ABC):
         """
         # For scipy and jax.scipy.
         row_and_col_inds = compute_morphology_indices(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.par_inds,
-            self.child_inds,
-            self.nseg,
-            self.total_nbranches,
+            len(self.base.par_inds),
+            self.base.child_belongs_to_branchpoint,
+            self.base.par_inds,
+            self.base.child_inds,
+            self.base.nseg,
+            self.base.total_nbranches,
         )
 
         num_elements = len(row_and_col_inds["row_inds"])
@@ -1140,15 +1149,15 @@ class Module(ABC):
             row_ind=row_and_col_inds["row_inds"],
             col_ind=row_and_col_inds["col_inds"],
         )
-        self.debug_states["row_inds"] = row_and_col_inds["row_inds"]
-        self.debug_states["col_inds"] = row_and_col_inds["col_inds"]
-        self.debug_states["data_inds"] = data_inds
-        self.debug_states["indices"] = indices
-        self.debug_states["indptr"] = indptr
+        self.base.debug_states["row_inds"] = row_and_col_inds["row_inds"]
+        self.base.debug_states["col_inds"] = row_and_col_inds["col_inds"]
+        self.base.debug_states["data_inds"] = data_inds
+        self.base.debug_states["indices"] = indices
+        self.base.debug_states["indptr"] = indptr
 
-        self.debug_states["nseg"] = self.nseg
-        self.debug_states["child_inds"] = self.child_inds
-        self.debug_states["par_inds"] = self.par_inds
+        self.base.debug_states["nseg"] = self.base.nseg
+        self.base.debug_states["child_inds"] = self.base.child_inds
+        self.base.debug_states["par_inds"] = self.base.par_inds
 
     def record(self, state: str = "v", verbose=True):
         in_view = (
