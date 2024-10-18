@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.0253249f.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1788,7 +1788,10 @@
 </div>
 
 <h3 id="groups-from-swc-files">Groups from SWC files<a class="headerlink" href="#groups-from-swc-files" title="Permanent link">&para;</a></h3>
-<p>Note: If you are reading swc morphologigies, you can automatically assign groups with <code>jx.read_swc(file_name, assign_groups=True)</code>. After that, you can directly use <code>cell.soma</code>, <code>cell.apical</code>, <code>cell.basal</code>, or <code>cell.axon</code>.</p>
+<p>If you are reading <code>.swc</code> morphologigies, you can automatically assign groups with 
+<div class="highlight"><pre><span></span><code><span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span>
+</code></pre></div>
+After that, you can directly use <code>cell.soma</code>, <code>cell.apical</code>, <code>cell.basal</code>, or <code>cell.axon</code>.</p>
 <h3 id="how-groups-are-interpreted-by-make_trainable">How groups are interpreted by <code>.make_trainable()</code><a class="headerlink" href="#how-groups-are-interpreted-by-make_trainable" title="Permanent link">&para;</a></h3>
 <p>If you make a parameter of a <code>group</code> trainable, then it will be treated as a single shared parameter for a given property:</p>
 <div class="highlight"><pre><span></span><code><span class="n">network</span><span class="o">.</span><span class="n">fast_spiking</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;Na_gNa&quot;</span><span class="p">)</span>
@@ -1802,7 +1805,7 @@
 <div class="codehilite"><pre><span></span><code>[{&#39;Na_gNa&#39;: Array([0.4], dtype=float64)}]
 </code></pre></div>
 
-<p>If, instead, you would want a separate parameter for every fast-spiking cell, you should not use the group, but instead do the following (remember that fast-spiking neurons had indices [0,1,3]):</p>
+<p>If, instead, you would want a separate parameter for every fast-spiking cell, you should not use the group, but instead do the following (remember that fast-spiking neurons had indices [0,1]):</p>
 <div class="highlight"><pre><span></span><code><span class="n">network</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">)</span>
 </code></pre></div>
 <div class="codehilite"><pre><span></span><code>Number of newly added trainable parameters: 2. Total number of trainable parameters: 3
@@ -1814,7 +1817,7 @@
  {&#39;axial_resistivity&#39;: Array([5000., 5000.], dtype=float64)}]
 </code></pre></div>
 
-<p>This generated three parameters for the axial resistivitiy, each corresponding to one cell.</p>
+<p>This generated two parameters for the axial resistivitiy, each corresponding to one cell.</p>
 <h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>Groups allow you to organize your simulation in a more intuitive way, and they allow to perform parameter sharing with <code>make_trainable()</code>.</p>
 <p>If you have not done so already, we recommend you to check out the tutorial on <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/07_gradient_descent/">how to compute the gradient and train biophysical models</a>.</p>
@@ -1867,7 +1870,7 @@
     <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="../../assets/javascripts/bundle.83f73b43.min.js"></script>
       
     
   </body>

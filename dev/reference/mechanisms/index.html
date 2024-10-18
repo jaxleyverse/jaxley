@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.0253249f.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1551,6 +1551,11 @@
 conductances are to be specified in <code>S/cm2</code> and its currents are to be specified in
 <code>uA/cm2</code>.</p>
 
+
+
+
+
+
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/channel.py</code></summary>
                 <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">10</span>
@@ -1778,7 +1783,9 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code>new_name</code></td>
+            <td>
+                <code>new_name</code>
+            </td>
             <td>
                   <code>str</code>
             </td>
@@ -1911,9 +1918,11 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code>states</code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                <code>states</code>
+            </td>
+            <td>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1925,7 +1934,9 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>v</code></td>
+            <td>
+                <code>v</code>
+            </td>
             <td>
             </td>
             <td>
@@ -1938,9 +1949,11 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>params</code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                <code>params</code>
+            </td>
+            <td>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2095,10 +2108,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.hh.HH"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>Hodgkin-Huxley channel.</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/hh.py</code></summary>
@@ -2442,10 +2460,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.pospischil.Leak"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>Leak current</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/pospischil.py</code></summary>
@@ -2620,10 +2643,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.pospischil.Na"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>Sodium channel</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/pospischil.py</code></summary>
@@ -2920,10 +2948,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.pospischil.K"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>Potassium channel</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/pospischil.py</code></summary>
@@ -3178,10 +3211,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.pospischil.Km"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>Slow M Potassium channel</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/pospischil.py</code></summary>
@@ -3440,10 +3478,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.pospischil.CaL"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>L-type Calcium channel</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/pospischil.py</code></summary>
@@ -3734,10 +3777,15 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <a id="jaxley.channels.pospischil.CaT"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
+              Bases: <code>Channel</code></p>
 
 
         <p>T-type Calcium channel</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/channels/pospischil.py</code></summary>
@@ -4016,6 +4064,11 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 conductances are to be specified in <code>uS</code> and its currents are to be specified in
 <code>nA</code>.</p>
 
+
+
+
+
+
               <details class="quote">
                 <summary>Source code in <code>jaxley/synapses/synapse.py</code></summary>
                 <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 9</span>
@@ -4240,7 +4293,9 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code>new_name</code></td>
+            <td>
+                <code>new_name</code>
+            </td>
             <td>
                   <code>str</code>
             </td>
@@ -4374,9 +4429,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code>states</code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                <code>states</code>
+            </td>
+            <td>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4388,9 +4445,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>pre_voltage</code></td>
             <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+                <code>pre_voltage</code>
+            </td>
+            <td>
+                  <code>ndarray</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4402,9 +4461,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>post_voltage</code></td>
             <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+                <code>post_voltage</code>
+            </td>
+            <td>
+                  <code>ndarray</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4416,9 +4477,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>params</code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                <code>params</code>
+            </td>
+            <td>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4444,7 +4507,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+                  <code>ndarray</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4528,9 +4591,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code>states</code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                <code>states</code>
+            </td>
+            <td>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4542,7 +4607,9 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>delta_t</code></td>
+            <td>
+                <code>delta_t</code>
+            </td>
             <td>
                   <code>float</code>
             </td>
@@ -4556,9 +4623,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>pre_voltage</code></td>
             <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+                <code>pre_voltage</code>
+            </td>
+            <td>
+                  <code>ndarray</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4570,9 +4639,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>post_voltage</code></td>
             <td>
-                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+                <code>post_voltage</code>
+            </td>
+            <td>
+                  <code>ndarray</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4584,9 +4655,11 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code>params</code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                <code>params</code>
+            </td>
+            <td>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4612,7 +4685,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]</code>
+                  <code>Dict[str, ndarray]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4684,7 +4757,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
 <a id="jaxley.synapses.ionotropic.IonotropicSynapse"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.synapses.synapse.Synapse" href="#jaxley.synapses.synapse.Synapse">Synapse</a></code></p>
+              Bases: <code>Synapse</code></p>
 
 
         <p>Compute synaptic current and update synapse state for a generic ionotropic synapse.</p>
@@ -4708,6 +4781,11 @@ dependent on the presynaptic voltage.</p>
   <p>L. F. Abbott and E. Marder, &ldquo;Modeling Small Networks,&rdquo; in Methods in Neuronal
 Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 </details>
+
+
+
+
+
               <details class="quote">
                 <summary>Source code in <code>jaxley/synapses/ionotropic.py</code></summary>
                 <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">12</span>
@@ -4914,10 +4992,15 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <a id="jaxley.synapses.tanh_rate.TanhRateSynapse"></a>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="jaxley.synapses.synapse.Synapse" href="#jaxley.synapses.synapse.Synapse">Synapse</a></code></p>
+              Bases: <code>Synapse</code></p>
 
 
         <p>Compute synaptic current for tanh synapse (no state).</p>
+
+
+
+
+
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/synapses/tanh_rate.py</code></summary>
@@ -5155,7 +5238,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="../../assets/javascripts/bundle.83f73b43.min.js"></script>
       
     
   </body>
