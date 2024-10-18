@@ -862,6 +862,19 @@ class Module(ABC):
                 f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.base.num_trainable_params}"
             )
 
+    def distance(self, endpoint: "CompartmentView") -> float:
+        """Return the direct distance between two compartments.
+        This does not compute the pathwise distance (which is currently not
+        implemented).
+        Args:
+            endpoint: The compartment to which to compute the distance to.
+        """
+        assert len(self.xyzr) == 1 and len(endpoint.xyzr) == 1
+        assert self.xyzr[0].shape[0] == 1 and endpoint.xyzr[0].shape[0] == 1
+        start_xyz = self.xyzr[0][0, :3]
+        end_xyz = endpoint.xyzr[0][0, :3]
+        return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
+
     # TODO: MAKE THIS WORK FOR VIEW?
     def delete_trainables(self):
         """Removes all trainable parameters from the module."""
