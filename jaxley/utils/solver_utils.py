@@ -25,7 +25,7 @@ def remap_index_to_masked(
             jnp.cumsum(nseg_per_branch),
         ]
     )
-    branch_inds = nodes.loc[index, "branch_index"].to_numpy()
+    branch_inds = nodes.loc[index, "global_branch_index"].to_numpy()
     remainders = index - cumsum_nseg_per_branch[branch_inds]
     return padded_cumsum_nseg[branch_inds] + remainders
 

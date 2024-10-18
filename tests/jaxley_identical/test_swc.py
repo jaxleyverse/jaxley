@@ -101,8 +101,8 @@ def test_swc_net(voltage_solver: str):
     network.insert(HH())
 
     # first cell, 0-eth branch, 1-st compartment because loc=0.0 -> comp = nseg-1 = 1
-    radius_post = network[1, 0, 1].view["radius"].item()
-    lenght_post = network[1, 0, 1].view["length"].item()
+    radius_post = network[1, 0, 1].nodes["radius"].item()
+    lenght_post = network[1, 0, 1].nodes["length"].item()
     area = 2 * pi * lenght_post * radius_post
     point_process_to_dist_factor = 100_000.0 / area
     network.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)

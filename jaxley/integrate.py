@@ -75,11 +75,11 @@ def integrate(
             if data_stimuli is not None:
                 externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
                 external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[2].comp_index.to_numpy()]
+                    [external_inds["i"], data_stimuli[2].global_comp_index.to_numpy()]
                 )
         else:
             externals["i"] = data_stimuli[1]
-            external_inds["i"] = data_stimuli[2].comp_index.to_numpy()
+            external_inds["i"] = data_stimuli[2].global_comp_index.to_numpy()
 
     # If a clamp is inserted, add it to the external inputs.
     if data_clamps is not None:
@@ -87,11 +87,11 @@ def integrate(
         if state_name in module.externals.keys():
             externals[state_name] = jnp.concatenate([externals[state_name], clamps])
             external_inds[state_name] = jnp.concatenate(
-                [external_inds[state_name], inds.comp_index.to_numpy()]
+                [external_inds[state_name], inds.global_comp_index.to_numpy()]
             )
         else:
             externals[state_name] = clamps
-            external_inds[state_name] = inds.comp_index.to_numpy()
+            external_inds[state_name] = inds.global_comp_index.to_numpy()
 
     if not externals.keys():
         # No stimulus was inserted and no clamp was set.

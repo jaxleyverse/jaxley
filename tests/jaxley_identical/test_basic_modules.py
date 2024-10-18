@@ -331,10 +331,10 @@ def test_complex_net(voltage_solver: str):
     point_process_to_dist_factor = 100_000.0 / area
     net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
     net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
-    net.IonotropicSynapse([0, 2, 4]).set(
+    net.IonotropicSynapse.edge([0, 2, 4]).set(
         "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
     )
-    net.TestSynapse([0, 3, 5]).set(
+    net.TestSynapse.edge([0, 3, 5]).set(
         "TestSynapse_gC", 0.24 / point_process_to_dist_factor
     )
 
