@@ -1151,14 +1151,17 @@ class Module(ABC):
         self.debug_states["par_inds"] = self.par_inds
 
     def record(self, state: str = "v", verbose=True):
-        new_recs = pd.DataFrame(self._nodes_in_view, columns=["rec_index"])
+        in_view = (
+            self._edges_in_view if state in self.edges.columns else self._nodes_in_view
+        )
+        new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
         self.base.recordings = pd.concat([self.base.recordings, new_recs])
         has_duplicates = self.base.recordings.duplicated()
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
         if verbose:
             print(
-                f"Added {len(self._nodes_in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
+                f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
     # TODO: MAKE THIS WORK FOR VIEW?

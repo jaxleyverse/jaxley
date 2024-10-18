@@ -188,14 +188,16 @@ def test_local_indexing():
     cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 0, 1, 1]))
     net = jx.Network([cell for _ in range(2)])
 
-    local_idxs = net.nodes[["local_cell_index", "local_branch_index", "local_comp_index"]]
+    local_idxs = net.nodes[
+        ["local_cell_index", "local_branch_index", "local_comp_index"]
+    ]
     idx_cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
-    #TODO: Write new and more comprehensive test for local indexing!
+    # TODO: Write new and more comprehensive test for local indexing!
     global_index = 0
     for cell_idx in range(2):
         for branch_idx in range(5):
             for comp_idx in range(4):
-                
+
                 # compview = net[cell_idx, branch_idx, comp_idx].show()
                 # assert np.all(
                 #     compview[idx_cols].values == [cell_idx, branch_idx, comp_idx]
