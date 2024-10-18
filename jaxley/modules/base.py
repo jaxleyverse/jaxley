@@ -152,9 +152,10 @@ class Module(ABC):
             view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
             view._set_controlled_by_param(key)  # overwrites param set by edge
 
-            # Needed to mimic the old SynapseView.
-            # TODO: long term restructure trainables for synapses / edges.
-            view.edges = view.edges.reset_index(drop=True)
+            # Needed to mimic the old SynapseView. to pass make_trainable tests
+            # causes issues with set though.
+            # TODO: restructure trainables for synapses / edges.
+            # view.edges = view.edges.reset_index(drop=True)
             return view
 
     def _viewing_levels(self):
@@ -862,7 +863,7 @@ class Module(ABC):
                 f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.base.num_trainable_params}"
             )
 
-    def distance(self, endpoint: "CompartmentView") -> float:
+    def distance(self, endpoint: "View") -> float:
         """Return the direct distance between two compartments.
         This does not compute the pathwise distance (which is currently not
         implemented).
