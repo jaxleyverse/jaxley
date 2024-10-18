@@ -63,7 +63,10 @@ def test_connect():
     first_set_edges = net2.edges.iloc[:8]
     # TODO: VERIFY THAT THIS IS INTENDED BEHAVIOUR! @Michael
     assert (
-        (first_set_edges[["global_pre_branch_index", "global_post_branch_index"]] == (4,8))
+        (
+            first_set_edges[["global_pre_branch_index", "global_post_branch_index"]]
+            == (4, 8)
+        )
         .all()
         .all()
     )

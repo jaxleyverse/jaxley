@@ -150,6 +150,11 @@ class Module(ABC):
         if key in self.base.synapse_names:
             syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
             view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
+            view._set_controlled_by_param(key)  # overwrites param set by edge
+
+            # Needed to mimic the old SynapseView.
+            # TODO: long term restructure trainables for synapses / edges.
+            view.edges = view.edges.reset_index(drop=True)
             return view
 
     def _viewing_levels(self):
@@ -160,7 +165,7 @@ class Module(ABC):
 
     def __getitem__(self, index):
         supported_lvls = ["network", "cell", "branch"]
-        
+
         # TODO: SHOULD WE ALLOW GROUPVIEW TO BE INDEXED?
         # IF YES, UNDER WHICH CONDITIONS?
         is_group_view = self._current_view in self.groups
@@ -169,7 +174,9 @@ class Module(ABC):
         ), "Lazy indexing is not supported for this View/Module."
         index = index if isinstance(index, tuple) else (index,)
 
-        next_lvls = self.base._viewing_levels() if is_group_view else self._viewing_levels()
+        next_lvls = (
+            self.base._viewing_levels() if is_group_view else self._viewing_levels()
+        )
         assert len(index) <= len(next_lvls), "Too many indices."
         view = self
         for i, child in zip(index, next_lvls):
@@ -270,9 +277,10 @@ class Module(ABC):
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
         return centers, xyz
 
-    def _reformat_index(self, idx):
-        idx = np.array([], dtype=int) if idx is None else idx
-        idx = np.array([idx]) if isinstance(idx, (int, np.int64)) else idx
+    def _reformat_index(self, idx, dtype=int):
+        np_dtype = np.int64 if dtype is int else np.float64
+        idx = np.array([], dtype=dtype) if idx is None else idx
+        idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range)) else idx
         idx = (
             np.arange(len(self._nodes_in_view) + 1)[idx]
@@ -282,13 +290,15 @@ class Module(ABC):
         if index_is_all(idx):
             return idx
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype == np.int64, "Invalid dtype"
+        assert idx.dtype == np_dtype, "Invalid dtype"
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key):
         if key in ["comp", "branch", "cell"]:
             self.nodes["controlled_by_param"] = self.nodes[f"global_{key}_index"]
             self.edges["controlled_by_param"] = self.edges[f"global_pre_{key}_index"]
+        elif key == "edge":
+            self.edges["controlled_by_param"] = np.arange(len(self.edges))
         else:
             self.nodes["controlled_by_param"] = 0
             self.edges["controlled_by_param"] = 0
@@ -337,7 +347,12 @@ class Module(ABC):
     def edge(self, idx):
         return self._at_level("edge", idx)
 
-    def loc(self, at: float):
+    def loc(self, at):
+        at = (
+            np.linspace(0, 1, self.base.nseg)
+            if index_is_all(at)
+            else self._reformat_index(at, dtype=float)
+        )
         comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
         idx = np.digitize(at, comp_edges) - 1
         view = self.comp(idx)
@@ -449,6 +464,7 @@ class Module(ABC):
             name = channel._name
             self.nodes.loc[self.nodes[name].isna(), name] = False
 
+    # TODO: Make this work for View
     def to_jax(self):
         """Move `.nodes` to `.jaxnodes`.
 
@@ -458,22 +474,22 @@ class Module(ABC):
         they can be processed on GPU/TPU and such that the simulation can be
         differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
         """
-        self.jaxnodes = {}
-        for key, value in self.nodes.to_dict(orient="list").items():
+        self.base.jaxnodes = {}
+        for key, value in self.base.nodes.to_dict(orient="list").items():
             inds = jnp.arange(len(value))
-            self.jaxnodes[key] = jnp.asarray(value)[inds]
+            self.base.jaxnodes[key] = jnp.asarray(value)[inds]
 
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.
-        self.jaxedges = {}
-        edges = self.edges.to_dict(orient="list")
-        for i, synapse in enumerate(self.synapses):
+        self.base.jaxedges = {}
+        edges = self.base.edges.to_dict(orient="list")
+        for i, synapse in enumerate(self.base.synapses):
             for key in synapse.synapse_params:
                 condition = np.asarray(edges["type_ind"]) == i
-                self.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
+                self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
             for key in synapse.synapse_states:
-                self.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
+                self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
 
     def show(
         self,
@@ -579,11 +595,14 @@ class Module(ABC):
                 function does not modify global state.
         """
         # Note: `data_set` does not support arrays for `val`.
-        if key in self.nodes.columns:
-            not_nan = ~self.nodes[key].isna()
+        is_node_param = key in self.nodes.columns
+        data = self.nodes if is_node_param else self.edges
+        viewed_inds = self._nodes_in_view if is_node_param else self._edges_in_view
+        if key in data.columns:
+            not_nan = ~data[key].isna()
             added_param_state = [
                 {
-                    "indices": np.atleast_2d(self._nodes_in_view[not_nan]),
+                    "indices": np.atleast_2d(viewed_inds[not_nan]),
                     "key": key,
                     "val": jnp.atleast_1d(jnp.asarray(val)),
                 }
@@ -864,6 +883,7 @@ class Module(ABC):
         """
         self.base.groups[group_name] = self._nodes_in_view
 
+    # TODO: Make this work for View
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
 
@@ -873,9 +893,9 @@ class Module(ABC):
             A list of all trainable parameters in the form of
                 [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
         """
-        return self.trainable_params
+        return self.base.trainable_params
 
-    # TODO: ENSURE THIS WORKS FOR VIEW?
+    # TODO: MAKE THIS WORK FOR VIEW?
     def get_all_parameters(
         self, pstate: List[Dict], voltage_solver: str
     ) -> Dict[str, jnp.ndarray]:
@@ -911,14 +931,14 @@ class Module(ABC):
         """
         params = {}
         for key in ["radius", "length", "axial_resistivity", "capacitance"]:
-            params[key] = self.jaxnodes[key]
+            params[key] = self.base.jaxnodes[key]
 
-        for channel in self.channels:
+        for channel in self.base.channels:
             for channel_params in channel.channel_params:
-                params[channel_params] = self.jaxnodes[channel_params]
+                params[channel_params] = self.base.jaxnodes[channel_params]
 
-        for synapse_params in self.synapse_param_names:
-            params[synapse_params] = self.jaxedges[synapse_params]
+        for synapse_params in self.base.synapse_param_names:
+            params[synapse_params] = self.base.jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
         for parameter in pstate:
@@ -933,20 +953,22 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and add them to the params dictionary.
-        params["axial_conductances"] = self._compute_axial_conductances(params=params)
+        params["axial_conductances"] = self.base._compute_axial_conductances(
+            params=params
+        )
         return params
 
     # TODO: ENSURE THIS WORKS FOR VIEW?
     def get_states_from_nodes_and_edges(self):
         """Return states as they are set in the `.nodes` and `.edges` tables."""
-        self.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
-        states = {"v": self.jaxnodes["v"]}
+        self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        states = {"v": self.base.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
-        for channel in self.channels:
+        for channel in self.base.channels:
             for channel_states in channel.channel_states:
-                states[channel_states] = self.jaxnodes[channel_states]
-        for synapse_states in self.synapse_state_names:
-            states[synapse_states] = self.jaxedges[synapse_states]
+                states[channel_states] = self.base.jaxnodes[channel_states]
+        for synapse_states in self.base.synapse_state_names:
+            states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
 
     # TODO: ENSURE THIS WORKS FOR VIEW?
@@ -963,7 +985,7 @@ class Module(ABC):
         Returns:
             A dictionary of all states of the module.
         """
-        states = self.get_states_from_nodes_and_edges()
+        states = self.base.get_states_from_nodes_and_edges()
 
         # Override with the initial states set by `.make_trainable()`.
         for parameter in pstate:
@@ -978,12 +1000,12 @@ class Module(ABC):
                 states[key] = states[key].at[inds].set(set_param[:, None])
 
         # Add to the states the initial current through every channel.
-        states, _ = self._channel_currents(
+        states, _ = self.base._channel_currents(
             states, delta_t, self.channels, self.nodes, all_params
         )
 
         # Add to the states the initial current through every synapse.
-        states, _ = self._synapse_currents(
+        states, _ = self.base._synapse_currents(
             states, self.synapses, all_params, delta_t, self.edges
         )
         return states
@@ -1008,16 +1030,16 @@ class Module(ABC):
             delta_t: Passed on to `channel.init_state()`.
         """
         # Update states of the channels.
-        channel_nodes = self.nodes
-        states = self.get_states_from_nodes_and_edges()
+        channel_nodes = self.base.nodes
+        states = self.base.get_states_from_nodes_and_edges()
 
         # We do not use any `pstate` for initializing. In principle, we could change
         # that by allowing an input `params` and `pstate` to this function.
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
-        params = self.get_all_parameters([], voltage_solver="jaxley.thomas")
+        params = self.base.get_all_parameters([], voltage_solver="jaxley.thomas")
 
-        for channel in self.channels:
+        for channel in self.base.channels:
             name = channel._name
             channel_indices = channel_nodes.loc[channel_nodes[name]][
                 "global_comp_index"
@@ -1800,13 +1822,13 @@ class Module(ABC):
                 "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
             )
 
-        root_xyz_cells = np.array([c.xyzr[0][0,:3] for c in self.cells])
+        root_xyz_cells = np.array([c.xyzr[0][0, :3] for c in self.cells])
         root_xyz = root_xyz_cells[0] if isinstance(x, float) else root_xyz_cells
-        move_by = np.array([x, y, z]).T - root_xyz 
-        
+        move_by = np.array([x, y, z]).T - root_xyz
+
         if len(move_by.shape) == 1:
             move_by = np.tile(move_by, (len(self._cells_in_view), 1))
-        
+
         for cell, offset in zip(self.cells, move_by):
             for idx in cell._branches_in_view:
                 self.base.xyzr[idx][:, :3] += offset

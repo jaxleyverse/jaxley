@@ -18,9 +18,7 @@ def is_same_network(pre: "View", post: "View") -> bool:
     return is_in_net and is_in_same_net
 
 
-def sample_comp(
-    cell_view: "View", num: int = 1, replace=True
-) -> "CompartmentView":
+def sample_comp(cell_view: "View", num: int = 1, replace=True) -> "CompartmentView":
     """Sample a compartment from a cell.
 
     Returns View with shape (num, num_cols)."""
@@ -120,7 +118,8 @@ def sparse_connect(
 
     # Post-synapse is a randomly chosen branch and compartment.
     global_post_indices = [
-        sample_comp(post_cell_view.scope("global").cell(cell_idx)) for cell_idx in post_syn_neurons
+        sample_comp(post_cell_view.scope("global").cell(cell_idx))
+        for cell_idx in post_syn_neurons
     ]
     global_post_indices = (
         np.hstack(global_post_indices) if len(global_post_indices) > 1 else []
@@ -170,13 +169,17 @@ def connectivity_matrix_connect(
 
     # Sample random postsynaptic compartments (global comp indices).
     global_post_indices = np.hstack(
-        [sample_comp(post_cell_view.scope("global").cell(cell_idx)) for cell_idx in post_cell_inds]
+        [
+            sample_comp(post_cell_view.scope("global").cell(cell_idx))
+            for cell_idx in post_cell_inds
+        ]
     )
     post_rows = post_cell_view.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    global_pre_indices = pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
+    global_pre_indices = (
+        pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
+    )
     pre_rows = pre_cell_view.at(global_pre_indices[pre_cell_inds]).nodes
-
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
