@@ -108,6 +108,9 @@ class Network(Module):
         self.initialize()
         self.init_syns()
 
+    def __repr__(self):
+        return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.show()` for details."
+
     def _init_morph_jaxley_spsolve(self):
         branchpoint_group_inds = build_branchpoint_group_inds(
             len(self.par_inds),

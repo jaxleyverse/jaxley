@@ -22,10 +22,15 @@ def cumsum_leading_zero(array: Union[np.ndarray, List]) -> np.ndarray:
     return np.concatenate([np.asarray([0]), np.cumsum(arr)]).astype(arr.dtype)
 
 
-def index_is_all(idx, force=True):
-    """Check if the index is "all"."""
-    if isinstance(idx, str):
+def is_str_all(arg, force: bool = True) -> bool:
+    """Check if arg is "all".
+
+    Args:
+        arg: The arg to check.
+        force: If True, then assert that arg is "all".
+    """
+    if isinstance(arg, str):
         if force:
-            assert idx == "all", "Only 'all' is allowed"
-        return idx == "all"
+            assert arg == "all", "Only 'all' is allowed"
+        return arg == "all"
     return False
