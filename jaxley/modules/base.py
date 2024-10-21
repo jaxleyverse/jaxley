@@ -2086,15 +2086,14 @@ class View(Module):
         self.allow_make_trainable = pointer.allow_make_trainable
 
         # attrs affected by view
-        self.nseg = pointer.nseg
+        # indices need to be update first, since they are used in the following
         self._set_inds_in_view(pointer, at_nodes, at_edges)
+        self.nseg = pointer.nseg
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
-        self.edges = (
-            pointer.edges
-            if pointer.edges.empty
-            else pointer.edges.loc[self._edges_in_view]
-        )
+        ptr_edges = pointer.edges
+        self.edges = ptr_edges if ptr_edges.empty else ptr_edges.loc[self._edges_in_view]
+
         self.xyzr = self._xyzr_in_view()
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
         self.total_nbranches = len(self._branches_in_view)
@@ -2127,13 +2126,12 @@ class View(Module):
             k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
         }
 
-        self._set_jax_arrays_in_view(pointer)
+        # self._set_jax_arrays_in_view(pointer)
 
         self._update_local_indices()
+        
         # TODO:
         # self.debug_states
-        # self.jaxnodes
-        # self.jaxedges
 
         if len(self.nodes) == 0:
             raise ValueError("Nothing in view. Check your indices.")
@@ -2174,13 +2172,13 @@ class View(Module):
             )
 
     def _set_jax_arrays_in_view(self, pointer: Union[Module, View]):
-        a_intersects_b_at = lambda a, b: np.intersect1d(a, b, return_indices=True)[1]
+        a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
         if pointer.jaxnodes is not None:
             self.jaxnodes = {}
             comp_inds = pointer.jaxnodes["global_comp_index"]
             common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
             self.jaxnodes = {
-                k: v[common_inds]
+                k: v.at[common_inds]
                 for k, v in pointer.jaxnodes.items()
                 if len(common_inds) > 0
             }
@@ -2196,7 +2194,7 @@ class View(Module):
                     "local_edge_index"
                 ].values
                 if len(inds_in_view) > 0:
-                    self.jaxedges[key] = values[inds_in_view]
+                    self.jaxedges[key] = values.at[inds_in_view]
         else:
             self.jaxedges = None
 
