@@ -2092,7 +2092,9 @@ class View(Module):
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
         ptr_edges = pointer.edges
-        self.edges = ptr_edges if ptr_edges.empty else ptr_edges.loc[self._edges_in_view]
+        self.edges = (
+            ptr_edges if ptr_edges.empty else ptr_edges.loc[self._edges_in_view]
+        )
 
         self.xyzr = self._xyzr_in_view()
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
@@ -2129,7 +2131,7 @@ class View(Module):
         # self._set_jax_arrays_in_view(pointer)
 
         self._update_local_indices()
-        
+
         # TODO:
         # self.debug_states
 
@@ -2173,8 +2175,8 @@ class View(Module):
 
     def _set_jax_arrays_in_view(self, pointer: Union[Module, View]):
         a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
-        if pointer.jaxnodes is not None:
-            self.jaxnodes = {}
+        self.jaxnodes = {} if pointer.jaxnodes is not None else None
+        if self.jaxnodes is not None:
             comp_inds = pointer.jaxnodes["global_comp_index"]
             common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
             self.jaxnodes = {
@@ -2182,11 +2184,9 @@ class View(Module):
                 for k, v in pointer.jaxnodes.items()
                 if len(common_inds) > 0
             }
-        else:
-            self.jaxnodes = None
 
+        self.jaxedges = {} if pointer.jaxedges is not None else None
         if pointer.jaxedges is not None:
-            self.jaxedges = {}
             for key, values in pointer.jaxedges.items():
                 syn_name_from_param = key.split("_")[0]
                 syn_edges = self.__getattr__(syn_name_from_param).edges
@@ -2195,8 +2195,6 @@ class View(Module):
                 ].values
                 if len(inds_in_view) > 0:
                     self.jaxedges[key] = values.at[inds_in_view]
-        else:
-            self.jaxedges = None
 
     def _set_externals_in_view(self):
         self.externals = {}
