@@ -1033,7 +1033,7 @@ class Module(ABC):
         """
         self.base.groups[group_name] = self._nodes_in_view
 
-    # TODO: Make this work for View
+    # TODO: MAKE THIS WORK FOR VIEW?
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
 
@@ -1121,8 +1121,8 @@ class Module(ABC):
         )
         return params
 
-    # TODO: ENSURE THIS WORKS FOR VIEW?
-    def get_states_from_nodes_and_edges(self):
+    # TODO: MAKE THIS WORK FOR VIEW?
+    def get_states_from_nodes_and_edges(self) -> Dict[str, jnp.ndarray]:
         """Return states as they are set in the `.nodes` and `.edges` tables."""
         self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
         states = {"v": self.base.jaxnodes["v"]}
@@ -1134,7 +1134,7 @@ class Module(ABC):
             states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
 
-    # TODO: ENSURE THIS WORKS FOR VIEW?
+    # TODO: MAKE THIS WORK FOR VIEW?
     def get_all_states(
         self, pstate: List[Dict], all_params, delta_t: float
     ) -> Dict[str, jnp.ndarray]:
@@ -1174,7 +1174,7 @@ class Module(ABC):
         return states
 
     @property
-    def initialized(self):
+    def initialized(self) -> bool:
         """Whether the `Module` is ready to be solved or not."""
         return self.initialized_morph and self.initialized_syns
 
@@ -1183,7 +1183,7 @@ class Module(ABC):
         self.init_morph()
         return self
 
-    # TODO: ENSURE THIS WORKS FOR VIEW?
+    # TODO: MAKE THIS WORK FOR VIEW?
     def init_states(self, delta_t: float = 0.025):
         """Initialize all mechanisms in their steady state.
 
@@ -1230,7 +1230,6 @@ class Module(ABC):
                 # no issues with overriding states).
                 self.nodes.loc[channel_indices, key] = val
 
-    # TODO: ENSURE THIS WORKS
     def _init_morph_for_debugging(self):
         """Instandiates row and column inds which can be used to solve the voltage eqs.
 
@@ -2223,13 +2222,13 @@ class View(Module):
             p for p in trainable_params_in_view if len(next(iter(p.values()))) > 0
         ]
 
-    def _channels_in_view(self, pointer):
+    def _channels_in_view(self, pointer: Union[Module, View]) -> List[Channel]:
         names = [name._name for name in pointer.channels]
         channel_in_view = self.nodes[names].any(axis=0)
         channel_in_view = channel_in_view[channel_in_view].index
         return [c for c in pointer.channels if c._name in channel_in_view]
 
-    def _set_synapses_in_view(self, pointer):
+    def _set_synapses_in_view(self, pointer: Union[Module, View]):
         viewed_synapses = []
         viewed_params = []
         viewed_states = []
@@ -2246,11 +2245,11 @@ class View(Module):
         self.synapse_param_names = viewed_params
         self.synapse_state_names = viewed_states
 
-    def _nbranches_per_cell_in_view(self):
+    def _nbranches_per_cell_in_view(self) -> np.ndarray:
         cell_nodes = self.nodes.groupby("global_cell_index")
         return cell_nodes["global_branch_index"].nunique().to_numpy()
 
-    def _xyzr_in_view(self):
+    def _xyzr_in_view(self) -> List[np.ndarray]:
         xyzr = [self.base.xyzr[i] for i in self._branches_in_view].copy()
 
         # Currently viewing with `.loc` will show the closest compartment
@@ -2284,19 +2283,19 @@ class View(Module):
         return self.base._init_morph_jax_spsolve()
 
     @property
-    def _branches_in_view(self):
+    def _branches_in_view(self) -> np.ndarray:
         return self.nodes["global_branch_index"].unique()
 
     @property
-    def _cells_in_view(self):
+    def _cells_in_view(self) -> np.ndarray:
         return self.nodes["global_cell_index"].unique()
 
     @property
-    def _comps_in_view(self):
+    def _comps_in_view(self) -> np.ndarray:
         return self.nodes["global_comp_index"].unique()
 
     @property
-    def _branch_edges_in_view(self):
+    def _branch_edges_in_view(self) -> np.ndarray:
         incl_branches = self.nodes["global_branch_index"].unique()
         pre = self.base.branch_edges["parent_branch_index"].isin(incl_branches)
         post = self.base.branch_edges["child_branch_index"].isin(incl_branches)
