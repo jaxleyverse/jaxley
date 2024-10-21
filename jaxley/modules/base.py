@@ -558,8 +558,8 @@ class Module(ABC):
         # TODO: add reset_index, i.e. for parents, nodes, edges etc. such that they
         # start from 0/-1 and are contiguous
         if as_module:
+            raise NotImplementedError("Not yet implemented.")
             # TODO: initialize a new module with the same attributes
-            pass
         return view
 
     @property
