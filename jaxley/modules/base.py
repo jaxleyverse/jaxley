@@ -161,11 +161,10 @@ class Module(ABC):
             view._set_controlled_by_param(key)  # overwrites param set by edge
             return view
 
-    def _viewing_levels(self) -> List[str]:
+    def _viewable_levels(self) -> List[str]:
         """Returns levels that module can be viewed at.
 
-        I.e. for net -> [cell, branch, comp]. For branch
-        -> [comp]"""
+        I.e. for net -> [cell, branch, comp]. For branch -> [comp]"""
         levels = ["network", "cell", "branch", "comp"]
         view_lvl = self._current_view
         children = levels[levels.index(view_lvl) + 1 :]
@@ -182,9 +181,8 @@ class Module(ABC):
         ), "Lazy indexing is not supported for this View/Module."
         index = index if isinstance(index, tuple) else (index,)
 
-        next_lvls = (
-            self.base._viewing_levels() if is_group_view else self._viewing_levels()
-        )
+        module_or_view = self.base if is_group_view else self
+        next_lvls = module_or_view._viewable_levels()
         assert len(index) <= len(next_lvls), "Too many indices."
         view = self
         for i, child in zip(index, next_lvls):
@@ -2129,6 +2127,8 @@ class View(Module):
             k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
         }
 
+        self._set_jax_arrays_in_view(pointer)
+
         self._update_local_indices()
         # TODO:
         # self.debug_states
@@ -2172,6 +2172,33 @@ class View(Module):
             self._nodes_in_view = np.intersect1d(
                 possible_nodes_in_view, self._nodes_in_view
             )
+
+    def _set_jax_arrays_in_view(self, pointer: Union[Module, View]):
+        a_intersects_b_at = lambda a, b: np.intersect1d(a, b, return_indices=True)[1]
+        if pointer.jaxnodes is not None:
+            self.jaxnodes = {}
+            comp_inds = pointer.jaxnodes["global_comp_index"]
+            common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
+            self.jaxnodes = {
+                k: v[common_inds]
+                for k, v in pointer.jaxnodes.items()
+                if len(common_inds) > 0
+            }
+        else:
+            self.jaxnodes = None
+
+        if pointer.jaxedges is not None:
+            self.jaxedges = {}
+            for key, values in pointer.jaxedges.items():
+                syn_name_from_param = key.split("_")[0]
+                syn_edges = self.__getattr__(syn_name_from_param).edges
+                inds_in_view = syn_edges.loc[self._edges_in_view][
+                    "local_edge_index"
+                ].values
+                if len(inds_in_view) > 0:
+                    self.jaxedges[key] = values[inds_in_view]
+        else:
+            self.jaxedges = None
 
     def _set_externals_in_view(self):
         self.externals = {}

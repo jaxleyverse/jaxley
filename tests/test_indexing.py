@@ -252,3 +252,20 @@ def test_solve_indexer():
     assert np.all(idx.branch(branch_inds) == np.asarray([[0, 1, 2, 3], [7, 8, 9, 10]]))
     assert np.all(idx.lower(branch_inds) == np.asarray([[1, 2, 3], [8, 9, 10]]))
     assert np.all(idx.upper(branch_inds) == np.asarray([[0, 1, 2], [7, 8, 9]]))
+
+
+# TODO: tests
+# module.view == module
+
+# jx integrate works on different levels and views
+
+# make sure all attrs in module also have a corresponding attr in view
+# def test_view_attrs(module):
+#     exceptions = ["_scope", "_at", "view"]
+
+#     for name, attr in module.__dict__.items():
+#         if name not in exceptions:
+#             # check if attr is in view
+#             assert hasattr(View(module, np.array([0,1])), name), f"View missing attribute: {name}"
+#             # check if types match
+#             assert type(getattr(module, name)) == type(getattr(View(module, np.array([0,1])), name), f"Type mismatch: {name}")
