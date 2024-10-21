@@ -46,6 +46,10 @@ class Module(ABC):
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.
 
+    Modules can be traversed and modified using the `at`, `cell`, `branch`, `comp`,
+    `edge`, and `loc` methods. The `scope` method can be used to toggle between
+    global and local indices.
+
     This base class defines the scaffold for all jaxley modules (compartments,
     branches, cells, networks).
     """
@@ -259,15 +263,14 @@ class Module(ABC):
         avoid overlapping branch_lens i.e. norm_cum_branch_len = [0,1,1,2] for only
         incrementing.
         """
-        nsegs = (
-            self.nodes.groupby("global_branch_index")["global_comp_index"]
-            .nunique()
-            .to_numpy()
-        )
+        nodes_by_branches = self.nodes.groupby("global_branch_index")
+        nsegs = nodes_by_branches["global_comp_index"].nunique().to_numpy()
 
-        comp_ends = np.hstack(
-            [np.linspace(0, 1, nseg + 1) + 2 * i for i, nseg in enumerate(nsegs)]
-        )
+        comp_ends = [
+            np.linspace(0, 1, nseg + 1) + 2 * i for i, nseg in enumerate(nsegs)
+        ]
+        comp_ends = np.hstack(comp_ends)
+
         comp_ends = comp_ends.reshape(-1)
         cum_branch_lens = []
         for i, xyzr in enumerate(self.xyzr):
@@ -310,11 +313,8 @@ class Module(ABC):
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range)) else idx
-        idx = (
-            np.arange(len(self._nodes_in_view) + 1)[idx]
-            if isinstance(idx, slice)
-            else idx
-        )
+        num_nodes = len(self._nodes_in_view)
+        idx = np.arange(num_nodes + 1)[idx] if isinstance(idx, slice) else idx
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
         assert isinstance(idx, np.ndarray), "Invalid type"
@@ -581,9 +581,9 @@ class Module(ABC):
         This is run at `__init__()`. It does not deal with channels.
         """
         for param_name, param_value in param_dict.items():
-            self.nodes[param_name] = param_value
+            self.base.nodes[param_name] = param_value
         for state_name, state_value in state_dict.items():
-            self.nodes[state_name] = state_value
+            self.base.nodes[state_name] = state_value
 
     def _gather_channels_from_constituents(self, constituents: List):
         """Modify `self.channels` and `self.nodes` with channel info from constituents.
@@ -595,15 +595,15 @@ class Module(ABC):
         for module in constituents:
             for channel in module.channels:
                 if channel._name not in [c._name for c in self.channels]:
-                    self.channels.append(channel)
+                    self.base.channels.append(channel)
                 if channel.current_name not in self.membrane_current_names:
-                    self.membrane_current_names.append(channel.current_name)
+                    self.base.membrane_current_names.append(channel.current_name)
         # Setting columns of channel names to `False` instead of `NaN`.
-        for channel in self.channels:
+        for channel in self.base.channels:
             name = channel._name
-            self.nodes.loc[self.nodes[name].isna(), name] = False
+            self.base.nodes.loc[self.nodes[name].isna(), name] = False
 
-    # TODO: Make this work for View
+    # TODO: Make this work for View?
     def to_jax(self):
         """Move `.nodes` to `.jaxnodes`.
 
@@ -658,9 +658,7 @@ class Module(ABC):
         cols = []
         inds = ["comp_index", "branch_index", "cell_index"]
         scopes = ["local", "global"]
-        cols += (
-            [f"{scope}_{idx}" for idx in inds for scope in scopes] if indices else []
-        )
+        cols += [f"{s}_{i}" for i in inds for s in scopes] if indices else []
         cols += [ch._name for ch in self.channels] if channel_names else []
         cols += (
             sum([list(ch.channel_params) for ch in self.channels], []) if params else []
