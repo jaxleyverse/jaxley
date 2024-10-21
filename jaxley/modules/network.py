@@ -109,7 +109,7 @@ class Network(Module):
         self.init_syns()
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.show()` for details."
+        return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
 
     def _init_morph_jaxley_spsolve(self):
         branchpoint_group_inds = build_branchpoint_group_inds(
@@ -611,8 +611,8 @@ class Network(Module):
         self.base.edges = concat_and_ignore_empty(
             [self.base.edges, new_rows], ignore_index=True, axis=0
         )
-
         self._add_params_to_edges(synapse_type, indices)
+        self.base.edges["controlled_by_param"] = 0
         self._edges_in_view = self.edges.index.to_numpy()
 
     def _add_params_to_edges(self, synapse_type, indices):

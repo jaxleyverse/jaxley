@@ -127,7 +127,7 @@ class Module(ABC):
         self.base = self
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.show()` for details."
+        return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.nodes` for details."
 
     def __str__(self):
         return f"jx.{type(self).__name__}"
@@ -142,7 +142,11 @@ class Module(ABC):
 
         # intercepts calls to groups
         if key in self.base.groups:
-            view = self.at(self.groups[key]) if key in self.groups else self.at(None)
+            view = (
+                self.filter(self.groups[key])
+                if key in self.groups
+                else self.filter(None)
+            )
             view._set_controlled_by_param(key)
             return view
 
@@ -150,14 +154,16 @@ class Module(ABC):
         if key in [c._name for c in self.base.channels]:
             channel_names = [c._name for c in self.channels]
             inds = self.nodes.index[self.nodes[key]].to_numpy()
-            view = self.at(inds) if key in channel_names else self.at(None)
+            view = self.filter(inds) if key in channel_names else self.filter(None)
             view._set_controlled_by_param(key)
             return view
 
         # intercepts calls to synapse types
         if key in self.base.synapse_names:
             syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
-            view = self.edge(syn_inds) if key in self.synapse_names else self.at(None)
+            view = (
+                self.edge(syn_inds) if key in self.synapse_names else self.filter(None)
+            )
             view._set_controlled_by_param(key)  # overwrites param set by edge
             return view
 
@@ -222,12 +228,13 @@ class Module(ABC):
             obj[local_idx_cols] = idcs[local_idx_cols].astype(int)
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
+
         self.nodes = reorder(
             self.nodes,
             [
                 f"{scope}_{name}"
-                for name in index_names
                 for scope in ["global", "local"]
+                for name in index_names
             ],
         )
         self.nodes = reorder(self.nodes, ["controlled_by_param"], first=False)
@@ -310,7 +317,7 @@ class Module(ABC):
         np_dtype = np.int64 if dtype is int else np.float64
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
-        idx = np.array(idx) if isinstance(idx, (list, range)) else idx
+        idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
         num_nodes = len(self._nodes_in_view)
         idx = np.arange(num_nodes + 1)[idx] if isinstance(idx, slice) else idx
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
@@ -331,15 +338,18 @@ class Module(ABC):
             self.edges["controlled_by_param"] = self.edges[f"global_pre_{key}_index"]
         elif key == "edge":
             self.edges["controlled_by_param"] = np.arange(len(self.edges))
+        elif key == "filter":
+            self.nodes["controlled_by_param"] = np.arange(len(self.nodes))
+            self.edges["controlled_by_param"] = np.arange(len(self.edges))
         else:
             self.nodes["controlled_by_param"] = 0
             self.edges["controlled_by_param"] = 0
         self._current_view = key
 
-    def at(
+    def filter(
         self, nodes: np.ndarray = None, edges: np.ndarray = None, sorted: bool = False
     ) -> View:
-        """Return View of the module at the specified node or edges indices.
+        """Return View of the module filtered by specific node or edges indices.
 
         Args:
             nodes: indices of nodes to view. If None, all nodes are viewed.
@@ -357,7 +367,9 @@ class Module(ABC):
         edges = self._edges_in_view if is_str_all(edges) else edges
         edges = np.sort(edges) if sorted else edges
 
-        return View(self, nodes, edges)
+        view = View(self, nodes, edges)
+        view._set_controlled_by_param("filter")
+        return view
 
     def set_scope(self, scope: str):
         """Toggle between "global" or "local" scope.
@@ -641,7 +653,7 @@ class Module(ABC):
 
         Args:
             param_names: The names of the parameters to show. If `None`, all parameters
-                are shown. NOT YET IMPLEMENTED.
+                are shown.
             indices: Whether to show the indices of the compartments.
             params: Whether to show the parameters of the compartments.
             states: Whether to show the states of the compartments.
@@ -656,7 +668,8 @@ class Module(ABC):
         cols = []
         inds = ["comp_index", "branch_index", "cell_index"]
         scopes = ["local", "global"]
-        cols += [f"{s}_{i}" for i in inds for s in scopes] if indices else []
+        inds = [f"{s}_{i}" for i in inds for s in scopes] if indices else []
+        cols += inds
         cols += [ch._name for ch in self.channels] if channel_names else []
         cols += (
             sum([list(ch.channel_params) for ch in self.channels], []) if params else []
@@ -667,7 +680,9 @@ class Module(ABC):
 
         if not param_names is None:
             cols = (
-                [c for c in cols if c in param_names] if params else list(param_names)
+                inds + [c for c in cols if c in param_names]
+                if params
+                else list(param_names)
             )
 
         return nodes[cols]
@@ -865,7 +880,7 @@ class Module(ABC):
 
         # Set the correct datatype after having performed an average which cast
         # everything to float.
-        integer_cols = ["global_comp_index", "global_branch_index", "global_cell_index"]
+        integer_cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
         view[integer_cols] = view[integer_cols].astype(int)
 
         # Whether or not a channel exists in a compartment is a boolean.
@@ -949,6 +964,10 @@ class Module(ABC):
         assert (
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
+        nsegs_per_branch = self.nodes["global_branch_index"].value_counts().to_numpy()
+        assert np.all(
+            nsegs_per_branch == nsegs_per_branch[0]
+        ), "Parameter sharing is not allowed for branches with different number of compartments."
 
         data = self.nodes if key in self.nodes.columns else None
         data = self.edges if key in self.edges.columns else data
@@ -1029,7 +1048,12 @@ class Module(ABC):
         Args:
             group_name: The name of the group.
         """
-        self.base.groups[group_name] = self._nodes_in_view
+        if group_name not in self.base.groups:
+            self.base.groups[group_name] = self._nodes_in_view
+        else:
+            self.base.groups[group_name] = np.unique(
+                np.concatenate([self.base.groups[group_name], self._nodes_in_view])
+            )
 
     # TODO: MAKE THIS WORK FOR VIEW?
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
@@ -2128,7 +2152,7 @@ class View(Module):
             k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
         }
 
-        # self._set_jax_arrays_in_view(pointer)
+        # self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(pointer)
 
         self._update_local_indices()
 
@@ -2172,29 +2196,32 @@ class View(Module):
             self._nodes_in_view = np.intersect1d(
                 possible_nodes_in_view, self._nodes_in_view
             )
+        elif has_node_inds and has_edge_inds:
+            self._nodes_in_view = at_nodes
+            self._edges_in_view = at_edges
 
-    def _set_jax_arrays_in_view(self, pointer: Union[Module, View]):
-        a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
-        self.jaxnodes = {} if pointer.jaxnodes is not None else None
-        if self.jaxnodes is not None:
-            comp_inds = pointer.jaxnodes["global_comp_index"]
-            common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
-            self.jaxnodes = {
-                k: v.at[common_inds]
-                for k, v in pointer.jaxnodes.items()
-                if len(common_inds) > 0
-            }
+    # TODO: Implement this
+    # def _jax_arrays_in_view(self, pointer: Union[Module, View]):
+    #     a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
+    #     jaxnodes = {} if pointer.jaxnodes is not None else None
+    #     if self.jaxnodes is not None:
+    #         comp_inds = pointer.jaxnodes["global_comp_index"]
+    #         common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
+    #         jaxnodes = {
+    #             k: v[common_inds]
+    #             for k, v in pointer.jaxnodes.items()
+    #             if len(common_inds) > 0
+    #         }
 
-        self.jaxedges = {} if pointer.jaxedges is not None else None
-        if pointer.jaxedges is not None:
-            for key, values in pointer.jaxedges.items():
-                syn_name_from_param = key.split("_")[0]
-                syn_edges = self.__getattr__(syn_name_from_param).edges
-                inds_in_view = syn_edges.loc[self._edges_in_view][
-                    "local_edge_index"
-                ].values
-                if len(inds_in_view) > 0:
-                    self.jaxedges[key] = values.at[inds_in_view]
+    #     jaxedges = {} if pointer.jaxedges is not None else None
+    #     if pointer.jaxedges is not None:
+    #         for key, values in pointer.jaxedges.items():
+    #             syn_name_from_param = key.split("_")[0]
+    #             syn_edges = self.base.edges[pointer.edges["type"]==syn_name_from_param]
+
+    #             if len(inds_in_view) > 0:
+    #                 jaxedges[key] = values[inds_in_view]
+    #     return jaxnodes, jaxedges
 
     def _set_externals_in_view(self):
         self.externals = {}

@@ -41,7 +41,7 @@ class Compartment(Module):
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
-            dict(global_comp_index=[0], global_branch_index=[0], global_cell_index=[0])
+            dict(global_cell_index=[0], global_branch_index=[0], global_comp_index=[0])
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
         self._update_local_indices()
