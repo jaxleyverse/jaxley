@@ -2140,7 +2140,7 @@ class View(Module):
 
         self.channels = self._channels_in_view(pointer)
         self.membrane_current_names = [c._name for c in self.channels]
-        self._set_trainables_in_view()
+        self._set_trainables_in_view()  # run after synapses and channels
         self.num_trainable_params = np.sum(
             [len(inds) for inds in self.indices_set_by_trainables]
         ).astype(int)
@@ -2152,7 +2152,9 @@ class View(Module):
             k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
         }
 
-        # self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(pointer)
+        self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
+            pointer
+        )  # run after trainables
 
         self._update_local_indices()
 
@@ -2200,28 +2202,30 @@ class View(Module):
             self._nodes_in_view = at_nodes
             self._edges_in_view = at_edges
 
-    # TODO: Implement this
-    # def _jax_arrays_in_view(self, pointer: Union[Module, View]):
-    #     a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
-    #     jaxnodes = {} if pointer.jaxnodes is not None else None
-    #     if self.jaxnodes is not None:
-    #         comp_inds = pointer.jaxnodes["global_comp_index"]
-    #         common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
-    #         jaxnodes = {
-    #             k: v[common_inds]
-    #             for k, v in pointer.jaxnodes.items()
-    #             if len(common_inds) > 0
-    #         }
+    # TODO: currently causes tests to fail -> fix
+    def _jax_arrays_in_view(self, pointer: Union[Module, View]):
+        a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
+        jaxnodes = {} if pointer.jaxnodes is not None else None
+        if self.jaxnodes is not None:
+            comp_inds = pointer.jaxnodes["global_comp_index"]
+            common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
+            jaxnodes = {
+                k: v[common_inds]
+                for k, v in pointer.jaxnodes.items()
+                if len(common_inds) > 0
+            }
 
-    #     jaxedges = {} if pointer.jaxedges is not None else None
-    #     if pointer.jaxedges is not None:
-    #         for key, values in pointer.jaxedges.items():
-    #             syn_name_from_param = key.split("_")[0]
-    #             syn_edges = self.base.edges[pointer.edges["type"]==syn_name_from_param]
-
-    #             if len(inds_in_view) > 0:
-    #                 jaxedges[key] = values[inds_in_view]
-    #     return jaxnodes, jaxedges
+        jaxedges = {} if pointer.jaxedges is not None else None
+        if pointer.jaxedges is not None:
+            for key, values in self.base.jaxedges.items():
+                if (syn_name := key.split("_")[0]) in self.synapse_names:
+                    syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
+                    inds = np.intersect1d(
+                        self._edges_in_view, syn_edges.index, return_indices=True
+                    )[2]
+                    if len(inds) > 0:
+                        jaxedges[key] = values[inds]
+        return jaxnodes, jaxedges
 
     def _set_externals_in_view(self):
         self.externals = {}
@@ -2242,14 +2246,16 @@ class View(Module):
             if len(trainable_inds) > 0
             else []
         )
-        trainable_inds_in_view = np.intersect1d(trainable_inds, self._nodes_in_view)
+        trainable_node_inds_in_view = np.intersect1d(
+            trainable_inds, self._nodes_in_view
+        )
 
         índices_set_by_trainables_in_view = []
         trainable_params_in_view = []
         for inds, params in zip(
             self.base.indices_set_by_trainables, self.base.trainable_params
         ):
-            in_view = np.isin(inds, trainable_inds_in_view)
+            in_view = np.isin(inds, trainable_node_inds_in_view)
 
             completely_in_view = in_view.all(axis=1)
             índices_set_by_trainables_in_view.append(inds[completely_in_view])
@@ -2264,6 +2270,29 @@ class View(Module):
             trainable_params_in_view.append(
                 {k: v[partially_in_view] for k, v in params.items()}
             )
+
+        # TODO: working but ugly. maybe integrate into above loop
+        trainable_names = np.array([next(iter(d)) for d in self.base.trainable_params])
+        is_syn_trainable_in_view = np.isin(trainable_names, self.synapse_param_names)
+        syn_trainable_names_in_view = trainable_names[is_syn_trainable_in_view]
+        syn_trainable_inds_in_view = np.intersect1d(
+            syn_trainable_names_in_view, trainable_names, return_indices=True
+        )[2]
+        for idx in syn_trainable_inds_in_view:
+            syn_name = trainable_names[idx].split("_")[0]
+            syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
+            syn_inds = np.arange(len(syn_edges))
+            syn_inds_in_view = syn_inds[np.isin(syn_edges.index, self._edges_in_view)]
+
+            syn_trainable_params_in_view = {
+                k: v[syn_inds_in_view]
+                for k, v in self.base.trainable_params[idx].items()
+            }
+            trainable_params_in_view.append(syn_trainable_params_in_view)
+            syn_inds_set_by_trainables_in_view = self.base.indices_set_by_trainables[
+                idx
+            ][syn_inds_in_view]
+            índices_set_by_trainables_in_view.append(syn_inds_set_by_trainables_in_view)
 
         self.indices_set_by_trainables = [
             inds for inds in índices_set_by_trainables_in_view if len(inds) > 0
