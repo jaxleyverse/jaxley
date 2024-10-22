@@ -417,7 +417,7 @@ class Module(ABC):
         where = self.nodes[self._scope + f"_{key}_index"].isin(idx)
         inds = self.nodes.index[where].to_numpy()
 
-        view = View(self, inds)
+        view = View(self, nodes=inds)
         view._set_controlled_by_param(key)
         return view
 
@@ -2130,8 +2130,8 @@ class View(Module):
     def __init__(
         self,
         pointer: Union[Module, View],
-        at_nodes: Optional[np.ndarray] = None,
-        at_edges: Optional[np.ndarray] = None,
+        nodes: Optional[np.ndarray] = None,
+        edges: Optional[np.ndarray] = None,
     ):
         self.base = pointer.base  # forard base module
         self._scope = pointer._scope  # forward view
@@ -2143,7 +2143,7 @@ class View(Module):
 
         # attrs affected by view
         # indices need to be update first, since they are used in the following
-        self._set_inds_in_view(pointer, at_nodes, at_edges)
+        self._set_inds_in_view(pointer, nodes, edges)
         self.nseg = pointer.nseg
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
@@ -2200,18 +2200,18 @@ class View(Module):
             raise ValueError("Nothing in view. Check your indices.")
 
     def _set_inds_in_view(
-        self, pointer: Union[Module, View], at_nodes: np.ndarray, at_edges: np.ndarray
+        self, pointer: Union[Module, View], nodes: np.ndarray, edges: np.ndarray
     ):
         """Set nodes and edge indices that are in view."""
         # set nodes and edge indices in view
-        has_node_inds = at_nodes is not None
-        has_edge_inds = at_edges is not None
+        has_node_inds = nodes is not None
+        has_edge_inds = edges is not None
         self._edges_in_view = pointer._edges_in_view
         self._nodes_in_view = pointer._nodes_in_view
 
         if not has_edge_inds and has_node_inds:
             base_edges = self.base.edges
-            self._nodes_in_view = at_nodes
+            self._nodes_in_view = nodes
             incl_comps = pointer.nodes.loc[
                 self._nodes_in_view, "global_comp_index"
             ].unique()
@@ -2223,7 +2223,7 @@ class View(Module):
             )
         elif not has_node_inds and has_edge_inds:
             base_nodes = self.base.nodes
-            self._edges_in_view = at_edges
+            self._edges_in_view = edges
             incl_comps = pointer.edges.loc[
                 self._edges_in_view, ["global_pre_comp_index", "global_post_comp_index"]
             ]
@@ -2234,8 +2234,8 @@ class View(Module):
                 possible_nodes_in_view, self._nodes_in_view
             )
         elif has_node_inds and has_edge_inds:
-            self._nodes_in_view = at_nodes
-            self._edges_in_view = at_edges
+            self._nodes_in_view = nodes
+            self._edges_in_view = edges
 
     def _jax_arrays_in_view(self, pointer: Union[Module, View]):
         a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
