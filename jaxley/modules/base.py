@@ -1038,7 +1038,6 @@ class Module(ABC):
             new_params = jnp.mean(param_vals, axis=1)
         self.base.trainable_params.append({key: new_params})
         self.base.indices_set_by_trainables.append(indices_per_param)
-        self.num_trainable_params += num_created_parameters
         self.base.num_trainable_params += num_created_parameters
         if verbose:
             print(
