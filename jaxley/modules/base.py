@@ -418,7 +418,7 @@ class Module(ABC):
         where = self.nodes[self._scope + f"_{key}_index"].isin(idx)
         inds = self.nodes.index[where].to_numpy()
 
-        view = View(self, nodes=inds)
+        view = View(self, inds)
         view._set_controlled_by_param(key)
         return view
 
