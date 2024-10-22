@@ -170,6 +170,6 @@ def connectivity_matrix_connect(
     global_pre_indices = (
         pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
     )  # setting scope ensure that this works indep of current scope
-    pre_rows = pre_cell_view.filter(nodes=global_pre_indices[pre_cell_inds]).nodes
+    pre_rows = pre_cell_view.select(nodes=global_pre_indices[pre_cell_inds]).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)

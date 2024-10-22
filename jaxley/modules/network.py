@@ -61,7 +61,7 @@ class Network(Module):
 
         self.nbranches_per_cell = [cell.total_nbranches for cell in cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
-        self.cumsum_nbranches = jnp.array(cumsum_leading_zero(self.nbranches_per_cell))
+        self.cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])

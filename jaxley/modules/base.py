@@ -82,7 +82,7 @@ class Module(ABC):
             + ["pre_locs", "post_locs", "type", "type_ind"]
         )
 
-        self.cumsum_nbranches: Optional[jnp.ndarray] = None
+        self.cumsum_nbranches: Optional[np.ndarray] = None
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
 
@@ -144,9 +144,9 @@ class Module(ABC):
         # intercepts calls to groups
         if key in self.base.groups:
             view = (
-                self.filter(self.groups[key])
+                self.select(self.groups[key])
                 if key in self.groups
-                else self.filter(None)
+                else self.select(None)
             )
             view._set_controlled_by_param(key)
             return view
@@ -155,7 +155,7 @@ class Module(ABC):
         if key in [c._name for c in self.base.channels]:
             channel_names = [c._name for c in self.channels]
             inds = self.nodes.index[self.nodes[key]].to_numpy()
-            view = self.filter(inds) if key in channel_names else self.filter(None)
+            view = self.select(inds) if key in channel_names else self.select(None)
             view._set_controlled_by_param(key)
             return view
 
@@ -163,7 +163,7 @@ class Module(ABC):
         if key in self.base.synapse_names:
             syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
             view = (
-                self.edge(syn_inds) if key in self.synapse_names else self.filter(None)
+                self.edge(syn_inds) if key in self.synapse_names else self.select(None)
             )
             view._set_controlled_by_param(key)  # overwrites param set by edge
             return view
@@ -357,7 +357,7 @@ class Module(ABC):
             self.edges["controlled_by_param"] = 0
         self._current_view = key
 
-    def filter(
+    def select(
         self, nodes: np.ndarray = None, edges: np.ndarray = None, sorted: bool = False
     ) -> View:
         """Return View of the module filtered by specific node or edges indices.
