@@ -1,14 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Tuple
-
 import numpy as np
-
-
-def pre_comp_not_equal_post_comp(pre: "View", post: "View") -> np.ndarray[bool]:
-    """Check if pre and post compartments are different."""
-    return np.any(pre._nodes_in_view != post._nodes_in_view)
 
 
 def is_same_network(pre: "View", post: "View") -> bool:
@@ -43,9 +36,6 @@ def connect(
     assert is_same_network(
         pre, post
     ), "Pre and post compartments must be part of the same network."
-    assert np.all(
-        pre_comp_not_equal_post_comp(pre, post)
-    ), "Pre and post compartments must be different."
 
     pre.base._append_multiple_synapses(pre.nodes, post.nodes, synapse_type)
 
@@ -179,7 +169,7 @@ def connectivity_matrix_connect(
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
     global_pre_indices = (
         pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-    )
+    )  # setting scope ensure that this works indep of current scope
     pre_rows = pre_cell_view.filter(nodes=global_pre_indices[pre_cell_inds]).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
