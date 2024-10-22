@@ -52,7 +52,7 @@ class Network(Module):
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
 
-        self.cells_list = cells  # TODO: TEMPORARY HOTFIX, REMOVE BY ADDING ATTRS TO VIEW (solve_indexer.children_in_level)
+        self.cells_list = cells  # TODO: TEMPORARY FIX, REMOVE BY ADDING ATTRS TO VIEW (solve_indexer.children_in_level)
         self.nseg_per_branch = np.concatenate([cell.nseg_per_branch for cell in cells])
         self.nseg = int(np.max(self.nseg_per_branch))
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
@@ -61,7 +61,7 @@ class Network(Module):
 
         self.nbranches_per_cell = [cell.total_nbranches for cell in cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
-        self.cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
+        self.cumsum_nbranches = jnp.array(cumsum_leading_zero(self.nbranches_per_cell))
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])

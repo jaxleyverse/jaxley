@@ -14,6 +14,9 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connect import connect
+from jaxley.modules.base import View
+from jaxley.synapses import TestSynapse
 from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
 from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import JaxleySolveIndexer
@@ -255,17 +258,46 @@ def test_solve_indexer():
 
 
 # TODO: tests
-# module.view == module
 
-# jx integrate works on different levels and views
+comp = jx.Compartment()
+branch = jx.Branch(comp, nseg=3)
+cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+net = jx.Network([cell] * 3)
+connect(net[0, 0, 0], net[0, 0, 1], TestSynapse())
+
 
 # make sure all attrs in module also have a corresponding attr in view
-# def test_view_attrs(module):
-#     exceptions = ["_scope", "_at", "view"]
+@pytest.mark.parametrize("module", [comp, branch, cell, net])
+def test_view_attrs(module):
+    # attributes of Module that do not have to exist in View
+    exceptions = ["view"]
+    # TODO: should be added to View in the future
+    exceptions += [
+        "cumsum_nseg",
+        "_internal_node_inds",
+        "par_inds",
+        "child_inds",
+        "child_belongs_to_branchpoint",
+        "solve_indexer",
+        "_comp_edges",
+        "_n_nodes",
+        "_data_inds",
+        "_indices_jax_spsolve",
+        "_indptr_jax_spsolve",
+    ]  # for base/comp
+    exceptions += ["comb_children"]  # for cell
+    exceptions += [
+        "cells_list",
+        "cumsum_nbranchpoints_per_cell",
+        "_cumsum_nseg_per_cell",
+    ]  # for network
 
-#     for name, attr in module.__dict__.items():
-#         if name not in exceptions:
-#             # check if attr is in view
-#             assert hasattr(View(module, np.array([0,1])), name), f"View missing attribute: {name}"
-#             # check if types match
-#             assert type(getattr(module, name)) == type(getattr(View(module, np.array([0,1])), name), f"Type mismatch: {name}")
+    for name, attr in module.__dict__.items():
+        if name not in exceptions:
+            # check if attr is in view
+            view = View(module)
+            assert hasattr(view, name), f"View missing attribute: {name}"
+            # check if types match
+            assert type(getattr(module, name)) == type(
+                getattr(view, name)
+            ), f"Type mismatch: {name}, Module type: {type(getattr(module, name))}, View type: {type(getattr(view, name))}"

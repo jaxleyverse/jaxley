@@ -173,8 +173,7 @@ class Module(ABC):
 
         I.e. for net -> [cell, branch, comp]. For branch -> [comp]"""
         levels = ["network", "cell", "branch", "comp"]
-        view_lvl = self._current_view
-        children = levels[levels.index(view_lvl) + 1 :]
+        children = levels[levels.index(self._current_view) + 1 :]
         return children
 
     def __getitem__(self, index):
@@ -189,11 +188,11 @@ class Module(ABC):
         index = index if isinstance(index, tuple) else (index,)
 
         module_or_view = self.base if is_group_view else self
-        next_lvls = module_or_view._viewable_levels()
-        assert len(index) <= len(next_lvls), "Too many indices."
+        child_views = module_or_view._childviews()
+        assert len(index) <= len(child_views), "Too many indices."
         view = self
-        for i, child in zip(index, next_lvls):
-            view = view._at_level(child, i)
+        for i, child in zip(index, child_views):
+            view = view._at_nodes(child, i)
         return view
 
     def _update_local_indices(self) -> pd.DataFrame:
@@ -2158,7 +2157,7 @@ class View(Module):
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
-        self.cumsum_nbranches = np.cumsum(self.nbranches_per_cell)
+        self.cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
 
@@ -2175,9 +2174,11 @@ class View(Module):
         self.channels = self._channels_in_view(pointer)
         self.membrane_current_names = [c._name for c in self.channels]
         self._set_trainables_in_view()  # run after synapses and channels
-        self.num_trainable_params = np.sum(
-            [len(inds) for inds in self.indices_set_by_trainables]
-        ).astype(int)
+        self.num_trainable_params = (
+            np.sum([len(inds) for inds in self.indices_set_by_trainables])
+            .astype(int)
+            .item()
+        )
 
         self.nseg_per_branch = pointer.base.nseg_per_branch[self._branches_in_view]
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
@@ -2190,10 +2191,11 @@ class View(Module):
             pointer
         )  # run after trainables
 
+        self._current_view = "view"  # if not instantiated via `comp`, `cell` etc.
         self._update_local_indices()
 
         # TODO:
-        # self.debug_states
+        self.debug_states = pointer.debug_states
 
         if len(self.nodes) == 0:
             raise ValueError("Nothing in view. Check your indices.")
@@ -2262,7 +2264,7 @@ class View(Module):
 
     def _set_externals_in_view(self):
         self.externals = {}
-        self.external_inds = []
+        self.external_inds = {}
         for (name, inds), data in zip(
             self.base.external_inds.items(), self.base.externals.values()
         ):
@@ -2270,7 +2272,7 @@ class View(Module):
             inds_in_view = inds[in_view]
             if len(inds_in_view) > 0:
                 self.externals[name] = data[in_view]
-                self.external_inds.append(inds_in_view)
+                self.external_inds[name] = inds_in_view
 
     def _set_trainables_in_view(self):
         trainable_inds = self.base.indices_set_by_trainables
@@ -2359,7 +2361,7 @@ class View(Module):
 
     def _nbranches_per_cell_in_view(self) -> np.ndarray:
         cell_nodes = self.nodes.groupby("global_cell_index")
-        return cell_nodes["global_branch_index"].nunique().to_numpy()
+        return cell_nodes["global_branch_index"].nunique().to_list()
 
     def _xyzr_in_view(self) -> List[np.ndarray]:
         xyzr = [self.base.xyzr[i] for i in self._branches_in_view].copy()

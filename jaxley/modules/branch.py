@@ -74,10 +74,6 @@ class Branch(Module):
         # Channels.
         self._gather_channels_from_constituents(compartment_list)
 
-        # Synapse indexing.
-        self.syn_edges = pd.DataFrame(
-            dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
-        )
         self.branch_edges = pd.DataFrame(
             dict(parent_branch_index=[], child_branch_index=[])
         )
