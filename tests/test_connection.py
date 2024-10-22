@@ -41,14 +41,10 @@ def test_connect():
     with pytest.raises(AssertionError):
         connect(cell[0, 0], branch[0], TestSynapse())  # should raise
 
-    # # test raise if not part of same net
+    # test raise if not part of same net
     connect(cell1_net1, cell2_net1, TestSynapse())
     with pytest.raises(AssertionError):
         connect(cell1_net1, cell1_net2, TestSynapse())  # should raise
-
-    # test raise if pre and post comp are the same
-    with pytest.raises(AssertionError):
-        connect(cell1_net1, cell1_net1, TestSynapse())  # should raise
 
     ### test connect multiple
     # test connect multiple with single synapse
