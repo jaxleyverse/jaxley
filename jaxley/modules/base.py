@@ -964,10 +964,12 @@ class Module(ABC):
         assert (
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
-        nsegs_per_branch = self.nodes["global_branch_index"].value_counts().to_numpy()
+        nsegs_per_branch = (
+            self.base.nodes["global_branch_index"].value_counts().to_numpy()
+        )
         assert np.all(
             nsegs_per_branch == nsegs_per_branch[0]
-        ), "Parameter sharing is not allowed for branches with different number of compartments."
+        ), "Parameter sharing is not allowed for modules containing branches with different numbers of compartments."
 
         data = self.nodes if key in self.nodes.columns else None
         data = self.edges if key in self.edges.columns else data
