@@ -1,14 +1,14 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Any, Dict, List
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Sequence
 
 import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 from jaxley.solver_gate import save_exp
-from abc import ABC, abstractmethod
-from jax.typing import ArrayLike
-from jax import Array
 
 
 class Transform(ABC):
@@ -25,6 +25,12 @@ class SigmoidTransform(Transform):
     """Sigmoid transformation."""
 
     def __init__(self, lower: ArrayLike, upper: ArrayLike) -> None:
+        """This transform maps any value bijectively to the interval [lower, upper].
+
+        Args:
+            lower (ArrayLike): Lower bound of the interval.
+            upper (ArrayLike): Upper bound of the interval.
+        """
         super().__init__()
         self.lower = lower
         self.width = upper - lower
@@ -35,7 +41,7 @@ class SigmoidTransform(Transform):
 
     def inverse(self, y: ArrayLike) -> Array:
         x = (y - self.lower) / self.width
-        x = -jnp.log((1.0 / x) - 1.0)  # Corrected the logic for the inverse
+        x = -jnp.log((1.0 / x) - 1.0)
         return x
 
 
@@ -43,6 +49,11 @@ class SoftplusTransform(Transform):
     """Softplus transformation."""
 
     def __init__(self, lower: ArrayLike) -> None:
+        """This transform maps any value bijectively to the interval [lower, inf).
+
+        Args:
+            lower (ArrayLike): Lower bound of the interval.
+        """
         super().__init__()
         self.lower = lower
 
@@ -54,7 +65,14 @@ class SoftplusTransform(Transform):
 
 
 class NegSoftplusTransform(SoftplusTransform):
+    """Negative softplus transformation."""
+
     def __init__(self, upper: ArrayLike) -> None:
+        """This transform maps any value bijectively to the interval (-inf, upper].
+
+        Args:
+            upper (ArrayLike): Upper bound of the interval.
+        """
         super().__init__(upper)
 
     def __call__(self, x: ArrayLike) -> Array:
@@ -66,6 +84,15 @@ class NegSoftplusTransform(SoftplusTransform):
 
 class AffineTransform(Transform):
     def __init__(self, scale: ArrayLike, shift: ArrayLike):
+        """This transform rescales and shifts the input.
+
+        Args:
+            scale (ArrayLike): Scaling factor.
+            shift (ArrayLike): Additive shift.
+
+        Raises:
+            ValueError: Scale needs to be larger than 0
+        """
         if jnp.allclose(scale, 0):
             raise ValueError("a cannot be zero, must be invertible")
         self.a = scale
@@ -76,6 +103,51 @@ class AffineTransform(Transform):
 
     def inverse(self, x: ArrayLike) -> Array:
         return (x - self.b) / self.a
+
+
+class ChainTransform(Transform):
+    """Chaining together multiple transformations"""
+
+    def __init__(self, transforms: Sequence[Transform]) -> None:
+        """A chain of transformations
+
+        Args:
+            transforms (Sequence[Transform]): Transforms to apply
+        """
+        super().__init__()
+        self.transforms = transforms
+
+    def __call__(self, x: ArrayLike) -> Array:
+        for transform in self.transforms:
+            x = transform(x)
+        return x
+
+    def inverse(self, y: ArrayLike) -> Array:
+        for transform in reversed(self.transforms):
+            y = transform.inverse(y)
+        return y
+
+
+class CustomTransform(Transform):
+    """Custom transformation"""
+
+    def __init__(self, forward_fn: Callable, inverse_fn: Callable) -> None:
+        """A custom transformation using a user-defined froward and
+        inverse function
+
+        Args:
+            forward_fn (Callable): Forward transformation
+            inverse_fn (Callable): Inverse transformation
+        """
+        super().__init__()
+        self.forward_fn = forward_fn
+        self.inverse_fn = inverse_fn
+
+    def __call__(self, x: ArrayLike) -> Array:
+        return self.forward_fn(x)
+
+    def inverse(self, y: ArrayLike) -> Array:
+        return self.inverse_fn(y)
 
 
 class ParamTransform:

@@ -6,16 +6,16 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
-import pytest
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax import jit
 
-from jaxley.optimize.transforms import ParamTransform
 import jaxley.optimize.transforms as jt
+from jaxley.optimize.transforms import ParamTransform
 
 
-def test_inverse():
+def test_joint_inverse():
     # test forward(inverse(x))=x
     tf_dict = {
         "param_array_1": jt.SigmoidTransform(-2, 2),
@@ -83,7 +83,14 @@ def test_bounds():
 
 @pytest.mark.parametrize(
     "transform",
-    [jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2), jt.NegSoftplusTransform(2)],
+    [
+        jt.SigmoidTransform(-2, 2),
+        jt.SoftplusTransform(2),
+        jt.NegSoftplusTransform(2),
+        jt.AffineTransform(1.0, 1.0),
+        jt.CustomTransform(lambda x: x, lambda x: x),
+        jt.ChainTransform([jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2)]),
+    ],
 )
 def test_jit(transform):
     # test jit-compilation:
@@ -98,3 +105,30 @@ def test_jit(transform):
         return tf.inverse(params)
 
     _ = test_jit(params)
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        jt.SigmoidTransform(-2, 2),
+        jt.SoftplusTransform(2),
+        jt.NegSoftplusTransform(2),
+        jt.AffineTransform(1.0, 1.0),
+        jt.CustomTransform(lambda x: x, lambda x: x),
+        jt.ChainTransform([jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2)]),
+    ],
+)
+def test_correct(transform):
+    # test jit-compilation:
+    tf_dict = {"param_array_1": transform}
+
+    params = [{"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))}]
+
+    tf = ParamTransform(tf_dict)
+
+    forward = tf.forward(params)
+    inverse = tf.inverse(forward)
+
+    assert np.allclose(
+        inverse[0]["param_array_1"], params[0]["param_array_1"]
+    ), f"{transform} forward, inverse failed."
