@@ -2208,6 +2208,8 @@ class View(Module):
         self.cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
+        self.nseg_per_branch = self.base.nseg_per_branch[self._branches_in_view]
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)

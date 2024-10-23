@@ -52,7 +52,7 @@ class Network(Module):
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
 
-        self.cells_list = cells  # TODO: TEMPORARY FIX, REMOVE BY ADDING ATTRS TO VIEW (solve_indexer.children_in_level)
+        self._cells_list = cells
         self.nseg_per_branch = np.concatenate([cell.nseg_per_branch for cell in cells])
         self.nseg = int(np.max(self.nseg_per_branch))
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
@@ -119,18 +119,18 @@ class Network(Module):
         children_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.children_in_level for cell in self.cells_list],
+            [cell.solve_indexer.children_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         parents_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.parents_in_level for cell in self.cells_list],
+            [cell.solve_indexer.parents_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         padded_cumsum_nseg = cumsum_leading_zero(
             np.concatenate(
-                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self.cells_list]
+                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self._cells_list]
             )
         )
 
@@ -171,12 +171,12 @@ class Network(Module):
         `type == 4`: child-compartment --> branchpoint
         """
         self._cumsum_nseg_per_cell = cumsum_leading_zero(
-            jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells_list])
+            jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells])
         )
         self._comp_edges = pd.DataFrame()
 
         # Add all the internal nodes.
-        for offset, cell in zip(self._cumsum_nseg_per_cell, self.cells_list):
+        for offset, cell in zip(self._cumsum_nseg_per_cell, self._cells_list):
             condition = cell._comp_edges["type"].to_numpy() == 0
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
@@ -188,7 +188,7 @@ class Network(Module):
         for offset, offset_branchpoints, cell in zip(
             self._cumsum_nseg_per_cell,
             self.cumsum_nbranchpoints_per_cell,
-            self.cells_list,
+            self._cells_list,
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
             condition = cell._comp_edges["type"].isin([1, 2])
@@ -210,7 +210,7 @@ class Network(Module):
         for offset, offset_branchpoints, cell in zip(
             self._cumsum_nseg_per_cell,
             self.cumsum_nbranchpoints_per_cell,
-            self.cells_list,
+            self._cells_list,
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
             condition = cell._comp_edges["type"].isin([3, 4])
@@ -228,8 +228,7 @@ class Network(Module):
                 ignore_index=True,
             )
 
-        # Note that, unlike in `cell.py`, we cannot delete `self.cells_list` here because
-        # it is used in plotting.
+        del self._cells_list
 
         # Convert comp_edges to the index format required for `jax.sparse` solvers.
         n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
@@ -533,7 +532,7 @@ class Network(Module):
             for i, layer in enumerate(layers):
                 graph.add_nodes_from(layer, layer=i)
         else:
-            graph.add_nodes_from(range(len(self.cells_list)))
+            graph.add_nodes_from(range(len(self._cells_list)))
 
         pre_cell = self.edges["global_pre_cell_index"].to_numpy()
         post_cell = self.edges["global_post_cell_index"].to_numpy()

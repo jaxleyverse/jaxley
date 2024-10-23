@@ -258,8 +258,6 @@ def test_solve_indexer():
     assert np.all(idx.upper(branch_inds) == np.asarray([[0, 1, 2], [7, 8, 9]]))
 
 
-# TODO: tests
-
 comp = jx.Compartment()
 branch = jx.Branch(comp, nseg=3)
 cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
@@ -274,7 +272,6 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     exceptions = ["view"]
     # TODO: should be added to View in the future
     exceptions += [
-        "cumsum_nseg",
         "_internal_node_inds",
         "par_inds",
         "child_inds",
