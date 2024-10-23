@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.42">
     
     
       
@@ -1062,7 +1062,7 @@
                 <code>params</code>
             </td>
             <td>
-                  <code>List[Dict[str, ndarray]]</code>
+                  <code><span title="typing.List">List</span>[<span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1078,7 +1078,7 @@
                 <code>param_state</code>
             </td>
             <td>
-                  <code>Optional[List[Dict]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="typing.Dict">Dict</span>]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1094,7 +1094,7 @@
                 <code>data_stimuli</code>
             </td>
             <td>
-                  <code>Optional[Tuple[ndarray, DataFrame]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[<span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1111,7 +1111,7 @@ across function calls.</p>
                 <code>data_clamps</code>
             </td>
             <td>
-                  <code>Optional[Tuple[str, ndarray, DataFrame]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[str, <span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1128,7 +1128,7 @@ function calls.</p>
                 <code>t_max</code>
             </td>
             <td>
-                  <code>Optional[float]</code>
+                  <code><span title="typing.Optional">Optional</span>[float]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1198,7 +1198,7 @@ used in NEURON).</p>
                 <code>checkpoint_lengths</code>
             </td>
             <td>
-                  <code>Optional[List[int]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[int]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1220,7 +1220,7 @@ checkpointing is applied.</p>
                 <code>all_states</code>
             </td>
             <td>
-                  <code>Optional[Dict]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1506,11 +1506,11 @@ the <code>Module</code> can be set with <code>set_states</code>.</p>
             <span class="k">if</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
                 <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+                    <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
 
     <span class="c1"># If a clamp is inserted, add it to the external inputs.</span>
     <span class="k">if</span> <span class="n">data_clamps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1518,11 +1518,11 @@ the <code>Module</code> can be set with <code>set_states</code>.</p>
         <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">clamps</span><span class="p">])</span>
             <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">inds</span><span class="o">.</span><span class="n">comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+                <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">clamps</span>
-            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">inds</span><span class="o">.</span><span class="n">comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
         <span class="c1"># No stimulus was inserted and no clamp was set.</span>
@@ -1767,7 +1767,7 @@ via exponential Euler</p>
                 <code>x</code>
             </td>
             <td>
-                  <code>ndarray</code>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1799,7 +1799,7 @@ via exponential Euler</p>
                 <code>s_inf</code>
             </td>
             <td>
-                  <code>ndarray</code>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1815,7 +1815,7 @@ via exponential Euler</p>
                 <code>tau_s</code>
             </td>
             <td>
-                  <code>ndarray</code>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
             </td>
             <td>
               <div class="doc-md-description">
