@@ -46,10 +46,10 @@ def test_network_grad():
 
     net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
     net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
-    net.IonotropicSynapse([0, 2, 4]).set(
+    net.IonotropicSynapse.edge([0, 2, 4]).set(
         "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
     )
-    net.TestSynapse([0, 3, 5]).set(
+    net.TestSynapse.edge([0, 3, 5]).set(
         "TestSynapse_gC", 0.24 / point_process_to_dist_factor
     )
 
@@ -67,7 +67,7 @@ def test_network_grad():
     net.cell("all").make_trainable("HH_gLeak")
 
     net.IonotropicSynapse.make_trainable("IonotropicSynapse_gS")
-    net.TestSynapse([0, 2]).make_trainable("TestSynapse_gC")
+    net.TestSynapse.edge([0, 2]).make_trainable("TestSynapse_gC")
 
     params = net.get_parameters()
     grad_fn = value_and_grad(simulate)

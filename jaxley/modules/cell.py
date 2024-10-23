@@ -1,15 +1,14 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
-from jaxley.modules.base import GroupView, Module, View
-from jaxley.modules.branch import Branch, BranchView, Compartment
+from jaxley.modules.base import Module
+from jaxley.modules.branch import Branch, Compartment
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
@@ -94,7 +93,7 @@ class Cell(Module):
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
-        self.cumsum_nbranches = jnp.asarray([0, len(branch_list)])
+        self.cumsum_nbranches = np.asarray([0, len(branch_list)])
 
         # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
         # is run.
@@ -105,11 +104,13 @@ class Cell(Module):
 
         # Build nodes. Has to be changed when `.set_ncomp()` is run.
         self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
-        self.nodes["comp_index"] = np.arange(self.cumsum_nseg[-1])
-        self.nodes["branch_index"] = np.repeat(
+        self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])
+        self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.nseg_per_branch
         ).tolist()
-        self.nodes["cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
+        self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
+        self._update_local_indices()
+        self._init_view()
 
         # Appending general parameters (radius, length, r_a, cm) and channel parameters,
         # as well as the states (v, and channel states).
@@ -118,10 +119,6 @@ class Cell(Module):
         # Channels.
         self._gather_channels_from_constituents(branch_list)
 
-        # Synapse indexing.
-        self.syn_edges = pd.DataFrame(
-            dict(global_pre_comp_index=[], global_post_comp_index=[], type="")
-        )
         self.branch_edges = pd.DataFrame(
             dict(
                 parent_branch_index=self.comb_parents[1:],
@@ -136,27 +133,6 @@ class Cell(Module):
 
         self.initialize()
         self.init_syns()
-
-    def __getattr__(self, key: str):
-        # Ensure that hidden methods such as `__deepcopy__` still work.
-        if key.startswith("__"):
-            return super().__getattribute__(key)
-
-        if key == "branch":
-            view = deepcopy(self.nodes)
-            view["global_comp_index"] = view["comp_index"]
-            view["global_branch_index"] = view["branch_index"]
-            view["global_cell_index"] = view["cell_index"]
-            return BranchView(self, view)
-        elif key in self.group_nodes:
-            inds = self.group_nodes[key].index.values
-            view = self.nodes.loc[inds]
-            view["global_comp_index"] = view["comp_index"]
-            view["global_branch_index"] = view["branch_index"]
-            view["global_cell_index"] = view["cell_index"]
-            return GroupView(self, view, BranchView, ["branch"])
-        else:
-            raise KeyError(f"Key {key} not recognized.")
 
     def _init_morph_jaxley_spsolve(self):
         """Initialize morphology for the custom sparse solver.
@@ -318,45 +294,6 @@ class Cell(Module):
         summed_conds = summed_conds.at[child_inds, 0].add(branchpoint_conds_children)
         summed_conds = summed_conds.at[par_inds, -1].add(branchpoint_conds_parents)
         return summed_conds
-
-    def set_ncomp(self, ncomp: int, min_radius: Optional[float] = None):
-        """Raise an explict error if `set_ncomp` is set for an entire cell."""
-        raise NotImplementedError(
-            "`cell.set_ncomp()` is not supported. Loop over all branches with "
-            "`for b in range(cell.total_nbranches): cell.branch(b).set_ncomp(n)`."
-        )
-
-
-class CellView(View):
-    """CellView."""
-
-    def __init__(self, pointer: Module, view: pd.DataFrame):
-        view = view.assign(controlled_by_param=view.global_cell_index)
-        super().__init__(pointer, view)
-
-    def __call__(self, index: float):
-        local_idcs = self._get_local_indices()
-        self.view[local_idcs.columns] = (
-            local_idcs  # set indexes locally. enables net[0:2,0:2]
-        )
-        if index == "all":
-            self.allow_make_trainable = False
-        new_view = super().adjust_view("cell_index", index)
-        return new_view
-
-    def __getattr__(self, key: str):
-        assert key == "branch"
-        return BranchView(self.pointer, self.view)
-
-    def rotate(self, degrees: float, rotation_axis: str = "xy"):
-        """Rotate jaxley modules clockwise. Used only for visualization.
-
-        Args:
-            degrees: How many degrees to rotate the module by.
-            rotation_axis: Either of {`xy` | `xz` | `yz`}.
-        """
-        nodes = self.set_global_index_and_index(self.view)
-        self.pointer._rotate(degrees=degrees, rotation_axis=rotation_axis, view=nodes)
 
 
 def read_swc(

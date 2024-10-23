@@ -1,48 +1,26 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Tuple
-
 import numpy as np
-
-
-def get_pre_post_inds(
-    pre_cell_view: "CellView", post_cell_view: "CellView"
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Get the unique cell indices of the pre- and postsynaptic cells."""
-    pre_cell_inds = np.unique(pre_cell_view.view["cell_index"].to_numpy())
-    post_cell_inds = np.unique(post_cell_view.view["cell_index"].to_numpy())
-    return pre_cell_inds, post_cell_inds
-
-
-def pre_comp_not_equal_post_comp(
-    pre: "CompartmentView", post: "CompartmentView"
-) -> np.ndarray[bool]:
-    """Check if pre and post compartments are different."""
-    cols = ["cell_index", "branch_index", "comp_index"]
-    return np.any(pre.view[cols].values != post.view[cols].values, axis=1)
 
 
 def is_same_network(pre: "View", post: "View") -> bool:
     """Check if views are from the same network."""
-    is_in_net = "network" in pre.pointer.__class__.__name__.lower()
-    is_in_same_net = pre.pointer is post.pointer
+    is_in_net = "network" in pre.base.__class__.__name__.lower()
+    is_in_same_net = pre.base is post.base
     return is_in_net and is_in_same_net
 
 
-def sample_comp(
-    cell_view: "CellView", cell_idx: int, num: int = 1, replace=True
-) -> "CompartmentView":
+def sample_comp(cell_view: "View", num: int = 1, replace=True) -> "CompartmentView":
     """Sample a compartment from a cell.
 
     Returns View with shape (num, num_cols)."""
-    cell_idx_view = lambda view, cell_idx: view[view["cell_index"] == cell_idx]
-    return cell_idx_view(cell_view.view, cell_idx).sample(num, replace=replace)
+    return np.random.choice(cell_view._comps_in_view, num, replace=replace)
 
 
 def connect(
-    pre: "CompartmentView",
-    post: "CompartmentView",
+    pre: "View",
+    post: "View",
     synapse_type: "Synapse",
 ):
     """Connect two compartments with a chemical synapse.
@@ -58,16 +36,13 @@ def connect(
     assert is_same_network(
         pre, post
     ), "Pre and post compartments must be part of the same network."
-    assert np.all(
-        pre_comp_not_equal_post_comp(pre, post)
-    ), "Pre and post compartments must be different."
 
-    pre._append_multiple_synapses(pre.view, post.view, synapse_type)
+    pre.base._append_multiple_synapses(pre.nodes, post.nodes, synapse_type)
 
 
 def fully_connect(
-    pre_cell_view: "CellView",
-    post_cell_view: "CellView",
+    pre_cell_view: "View",
+    post_cell_view: "View",
     synapse_type: "Synapse",
 ):
     """Appends multiple connections which build a fully connected layer.
@@ -80,29 +55,29 @@ def fully_connect(
         synapse_type: The synapse to append.
     """
     # Get pre- and postsynaptic cell indices.
-    pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
-    num_pre, num_post = len(pre_cell_inds), len(post_cell_inds)
+    num_pre = len(pre_cell_view._cells_in_view)
+    num_post = len(post_cell_view._cells_in_view)
 
     # Infer indices of (random) postsynaptic compartments.
     global_post_indices = (
-        post_cell_view.view.groupby("cell_index")
+        post_cell_view.nodes.groupby("global_cell_index")
         .sample(num_pre, replace=True)
         .index.to_numpy()
     )
     global_post_indices = global_post_indices.reshape((-1, num_pre), order="F").ravel()
-    post_rows = post_cell_view.view.loc[global_post_indices]
+    post_rows = post_cell_view.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    pre_rows = pre_cell_view[0, 0].view
+    pre_rows = pre_cell_view.scope("local").branch(0).comp(0).nodes.copy()
     # Repeat rows `num_post` times. See SO 50788508.
     pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)].reset_index(drop=True)
 
-    pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
+    pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
 
 def sparse_connect(
-    pre_cell_view: "CellView",
-    post_cell_view: "CellView",
+    pre_cell_view: "View",
+    post_cell_view: "View",
     synapse_type: "Synapse",
     p: float,
 ):
@@ -117,8 +92,10 @@ def sparse_connect(
         p: Probability of connection.
     """
     # Get pre- and postsynaptic cell indices.
-    pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
-    num_pre, num_post = len(pre_cell_inds), len(post_cell_inds)
+    pre_cell_inds = pre_cell_view._cells_in_view
+    post_cell_inds = post_cell_view._cells_in_view
+    num_pre = len(pre_cell_inds)
+    num_post = len(post_cell_inds)
 
     num_connections = np.random.binomial(num_pre * num_post, p)
     pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
@@ -131,20 +108,25 @@ def sparse_connect(
 
     # Post-synapse is a randomly chosen branch and compartment.
     global_post_indices = [
-        sample_comp(post_cell_view, cell_idx).index[0] for cell_idx in post_syn_neurons
+        sample_comp(post_cell_view.scope("global").cell(cell_idx))
+        for cell_idx in post_syn_neurons
     ]
-    post_rows = post_cell_view.view.loc[global_post_indices]
+    global_post_indices = (
+        np.hstack(global_post_indices) if len(global_post_indices) > 1 else []
+    )
+    post_rows = post_cell_view.base.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    global_pre_indices = pre_cell_view.pointer._cumsum_nseg_per_cell[pre_syn_neurons]
-    pre_rows = pre_cell_view.view.loc[global_pre_indices]
+    global_pre_indices = pre_cell_view.base._cumsum_nseg_per_cell[pre_syn_neurons]
+    pre_rows = pre_cell_view.base.nodes.loc[global_pre_indices]
 
-    pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
+    if len(pre_rows) > 0:
+        pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
 
 def connectivity_matrix_connect(
-    pre_cell_view: "CellView",
-    post_cell_view: "CellView",
+    pre_cell_view: "View",
+    post_cell_view: "View",
     synapse_type: "Synapse",
     connectivity_matrix: np.ndarray[bool],
 ):
@@ -161,11 +143,12 @@ def connectivity_matrix_connect(
         connectivity_matrix: A boolean matrix indicating the connections between cells.
     """
     # Get pre- and postsynaptic cell indices.
-    pre_cell_inds, post_cell_inds = get_pre_post_inds(pre_cell_view, post_cell_view)
+    pre_cell_inds = pre_cell_view._cells_in_view
+    post_cell_inds = post_cell_view._cells_in_view
 
     assert connectivity_matrix.shape == (
-        pre_cell_view.shape[0],
-        post_cell_view.shape[0],
+        len(pre_cell_inds),
+        len(post_cell_inds),
     ), "Connectivity matrix must have shape (num_pre, num_post)."
     assert connectivity_matrix.dtype == bool, "Connectivity matrix must be boolean."
 
@@ -175,13 +158,18 @@ def connectivity_matrix_connect(
     post_cell_inds = post_cell_inds[to_idx]
 
     # Sample random postsynaptic compartments (global comp indices).
-    global_post_indices = [
-        sample_comp(post_cell_view, cell_idx).index[0] for cell_idx in post_cell_inds
-    ]
-    post_rows = post_cell_view.view.loc[global_post_indices]
+    global_post_indices = np.hstack(
+        [
+            sample_comp(post_cell_view.scope("global").cell(cell_idx))
+            for cell_idx in post_cell_inds
+        ]
+    )
+    post_rows = post_cell_view.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    global_pre_indices = pre_cell_view.pointer._cumsum_nseg_per_cell[pre_cell_inds]
-    pre_rows = pre_cell_view.view.loc[global_pre_indices]
+    global_pre_indices = (
+        pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
+    )  # setting scope ensure that this works indep of current scope
+    pre_rows = pre_cell_view.select(nodes=global_pre_indices[pre_cell_inds]).nodes
 
-    pre_cell_view._append_multiple_synapses(pre_rows, post_rows, synapse_type)
+    pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)

@@ -111,7 +111,7 @@ def test_diverse_synapse_types():
             connect(pre, post, syn)
 
     net.IonotropicSynapse.make_trainable("IonotropicSynapse_gS")
-    net.TestSynapse([0, 1]).make_trainable("TestSynapse_gC")
+    net.TestSynapse.edge([0, 1]).make_trainable("TestSynapse_gC")
     assert net.num_trainable_params == 3
 
     params = net.get_parameters()
@@ -133,7 +133,7 @@ def test_diverse_synapse_types():
     assert np.all(all_parameters["TestSynapse_gC"][1] == 4.4)
 
     # Add another trainable parameter and test again.
-    net.IonotropicSynapse(1).make_trainable("IonotropicSynapse_gS")
+    net.IonotropicSynapse.edge(1).make_trainable("IonotropicSynapse_gS")
     assert net.num_trainable_params == 4
 
     params = net.get_parameters()
@@ -381,19 +381,21 @@ def test_data_set_vs_make_trainable_network():
 
     net1.make_trainable("radius", 0.9)
     net1.make_trainable("length", 0.99)
-    net1.IonotropicSynapse("all").make_trainable("IonotropicSynapse_gS", 0.15)
-    net1.IonotropicSynapse(1).make_trainable("IonotropicSynapse_e_syn", 0.2)
-    net1.TestSynapse(0).make_trainable("TestSynapse_gC", 0.3)
+    net1.IonotropicSynapse.edge("all").make_trainable("IonotropicSynapse_gS", 0.15)
+    net1.IonotropicSynapse.edge(1).make_trainable("IonotropicSynapse_e_syn", 0.2)
+    net1.TestSynapse.edge(0).make_trainable("TestSynapse_gC", 0.3)
     params1 = net1.get_parameters()
 
     pstate = None
     pstate = net2.data_set("radius", 0.9, pstate)
     pstate = net2.data_set("length", 0.99, pstate)
-    pstate = net2.IonotropicSynapse("all").data_set(
+    pstate = net2.IonotropicSynapse.edge("all").data_set(
         "IonotropicSynapse_gS", 0.15, pstate
     )
-    pstate = net2.IonotropicSynapse(1).data_set("IonotropicSynapse_e_syn", 0.2, pstate)
-    pstate = net2.TestSynapse(0).data_set("TestSynapse_gC", 0.3, pstate)
+    pstate = net2.IonotropicSynapse.edge(1).data_set(
+        "IonotropicSynapse_e_syn", 0.2, pstate
+    )
+    pstate = net2.TestSynapse.edge(0).data_set("TestSynapse_gC", 0.3, pstate)
 
     voltages1 = jx.integrate(net1, params=params1)
     voltages2 = jx.integrate(net2, param_state=pstate)

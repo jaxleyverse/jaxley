@@ -174,16 +174,12 @@ def test_volume_plotting():
     fig, ax = plt.subplots()
     for module in [comp, branch, cell, net, morph_cell]:
         module.vis(type="comp", ax=ax)
-        if not isinstance(module, jx.Compartment):
-            module[0].vis(type="comp", ax=ax)
     plt.close(fig)
 
     # test 3D plotting
     for module in [comp, branch, cell, net, morph_cell]:
         module.vis(type="comp", dims=[0, 1, 2])
-        if not isinstance(module, jx.Compartment):
-            module[0].vis(type="comp")
-            plt.close(fig)
+    plt.close()
 
     # test morph plotting (does not work if no radii in xyzr)
     morph_cell.vis(type="morph")
