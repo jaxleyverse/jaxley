@@ -13,6 +13,8 @@ class HH(Channel):
     """Hodgkin-Huxley channel."""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {

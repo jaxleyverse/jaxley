@@ -3,7 +3,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
-
+from warnings import warn
 import jax.numpy as jnp
 
 
@@ -20,6 +20,19 @@ class Channel:
     current_name = None
 
     def __init__(self, name: Optional[str] = None):
+        if not hasattr(self, "units_are_updated") or not self.units_are_updated:
+            raise ValueError(
+                "The channel you are using is deprecated. "
+                "In Jaxley version 0.5.0, we changed the unit of the current returned "
+                "by `compute_current` from `uA/cm^2` to `mA/cm^2`. Please update your "
+                "channel model accordingly (i.e., by dividing the resulting current by "
+                "1000). After having updated your channel, you can get rid of this "
+                "error by setting `self.units_are_updated=True` as the first line in "
+                "the `__init__()` method of all of your channel models. If you "
+                "have any questions, please reach out via email to "
+                "michael.deistler@uni-tuebingen.de or create an issue on Github: "
+                "https://github.com/jaxleyverse/jaxley/issues. Thank you!"
+            )
         self._name = name if name else self.__class__.__name__
 
     @property

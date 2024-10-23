@@ -36,6 +36,8 @@ class Leak(Channel):
     """Leak current"""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = False
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -71,6 +73,8 @@ class Na(Channel):
     """Sodium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -140,6 +144,8 @@ class K(Channel):
     """Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -194,6 +200,8 @@ class Km(Channel):
     """Slow M Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -249,6 +257,8 @@ class CaL(Channel):
     """L-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -315,6 +325,8 @@ class CaT(Channel):
     """T-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.units_are_updated = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -324,6 +336,7 @@ class CaT(Channel):
         }
         self.channel_states = {f"{prefix}_u": 0.2}
         self.current_name = f"i_Ca"
+        self.units_are_updated = True
 
     def update_states(
         self,
