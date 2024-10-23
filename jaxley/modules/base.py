@@ -476,27 +476,27 @@ class Module(ABC):
             View of the module at the specified edge index."""
         return self._at_edges("edge", idx)
 
-    # TODO: pre and post could just modify scope
-    #  -> self.scope=self.scope+"_pre" and then call edge?
-    # def pre(self, idx: Any) -> View:
-    #     """Return a View of the module at the selected pre-synaptic compartments(s).
+    def pre(self, idx: Any) -> View:
+        """Return a View of the module at the selected pre-synaptic compartments(s).
 
-    #     Args:
-    #         idx: index of the edge to view.
+        Args:
+            idx: index of the edge to view.
 
-    #     Returns:
-    #         View of the module filtered by the selected pre-comp index."""
-    #     return self._at_edges("edge", idx)
+        Returns:
+            View of the module filtered by the selected pre-comp index."""
+        # TODO: pre and post could just modify scope
+        #  -> self.scope=self.scope+"_pre" and then call edge?
+        return None  # self._at_edges("edge", idx)
 
-    # def post(self, idx: Any) -> View:
-    #     """Return a View of the module at the selected post-synaptic compartments(s).
+    def post(self, idx: Any) -> View:
+        """Return a View of the module at the selected post-synaptic compartments(s).
 
-    #     Args:
-    #         idx: index of the edge to view.
+        Args:
+            idx: index of the edge to view.
 
-    #     Returns:
-    #         View of the module filtered by the selected post-comp index."""
-    #     return self._at_edges("edge", idx)
+        Returns:
+            View of the module filtered by the selected post-comp index."""
+        return None  # self._at_edges("edge", idx)
 
     def loc(self, at: Any) -> View:
         """Return a View of the module at the selected branch location(s).
@@ -661,8 +661,8 @@ class Module(ABC):
             name = channel._name
             self.base.nodes.loc[self.nodes[name].isna(), name] = False
 
-    # TODO: Make this work for View?
     def to_jax(self):
+        # TODO: Make this work for View?
         """Move `.nodes` to `.jaxnodes`.
 
         Before the actual simulation is run (via `jx.integrate`), all parameters of
@@ -690,7 +690,7 @@ class Module(ABC):
 
     def show(
         self,
-        param_names: Optional[Union[str, List[str]]] = None,  # TODO.
+        param_names: Optional[Union[str, List[str]]] = None,
         *,
         indices: bool = True,
         params: bool = True,
@@ -1107,8 +1107,8 @@ class Module(ABC):
         end_xyz = endpoint.xyzr[0][0, :3]
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_trainables(self):
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all trainable parameters from the module."""
         assert isinstance(self, Module), "Only supports modules."
         self.base.indices_set_by_trainables = []
@@ -1134,8 +1134,8 @@ class Module(ABC):
                 np.concatenate([self.base.groups[group_name], self._nodes_in_view])
             )
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Get all trainable parameters.
 
         The returned parameters should be passed to `jx.integrate(..., params=params).
@@ -1146,10 +1146,10 @@ class Module(ABC):
         """
         return self.base.trainable_params
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def get_all_parameters(
         self, pstate: List[Dict], voltage_solver: str
     ) -> Dict[str, jnp.ndarray]:
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
         Runs `_compute_axial_conductances()` and return every parameter that is needed
@@ -1235,10 +1235,10 @@ class Module(ABC):
             states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def get_all_states(
         self, pstate: List[Dict], all_params, delta_t: float
     ) -> Dict[str, jnp.ndarray]:
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Get the full initial state of the module from jaxnodes and trainables.
 
         Args:
@@ -1284,8 +1284,8 @@ class Module(ABC):
         self._init_morph()
         return self
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def init_states(self, delta_t: float = 0.025):
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Initialize all mechanisms in their steady state.
 
         This considers the voltages and parameters of each compartment.
@@ -1413,8 +1413,8 @@ class Module(ABC):
                 f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_recordings(self):
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all recordings from the module."""
         assert isinstance(self, Module), "Only supports modules."
         self.base.recordings = pd.DataFrame().from_dict({})
@@ -1565,15 +1565,15 @@ class Module(ABC):
 
         return (state_name, external_input, inds)
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_stimuli(self):
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all stimuli from the module."""
         assert isinstance(self, Module), "Only supports modules."
         self.base.externals.pop("i", None)
         self.base.external_inds.pop("i", None)
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_clamps(self, state_name: str):
+        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all clamps of the given state from the module."""
         assert isinstance(self, Module), "Only supports modules."
         self.base.externals.pop(state_name, None)
