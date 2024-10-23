@@ -20,18 +20,33 @@ class Channel:
     current_name = None
 
     def __init__(self, name: Optional[str] = None):
-        if not hasattr(self, "units_are_updated") or not self.units_are_updated:
+        contact = (
+            "If you have any questions, please reach out via email to "
+            "michael.deistler@uni-tuebingen.de or create an issue on Github: "
+            "https://github.com/jaxleyverse/jaxley/issues. Thank you!"
+        )
+        if not hasattr(self, "current_is_in_mA_per_cm2"):
             raise ValueError(
                 "The channel you are using is deprecated. "
                 "In Jaxley version 0.5.0, we changed the unit of the current returned "
-                "by `compute_current` from `uA/cm^2` to `mA/cm^2`. Please update your "
-                "channel model accordingly (i.e., by dividing the resulting current by "
-                "1000). After having updated your channel, you can get rid of this "
-                "error by setting `self.units_are_updated=True` as the first line in "
-                "the `__init__()` method of all of your channel models. If you "
-                "have any questions, please reach out via email to "
-                "michael.deistler@uni-tuebingen.de or create an issue on Github: "
-                "https://github.com/jaxleyverse/jaxley/issues. Thank you!"
+                "by `compute_current` of channels from `uA/cm^2` to `mA/cm^2`. Please "
+                "update your channel model (by dividing the resulting current by 1000) "
+                "and set `self.current_is_in_mA_per_cm2=True` as the first line "
+                "in the `__init__()` method of your channel. Alternatively, you can "
+                "make Jaxley use `uA/cm^2 by setting "
+                "`self.current_is_in_mA_per_cm2=False` as the "
+                f"first line in the `__init__()` method of your channel. {contact}"
+            )
+        if not self.current_is_in_mA_per_cm2:
+            warn(
+                "You are using `current_is_in_mA_per_cm2=False`. This means that the "
+                "current through the channel will be considered in `uA/cm^2`. In "
+                "future versions of Jaxley, we will remove this option and force the "
+                "channel to return the current in `mA/cm^2`. We recommend to adapt "
+                "your `compute_current()` method now and return the current in "
+                "`mA/cm^2` (by dividing the current by 1000). After this has been "
+                "done, set `current_is_in_mA_per_cm2=True` to get rid of this "
+                f"warning. {contact}"
             )
         self._name = name if name else self.__class__.__name__
 
