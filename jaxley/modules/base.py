@@ -476,28 +476,6 @@ class Module(ABC):
             View of the module at the specified edge index."""
         return self._at_edges("edge", idx)
 
-    def pre(self, idx: Any) -> View:
-        """Return a View of the module at the selected pre-synaptic compartments(s).
-
-        Args:
-            idx: index of the edge to view.
-
-        Returns:
-            View of the module filtered by the selected pre-comp index."""
-        # TODO: pre and post could just modify scope
-        #  -> self.scope=self.scope+"_pre" and then call edge?
-        return None  # self._at_edges("edge", idx)
-
-    def post(self, idx: Any) -> View:
-        """Return a View of the module at the selected post-synaptic compartments(s).
-
-        Args:
-            idx: index of the edge to view.
-
-        Returns:
-            View of the module filtered by the selected post-comp index."""
-        return None  # self._at_edges("edge", idx)
-
     def loc(self, at: Any) -> View:
         """Return a View of the module at the selected branch location(s).
 
@@ -623,7 +601,7 @@ class Module(ABC):
     @property
     def view(self):
         """Return view of the module."""
-        return View(self, self._nodes_in_view)
+        return View(self, self._nodes_in_view, self._edges_in_view)
 
     @property
     def _module_type(self):
@@ -1108,12 +1086,19 @@ class Module(ABC):
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
 
     def delete_trainables(self):
-        # TODO: MAKE THIS WORK FOR VIEW?
+        # TODO: Test that this correctly works for View!
         """Removes all trainable parameters from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.indices_set_by_trainables = []
-        self.base.trainable_params = []
-        self.base.num_trainable_params = 0
+
+        if isinstance(self, View):
+            trainables_and_inds = self._filter_trainables(is_viewed=False)
+            self.base.indices_set_by_trainables = trainables_and_inds[0]
+            self.base.trainable_params = trainables_and_inds[1]
+            self.base.num_trainable_params -= self.num_trainable_params
+        else:
+            self.base.indices_set_by_trainables = []
+            self.base.trainable_params = []
+            self.base.num_trainable_params = 0
+        self._update_view()
 
     def add_to_group(self, group_name: str):
         """Add a view of the module to a group.
@@ -1135,7 +1120,6 @@ class Module(ABC):
             )
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
-        # TODO: MAKE THIS WORK FOR VIEW?
         """Get all trainable parameters.
 
         The returned parameters should be passed to `jx.integrate(..., params=params).
@@ -1144,7 +1128,7 @@ class Module(ABC):
             A list of all trainable parameters in the form of
                 [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
         """
-        return self.base.trainable_params
+        return self.trainable_params
 
     def get_all_parameters(
         self, pstate: List[Dict], voltage_solver: str
@@ -1400,9 +1384,11 @@ class Module(ABC):
         self.base.debug_states["par_inds"] = self.base.par_inds
 
     def record(self, state: str = "v", verbose=True):
-        in_view = (
-            self._edges_in_view if state in self.edges.columns else self._nodes_in_view
-        )
+        in_view = None
+        in_view = self._edges_in_view if state in self.edges.columns else in_view
+        in_view = self._nodes_in_view if state in self.nodes.columns else in_view
+        assert in_view is not None, "State not found in nodes or edges."
+
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
         self.base.recordings = pd.concat([self.base.recordings, new_recs])
@@ -1413,11 +1399,27 @@ class Module(ABC):
                 f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
+    def _update_view(self):
+        """Update the attrs of the view after changes in the base module."""
+        if isinstance(self, View):
+            scope = self._scope
+            current_view = self._current_view
+            self.__dict__ = View(
+                self.base, self._nodes_in_view, self._edges_in_view
+            ).__dict__
+            self._scope = scope
+            self._current_view = current_view
+
     def delete_recordings(self):
-        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all recordings from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.recordings = pd.DataFrame().from_dict({})
+        if isinstance(self, View):
+            base_recs = self.base.recordings
+            self.base.recordings = base_recs[
+                ~base_recs.isin(self.recordings).all(axis=1)
+            ]
+            self._update_view()
+        else:
+            self.base.recordings = pd.DataFrame().from_dict({})
 
     def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
@@ -1566,18 +1568,26 @@ class Module(ABC):
         return (state_name, external_input, inds)
 
     def delete_stimuli(self):
-        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all stimuli from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.externals.pop("i", None)
-        self.base.external_inds.pop("i", None)
+        self.delete_clamps("i")
 
     def delete_clamps(self, state_name: str):
-        # TODO: MAKE THIS WORK FOR VIEW?
         """Removes all clamps of the given state from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.externals.pop(state_name, None)
-        self.base.external_inds.pop(state_name, None)
+        if state_name in self.externals:
+            keep_inds = ~np.isin(
+                self.base.external_inds[state_name], self._nodes_in_view
+            )
+            base_exts = self.base.externals
+            base_exts_inds = self.base.external_inds
+            if np.all(~keep_inds):
+                base_exts.pop(state_name, None)
+                base_exts_inds.pop(state_name, None)
+            else:
+                base_exts[state_name] = base_exts[state_name][keep_inds]
+                base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+            self._update_view()
+        else:
+            pass  # does not have to be deleted if not in externals
 
     def insert(self, channel: Channel):
         """Insert a channel into the module.
@@ -2324,7 +2334,14 @@ class View(Module):
                 self.externals[name] = data[in_view]
                 self.external_inds[name] = inds_in_view
 
-    def _set_trainables_in_view(self):
+    def _filter_trainables(
+        self, is_viewed: bool = True
+    ) -> Tuple[List[np.ndarray], List[Dict]]:
+        """filters the trainables inside and outside of the view
+
+        Args:
+            is_viewed: Toggles between returning the trainables and inds
+                currently inside or outside of the scope of View."""
         trainable_inds = self.base.indices_set_by_trainables
         trainable_inds = (
             np.unique(np.hstack([inds.reshape(-1) for inds in trainable_inds]))
@@ -2340,7 +2357,7 @@ class View(Module):
         for inds, params in zip(
             self.base.indices_set_by_trainables, self.base.trainable_params
         ):
-            in_view = np.isin(inds, trainable_node_inds_in_view)
+            in_view = is_viewed == np.isin(inds, trainable_node_inds_in_view)
 
             completely_in_view = in_view.all(axis=1)
             índices_set_by_trainables_in_view.append(inds[completely_in_view])
@@ -2358,7 +2375,9 @@ class View(Module):
 
         # TODO: working but ugly. maybe integrate into above loop
         trainable_names = np.array([next(iter(d)) for d in self.base.trainable_params])
-        is_syn_trainable_in_view = np.isin(trainable_names, self.synapse_param_names)
+        is_syn_trainable_in_view = is_viewed * np.isin(
+            trainable_names, self.synapse_param_names
+        )
         syn_trainable_names_in_view = trainable_names[is_syn_trainable_in_view]
         syn_trainable_inds_in_view = np.intersect1d(
             syn_trainable_names_in_view, trainable_names, return_indices=True
@@ -2367,7 +2386,9 @@ class View(Module):
             syn_name = trainable_names[idx].split("_")[0]
             syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
             syn_inds = np.arange(len(syn_edges))
-            syn_inds_in_view = syn_inds[np.isin(syn_edges.index, self._edges_in_view)]
+            syn_inds_in_view = syn_inds[
+                is_viewed == np.isin(syn_edges.index, self._edges_in_view)
+            ]
 
             syn_trainable_params_in_view = {
                 k: v[syn_inds_in_view]
@@ -2379,12 +2400,21 @@ class View(Module):
             ][syn_inds_in_view]
             índices_set_by_trainables_in_view.append(syn_inds_set_by_trainables_in_view)
 
-        self.indices_set_by_trainables = [
+        indices_set_by_trainables = [
             inds for inds in índices_set_by_trainables_in_view if len(inds) > 0
         ]
-        self.trainable_params = [
+        trainable_params = [
             p for p in trainable_params_in_view if len(next(iter(p.values()))) > 0
         ]
+        return indices_set_by_trainables, trainable_params
+
+    def _set_trainables_in_view(self):
+        # TODO: Test this! The two examples below are also buggy!
+        # net.cell([0,1]).branch(0).comp(0).trainable_params
+        # net.cell(0).branch(0).comp(0).trainable_params
+        self.indices_set_by_trainables, self.trainable_params = (
+            self._filter_trainables()
+        )
 
     def _channels_in_view(self, pointer: Union[Module, View]) -> List[Channel]:
         names = [name._name for name in pointer.channels]

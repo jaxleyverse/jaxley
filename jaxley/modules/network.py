@@ -531,7 +531,7 @@ class Network(Module):
             for i, layer in enumerate(layers):
                 graph.add_nodes_from(layer, layer=i)
         else:
-            graph.add_nodes_from(range(len(self._cells_list)))
+            graph.add_nodes_from(range(len(self._cells_in_view)))
 
         pre_cell = self.edges["global_pre_cell_index"].to_numpy()
         post_cell = self.edges["global_post_cell_index"].to_numpy()
