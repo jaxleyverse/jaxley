@@ -106,7 +106,6 @@ class Network(Module):
         self._gather_channels_from_constituents(cells)
 
         self._initialize()
-        self._init_syns()
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
@@ -238,17 +237,6 @@ class Network(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-    def init_syns(self):
-        """Initialize synapses."""
-        self.synapses = []
-
-        # TODO(@michaeldeistler): should we also track this for channels?
-        self.synapse_names = []
-        self.synapse_param_names = []
-        self.synapse_state_names = []
-
-        self.initialized_syns = True
 
     def _step_synapse(
         self,

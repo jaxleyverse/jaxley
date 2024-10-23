@@ -60,7 +60,6 @@ class Compartment(Module):
 
         # Initialize the module.
         self._initialize()
-        self._init_syns()
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]

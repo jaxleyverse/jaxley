@@ -132,7 +132,6 @@ class Cell(Module):
         )
 
         self._initialize()
-        self._init_syns()
 
     def _init_morph_jaxley_spsolve(self):
         """Initialize morphology for the custom sparse solver.

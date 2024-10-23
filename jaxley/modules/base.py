@@ -1227,7 +1227,7 @@ class Module(ABC):
     @property
     def initialized(self) -> bool:
         """Whether the `Module` is ready to be solved or not."""
-        return self.initialized_morph and self.initialized_syns
+        return self.initialized_morph
 
     def _initialize(self):
         """Initialize the module."""
@@ -1556,9 +1556,6 @@ class Module(ABC):
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
-
-    def _init_syns(self):
-        self.initialized_syns = True
 
     def step(
         self,
