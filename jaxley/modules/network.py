@@ -105,7 +105,8 @@ class Network(Module):
         # Channels.
         self._gather_channels_from_constituents(cells)
 
-        self._initialize()
+        self.initialize()
+        del self._cells_list
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
@@ -227,8 +228,6 @@ class Network(Module):
                 ],
                 ignore_index=True,
             )
-
-        del self._cells_list
 
         # Convert comp_edges to the index format required for `jax.sparse` solvers.
         n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
