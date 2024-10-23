@@ -102,6 +102,8 @@ def integrate(
     for key in externals.keys():
         externals[key] = externals[key].T  # Shape `(time, num_stimuli)`.
 
+    if module.recordings.empty:
+        raise ValueError("No recordings are set. Please set them.")
     rec_inds = module.recordings.rec_index.to_numpy()
     rec_states = module.recordings.state.to_numpy()
 
