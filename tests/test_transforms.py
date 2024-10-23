@@ -6,17 +6,22 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
+import pytest
 import jax.numpy as jnp
 import numpy as np
 from jax import jit
 
 from jaxley.optimize.transforms import ParamTransform
+import jaxley.optimize.transforms as jt
 
 
 def test_inverse():
     # test forward(inverse(x))=x
-    lowers = {"param_array_1": 2, "param_array_2": None, "param_array_3": -2}
-    uppers = {"param_array_1": -2, "param_array_2": 2, "param_array_3": None}
+    tf_dict = {
+        "param_array_1": jt.SigmoidTransform(-2, 2),
+        "param_array_2": jt.SoftplusTransform(2),
+        "param_array_3": jt.NegSoftplusTransform(-2),
+    }
 
     params = [
         {"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))},
@@ -24,17 +29,19 @@ def test_inverse():
         {"param_array_3": jnp.asarray(np.linspace(-1, 4, 4))},
     ]
 
-    tf = ParamTransform(lowers, uppers)
+    tf = ParamTransform(tf_dict)
+    forward = tf.forward(params)
+    inverse = tf.inverse(forward)
 
     assert np.allclose(
-        tf.forward(tf.inverse(params))[0]["param_array_1"], params[0]["param_array_1"]
-    )
+        inverse[0]["param_array_1"], params[0]["param_array_1"]
+    ), "SigmoidTransform forward, inverse failed."
     assert np.allclose(
-        tf.forward(tf.inverse(params))[1]["param_array_2"], params[1]["param_array_2"]
-    )
+        inverse[1]["param_array_2"], params[1]["param_array_2"]
+    ), "SoftplusTransform forward, inverse failed."
     assert np.allclose(
-        tf.forward(tf.inverse(params))[2]["param_array_3"], params[2]["param_array_3"]
-    )
+        inverse[2]["param_array_3"], params[2]["param_array_3"]
+    ), "NegSoftplusTransform forward, inverse failed."
 
 
 def test_bounds():
@@ -42,34 +49,49 @@ def test_bounds():
     lowers = {"param_array_1": -2, "param_array_2": None, "param_array_3": -2}
     uppers = {"param_array_1": 2, "param_array_2": 2, "param_array_3": None}
 
+    tf_dict = {
+        "param_array_1": jt.SigmoidTransform(-2, 2),
+        "param_array_2": jt.NegSoftplusTransform(2),
+        "param_array_3": jt.SoftplusTransform(-2),
+    }
+
     params = [
         {"param_array_1": jnp.asarray(np.linspace(-10, 10, 4))},
         {"param_array_2": jnp.asarray(np.linspace(-10, 10, 4))},
         {"param_array_3": jnp.asarray(np.linspace(-10, 10, 4))},
     ]
 
-    tf = ParamTransform(lowers, uppers)
+    tf = ParamTransform(tf_dict)
+    forward = tf.forward(params)
 
-    assert all(tf.forward(params)[0]["param_array_1"] > lowers["param_array_1"])
-    assert all(tf.forward(params)[0]["param_array_1"] < uppers["param_array_1"])
+    assert all(
+        forward[0]["param_array_1"] > lowers["param_array_1"]
+    ), "SigmoidTransform failed to match lower bound."
+    assert all(
+        forward[0]["param_array_1"] < uppers["param_array_1"]
+    ), "SigmoidTransform failed to match upper bound."
+    assert all(
+        forward[1]["param_array_2"] < uppers["param_array_2"]
+    ), "SoftplusTransform failed to match upper bound."
+    assert all(
+        forward[2]["param_array_3"] > lowers["param_array_3"]
+    ), "NegSoftplusTransform failed to match lower bound."
     assert any(
-        tf.forward(params)[1]["param_array_2"] < lowers["param_array_1"]
-    )  # lower not constrained
-    assert all(tf.forward(params)[1]["param_array_2"] < uppers["param_array_2"])
-    assert all(tf.forward(params)[2]["param_array_3"] > lowers["param_array_3"])
-    assert any(
-        tf.forward(params)[2]["param_array_3"] > uppers["param_array_1"]
+        forward[2]["param_array_3"] > uppers["param_array_1"]
     )  # upper not constrained
 
 
-def test_jit():
+@pytest.mark.parametrize(
+    "transform",
+    [jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2), jt.NegSoftplusTransform(2)],
+)
+def test_jit(transform):
     # test jit-compilation:
-    lowers = {"param_array_1": 2}
-    uppers = {"param_array_1": -2}
+    tf_dict = {"param_array_1": transform}
 
     params = [{"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))}]
 
-    tf = ParamTransform(lowers, uppers)
+    tf = ParamTransform(tf_dict)
 
     @jit
     def test_jit(params):
