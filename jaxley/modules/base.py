@@ -1805,8 +1805,10 @@ class Module(ABC):
             )
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
             constant_term = membrane_currents[0] - voltage_term * voltages[indices]
-            voltage_terms = voltage_terms.at[indices].add(voltage_term)
-            constant_terms = constant_terms.at[indices].add(-constant_term)
+
+            # * 1000 to convert from mA/cm^2 to uA/cm^2.
+            voltage_terms = voltage_terms.at[indices].add(voltage_term * 1000.0)
+            constant_terms = constant_terms.at[indices].add(-constant_term * 1000.0)
 
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
