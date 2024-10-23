@@ -30,6 +30,7 @@ class Compartment(Module):
     compartment_states: Dict = {"v": -70.0}
 
     def __init__(self):
+        print("wohooooo2")
         super().__init__()
 
         self.nseg = 1
