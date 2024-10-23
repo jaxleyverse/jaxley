@@ -4,6 +4,7 @@
 from copy import deepcopy
 
 import jax
+import pandas as pd
 import pytest
 
 jax.config.update("jax_enable_x64", True)
@@ -268,7 +269,7 @@ connect(net[0, 0, 0], net[0, 0, 1], TestSynapse())
 
 # make sure all attrs in module also have a corresponding attr in view
 @pytest.mark.parametrize("module", [comp, branch, cell, net])
-def test_view_attrs(module):
+def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     # attributes of Module that do not have to exist in View
     exceptions = ["view"]
     # TODO: should be added to View in the future
@@ -308,3 +309,141 @@ def test_view_attrs(module):
 # add test local_indexing and global_indexing
 # add cell.comp (branch is skipped also for param sharing)
 # add tests for new features i.e. iter, context, scope
+
+comp = jx.Compartment()
+branch = jx.Branch(comp, nseg=4)
+cell = jx.Cell([branch] * 4, parents=[-1, 0, 0])
+net = jx.Network([cell] * 4)
+
+@pytest.mark.parametrize("module", [comp, branch, cell, net])
+def test_different_index_types(module):
+    # test int, range, slice, list, np.array, pd.Index
+    index_types = [0, range(3), slice(0, 3), [0, 1, 2], np.array([0, 1, 2]), pd.Index([0, 1, 2])]
+    for index in index_types:
+        assert module.comp(index), f"Failed for {type(index)}"
+    
+    # for loc test float and list of floats
+    assert module.loc(0.0), "Failed for float"
+    assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"  
+
+def test_select():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=3)
+    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+    net = jx.Network([cell] * 3)
+    connect(net[0, 0, :], net[1, 0, :], TestSynapse())
+
+    np.random.seed(0)
+    inds = np.random.choice(net.nodes.index, replace=False, size=5)
+    view = net.select(nodes=inds)
+    assert np.all(view.nodes.index == inds), "Selecting nodes by index failed"
+
+    inds = np.random.choice(net.edges.index, replace=False, size=2)
+    view = net.select(edges=inds)
+    assert np.all(view.edges.index == inds), "Selecting edges by index failed"
+
+
+def test_arbitrary_selection():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=3)
+    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+    net = jx.Network([cell] * 3)
+
+    for view, local_targets, global_targets in zip([net.branch(0),net.cell(0).comp(0), net.comp(0), cell.comp(0)],
+                             [], []):
+        view.nodes["local_comp_index"] = local_targets
+        view.nodes["global_comp_index"] = global_targets
+
+def test_scope():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=3)
+    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+
+    view = cell.scope("global").branch(0)
+    assert view._scope == "global"
+    view = view.scope("local").comp(0)
+    assert view.nodes[["global_branch_index", "global_comp_index"]]
+
+    cell.set_scope("global")
+    assert cell._scope == "global"
+    view = cell.branch(0).comp(5)
+    assert np.all(view.nodes[["global_branch_index", "global_comp_index"]] == [0, 5])
+
+    cell.set_scope("local")
+    assert cell._scope == "local"
+    view = cell.branch(0).comp(5)
+    assert np.all(view.nodes[["global_branch_index", "global_comp_index"]] == [None, None]) 
+
+def test_context_manager():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=3)
+    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+
+    with cell.branch(0).comp(0) as comp:
+        comp.set("v", -71)
+        comp.set("radius", 0.1)
+    
+    with cell.branch(1).comp([0, 1]) as comps:
+        comps.set("v", -71)
+        comps.set("radius", 0.1)
+
+    assert np.all(cell.branch(0).comp(0).nodes[["v", "radius"]] == [-71, 0.1])
+    assert np.all(cell.branch(1).comp([0, 1]).nodes[["v", "radius"]] == [-71, 0.1])
+
+def test_iter():
+    comp = jx.Compartment()
+    branch1 = jx.Branch(comp, nseg=2)
+    branch2 = jx.Branch(comp, nseg=3)
+    cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
+    net = jx.Network([cell] * 2)
+
+    [len(branch.nodes) for branch in cell.branches]
+
+    for cell in net.cells:
+        for branch in cell.branches:
+            for comp in branch.comps:
+                pass
+
+    for cell in net:
+        for branch in cell:
+            for comp in branch:
+                pass
+
+    [len(comp.nodes) for comp in net[0, 0].comps]
+    [len(comp.nodes) for comp in net.comps]
+
+
+
+
+
+
+# # iterables
+# for cell in net.cells:
+#     for branch in cell.branches:
+#         for comp in branch.comps:
+#             comp.set("v", -71)
+
+# for comp in net.cell(0).branch(0).comps:
+#     comp.set("v", -72)
+# net.show()[["v"]]
+
+
+# # groups
+# net.cell(1).branch(0).add_group("group")
+# net.group.show()
+
+# # Channel and Synapse views
+# net.HH.show()
+# net.cell(0).HH.nodes
+# net.HH.cell(0).nodes
+
+# net.TestSynapse.nodes
+# net.cell([0,1]).TestSynapse.nodes
+# net.TestSynapse.cell(0).nodes
+
+# # edges
+# net.edge([0,1,2]).edges
+
+# # copying
+# cell0 = net.cell(0).copy()
+# cell0.show()
