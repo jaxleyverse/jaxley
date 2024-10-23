@@ -305,145 +305,272 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
             ), f"Type mismatch: {name}, Module type: {type(getattr(module, name))}, View type: {type(getattr(view, name))}"
 
 
-# TODO: test filter for modules and check for param sharing
-# add test local_indexing and global_indexing
-# add cell.comp (branch is skipped also for param sharing)
-# add tests for new features i.e. iter, context, scope
-
 comp = jx.Compartment()
-branch = jx.Branch(comp, nseg=4)
-cell = jx.Cell([branch] * 4, parents=[-1, 0, 0])
+branch = jx.Branch([comp] * 4)
+cell = jx.Cell([branch] * 4, parents=[-1, 0, 0, 0])
 net = jx.Network([cell] * 4)
+
 
 @pytest.mark.parametrize("module", [comp, branch, cell, net])
 def test_different_index_types(module):
     # test int, range, slice, list, np.array, pd.Index
-    index_types = [0, range(3), slice(0, 3), [0, 1, 2], np.array([0, 1, 2]), pd.Index([0, 1, 2])]
+    index_types = [
+        0,
+        range(3),
+        slice(0, 3),
+        [0, 1, 2],
+        np.array([0, 1, 2]),
+        pd.Index([0, 1, 2]),
+    ]
     for index in index_types:
+        assert isinstance(
+            module._reformat_index(index), np.ndarray
+        ), f"Failed for {type(index)}"
         assert module.comp(index), f"Failed for {type(index)}"
-    
+        assert View(module).comp(index), f"Failed for {type(index)}"
+
     # for loc test float and list of floats
     assert module.loc(0.0), "Failed for float"
-    assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"  
+    assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
+
 
 def test_select():
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=3)
+    branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
     net = jx.Network([cell] * 3)
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
     np.random.seed(0)
+
+    # select only nodes
     inds = np.random.choice(net.nodes.index, replace=False, size=5)
     view = net.select(nodes=inds)
     assert np.all(view.nodes.index == inds), "Selecting nodes by index failed"
 
+    # select only edges
     inds = np.random.choice(net.edges.index, replace=False, size=2)
     view = net.select(edges=inds)
     assert np.all(view.edges.index == inds), "Selecting edges by index failed"
 
+    # check if pre and post comps of edges are in nodes
+    edge_node_inds = np.unique(
+        view.edges[["global_pre_comp_index", "global_post_comp_index"]]
+        .to_numpy()
+        .flatten()
+    )
+    assert np.all(
+        view.nodes["global_comp_index"] == edge_node_inds
+    ), "Selecting edges did not yield the correct nodes."
 
-def test_arbitrary_selection():
+    # select nodes and edges
+    node_inds = np.random.choice(net.nodes.index, replace=False, size=5)
+    edge_inds = np.random.choice(net.edges.index, replace=False, size=2)
+    view = net.select(nodes=node_inds, edges=edge_inds)
+    assert np.all(
+        view.nodes.index == node_inds
+    ), "Selecting nodes and edges by index failed for nodes."
+    assert np.all(
+        view.edges.index == edge_inds
+    ), "Selecting nodes and edges by index failed for edges."
+
+
+def test_viewing():
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=3)
+    branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
     net = jx.Network([cell] * 3)
 
-    for view, local_targets, global_targets in zip([net.branch(0),net.cell(0).comp(0), net.comp(0), cell.comp(0)],
-                             [], []):
-        view.nodes["local_comp_index"] = local_targets
-        view.nodes["global_comp_index"] = global_targets
+    # test parameter sharing works correctly
+    nodes1 = net.branch(0).comp("all").nodes
+    nodes2 = net.branch(0).nodes
+    nodes3 = net.cell(0).nodes
+    control_params1 = nodes1.pop("controlled_by_param")
+    control_params2 = nodes2.pop("controlled_by_param")
+    control_params3 = nodes3.pop("controlled_by_param")
+    assert np.all(nodes1 == nodes2), "Nodes are not the same"
+    assert np.all(
+        control_params1 == nodes1["global_comp_index"]
+    ), "Parameter sharing is not correct"
+    assert np.all(
+        control_params2 == nodes2["global_branch_index"]
+    ), "Parameter sharing is not correct"
+    assert np.all(
+        control_params3 == nodes3["global_cell_index"]
+    ), "Parameter sharing is not correct"
+
+    # test local and global indexes match the expected targets
+    for view, local_targets, global_targets in zip(
+        [
+            net.branch(0),  # shows every comp on 0th branch of all cells
+            cell.branch("all"),  # shows all branches and comps of cell
+            net.cell(0).comp(0),  # shows every 0th comp for every branch on 0th cell
+            net.comp(0),  # shows 0th comp of every branch of every cell
+            cell.comp(0),  # shows 0th comp of every branch of cell
+        ],
+        [[0, 1, 2] * 3, [0, 1, 2] * 3, [0] * 3, [0] * 9, [0] * 3],
+        [
+            [0, 1, 2, 9, 10, 11, 18, 19, 20],
+            list(range(9)),
+            [0, 3, 6],
+            list(range(0, 27, 3)),
+            list(range(0, 9, 3)),
+        ],
+    ):
+        assert np.all(
+            view.nodes["local_comp_index"] == local_targets
+        ), "Indices do not match that of the target"
+        assert np.all(
+            view.nodes["global_comp_index"] == global_targets
+        ), "Indices do not match that of the target"
+
+    with pytest.raises(ValueError):
+        net.scope("global").comp(999)  # Nothing should be in View
+
 
 def test_scope():
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=3)
+    branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
 
-    view = cell.scope("global").branch(0)
+    view = cell.scope("global").branch(1)
     assert view._scope == "global"
     view = view.scope("local").comp(0)
-    assert view.nodes[["global_branch_index", "global_comp_index"]]
+    assert np.all(
+        view.nodes[["global_branch_index", "global_comp_index"]] == [1, 3]
+    ), "Expected [1,3] but got {}".format(
+        view.nodes[["global_branch_index", "global_comp_index"]]
+    )
 
     cell.set_scope("global")
     assert cell._scope == "global"
-    view = cell.branch(0).comp(5)
-    assert np.all(view.nodes[["global_branch_index", "global_comp_index"]] == [0, 5])
+    view = cell.branch(1).comp(3)
+    assert np.all(
+        view.nodes[["global_branch_index", "global_comp_index"]] == [1, 3]
+    ), "Expected [1,3] but got {}".format(
+        view.nodes[["global_branch_index", "global_comp_index"]]
+    )
 
     cell.set_scope("local")
     assert cell._scope == "local"
-    view = cell.branch(0).comp(5)
-    assert np.all(view.nodes[["global_branch_index", "global_comp_index"]] == [None, None]) 
+    view = cell.branch(1).comp(0)
+    assert np.all(
+        view.nodes[["global_branch_index", "global_comp_index"]] == [1, 3]
+    ), "Expected [1,3] but got {}".format(
+        view.nodes[["global_branch_index", "global_comp_index"]]
+    )
+
 
 def test_context_manager():
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=3)
+    branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
 
     with cell.branch(0).comp(0) as comp:
         comp.set("v", -71)
-        comp.set("radius", 0.1)
-    
+        comp.set("radius", 0.123)
+
     with cell.branch(1).comp([0, 1]) as comps:
         comps.set("v", -71)
-        comps.set("radius", 0.1)
+        comps.set("radius", 0.123)
 
-    assert np.all(cell.branch(0).comp(0).nodes[["v", "radius"]] == [-71, 0.1])
-    assert np.all(cell.branch(1).comp([0, 1]).nodes[["v", "radius"]] == [-71, 0.1])
+    assert np.all(
+        cell.branch(0).comp(1).nodes[["v", "radius"]] == [-70, 1.0]
+    ), "Set affected nodes not in context manager View."
+    assert np.all(
+        cell.branch(0).comp(0).nodes[["v", "radius"]] == [-71, 0.123]
+    ), "Context management of View not working."
+    assert np.all(
+        cell.branch(1).comp([0, 1]).nodes[["v", "radius"]] == [-71, 0.123]
+    ), "Context management of View not working."
+
 
 def test_iter():
     comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=2)
-    branch2 = jx.Branch(comp, nseg=3)
+    branch1 = jx.Branch([comp] * 2)
+    branch2 = jx.Branch([comp] * 3)
     cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
     net = jx.Network([cell] * 2)
 
-    [len(branch.nodes) for branch in cell.branches]
+    # test iterating over bracnhes with different numbers of compartments
+    assert np.all(
+        [
+            len(branch.nodes) == expected_len
+            for branch, expected_len in zip(cell.branches, [2, 2, 3])
+        ]
+    ), "__iter__ failed for branches with different numbers of compartments."
 
+    # test iterating using cells, branches, and comps properties
+    nodes1 = []
     for cell in net.cells:
         for branch in cell.branches:
             for comp in branch.comps:
-                pass
+                nodes1.append(comp.nodes)
+    assert len(nodes1) == len(net.nodes), "Some compartments were skipped in iteration."
 
+    nodes2 = []
     for cell in net:
         for branch in cell:
             for comp in branch:
-                pass
+                nodes2.append(comp.nodes)
+    assert len(nodes2) == len(net.nodes), "Some compartments were skipped in iteration."
+    assert np.all(
+        [np.all(n1 == n2) for n1, n2 in zip(nodes1, nodes2)]
+    ), "__iter__ is not consistent with [comp.nodes for cell in net.cells for branches in cell.branches for comp in branches.comps]"
 
-    [len(comp.nodes) for comp in net[0, 0].comps]
-    [len(comp.nodes) for comp in net.comps]
+    assert np.all(
+        [len(comp.nodes) for comp in net[0, 0].comps] == [1, 1]
+    ), "Iterator yielded unexpected number of compartments"
+
+    # 0th comp in every branch (3), 1st comp in every branch (3), 2nd comp in (every) branch (only 1 branch with > 2 comps)
+    assert np.all(
+        [len(comp.nodes) for comp in net[0].comps] == [3, 3, 1]
+    ), "Iterator yielded unexpected number of compartments"
+
+    # 0th comp in every branch for every cell (6), 1st comp in every branch for every cell , 2nd comp in (every) branch for every cell
+    assert np.all(
+        [len(comp.nodes) for comp in net.comps] == [6, 6, 2]
+    ), "Iterator yielded unexpected number of compartments"
+
+    for comp in branch1:
+        comp.set("v", -72)
+    assert np.all(branch1.nodes["v"] == -72), "Setting parameters with __iter__ failed."
+
+    # needs to be redefined because cell was overwritten with View object
+    cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
+    for branch in cell:
+        for comp in branch:
+            comp.set("v", -73)
+    assert np.all(cell.nodes["v"] == -73), "Setting parameters with __iter__ failed."
 
 
+def test_synapse_and_channel_filtering():
+    comp = jx.Compartment()
+    branch = jx.Branch([comp] * 3)
+    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+    net = jx.Network([cell] * 3)
+    net.insert(HH())
+    connect(net[0, 0, :], net[1, 0, :], TestSynapse())
+
+    assert np.all(net.cell(0).HH.nodes == net.HH.cell(0).nodes)
+    view1 = net.cell([0, 1]).TestSynapse
+    nodes1 = view1.nodes
+    edges1 = view1.edges
+    view2 = net.TestSynapse.cell([0, 1])
+    nodes2 = view2.nodes
+    edges2 = view2.edges
+    nodes_control_param1 = nodes1.pop("controlled_by_param")
+    nodes_control_param2 = nodes2.pop("controlled_by_param")
+    edges_control_param1 = edges1.pop("controlled_by_param")
+    edges_control_param2 = edges2.pop("controlled_by_param")
+
+    assert np.all(nodes1 == nodes2)
+    assert np.all(nodes_control_param1 == 0)
+    assert np.all(nodes_control_param2 == nodes2["global_cell_index"])
+
+    assert np.all(edges1 == edges2)
+    assert np.all(net.edge(0).TestSynapse.nodes == net.TestSynapse.edge(0).nodes)
+    assert np.all(net.edge(0).TestSynapse.edges == net.TestSynapse.edge(0).edges)
 
 
-
-
-# # iterables
-# for cell in net.cells:
-#     for branch in cell.branches:
-#         for comp in branch.comps:
-#             comp.set("v", -71)
-
-# for comp in net.cell(0).branch(0).comps:
-#     comp.set("v", -72)
-# net.show()[["v"]]
-
-
-# # groups
-# net.cell(1).branch(0).add_group("group")
-# net.group.show()
-
-# # Channel and Synapse views
-# net.HH.show()
-# net.cell(0).HH.nodes
-# net.HH.cell(0).nodes
-
-# net.TestSynapse.nodes
-# net.cell([0,1]).TestSynapse.nodes
-# net.TestSynapse.cell(0).nodes
-
-# # edges
-# net.edge([0,1,2]).edges
-
-# # copying
-# cell0 = net.cell(0).copy()
-# cell0.show()
+# TODO: test copying/extracting views/module parts
