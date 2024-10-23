@@ -120,7 +120,7 @@ def test_jit(transform):
     ],
 )
 def test_correct(transform):
-    # test jit-compilation:
+    # Test correctness on "standard" PyTree
     tf_dict = [{"param_array_1": transform}]
 
     params = [{"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))}]
@@ -133,6 +133,18 @@ def test_correct(transform):
     assert np.allclose(
         inverse[0]["param_array_1"], params[0]["param_array_1"]
     ), f"{transform} forward, inverse failed."
+
+    # Test correctness plain Array
+    for shape in [(4,), (4, 1), (4, 4)]:
+        tf_dict = transform
+        tf = ParamTransform(tf_dict)
+        x = jnp.ones(shape)
+        y = tf.forward(x)
+        x_inv = tf.inverse(y)
+
+        assert np.allclose(
+            x, x_inv
+        ), f"{transform} forward, inverse failed on non PyTree."
 
 
 @pytest.mark.parametrize(
