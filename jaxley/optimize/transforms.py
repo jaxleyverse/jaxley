@@ -137,7 +137,7 @@ class MaskedTransform(Transform):
         """A masked transformation
 
         Args:
-            mask (ArrayLike): Masking array
+            mask (ArrayLike): Which elements to transform
             transform (Transform): Transformation to apply
         """
         super().__init__()
@@ -176,12 +176,12 @@ class CustomTransform(Transform):
 class ParamTransform:
     """Parameter transformation utility.
 
-    This class is used to transform parameters from an unconstrained space to a constrained space
-    and back. If the range is bounded both from above and below, we use the sigmoid function to
-    transform the parameters. If the range is only bounded from below or above, we use softplus.
+    This class is used to transform parameters usually from an unconstrained space to a constrained space
+    and back (bacause most biophysical parameter are bounded). The user can specify a PyTree of transforms
+    that are applied to the parameters.
 
     Attributes:
-        tf_dict: A dictionary of transforms for each parameter.
+        tf_dict: A PyTree of transforms for each parameter.
 
     """
 
@@ -189,7 +189,7 @@ class ParamTransform:
         """Creates a new ParamTransform object.
 
         Args:
-            transform_dict: A dictionary of transforms for each parameter.
+            tf_dict: A PyTree of transforms for each parameter.
         """
 
         self.tf_dict = tf_dict
@@ -200,10 +200,10 @@ class ParamTransform:
         """Pushes unconstrained parameters through a tf such that they fit the interval.
 
         Args:
-            params: A list of dictionaries with unconstrained parameters.
+            params: A list of dictionaries (or any PyTree) with unconstrained parameters.
 
         Returns:
-            A list of dictionaries with transformed parameters.
+            A list of dictionaries (or any PyTree) with transformed parameters.
 
         """
 
@@ -215,10 +215,10 @@ class ParamTransform:
         """Takes parameters from within the interval and makes them unconstrained.
 
         Args:
-            params: A list of dictionaries with transformed parameters.
+            params: A list of dictionaries (or any PyTree) with transformed parameters.
 
         Returns:
-            A list of dictionaries with unconstrained parameters.
+            A list of dictionaries (or any PyTree) with unconstrained parameters.
         """
 
         return jax.tree_util.tree_map(lambda x, tf: tf.inverse(x), params, self.tf_dict)
