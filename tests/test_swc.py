@@ -180,7 +180,7 @@ def test_swc_voltages(file):
     for i in trunk_inds + tuft_inds + basal_inds:
         cell.branch(i).loc(0.05).record()
 
-    voltages_jaxley = jx.integrate(cell, delta_t=dt)
+    voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
 
     ################### NEURON #################
     stim = h.IClamp(h.soma[0](0.1))
