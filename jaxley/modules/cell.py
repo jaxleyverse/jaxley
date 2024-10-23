@@ -131,8 +131,8 @@ class Cell(Module):
             compute_children_and_parents(self.branch_edges)
         )
 
-        self.initialize()
-        self.init_syns()
+        self._initialize()
+        self._init_syns()
 
     def _init_morph_jaxley_spsolve(self):
         """Initialize morphology for the custom sparse solver.
@@ -270,30 +270,6 @@ class Cell(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-    @staticmethod
-    def update_summed_coupling_conds_jaxley_spsolve(
-        summed_conds,
-        child_inds,
-        par_inds,
-        branchpoint_conds_children,
-        branchpoint_conds_parents,
-    ):
-        """Perform updates on the diagonal based on conductances of the branchpoints.
-
-        Args:
-            summed_conds: shape [num_branches, nseg]
-            child_inds: shape [num_branches - 1]
-            conds_fwd: shape [num_branches - 1]
-            conds_bwd: shape [num_branches - 1]
-            parents: shape [num_branches]
-
-        Returns:
-            Updated `summed_coupling_conds`.
-        """
-        summed_conds = summed_conds.at[child_inds, 0].add(branchpoint_conds_children)
-        summed_conds = summed_conds.at[par_inds, -1].add(branchpoint_conds_parents)
-        return summed_conds
 
 
 def read_swc(

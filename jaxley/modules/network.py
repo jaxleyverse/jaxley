@@ -105,8 +105,8 @@ class Network(Module):
         # Channels.
         self._gather_channels_from_constituents(cells)
 
-        self.initialize()
-        self.init_syns()
+        self._initialize()
+        self._init_syns()
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."

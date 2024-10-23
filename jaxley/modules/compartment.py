@@ -59,8 +59,8 @@ class Compartment(Module):
         self._internal_node_inds = jnp.asarray([0])
 
         # Initialize the module.
-        self.initialize()
-        self.init_syns()
+        self._initialize()
+        self._init_syns()
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
@@ -93,9 +93,3 @@ class Compartment(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-    def init_conds(self, params: Dict[str, jnp.ndarray]):
-        """Override `Base.init_axial_conds()`.
-
-        This is because compartments do not have any axial conductances."""
-        return {"axial_conductances": jnp.asarray([])}
