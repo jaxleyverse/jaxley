@@ -121,3 +121,11 @@ def test_record_synaptic_and_membrane_states():
         # On average the membrane trace spikes around 0 steps after voltage.
         offset_mem = 0
         assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
+
+def test_empty_recordings():
+    # Create an empty compartment
+    comp = jx.Compartment()
+
+    # Check if a ValueError is raised when integrating an empty compartment
+    with pytest.raises(ValueError):
+        v = jx.integrate(comp, delta_t=0.025, t_max=10.0)
