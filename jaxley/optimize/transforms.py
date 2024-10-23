@@ -4,6 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Sequence
 
+import jax
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
@@ -12,8 +13,11 @@ from jaxley.solver_gate import save_exp
 
 
 class Transform(ABC):
-    @abstractmethod
     def __call__(self, x: ArrayLike) -> Array:
+        return self.forward(x)
+
+    @abstractmethod
+    def forward(self, x: ArrayLike) -> Array:
         pass
 
     @abstractmethod
@@ -35,7 +39,7 @@ class SigmoidTransform(Transform):
         self.lower = lower
         self.width = upper - lower
 
-    def __call__(self, x: ArrayLike) -> Array:
+    def forward(self, x: ArrayLike) -> Array:
         y = 1.0 / (1.0 + save_exp(-x))
         return self.lower + self.width * y
 
@@ -57,11 +61,11 @@ class SoftplusTransform(Transform):
         super().__init__()
         self.lower = lower
 
-    def __call__(self, x: ArrayLike) -> Array:
+    def forward(self, x: ArrayLike) -> Array:
         return jnp.log1p(save_exp(x)) + self.lower
 
     def inverse(self, y: ArrayLike) -> Array:
-        return jnp.log(jnp.exp(y - self.lower) - 1.0)
+        return jnp.log(save_exp(y - self.lower) - 1.0)
 
 
 class NegSoftplusTransform(SoftplusTransform):
@@ -75,8 +79,8 @@ class NegSoftplusTransform(SoftplusTransform):
         """
         super().__init__(upper)
 
-    def __call__(self, x: ArrayLike) -> Array:
-        return -super().__call__(-x)
+    def forward(self, x: ArrayLike) -> Array:
+        return -super().forward(-x)
 
     def inverse(self, y: ArrayLike) -> Array:
         return -super().inverse(-y)
@@ -98,7 +102,7 @@ class AffineTransform(Transform):
         self.a = scale
         self.b = shift
 
-    def __call__(self, x: ArrayLike) -> Array:
+    def forward(self, x: ArrayLike) -> Array:
         return self.a * x + self.b
 
     def inverse(self, x: ArrayLike) -> Array:
@@ -117,7 +121,7 @@ class ChainTransform(Transform):
         super().__init__()
         self.transforms = transforms
 
-    def __call__(self, x: ArrayLike) -> Array:
+    def forward(self, x: ArrayLike) -> Array:
         for transform in self.transforms:
             x = transform(x)
         return x
@@ -126,6 +130,25 @@ class ChainTransform(Transform):
         for transform in reversed(self.transforms):
             y = transform.inverse(y)
         return y
+
+
+class MaskedTransform(Transform):
+    def __init__(self, mask: ArrayLike, transform: Transform) -> None:
+        """A masked transformation
+
+        Args:
+            mask (ArrayLike): Masking array
+            transform (Transform): Transformation to apply
+        """
+        super().__init__()
+        self.mask = mask
+        self.transform = transform
+
+    def forward(self, x: ArrayLike) -> Array:
+        return jnp.where(self.mask, self.transform.forward(x), x)
+
+    def inverse(self, y: ArrayLike) -> Array:
+        return jnp.where(self.mask, self.transform.inverse(y), y)
 
 
 class CustomTransform(Transform):
@@ -143,7 +166,7 @@ class CustomTransform(Transform):
         self.forward_fn = forward_fn
         self.inverse_fn = inverse_fn
 
-    def __call__(self, x: ArrayLike) -> Array:
+    def forward(self, x: ArrayLike) -> Array:
         return self.forward_fn(x)
 
     def inverse(self, y: ArrayLike) -> Array:
@@ -162,7 +185,7 @@ class ParamTransform:
 
     """
 
-    def __init__(self, tf_dict: Dict[str, Transform]) -> None:
+    def __init__(self, tf_dict: List[Dict[str, Transform]] | Transform) -> None:
         """Creates a new ParamTransform object.
 
         Args:
@@ -182,17 +205,7 @@ class ParamTransform:
 
         """
 
-        tf_params = []
-        for param in params:
-            key = list(param.keys())[0]
-
-            if key in self.tf_dict:
-                tf = self.tf_dict[key](param[key])
-                tf_params.append({key: tf})
-            else:
-                tf_params.append({key: param[key]})
-
-        return tf_params
+        return jax.tree_util.tree_map(lambda x, tf: tf.forward(x), params, self.tf_dict)
 
     def inverse(self, params: List[Dict[str, ArrayLike]]) -> Dict[str, Array]:
         """Takes parameters from within the interval and makes them unconstrained.
@@ -204,14 +217,4 @@ class ParamTransform:
             A list of dictionaries with unconstrained parameters.
         """
 
-        tf_params = []
-        for param in params:
-            key = list(param.keys())[0]
-
-            if key in self.tf_dict:
-                tf_inv = self.tf_dict[key].inverse(param[key])
-                tf_params.append({key: tf_inv})
-            else:
-                tf_params.append({key: param[key]})
-
-        return tf_params
+        return jax.tree_util.tree_map(lambda x, tf: tf.inverse(x), params, self.tf_dict)
