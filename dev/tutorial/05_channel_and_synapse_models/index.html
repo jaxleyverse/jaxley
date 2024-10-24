@@ -929,6 +929,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Potassium channel.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;gK_new&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;n_new&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
@@ -945,9 +946,7 @@
     <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
         <span class="n">ns</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s2">&quot;n_new&quot;</span><span class="p">]</span>
-
-        <span class="c1"># Multiply with 1000 to convert Siemens to milli Siemens.</span>
-        <span class="n">kd_conds</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;gK_new&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ns</span><span class="o">**</span><span class="mi">4</span> <span class="o">*</span> <span class="mi">1000</span>  <span class="c1"># mS/cm^2</span>
+        <span class="n">kd_conds</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;gK_new&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ns</span><span class="o">**</span><span class="mi">4</span>  <span class="c1"># S/cm^2</span>
 
         <span class="n">e_kd</span> <span class="o">=</span> <span class="o">-</span><span class="mf">77.0</span>        
         <span class="k">return</span> <span class="n">kd_conds</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">e_kd</span><span class="p">)</span>
@@ -962,11 +961,12 @@
 <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">exp_update_alpha</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
 </code></pre></div></p>
-<p>Next, we define our channel as a class. It should inherit from the <code>Channel</code> class and define <code>channel_params</code>, <code>channel_states</code>, and <code>current_name</code>.
+<p>Next, we define our channel as a class. It should inherit from the <code>Channel</code> class and define <code>channel_params</code>, <code>channel_states</code>, and <code>current_name</code>. You also need to set <code>self.current_is_in_mA_per_cm2=True</code> as the first line on your <code>__init__()</code> method. This is to acknowledge that your current is returned in <code>mA/cm2</code> (not in <code>uA/cm2</code>, as would have been required in Jaxley versions 0.4.0 or older).
 <div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Potassium</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Potassium channel.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;gK_new&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;n_new&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
@@ -989,7 +989,7 @@
         <span class="n">ns</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s2">&quot;n_new&quot;</span><span class="p">]</span>
 
         <span class="c1"># Multiply with 1000 to convert Siemens to milli Siemens.</span>
-        <span class="n">kd_conds</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;gK_new&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ns</span><span class="o">**</span><span class="mi">4</span> <span class="o">*</span> <span class="mi">1000</span>  <span class="c1"># mS/cm^2</span>
+        <span class="n">kd_conds</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;gK_new&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ns</span><span class="o">**</span><span class="mi">4</span>  <span class="c1"># S/cm^2</span>
 
         <span class="n">e_kd</span> <span class="o">=</span> <span class="o">-</span><span class="mf">77.0</span>        
         <span class="n">current</span> <span class="o">=</span> <span class="n">kd_conds</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">e_kd</span><span class="p">)</span>
