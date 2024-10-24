@@ -7,6 +7,7 @@ from copy import deepcopy
 from itertools import chain
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
+import warnings
 
 import jax.numpy as jnp
 import numpy as np
@@ -988,9 +989,7 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        assert (
-            self.allow_make_trainable
-        ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
+        assert self.allow_make_trainable, "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
         nsegs_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
@@ -1051,6 +1050,10 @@ class Module(ABC):
         Args:
             endpoint: The compartment to which to compute the distance to.
         """
+        warnings.warn(
+            "This is deprecated and will be removed in the future. Use `distance` from jaxlay.distance instead.",
+        )
+
         assert len(self.xyzr) == 1 and len(endpoint.xyzr) == 1
         assert self.xyzr[0].shape[0] == 1 and endpoint.xyzr[0].shape[0] == 1
         start_xyz = self.xyzr[0][0, :3]
@@ -1967,7 +1970,7 @@ class Module(ABC):
                     num_children_of_parent = num_children[parents[b]]
                     if num_children_of_parent > 1:
                         y_offset = (
-                            ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                            (index_of_child[b] / (num_children_of_parent - 1)) - 0.5
                         ) * y_offset_multiplier[levels[b]]
                     else:
                         y_offset = 0.0
