@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from math import prod
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import pandas as pd
@@ -10,6 +10,83 @@ import pandas as pd
 from jaxley.modules import Module
 from jaxley.utils.cell_utils import params_to_pstate
 from jaxley.utils.jax_utils import nested_checkpoint_scan
+
+
+def build_init_and_step_fn(
+    module: Module,
+    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+    data_clamps: Optional[Tuple[str, jnp.ndarray, pd.DataFrame]] = None,
+) -> Callable:
+    # Initialize the external inputs and their indices.
+    externals = module.externals.copy()
+    external_inds = module.external_inds.copy()
+
+    # If stimulus is inserted, add it to the external inputs.
+    if "i" in module.externals.keys() or data_stimuli is not None:
+        if "i" in module.externals.keys():
+            if data_stimuli is not None:
+                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
+                external_inds["i"] = jnp.concatenate(
+                    [external_inds["i"], data_stimuli[2].global_comp_index.to_numpy()]
+                )
+        else:
+            externals["i"] = data_stimuli[1]
+            external_inds["i"] = data_stimuli[2].global_comp_index.to_numpy()
+
+    # If a clamp is inserted, add it to the external inputs.
+    if data_clamps is not None:
+        state_name, clamps, inds = data_clamps
+        if state_name in module.externals.keys():
+            externals[state_name] = jnp.concatenate([externals[state_name], clamps])
+            external_inds[state_name] = jnp.concatenate(
+                [external_inds[state_name], inds.global_comp_index.to_numpy()]
+            )
+        else:
+            externals[state_name] = clamps
+            external_inds[state_name] = inds.global_comp_index.to_numpy()
+
+    def init_fn(
+        params: List[Dict[str, jnp.ndarray]],
+        all_states: Optional[Dict] = None,
+        voltage_solver: str = "jaxley.stone",
+        delta_t: float = 0.025,
+        param_state: Optional[List[Dict]] = None,
+    ) -> Dict:
+        # Make the `trainable_params` of the same shape as the `param_state`, such that
+        # they can be processed together by `get_all_parameters`.
+        pstate = params_to_pstate(params, module.indices_set_by_trainables)
+        if param_state is not None:
+            pstate += param_state
+
+        all_params = module.get_all_parameters(pstate, voltage_solver=voltage_solver)
+        all_states = (
+            module.get_all_states(pstate, all_params, delta_t)
+            if all_states is None
+            else all_states
+        )
+        return all_states, all_params
+
+    def step_fn(
+        all_states: Dict,
+        all_params: Dict,
+        externals: Dict,
+        delta_t: float = 0.025,
+        solver: str = "bwd_euler",
+        voltage_solver: str = "jaxley.stone",
+    ) -> Tuple[Dict, jnp.ndarray]:
+        state = all_states
+        state = module.step(
+            state,
+            delta_t,
+            external_inds,
+            externals,
+            params=all_params,
+            solver=solver,
+            voltage_solver=voltage_solver,
+        )
+        return state
+
+    return init_fn, step_fn
 
 
 def integrate(
@@ -139,6 +216,7 @@ def integrate(
         else all_states
     )
 
+
     def _body_fun(state, externals):
         state = module.step(
             state,
@@ -190,6 +268,10 @@ def integrate(
         ]
     )
     init_recording = jnp.expand_dims(init_recs, axis=0)
+
+    print(all_states)
+    print(all_params)
+    print(externals)
 
     # Run simulation.
     all_states, recordings = nested_checkpoint_scan(
