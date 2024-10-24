@@ -227,18 +227,29 @@ class Module(ABC):
             return df
 
         index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
-        for obj, prefix in zip(
-            [self.nodes, self.edges, self.edges], ["", "pre_", "post_"]
-        ):
-            global_idx_cols = [f"global_{prefix}{name}" for name in index_names]
-            local_idx_cols = [f"local_{prefix}{name}" for name in index_names]
-            idcs = obj[global_idx_cols]
+        global_idx_cols = [f"global_{name}" for name in index_names]
+        local_idx_cols = [f"local_{name}" for name in index_names]
+        local_pre_cols = [f"local_pre_{name}" for name in index_names]
+        local_post_cols = [f"local_post_{name}" for name in index_names]
+        idcs = self.nodes[global_idx_cols]
 
-            idcs = reindex_a_by_b(idcs, global_idx_cols[0])
-            idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
-            idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
-            idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
-            obj[local_idx_cols] = idcs[local_idx_cols].astype(int)
+        # update local indices of nodes
+        idcs = reindex_a_by_b(idcs, global_idx_cols[0])
+        idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
+        idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
+        idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
+        self.nodes[local_idx_cols] = idcs[local_idx_cols].astype(int)
+
+        # add local indices of nodes to edges
+        global_pre_inds = self.edges["global_pre_comp_index"]
+        global_post_inds = self.edges["global_post_comp_index"]
+        global_node_inds = self.nodes["global_comp_index"]
+        flat = lambda x: np.array(x).flatten()
+        is_pre = flat([np.where(global_node_inds == i)[0] for i in global_pre_inds])
+        is_post = flat([np.where(global_node_inds == i)[0] for i in global_post_inds])
+        local_node_inds = self.nodes[local_idx_cols]
+        self.edges.loc[:, local_pre_cols] = local_node_inds.loc[is_pre].to_numpy()
+        self.edges.loc[:, local_post_cols] = local_node_inds.loc[is_post].to_numpy()
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
         self.nodes = reorder_cols(
@@ -1086,7 +1097,6 @@ class Module(ABC):
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
 
     def delete_trainables(self):
-        # TODO: Test that this correctly works for View!
         """Removes all trainable parameters from the module."""
 
         if isinstance(self, View):
@@ -1187,6 +1197,7 @@ class Module(ABC):
             # TODO: Longterm this should be gotten rid of.
             # Instead edges should work similar to nodes (would also allow for
             # param sharing).
+            # TODO: URGENT: FIX THIS SHIT
             if key in self.base.synapse_param_names:
                 syn_name_from_param = key.split("_")[0]
                 syn_edges = self.__getattr__(syn_name_from_param).edges
@@ -2342,63 +2353,44 @@ class View(Module):
         Args:
             is_viewed: Toggles between returning the trainables and inds
                 currently inside or outside of the scope of View."""
-        trainable_inds = self.base.indices_set_by_trainables
-        trainable_inds = (
-            np.unique(np.hstack([inds.reshape(-1) for inds in trainable_inds]))
-            if len(trainable_inds) > 0
-            else []
-        )
-        trainable_node_inds_in_view = np.intersect1d(
-            trainable_inds, self._nodes_in_view
-        )
-
         índices_set_by_trainables_in_view = []
         trainable_params_in_view = []
         for inds, params in zip(
             self.base.indices_set_by_trainables, self.base.trainable_params
         ):
-            in_view = is_viewed == np.isin(inds, trainable_node_inds_in_view)
+            pkey, pval = next(iter(params.items()))
+            trainable_inds_in_view = None
+            if pkey in sum(
+                [list(c.channel_params.keys()) for c in self.base.channels], []
+            ):
+                trainable_inds_in_view = np.intersect1d(inds, self._nodes_in_view)
+            elif pkey in sum(
+                [list(s.synapse_params.keys()) for s in self.base.synapses], []
+            ):
+                trainable_inds_in_view = np.intersect1d(inds, self._edges_in_view)
 
+            in_view = is_viewed == np.isin(inds, trainable_inds_in_view)
             completely_in_view = in_view.all(axis=1)
-            índices_set_by_trainables_in_view.append(inds[completely_in_view])
+            partially_in_view = in_view.any(axis=1) & ~completely_in_view
+
             trainable_params_in_view.append(
                 {k: v[completely_in_view] for k, v in params.items()}
-            )
-
-            partially_in_view = in_view.any(axis=1) & ~completely_in_view
-            índices_set_by_trainables_in_view.append(
-                inds[partially_in_view][in_view[partially_in_view]]
             )
             trainable_params_in_view.append(
                 {k: v[partially_in_view] for k, v in params.items()}
             )
 
-        # TODO: working but ugly. maybe integrate into above loop
-        trainable_names = np.array([next(iter(d)) for d in self.base.trainable_params])
-        is_syn_trainable_in_view = is_viewed * np.isin(
-            trainable_names, self.synapse_param_names
-        )
-        syn_trainable_names_in_view = trainable_names[is_syn_trainable_in_view]
-        syn_trainable_inds_in_view = np.intersect1d(
-            syn_trainable_names_in_view, trainable_names, return_indices=True
-        )[2]
-        for idx in syn_trainable_inds_in_view:
-            syn_name = trainable_names[idx].split("_")[0]
-            syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
-            syn_inds = np.arange(len(syn_edges))
-            syn_inds_in_view = syn_inds[
-                is_viewed == np.isin(syn_edges.index, self._edges_in_view)
-            ]
+            índices_set_by_trainables_in_view.append(inds[completely_in_view])
+            partial_inds = inds[partially_in_view][in_view[partially_in_view]]
 
-            syn_trainable_params_in_view = {
-                k: v[syn_inds_in_view]
-                for k, v in self.base.trainable_params[idx].items()
-            }
-            trainable_params_in_view.append(syn_trainable_params_in_view)
-            syn_inds_set_by_trainables_in_view = self.base.indices_set_by_trainables[
-                idx
-            ][syn_inds_in_view]
-            índices_set_by_trainables_in_view.append(syn_inds_set_by_trainables_in_view)
+            # the indexing above can lead to inconsistent shapes.
+            # this is fixed here to return them to the prev shape
+            if inds.shape[0] > 1 and partial_inds.shape != (0,):
+                partial_inds = partial_inds.reshape(-1, 1)
+            if inds.shape[1] > 1 and partial_inds.shape != (0,):
+                partial_inds = partial_inds.reshape(1, -1)
+
+            índices_set_by_trainables_in_view.append(partial_inds)
 
         indices_set_by_trainables = [
             inds for inds in índices_set_by_trainables_in_view if len(inds) > 0
@@ -2409,12 +2401,12 @@ class View(Module):
         return indices_set_by_trainables, trainable_params
 
     def _set_trainables_in_view(self):
-        # TODO: Test this! The two examples below are also buggy!
-        # net.cell([0,1]).branch(0).comp(0).trainable_params
-        # net.cell(0).branch(0).comp(0).trainable_params
-        self.indices_set_by_trainables, self.trainable_params = (
-            self._filter_trainables()
-        )
+        trainables = self._filter_trainables()
+
+        # note for `branch.comp(0).make_trainable("X"); branch.make_trainable("X")`
+        # `view = branch.comp(0)` will have duplicate training params.
+        self.indices_set_by_trainables = trainables[0]
+        self.trainable_params = trainables[1]
 
     def _channels_in_view(self, pointer: Union[Module, View]) -> List[Channel]:
         names = [name._name for name in pointer.channels]
