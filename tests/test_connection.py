@@ -57,7 +57,6 @@ def test_connect():
 
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
-    # TODO: VERIFY THAT THIS IS INTENDED BEHAVIOUR! @Michael
     nodes = net2.nodes.set_index("global_comp_index")
     cols = ["global_pre_comp_index", "global_post_comp_index"]
     comp_inds = nodes.loc[first_set_edges[cols].to_numpy().flatten()]
