@@ -58,7 +58,7 @@ def nested_checkpoint_scan(
         new_shape = tuple(nested_lengths) + x.shape[1:]
         return x.reshape(new_shape)
 
-    sub_xs = jax.tree_map(nested_reshape, xs)
+    sub_xs = jax.tree_util.tree_map(nested_reshape, xs)
     return _inner_nested_scan(f, init, sub_xs, nested_lengths, scan_fn, checkpoint_fn)
 
 
@@ -72,5 +72,5 @@ def _inner_nested_scan(f, init, xs, lengths, scan_fn, checkpoint_fn):
         return _inner_nested_scan(f, carry, xs, lengths[1:], scan_fn, checkpoint_fn)
 
     carry, out = scan_fn(sub_scans, init, xs, lengths[0])
-    stacked_out = jax.tree_map(jnp.concatenate, out)
+    stacked_out = jax.tree_util.tree_map(jnp.concatenate, out)
     return carry, stacked_out

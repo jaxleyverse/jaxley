@@ -99,12 +99,12 @@ def test_subclassing_groups_net_make_trainable_equivalence():
     net1.excitatory.scope("global").cell("all").scope("local").branch(1).comp(
         2
     ).make_trainable("axial_resistivity")
-    params1 = jnp.concatenate(jax.tree_flatten(net1.get_parameters())[0])
+    params1 = jnp.concatenate(jax.tree_util.tree_flatten(net1.get_parameters())[0])
 
     net2.cell([0, 3]).branch(0).make_trainable("radius")
     net2.cell([0, 5]).branch(1).comp("all").make_trainable("length")
     net2.cell([0, 3, 5]).branch(1).comp(2).make_trainable("axial_resistivity")
-    params2 = jnp.concatenate(jax.tree_flatten(net2.get_parameters())[0])
+    params2 = jnp.concatenate(jax.tree_util.tree_flatten(net2.get_parameters())[0])
     assert jnp.array_equal(params1, params2)
 
     for inds1, inds2 in zip(
@@ -128,13 +128,13 @@ def test_subclassing_groups_net_lazy_indexing_make_trainable_equivalence():
     net1.excitatory.cell([0, 3]).branch(0).make_trainable("radius")
     net1.excitatory.cell([0, 5]).branch(1).comp("all").make_trainable("length")
     net1.excitatory.cell("all").branch(1).comp(2).make_trainable("axial_resistivity")
-    params1 = jnp.concatenate(jax.tree_flatten(net1.get_parameters())[0])
+    params1 = jnp.concatenate(jax.tree_util.tree_flatten(net1.get_parameters())[0])
 
     # The following lines are made possible by PR #324.
     net2.excitatory[[0, 3], 0].make_trainable("radius")
     net2.excitatory[[0, 5], 1, :].make_trainable("length")
     net2.excitatory[:, 1, 2].make_trainable("axial_resistivity")
-    params2 = jnp.concatenate(jax.tree_flatten(net2.get_parameters())[0])
+    params2 = jnp.concatenate(jax.tree_util.tree_flatten(net2.get_parameters())[0])
 
     assert jnp.array_equal(params1, params2)
 

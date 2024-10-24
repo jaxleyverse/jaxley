@@ -14,6 +14,8 @@ class TestSynapse(Synapse):
     Compute syanptic current and update synapse state for a test synapse.
     """
 
+    __test__ = False  # Not a unit test - pytest ignores
+
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
