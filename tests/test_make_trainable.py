@@ -421,3 +421,40 @@ def test_make_states_trainable_api():
     parameters = net.get_parameters()
     v = simulate(parameters)
     assert np.invert(np.any(np.isnan(v))), "Found NaN in voltage."
+
+
+def test_write_trainables():
+    """Test whether `write_trainables()` gives the same result as using the trainables."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell = jx.Cell(branch, [-1, 0])
+    net = jx.Network([cell for _ in range(2)])
+    connect(
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(0).branch(1).loc(0.9),
+        IonotropicSynapse(),
+    )
+    net.insert(HH())
+    net.cell(0).branch(0).comp(0).record()
+    net.cell(1).branch(0).comp(0).record()
+    net.cell(0).branch(0).comp(0).stimulate(jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0))
+
+    net.make_trainable("radius")
+    net.cell(0).make_trainable("length")
+    net.cell("all").make_trainable("axial_resistivity")
+    net.cell("all").branch("all").make_trainable("HH_gNa")
+    net.make_trainable("IonotropicSynapse_gS")
+    net.cell(0).branch(0).comp(0).make_trainable("radius")
+
+    params = net.get_parameters()
+
+    # Now, we manually modify the parameters.
+    for p in params:
+        for key in p:
+            p[key] = p[key].at[:].set(np.random.rand())
+
+    v1 = jx.integrate(net, params=params)
+
+    net.write_trainables(params)
+    v2 = jx.integrate(net)
+    assert np.max(np.abs(v1 - v2)) < 1e-8
