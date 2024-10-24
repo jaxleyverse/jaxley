@@ -58,16 +58,13 @@ def test_connect():
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
     # TODO: VERIFY THAT THIS IS INTENDED BEHAVIOUR! @Michael
-    assert (
-        (
-            first_set_edges[["global_pre_branch_index", "global_post_branch_index"]]
-            == (4, 8)
-        )
-        .all()
-        .all()
-    )
-    assert (first_set_edges["global_pre_cell_index"] == 1).all()
-    assert (first_set_edges["global_post_cell_index"] == 2).all()
+    nodes = net2.nodes.set_index("global_comp_index")
+    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    comp_inds = nodes.loc[first_set_edges[cols].to_numpy().flatten()]
+    branch_inds = comp_inds["global_branch_index"].to_numpy().reshape(-1, 2)
+    cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
+    assert np.all(branch_inds == (4, 8))
+    assert (cell_inds == (1, 2)).all()
     assert (
         get_comps(first_set_edges["pre_locs"])
         == get_comps(first_set_edges["post_locs"])
@@ -181,14 +178,11 @@ def test_connectivity_matrix_connect():
         net[:4], net[4:8], TestSynapse(), n_by_n_adjacency_matrix
     )
     assert len(net.edges.index) == 4
-    assert (
-        (
-            net.edges[["global_pre_cell_index", "global_post_cell_index"]]
-            == incides_of_connected_cells
-        )
-        .all()
-        .all()
-    )
+    nodes = net.nodes.set_index("global_comp_index")
+    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
+    cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
+    assert np.all(cell_inds == incides_of_connected_cells)
 
     m_by_n_adjacency_matrix = np.array(
         [[0, 1, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=bool
@@ -205,11 +199,8 @@ def test_connectivity_matrix_connect():
         net[:3], net[:4], TestSynapse(), m_by_n_adjacency_matrix
     )
     assert len(net.edges.index) == 5
-    assert (
-        (
-            net.edges[["global_pre_cell_index", "global_post_cell_index"]]
-            == incides_of_connected_cells
-        )
-        .all()
-        .all()
-    )
+    nodes = net.nodes.set_index("global_comp_index")
+    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
+    cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
+    assert np.all(cell_inds == incides_of_connected_cells)

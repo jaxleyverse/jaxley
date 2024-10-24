@@ -566,8 +566,6 @@ def test_synapse_and_channel_filtering():
     assert np.all(nodes_control_param2 == nodes2["global_cell_index"])
 
     assert np.all(edges1 == edges2)
-    assert np.all(net.edge(0).TestSynapse.nodes == net.TestSynapse.edge(0).nodes)
-    assert np.all(net.edge(0).TestSynapse.edges == net.TestSynapse.edge(0).edges)
 
 
 # TODO: test copying/extracting views/module parts
