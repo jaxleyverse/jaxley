@@ -13,6 +13,8 @@ class HH(Channel):
     """Hodgkin-Huxley channel."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -52,10 +54,9 @@ class HH(Channel):
         prefix = self._name
         m, h, n = states[f"{prefix}_m"], states[f"{prefix}_h"], states[f"{prefix}_n"]
 
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # mS/cm^2
-        gK = params[f"{prefix}_gK"] * n**4 * 1000  # mS/cm^2
-        gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
+        gK = params[f"{prefix}_gK"] * n**4  # S/cm^2
+        gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
 
         return (
             gNa * (v - params[f"{prefix}_eNa"])

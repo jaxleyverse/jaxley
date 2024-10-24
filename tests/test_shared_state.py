@@ -20,6 +20,7 @@ class Dummy1(Channel):
     """A dummy channel which simply accumulates a state (same state as dummy2)."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {}
         self.channel_states = {"Dummy_s": 0.0}
@@ -42,6 +43,7 @@ class Dummy2(Channel):
     """A dummy channel which simply accumulates a state (same state as dummy1)."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {}
         self.channel_states = {"Dummy_s": 0.0}
@@ -64,6 +66,7 @@ class CaHVA(Channel):
     """High-Voltage-Activated (HVA) Ca2+ channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
@@ -135,6 +138,7 @@ class CaPump(Channel):
         self,
         name: Optional[str] = None,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
