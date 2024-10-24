@@ -123,6 +123,7 @@ def test_record_synaptic_and_membrane_states():
         offset_mem = 0
         assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
 
+
 def test_empty_recordings():
     # Create an empty compartment
     comp = jx.Compartment()
