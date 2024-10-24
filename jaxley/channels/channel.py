@@ -28,7 +28,7 @@ class Channel:
         )
         if (
             not hasattr(self, "current_is_in_mA_per_cm2")
-            and self.current_is_in_mA_per_cm2
+            or not self.current_is_in_mA_per_cm2
         ):
             raise ValueError(
                 "The channel you are using is deprecated. "
@@ -36,7 +36,7 @@ class Channel:
                 "by `compute_current` of channels from `uA/cm^2` to `mA/cm^2`. Please "
                 "update your channel model (by dividing the resulting current by 1000) "
                 "and set `self.current_is_in_mA_per_cm2=True` as the first line "
-                "in the `__init__()` method of your channel. {contact}"
+                f"in the `__init__()` method of your channel. {contact}"
             )
 
         self._name = name if name else self.__class__.__name__

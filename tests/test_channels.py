@@ -10,11 +10,104 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import CaNernstReversal, CaPump
 
 import jaxley as jx
 from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
-from jaxley.solver_gate import save_exp, solve_inf_gate_exponential
+from jaxley.solver_gate import exponential_euler, save_exp, solve_inf_gate_exponential
+
+
+class CaPump(Channel):
+    """Calcium dynamics tracking inside calcium concentration, modeled after Destexhe et al. 1994."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        self.current_is_in_mA_per_cm2 = True
+        super().__init__(name)
+        self.channel_params = {
+            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
+            f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
+            f"{self._name}_depth": 0.1,  # Depth of shell in um
+            f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
+        }
+        self.channel_states = {
+            f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
+        }
+        self.current_name = f"i_Ca"
+        self.META = {
+            "reference": "Modified from Destexhe et al., 1994",
+            "mechanism": "Calcium dynamics",
+        }
+
+    def update_states(self, u, dt, voltages, params):
+        """Update internal calcium concentration based on calcium current and decay."""
+        prefix = self._name
+        ica = u["i_Ca"] / 1_000.0
+        cai = u["CaCon_i"]
+        gamma = params[f"{prefix}_gamma"]
+        decay = params[f"{prefix}_decay"]
+        depth = params[f"{prefix}_depth"]
+        minCai = params[f"{prefix}_minCai"]
+
+        FARADAY = 96485  # Coulombs per mole
+
+        # Calculate the contribution of calcium currents to cai change
+        drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
+
+        cai_tau = decay
+        cai_inf = minCai + decay * drive_channel
+        new_cai = exponential_euler(cai, dt, cai_inf, cai_tau)
+
+        return {f"CaCon_i": new_cai}
+
+    def compute_current(self, u, voltages, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
+
+    def init_state(self, states, voltages, params, delta_t):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
+
+
+class CaNernstReversal(Channel):
+    """Compute Calcium reversal from inner and outer concentration of calcium."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        self.current_is_in_mA_per_cm2 = True
+        super().__init__(name)
+        self.channel_constants = {
+            "F": 96485.3329,  # C/mol (Faraday's constant)
+            "T": 279.45,  # Kelvin (temperature)
+            "R": 8.314,  # J/(mol K) (gas constant)
+        }
+        self.channel_params = {}
+        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.current_name = f"i_Ca"
+
+    def update_states(self, u, dt, voltages, params):
+        """Update internal calcium concentration based on calcium current and decay."""
+        R, T, F = (
+            self.channel_constants["R"],
+            self.channel_constants["T"],
+            self.channel_constants["F"],
+        )
+        Cai = u["CaCon_i"]
+        Cao = u["CaCon_e"]
+        C = R * T / (2 * F) * 1000  # mV
+        vCa = C * jnp.log(Cao / Cai)
+        return {"eCa": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
+
+    def compute_current(self, u, voltages, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
+
+    def init_state(self, states, voltages, params, delta_t):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
 
 
 def test_channel_set_name():
@@ -105,6 +198,7 @@ def test_init_states():
 
 class KCA11(Channel):
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -196,6 +290,7 @@ def test_multiple_channel_currents():
         """The channel which uses currents of Dummy1 and Dummy2 to update its states."""
 
         def __init__(self, name: Optional[str] = None):
+            self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
             self.channel_params = {}
             self.channel_states = {"cumulative": 0.0}
@@ -211,6 +306,7 @@ def test_multiple_channel_currents():
 
     class Dummy1(Channel):
         def __init__(self, name: Optional[str] = None):
+            self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
             self.channel_params = {}
             self.channel_states = {}
@@ -224,6 +320,7 @@ def test_multiple_channel_currents():
 
     class Dummy2(Channel):
         def __init__(self, name: Optional[str] = None):
+            self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
             self.channel_params = {}
             self.channel_states = {}
