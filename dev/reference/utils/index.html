@@ -5692,7 +5692,7 @@ provided) and the size of the leading axis for all arrays in <code>xs</code>.</p
         <span class="n">new_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">nested_lengths</span><span class="p">)</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
         <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">new_shape</span><span class="p">)</span>
 
-    <span class="n">sub_xs</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">nested_reshape</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+    <span class="n">sub_xs</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_util</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">nested_reshape</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_inner_nested_scan</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">sub_xs</span><span class="p">,</span> <span class="n">nested_lengths</span><span class="p">,</span> <span class="n">scan_fn</span><span class="p">,</span> <span class="n">checkpoint_fn</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
