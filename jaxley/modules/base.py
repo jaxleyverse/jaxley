@@ -68,19 +68,15 @@ class Module(ABC):
         self._edges_in_view: np.ndarray = None
 
         self.edges = pd.DataFrame(
-            columns=["global_edge_index"]
-            + [
-                f"global_{lvl}_index"
-                for lvl in [
-                    "pre_comp",
-                    "pre_branch",
-                    "pre_cell",
-                    "post_comp",
-                    "post_branch",
-                    "post_cell",
-                ]
+            columns=[
+                "global_edge_index",
+                "global_pre_comp_index",
+                "global_post_comp_index",
+                "pre_locs",
+                "post_locs",
+                "type",
+                "type_ind",
             ]
-            + ["pre_locs", "post_locs", "type", "type_ind"]
         )
 
         self.cumsum_nbranches: Optional[np.ndarray] = None
@@ -162,11 +158,18 @@ class Module(ABC):
 
         # intercepts calls to synapse types
         if key in self.base.synapse_names:
-            syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
+            syn_inds = self.edges[self.edges["type"] == key][
+                "global_edge_index"
+            ].to_numpy()
+            orig_scope = self._scope
             view = (
-                self.edge(syn_inds) if key in self.synapse_names else self.select(None)
+                self.scope("global").edge(syn_inds).scope(orig_scope)
+                if key in self.synapse_names
+                else self.select(None)
             )
             view._set_controlled_by_param(key)  # overwrites param set by edge
+            # Temporary fix for synapse param sharing
+            view.edges["local_edge_index"] = np.arange(len(view.edges))
             return view
 
     def _childviews(self) -> List[str]:
@@ -229,8 +232,6 @@ class Module(ABC):
         index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
         global_idx_cols = [f"global_{name}" for name in index_names]
         local_idx_cols = [f"local_{name}" for name in index_names]
-        local_pre_cols = [f"local_pre_{name}" for name in index_names]
-        local_post_cols = [f"local_post_{name}" for name in index_names]
         idcs = self.nodes[global_idx_cols]
 
         # update local indices of nodes
@@ -239,17 +240,6 @@ class Module(ABC):
         idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
         idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
         self.nodes[local_idx_cols] = idcs[local_idx_cols].astype(int)
-
-        # add local indices of nodes to edges
-        global_pre_inds = self.edges["global_pre_comp_index"]
-        global_post_inds = self.edges["global_post_comp_index"]
-        global_node_inds = self.nodes["global_comp_index"]
-        flat = lambda x: np.array(x).flatten()
-        is_pre = flat([np.where(global_node_inds == i)[0] for i in global_pre_inds])
-        is_post = flat([np.where(global_node_inds == i)[0] for i in global_post_inds])
-        local_node_inds = self.nodes[local_idx_cols]
-        self.edges.loc[:, local_pre_cols] = local_node_inds.loc[is_pre].to_numpy()
-        self.edges.loc[:, local_post_cols] = local_node_inds.loc[is_post].to_numpy()
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
         self.nodes = reorder_cols(
@@ -261,8 +251,7 @@ class Module(ABC):
             ],
         )
         self.nodes = reorder_cols(self.nodes, ["controlled_by_param"], first=False)
-        self.edges["local_edge_index"] = rerank(self.edges["global_edge_index"])
-        self.edges = reorder_cols(self.edges, ["global_edge_index", "local_edge_index"])
+        self.edges = reorder_cols(self.edges, ["global_edge_index"])
         self.edges = reorder_cols(self.edges, ["controlled_by_param"], first=False)
 
     def _init_view(self):
@@ -358,7 +347,7 @@ class Module(ABC):
             key: key specifying group / view that is in control of the params."""
         if key in ["comp", "branch", "cell"]:
             self.nodes["controlled_by_param"] = self.nodes[f"global_{key}_index"]
-            self.edges["controlled_by_param"] = self.edges[f"global_pre_{key}_index"]
+            self.edges["controlled_by_param"] = 0
         elif key == "edge":
             self.edges["controlled_by_param"] = np.arange(len(self.edges))
         elif key == "filter":
@@ -1197,12 +1186,10 @@ class Module(ABC):
             # TODO: Longterm this should be gotten rid of.
             # Instead edges should work similar to nodes (would also allow for
             # param sharing).
-            # TODO: URGENT: FIX THIS SHIT
+            synapse_inds = self.base.edges.groupby("type").rank()["global_edge_index"]
+            synapse_inds = (synapse_inds.astype(int) - 1).to_numpy()
             if key in self.base.synapse_param_names:
-                syn_name_from_param = key.split("_")[0]
-                syn_edges = self.__getattr__(syn_name_from_param).edges
-                inds = syn_edges.loc[inds.reshape(-1)]["local_edge_index"].values
-                inds = inds.reshape(-1, 1)
+                inds = synapse_inds[inds]
 
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.

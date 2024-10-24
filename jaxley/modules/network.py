@@ -471,8 +471,11 @@ class Network(Module):
 
             pre_locs = self.edges["pre_locs"].to_numpy()
             post_locs = self.edges["post_locs"].to_numpy()
-            pre_branch = self.edges["global_pre_branch_index"].to_numpy()
-            post_branch = self.edges["global_post_branch_index"].to_numpy()
+            pre_comp = self.edges["global_pre_comp_index"].to_numpy()
+            nodes = self.nodes.set_index("global_comp_index")
+            pre_branch = nodes.loc[pre_comp, "global_branch_index"].to_numpy()
+            post_comp = self.edges["global_post_comp_index"].to_numpy()
+            post_branch = nodes.loc[post_comp, "global_branch_index"].to_numpy()
 
             dims_np = np.asarray(dims)
 
@@ -533,8 +536,11 @@ class Network(Module):
         else:
             graph.add_nodes_from(range(len(self._cells_in_view)))
 
-        pre_cell = self.edges["global_pre_cell_index"].to_numpy()
-        post_cell = self.edges["global_post_cell_index"].to_numpy()
+        pre_comp = self.edges["global_pre_comp_index"].to_numpy()
+        nodes = self.nodes.set_index("global_comp_index")
+        pre_cell = nodes.loc[pre_comp, "global_cell_index"].to_numpy()
+        post_comp = self.edges["global_post_comp_index"].to_numpy()
+        post_cell = nodes.loc[post_comp, "global_cell_index"].to_numpy()
 
         inds = np.stack([pre_cell, post_cell]).T
         graph.add_edges_from(inds)
@@ -576,11 +582,10 @@ class Network(Module):
         )
 
         # Define new synapses. Each row is one synapse.
-        cols = ["comp_index", "branch_index", "cell_index"]
-        pre_nodes = pre_nodes[[f"global_{col}" for col in cols]]
-        pre_nodes.columns = [f"global_pre_{col}" for col in cols]
-        post_nodes = post_nodes[[f"global_{col}" for col in cols]]
-        post_nodes.columns = [f"global_post_{col}" for col in cols]
+        pre_nodes = pre_nodes[["global_comp_index"]]
+        pre_nodes.columns = ["global_pre_comp_index"]
+        post_nodes = post_nodes[["global_comp_index"]]
+        post_nodes.columns = ["global_post_comp_index"]
         new_rows = pd.concat(
             [
                 global_edge_index,
@@ -589,7 +594,6 @@ class Network(Module):
             ],
             axis=1,
         )
-        new_rows["local_edge_index"] = new_rows["global_edge_index"]
         new_rows["type"] = synapse_name
         new_rows["type_ind"] = type_ind
         new_rows["pre_locs"] = pre_loc
