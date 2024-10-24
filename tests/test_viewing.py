@@ -196,25 +196,14 @@ def test_local_indexing():
         ["local_cell_index", "local_branch_index", "local_comp_index"]
     ]
     idx_cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
-    # TODO: Write new and more comprehensive test for local indexing!
     global_index = 0
     for cell_idx in range(2):
         for branch_idx in range(5):
             for comp_idx in range(4):
-
-                # compview = net[cell_idx, branch_idx, comp_idx].show()
-                # assert np.all(
-                #     compview[idx_cols].values == [cell_idx, branch_idx, comp_idx]
-                # )
                 assert np.all(
                     local_idxs.iloc[global_index] == [cell_idx, branch_idx, comp_idx]
                 )
                 global_index += 1
-
-
-def test_comp_indexing_exception_handling():
-    # TODO: Add tests for indexing exceptions
-    pass
 
 
 def test_indexing_a_compartment_of_many_branches():
@@ -227,7 +216,7 @@ def test_indexing_a_compartment_of_many_branches():
     net = jx.Network([cell1, cell2])
 
     # Indexing a single compartment of multiple branches is not supported with `loc`.
-    # TODO: Reevaluate what kind of indexing is allowed and which is not!
+    # TODO FROM #447: Reevaluate what kind of indexing is allowed and which is not!
     # with pytest.raises(NotImplementedError):
     #     net.cell("all").branch("all").loc(0.0)
     # with pytest.raises(NotImplementedError):
@@ -270,7 +259,7 @@ connect(net[0, 0, 0], net[0, 0, 1], TestSynapse())
 def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     # attributes of Module that do not have to exist in View
     exceptions = ["view"]
-    # TODO: should be added to View in the future
+    # TODO FROM #447: should be added to View in the future
     exceptions += [
         "_internal_node_inds",
         "par_inds",
@@ -289,7 +278,7 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
         "cumsum_nbranchpoints_per_cell",
         "_cumsum_nseg_per_cell",
     ]  # for network
-    exceptions += ["cumsum_nbranches"]  # HOTFIX #TODO: take care of this
+    exceptions += ["cumsum_nbranches"]  # TODO: take care of this
 
     for name, attr in module.__dict__.items():
         if name not in exceptions:
@@ -566,6 +555,3 @@ def test_synapse_and_channel_filtering():
     assert np.all(nodes_control_param2 == nodes2["global_cell_index"])
 
     assert np.all(edges1 == edges2)
-
-
-# TODO: test copying/extracting views/module parts

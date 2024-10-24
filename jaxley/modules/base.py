@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain
@@ -183,7 +184,7 @@ class Module(ABC):
     def __getitem__(self, index):
         supported_lvls = ["network", "cell", "branch"]  # cannot index into comp
 
-        # TODO: SHOULD WE ALLOW GROUPVIEW TO BE INDEXED?
+        # TODO FROM #447: SHOULD WE ALLOW GROUPVIEW TO BE INDEXED?
         # IF YES, UNDER WHICH CONDITIONS?
         is_group_view = self._current_view in self.groups
         assert (
@@ -591,7 +592,8 @@ class Module(ABC):
         Returns:
             A part of the module or a copied view of it."""
         view = deepcopy(self)
-        # TODO: add reset_index, i.e. for parents, nodes, edges etc. such that they
+        warnings.warn("This method is experimental, use at your own risk.")
+        # TODO FROM #447: add reset_index, i.e. for parents, nodes, edges etc. such that they
         # start from 0/-1 and are contiguous
         if as_module:
             raise NotImplementedError("Not yet implemented.")
