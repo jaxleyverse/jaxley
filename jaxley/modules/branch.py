@@ -84,8 +84,7 @@ class Branch(Module):
         )
         self._internal_node_inds = jnp.arange(self.nseg)
 
-        self.initialize()
-        self.init_syns()
+        self._initialize()
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]

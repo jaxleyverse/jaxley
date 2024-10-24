@@ -8,15 +8,21 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax import jit
 
+import jaxley as jx
+import jaxley.optimize.transforms as jt
 from jaxley.optimize.transforms import ParamTransform
 
 
-def test_inverse():
+def test_joint_inverse():
     # test forward(inverse(x))=x
-    lowers = {"param_array_1": 2, "param_array_2": None, "param_array_3": -2}
-    uppers = {"param_array_1": -2, "param_array_2": 2, "param_array_3": None}
+    tf_dict = [
+        {"param_array_1": jt.SigmoidTransform(-2, 2)},
+        {"param_array_2": jt.SoftplusTransform(2)},
+        {"param_array_3": jt.NegSoftplusTransform(-2)},
+    ]
 
     params = [
         {"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))},
@@ -24,17 +30,19 @@ def test_inverse():
         {"param_array_3": jnp.asarray(np.linspace(-1, 4, 4))},
     ]
 
-    tf = ParamTransform(lowers, uppers)
+    tf = ParamTransform(tf_dict)
+    forward = tf.forward(params)
+    inverse = tf.inverse(forward)
 
     assert np.allclose(
-        tf.forward(tf.inverse(params))[0]["param_array_1"], params[0]["param_array_1"]
-    )
+        inverse[0]["param_array_1"], params[0]["param_array_1"]
+    ), "SigmoidTransform forward, inverse failed."
     assert np.allclose(
-        tf.forward(tf.inverse(params))[1]["param_array_2"], params[1]["param_array_2"]
-    )
+        inverse[1]["param_array_2"], params[1]["param_array_2"]
+    ), "SoftplusTransform forward, inverse failed."
     assert np.allclose(
-        tf.forward(tf.inverse(params))[2]["param_array_3"], params[2]["param_array_3"]
-    )
+        inverse[2]["param_array_3"], params[2]["param_array_3"]
+    ), "NegSoftplusTransform forward, inverse failed."
 
 
 def test_bounds():
@@ -42,37 +50,133 @@ def test_bounds():
     lowers = {"param_array_1": -2, "param_array_2": None, "param_array_3": -2}
     uppers = {"param_array_1": 2, "param_array_2": 2, "param_array_3": None}
 
+    tf_dict = [
+        {"param_array_1": jt.SigmoidTransform(-2, 2)},
+        {"param_array_2": jt.NegSoftplusTransform(2)},
+        {"param_array_3": jt.SoftplusTransform(-2)},
+    ]
+
     params = [
         {"param_array_1": jnp.asarray(np.linspace(-10, 10, 4))},
         {"param_array_2": jnp.asarray(np.linspace(-10, 10, 4))},
         {"param_array_3": jnp.asarray(np.linspace(-10, 10, 4))},
     ]
 
-    tf = ParamTransform(lowers, uppers)
+    tf = ParamTransform(tf_dict)
+    forward = tf.forward(params)
 
-    assert all(tf.forward(params)[0]["param_array_1"] > lowers["param_array_1"])
-    assert all(tf.forward(params)[0]["param_array_1"] < uppers["param_array_1"])
-    assert any(
-        tf.forward(params)[1]["param_array_2"] < lowers["param_array_1"]
-    )  # lower not constrained
-    assert all(tf.forward(params)[1]["param_array_2"] < uppers["param_array_2"])
-    assert all(tf.forward(params)[2]["param_array_3"] > lowers["param_array_3"])
-    assert any(
-        tf.forward(params)[2]["param_array_3"] > uppers["param_array_1"]
-    )  # upper not constrained
+    assert all(
+        forward[0]["param_array_1"] > lowers["param_array_1"]
+    ), "SigmoidTransform failed to match lower bound."
+    assert all(
+        forward[0]["param_array_1"] < uppers["param_array_1"]
+    ), "SigmoidTransform failed to match upper bound."
+    assert all(
+        forward[1]["param_array_2"] < uppers["param_array_2"]
+    ), "SoftplusTransform failed to match lower bound."
+    assert all(
+        forward[2]["param_array_3"] > lowers["param_array_3"]
+    ), "NegSoftplusTransform failed to match lower bound."
 
 
-def test_jit():
+@pytest.mark.parametrize(
+    "transform",
+    [
+        jt.SigmoidTransform(-2, 2),
+        jt.SoftplusTransform(2),
+        jt.NegSoftplusTransform(2),
+        jt.AffineTransform(1.0, 1.0),
+        jt.CustomTransform(lambda x: x, lambda x: x),
+        jt.ChainTransform([jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2)]),
+    ],
+)
+def test_jit(transform):
     # test jit-compilation:
-    lowers = {"param_array_1": 2}
-    uppers = {"param_array_1": -2}
+    tf_dict = [{"param_array_1": transform}]
 
     params = [{"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))}]
 
-    tf = ParamTransform(lowers, uppers)
+    tf = ParamTransform(tf_dict)
 
     @jit
     def test_jit(params):
         return tf.inverse(params)
 
     _ = test_jit(params)
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        jt.SigmoidTransform(-2, 2),
+        jt.SoftplusTransform(2),
+        jt.NegSoftplusTransform(2),
+        jt.AffineTransform(1.0, 1.0),
+        jt.CustomTransform(lambda x: x, lambda x: x),
+        jt.ChainTransform([jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2)]),
+        jt.MaskedTransform(
+            jnp.array([True, False, False, True]), jt.SigmoidTransform(-2, 2)
+        ),
+    ],
+)
+def test_correct(transform):
+    # Test correctness on "standard" PyTree
+    tf_dict = [{"param_array_1": transform}]
+
+    params = [{"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))}]
+
+    tf = ParamTransform(tf_dict)
+
+    forward = tf.forward(params)
+    inverse = tf.inverse(forward)
+
+    assert np.allclose(
+        inverse[0]["param_array_1"], params[0]["param_array_1"]
+    ), f"{transform} forward, inverse failed."
+
+    # Test correctness plain Array
+    for shape in [(4,), (4, 1), (4, 4)]:
+        tf_dict = transform
+        tf = ParamTransform(tf_dict)
+        x = jnp.ones(shape)
+        y = tf.forward(x)
+        x_inv = tf.inverse(y)
+
+        assert np.allclose(
+            x, x_inv
+        ), f"{transform} forward, inverse failed on non PyTree."
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2), jt.NegSoftplusTransform(2)],
+)
+def test_user_api(transform):
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=2)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+
+    cell.branch("all").make_trainable("radius")
+    cell.branch(2).make_trainable("radius")
+    cell.branch(1).make_trainable("length")
+    cell.branch(0).make_trainable("radius")
+    cell.branch("all").comp("all").make_trainable("axial_resistivity")
+    cell.make_trainable("capacitance")
+
+    params = cell.get_parameters()
+
+    # We scale it to something samll as axial_resistivity is large
+    # and then the transform becomes numerically uninvertible.
+    t = jt.ChainTransform([jt.AffineTransform(1e-3, 0.0), transform])
+
+    tf_dict = [{list(k.keys())[0]: t} for k in params]
+    tf = ParamTransform(tf_dict)
+
+    forward = tf.forward(params)
+    reverse = tf.inverse(forward)
+
+    flat_params, _ = jax.tree_util.tree_flatten(params)
+    flat_reverse, _ = jax.tree_util.tree_flatten(reverse)
+    assert all(
+        [np.allclose(a, b) for a, b in zip(flat_params, flat_reverse)]
+    ), f"{transform} forward, inverse failed."

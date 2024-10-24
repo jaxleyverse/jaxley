@@ -36,6 +36,8 @@ class Leak(Channel):
     """Leak current"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -60,8 +62,7 @@ class Leak(Channel):
     ):
         """Return current."""
         prefix = self._name
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
+        gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])
 
     def init_state(self, states, v, params, delta_t):
@@ -72,6 +73,8 @@ class Na(Channel):
     """Sodium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -103,8 +106,7 @@ class Na(Channel):
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
 
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # mS/cm^2
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
 
         current = gNa * (v - params["eNa"])
         return current
@@ -142,6 +144,8 @@ class K(Channel):
     """Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -172,8 +176,7 @@ class K(Channel):
         prefix = self._name
         n = states[f"{prefix}_n"]
 
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gK = params[f"{prefix}_gK"] * (n**4) * 1000  # mS/cm^2
+        gK = params[f"{prefix}_gK"] * (n**4)  # S/cm^2
 
         return gK * (v - params["eK"])
 
@@ -197,6 +200,8 @@ class Km(Channel):
     """Slow M Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -229,8 +234,7 @@ class Km(Channel):
         prefix = self._name
         p = states[f"{prefix}_p"]
 
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gKm = params[f"{prefix}_gKm"] * p * 1000  # mS/cm^2
+        gKm = params[f"{prefix}_gKm"] * p  # S/cm^2
         return gKm * (v - params["eK"])
 
     def init_state(self, states, v, params, delta_t):
@@ -253,6 +257,8 @@ class CaL(Channel):
     """L-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -282,9 +288,7 @@ class CaL(Channel):
         """Return current."""
         prefix = self._name
         q, r = states[f"{prefix}_q"], states[f"{prefix}_r"]
-
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gCaL = params[f"{prefix}_gCaL"] * (q**2) * r * 1000  # mS/cm^2
+        gCaL = params[f"{prefix}_gCaL"] * (q**2) * r  # S/cm^2
 
         return gCaL * (v - params["eCa"])
 
@@ -321,6 +325,8 @@ class CaT(Channel):
     """T-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
+
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -354,8 +360,7 @@ class CaT(Channel):
         u = states[f"{prefix}_u"]
         s_inf = 1.0 / (1.0 + save_exp(-(v + params[f"{prefix}_vx"] + 57.0) / 6.2))
 
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gCaT = params[f"{prefix}_gCaT"] * (s_inf**2) * u * 1000  # mS/cm^2
+        gCaT = params[f"{prefix}_gCaT"] * (s_inf**2) * u  # S/cm^2
 
         return gCaT * (v - params["eCa"])
 

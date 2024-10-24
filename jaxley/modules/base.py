@@ -714,7 +714,7 @@ class Module(ABC):
 
         return nodes[cols]
 
-    def init_morph(self):
+    def _init_morph(self):
         """Initialize the morphology such that it can be processed by the solvers."""
         self._init_morph_jaxley_spsolve()
         self._init_morph_jax_spsolve()
@@ -943,7 +943,7 @@ class Module(ABC):
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
-        self.base.initialize()
+        self.base._initialize()
         self.base._init_view()
         self.base._update_local_indices()
 
@@ -1183,7 +1183,7 @@ class Module(ABC):
         Returns:
             A dictionary of all states of the module.
         """
-        states = self.base.get_states_from_nodes_and_edges()
+        states = self.base._get_states_from_nodes_and_edges()
 
         # Override with the initial states set by `.make_trainable()`.
         for parameter in pstate:
@@ -1211,11 +1211,11 @@ class Module(ABC):
     @property
     def initialized(self) -> bool:
         """Whether the `Module` is ready to be solved or not."""
-        return self.initialized_morph and self.initialized_syns
+        return self.initialized_morph
 
-    def initialize(self):
+    def _initialize(self):
         """Initialize the module."""
-        self.init_morph()
+        self._init_morph()
         return self
 
     def init_states(self, delta_t: float = 0.025):
@@ -1229,7 +1229,7 @@ class Module(ABC):
         """
         # Update states of the channels.
         channel_nodes = self.base.nodes
-        states = self.base.get_states_from_nodes_and_edges()
+        states = self.base._get_states_from_nodes_and_edges()
 
         # We do not use any `pstate` for initializing. In principle, we could change
         # that by allowing an input `params` and `pstate` to this function.
@@ -1567,9 +1567,6 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
-    def init_syns(self):
-        self.initialized_syns = True
-
     def step(
         self,
         u: Dict[str, jnp.ndarray],
@@ -1818,8 +1815,10 @@ class Module(ABC):
             )
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
             constant_term = membrane_currents[0] - voltage_term * voltages[indices]
-            voltage_terms = voltage_terms.at[indices].add(voltage_term)
-            constant_terms = constant_terms.at[indices].add(-constant_term)
+
+            # * 1000 to convert from mA/cm^2 to uA/cm^2.
+            voltage_terms = voltage_terms.at[indices].add(voltage_term * 1000.0)
+            constant_terms = constant_terms.at[indices].add(-constant_term * 1000.0)
 
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.

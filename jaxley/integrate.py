@@ -62,7 +62,7 @@ def integrate(
             the `Module` can be set with `set_states`.
     """
 
-    assert module.initialized, "Module is not initialized, run `.initialize()`."
+    assert module.initialized, "Module is not initialized, run `._initialize()`."
     module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
     # Initialize the external inputs and their indices.
