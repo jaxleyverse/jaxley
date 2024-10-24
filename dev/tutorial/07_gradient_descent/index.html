@@ -1078,7 +1078,7 @@
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span><span class="p">,</span> <span class="n">value_and_grad</span>
 <span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-
+<span class="kn">import</span> <span class="nn">jaxley.optimize.transforms</span> <span class="k">as</span> <span class="nn">jt</span>
 
 <span class="n">net</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># See tutorial on the basics of `Jaxley`.</span>
 
@@ -1088,10 +1088,9 @@
 <span class="n">parameters</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">get_parameters</span><span class="p">()</span>
 
 <span class="c1"># Define parameter transform and apply it to the parameters.</span>
-<span class="n">transform</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">ParamTransform</span><span class="p">(</span>
-    <span class="n">lowers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
-    <span class="n">uppers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
-<span class="p">)</span>
+<span class="n">transform</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">ParamTransform</span><span class="p">([{</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">:</span> <span class="n">jt</span><span class="o">.</span><span class="n">SigmoidTransform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">)},</span>
+                               <span class="p">{</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">:</span><span class="n">jt</span><span class="o">.</span><span class="n">SigmoidTransform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)}])</span>
+
 <span class="n">opt_params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
 
 <span class="c1"># Define simulation and batch it across stimuli.</span>
@@ -1163,10 +1162,6 @@
 
 <span class="n">net</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Leak</span><span class="p">())</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>/Users/michaeldeistler/Documents/phd/jaxley/jaxley/modules/base.py:1533: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
-  self.pointer.edges = pd.concat(
-</code></pre></div>
-
 <p>This network consists of three neurons arranged in two layers:</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">compute_xyz</span><span class="p">()</span>
 <span class="n">net</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="mi">180</span><span class="p">)</span>
@@ -1217,7 +1212,7 @@ Added 1 recordings. See `.recordings` for details.
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">TanhRateSynapse</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;TanhRateSynapse_gS&quot;</span><span class="p">)</span>
 </code></pre></div></p>
 <p>Here, we use a different syanptic conductance for all syanpses. This can be done as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">TanhRateSynapse</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;TanhRateSynapse_gS&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">TanhRateSynapse</span><span class="o">.</span><span class="n">edge</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;TanhRateSynapse_gS&quot;</span><span class="p">)</span>
 </code></pre></div>
 <div class="codehilite"><pre><span></span><code>Number of newly added trainable parameters: 2. Total number of trainable parameters: 21
 </code></pre></div>
@@ -1259,24 +1254,34 @@ Added 1 recordings. See `.recordings` for details.
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span>  <span class="c1"># Average across the batch.</span>
 </code></pre></div>
 <p>And we can use <code>JAX</code>&rsquo;s inbuilt functions to take the gradient through the entire ODE:</p>
-<div class="highlight"><pre><span></span><code><span class="n">jitted_grad</span> <span class="o">=</span> <span class="n">jit</span><span class="p">(</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><span class="c1">#jitted_grad = jit(value_and_grad(loss, argnums=0))</span>
+<span class="n">jitted_grad</span> <span class="o">=</span> <span class="p">(</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">value</span><span class="p">,</span> <span class="n">gradient</span> <span class="o">=</span> <span class="n">jitted_grad</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">[:</span><span class="mi">4</span><span class="p">],</span> <span class="n">labels</span><span class="p">[:</span><span class="mi">4</span><span class="p">])</span>
 </code></pre></div>
 <h3 id="defining-parameter-transformations">Defining parameter transformations<a class="headerlink" href="#defining-parameter-transformations" title="Permanent link">&para;</a></h3>
 <p>Before training, however, we will enforce for all parameters to be within a prespecified range (such that, e.g., conductances can not become negative)</p>
-<div class="highlight"><pre><span></span><code><span class="n">transform</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">ParamTransform</span><span class="p">(</span>
-    <span class="n">lowers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;Leak_gLeak&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
-        <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-        <span class="s2">&quot;TanhRateSynapse_gS&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="n">uppers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;Leak_gLeak&quot;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
-        <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
-        <span class="s2">&quot;TanhRateSynapse_gS&quot;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">,</span>
-    <span class="p">},</span> 
-<span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley.optimize.transforms</span> <span class="k">as</span> <span class="nn">jt</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Define a function to create appropriate transforms for each parameter</span>
+<span class="k">def</span> <span class="nf">create_transform</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;axial_resistivity&quot;</span><span class="p">:</span>
+        <span class="c1"># Must be positive; apply Softplus and scale to match initialization</span>
+        <span class="k">return</span> <span class="n">jt</span><span class="o">.</span><span class="n">ChainTransform</span><span class="p">([</span><span class="n">jt</span><span class="o">.</span><span class="n">SoftplusTransform</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">jt</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">0</span><span class="p">)])</span>
+    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;length&quot;</span><span class="p">:</span>
+        <span class="c1"># Apply Softplus and affine transform for the &#39;length&#39; parameter</span>
+        <span class="k">return</span> <span class="n">jt</span><span class="o">.</span><span class="n">ChainTransform</span><span class="p">([</span><span class="n">jt</span><span class="o">.</span><span class="n">SoftplusTransform</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">jt</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">)])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Default to a Softplus transform for other parameters</span>
+        <span class="k">return</span> <span class="n">jt</span><span class="o">.</span><span class="n">SoftplusTransform</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Apply the transforms to the parameters</span>
+<span class="n">transforms</span> <span class="o">=</span> <span class="p">[{</span><span class="n">k</span><span class="p">:</span> <span class="n">create_transform</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">param</span><span class="p">}</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
+<span class="n">tf</span> <span class="o">=</span> <span class="n">jt</span><span class="o">.</span><span class="n">ParamTransform</span><span class="p">(</span><span class="n">transforms</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">transform</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">ParamTransform</span><span class="p">([{</span><span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="n">jt</span><span class="o">.</span><span class="n">SigmoidTransform</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">5.0</span><span class="p">)},</span>
+                               <span class="p">{</span><span class="s2">&quot;Leak_gLeak&quot;</span><span class="p">:</span><span class="n">jt</span><span class="o">.</span><span class="n">SigmoidTransform</span><span class="p">(</span><span class="mf">1e-5</span><span class="p">,</span><span class="mf">1e-3</span><span class="p">)},</span>
+                               <span class="p">{</span><span class="s2">&quot;TanhRateSynapse_gS&quot;</span> <span class="p">:</span> <span class="n">jt</span><span class="o">.</span><span class="n">SigmoidTransform</span><span class="p">(</span><span class="mf">1e-5</span><span class="p">,</span><span class="mf">1e-2</span><span class="p">)}])</span>
 </code></pre></div>
 <p>With these  modify the loss function acocrdingly:</p>
 <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
@@ -1328,7 +1333,8 @@ as done below:</p>
     <span class="n">losses</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">predictions</span> <span class="o">-</span> <span class="n">labels</span><span class="p">)</span>  <span class="c1"># Mean absolute error loss.</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span>  <span class="c1"># Average across the batch.</span>
 
-<span class="n">jitted_grad</span> <span class="o">=</span> <span class="n">jit</span><span class="p">(</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+<span class="c1">#jitted_grad = jit(value_and_grad(loss, argnums=0))</span>
+<span class="n">jitted_grad</span> <span class="o">=</span> <span class="p">(</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
 </code></pre></div>
 <h3 id="training">Training<a class="headerlink" href="#training" title="Permanent link">&para;</a></h3>
 <p>We will use the ADAM optimizer from the <a href="https://optax.readthedocs.io/en/latest/">optax library</a> to optimize the free parameters (you have to install the package with <code>pip install optax</code> first):</p>
@@ -1363,16 +1369,7 @@ as done below:</p>
 
 <span class="n">final_params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">opt_params</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>epoch 0, loss 25.61663325387099
-epoch 1, loss 21.7304402547341
-epoch 2, loss 15.943236054666484
-epoch 3, loss 9.191846765081072
-epoch 4, loss 7.256558484588674
-epoch 5, loss 6.577375342584615
-epoch 6, loss 6.568056585075223
-epoch 7, loss 6.510474263850299
-epoch 8, loss 6.481302675498705
-epoch 9, loss 6.5030439519558865
+<div class="codehilite"><pre><span></span><code>epoch 0, loss 25.09776566535514
 </code></pre></div>
 
 <div class="highlight"><pre><span></span><code><span class="n">ntest</span> <span class="o">=</span> <span class="mi">32</span>
@@ -1383,7 +1380,7 @@ epoch 9, loss 6.5030439519558865
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Label&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Prediction&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../07_gradient_descent_files/07_gradient_descent_58_0.png" /></p>
+<p><img alt="png" src="../07_gradient_descent_files/07_gradient_descent_60_0.png" /></p>
 <p>Indeed, the loss goes down and the network successfully classifies the patterns.</p>
 <h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>Puh, this was a pretty dense tutorial with a lot of material. You should have learned how to:</p>
@@ -1394,7 +1391,7 @@ epoch 9, loss 6.5030439519558865
 <li>define optimizers  </li>
 <li>write dataloaders and parallelize across data  </li>
 </ul>
-<p>This was the last tutorial of the <code>Jaxley</code> toolbox. If anything is still unclear please create a <a href="https://github.com/jaxleyverse/jaxley/discussions">discussion</a>. If you find any bugs, please open an <a href="https://github.com/jaxleyverse/jaxley/issues">issue</a>. Happy coding!</p>
+<p>This was one of the last tutorials of the <code>Jaxley</code> toolbox. If anything is still unclear please create a <a href="https://github.com/jaxleyverse/jaxley/discussions">discussion</a>. If you find any bugs, please open an <a href="https://github.com/jaxleyverse/jaxley/issues">issue</a>. Happy coding!</p>
 
 
 
