@@ -30,6 +30,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     interpolate_xyz,
     loc_of_index,
+    params_to_pstate,
     query_channel_states_and_params,
     v_interp,
 )
@@ -1043,6 +1044,32 @@ class Module(ABC):
             print(
                 f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.base.num_trainable_params}"
             )
+
+    def write_trainables(self, trainable_params: List[Dict[str, jnp.ndarray]]):
+        """Write the trainables into `.nodes` and `.edges`.
+
+        This allows to, e.g., visualize trained networks with `.vis()`.
+
+        Args:
+            trainable_params: The trainable parameters returned by `get_parameters()`.
+        """
+        # We could also implement this without casting the entire module to jax.
+        # However, I think it allows us to reuse as much code as possible and it avoids
+        # any kind of issues with indexing or parameter sharing (as this is fully
+        # taken care of by `get_all_parameters()`).
+        self.to_jax()
+        pstate = params_to_pstate(trainable_params, self.indices_set_by_trainables)
+        all_params = self.get_all_parameters(pstate, voltage_solver="jaxley.stone")
+
+        # Override nodes and edges with those parameters set by `.make_trainable()`.
+        # We loop only over those parameters that were actually set by
+        # `make_trainable()` to avoid unnecessary computations.
+        for parameter in pstate:
+            key = parameter["key"]
+            if key in self.base.synapse_param_names:
+                self.edges[key] = all_params[key]
+            else:
+                self.nodes[key] = all_params[key]
 
     def distance(self, endpoint: "View") -> float:
         """Return the direct distance between two compartments.
