@@ -240,7 +240,8 @@ def test_api_init_step_to_integrate():
     cell[0, 1].record()
 
     # Internal integration function API
-    v1 = jx.integrate(cell, t_max=4.0)
+    delta_t = 0.025  # Default delta_t is 0.025
+    v1 = jx.integrate(cell, t_max=4.0, delta_t=delta_t)
 
     # Flexibe init and step API
     init_fn, step_fn = build_init_and_step_fn(cell)
@@ -251,14 +252,14 @@ def test_api_init_step_to_integrate():
     rec_inds = cell.recordings.rec_index.to_numpy()
     rec_states = cell.recordings.state.to_numpy()
 
-    steps = int(4.0 / 0.025)  # Steps to integrate
+    steps = int(4.0 / delta_t)  # Steps to integrate
     recordings = [
         states[rec_state][rec_ind][None]
         for rec_state, rec_ind in zip(rec_states, rec_inds)
     ]
     externals = cell.externals
     for _ in range(steps):
-        states = step_fn_(states, params, externals)
+        states = step_fn_(states, params, externals, delta_t=delta_t)
         recs = jnp.asarray(
             [
                 states[rec_state][rec_ind]
