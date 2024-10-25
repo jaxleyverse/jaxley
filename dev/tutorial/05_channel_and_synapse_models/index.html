@@ -917,6 +917,7 @@
 <p>In this tutorial, we will show you how to build your own channel and synapse models.</p>
 <h3 id="your-own-channel">Your own channel<a class="headerlink" href="#your-own-channel" title="Permanent link">&para;</a></h3>
 <p>Below is how you can define your own channel. We will go into detail about individual parts of the code in the next couple of cells.</p>
+<p>Note that a channel needs to have the functions <code>update_states</code> and <code>compute_currents</code> and <code>init_states</code> with all input arguments shown below. </p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
 <span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Channel</span>
 <span class="kn">from</span> <span class="nn">jaxley.solver_gate</span> <span class="kn">import</span> <span class="n">solve_gate_exponential</span>
@@ -1021,6 +1022,7 @@ Added 1 recordings. See `.recordings` for details.
 <p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_12_0.png" /></p>
 <h3 id="your-own-synapse">Your own synapse<a class="headerlink" href="#your-own-synapse" title="Permanent link">&para;</a></h3>
 <p>The parts below assume that you have already learned how to <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/02_small_network/">build network simulations in <code>Jaxley</code></a>.</p>
+<p>Note that again, a synapse needs to have the two functions <code>update_states</code> and <code>compute_current</code> with all input arguments shown below. </p>
 <p>The below is an example of how to define your own synapse model in <code>Jaxley</code>:`</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
 <span class="kn">from</span> <span class="nn">jaxley.synapses.synapse</span> <span class="kn">import</span> <span class="n">Synapse</span>
