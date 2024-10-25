@@ -672,6 +672,33 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_clamps" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_clamps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_stimuli" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_stimuli
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.build_init_and_step_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_init_and_step_fn
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#jaxley.integrate.integrate" class="md-nav__link">
     <span class="md-ellipsis">
       integrate
@@ -917,6 +944,33 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_clamps" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_clamps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_stimuli" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_stimuli
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.build_init_and_step_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_init_and_step_fn
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#jaxley.integrate.integrate" class="md-nav__link">
     <span class="md-ellipsis">
       integrate
@@ -1031,6 +1085,604 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.add_clamps" class="doc doc-heading">
+            <code class=" language-python"><span class="n">add_clamps</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_clamps</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.add_clamps" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Adds clamps to the external inputs.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>externals</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external inputs.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>external_inds</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external indices.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_clamps</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[str, <span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional data clamps. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[<span title="typing.Dict">Dict</span>, <span title="typing.Dict">Dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tuple[Dict, Dict]: Updated external inputs and indices.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">add_clamps</span><span class="p">(</span>
+    <span class="n">externals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">external_inds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">data_clamps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adds clamps to the external inputs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        externals (Dict): Current external inputs.</span>
+<span class="sd">        external_inds (Dict): Current external indices.</span>
+<span class="sd">        data_clamps (Optional[Tuple[str, jnp.ndarray, pd.DataFrame]], optional): Additional data clamps. Defaults to None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[Dict, Dict]: Updated external inputs and indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If a clamp is inserted, add it to the external inputs.</span>
+    <span class="k">if</span> <span class="n">data_clamps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">state_name</span><span class="p">,</span> <span class="n">clamps</span><span class="p">,</span> <span class="n">inds</span> <span class="o">=</span> <span class="n">data_clamps</span>
+        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">clamps</span><span class="p">])</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">clamps</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.add_stimuli" class="doc doc-heading">
+            <code class=" language-python"><span class="n">add_stimuli</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.add_stimuli" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Extends the external inputs with the stimuli.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>externals</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external inputs.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>external_inds</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external indices.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_stimuli</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[<span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional data stimuli. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[<span title="typing.Dict">Dict</span>, <span title="typing.Dict">Dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tuple[Dict, Dict]: Updated external inputs and indices.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">add_stimuli</span><span class="p">(</span>
+    <span class="n">externals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">external_inds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">data_stimuli</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extends the external inputs with the stimuli.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        externals (Dict): Current external inputs.</span>
+<span class="sd">        external_inds (Dict): Current external indices.</span>
+<span class="sd">        data_stimuli (Optional[Tuple[jnp.ndarray, pd.DataFrame]], optional): Additional data stimuli. Defaults to None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[Dict, Dict]: Updated external inputs and indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If stimulus is inserted, add it to the external inputs.</span>
+    <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">or</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+                <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.build_init_and_step_fn" class="doc doc-heading">
+            <code class=" language-python"><span class="n">build_init_and_step_fn</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="s1">&#39;jaxley.stone&#39;</span><span class="p">,</span> <span class="n">solver</span><span class="o">=</span><span class="s1">&#39;bwd_euler&#39;</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.build_init_and_step_fn" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>This function returns the <code>init_fn</code> and <code>step_fn</code> which initialize the
+parameters and states of the neuron model and then step through the model</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>module</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="jaxley.modules.Module" href="../modules/#jaxley.modules.base.Module">Module</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>Module</code> object that e.g. a cell.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>voltage_solver</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Voltage solver used in step. Defaults to &ldquo;jaxley.stone&rdquo;.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;jaxley.stone&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>solver</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ODE solver. Defaults to &ldquo;bwd_euler&rdquo;.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;bwd_euler&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[<span title="typing.Callable">Callable</span>, <span title="typing.Callable">Callable</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>init_fn, step_fn: Functions that initialize the state and parameters, and perform
+a single integration step, respectively.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">build_init_and_step_fn</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span>
+    <span class="n">voltage_solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;jaxley.stone&quot;</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bwd_euler&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Callable</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;This function returns the `init_fn` and `step_fn` which initialize the</span>
+<span class="sd">    parameters and states of the neuron model and then step through the model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        module (Module): A `Module` object that e.g. a cell.</span>
+<span class="sd">        voltage_solver (str, optional): Voltage solver used in step. Defaults to &quot;jaxley.stone&quot;.</span>
+<span class="sd">        solver (str, optional): ODE solver. Defaults to &quot;bwd_euler&quot;.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        init_fn, step_fn: Functions that initialize the state and parameters, and perform</span>
+<span class="sd">            a single integration step, respectively.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Initialize the external inputs and their indices.</span>
+    <span class="n">external_inds</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">external_inds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">init_fn</span><span class="p">(</span>
+        <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+        <span class="n">all_states</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">param_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the parameters and states of the neuron model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            params (List[Dict[str, jnp.ndarray]]): List of trainable parameters.</span>
+<span class="sd">            all_states (Optional[Dict], optional): State if alread initialized. Defaults to None.</span>
+<span class="sd">            param_state (Optional[List[Dict]], optional): Parameters returned by `data_set`.. Defaults to None.</span>
+<span class="sd">            delta_t (float, optional): Step size. Defaults to 0.025.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[Dict, Dict]: All states and parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Make the `trainable_params` of the same shape as the `param_state`, such that</span>
+        <span class="c1"># they can be processed together by `get_all_parameters`.</span>
+        <span class="n">pstate</span> <span class="o">=</span> <span class="n">params_to_pstate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">module</span><span class="o">.</span><span class="n">indices_set_by_trainables</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">param_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pstate</span> <span class="o">+=</span> <span class="n">param_state</span>
+
+        <span class="n">all_params</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">(</span><span class="n">pstate</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">)</span>
+        <span class="n">all_states</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">module</span><span class="o">.</span><span class="n">get_all_states</span><span class="p">(</span><span class="n">pstate</span><span class="p">,</span> <span class="n">all_params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">all_states</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">all_states</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">all_states</span><span class="p">,</span> <span class="n">all_params</span>
+
+    <span class="k">def</span> <span class="nf">step_fn</span><span class="p">(</span>
+        <span class="n">all_states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+        <span class="n">all_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+        <span class="n">externals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+        <span class="n">external_inds</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="n">external_inds</span><span class="p">,</span>
+        <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Performs a single integration step with step size delta_t.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            all_states (Dict): Current state of the neuron model.</span>
+<span class="sd">            all_params (Dict): Current parameters of the neuron model.</span>
+<span class="sd">            externals (Dict): External inputs.</span>
+<span class="sd">            external_inds (Dict, optional): External indices. Defaults to `module.external_inds`.</span>
+<span class="sd">            delta_t (float, optional): Time step. Defaults to 0.025.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: Updated states.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">all_states</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">step</span><span class="p">(</span>
+            <span class="n">state</span><span class="p">,</span>
+            <span class="n">delta_t</span><span class="p">,</span>
+            <span class="n">external_inds</span><span class="p">,</span>
+            <span class="n">externals</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="n">all_params</span><span class="p">,</span>
+            <span class="n">solver</span><span class="o">=</span><span class="n">solver</span><span class="p">,</span>
+            <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">return</span> <span class="n">init_fn</span><span class="p">,</span> <span class="n">step_fn</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 
@@ -1255,152 +1907,7 @@ the <code>Module</code> can be set with <code>set_states</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/integrate.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 15</span>
-<span class="normal"> 16</span>
-<span class="normal"> 17</span>
-<span class="normal"> 18</span>
-<span class="normal"> 19</span>
-<span class="normal"> 20</span>
-<span class="normal"> 21</span>
-<span class="normal"> 22</span>
-<span class="normal"> 23</span>
-<span class="normal"> 24</span>
-<span class="normal"> 25</span>
-<span class="normal"> 26</span>
-<span class="normal"> 27</span>
-<span class="normal"> 28</span>
-<span class="normal"> 29</span>
-<span class="normal"> 30</span>
-<span class="normal"> 31</span>
-<span class="normal"> 32</span>
-<span class="normal"> 33</span>
-<span class="normal"> 34</span>
-<span class="normal"> 35</span>
-<span class="normal"> 36</span>
-<span class="normal"> 37</span>
-<span class="normal"> 38</span>
-<span class="normal"> 39</span>
-<span class="normal"> 40</span>
-<span class="normal"> 41</span>
-<span class="normal"> 42</span>
-<span class="normal"> 43</span>
-<span class="normal"> 44</span>
-<span class="normal"> 45</span>
-<span class="normal"> 46</span>
-<span class="normal"> 47</span>
-<span class="normal"> 48</span>
-<span class="normal"> 49</span>
-<span class="normal"> 50</span>
-<span class="normal"> 51</span>
-<span class="normal"> 52</span>
-<span class="normal"> 53</span>
-<span class="normal"> 54</span>
-<span class="normal"> 55</span>
-<span class="normal"> 56</span>
-<span class="normal"> 57</span>
-<span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">160</span>
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span>
@@ -1445,7 +1952,116 @@ the <code>Module</code> can be set with <code>set_states</code>.</p>
 <span class="normal">202</span>
 <span class="normal">203</span>
 <span class="normal">204</span>
-<span class="normal">205</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">integrate</span><span class="p">(</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">integrate</span><span class="p">(</span>
     <span class="n">module</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span>
     <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[],</span>
     <span class="o">*</span><span class="p">,</span>
@@ -1503,28 +2119,10 @@ the <code>Module</code> can be set with <code>set_states</code>.</p>
     <span class="n">external_inds</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">external_inds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="c1"># If stimulus is inserted, add it to the external inputs.</span>
-    <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">or</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
-                <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
-                <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span> <span class="o">=</span> <span class="n">add_stimuli</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="p">)</span>
 
     <span class="c1"># If a clamp is inserted, add it to the external inputs.</span>
-    <span class="k">if</span> <span class="n">data_clamps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">state_name</span><span class="p">,</span> <span class="n">clamps</span><span class="p">,</span> <span class="n">inds</span> <span class="o">=</span> <span class="n">data_clamps</span>
-        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">clamps</span><span class="p">])</span>
-            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">clamps</span>
-            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span> <span class="o">=</span> <span class="n">add_clamps</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_clamps</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
         <span class="c1"># No stimulus was inserted and no clamp was set.</span>
@@ -1559,31 +2157,13 @@ the <code>Module</code> can be set with <code>set_states</code>.</p>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">][:</span><span class="n">t_max_steps</span><span class="p">,</span> <span class="p">:]</span>
 
-    <span class="c1"># Make the `trainable_params` of the same shape as the `param_state`, such that they</span>
-    <span class="c1"># can be processed together by `get_all_parameters`.</span>
-    <span class="n">pstate</span> <span class="o">=</span> <span class="n">params_to_pstate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">module</span><span class="o">.</span><span class="n">indices_set_by_trainables</span><span class="p">)</span>
-
-    <span class="c1"># Gather parameters from `make_trainable` and `data_set` into a single list.</span>
-    <span class="k">if</span> <span class="n">param_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">pstate</span> <span class="o">+=</span> <span class="n">param_state</span>
-
-    <span class="n">all_params</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">(</span><span class="n">pstate</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">)</span>
-    <span class="n">all_states</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">module</span><span class="o">.</span><span class="n">get_all_states</span><span class="p">(</span><span class="n">pstate</span><span class="p">,</span> <span class="n">all_params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">all_states</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="k">else</span> <span class="n">all_states</span>
+    <span class="n">init_fn</span><span class="p">,</span> <span class="n">step_fn</span> <span class="o">=</span> <span class="n">build_init_and_step_fn</span><span class="p">(</span>
+        <span class="n">module</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">,</span> <span class="n">solver</span><span class="o">=</span><span class="n">solver</span>
     <span class="p">)</span>
+    <span class="n">all_states</span><span class="p">,</span> <span class="n">all_params</span> <span class="o">=</span> <span class="n">init_fn</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">all_states</span><span class="p">,</span> <span class="n">param_state</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_body_fun</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">externals</span><span class="p">):</span>
-        <span class="n">state</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">step</span><span class="p">(</span>
-            <span class="n">state</span><span class="p">,</span>
-            <span class="n">delta_t</span><span class="p">,</span>
-            <span class="n">external_inds</span><span class="p">,</span>
-            <span class="n">externals</span><span class="p">,</span>
-            <span class="n">params</span><span class="o">=</span><span class="n">all_params</span><span class="p">,</span>
-            <span class="n">solver</span><span class="o">=</span><span class="n">solver</span><span class="p">,</span>
-            <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">step_fn</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">all_params</span><span class="p">,</span> <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
         <span class="n">recs</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
             <span class="p">[</span>
                 <span class="n">state</span><span class="p">[</span><span class="n">rec_state</span><span class="p">][</span><span class="n">rec_ind</span><span class="p">]</span>
