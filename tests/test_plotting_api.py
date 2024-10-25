@@ -172,21 +172,21 @@ def test_mixed_network(morph_cell, cell):
 def test_volume_plotting_2d(comp, branch, cell, simple_net, morph_cell):
     fig, ax = plt.subplots()
     for module in [comp, branch, cell, simple_net, morph_cell]:
-        module.vis(type="comp", ax=ax)
+        module.vis(type="comp", ax=ax, morph_plot_kwargs={"resolution": 6})
     plt.close(fig)
 
 
 def test_volume_plotting_3d(comp, branch, cell, simple_net, morph_cell):
     # test 3D plotting
     for module in [comp, branch, cell, simple_net, morph_cell]:
-        module.vis(type="comp", dims=[0, 1, 2])
+        module.vis(type="comp", dims=[0, 1, 2], morph_plot_kwargs={"resolution": 6})
     plt.close()
 
 
 def test_morph_plotting(morph_cell):
     # test morph plotting (does not work if no radii in xyzr)
-    morph_cell.vis(type="morph")
-    morph_cell.branch(1).comp(0).vis(
-        type="morph", dims=[0, 1, 2]
+    morph_cell.vis(type="morph", morph_plot_kwargs={"resolution": 6})
+    morph_cell.branch(1).vis(
+        type="morph", dims=[0, 1, 2], morph_plot_kwargs={"resolution": 6}
     )  # plotting whole thing takes too long
     plt.close()
