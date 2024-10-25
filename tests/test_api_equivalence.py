@@ -12,6 +12,7 @@ import numpy as np
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import connect
+from jaxley.integrate import build_init_and_step_fn
 from jaxley.synapses import IonotropicSynapse
 
 
@@ -229,3 +230,43 @@ def test_api_equivalence_network_matches_cell():
 
     max_error = np.max(np.abs(voltages_net - voltages_cells))
     assert max_error < 1e-8, f"Error is {max_error}"
+
+
+def test_api_init_step_to_integrate():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 2)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+    cell.insert(HH())
+    cell[0, 1].record()
+
+    # Internal integration function API
+    v1 = jx.integrate(cell, t_max=4.0)
+
+    # Flexibe init and step API
+    init_fn, step_fn = build_init_and_step_fn(cell)
+
+    params = cell.get_parameters()
+    states, params = init_fn(params)
+    step_fn_ = jax.jit(step_fn)
+    rec_inds = cell.recordings.rec_index.to_numpy()
+    rec_states = cell.recordings.state.to_numpy()
+
+    steps = int(4.0 / 0.025)  # Steps to integrate
+    recordings = [
+        states[rec_state][rec_ind][None]
+        for rec_state, rec_ind in zip(rec_states, rec_inds)
+    ]
+    externals = cell.externals
+    for _ in range(steps):
+        states = step_fn_(states, params, externals)
+        recs = jnp.asarray(
+            [
+                states[rec_state][rec_ind]
+                for rec_state, rec_ind in zip(rec_states, rec_inds)
+            ]
+        )
+        recordings.append(recs)
+
+    rec = jnp.stack(recordings, axis=0).T
+
+    assert jnp.allclose(v1, rec)
