@@ -1053,13 +1053,16 @@ class Module(ABC):
         Args:
             trainable_params: The trainable parameters returned by `get_parameters()`.
         """
-        # We do not support synapse views. Why? `jaxedges` does not have any NaN
+        # We do not support views. Why? `jaxedges` does not have any NaN
         # elements, whereas edges does. Because of this, we already need special
         # treatment to make this function work, and it would be an even bigger hassle
         # if we wanted to support this.
-        assert len(self.base.edges) == len(self._edges_in_view), (
-            "`write_trainables` is not supported for synapse views."
-        )
+        assert self.__class__.__name__ in [
+            "Compartment",
+            "Branch",
+            "Cell",
+            "Network",
+        ], "Only supports modules."
 
         # We could also implement this without casting the module to jax.
         # However, I think it allows us to reuse as much code as possible and it avoids
@@ -1079,7 +1082,7 @@ class Module(ABC):
             key = parameter["key"]
             if key in self.base.nodes.columns:
                 vals_to_set = all_params if key in all_params.keys() else all_states
-                self.base.nodes.loc[self._nodes_in_view, key] = vals_to_set[key][self._nodes_in_view]
+                self.base.nodes[key] = vals_to_set[key]
 
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.

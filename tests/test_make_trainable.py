@@ -432,11 +432,11 @@ def test_write_trainables():
     net = jx.Network([cell for _ in range(2)])
     connect(
         net.cell(0).branch(0).loc(0.9),
-        net.cell(0).branch(1).loc(0.1),
+        net.cell(1).branch(1).loc(0.1),
         IonotropicSynapse(),
     )
     connect(
-        net.cell(0).branch(0).loc(0.1),
+        net.cell(1).branch(0).loc(0.1),
         net.cell(0).branch(1).loc(0.3),
         TestSynapse(),
     )
@@ -446,8 +446,8 @@ def test_write_trainables():
         TestSynapse(),
     )
     connect(
-        net.cell(0).branch(0).loc(0.6),
-        net.cell(0).branch(1).loc(0.9),
+        net.cell(1).branch(0).loc(0.6),
+        net.cell(1).branch(1).loc(0.9),
         IonotropicSynapse(),
     )
     net.insert(HH())
@@ -479,14 +479,10 @@ def test_write_trainables():
     v2 = jx.integrate(net)
     assert np.max(np.abs(v1 - v2)) < 1e-8
 
-    # Test whether `View` works with `write_trainables()`.
-    # Again manually modify the parameters.
-    for p in params:
-        for key in p:
-            p[key] = p[key].at[:].set(np.random.rand())
-
-    net.cell(0).write_trainables(params)
+    # Test whether `View` raises with `write_trainables()`.
+    with pytest.raises(AssertionError):
+        net.cell(0).write_trainables(params)
 
     # Test whether synapse view raises an error.
-    with pytest.xfail(AssertionError()):
+    with pytest.raises(AssertionError):
         net.select(edges=[0, 2, 3]).write_trainables(params)
