@@ -8,6 +8,7 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
@@ -430,7 +431,22 @@ def test_write_trainables():
     cell = jx.Cell(branch, [-1, 0])
     net = jx.Network([cell for _ in range(2)])
     connect(
-        net.cell(0).branch(0).loc(0.0),
+        net.cell(0).branch(0).loc(0.9),
+        net.cell(0).branch(1).loc(0.1),
+        IonotropicSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.1),
+        net.cell(0).branch(1).loc(0.3),
+        TestSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.3),
+        net.cell(0).branch(1).loc(0.6),
+        TestSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.6),
         net.cell(0).branch(1).loc(0.9),
         IonotropicSynapse(),
     )
@@ -443,7 +459,11 @@ def test_write_trainables():
     net.cell(0).make_trainable("length")
     net.cell("all").make_trainable("axial_resistivity")
     net.cell("all").branch("all").make_trainable("HH_gNa")
+    net.cell("all").branch("all").make_trainable("HH_m")
     net.make_trainable("IonotropicSynapse_gS")
+    net.make_trainable("IonotropicSynapse_s")
+    net.select(edges="all").make_trainable("TestSynapse_gC")
+    net.select(edges="all").make_trainable("TestSynapse_c")
     net.cell(0).branch(0).comp(0).make_trainable("radius")
 
     params = net.get_parameters()
@@ -453,8 +473,20 @@ def test_write_trainables():
         for key in p:
             p[key] = p[key].at[:].set(np.random.rand())
 
+    # Test whether voltages match.
     v1 = jx.integrate(net, params=params)
-
     net.write_trainables(params)
     v2 = jx.integrate(net)
     assert np.max(np.abs(v1 - v2)) < 1e-8
+
+    # Test whether `View` works with `write_trainables()`.
+    # Again manually modify the parameters.
+    for p in params:
+        for key in p:
+            p[key] = p[key].at[:].set(np.random.rand())
+
+    net.cell(0).write_trainables(params)
+
+    # Test whether synapse view raises an error.
+    with pytest.xfail(AssertionError()):
+        net.select(edges=[0, 2, 3]).write_trainables(params)

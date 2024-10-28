@@ -682,8 +682,8 @@ class Module(ABC):
         self.base.jaxedges = {}
         edges = self.base.edges.to_dict(orient="list")
         for i, synapse in enumerate(self.base.synapses):
+            condition = np.asarray(edges["type_ind"]) == i
             for key in synapse.synapse_params:
-                condition = np.asarray(edges["type_ind"]) == i
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
             for key in synapse.synapse_states:
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
@@ -1053,23 +1053,43 @@ class Module(ABC):
         Args:
             trainable_params: The trainable parameters returned by `get_parameters()`.
         """
-        # We could also implement this without casting the entire module to jax.
+        # We do not support synapse views. Why? `jaxedges` does not have any NaN
+        # elements, whereas edges does. Because of this, we already need special
+        # treatment to make this function work, and it would be an even bigger hassle
+        # if we wanted to support this.
+        assert len(self.base.edges) == len(self._edges_in_view), (
+            "`write_trainables` is not supported for synapse views."
+        )
+
+        # We could also implement this without casting the module to jax.
         # However, I think it allows us to reuse as much code as possible and it avoids
         # any kind of issues with indexing or parameter sharing (as this is fully
         # taken care of by `get_all_parameters()`).
-        self.to_jax()
-        pstate = params_to_pstate(trainable_params, self.indices_set_by_trainables)
-        all_params = self.get_all_parameters(pstate, voltage_solver="jaxley.stone")
+        self.base.to_jax()
+        pstate = params_to_pstate(trainable_params, self.base.indices_set_by_trainables)
+        all_params = self.base.get_all_parameters(pstate, voltage_solver="jaxley.stone")
 
-        # Override nodes and edges with those parameters set by `.make_trainable()`.
-        # We loop only over those parameters that were actually set by
-        # `make_trainable()` to avoid unnecessary computations.
+        # The value for `delta_t` does not matter here because it is only used to
+        # compute the initial current. However, the initial current cannot be made
+        # trainable and so its value never gets used below.
+        all_states = self.base.get_all_states(pstate, all_params, delta_t=0.025)
+
+        # Loop only over the keys in `pstate` to avoid unnecessary computation.
         for parameter in pstate:
             key = parameter["key"]
-            if key in self.base.synapse_param_names:
-                self.edges[key] = all_params[key]
-            else:
-                self.nodes[key] = all_params[key]
+            if key in self.base.nodes.columns:
+                vals_to_set = all_params if key in all_params.keys() else all_states
+                self.base.nodes.loc[self._nodes_in_view, key] = vals_to_set[key][self._nodes_in_view]
+
+        # `jaxedges` contains only non-Nan elements. This is unlike the channels where
+        # we allow parameter sharing.
+        edges = self.base.edges.to_dict(orient="list")
+        for i, synapse in enumerate(self.base.synapses):
+            condition = np.asarray(edges["type_ind"]) == i
+            for key in list(synapse.synapse_params.keys()):
+                self.base.edges.loc[condition, key] = all_params[key]
+            for key in list(synapse.synapse_states.keys()):
+                self.base.edges.loc[condition, key] = all_states[key]
 
     def distance(self, endpoint: "View") -> float:
         """Return the direct distance between two compartments.
