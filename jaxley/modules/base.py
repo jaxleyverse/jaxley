@@ -42,6 +42,18 @@ from jaxley.utils.solver_utils import convert_to_csc
 from jaxley.utils.swc import build_radiuses_from_xyzr
 
 
+def only_allow_module(func):
+    """Decorator to only allow the function to be called on Module instances."""
+
+    def wrapper(self, *args, **kwargs):
+        assert not isinstance(
+            self, View
+        ), "This function can only be called on Module instances"
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
 class Module(ABC):
     """Module base class.
 
@@ -50,7 +62,42 @@ class Module(ABC):
 
     Modules can be traversed and modified using the `at`, `cell`, `branch`, `comp`,
     `edge`, and `loc` methods. The `scope` method can be used to toggle between
-    global and local indices.
+    global and local indices. Traversal of Modules will return a `View` of itself,
+    that has a modified set of attributes, which only consider the part of the Module
+    that is in view.
+
+    This has consequences for how to operate on Module and which changes take affect
+    where. The following guidelines should be followed (copied from `View`):
+    1. We consider a Module to have everything in view.
+    2. Views can display and keep track of how a module is traversed. But(!),
+        do not support making changes or setting variables. This still has to be
+        done in the base Module, i.e. `self.base`. In order to enssure that these
+        changes only affects whatever is currently in view `self._nodes_in_view`,
+        or `self._edges_in_view` among others have to be used. Operating on nodes
+        currently in view can for example be done with
+        `self.base.node.loc[self._nodes_in_view]`
+    3. Every attribute of Module that changes based on what's in view, i.e. `xyzr`,
+        needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
+        should be `[self.base.xyzr[0]]` This could be achieved via:
+        `[self.base.xyzr[b] for b in self._branches_in_view]`.
+
+
+    Example to make methods of Module compatible with View:
+    ```
+    # use data in view to return something
+    def count_small_branches(self):
+        # no need to use self.base.attr + viewed indices,
+        # since no change is made to the attr in question (nodes)
+        comp_lens = self.nodes["length"]
+        branch_lens = comp_lens.groupby("global_branch_index").sum()
+        return np.sum(branch_lens < 10)
+
+    # change data in view
+    def change_attr_in_view(self):
+        # changes to attrs have to be made via self.base.attr + viewed indices
+        a = func1(self.base.attr1[self._cells_in_view])
+        b = func2(self.base.attr2[self._edges_in_view])
+        self.base.attr3[self._branches_in_view] = a + b
 
     This base class defines the scaffold for all jaxley modules (compartments,
     branches, cells, networks).
@@ -243,16 +290,17 @@ class Module(ABC):
         self.nodes[local_idx_cols] = idcs[local_idx_cols].astype(int)
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
+        # move indices of current scope to the front and the others to the back
+        not_scope = "global" if self._scope == "local" else "local"
         self.nodes = reorder_cols(
-            self.nodes,
-            [
-                f"{scope}_{name}"
-                for scope in ["global", "local"]
-                for name in index_names
-            ],
+            self.nodes, [f"{self._scope}_{name}" for name in index_names], first=True
         )
-        self.nodes = reorder_cols(self.nodes, ["controlled_by_param"], first=False)
+        self.nodes = reorder_cols(
+            self.nodes, [f"{not_scope}_{name}" for name in index_names], first=False
+        )
+
         self.edges = reorder_cols(self.edges, ["global_edge_index"])
+        self.nodes = reorder_cols(self.nodes, ["controlled_by_param"], first=False)
         self.edges = reorder_cols(self.edges, ["controlled_by_param"], first=False)
 
     def _init_view(self):
@@ -597,7 +645,7 @@ class Module(ABC):
         # start from 0/-1 and are contiguous
         if as_module:
             raise NotImplementedError("Not yet implemented.")
-            # TODO: initialize a new module with the same attributes
+            # initialize a new module with the same attributes
         return view
 
     @property
@@ -641,8 +689,9 @@ class Module(ABC):
             name = channel._name
             self.base.nodes.loc[self.nodes[name].isna(), name] = False
 
+    @only_allow_module
     def to_jax(self):
-        # TODO: Make this work for View?
+        # TODO FROM #447: Make this work for View?
         """Move `.nodes` to `.jaxnodes`.
 
         Before the actual simulation is run (via `jx.integrate`), all parameters of
@@ -715,6 +764,7 @@ class Module(ABC):
 
         return nodes[cols]
 
+    @only_allow_module
     def _init_morph(self):
         """Initialize the morphology such that it can be processed by the solvers."""
         self._init_morph_jaxley_spsolve()
@@ -826,7 +876,6 @@ class Module(ABC):
             and len(self._branches_in_view) == len(self.base._branches_in_view)
         ), "This is not allowed for cells."
 
-        # TODO: MAKE THIS NICER
         # Update all attributes that are affected by compartment structure.
         view = self.nodes.copy()
         all_nodes = self.base.nodes
@@ -1131,10 +1180,11 @@ class Module(ABC):
         """
         return self.trainable_params
 
+    @only_allow_module
     def get_all_parameters(
         self, pstate: List[Dict], voltage_solver: str
     ) -> Dict[str, jnp.ndarray]:
-        # TODO: MAKE THIS WORK FOR VIEW?
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
         Runs `_compute_axial_conductances()` and return every parameter that is needed
@@ -1185,7 +1235,7 @@ class Module(ABC):
             # This is needed since SynapseViews worked differently before.
             # This mimics the old behaviour and tranformes the new indices
             # to the old indices.
-            # TODO: Longterm this should be gotten rid of.
+            # TODO FROM #447: Longterm this should be gotten rid of.
             # Instead edges should work similar to nodes (would also allow for
             # param sharing).
             synapse_inds = self.base.edges.groupby("type").rank()["global_edge_index"]
@@ -1206,8 +1256,9 @@ class Module(ABC):
         )
         return params
 
-    # TODO: MAKE THIS WORK FOR VIEW?
+    @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> Dict[str, jnp.ndarray]:
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return states as they are set in the `.nodes` and `.edges` tables."""
         self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
         states = {"v": self.base.jaxnodes["v"]}
@@ -1219,10 +1270,11 @@ class Module(ABC):
             states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
 
+    @only_allow_module
     def get_all_states(
         self, pstate: List[Dict], all_params, delta_t: float
     ) -> Dict[str, jnp.ndarray]:
-        # TODO: MAKE THIS WORK FOR VIEW?
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Get the full initial state of the module from jaxnodes and trainables.
 
         Args:
@@ -1268,8 +1320,9 @@ class Module(ABC):
         self._init_morph()
         return self
 
+    @only_allow_module
     def init_states(self, delta_t: float = 0.025):
-        # TODO: MAKE THIS WORK FOR VIEW?
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Initialize all mechanisms in their steady state.
 
         This considers the voltages and parameters of each compartment.
@@ -1617,6 +1670,7 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
+    @only_allow_module
     def step(
         self,
         u: Dict[str, jnp.ndarray],
@@ -2183,7 +2237,6 @@ class View(Module):
         a = func1(self.base.attr1[self._cells_in_view])
         b = func2(self.base.attr2[self._edges_in_view])
         self.base.attr3[self._branches_in_view] = a + b
-    ```
     """
 
     def __init__(
@@ -2254,7 +2307,7 @@ class View(Module):
         self._current_view = "view"  # if not instantiated via `comp`, `cell` etc.
         self._update_local_indices()
 
-        # TODO:
+        # TODO FROM #447:
         self.debug_states = pointer.debug_states
 
         if len(self.nodes) == 0:

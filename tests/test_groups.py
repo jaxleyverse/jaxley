@@ -29,12 +29,6 @@ def test_subclassing_groups_cell_api():
     cell.subtree.branch(0).set("radius", 0.1)
     cell.subtree.branch(0).comp("all").make_trainable("length")
 
-    # TODO: REMOVE THIS IS NOW ALLOWED
-    # with pytest.raises(KeyError):
-    #     cell.subtree.cell(0).branch("all").make_trainable("length")
-    # with pytest.raises(KeyError):
-    #     cell.subtree.comp(0).make_trainable("length")
-
 
 def test_subclassing_groups_net_api():
     comp = jx.Compartment()
@@ -47,12 +41,6 @@ def test_subclassing_groups_net_api():
     # The following lines are made possible by PR #324.
     net.excitatory.cell(0).set("radius", 0.1)
     net.excitatory.cell(0).branch("all").make_trainable("length")
-
-    # TODO: REMOVE THIS IS NOW ALLOWED
-    # with pytest.raises(KeyError):
-    #     cell.excitatory.branch(0).comp("all").make_trainable("length")
-    # with pytest.raises(KeyError):
-    #     cell.excitatory.comp("all").make_trainable("length")
 
 
 def test_subclassing_groups_net_set_equivalence():
@@ -89,7 +77,7 @@ def test_subclassing_groups_net_make_trainable_equivalence():
 
     # The following lines are made possible by PR #324.
     # The new behaviour needs changing of the scope to still conform here
-    # TODO: Rewrite this test / reconsider what behaviour is desired
+    # TODO FROM #447: Rewrite this test / reconsider what behaviour is desired
     net1.excitatory.scope("global").cell([0, 3]).scope("local").branch(
         0
     ).make_trainable("radius")

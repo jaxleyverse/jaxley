@@ -555,3 +555,52 @@ def test_synapse_and_channel_filtering():
     assert np.all(nodes_control_param2 == nodes2["global_cell_index"])
 
     assert np.all(edges1 == edges2)
+
+
+def test_view_equals_module():
+    # test that module behaves the same as view for important attributes
+    comp = jx.Compartment()
+    branch = jx.Branch([comp] * 3)
+
+    comp.insert(HH())
+    branch.comp([0, 1]).insert(HH())
+
+    comp.set("v", -71.2)
+    branch.comp(0).set("v", -71.2)
+
+    comp.record("v")
+    branch.comp([0, 1]).record("v")
+
+    comp.stimulate(np.zeros(100))
+    branch.comp([0, 1]).stimulate(np.zeros(100))
+
+    comp.make_trainable("HH_gNa")
+    comp.make_trainable("HH_gK")
+    branch.comp([0, 1]).make_trainable("HH_gNa")
+    branch.make_trainable("HH_gK")
+
+    # test deleting subset of attributes
+    branch.comp(1).delete_trainables()
+    branch.comp(1).delete_recordings()
+    branch.comp(1).delete_stimuli()
+
+    assert (
+        branch.comp(1).trainable_params == [] and branch.comp(0).trainable_params != []
+    )
+    assert branch.comp(1).recordings.empty and not branch.comp(0).recordings.empty
+    assert branch.comp(1).externals == {} and branch.comp(0).externals != {}
+
+    # convert to dict so order of cols and index dont matter for __eq__
+    assert comp.nodes.to_dict() == branch.comp(0).nodes.to_dict()
+
+    assert comp.trainable_params == branch.comp(0).trainable_params
+    assert comp.indices_set_by_trainables == branch.comp(0).indices_set_by_trainables
+    assert np.all(comp.recordings == branch.comp(0).recordings)
+    assert np.all(
+        [
+            np.all([np.all(v1 == v2), k1 == k2])
+            for (k1, v1), (k2, v2) in zip(
+                comp.externals.items(), branch.comp(0).externals.items()
+            )
+        ]
+    )
