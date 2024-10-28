@@ -5,9 +5,11 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
+from copy import copy
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
@@ -421,3 +423,74 @@ def test_make_states_trainable_api():
     parameters = net.get_parameters()
     v = simulate(parameters)
     assert np.invert(np.any(np.isnan(v))), "Found NaN in voltage."
+
+
+def test_write_trainables():
+    """Test whether `write_trainables()` gives the same result as using the trainables."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    cell = jx.Cell(branch, [-1, 0])
+    net = jx.Network([cell for _ in range(2)])
+    connect(
+        net.cell(0).branch(0).loc(0.9),
+        net.cell(1).branch(1).loc(0.1),
+        IonotropicSynapse(),
+    )
+    connect(
+        net.cell(1).branch(0).loc(0.1),
+        net.cell(0).branch(1).loc(0.3),
+        TestSynapse(),
+    )
+    connect(
+        net.cell(0).branch(0).loc(0.3),
+        net.cell(0).branch(1).loc(0.6),
+        TestSynapse(),
+    )
+    connect(
+        net.cell(1).branch(0).loc(0.6),
+        net.cell(1).branch(1).loc(0.9),
+        IonotropicSynapse(),
+    )
+    net.insert(HH())
+    net.cell(0).branch(0).comp(0).record()
+    net.cell(1).branch(0).comp(0).record()
+    net.cell(0).branch(0).comp(0).stimulate(jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0))
+
+    net.make_trainable("radius")
+    net.cell(0).make_trainable("length")
+    net.cell("all").make_trainable("axial_resistivity")
+    net.cell("all").branch("all").make_trainable("HH_gNa")
+    net.cell("all").branch("all").make_trainable("HH_m")
+    net.make_trainable("IonotropicSynapse_gS")
+    net.make_trainable("IonotropicSynapse_s")
+    net.select(edges="all").make_trainable("TestSynapse_gC")
+    net.select(edges="all").make_trainable("TestSynapse_c")
+    net.cell(0).branch(0).comp(0).make_trainable("radius")
+
+    params = net.get_parameters()
+
+    # Now, we manually modify the parameters.
+    for p in params:
+        for key in p:
+            p[key] = p[key].at[:].set(np.random.rand())
+
+    # Test whether voltages match.
+    v1 = jx.integrate(net, params=params)
+
+    previous_nodes = copy(net.nodes)
+    previous_edges = copy(net.edges)
+    net.write_trainables(params)
+    v2 = jx.integrate(net)
+    assert np.max(np.abs(v1 - v2)) < 1e-8
+
+    # Test whether nodes and edges actually changed.
+    assert not net.nodes.equals(previous_nodes)
+    assert not net.edges.equals(previous_edges)
+
+    # Test whether `View` raises with `write_trainables()`.
+    with pytest.raises(AssertionError):
+        net.cell(0).write_trainables(params)
+
+    # Test whether synapse view raises an error.
+    with pytest.raises(AssertionError):
+        net.select(edges=[0, 2, 3]).write_trainables(params)
