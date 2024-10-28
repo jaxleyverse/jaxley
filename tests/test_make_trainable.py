@@ -5,6 +5,7 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
+from copy import copy
 
 import jax.numpy as jnp
 import numpy as np
@@ -475,9 +476,16 @@ def test_write_trainables():
 
     # Test whether voltages match.
     v1 = jx.integrate(net, params=params)
+
+    previous_nodes = copy(net.nodes)
+    previous_edges = copy(net.edges)
     net.write_trainables(params)
     v2 = jx.integrate(net)
     assert np.max(np.abs(v1 - v2)) < 1e-8
+
+    # Test whether nodes and edges actually changed.
+    assert not net.nodes.equals(previous_nodes)
+    assert not net.edges.equals(previous_edges)
 
     # Test whether `View` raises with `write_trainables()`.
     with pytest.raises(AssertionError):
