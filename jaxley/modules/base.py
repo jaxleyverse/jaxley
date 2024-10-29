@@ -734,22 +734,18 @@ class Module(ABC):
         they can be processed on GPU/TPU and such that the simulation can be
         differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
         """
-        self.base.jaxnodes = {}
-        for key, value in self.base.nodes.to_dict(orient="list").items():
-            inds = jnp.arange(len(value))
-            self.base.jaxnodes[key] = jnp.asarray(value)[inds]
-
-        # `jaxedges` contains only parameters (no indices).
-        # `jaxedges` contains only non-Nan elements. This is unlike the channels where
-        # we allow parameter sharing.
-        self.base.jaxedges = {}
+        jaxnodes = self.base.jaxnodes = {}
+        nodes = self.base.nodes.to_dict(orient="list")
+        
+        jaxedges = self.base.jaxedges = {}
         edges = self.base.edges.to_dict(orient="list")
-        for i, synapse in enumerate(self.base.synapses):
-            condition = np.asarray(edges["type_ind"]) == i
-            for key in synapse.synapse_params:
-                self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
-            for key in synapse.synapse_states:
-                self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
+        edges.pop("type") # drop since column type is string
+        
+        for jax_array, params in zip([jaxnodes, jaxedges], [nodes, edges]):
+            for key, value in params.items():
+                inds = jnp.arange(len(value))
+                jax_array[key] = jnp.asarray(value)[inds]
+
 
     def show(
         self,
@@ -1157,19 +1153,11 @@ class Module(ABC):
         # Loop only over the keys in `pstate` to avoid unnecessary computation.
         for parameter in pstate:
             key = parameter["key"]
+            vals_to_set = all_params if key in all_params.keys() else all_states
             if key in self.base.nodes.columns:
-                vals_to_set = all_params if key in all_params.keys() else all_states
                 self.base.nodes[key] = vals_to_set[key]
-
-        # `jaxedges` contains only non-Nan elements. This is unlike the channels where
-        # we allow parameter sharing.
-        edges = self.base.edges.to_dict(orient="list")
-        for i, synapse in enumerate(self.base.synapses):
-            condition = np.asarray(edges["type_ind"]) == i
-            for key in list(synapse.synapse_params.keys()):
-                self.base.edges.loc[condition, key] = all_params[key]
-            for key in list(synapse.synapse_states.keys()):
-                self.base.edges.loc[condition, key] = all_states[key]
+            if key in self.base.edges.columns:
+                self.base.edges[key] = vals_to_set[key]
 
     def distance(self, endpoint: "View") -> float:
         """Return the direct distance between two compartments.
