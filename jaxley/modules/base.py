@@ -43,12 +43,17 @@ from jaxley.utils.swc import build_radiuses_from_xyzr
 
 
 def only_allow_module(func):
-    """Decorator to only allow the function to be called on Module instances."""
+    """Decorator to only allow the function to be called on Module instances.
+
+    Decorates methods of Module that cannot be called on Views of Modules instances.
+    and have to be called on the Module itself."""
 
     def wrapper(self, *args, **kwargs):
+        module_name = self.base.__class__.__name__
+        method_name = func.__name__
         assert not isinstance(
             self, View
-        ), "This function can only be called on Module instances"
+        ), f"{method_name} is currently not supported for Views. Call on the {module_name} base Module."
         return func(self, *args, **kwargs)
 
     return wrapper

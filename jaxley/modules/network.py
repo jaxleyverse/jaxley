@@ -105,7 +105,7 @@ class Network(Module):
         # Channels.
         self._gather_channels_from_constituents(cells)
 
-        self.initialize()
+        self._initialize()
         del self._cells_list
 
     def __repr__(self):

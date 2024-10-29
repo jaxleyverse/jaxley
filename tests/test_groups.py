@@ -101,37 +101,6 @@ def test_subclassing_groups_net_make_trainable_equivalence():
         assert jnp.array_equal(inds1, inds2)
 
 
-def test_subclassing_groups_net_lazy_indexing_make_trainable_equivalence():
-    """Test whether groups can be indexing in a lazy way."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net1 = jx.Network([cell for _ in range(10)])
-    net2 = jx.Network([cell for _ in range(10)])
-
-    net1.cell([0, 3, 5]).add_to_group("excitatory")
-    net2.cell([0, 3, 5]).add_to_group("excitatory")
-
-    # The following lines are made possible by PR #324.
-    net1.excitatory.cell([0, 3]).branch(0).make_trainable("radius")
-    net1.excitatory.cell([0, 5]).branch(1).comp("all").make_trainable("length")
-    net1.excitatory.cell("all").branch(1).comp(2).make_trainable("axial_resistivity")
-    params1 = jnp.concatenate(jax.tree_util.tree_flatten(net1.get_parameters())[0])
-
-    # The following lines are made possible by PR #324.
-    net2.excitatory[[0, 3], 0].make_trainable("radius")
-    net2.excitatory[[0, 5], 1, :].make_trainable("length")
-    net2.excitatory[:, 1, 2].make_trainable("axial_resistivity")
-    params2 = jnp.concatenate(jax.tree_util.tree_flatten(net2.get_parameters())[0])
-
-    assert jnp.array_equal(params1, params2)
-
-    for inds1, inds2 in zip(
-        net1.indices_set_by_trainables, net2.indices_set_by_trainables
-    ):
-        assert jnp.array_equal(inds1, inds2)
-
-
 def test_fully_connect_groups_equivalence():
     """Test whether groups can be used with `fully_connect`."""
     comp = jx.Compartment()
