@@ -234,6 +234,10 @@ class Module(ABC):
         children = levels[levels.index(self._current_view) + 1 :]
         return children
 
+    def _has_childview(self, key: str) -> bool:
+        child_views = self._childviews()
+        return key in child_views
+
     def __getitem__(self, index):
         """Lazy indexing of the module."""
         supported_parents = ["network", "cell", "branch"]  # cannot index into comp
@@ -466,6 +470,8 @@ class Module(ABC):
 
         Keys can be `cell`, `branch`, `comp` and determine which index is used to filter.
         """
+        base_name = self.base.__class__.__name__
+        assert self.base._has_childview(key), f"{base_name} does not support {key}."
         idx = self._reformat_index(idx)
         idx = self.nodes[self._scope + f"_{key}_index"] if is_str_all(idx) else idx
         where = self.nodes[self._scope + f"_{key}_index"].isin(idx)
