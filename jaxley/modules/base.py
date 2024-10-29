@@ -2253,8 +2253,8 @@ class Module(ABC):
         By default, `.edges` does not contain the properties (radius, length, cm,
         channel properties,...) of the pre- and post-synaptic compartments. This
         method allows to copy a property of the pre- and/or post-synaptic compartment
-        to the edges. It is then accessible as `module.nodes.pre_property_name` or
-        `module.nodes.post_property_name`.
+        to the edges. It is then accessible as `module.edges.pre_property_name` or
+        `module.edges.post_property_name`.
 
         Note that, if you modify the node property _after_ having run
         `copy_node_property_to_edges`, it will not automatically update the value in
