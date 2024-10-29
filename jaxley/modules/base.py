@@ -2164,14 +2164,19 @@ class Module(ABC):
                 "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
             )
 
-        root_xyz_cells = np.array([c.xyzr[0][0, :3] for c in self.cells])
+        # can only iterate over cells for networks
+        # lambda makes sure that generator can be created multiple times
+        base_is_net = self.base._current_view == "network"
+        cells = lambda: (self.cells if base_is_net else [self])
+
+        root_xyz_cells = np.array([c.xyzr[0][0, :3] for c in cells()])
         root_xyz = root_xyz_cells[0] if isinstance(x, float) else root_xyz_cells
         move_by = np.array([x, y, z]).T - root_xyz
 
         if len(move_by.shape) == 1:
             move_by = np.tile(move_by, (len(self._cells_in_view), 1))
 
-        for cell, offset in zip(self.cells, move_by):
+        for cell, offset in zip(cells(), move_by):
             for idx in cell._branches_in_view:
                 self.base.xyzr[idx][:, :3] += offset
         if update_nodes:
