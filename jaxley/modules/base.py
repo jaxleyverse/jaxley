@@ -2283,6 +2283,13 @@ class Module(ABC):
         for pre_or_post_val in pre_or_post:
             assert pre_or_post_val in ["pre", "post"]
             for property_to_import in properties_to_import:
+                # Delete the column if it already exists. Otherwise it would exist
+                # twice.
+                if f"{pre_or_post_val}_{property_to_import}" in self.edges.columns:
+                    self.edges.drop(
+                        columns=f"{pre_or_post_val}_{property_to_import}", inplace=True
+                    )
+
                 self.edges = self.edges.join(
                     self.nodes[[property_to_import, "global_comp_index"]].set_index(
                         "global_comp_index"

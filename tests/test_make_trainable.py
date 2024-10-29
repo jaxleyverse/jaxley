@@ -234,6 +234,8 @@ def test_copy_node_property_to_edges():
     fully_connect(net.cell("all"), net.cell("all"), IonotropicSynapse())
 
     net.copy_node_property_to_edges("HH_gNa", "pre")
+    # Run it another time to ensure that it can be run twice.
+    net.copy_node_property_to_edges("HH_gNa", "pre")
     assert "pre_HH_gNa" in net.edges.columns
     assert "post_HH_gNa" not in net.edges.columns
 
