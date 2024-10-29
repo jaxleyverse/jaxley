@@ -1467,9 +1467,13 @@ class Module(ABC):
         if isinstance(self, View):
             scope = self._scope
             current_view = self._current_view
+            # copy dict of new View. For some reason doing self = View(self)
+            # did not work.
             self.__dict__ = View(
                 self.base, self._nodes_in_view, self._edges_in_view
             ).__dict__
+
+            # retain the scope and current_view of the previous view
             self._scope = scope
             self._current_view = current_view
 
