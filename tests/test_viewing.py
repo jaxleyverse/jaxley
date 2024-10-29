@@ -257,8 +257,18 @@ connect(net[0, 0, 0], net[0, 0, 1], TestSynapse())
 # make sure all attrs in module also have a corresponding attr in view
 @pytest.mark.parametrize("module", [comp, branch, cell, net])
 def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
+    """Check if all attributes of Module have a corresponding attribute in View.
+
+    To ensure that View behaves like a Module as much as possible, View should support
+    all attributes of Module. This test checks if all attributes of Module have a
+    corresponding attribute in View. Also checks if the types of the attributes match.
+    """
     # attributes of Module that do not have to exist in View
     exceptions = ["view"]
+
+    # TODO: Types are inconsistent between different Modules
+    exceptions += ["cumsum_nbranches"]
+
     # TODO FROM #447: should be added to View in the future
     exceptions += [
         "_internal_node_inds",
@@ -278,7 +288,6 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
         "cumsum_nbranchpoints_per_cell",
         "_cumsum_nseg_per_cell",
     ]  # for network
-    exceptions += ["cumsum_nbranches"]  # TODO: take care of this
 
     for name, attr in module.__dict__.items():
         if name not in exceptions:
@@ -298,7 +307,8 @@ net = jx.Network([cell] * 4)
 
 
 @pytest.mark.parametrize("module", [comp, branch, cell, net])
-def test_different_index_types(module):
+def test_view_supported_index_types(module):
+    """Check if different ways to index into Modules/Views work correctly."""
     # test int, range, slice, list, np.array, pd.Index
     index_types = [
         0,
@@ -308,6 +318,7 @@ def test_different_index_types(module):
         np.array([0, 1, 2]),
         pd.Index([0, 1, 2]),
     ]
+    # `_reformat_index` should always return a np.ndarray
     for index in index_types:
         assert isinstance(
             module._reformat_index(index), np.ndarray
@@ -321,6 +332,7 @@ def test_different_index_types(module):
 
 
 def test_select():
+    """Ensure `select` works correctly and returns expected View of Modules."""
     comp = jx.Compartment()
     branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
@@ -362,6 +374,7 @@ def test_select():
 
 
 def test_viewing():
+    """Test that the View object is working correctly."""
     comp = jx.Compartment()
     branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
@@ -415,6 +428,7 @@ def test_viewing():
 
 
 def test_scope():
+    """Ensure scope has the intended effect for Modules and Views."""
     comp = jx.Compartment()
     branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
@@ -448,6 +462,7 @@ def test_scope():
 
 
 def test_context_manager():
+    """Test that context manager works correctly for Module."""
     comp = jx.Compartment()
     branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
@@ -472,6 +487,7 @@ def test_context_manager():
 
 
 def test_iter():
+    """Test that __iter__ works correctly for all modules."""
     comp = jx.Compartment()
     branch1 = jx.Branch([comp] * 2)
     branch2 = jx.Branch([comp] * 3)
@@ -531,6 +547,7 @@ def test_iter():
 
 
 def test_synapse_and_channel_filtering():
+    """Test that synapses and channels are filtered correctly by View."""
     comp = jx.Compartment()
     branch = jx.Branch([comp] * 3)
     cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
@@ -550,7 +567,8 @@ def test_synapse_and_channel_filtering():
     edges_control_param1 = edges1.pop("controlled_by_param")
     edges_control_param2 = edges2.pop("controlled_by_param")
 
-    assert np.all(nodes1 == nodes2)
+    # convert to dict so order of cols and index dont matter for __eq__
+    assert nodes1.to_dict() == nodes2.to_dict()
     assert np.all(nodes_control_param1 == 0)
     assert np.all(nodes_control_param2 == nodes2["global_cell_index"])
 
@@ -558,7 +576,7 @@ def test_synapse_and_channel_filtering():
 
 
 def test_view_equals_module():
-    # test that module behaves the same as view for important attributes
+    """Test that View behaves the same as Module for important attrs and methods."""
     comp = jx.Compartment()
     branch = jx.Branch([comp] * 3)
 
