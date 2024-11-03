@@ -52,7 +52,7 @@ class Network(Module):
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
 
-        self.cells_list = cells  # TODO: TEMPORARY FIX, REMOVE BY ADDING ATTRS TO VIEW (solve_indexer.children_in_level)
+        self._cells_list = cells
         self.nseg_per_branch = np.concatenate([cell.nseg_per_branch for cell in cells])
         self.nseg = int(np.max(self.nseg_per_branch))
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
@@ -106,6 +106,7 @@ class Network(Module):
         self._gather_channels_from_constituents(cells)
 
         self._initialize()
+        del self._cells_list
 
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
@@ -119,18 +120,18 @@ class Network(Module):
         children_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.children_in_level for cell in self.cells_list],
+            [cell.solve_indexer.children_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         parents_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.parents_in_level for cell in self.cells_list],
+            [cell.solve_indexer.parents_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         padded_cumsum_nseg = cumsum_leading_zero(
             np.concatenate(
-                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self.cells_list]
+                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self._cells_list]
             )
         )
 
@@ -171,12 +172,12 @@ class Network(Module):
         `type == 4`: child-compartment --> branchpoint
         """
         self._cumsum_nseg_per_cell = cumsum_leading_zero(
-            jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells_list])
+            jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells])
         )
         self._comp_edges = pd.DataFrame()
 
         # Add all the internal nodes.
-        for offset, cell in zip(self._cumsum_nseg_per_cell, self.cells_list):
+        for offset, cell in zip(self._cumsum_nseg_per_cell, self._cells_list):
             condition = cell._comp_edges["type"].to_numpy() == 0
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
@@ -188,7 +189,7 @@ class Network(Module):
         for offset, offset_branchpoints, cell in zip(
             self._cumsum_nseg_per_cell,
             self.cumsum_nbranchpoints_per_cell,
-            self.cells_list,
+            self._cells_list,
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
             condition = cell._comp_edges["type"].isin([1, 2])
@@ -210,7 +211,7 @@ class Network(Module):
         for offset, offset_branchpoints, cell in zip(
             self._cumsum_nseg_per_cell,
             self.cumsum_nbranchpoints_per_cell,
-            self.cells_list,
+            self._cells_list,
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
             condition = cell._comp_edges["type"].isin([3, 4])
@@ -227,9 +228,6 @@ class Network(Module):
                 ],
                 ignore_index=True,
             )
-
-        # Note that, unlike in `cell.py`, we cannot delete `self.cells_list` here because
-        # it is used in plotting.
 
         # Convert comp_edges to the index format required for `jax.sparse` solvers.
         n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
@@ -473,8 +471,11 @@ class Network(Module):
 
             pre_locs = self.edges["pre_locs"].to_numpy()
             post_locs = self.edges["post_locs"].to_numpy()
-            pre_branch = self.edges["global_pre_branch_index"].to_numpy()
-            post_branch = self.edges["global_post_branch_index"].to_numpy()
+            pre_comp = self.edges["global_pre_comp_index"].to_numpy()
+            nodes = self.nodes.set_index("global_comp_index")
+            pre_branch = nodes.loc[pre_comp, "global_branch_index"].to_numpy()
+            post_comp = self.edges["global_post_comp_index"].to_numpy()
+            post_branch = nodes.loc[post_comp, "global_branch_index"].to_numpy()
 
             dims_np = np.asarray(dims)
 
@@ -533,10 +534,13 @@ class Network(Module):
             for i, layer in enumerate(layers):
                 graph.add_nodes_from(layer, layer=i)
         else:
-            graph.add_nodes_from(range(len(self.cells_list)))
+            graph.add_nodes_from(range(len(self._cells_in_view)))
 
-        pre_cell = self.edges["global_pre_cell_index"].to_numpy()
-        post_cell = self.edges["global_post_cell_index"].to_numpy()
+        pre_comp = self.edges["global_pre_comp_index"].to_numpy()
+        nodes = self.nodes.set_index("global_comp_index")
+        pre_cell = nodes.loc[pre_comp, "global_cell_index"].to_numpy()
+        post_comp = self.edges["global_post_comp_index"].to_numpy()
+        post_cell = nodes.loc[post_comp, "global_cell_index"].to_numpy()
 
         inds = np.stack([pre_cell, post_cell]).T
         graph.add_edges_from(inds)
@@ -578,11 +582,10 @@ class Network(Module):
         )
 
         # Define new synapses. Each row is one synapse.
-        cols = ["comp_index", "branch_index", "cell_index"]
-        pre_nodes = pre_nodes[[f"global_{col}" for col in cols]]
-        pre_nodes.columns = [f"global_pre_{col}" for col in cols]
-        post_nodes = post_nodes[[f"global_{col}" for col in cols]]
-        post_nodes.columns = [f"global_post_{col}" for col in cols]
+        pre_nodes = pre_nodes[["global_comp_index"]]
+        pre_nodes.columns = ["global_pre_comp_index"]
+        post_nodes = post_nodes[["global_comp_index"]]
+        post_nodes.columns = ["global_post_comp_index"]
         new_rows = pd.concat(
             [
                 global_edge_index,
@@ -591,7 +594,6 @@ class Network(Module):
             ],
             axis=1,
         )
-        new_rows["local_edge_index"] = new_rows["global_edge_index"]
         new_rows["type"] = synapse_name
         new_rows["type_ind"] = type_ind
         new_rows["pre_locs"] = pre_loc

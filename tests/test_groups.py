@@ -29,12 +29,6 @@ def test_subclassing_groups_cell_api():
     cell.subtree.branch(0).set("radius", 0.1)
     cell.subtree.branch(0).comp("all").make_trainable("length")
 
-    # TODO: REMOVE THIS IS NOW ALLOWED
-    # with pytest.raises(KeyError):
-    #     cell.subtree.cell(0).branch("all").make_trainable("length")
-    # with pytest.raises(KeyError):
-    #     cell.subtree.comp(0).make_trainable("length")
-
 
 def test_subclassing_groups_net_api():
     comp = jx.Compartment()
@@ -47,12 +41,6 @@ def test_subclassing_groups_net_api():
     # The following lines are made possible by PR #324.
     net.excitatory.cell(0).set("radius", 0.1)
     net.excitatory.cell(0).branch("all").make_trainable("length")
-
-    # TODO: REMOVE THIS IS NOW ALLOWED
-    # with pytest.raises(KeyError):
-    #     cell.excitatory.branch(0).comp("all").make_trainable("length")
-    # with pytest.raises(KeyError):
-    #     cell.excitatory.comp("all").make_trainable("length")
 
 
 def test_subclassing_groups_net_set_equivalence():
@@ -89,7 +77,7 @@ def test_subclassing_groups_net_make_trainable_equivalence():
 
     # The following lines are made possible by PR #324.
     # The new behaviour needs changing of the scope to still conform here
-    # TODO: Rewrite this test / reconsider what behaviour is desired
+    # TODO FROM #447: Rewrite this test / reconsider what behaviour is desired
     net1.excitatory.scope("global").cell([0, 3]).scope("local").branch(
         0
     ).make_trainable("radius")
@@ -105,37 +93,6 @@ def test_subclassing_groups_net_make_trainable_equivalence():
     net2.cell([0, 5]).branch(1).comp("all").make_trainable("length")
     net2.cell([0, 3, 5]).branch(1).comp(2).make_trainable("axial_resistivity")
     params2 = jnp.concatenate(jax.tree_util.tree_flatten(net2.get_parameters())[0])
-    assert jnp.array_equal(params1, params2)
-
-    for inds1, inds2 in zip(
-        net1.indices_set_by_trainables, net2.indices_set_by_trainables
-    ):
-        assert jnp.array_equal(inds1, inds2)
-
-
-def test_subclassing_groups_net_lazy_indexing_make_trainable_equivalence():
-    """Test whether groups can be indexing in a lazy way."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net1 = jx.Network([cell for _ in range(10)])
-    net2 = jx.Network([cell for _ in range(10)])
-
-    net1.cell([0, 3, 5]).add_to_group("excitatory")
-    net2.cell([0, 3, 5]).add_to_group("excitatory")
-
-    # The following lines are made possible by PR #324.
-    net1.excitatory.cell([0, 3]).branch(0).make_trainable("radius")
-    net1.excitatory.cell([0, 5]).branch(1).comp("all").make_trainable("length")
-    net1.excitatory.cell("all").branch(1).comp(2).make_trainable("axial_resistivity")
-    params1 = jnp.concatenate(jax.tree_util.tree_flatten(net1.get_parameters())[0])
-
-    # The following lines are made possible by PR #324.
-    net2.excitatory[[0, 3], 0].make_trainable("radius")
-    net2.excitatory[[0, 5], 1, :].make_trainable("length")
-    net2.excitatory[:, 1, 2].make_trainable("axial_resistivity")
-    params2 = jnp.concatenate(jax.tree_util.tree_flatten(net2.get_parameters())[0])
-
     assert jnp.array_equal(params1, params2)
 
     for inds1, inds2 in zip(

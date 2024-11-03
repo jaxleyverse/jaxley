@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain
@@ -41,6 +42,23 @@ from jaxley.utils.solver_utils import convert_to_csc
 from jaxley.utils.swc import build_radiuses_from_xyzr
 
 
+def only_allow_module(func):
+    """Decorator to only allow the function to be called on Module instances.
+
+    Decorates methods of Module that cannot be called on Views of Modules instances.
+    and have to be called on the Module itself."""
+
+    def wrapper(self, *args, **kwargs):
+        module_name = self.base.__class__.__name__
+        method_name = func.__name__
+        assert not isinstance(
+            self, View
+        ), f"{method_name} is currently not supported for Views. Call on the {module_name} base Module."
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
 class Module(ABC):
     """Module base class.
 
@@ -49,7 +67,42 @@ class Module(ABC):
 
     Modules can be traversed and modified using the `at`, `cell`, `branch`, `comp`,
     `edge`, and `loc` methods. The `scope` method can be used to toggle between
-    global and local indices.
+    global and local indices. Traversal of Modules will return a `View` of itself,
+    that has a modified set of attributes, which only consider the part of the Module
+    that is in view.
+
+    This has consequences for how to operate on Module and which changes take affect
+    where. The following guidelines should be followed (copied from `View`):
+    1. We consider a Module to have everything in view.
+    2. Views can display and keep track of how a module is traversed. But(!),
+        do not support making changes or setting variables. This still has to be
+        done in the base Module, i.e. `self.base`. In order to enssure that these
+        changes only affects whatever is currently in view `self._nodes_in_view`,
+        or `self._edges_in_view` among others have to be used. Operating on nodes
+        currently in view can for example be done with
+        `self.base.node.loc[self._nodes_in_view]`
+    3. Every attribute of Module that changes based on what's in view, i.e. `xyzr`,
+        needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
+        should be `[self.base.xyzr[0]]` This could be achieved via:
+        `[self.base.xyzr[b] for b in self._branches_in_view]`.
+
+
+    Example to make methods of Module compatible with View:
+    ```
+    # use data in view to return something
+    def count_small_branches(self):
+        # no need to use self.base.attr + viewed indices,
+        # since no change is made to the attr in question (nodes)
+        comp_lens = self.nodes["length"]
+        branch_lens = comp_lens.groupby("global_branch_index").sum()
+        return np.sum(branch_lens < 10)
+
+    # change data in view
+    def change_attr_in_view(self):
+        # changes to attrs have to be made via self.base.attr + viewed indices
+        a = func1(self.base.attr1[self._cells_in_view])
+        b = func2(self.base.attr2[self._edges_in_view])
+        self.base.attr3[self._branches_in_view] = a + b
 
     This base class defines the scaffold for all jaxley modules (compartments,
     branches, cells, networks).
@@ -68,19 +121,15 @@ class Module(ABC):
         self._edges_in_view: np.ndarray = None
 
         self.edges = pd.DataFrame(
-            columns=["global_edge_index"]
-            + [
-                f"global_{lvl}_index"
-                for lvl in [
-                    "pre_comp",
-                    "pre_branch",
-                    "pre_cell",
-                    "post_comp",
-                    "post_branch",
-                    "post_cell",
-                ]
+            columns=[
+                "global_edge_index",
+                "global_pre_comp_index",
+                "global_post_comp_index",
+                "pre_locs",
+                "post_locs",
+                "type",
+                "type_ind",
             ]
-            + ["pre_locs", "post_locs", "type", "type_ind"]
         )
 
         self.cumsum_nbranches: Optional[np.ndarray] = None
@@ -162,11 +211,19 @@ class Module(ABC):
 
         # intercepts calls to synapse types
         if key in self.base.synapse_names:
-            syn_inds = self.edges.index[self.edges["type"] == key].to_numpy()
+            syn_inds = self.edges[self.edges["type"] == key][
+                "global_edge_index"
+            ].to_numpy()
+            orig_scope = self._scope
             view = (
-                self.edge(syn_inds) if key in self.synapse_names else self.select(None)
+                self.scope("global").edge(syn_inds).scope(orig_scope)
+                if key in self.synapse_names
+                else self.select(None)
             )
             view._set_controlled_by_param(key)  # overwrites param set by edge
+            # Ensure synapse param sharing works with `edge`
+            # `edge` will be removed as part of #463
+            view.edges["local_edge_index"] = np.arange(len(view.edges))
             return view
 
     def _childviews(self) -> List[str]:
@@ -177,19 +234,21 @@ class Module(ABC):
         children = levels[levels.index(self._current_view) + 1 :]
         return children
 
-    def __getitem__(self, index):
-        supported_lvls = ["network", "cell", "branch"]  # cannot index into comp
+    def _has_childview(self, key: str) -> bool:
+        child_views = self._childviews()
+        return key in child_views
 
-        # TODO: SHOULD WE ALLOW GROUPVIEW TO BE INDEXED?
-        # IF YES, UNDER WHICH CONDITIONS?
-        is_group_view = self._current_view in self.groups
+    def __getitem__(self, index):
+        """Lazy indexing of the module."""
+        supported_parents = ["network", "cell", "branch"]  # cannot index into comp
+
+        not_group_view = self._current_view not in self.groups
         assert (
-            self._current_view in supported_lvls or is_group_view
-        ), "Lazy indexing is not supported for this View/Module."
+            self._current_view in supported_parents or not_group_view
+        ), "Lazy indexing is only supported for `Network`, `Cell`, `Branch` and Views thereof."
         index = index if isinstance(index, tuple) else (index,)
 
-        module_or_view = self.base if is_group_view else self
-        child_views = module_or_view._childviews()
+        child_views = self._childviews()
         assert len(index) <= len(child_views), "Too many indices."
         view = self
         for i, child in zip(index, child_views):
@@ -227,39 +286,37 @@ class Module(ABC):
             return df
 
         index_names = ["cell_index", "branch_index", "comp_index"]  # order is important
-        for obj, prefix in zip(
-            [self.nodes, self.edges, self.edges], ["", "pre_", "post_"]
-        ):
-            global_idx_cols = [f"global_{prefix}{name}" for name in index_names]
-            local_idx_cols = [f"local_{prefix}{name}" for name in index_names]
-            idcs = obj[global_idx_cols]
+        global_idx_cols = [f"global_{name}" for name in index_names]
+        local_idx_cols = [f"local_{name}" for name in index_names]
+        idcs = self.nodes[global_idx_cols]
 
-            idcs = reindex_a_by_b(idcs, global_idx_cols[0])
-            idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
-            idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
-            idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
-            obj[local_idx_cols] = idcs[local_idx_cols].astype(int)
+        # update local indices of nodes
+        idcs = reindex_a_by_b(idcs, global_idx_cols[0])
+        idcs = reindex_a_by_b(idcs, global_idx_cols[1], global_idx_cols[0])
+        idcs = reindex_a_by_b(idcs, global_idx_cols[2], global_idx_cols[:2])
+        idcs.columns = [col.replace("global", "local") for col in global_idx_cols]
+        self.nodes[local_idx_cols] = idcs[local_idx_cols].astype(int)
 
         # move indices to the front of the dataframe; move controlled_by_param to the end
+        # move indices of current scope to the front and the others to the back
+        not_scope = "global" if self._scope == "local" else "local"
         self.nodes = reorder_cols(
-            self.nodes,
-            [
-                f"{scope}_{name}"
-                for scope in ["global", "local"]
-                for name in index_names
-            ],
+            self.nodes, [f"{self._scope}_{name}" for name in index_names], first=True
         )
+        self.nodes = reorder_cols(
+            self.nodes, [f"{not_scope}_{name}" for name in index_names], first=False
+        )
+
+        self.edges = reorder_cols(self.edges, ["global_edge_index"])
         self.nodes = reorder_cols(self.nodes, ["controlled_by_param"], first=False)
-        self.edges["local_edge_index"] = rerank(self.edges["global_edge_index"])
-        self.edges = reorder_cols(self.edges, ["global_edge_index", "local_edge_index"])
         self.edges = reorder_cols(self.edges, ["controlled_by_param"], first=False)
 
     def _init_view(self):
         """Init attributes critical for View.
 
         Needs to be called at init of a Module."""
-        lvl = self.__class__.__name__.lower()
-        self._current_view = "comp" if lvl == "compartment" else lvl
+        parent = self.__class__.__name__.lower()
+        self._current_view = "comp" if parent == "compartment" else parent
         self._nodes_in_view = self.nodes.index.to_numpy()
         self._edges_in_view = self.edges.index.to_numpy()
         self.nodes["controlled_by_param"] = 0
@@ -347,7 +404,7 @@ class Module(ABC):
             key: key specifying group / view that is in control of the params."""
         if key in ["comp", "branch", "cell"]:
             self.nodes["controlled_by_param"] = self.nodes[f"global_{key}_index"]
-            self.edges["controlled_by_param"] = self.edges[f"global_pre_{key}_index"]
+            self.edges["controlled_by_param"] = 0
         elif key == "edge":
             self.edges["controlled_by_param"] = np.arange(len(self.edges))
         elif key == "filter":
@@ -413,6 +470,8 @@ class Module(ABC):
 
         Keys can be `cell`, `branch`, `comp` and determine which index is used to filter.
         """
+        base_name = self.base.__class__.__name__
+        assert self.base._has_childview(key), f"{base_name} does not support {key}."
         idx = self._reformat_index(idx)
         idx = self.nodes[self._scope + f"_{key}_index"] if is_str_all(idx) else idx
         where = self.nodes[self._scope + f"_{key}_index"].isin(idx)
@@ -475,28 +534,6 @@ class Module(ABC):
         Returns:
             View of the module at the specified edge index."""
         return self._at_edges("edge", idx)
-
-    # TODO: pre and post could just modify scope
-    #  -> self.scope=self.scope+"_pre" and then call edge?
-    # def pre(self, idx: Any) -> View:
-    #     """Return a View of the module at the selected pre-synaptic compartments(s).
-
-    #     Args:
-    #         idx: index of the edge to view.
-
-    #     Returns:
-    #         View of the module filtered by the selected pre-comp index."""
-    #     return self._at_edges("edge", idx)
-
-    # def post(self, idx: Any) -> View:
-    #     """Return a View of the module at the selected post-synaptic compartments(s).
-
-    #     Args:
-    #         idx: index of the edge to view.
-
-    #     Returns:
-    #         View of the module filtered by the selected post-comp index."""
-    #     return self._at_edges("edge", idx)
 
     def loc(self, at: Any) -> View:
         """Return a View of the module at the selected branch location(s).
@@ -613,17 +650,18 @@ class Module(ABC):
         Returns:
             A part of the module or a copied view of it."""
         view = deepcopy(self)
-        # TODO: add reset_index, i.e. for parents, nodes, edges etc. such that they
+        warnings.warn("This method is experimental, use at your own risk.")
+        # TODO FROM #447: add reset_index, i.e. for parents, nodes, edges etc. such that they
         # start from 0/-1 and are contiguous
         if as_module:
             raise NotImplementedError("Not yet implemented.")
-            # TODO: initialize a new module with the same attributes
+            # initialize a new module with the same attributes
         return view
 
     @property
     def view(self):
         """Return view of the module."""
-        return View(self, self._nodes_in_view)
+        return View(self, self._nodes_in_view, self._edges_in_view)
 
     @property
     def _module_type(self):
@@ -661,8 +699,9 @@ class Module(ABC):
             name = channel._name
             self.base.nodes.loc[self.nodes[name].isna(), name] = False
 
-    # TODO: Make this work for View?
+    @only_allow_module
     def to_jax(self):
+        # TODO FROM #447: Make this work for View?
         """Move `.nodes` to `.jaxnodes`.
 
         Before the actual simulation is run (via `jx.integrate`), all parameters of
@@ -690,7 +729,7 @@ class Module(ABC):
 
     def show(
         self,
-        param_names: Optional[Union[str, List[str]]] = None,  # TODO.
+        param_names: Optional[Union[str, List[str]]] = None,
         *,
         indices: bool = True,
         params: bool = True,
@@ -735,6 +774,7 @@ class Module(ABC):
 
         return nodes[cols]
 
+    @only_allow_module
     def _init_morph(self):
         """Initialize the morphology such that it can be processed by the solvers."""
         self._init_morph_jaxley_spsolve()
@@ -846,7 +886,6 @@ class Module(ABC):
             and len(self._branches_in_view) == len(self.base._branches_in_view)
         ), "This is not allowed for cells."
 
-        # TODO: MAKE THIS NICER
         # Update all attributes that are affected by compartment structure.
         view = self.nodes.copy()
         all_nodes = self.base.nodes
@@ -1107,13 +1146,19 @@ class Module(ABC):
         end_xyz = endpoint.xyzr[0][0, :3]
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_trainables(self):
         """Removes all trainable parameters from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.indices_set_by_trainables = []
-        self.base.trainable_params = []
-        self.base.num_trainable_params = 0
+
+        if isinstance(self, View):
+            trainables_and_inds = self._filter_trainables(is_viewed=False)
+            self.base.indices_set_by_trainables = trainables_and_inds[0]
+            self.base.trainable_params = trainables_and_inds[1]
+            self.base.num_trainable_params -= self.num_trainable_params
+        else:
+            self.base.indices_set_by_trainables = []
+            self.base.trainable_params = []
+            self.base.num_trainable_params = 0
+        self._update_view()
 
     def add_to_group(self, group_name: str):
         """Add a view of the module to a group.
@@ -1134,7 +1179,6 @@ class Module(ABC):
                 np.concatenate([self.base.groups[group_name], self._nodes_in_view])
             )
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
 
@@ -1144,12 +1188,13 @@ class Module(ABC):
             A list of all trainable parameters in the form of
                 [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
         """
-        return self.base.trainable_params
+        return self.trainable_params
 
-    # TODO: MAKE THIS WORK FOR VIEW?
+    @only_allow_module
     def get_all_parameters(
         self, pstate: List[Dict], voltage_solver: str
     ) -> Dict[str, jnp.ndarray]:
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
         Runs `_compute_axial_conductances()` and return every parameter that is needed
@@ -1200,14 +1245,13 @@ class Module(ABC):
             # This is needed since SynapseViews worked differently before.
             # This mimics the old behaviour and tranformes the new indices
             # to the old indices.
-            # TODO: Longterm this should be gotten rid of.
+            # TODO FROM #447: Longterm this should be gotten rid of.
             # Instead edges should work similar to nodes (would also allow for
             # param sharing).
+            synapse_inds = self.base.edges.groupby("type").rank()["global_edge_index"]
+            synapse_inds = (synapse_inds.astype(int) - 1).to_numpy()
             if key in self.base.synapse_param_names:
-                syn_name_from_param = key.split("_")[0]
-                syn_edges = self.__getattr__(syn_name_from_param).edges
-                inds = syn_edges.loc[inds.reshape(-1)]["local_edge_index"].values
-                inds = inds.reshape(-1, 1)
+                inds = synapse_inds[inds]
 
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
@@ -1222,8 +1266,9 @@ class Module(ABC):
         )
         return params
 
-    # TODO: MAKE THIS WORK FOR VIEW?
+    @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> Dict[str, jnp.ndarray]:
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return states as they are set in the `.nodes` and `.edges` tables."""
         self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
         states = {"v": self.base.jaxnodes["v"]}
@@ -1235,10 +1280,11 @@ class Module(ABC):
             states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
 
-    # TODO: MAKE THIS WORK FOR VIEW?
+    @only_allow_module
     def get_all_states(
         self, pstate: List[Dict], all_params, delta_t: float
     ) -> Dict[str, jnp.ndarray]:
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Get the full initial state of the module from jaxnodes and trainables.
 
         Args:
@@ -1284,8 +1330,9 @@ class Module(ABC):
         self._init_morph()
         return self
 
-    # TODO: MAKE THIS WORK FOR VIEW?
+    @only_allow_module
     def init_states(self, delta_t: float = 0.025):
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Initialize all mechanisms in their steady state.
 
         This considers the voltages and parameters of each compartment.
@@ -1400,9 +1447,11 @@ class Module(ABC):
         self.base.debug_states["par_inds"] = self.base.par_inds
 
     def record(self, state: str = "v", verbose=True):
-        in_view = (
-            self._edges_in_view if state in self.edges.columns else self._nodes_in_view
-        )
+        in_view = None
+        in_view = self._edges_in_view if state in self.edges.columns else in_view
+        in_view = self._nodes_in_view if state in self.nodes.columns else in_view
+        assert in_view is not None, "State not found in nodes or edges."
+
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
         self.base.recordings = pd.concat([self.base.recordings, new_recs])
@@ -1413,11 +1462,31 @@ class Module(ABC):
                 f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
-    # TODO: MAKE THIS WORK FOR VIEW?
+    def _update_view(self):
+        """Update the attrs of the view after changes in the base module."""
+        if isinstance(self, View):
+            scope = self._scope
+            current_view = self._current_view
+            # copy dict of new View. For some reason doing self = View(self)
+            # did not work.
+            self.__dict__ = View(
+                self.base, self._nodes_in_view, self._edges_in_view
+            ).__dict__
+
+            # retain the scope and current_view of the previous view
+            self._scope = scope
+            self._current_view = current_view
+
     def delete_recordings(self):
         """Removes all recordings from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.recordings = pd.DataFrame().from_dict({})
+        if isinstance(self, View):
+            base_recs = self.base.recordings
+            self.base.recordings = base_recs[
+                ~base_recs.isin(self.recordings).all(axis=1)
+            ]
+            self._update_view()
+        else:
+            self.base.recordings = pd.DataFrame().from_dict({})
 
     def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
@@ -1565,19 +1634,27 @@ class Module(ABC):
 
         return (state_name, external_input, inds)
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_stimuli(self):
         """Removes all stimuli from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.externals.pop("i", None)
-        self.base.external_inds.pop("i", None)
+        self.delete_clamps("i")
 
-    # TODO: MAKE THIS WORK FOR VIEW?
     def delete_clamps(self, state_name: str):
         """Removes all clamps of the given state from the module."""
-        assert isinstance(self, Module), "Only supports modules."
-        self.base.externals.pop(state_name, None)
-        self.base.external_inds.pop(state_name, None)
+        if state_name in self.externals:
+            keep_inds = ~np.isin(
+                self.base.external_inds[state_name], self._nodes_in_view
+            )
+            base_exts = self.base.externals
+            base_exts_inds = self.base.external_inds
+            if np.all(~keep_inds):
+                base_exts.pop(state_name, None)
+                base_exts_inds.pop(state_name, None)
+            else:
+                base_exts[state_name] = base_exts[state_name][keep_inds]
+                base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+            self._update_view()
+        else:
+            pass  # does not have to be deleted if not in externals
 
     def insert(self, channel: Channel):
         """Insert a channel into the module.
@@ -1607,6 +1684,7 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
+    @only_allow_module
     def step(
         self,
         u: Dict[str, jnp.ndarray],
@@ -2090,14 +2168,19 @@ class Module(ABC):
                 "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
             )
 
-        root_xyz_cells = np.array([c.xyzr[0][0, :3] for c in self.cells])
+        # can only iterate over cells for networks
+        # lambda makes sure that generator can be created multiple times
+        base_is_net = self.base._current_view == "network"
+        cells = lambda: (self.cells if base_is_net else [self])
+
+        root_xyz_cells = np.array([c.xyzr[0][0, :3] for c in cells()])
         root_xyz = root_xyz_cells[0] if isinstance(x, float) else root_xyz_cells
         move_by = np.array([x, y, z]).T - root_xyz
 
         if len(move_by.shape) == 1:
             move_by = np.tile(move_by, (len(self._cells_in_view), 1))
 
-        for cell, offset in zip(self.cells, move_by):
+        for cell, offset in zip(cells(), move_by):
             for idx in cell._branches_in_view:
                 self.base.xyzr[idx][:, :3] += offset
         if update_nodes:
@@ -2141,6 +2224,13 @@ class View(Module):
     allow to target specific parts of a Module, i.e. setting parameters for parts
     of a cell.
 
+    Almost all methods in View are concerned with updating the attributes of the
+    base Module, i.e. `self.base`, based on the indices in view. For example,
+    `_channels_in_view` lists all channels, finds the subset set to `True` in
+    `self.nodes` (currently in view) and returns the updated list such that we can set
+    `self.channels = self._channels_in_view()`.
+
+
     To allow seamless operation on Views and Modules as if they were the same,
     the following needs to be ensured:
     1. We consider a Module to have everything in view.
@@ -2173,7 +2263,6 @@ class View(Module):
         a = func1(self.base.attr1[self._cells_in_view])
         b = func2(self.base.attr2[self._edges_in_view])
         self.base.attr3[self._branches_in_view] = a + b
-    ```
     """
 
     def __init__(
@@ -2208,6 +2297,8 @@ class View(Module):
         self.cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
+        self.nseg_per_branch = self.base.nseg_per_branch[self._branches_in_view]
+        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)
@@ -2242,7 +2333,7 @@ class View(Module):
         self._current_view = "view"  # if not instantiated via `comp`, `cell` etc.
         self._update_local_indices()
 
-        # TODO:
+        # TODO FROM #447:
         self.debug_states = pointer.debug_states
 
         if len(self.nodes) == 0:
@@ -2251,7 +2342,7 @@ class View(Module):
     def _set_inds_in_view(
         self, pointer: Union[Module, View], nodes: np.ndarray, edges: np.ndarray
     ):
-        """Set nodes and edge indices that are in view."""
+        """Update node and edge indices to list only those currently in view."""
         # set nodes and edge indices in view
         has_node_inds = nodes is not None
         has_edge_inds = edges is not None
@@ -2287,6 +2378,7 @@ class View(Module):
             self._edges_in_view = edges
 
     def _jax_arrays_in_view(self, pointer: Union[Module, View]):
+        """Update jaxnodes/jaxedges to show only those currently in view."""
         a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
         jaxnodes = {} if pointer.jaxnodes is not None else None
         if self.jaxnodes is not None:
@@ -2311,6 +2403,7 @@ class View(Module):
         return jaxnodes, jaxedges
 
     def _set_externals_in_view(self):
+        """Update external inputs to show only those currently in view."""
         self.externals = {}
         self.external_inds = {}
         for (name, inds), data in zip(
@@ -2322,75 +2415,90 @@ class View(Module):
                 self.externals[name] = data[in_view]
                 self.external_inds[name] = inds_in_view
 
-    def _set_trainables_in_view(self):
-        trainable_inds = self.base.indices_set_by_trainables
-        trainable_inds = (
-            np.unique(np.hstack([inds.reshape(-1) for inds in trainable_inds]))
-            if len(trainable_inds) > 0
-            else []
-        )
-        trainable_node_inds_in_view = np.intersect1d(
-            trainable_inds, self._nodes_in_view
-        )
+    def _filter_trainables(
+        self, is_viewed: bool = True
+    ) -> Tuple[List[np.ndarray], List[Dict]]:
+        """Filters the trainables inside and outside of the view.
 
+        Trainables are split between `indices_set_by_trainables` and `trainable_params`
+        and can be shared between mutliple compartments / branches etc, which makes it
+        difficult to filter them based on the current view w.o. destroying the
+        original structure.
+
+        This method filters `indices_set_by_trainables` for the indices that are
+        currently in view (or not in view) and returns the corresponding trainable
+        parameters and indices such that the sharing behavior is preserved as much as
+        possible.
+
+        Args:
+            is_viewed: Toggles between returning the trainables and inds
+                currently inside or outside of the scope of View."""
         índices_set_by_trainables_in_view = []
         trainable_params_in_view = []
         for inds, params in zip(
             self.base.indices_set_by_trainables, self.base.trainable_params
         ):
-            in_view = np.isin(inds, trainable_node_inds_in_view)
+            pkey, pval = next(iter(params.items()))
+            trainable_inds_in_view = None
+            if pkey in sum(
+                [list(c.channel_params.keys()) for c in self.base.channels], []
+            ):
+                trainable_inds_in_view = np.intersect1d(inds, self._nodes_in_view)
+            elif pkey in sum(
+                [list(s.synapse_params.keys()) for s in self.base.synapses], []
+            ):
+                trainable_inds_in_view = np.intersect1d(inds, self._edges_in_view)
 
+            in_view = is_viewed == np.isin(inds, trainable_inds_in_view)
             completely_in_view = in_view.all(axis=1)
-            índices_set_by_trainables_in_view.append(inds[completely_in_view])
+            partially_in_view = in_view.any(axis=1) & ~completely_in_view
+
             trainable_params_in_view.append(
                 {k: v[completely_in_view] for k, v in params.items()}
-            )
-
-            partially_in_view = in_view.any(axis=1) & ~completely_in_view
-            índices_set_by_trainables_in_view.append(
-                inds[partially_in_view][in_view[partially_in_view]]
             )
             trainable_params_in_view.append(
                 {k: v[partially_in_view] for k, v in params.items()}
             )
 
-        # TODO: working but ugly. maybe integrate into above loop
-        trainable_names = np.array([next(iter(d)) for d in self.base.trainable_params])
-        is_syn_trainable_in_view = np.isin(trainable_names, self.synapse_param_names)
-        syn_trainable_names_in_view = trainable_names[is_syn_trainable_in_view]
-        syn_trainable_inds_in_view = np.intersect1d(
-            syn_trainable_names_in_view, trainable_names, return_indices=True
-        )[2]
-        for idx in syn_trainable_inds_in_view:
-            syn_name = trainable_names[idx].split("_")[0]
-            syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
-            syn_inds = np.arange(len(syn_edges))
-            syn_inds_in_view = syn_inds[np.isin(syn_edges.index, self._edges_in_view)]
+            índices_set_by_trainables_in_view.append(inds[completely_in_view])
+            partial_inds = inds[partially_in_view][in_view[partially_in_view]]
 
-            syn_trainable_params_in_view = {
-                k: v[syn_inds_in_view]
-                for k, v in self.base.trainable_params[idx].items()
-            }
-            trainable_params_in_view.append(syn_trainable_params_in_view)
-            syn_inds_set_by_trainables_in_view = self.base.indices_set_by_trainables[
-                idx
-            ][syn_inds_in_view]
-            índices_set_by_trainables_in_view.append(syn_inds_set_by_trainables_in_view)
+            # the indexing i.e. `inds[partially_in_view]` reshapes `inds`. Since the shape
+            # determines how parameters are shared, `inds` has to be returned to its
+            # original shape.
+            if inds.shape[0] > 1 and partial_inds.shape != (0,):
+                partial_inds = partial_inds.reshape(-1, 1)
+            if inds.shape[1] > 1 and partial_inds.shape != (0,):
+                partial_inds = partial_inds.reshape(1, -1)
 
-        self.indices_set_by_trainables = [
+            índices_set_by_trainables_in_view.append(partial_inds)
+
+        indices_set_by_trainables = [
             inds for inds in índices_set_by_trainables_in_view if len(inds) > 0
         ]
-        self.trainable_params = [
+        trainable_params = [
             p for p in trainable_params_in_view if len(next(iter(p.values()))) > 0
         ]
+        return indices_set_by_trainables, trainable_params
+
+    def _set_trainables_in_view(self):
+        """Set `trainable_params` and `indices_set_by_trainables` to show only those in view."""
+        trainables = self._filter_trainables()
+
+        # note for `branch.comp(0).make_trainable("X"); branch.make_trainable("X")`
+        # `view = branch.comp(0)` will have duplicate training params.
+        self.indices_set_by_trainables = trainables[0]
+        self.trainable_params = trainables[1]
 
     def _channels_in_view(self, pointer: Union[Module, View]) -> List[Channel]:
+        """Set channels to show only those in view."""
         names = [name._name for name in pointer.channels]
         channel_in_view = self.nodes[names].any(axis=0)
         channel_in_view = channel_in_view[channel_in_view].index
         return [c for c in pointer.channels if c._name in channel_in_view]
 
     def _set_synapses_in_view(self, pointer: Union[Module, View]):
+        """Set synapses to show only those in view."""
         viewed_synapses = []
         viewed_params = []
         viewed_states = []
@@ -2412,6 +2520,9 @@ class View(Module):
         return cell_nodes["global_branch_index"].nunique().to_list()
 
     def _xyzr_in_view(self) -> List[np.ndarray]:
+        """Return xyzr coordinates of every branch that is in `_branches_in_view`.
+
+        If a branch is not completely in view, the coordinates are interpolated."""
         xyzr = [self.base.xyzr[i] for i in self._branches_in_view].copy()
 
         # Currently viewing with `.loc` will show the closest compartment
@@ -2461,6 +2572,7 @@ class View(Module):
 
     @property
     def _branch_edges_in_view(self) -> np.ndarray:
+        """Lists the global branch edge indices which are currently part of the view."""
         incl_branches = self.nodes["global_branch_index"].unique()
         pre = self.base.branch_edges["parent_branch_index"].isin(incl_branches)
         post = self.base.branch_edges["child_branch_index"].isin(incl_branches)
