@@ -20,6 +20,9 @@ def test_constant_and_data_stimulus():
     cell = jx.Cell(branch, parents=[-1, 0, 0])
     cell.branch(0).loc(0.0).record("v")
 
+    # test data_stimulate and jit works with trainable parameters see #467
+    cell.make_trainable("radius")
+
     i_amp_const = 0.02
     i_amps_data = jnp.asarray([0.01, 0.005])
 
