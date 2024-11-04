@@ -1,6 +1,7 @@
 name: Run Tutorials
 
 on:
+  workflow_dispatch:
   push:
     branches:
     - main
