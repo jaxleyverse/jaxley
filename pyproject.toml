@@ -63,6 +63,8 @@ dev = [
     "pytest",
     "pyright",
     "optax",
+    "jupyter",
+    "tensorflow",
 ]
 
 [tool.isort]
