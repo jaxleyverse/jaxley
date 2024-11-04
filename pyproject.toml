@@ -64,7 +64,6 @@ dev = [
     "pyright",
     "optax",
     "jupyter",
-    "tensorflow",
 ]
 
 [tool.isort]
