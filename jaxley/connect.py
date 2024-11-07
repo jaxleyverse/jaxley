@@ -146,6 +146,10 @@ def connectivity_matrix_connect(
     # Get pre- and postsynaptic cell indices
     pre_cell_inds = pre_cell_view._cells_in_view
     post_cell_inds = post_cell_view._cells_in_view
+    # setting scope ensure that this works indep of current scope
+    pre_nodes = pre_cell_view.scope("local").branch(0).comp(0).nodes
+    pre_nodes["index"] = pre_nodes.index
+    pre_cell_nodes = pre_nodes.set_index("global_cell_index")
 
     assert connectivity_matrix.shape == (
         len(pre_cell_inds),
