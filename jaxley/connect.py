@@ -145,6 +145,10 @@ def connectivity_matrix_connect(
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds = pre_cell_view._cells_in_view
     post_cell_inds = post_cell_view._cells_in_view
+    # setting scope ensure that this works indep of current scope
+    pre_nodes = pre_cell_view.scope("local").branch(0).comp(0).nodes
+    pre_nodes["index"] = pre_nodes.index
+    pre_cell_nodes = pre_nodes.set_index("global_cell_index")
 
     assert connectivity_matrix.shape == (
         len(pre_cell_inds),
@@ -167,9 +171,7 @@ def connectivity_matrix_connect(
     post_rows = post_cell_view.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    global_pre_indices = (
-        pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-    )  # setting scope ensure that this works indep of current scope
-    pre_rows = pre_cell_view.select(nodes=global_pre_indices[pre_cell_inds]).nodes
+    global_pre_indices = pre_cell_nodes.loc[pre_cell_inds, "index"].to_numpy()
+    pre_rows = pre_cell_view.select(nodes=global_pre_indices).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
