@@ -686,7 +686,7 @@ def group_and_sum(
     return group_sums
 
 
-def query_channel_states_and_params(d, keys, idcs):
+def query_states_and_params(d, keys, idcs):
     """Get dict with subset of keys and values from d.
 
     This is used to restrict a dict where every item contains __all__ states to only

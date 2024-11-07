@@ -33,7 +33,7 @@ from jaxley.utils.cell_utils import (
     interpolate_xyzr,
     loc_of_index,
     params_to_pstate,
-    query_channel_states_and_params,
+    query_states_and_params,
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
@@ -736,16 +736,15 @@ class Module(ABC):
         """
         jaxnodes = self.base.jaxnodes = {}
         nodes = self.base.nodes.to_dict(orient="list")
-        
+
         jaxedges = self.base.jaxedges = {}
         edges = self.base.edges.to_dict(orient="list")
-        edges.pop("type") # drop since column type is string
-        
+        edges.pop("type")  # drop since column type is string
+
         for jax_array, params in zip([jaxnodes, jaxedges], [nodes, edges]):
             for key, value in params.items():
                 inds = jnp.arange(len(value))
                 jax_array[key] = jnp.asarray(value)[inds]
-
 
     def show(
         self,
@@ -1283,17 +1282,6 @@ class Module(ABC):
             inds = parameter["indices"]
             set_param = parameter["val"]
 
-            # This is needed since SynapseViews worked differently before.
-            # This mimics the old behaviour and tranformes the new indices
-            # to the old indices.
-            # TODO FROM #447: Longterm this should be gotten rid of.
-            # Instead edges should work similar to nodes (would also allow for
-            # param sharing).
-            synapse_inds = self.base.edges.groupby("type").rank()["global_edge_index"]
-            synapse_inds = (synapse_inds.astype(int) - 1).to_numpy()
-            if key in self.base.synapse_param_names:
-                inds = synapse_inds[inds]
-
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
@@ -1400,10 +1388,10 @@ class Module(ABC):
 
             channel_param_names = list(channel.channel_params.keys())
             channel_state_names = list(channel.channel_states.keys())
-            channel_states = query_channel_states_and_params(
+            channel_states = query_states_and_params(
                 states, channel_state_names, channel_indices
             )
-            channel_params = query_channel_states_and_params(
+            channel_params = query_states_and_params(
                 params, channel_param_names, channel_indices
             )
 
@@ -1932,35 +1920,33 @@ class Module(ABC):
     ) -> Dict[str, jnp.ndarray]:
         """One integration step of the channels."""
         voltages = states["v"]
+        morph_params = ["radius", "length", "axial_resistivity", "capacitance"]
 
         # Update states of the channels.
-        indices = channel_nodes["global_comp_index"].to_numpy()
         for channel in channels:
-            channel_param_names = list(channel.channel_params)
-            channel_param_names += [
-                "radius",
-                "length",
-                "axial_resistivity",
-                "capacitance",
-            ]
-            channel_state_names = list(channel.channel_states)
-            channel_state_names += self.membrane_current_names
-            channel_indices = indices[channel_nodes[channel._name].astype(bool)]
+            has_channel = channel_nodes[channel._name]
+            channel_inds = channel_nodes.loc[
+                has_channel, "global_comp_index"
+            ].to_numpy()
 
-            channel_params = query_channel_states_and_params(
-                params, channel_param_names, channel_indices
+            channel_param_names = list(channel.channel_params) + morph_params
+            channel_params = query_states_and_params(
+                params, channel_param_names, channel_inds
             )
-            channel_states = query_channel_states_and_params(
-                states, channel_state_names, channel_indices
+            channel_state_names = (
+                list(channel.channel_states) + self.membrane_current_names
+            )
+            channel_states = query_states_and_params(
+                states, channel_state_names, channel_inds
             )
 
             states_updated = channel.update_states(
-                channel_states, delta_t, voltages[channel_indices], channel_params
+                channel_states, delta_t, voltages[channel_inds], channel_params
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in states_updated.items():
-                states[key] = states[key].at[channel_indices].set(val)
+                states[key] = states[key].at[channel_inds].set(val)
 
         return states
 
@@ -1977,53 +1963,53 @@ class Module(ABC):
         This is also updates `state` because the `state` also contains the current.
         """
         voltages = states["v"]
+        morph_params = ["radius", "length", "axial_resistivity"]
 
         # Compute current through channels.
-        voltage_terms = jnp.zeros_like(voltages)
-        constant_terms = jnp.zeros_like(voltages)
+        zeros = jnp.zeros_like(voltages)
+        voltage_terms = zeros
+        constant_terms = zeros
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
 
-        current_states = {}
-        for name in self.membrane_current_names:
-            current_states[name] = jnp.zeros_like(voltages)
-
+        current_states = {name: zeros for name in self.membrane_current_names}
         for channel in channels:
             name = channel._name
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
-            indices = channel_nodes.loc[channel_nodes[name]][
+            channel_inds = channel_nodes.loc[channel_nodes[name]][
                 "global_comp_index"
             ].to_numpy()
 
-            channel_params = {}
-            for p in channel_param_names:
-                channel_params[p] = params[p][indices]
-            channel_params["radius"] = params["radius"][indices]
-            channel_params["length"] = params["length"][indices]
-            channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
+            channel_params = query_states_and_params(
+                params, list(channel.channel_params) + morph_params, channel_inds
+            )
+            channel_states = query_states_and_params(
+                states, channel.channel_states, channel_inds
+            )
 
-            channel_states = {}
-            for s in channel_state_names:
-                channel_states[s] = states[s][indices]
+            v_and_perturbed = jnp.stack(
+                [voltages[channel_inds], voltages[channel_inds] + diff]
+            )
 
-            v_and_perturbed = jnp.stack([voltages[indices], voltages[indices] + diff])
             membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
                 channel_states, v_and_perturbed, channel_params
             )
+
+            # Split into voltage and constant terms.
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
-            constant_term = membrane_currents[0] - voltage_term * voltages[indices]
+            constant_term = membrane_currents[0] - voltage_term * voltages[channel_inds]
 
             # * 1000 to convert from mA/cm^2 to uA/cm^2.
-            voltage_terms = voltage_terms.at[indices].add(voltage_term * 1000.0)
-            constant_terms = constant_terms.at[indices].add(-constant_term * 1000.0)
+            voltage_terms = voltage_terms.at[channel_inds].add(voltage_term * 1000.0)
+            constant_terms = constant_terms.at[channel_inds].add(
+                -constant_term * 1000.0
+            )
 
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
             current_states[channel.current_name] = (
                 current_states[channel.current_name]
-                .at[indices]
+                .at[channel_inds]
                 .add(membrane_currents[0])
             )
 
@@ -2031,7 +2017,6 @@ class Module(ABC):
         # recorded and used by `Channel.update_states()`.
         for name in self.membrane_current_names:
             states[name] = current_states[name]
-
         return states, (voltage_terms, constant_terms)
 
     def _step_synapse(
