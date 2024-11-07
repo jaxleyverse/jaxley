@@ -134,7 +134,8 @@ def connectivity_matrix_connect(
 
     Connects pre- and postsynaptic cells according to a custom connectivity matrix.
     Entries > 0 in the matrix indicate a connection between the corresponding cells.
-    Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+    Connections are from branch 0 location 0 on the presynaptic cell to branch 0
+    location 0 on the postsynaptic cell.
 
     Args:
         pre_cell_view: View of the presynaptic cell.
@@ -142,7 +143,7 @@ def connectivity_matrix_connect(
         synapse_type: The synapse to append.
         connectivity_matrix: A boolean matrix indicating the connections between cells.
     """
-    # Get pre- and postsynaptic cell indices.
+    # Get pre- and postsynaptic cell indices
     pre_cell_inds = pre_cell_view._cells_in_view
     post_cell_inds = post_cell_view._cells_in_view
 
@@ -152,24 +153,19 @@ def connectivity_matrix_connect(
     ), "Connectivity matrix must have shape (num_pre, num_post)."
     assert connectivity_matrix.dtype == bool, "Connectivity matrix must be boolean."
 
-    # get connection pairs from connectivity matrix
+    # Get connection pairs from connectivity matrix
     from_idx, to_idx = np.where(connectivity_matrix)
-    pre_cell_inds = pre_cell_inds[from_idx]
-    post_cell_inds = post_cell_inds[to_idx]
 
-    # Sample random postsynaptic compartments (global comp indices).
-    global_post_indices = np.hstack(
-        [
-            sample_comp(post_cell_view.scope("global").cell(cell_idx))
-            for cell_idx in post_cell_inds
-        ]
-    )
-    post_rows = post_cell_view.nodes.loc[global_post_indices]
-
-    # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+    # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_indices = (
         pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
     )  # setting scope ensure that this works indep of current scope
-    pre_rows = pre_cell_view.select(nodes=global_pre_indices[pre_cell_inds]).nodes
+    pre_rows = pre_cell_view.select(nodes=global_pre_indices[from_idx]).nodes
+
+    # Post-synapse also at the zero-eth branch and zero-eth compartment
+    global_post_indices = (
+        post_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
+    )
+    post_rows = post_cell_view.select(nodes=global_post_indices[to_idx]).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)

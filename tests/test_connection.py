@@ -203,3 +203,17 @@ def test_connectivity_matrix_connect():
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
+
+    net = jx.Network([cell for _ in range(4 * 4)])
+    connectivity_matrix_connect(
+        net[1:4], net[2:6], TestSynapse(), m_by_n_adjacency_matrix
+    )
+    assert len(net.edges.index) == 5
+    nodes = net.nodes.set_index("global_comp_index")
+    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
+    cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
+    # adjust the cell indices based on the view range passed
+    incides_of_connected_cells[:, 0] += 1
+    incides_of_connected_cells[:, 1] += 2
+    assert np.all(cell_inds == incides_of_connected_cells)
