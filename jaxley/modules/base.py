@@ -29,8 +29,8 @@ from jaxley.utils.cell_utils import (
     build_radiuses_from_xyzr,
     compute_axial_conductances,
     compute_levels,
-    convert_point_process_to_distributed,
-    interpolate_xyzr,
+    compute_current_density,
+    interpolate_xyz,
     loc_of_index,
     params_to_pstate,
     query_states_and_params,
@@ -1922,24 +1922,21 @@ class Module(ABC):
         voltages = states["v"]
         morph_params = ["radius", "length", "axial_resistivity", "capacitance"]
 
-        # Update states of the channels.
         for channel in channels:
-            has_channel = channel_nodes[channel._name]
-            channel_inds = channel_nodes.loc[
-                has_channel, "global_comp_index"
-            ].to_numpy()
+            is_channel = channel_nodes[channel._name]
+            channel_inds = channel_nodes.loc[is_channel, "global_comp_index"].to_numpy()
 
-            channel_param_names = list(channel.channel_params) + morph_params
-            channel_params = query_states_and_params(
-                params, channel_param_names, channel_inds
+            query_channel = lambda d, names: query_states_and_params(
+                d, names, channel_inds
             )
+            channel_param_names = list(channel.channel_params) + morph_params
+            channel_params = query_channel(params, channel_param_names)
             channel_state_names = (
                 list(channel.channel_states) + self.membrane_current_names
             )
-            channel_states = query_states_and_params(
-                states, channel_state_names, channel_inds
-            )
+            channel_states = query_channel(states, channel_state_names)
 
+            # States updates.
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[channel_inds], channel_params
             )
@@ -1967,29 +1964,25 @@ class Module(ABC):
 
         # Compute current through channels.
         zeros = jnp.zeros_like(voltages)
-        voltage_terms = zeros
-        constant_terms = zeros
+        voltage_terms, constant_terms = zeros, zeros
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
 
         current_states = {name: zeros for name in self.membrane_current_names}
         for channel in channels:
-            name = channel._name
-            channel_inds = channel_nodes.loc[channel_nodes[name]][
-                "global_comp_index"
-            ].to_numpy()
+            is_channel = channel_nodes[channel._name]
+            channel_inds = channel_nodes.loc[is_channel, "global_comp_index"].to_numpy()
 
-            channel_params = query_states_and_params(
-                params, list(channel.channel_params) + morph_params, channel_inds
+            query_channel = lambda d, names: query_states_and_params(
+                d, names, channel_inds
             )
-            channel_states = query_states_and_params(
-                states, channel.channel_states, channel_inds
-            )
+            channel_param_names = list(channel.channel_params) + morph_params
+            channel_params = query_channel(params, channel_param_names)
+            channel_states = query_channel(states, channel.channel_states)
 
-            v_and_perturbed = jnp.stack(
-                [voltages[channel_inds], voltages[channel_inds] + diff]
-            )
+            v_channel = voltages[channel_inds]
+            v_and_perturbed = jnp.array([v_channel, v_channel + diff])
 
             membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
                 channel_states, v_and_perturbed, channel_params
@@ -1997,7 +1990,7 @@ class Module(ABC):
 
             # Split into voltage and constant terms.
             voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
-            constant_term = membrane_currents[0] - voltage_term * voltages[channel_inds]
+            constant_term = membrane_currents[0] - voltage_term * v_channel
 
             # * 1000 to convert from mA/cm^2 to uA/cm^2.
             voltage_terms = voltage_terms.at[channel_inds].add(voltage_term * 1000.0)
@@ -2058,7 +2051,7 @@ class Module(ABC):
             length_single_compartment: um.
         """
         zero_vec = jnp.zeros_like(voltages)
-        current = convert_point_process_to_distributed(
+        current = compute_current_density(
             i_stim, radius[i_inds], length_single_compartment[i_inds]
         )
 
