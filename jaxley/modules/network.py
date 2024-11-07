@@ -21,6 +21,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     loc_of_index,
     merge_cells,
+    query_states_and_params,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import (
@@ -264,30 +265,21 @@ class Network(Module):
     ) -> Dict:
         voltages = states["v"]
 
-        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
-        synapse_names = list(grouped_syns.indices.keys())
+        for i, group in edges.groupby("type_ind"):
+            synapse = syn_channels[i]
+            pre_inds = group["global_pre_comp_index"].to_numpy()
+            post_inds = group["global_post_comp_index"].to_numpy()
+            edge_inds = group.index.to_numpy()
 
-        for i, synapse_type in enumerate(syn_channels):
-            assert (
-                synapse_names[i] == synapse_type._name
-            ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
-
-            synapse_params = {}
-            for p in synapse_param_names:
-                synapse_params[p] = params[p]
-            synapse_states = {}
-            for s in synapse_state_names:
-                synapse_states[s] = states[s]
-
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            synapse_params = query_states_and_params(
+                params, synapse.synapse_params, edge_inds
+            )
+            synapse_states = query_states_and_params(
+                states, synapse.synapse_states, edge_inds
+            )
 
             # State updates.
-            states_updated = synapse_type.update_states(
+            states_updated = synapse.update_states(
                 synapse_states,
                 delta_t,
                 voltages[pre_inds],
@@ -295,9 +287,10 @@ class Network(Module):
                 synapse_params,
             )
 
-            # Rebuild state.
+            # Rebuild state. This has to be done within the loop over channels to allow
+            # multiple channels which modify the same state.
             for key, val in states_updated.items():
-                states[key] = val
+                states[key] = states[key].at[group.index.to_numpy()].set(val)
 
         return states
 
@@ -311,43 +304,37 @@ class Network(Module):
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         voltages = states["v"]
 
-        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
-        synapse_names = list(grouped_syns.indices.keys())
-
-        syn_voltage_terms = jnp.zeros_like(voltages)
-        syn_constant_terms = jnp.zeros_like(voltages)
+        # Compute current through synapses.
+        zeros = jnp.zeros_like(voltages)
+        syn_voltage_terms = zeros
+        syn_constant_terms = zeros
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
-        for i, synapse_type in enumerate(syn_channels):
-            assert (
-                synapse_names[i] == synapse_type._name
-            ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
 
-            synapse_params = {}
-            for p in synapse_param_names:
-                synapse_params[p] = params[p]
-            synapse_states = {}
-            for s in synapse_state_names:
-                synapse_states[s] = states[s]
+        synapse_current_states = {f"{s._name}_current": zeros for s in syn_channels}
+        for i, group in edges.groupby("type_ind"):
+            synapse = syn_channels[i]
+            pre_inds = group["global_pre_comp_index"].to_numpy()
+            post_inds = group["global_post_comp_index"].to_numpy()
+            edge_inds = group.index.to_numpy()
 
-            # Get pre and post indexes of the current synapse type.
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            synapse_params = query_states_and_params(
+                params, synapse.synapse_params, edge_inds
+            )
+            synapse_states = query_states_and_params(
+                states, synapse.synapse_states, edge_inds
+            )
 
-            # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
                 [voltages[pre_inds], voltages[pre_inds] + diff]
             )
             post_v_and_perturbed = jnp.stack(
                 [voltages[post_inds], voltages[post_inds] + diff]
             )
+
             synapse_currents = vmap(
-                synapse_type.compute_current, in_axes=(None, 0, 0, None)
+                synapse.compute_current, in_axes=(None, 0, 0, None)
             )(
                 synapse_states,
                 pre_v_and_perturbed,
@@ -373,14 +360,22 @@ class Network(Module):
                 voltage_term,
                 constant_term,
             )
-            syn_voltage_terms += gathered_syn_currents[0]
-            syn_constant_terms -= gathered_syn_currents[1]
 
-            # Add the synaptic currents through every compartment as state.
-            # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
-            # compartments in the network.
-            # `[0]` because we only use the non-perturbed voltage.
-            states[f"i_{synapse_type._name}"] = synapse_currents[0]
+            syn_voltage_terms = syn_voltage_terms.at[:].add(gathered_syn_currents[0])
+            syn_constant_terms = syn_constant_terms.at[:].add(-gathered_syn_currents[1])
+
+            # Save the current (for the unperturbed voltage) as a state that will
+            # also be passed to the state update.
+            synapse_current_states[f"{synapse._name}_current"] = (
+                synapse_current_states[f"{synapse._name}_current"]
+                .at[edge_inds]
+                .add(synapse_currents_dist[0])
+            )
+
+        # Copy the currents into the `state` dictionary such that they can be
+        # recorded and used by `Channel.update_states()`.
+        for name in [s._name for s in self.synapses]:
+            states[f"{name}_current"] = synapse_current_states[f"{name}_current"]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 

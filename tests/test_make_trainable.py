@@ -102,9 +102,9 @@ def test_diverse_synapse_types(SimpleNet):
     assert np.all(all_parameters["length"] == 10.0)
     assert np.all(all_parameters["axial_resistivity"] == 5000.0)
     assert np.all(all_parameters["IonotropicSynapse_gS"][0] == 2.2)
-    assert np.all(all_parameters["IonotropicSynapse_gS"][1] == 2.2)
-    assert np.all(all_parameters["TestSynapse_gC"][0] == 3.3)
-    assert np.all(all_parameters["TestSynapse_gC"][1] == 4.4)
+    assert np.all(all_parameters["IonotropicSynapse_gS"][2] == 2.2)
+    assert np.all(all_parameters["TestSynapse_gC"][1] == 3.3)
+    assert np.all(all_parameters["TestSynapse_gC"][3] == 4.4)
 
     # Add another trainable parameter and test again.
     net.IonotropicSynapse.edge(1).make_trainable("IonotropicSynapse_gS")
@@ -118,7 +118,7 @@ def test_diverse_synapse_types(SimpleNet):
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
     all_parameters = net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
     assert np.all(all_parameters["IonotropicSynapse_gS"][0] == 2.2)
-    assert np.all(all_parameters["IonotropicSynapse_gS"][1] == 5.5)
+    assert np.all(all_parameters["IonotropicSynapse_gS"][2] == 5.5)
 
 
 def test_make_all_trainable_corresponds_to_set(SimpleNet):
