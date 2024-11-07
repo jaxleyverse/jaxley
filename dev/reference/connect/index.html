@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.43">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.44">
     
     
       
@@ -1266,7 +1266,9 @@ Connections are from branch 0 location 0 to a randomly chosen branch and loc.</p
 <span class="normal">172</span>
 <span class="normal">173</span>
 <span class="normal">174</span>
-<span class="normal">175</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">connectivity_matrix_connect</span><span class="p">(</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">connectivity_matrix_connect</span><span class="p">(</span>
     <span class="n">pre_cell_view</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">,</span>
     <span class="n">post_cell_view</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">,</span>
     <span class="n">synapse_type</span><span class="p">:</span> <span class="s2">&quot;Synapse&quot;</span><span class="p">,</span>
@@ -1287,6 +1289,10 @@ Connections are from branch 0 location 0 to a randomly chosen branch and loc.</p
     <span class="c1"># Get pre- and postsynaptic cell indices.</span>
     <span class="n">pre_cell_inds</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">_cells_in_view</span>
     <span class="n">post_cell_inds</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">_cells_in_view</span>
+    <span class="c1"># setting scope ensure that this works indep of current scope</span>
+    <span class="n">pre_nodes</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
+    <span class="n">pre_nodes</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pre_nodes</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">pre_cell_nodes</span> <span class="o">=</span> <span class="n">pre_nodes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span>
 
     <span class="k">assert</span> <span class="n">connectivity_matrix</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span>
         <span class="nb">len</span><span class="p">(</span><span class="n">pre_cell_inds</span><span class="p">),</span>
@@ -1309,10 +1315,8 @@ Connections are from branch 0 location 0 to a randomly chosen branch and loc.</p
     <span class="n">post_rows</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_post_indices</span><span class="p">]</span>
 
     <span class="c1"># Pre-synapse is at the zero-eth branch and zero-eth compartment.</span>
-    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-    <span class="p">)</span>  <span class="c1"># setting scope ensure that this works indep of current scope</span>
-    <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">global_pre_indices</span><span class="p">[</span><span class="n">pre_cell_inds</span><span class="p">])</span><span class="o">.</span><span class="n">nodes</span>
+    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="n">pre_cell_nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pre_cell_inds</span><span class="p">,</span> <span class="s2">&quot;index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">global_pre_indices</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
 
     <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_append_multiple_synapses</span><span class="p">(</span><span class="n">pre_rows</span><span class="p">,</span> <span class="n">post_rows</span><span class="p">,</span> <span class="n">synapse_type</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
