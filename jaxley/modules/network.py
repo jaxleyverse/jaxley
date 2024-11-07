@@ -18,7 +18,7 @@ from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     compute_children_and_parents,
-    convert_point_process_to_distributed,
+    compute_current_density,
     loc_of_index,
     merge_cells,
     query_states_and_params,
@@ -271,12 +271,9 @@ class Network(Module):
             post_inds = group["global_post_comp_index"].to_numpy()
             edge_inds = group.index.to_numpy()
 
-            synapse_params = query_states_and_params(
-                params, synapse.synapse_params, edge_inds
-            )
-            synapse_states = query_states_and_params(
-                states, synapse.synapse_states, edge_inds
-            )
+            query_syn = lambda d, names: query_states_and_params(d, names, edge_inds)
+            synapse_params = query_syn(params, synapse.synapse_params)
+            synapse_states = query_syn(states, synapse.synapse_states)
 
             # State updates.
             states_updated = synapse.update_states(
@@ -306,8 +303,7 @@ class Network(Module):
 
         # Compute current through synapses.
         zeros = jnp.zeros_like(voltages)
-        syn_voltage_terms = zeros
-        syn_constant_terms = zeros
+        syn_voltage_terms, syn_constant_terms = zeros, zeros
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
@@ -319,19 +315,13 @@ class Network(Module):
             post_inds = group["global_post_comp_index"].to_numpy()
             edge_inds = group.index.to_numpy()
 
-            synapse_params = query_states_and_params(
-                params, synapse.synapse_params, edge_inds
-            )
-            synapse_states = query_states_and_params(
-                states, synapse.synapse_states, edge_inds
-            )
+            query_syn = lambda d, names: query_states_and_params(d, names, edge_inds)
+            synapse_params = query_syn(params, synapse.synapse_params)
+            synapse_states = query_syn(states, synapse.synapse_states)
 
-            pre_v_and_perturbed = jnp.stack(
-                [voltages[pre_inds], voltages[pre_inds] + diff]
-            )
-            post_v_and_perturbed = jnp.stack(
-                [voltages[post_inds], voltages[post_inds] + diff]
-            )
+            v_pre, v_post = voltages[pre_inds], voltages[post_inds]
+            pre_v_and_perturbed = jnp.array([v_pre, v_pre + diff])
+            post_v_and_perturbed = jnp.array([v_post, v_post + diff])
 
             synapse_currents = vmap(
                 synapse.compute_current, in_axes=(None, 0, 0, None)
@@ -341,7 +331,7 @@ class Network(Module):
                 post_v_and_perturbed,
                 synapse_params,
             )
-            synapse_currents_dist = convert_point_process_to_distributed(
+            synapse_currents_dist = compute_current_density(
                 synapse_currents,
                 params["radius"][post_inds],
                 params["length"][post_inds],
@@ -349,17 +339,12 @@ class Network(Module):
 
             # Split into voltage and constant terms.
             voltage_term = (synapse_currents_dist[1] - synapse_currents_dist[0]) / diff
-            constant_term = (
-                synapse_currents_dist[0] - voltage_term * voltages[post_inds]
-            )
+            constant_term = synapse_currents_dist[0] - voltage_term * v_post
+            syn_voltages = voltage_term, constant_term
 
             # Gather slope and offset for every postsynaptic compartment.
-            gathered_syn_currents = gather_synapes(
-                len(voltages),
-                post_inds,
-                voltage_term,
-                constant_term,
-            )
+            num_comp = len(voltages)
+            gathered_syn_currents = gather_synapes(num_comp, post_inds, *syn_voltages)
 
             syn_voltage_terms = syn_voltage_terms.at[:].add(gathered_syn_currents[0])
             syn_constant_terms = syn_constant_terms.at[:].add(-gathered_syn_currents[1])
@@ -376,7 +361,6 @@ class Network(Module):
         # recorded and used by `Channel.update_states()`.
         for name in [s._name for s in self.synapses]:
             states[f"{name}_current"] = synapse_current_states[f"{name}_current"]
-
         return states, (syn_voltage_terms, syn_constant_terms)
 
     def arrange_in_layers(

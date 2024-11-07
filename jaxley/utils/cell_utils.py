@@ -610,7 +610,7 @@ def params_to_pstate(
     ]
 
 
-def convert_point_process_to_distributed(
+def compute_current_density(
     current: jnp.ndarray, radius: jnp.ndarray, length: jnp.ndarray
 ) -> jnp.ndarray:
     """Convert current point process (nA) to distributed current (uA/cm2).
