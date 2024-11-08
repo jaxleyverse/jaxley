@@ -58,21 +58,21 @@ def fully_connect(
     num_pre = len(pre_cell_view._cells_in_view)
     num_post = len(post_cell_view._cells_in_view)
 
+    # Get the indices of the connections, like it's a fully connected connectivity matrix
+    from_idx = np.repeat(range(0, num_pre), num_post)
+    to_idx = np.tile(range(0, num_post), num_pre)
+
     # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_comp_indices = (
         pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
     )  # setting scope ensure that this works indep of current scope
-    # Repeat comp indices `num_post` times. See SO 50788508 as before
-    global_pre_comp_indices = np.repeat(global_pre_comp_indices, num_post)
-    pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices).nodes
+    pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
 
     # Post-synapse also at the zero-eth branch and zero-eth compartment
     global_post_comp_indices = (
         post_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
     )
-    # Tile comp indices `num_pre` times
-    global_post_comp_indices = np.tile(global_post_comp_indices, num_pre)
-    post_rows = post_cell_view.select(nodes=global_post_comp_indices).nodes
+    post_rows = post_cell_view.select(nodes=global_post_comp_indices[to_idx]).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
