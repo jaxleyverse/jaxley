@@ -31,7 +31,7 @@ def test_clamp_pointneuron():
 def test_clamp_currents():
     comp = jx.Compartment()
     comp.insert(HH())
-    comp.record()
+    comp.record("i_HH")
 
     # test clamp
     comp.clamp("i_HH", 1.0 * jnp.ones((1000,)))
