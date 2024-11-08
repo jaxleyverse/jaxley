@@ -4219,7 +4219,34 @@ branches, cells, networks).</p>
 <span class="normal">2214</span>
 <span class="normal">2215</span>
 <span class="normal">2216</span>
-<span class="normal">2217</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="normal">2217</span>
+<span class="normal">2218</span>
+<span class="normal">2219</span>
+<span class="normal">2220</span>
+<span class="normal">2221</span>
+<span class="normal">2222</span>
+<span class="normal">2223</span>
+<span class="normal">2224</span>
+<span class="normal">2225</span>
+<span class="normal">2226</span>
+<span class="normal">2227</span>
+<span class="normal">2228</span>
+<span class="normal">2229</span>
+<span class="normal">2230</span>
+<span class="normal">2231</span>
+<span class="normal">2232</span>
+<span class="normal">2233</span>
+<span class="normal">2234</span>
+<span class="normal">2235</span>
+<span class="normal">2236</span>
+<span class="normal">2237</span>
+<span class="normal">2238</span>
+<span class="normal">2239</span>
+<span class="normal">2240</span>
+<span class="normal">2241</span>
+<span class="normal">2242</span>
+<span class="normal">2243</span>
+<span class="normal">2244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Module base class.</span>
 
 <span class="sd">    Modules are everything that can be passed to `jx.integrate`, i.e. compartments,</span>
@@ -5339,6 +5366,15 @@ branches, cells, networks).</p>
                 <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">group_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">])</span>
             <span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">_get_state_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">,</span> <span class="n">List</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Collect all recordable / clampable states in the membrane and synapses.</span>
+
+<span class="sd">        Returns states seperated by comps and edges.&quot;&quot;&quot;</span>
+        <span class="n">channel_states</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">channel_states</span><span class="p">]</span>
+        <span class="n">synapse_states</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">synapses</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">synapse_states</span><span class="p">]</span>
+        <span class="n">membrane_states</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">membrane_current_names</span>
+        <span class="k">return</span> <span class="n">channel_states</span> <span class="o">+</span> <span class="n">membrane_states</span><span class="p">,</span> <span class="n">synapse_states</span>
+
     <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all trainable parameters.</span>
 
@@ -5607,10 +5643,10 @@ branches, cells, networks).</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;par_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">par_inds</span>
 
     <span class="k">def</span> <span class="nf">record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="n">in_view</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">in_view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edges_in_view</span> <span class="k">if</span> <span class="n">state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">in_view</span>
-        <span class="n">in_view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span> <span class="k">if</span> <span class="n">state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">in_view</span>
-        <span class="k">assert</span> <span class="n">in_view</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;State not found in nodes or edges.&quot;</span>
+        <span class="n">comp_states</span><span class="p">,</span> <span class="n">edge_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_names</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="o">+</span> <span class="n">edge_states</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2"> is not a recognized state in this module.&quot;</span><span class="p">)</span>
+        <span class="n">in_view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span> <span class="k">if</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edges_in_view</span>
 
         <span class="n">new_recs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">in_view</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rec_index&quot;</span><span class="p">])</span>
         <span class="n">new_recs</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
@@ -5674,8 +5710,6 @@ branches, cells, networks).</p>
 
 <span class="sd">        This function sets external states for the compartments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state_name</span><span class="si">}</span><span class="s2"> is not a recognized state in this module.&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_external_input</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="n">state_array</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_external_input</span><span class="p">(</span>
@@ -5684,15 +5718,16 @@ branches, cells, networks).</p>
         <span class="n">values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
+        <span class="n">comp_states</span><span class="p">,</span> <span class="n">edge_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_names</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="o">+</span> <span class="n">edge_states</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> is not a recognized state in this module.&quot;</span><span class="p">)</span>
         <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="k">if</span> <span class="n">values</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">batch_size</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">num_inserted</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">)</span>
-        <span class="n">is_multiple</span> <span class="o">=</span> <span class="n">num_inserted</span> <span class="o">==</span> <span class="n">batch_size</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">values</span>
-            <span class="k">if</span> <span class="n">is_multiple</span>
-            <span class="k">else</span> <span class="n">jnp</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">num_inserted</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">)</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_edges_in_view</span><span class="p">)</span>
         <span class="p">)</span>
+        <span class="n">is_multiple</span> <span class="o">=</span> <span class="n">num_inserted</span> <span class="o">==</span> <span class="n">batch_size</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="k">if</span> <span class="n">is_multiple</span> <span class="k">else</span> <span class="n">jnp</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">num_inserted</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">batch_size</span> <span class="ow">in</span> <span class="p">[</span>
             <span class="mi">1</span><span class="p">,</span>
             <span class="n">num_inserted</span><span class="p">,</span>
@@ -5706,9 +5741,12 @@ branches, cells, networks).</p>
                 <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span>
-
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">comp_states</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edges_in_view</span>
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Added </span><span class="si">{</span><span class="n">num_inserted</span><span class="si">}</span><span class="s2"> external_states. See `.externals` for details.&quot;</span>
@@ -5748,8 +5786,12 @@ branches, cells, networks).</p>
 <span class="sd">            verbose: Whether or not to print the number of inserted clamps. `False`</span>
 <span class="sd">                by default because this method is meant to be jitted.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">comp_states</span><span class="p">,</span> <span class="n">edge_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_names</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="o">+</span> <span class="n">edge_states</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state_name</span><span class="si">}</span><span class="s2"> is not a recognized state in this module.&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_external_input</span><span class="p">(</span>
-            <span class="n">state_name</span><span class="p">,</span> <span class="n">state_array</span><span class="p">,</span> <span class="n">data_clamps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
+            <span class="n">state_name</span><span class="p">,</span> <span class="n">state_array</span><span class="p">,</span> <span class="n">data_clamps</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
         <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_data_external_input</span><span class="p">(</span>
@@ -5760,16 +5802,23 @@ branches, cells, networks).</p>
         <span class="n">view</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
         <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
+        <span class="n">comp_states</span><span class="p">,</span> <span class="n">edge_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_names</span><span class="p">()</span>
         <span class="n">state_array</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">state_array</span>
             <span class="k">if</span> <span class="n">state_array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
             <span class="k">else</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">state_array</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">batch_size</span> <span class="o">=</span> <span class="n">state_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">num_inserted</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">)</span>
+        <span class="n">num_inserted</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">comp_states</span>
+            <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_edges_in_view</span><span class="p">)</span>
+        <span class="p">)</span>
         <span class="n">is_multiple</span> <span class="o">=</span> <span class="n">num_inserted</span> <span class="o">==</span> <span class="n">batch_size</span>
         <span class="n">state_array</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">state_array</span> <span class="k">if</span> <span class="n">is_multiple</span> <span class="k">else</span> <span class="n">jnp</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">state_array</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">view</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">state_array</span>
+            <span class="k">if</span> <span class="n">is_multiple</span>
+            <span class="k">else</span> <span class="n">jnp</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">state_array</span><span class="p">,</span> <span class="n">num_inserted</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="k">assert</span> <span class="n">batch_size</span> <span class="ow">in</span> <span class="p">[</span>
             <span class="mi">1</span><span class="p">,</span>
@@ -5798,23 +5847,28 @@ branches, cells, networks).</p>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes all stimuli from the module.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delete_clamps</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">delete_clamps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">delete_clamps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes all clamps of the given state from the module.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">externals</span><span class="p">:</span>
-            <span class="n">keep_inds</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span>
-            <span class="p">)</span>
-            <span class="n">base_exts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span>
-            <span class="n">base_exts_inds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span>
-            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">keep_inds</span><span class="p">):</span>
-                <span class="n">base_exts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-                <span class="n">base_exts_inds</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">all_externals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">all_externals</span><span class="p">:</span>
+            <span class="n">all_externals</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">)</span>
+        <span class="n">state_names</span> <span class="o">=</span> <span class="n">all_externals</span> <span class="k">if</span> <span class="n">state_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">state_name</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">state_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">externals</span><span class="p">:</span>
+                <span class="n">keep_inds</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span>
+                <span class="p">)</span>
+                <span class="n">base_exts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span>
+                <span class="n">base_exts_inds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">keep_inds</span><span class="p">):</span>
+                    <span class="n">base_exts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="n">base_exts_inds</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
+                    <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_view</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
-                <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_view</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">pass</span>  <span class="c1"># does not have to be deleted if not in externals</span>
+                <span class="k">pass</span>  <span class="c1"># does not have to be deleted if not in externals</span>
 
     <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="n">Channel</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert a channel into the module.</span>
@@ -6987,19 +7041,17 @@ branch.shape = (num_compartments,)
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1507</span>
-<span class="normal">1508</span>
-<span class="normal">1509</span>
-<span class="normal">1510</span>
-<span class="normal">1511</span>
-<span class="normal">1512</span>
-<span class="normal">1513</span>
-<span class="normal">1514</span>
-<span class="normal">1515</span>
-<span class="normal">1516</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1516</span>
 <span class="normal">1517</span>
 <span class="normal">1518</span>
-<span class="normal">1519</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">clamp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">state_array</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="normal">1519</span>
+<span class="normal">1520</span>
+<span class="normal">1521</span>
+<span class="normal">1522</span>
+<span class="normal">1523</span>
+<span class="normal">1524</span>
+<span class="normal">1525</span>
+<span class="normal">1526</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">clamp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">state_array</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Clamp a state to a given value across specified compartments.</span>
 
 <span class="sd">    Args:</span>
@@ -7009,8 +7061,6 @@ branch.shape = (num_compartments,)
 
 <span class="sd">    This function sets external states for the compartments.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">state_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state_name</span><span class="si">}</span><span class="s2"> is not a recognized state in this module.&quot;</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_external_input</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="n">state_array</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -7129,34 +7179,7 @@ are only used for plotting.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2060</span>
-<span class="normal">2061</span>
-<span class="normal">2062</span>
-<span class="normal">2063</span>
-<span class="normal">2064</span>
-<span class="normal">2065</span>
-<span class="normal">2066</span>
-<span class="normal">2067</span>
-<span class="normal">2068</span>
-<span class="normal">2069</span>
-<span class="normal">2070</span>
-<span class="normal">2071</span>
-<span class="normal">2072</span>
-<span class="normal">2073</span>
-<span class="normal">2074</span>
-<span class="normal">2075</span>
-<span class="normal">2076</span>
-<span class="normal">2077</span>
-<span class="normal">2078</span>
-<span class="normal">2079</span>
-<span class="normal">2080</span>
-<span class="normal">2081</span>
-<span class="normal">2082</span>
-<span class="normal">2083</span>
-<span class="normal">2084</span>
-<span class="normal">2085</span>
-<span class="normal">2086</span>
-<span class="normal">2087</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2087</span>
 <span class="normal">2088</span>
 <span class="normal">2089</span>
 <span class="normal">2090</span>
@@ -7189,7 +7212,34 @@ are only used for plotting.</p>
 <span class="normal">2117</span>
 <span class="normal">2118</span>
 <span class="normal">2119</span>
-<span class="normal">2120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_xyz</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">2120</span>
+<span class="normal">2121</span>
+<span class="normal">2122</span>
+<span class="normal">2123</span>
+<span class="normal">2124</span>
+<span class="normal">2125</span>
+<span class="normal">2126</span>
+<span class="normal">2127</span>
+<span class="normal">2128</span>
+<span class="normal">2129</span>
+<span class="normal">2130</span>
+<span class="normal">2131</span>
+<span class="normal">2132</span>
+<span class="normal">2133</span>
+<span class="normal">2134</span>
+<span class="normal">2135</span>
+<span class="normal">2136</span>
+<span class="normal">2137</span>
+<span class="normal">2138</span>
+<span class="normal">2139</span>
+<span class="normal">2140</span>
+<span class="normal">2141</span>
+<span class="normal">2142</span>
+<span class="normal">2143</span>
+<span class="normal">2144</span>
+<span class="normal">2145</span>
+<span class="normal">2146</span>
+<span class="normal">2147</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_xyz</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return xyz coordinates of every branch, based on the branch length.</span>
 
 <span class="sd">    This function should not be called if the morphology was read from an `.swc`</span>
@@ -7470,18 +7520,7 @@ by default because this method is meant to be jitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1574</span>
-<span class="normal">1575</span>
-<span class="normal">1576</span>
-<span class="normal">1577</span>
-<span class="normal">1578</span>
-<span class="normal">1579</span>
-<span class="normal">1580</span>
-<span class="normal">1581</span>
-<span class="normal">1582</span>
-<span class="normal">1583</span>
-<span class="normal">1584</span>
-<span class="normal">1585</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1585</span>
 <span class="normal">1586</span>
 <span class="normal">1587</span>
 <span class="normal">1588</span>
@@ -7489,7 +7528,22 @@ by default because this method is meant to be jitted.</p>
 <span class="normal">1590</span>
 <span class="normal">1591</span>
 <span class="normal">1592</span>
-<span class="normal">1593</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">data_clamp</span><span class="p">(</span>
+<span class="normal">1593</span>
+<span class="normal">1594</span>
+<span class="normal">1595</span>
+<span class="normal">1596</span>
+<span class="normal">1597</span>
+<span class="normal">1598</span>
+<span class="normal">1599</span>
+<span class="normal">1600</span>
+<span class="normal">1601</span>
+<span class="normal">1602</span>
+<span class="normal">1603</span>
+<span class="normal">1604</span>
+<span class="normal">1605</span>
+<span class="normal">1606</span>
+<span class="normal">1607</span>
+<span class="normal">1608</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">data_clamp</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">state_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">state_array</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -7506,8 +7560,12 @@ by default because this method is meant to be jitted.</p>
 <span class="sd">        verbose: Whether or not to print the number of inserted clamps. `False`</span>
 <span class="sd">            by default because this method is meant to be jitted.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">comp_states</span><span class="p">,</span> <span class="n">edge_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_names</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">state_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="o">+</span> <span class="n">edge_states</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state_name</span><span class="si">}</span><span class="s2"> is not a recognized state in this module.&quot;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">comp_states</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_external_input</span><span class="p">(</span>
-        <span class="n">state_name</span><span class="p">,</span> <span class="n">state_array</span><span class="p">,</span> <span class="n">data_clamps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
+        <span class="n">state_name</span><span class="p">,</span> <span class="n">state_array</span><span class="p">,</span> <span class="n">data_clamps</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -7733,22 +7791,22 @@ by default because this method is meant to be jitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1557</span>
-<span class="normal">1558</span>
-<span class="normal">1559</span>
-<span class="normal">1560</span>
-<span class="normal">1561</span>
-<span class="normal">1562</span>
-<span class="normal">1563</span>
-<span class="normal">1564</span>
-<span class="normal">1565</span>
-<span class="normal">1566</span>
-<span class="normal">1567</span>
-<span class="normal">1568</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1568</span>
 <span class="normal">1569</span>
 <span class="normal">1570</span>
 <span class="normal">1571</span>
-<span class="normal">1572</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">data_stimulate</span><span class="p">(</span>
+<span class="normal">1572</span>
+<span class="normal">1573</span>
+<span class="normal">1574</span>
+<span class="normal">1575</span>
+<span class="normal">1576</span>
+<span class="normal">1577</span>
+<span class="normal">1578</span>
+<span class="normal">1579</span>
+<span class="normal">1580</span>
+<span class="normal">1581</span>
+<span class="normal">1582</span>
+<span class="normal">1583</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">data_stimulate</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">current</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">data_stimuli</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -7774,7 +7832,7 @@ by default because this method is meant to be jitted.</p>
 
 
 <h3 id="jaxley.modules.base.Module.delete_clamps" class="doc doc-heading">
-            <code class=" language-python"><span class="n">delete_clamps</span><span class="p">(</span><span class="n">state_name</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">delete_clamps</span><span class="p">(</span><span class="n">state_name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.base.Module.delete_clamps" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -7785,39 +7843,49 @@ by default because this method is meant to be jitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1641</span>
-<span class="normal">1642</span>
-<span class="normal">1643</span>
-<span class="normal">1644</span>
-<span class="normal">1645</span>
-<span class="normal">1646</span>
-<span class="normal">1647</span>
-<span class="normal">1648</span>
-<span class="normal">1649</span>
-<span class="normal">1650</span>
-<span class="normal">1651</span>
-<span class="normal">1652</span>
-<span class="normal">1653</span>
-<span class="normal">1654</span>
-<span class="normal">1655</span>
-<span class="normal">1656</span>
-<span class="normal">1657</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete_clamps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1663</span>
+<span class="normal">1664</span>
+<span class="normal">1665</span>
+<span class="normal">1666</span>
+<span class="normal">1667</span>
+<span class="normal">1668</span>
+<span class="normal">1669</span>
+<span class="normal">1670</span>
+<span class="normal">1671</span>
+<span class="normal">1672</span>
+<span class="normal">1673</span>
+<span class="normal">1674</span>
+<span class="normal">1675</span>
+<span class="normal">1676</span>
+<span class="normal">1677</span>
+<span class="normal">1678</span>
+<span class="normal">1679</span>
+<span class="normal">1680</span>
+<span class="normal">1681</span>
+<span class="normal">1682</span>
+<span class="normal">1683</span>
+<span class="normal">1684</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete_clamps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Removes all clamps of the given state from the module.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">externals</span><span class="p">:</span>
-        <span class="n">keep_inds</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span>
-        <span class="p">)</span>
-        <span class="n">base_exts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span>
-        <span class="n">base_exts_inds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span>
-        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">keep_inds</span><span class="p">):</span>
-            <span class="n">base_exts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="n">base_exts_inds</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">all_externals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">all_externals</span><span class="p">:</span>
+        <span class="n">all_externals</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">)</span>
+    <span class="n">state_names</span> <span class="o">=</span> <span class="n">all_externals</span> <span class="k">if</span> <span class="n">state_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">state_name</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">state_names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">externals</span><span class="p">:</span>
+            <span class="n">keep_inds</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span>
+            <span class="p">)</span>
+            <span class="n">base_exts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">externals</span>
+            <span class="n">base_exts_inds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">external_inds</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">keep_inds</span><span class="p">):</span>
+                <span class="n">base_exts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">base_exts_inds</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">state_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
+                <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_view</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
-            <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_exts_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">][</span><span class="n">keep_inds</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_view</span><span class="p">()</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">pass</span>  <span class="c1"># does not have to be deleted if not in externals</span>
+            <span class="k">pass</span>  <span class="c1"># does not have to be deleted if not in externals</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7839,16 +7907,16 @@ by default because this method is meant to be jitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1480</span>
-<span class="normal">1481</span>
-<span class="normal">1482</span>
-<span class="normal">1483</span>
-<span class="normal">1484</span>
-<span class="normal">1485</span>
-<span class="normal">1486</span>
-<span class="normal">1487</span>
-<span class="normal">1488</span>
-<span class="normal">1489</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete_recordings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1489</span>
+<span class="normal">1490</span>
+<span class="normal">1491</span>
+<span class="normal">1492</span>
+<span class="normal">1493</span>
+<span class="normal">1494</span>
+<span class="normal">1495</span>
+<span class="normal">1496</span>
+<span class="normal">1497</span>
+<span class="normal">1498</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete_recordings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Removes all recordings from the module.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">View</span><span class="p">):</span>
         <span class="n">base_recs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">recordings</span>
@@ -7879,9 +7947,9 @@ by default because this method is meant to be jitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1637</span>
-<span class="normal">1638</span>
-<span class="normal">1639</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete_stimuli</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1659</span>
+<span class="normal">1660</span>
+<span class="normal">1661</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete_stimuli</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Removes all stimuli from the module.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">delete_clamps</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -8178,16 +8246,7 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1193</span>
-<span class="normal">1194</span>
-<span class="normal">1195</span>
-<span class="normal">1196</span>
-<span class="normal">1197</span>
-<span class="normal">1198</span>
-<span class="normal">1199</span>
-<span class="normal">1200</span>
-<span class="normal">1201</span>
-<span class="normal">1202</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1202</span>
 <span class="normal">1203</span>
 <span class="normal">1204</span>
 <span class="normal">1205</span>
@@ -8252,7 +8311,16 @@ function will default to different building methods.</p>
 <span class="normal">1264</span>
 <span class="normal">1265</span>
 <span class="normal">1266</span>
-<span class="normal">1267</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
+<span class="normal">1267</span>
+<span class="normal">1268</span>
+<span class="normal">1269</span>
+<span class="normal">1270</span>
+<span class="normal">1271</span>
+<span class="normal">1272</span>
+<span class="normal">1273</span>
+<span class="normal">1274</span>
+<span class="normal">1275</span>
+<span class="normal">1276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
 <span class="k">def</span> <span class="nf">get_all_parameters</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">pstate</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">],</span> <span class="n">voltage_solver</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
@@ -8433,16 +8501,7 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1283</span>
-<span class="normal">1284</span>
-<span class="normal">1285</span>
-<span class="normal">1286</span>
-<span class="normal">1287</span>
-<span class="normal">1288</span>
-<span class="normal">1289</span>
-<span class="normal">1290</span>
-<span class="normal">1291</span>
-<span class="normal">1292</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1292</span>
 <span class="normal">1293</span>
 <span class="normal">1294</span>
 <span class="normal">1295</span>
@@ -8471,7 +8530,16 @@ function will default to different building methods.</p>
 <span class="normal">1318</span>
 <span class="normal">1319</span>
 <span class="normal">1320</span>
-<span class="normal">1321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
+<span class="normal">1321</span>
+<span class="normal">1322</span>
+<span class="normal">1323</span>
+<span class="normal">1324</span>
+<span class="normal">1325</span>
+<span class="normal">1326</span>
+<span class="normal">1327</span>
+<span class="normal">1328</span>
+<span class="normal">1329</span>
+<span class="normal">1330</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
 <span class="k">def</span> <span class="nf">get_all_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">pstate</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">],</span> <span class="n">all_params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
@@ -8556,16 +8624,16 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1182</span>
-<span class="normal">1183</span>
-<span class="normal">1184</span>
-<span class="normal">1185</span>
-<span class="normal">1186</span>
-<span class="normal">1187</span>
-<span class="normal">1188</span>
-<span class="normal">1189</span>
-<span class="normal">1190</span>
-<span class="normal">1191</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all trainable parameters.</span>
 
 <span class="sd">    The returned parameters should be passed to `jx.integrate(..., params=params).</span>
@@ -8628,16 +8696,7 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1333</span>
-<span class="normal">1334</span>
-<span class="normal">1335</span>
-<span class="normal">1336</span>
-<span class="normal">1337</span>
-<span class="normal">1338</span>
-<span class="normal">1339</span>
-<span class="normal">1340</span>
-<span class="normal">1341</span>
-<span class="normal">1342</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1342</span>
 <span class="normal">1343</span>
 <span class="normal">1344</span>
 <span class="normal">1345</span>
@@ -8674,7 +8733,16 @@ function will default to different building methods.</p>
 <span class="normal">1376</span>
 <span class="normal">1377</span>
 <span class="normal">1378</span>
-<span class="normal">1379</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
+<span class="normal">1379</span>
+<span class="normal">1380</span>
+<span class="normal">1381</span>
+<span class="normal">1382</span>
+<span class="normal">1383</span>
+<span class="normal">1384</span>
+<span class="normal">1385</span>
+<span class="normal">1386</span>
+<span class="normal">1387</span>
+<span class="normal">1388</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
 <span class="k">def</span> <span class="nf">init_states</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">):</span>
     <span class="c1"># TODO FROM #447: MAKE THIS WORK FOR VIEW?</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize all mechanisms in their steady state.</span>
@@ -8773,33 +8841,33 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1659</span>
-<span class="normal">1660</span>
-<span class="normal">1661</span>
-<span class="normal">1662</span>
-<span class="normal">1663</span>
-<span class="normal">1664</span>
-<span class="normal">1665</span>
-<span class="normal">1666</span>
-<span class="normal">1667</span>
-<span class="normal">1668</span>
-<span class="normal">1669</span>
-<span class="normal">1670</span>
-<span class="normal">1671</span>
-<span class="normal">1672</span>
-<span class="normal">1673</span>
-<span class="normal">1674</span>
-<span class="normal">1675</span>
-<span class="normal">1676</span>
-<span class="normal">1677</span>
-<span class="normal">1678</span>
-<span class="normal">1679</span>
-<span class="normal">1680</span>
-<span class="normal">1681</span>
-<span class="normal">1682</span>
-<span class="normal">1683</span>
-<span class="normal">1684</span>
-<span class="normal">1685</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="n">Channel</span><span class="p">):</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1686</span>
+<span class="normal">1687</span>
+<span class="normal">1688</span>
+<span class="normal">1689</span>
+<span class="normal">1690</span>
+<span class="normal">1691</span>
+<span class="normal">1692</span>
+<span class="normal">1693</span>
+<span class="normal">1694</span>
+<span class="normal">1695</span>
+<span class="normal">1696</span>
+<span class="normal">1697</span>
+<span class="normal">1698</span>
+<span class="normal">1699</span>
+<span class="normal">1700</span>
+<span class="normal">1701</span>
+<span class="normal">1702</span>
+<span class="normal">1703</span>
+<span class="normal">1704</span>
+<span class="normal">1705</span>
+<span class="normal">1706</span>
+<span class="normal">1707</span>
+<span class="normal">1708</span>
+<span class="normal">1709</span>
+<span class="normal">1710</span>
+<span class="normal">1711</span>
+<span class="normal">1712</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Insert a channel into the module.</span>
 
 <span class="sd">    Args:</span>
@@ -9275,25 +9343,25 @@ total number of parameters.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2122</span>
-<span class="normal">2123</span>
-<span class="normal">2124</span>
-<span class="normal">2125</span>
-<span class="normal">2126</span>
-<span class="normal">2127</span>
-<span class="normal">2128</span>
-<span class="normal">2129</span>
-<span class="normal">2130</span>
-<span class="normal">2131</span>
-<span class="normal">2132</span>
-<span class="normal">2133</span>
-<span class="normal">2134</span>
-<span class="normal">2135</span>
-<span class="normal">2136</span>
-<span class="normal">2137</span>
-<span class="normal">2138</span>
-<span class="normal">2139</span>
-<span class="normal">2140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move</span><span class="p">(</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2149</span>
+<span class="normal">2150</span>
+<span class="normal">2151</span>
+<span class="normal">2152</span>
+<span class="normal">2153</span>
+<span class="normal">2154</span>
+<span class="normal">2155</span>
+<span class="normal">2156</span>
+<span class="normal">2157</span>
+<span class="normal">2158</span>
+<span class="normal">2159</span>
+<span class="normal">2160</span>
+<span class="normal">2161</span>
+<span class="normal">2162</span>
+<span class="normal">2163</span>
+<span class="normal">2164</span>
+<span class="normal">2165</span>
+<span class="normal">2166</span>
+<span class="normal">2167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Move cells or networks by adding to their (x, y, z) coordinates.</span>
@@ -9373,34 +9441,7 @@ cell is moved to the specified location.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2142</span>
-<span class="normal">2143</span>
-<span class="normal">2144</span>
-<span class="normal">2145</span>
-<span class="normal">2146</span>
-<span class="normal">2147</span>
-<span class="normal">2148</span>
-<span class="normal">2149</span>
-<span class="normal">2150</span>
-<span class="normal">2151</span>
-<span class="normal">2152</span>
-<span class="normal">2153</span>
-<span class="normal">2154</span>
-<span class="normal">2155</span>
-<span class="normal">2156</span>
-<span class="normal">2157</span>
-<span class="normal">2158</span>
-<span class="normal">2159</span>
-<span class="normal">2160</span>
-<span class="normal">2161</span>
-<span class="normal">2162</span>
-<span class="normal">2163</span>
-<span class="normal">2164</span>
-<span class="normal">2165</span>
-<span class="normal">2166</span>
-<span class="normal">2167</span>
-<span class="normal">2168</span>
-<span class="normal">2169</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2169</span>
 <span class="normal">2170</span>
 <span class="normal">2171</span>
 <span class="normal">2172</span>
@@ -9418,7 +9459,34 @@ cell is moved to the specified location.</p>
 <span class="normal">2184</span>
 <span class="normal">2185</span>
 <span class="normal">2186</span>
-<span class="normal">2187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move_to</span><span class="p">(</span>
+<span class="normal">2187</span>
+<span class="normal">2188</span>
+<span class="normal">2189</span>
+<span class="normal">2190</span>
+<span class="normal">2191</span>
+<span class="normal">2192</span>
+<span class="normal">2193</span>
+<span class="normal">2194</span>
+<span class="normal">2195</span>
+<span class="normal">2196</span>
+<span class="normal">2197</span>
+<span class="normal">2198</span>
+<span class="normal">2199</span>
+<span class="normal">2200</span>
+<span class="normal">2201</span>
+<span class="normal">2202</span>
+<span class="normal">2203</span>
+<span class="normal">2204</span>
+<span class="normal">2205</span>
+<span class="normal">2206</span>
+<span class="normal">2207</span>
+<span class="normal">2208</span>
+<span class="normal">2209</span>
+<span class="normal">2210</span>
+<span class="normal">2211</span>
+<span class="normal">2212</span>
+<span class="normal">2213</span>
+<span class="normal">2214</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move_to</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
@@ -9533,35 +9601,35 @@ cell is moved to the specified location.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2189</span>
-<span class="normal">2190</span>
-<span class="normal">2191</span>
-<span class="normal">2192</span>
-<span class="normal">2193</span>
-<span class="normal">2194</span>
-<span class="normal">2195</span>
-<span class="normal">2196</span>
-<span class="normal">2197</span>
-<span class="normal">2198</span>
-<span class="normal">2199</span>
-<span class="normal">2200</span>
-<span class="normal">2201</span>
-<span class="normal">2202</span>
-<span class="normal">2203</span>
-<span class="normal">2204</span>
-<span class="normal">2205</span>
-<span class="normal">2206</span>
-<span class="normal">2207</span>
-<span class="normal">2208</span>
-<span class="normal">2209</span>
-<span class="normal">2210</span>
-<span class="normal">2211</span>
-<span class="normal">2212</span>
-<span class="normal">2213</span>
-<span class="normal">2214</span>
-<span class="normal">2215</span>
-<span class="normal">2216</span>
-<span class="normal">2217</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2216</span>
+<span class="normal">2217</span>
+<span class="normal">2218</span>
+<span class="normal">2219</span>
+<span class="normal">2220</span>
+<span class="normal">2221</span>
+<span class="normal">2222</span>
+<span class="normal">2223</span>
+<span class="normal">2224</span>
+<span class="normal">2225</span>
+<span class="normal">2226</span>
+<span class="normal">2227</span>
+<span class="normal">2228</span>
+<span class="normal">2229</span>
+<span class="normal">2230</span>
+<span class="normal">2231</span>
+<span class="normal">2232</span>
+<span class="normal">2233</span>
+<span class="normal">2234</span>
+<span class="normal">2235</span>
+<span class="normal">2236</span>
+<span class="normal">2237</span>
+<span class="normal">2238</span>
+<span class="normal">2239</span>
+<span class="normal">2240</span>
+<span class="normal">2241</span>
+<span class="normal">2242</span>
+<span class="normal">2243</span>
+<span class="normal">2244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;xy&quot;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rotate jaxley modules clockwise. Used only for visualization.</span>
@@ -10816,34 +10884,7 @@ coefficient matrix of the ODE system. Either of [&ldquo;jaxley.thomas&rdquo;,
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1687</span>
-<span class="normal">1688</span>
-<span class="normal">1689</span>
-<span class="normal">1690</span>
-<span class="normal">1691</span>
-<span class="normal">1692</span>
-<span class="normal">1693</span>
-<span class="normal">1694</span>
-<span class="normal">1695</span>
-<span class="normal">1696</span>
-<span class="normal">1697</span>
-<span class="normal">1698</span>
-<span class="normal">1699</span>
-<span class="normal">1700</span>
-<span class="normal">1701</span>
-<span class="normal">1702</span>
-<span class="normal">1703</span>
-<span class="normal">1704</span>
-<span class="normal">1705</span>
-<span class="normal">1706</span>
-<span class="normal">1707</span>
-<span class="normal">1708</span>
-<span class="normal">1709</span>
-<span class="normal">1710</span>
-<span class="normal">1711</span>
-<span class="normal">1712</span>
-<span class="normal">1713</span>
-<span class="normal">1714</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1714</span>
 <span class="normal">1715</span>
 <span class="normal">1716</span>
 <span class="normal">1717</span>
@@ -10954,7 +10995,34 @@ coefficient matrix of the ODE system. Either of [&ldquo;jaxley.thomas&rdquo;,
 <span class="normal">1822</span>
 <span class="normal">1823</span>
 <span class="normal">1824</span>
-<span class="normal">1825</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
+<span class="normal">1825</span>
+<span class="normal">1826</span>
+<span class="normal">1827</span>
+<span class="normal">1828</span>
+<span class="normal">1829</span>
+<span class="normal">1830</span>
+<span class="normal">1831</span>
+<span class="normal">1832</span>
+<span class="normal">1833</span>
+<span class="normal">1834</span>
+<span class="normal">1835</span>
+<span class="normal">1836</span>
+<span class="normal">1837</span>
+<span class="normal">1838</span>
+<span class="normal">1839</span>
+<span class="normal">1840</span>
+<span class="normal">1841</span>
+<span class="normal">1842</span>
+<span class="normal">1843</span>
+<span class="normal">1844</span>
+<span class="normal">1845</span>
+<span class="normal">1846</span>
+<span class="normal">1847</span>
+<span class="normal">1848</span>
+<span class="normal">1849</span>
+<span class="normal">1850</span>
+<span class="normal">1851</span>
+<span class="normal">1852</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@only_allow_module</span>
 <span class="k">def</span> <span class="nf">step</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">u</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
@@ -11151,21 +11219,21 @@ on the data and that should not be learned). For stimuli that depend on data
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1491</span>
-<span class="normal">1492</span>
-<span class="normal">1493</span>
-<span class="normal">1494</span>
-<span class="normal">1495</span>
-<span class="normal">1496</span>
-<span class="normal">1497</span>
-<span class="normal">1498</span>
-<span class="normal">1499</span>
-<span class="normal">1500</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1500</span>
 <span class="normal">1501</span>
 <span class="normal">1502</span>
 <span class="normal">1503</span>
 <span class="normal">1504</span>
-<span class="normal">1505</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">stimulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="normal">1505</span>
+<span class="normal">1506</span>
+<span class="normal">1507</span>
+<span class="normal">1508</span>
+<span class="normal">1509</span>
+<span class="normal">1510</span>
+<span class="normal">1511</span>
+<span class="normal">1512</span>
+<span class="normal">1513</span>
+<span class="normal">1514</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">stimulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Insert a stimulus into the compartment.</span>
 
 <span class="sd">    current must be a 1d array or have batch dimension of size `(num_compartments, )`</span>
@@ -11389,34 +11457,7 @@ two of them.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2007</span>
-<span class="normal">2008</span>
-<span class="normal">2009</span>
-<span class="normal">2010</span>
-<span class="normal">2011</span>
-<span class="normal">2012</span>
-<span class="normal">2013</span>
-<span class="normal">2014</span>
-<span class="normal">2015</span>
-<span class="normal">2016</span>
-<span class="normal">2017</span>
-<span class="normal">2018</span>
-<span class="normal">2019</span>
-<span class="normal">2020</span>
-<span class="normal">2021</span>
-<span class="normal">2022</span>
-<span class="normal">2023</span>
-<span class="normal">2024</span>
-<span class="normal">2025</span>
-<span class="normal">2026</span>
-<span class="normal">2027</span>
-<span class="normal">2028</span>
-<span class="normal">2029</span>
-<span class="normal">2030</span>
-<span class="normal">2031</span>
-<span class="normal">2032</span>
-<span class="normal">2033</span>
-<span class="normal">2034</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2034</span>
 <span class="normal">2035</span>
 <span class="normal">2036</span>
 <span class="normal">2037</span>
@@ -11440,7 +11481,34 @@ two of them.</p>
 <span class="normal">2055</span>
 <span class="normal">2056</span>
 <span class="normal">2057</span>
-<span class="normal">2058</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
+<span class="normal">2058</span>
+<span class="normal">2059</span>
+<span class="normal">2060</span>
+<span class="normal">2061</span>
+<span class="normal">2062</span>
+<span class="normal">2063</span>
+<span class="normal">2064</span>
+<span class="normal">2065</span>
+<span class="normal">2066</span>
+<span class="normal">2067</span>
+<span class="normal">2068</span>
+<span class="normal">2069</span>
+<span class="normal">2070</span>
+<span class="normal">2071</span>
+<span class="normal">2072</span>
+<span class="normal">2073</span>
+<span class="normal">2074</span>
+<span class="normal">2075</span>
+<span class="normal">2076</span>
+<span class="normal">2077</span>
+<span class="normal">2078</span>
+<span class="normal">2079</span>
+<span class="normal">2080</span>
+<span class="normal">2081</span>
+<span class="normal">2082</span>
+<span class="normal">2083</span>
+<span class="normal">2084</span>
+<span class="normal">2085</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
