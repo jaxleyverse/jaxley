@@ -1660,23 +1660,27 @@ class Module(ABC):
         """Removes all stimuli from the module."""
         self.delete_clamps("i")
 
-    def delete_clamps(self, state_name: str):
+    def delete_clamps(self, state_name: Optional[str] = None):
         """Removes all clamps of the given state from the module."""
-        if state_name in self.externals:
-            keep_inds = ~np.isin(
-                self.base.external_inds[state_name], self._nodes_in_view
-            )
-            base_exts = self.base.externals
-            base_exts_inds = self.base.external_inds
-            if np.all(~keep_inds):
-                base_exts.pop(state_name, None)
-                base_exts_inds.pop(state_name, None)
+        all_externals = list(self.externals.keys())
+        all_externals.remove("i")
+        state_names = all_externals if state_name is None else [state_name]
+        for state_name in state_names:
+            if state_name in self.externals:
+                keep_inds = ~np.isin(
+                    self.base.external_inds[state_name], self._nodes_in_view
+                )
+                base_exts = self.base.externals
+                base_exts_inds = self.base.external_inds
+                if np.all(~keep_inds):
+                    base_exts.pop(state_name, None)
+                    base_exts_inds.pop(state_name, None)
+                else:
+                    base_exts[state_name] = base_exts[state_name][keep_inds]
+                    base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+                self._update_view()
             else:
-                base_exts[state_name] = base_exts[state_name][keep_inds]
-                base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
-            self._update_view()
-        else:
-            pass  # does not have to be deleted if not in externals
+                pass  # does not have to be deleted if not in externals
 
     def insert(self, channel: Channel):
         """Insert a channel into the module.
