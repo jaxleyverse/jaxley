@@ -1663,7 +1663,8 @@ class Module(ABC):
     def delete_clamps(self, state_name: Optional[str] = None):
         """Removes all clamps of the given state from the module."""
         all_externals = list(self.externals.keys())
-        all_externals.remove("i")
+        if "i" in all_externals:
+            all_externals.remove("i")
         state_names = all_externals if state_name is None else [state_name]
         for state_name in state_names:
             if state_name in self.externals:
