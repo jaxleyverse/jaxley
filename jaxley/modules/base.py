@@ -1514,7 +1514,8 @@ class Module(ABC):
 
         This function sets external states for the compartments.
         """
-        if state_name not in self.nodes.columns:
+
+        if state_name not in list(self.nodes.columns) + list(self.edges.columns):
             raise KeyError(f"{state_name} is not a recognized state in this module.")
         self._external_input(state_name, state_array, verbose=verbose)
 
@@ -1526,13 +1527,11 @@ class Module(ABC):
     ):
         values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
         batch_size = values.shape[0]
-        num_inserted = len(self._nodes_in_view)
-        is_multiple = num_inserted == batch_size
-        values = (
-            values
-            if is_multiple
-            else jnp.repeat(values, len(self._nodes_in_view), axis=0)
+        num_inserted = (
+            len(self._nodes_in_view) if key in self.nodes else len(self._edges_in_view)
         )
+        is_multiple = num_inserted == batch_size
+        values = values if is_multiple else jnp.repeat(values, num_inserted, axis=0)
         assert batch_size in [
             1,
             num_inserted,
@@ -1546,8 +1545,14 @@ class Module(ABC):
                 [self.base.external_inds[key], self._nodes_in_view]
             )
         else:
-            self.base.externals[key] = values
-            self.base.external_inds[key] = self._nodes_in_view
+            if key in self.base.nodes.columns:
+                self.base.externals[key] = values
+                self.base.external_inds[key] = self._nodes_in_view
+            elif key in self.base.edges.columns:
+                self.base.externals[key] = values
+                self.base.external_inds[key] = self._edges_in_view
+            else:
+                raise KeyError(f"Key '{key}' not found in nodes or edges")
 
         if verbose:
             print(
@@ -1588,8 +1593,11 @@ class Module(ABC):
             verbose: Whether or not to print the number of inserted clamps. `False`
                 by default because this method is meant to be jitted.
         """
+        if state_name not in list(self.nodes.columns) + list(self.edges.columns):
+            raise KeyError(f"{state_name} is not a recognized state in this module.")
+        data = self.nodes if state_name in self.nodes.columns else self.edges
         return self._data_external_input(
-            state_name, state_array, data_clamps, self.nodes, verbose=verbose
+            state_name, state_array, data_clamps, data, verbose=verbose
         )
 
     def _data_external_input(
@@ -1606,10 +1614,16 @@ class Module(ABC):
             else jnp.expand_dims(state_array, axis=0)
         )
         batch_size = state_array.shape[0]
-        num_inserted = len(self._nodes_in_view)
+        num_inserted = (
+            len(self._nodes_in_view)
+            if state_name in self.nodes
+            else len(self._edges_in_view)
+        )
         is_multiple = num_inserted == batch_size
         state_array = (
-            state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
+            state_array
+            if is_multiple
+            else jnp.repeat(state_array, num_inserted, axis=0)
         )
         assert batch_size in [
             1,
