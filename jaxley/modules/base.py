@@ -1185,7 +1185,7 @@ class Module(ABC):
         Returns states seperated by comps and edges."""
         channel_states = [name for c in self.channels for name in c.channel_states]
         synapse_states = [name for s in self.synapses for name in s.synapse_states]
-        membrane_states = ["v"] + self.membrane_current_names
+        membrane_states = ["v", "i"] + self.membrane_current_names
         return channel_states + membrane_states, synapse_states
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
