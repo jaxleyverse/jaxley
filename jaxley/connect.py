@@ -109,7 +109,7 @@ def sparse_connect(
     row_inds = np.unique(row_inds, axis=0)
     from_idx = row_inds[:, 0]
     to_idx = row_inds[:, 1]
-    
+
     # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_comp_indices = (
         pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
