@@ -84,41 +84,42 @@ def test_fully_connect():
 
     fully_connect(net[8:12], net[12:16], TestSynapse())
 
+    # This was previously visually inspected
     assert all(
         net.edges.global_post_comp_index
         == [
-            108,
-            135,
-            165,
+            96,
+            120,
+            144,
             168,
-            99,
-            123,
-            151,
-            177,
-            115,
-            141,
-            162,
-            172,
-            119,
-            126,
-            156,
-            169,
-            294,
-            329,
-            345,
-            379,
-            295,
-            317,
-            356,
-            365,
-            311,
-            325,
-            355,
-            375,
-            302,
-            320,
-            352,
-            375,
+            96,
+            120,
+            144,
+            168,
+            96,
+            120,
+            144,
+            168,
+            96,
+            120,
+            144,
+            168,
+            288,
+            312,
+            336,
+            360,
+            288,
+            312,
+            336,
+            360,
+            288,
+            312,
+            336,
+            360,
+            288,
+            312,
+            336,
+            360,
         ]
     )
 
@@ -135,27 +136,26 @@ def test_sparse_connect():
 
     sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5)
 
+    # This was previously visually inspected
     assert all(
-        [
-            63,
-            59,
-            65,
-            86,
-            80,
-            58,
-            92,
-            85,
+        net.edges.global_post_comp_index
+        == [
+            48,
+            60,
+            84,
+            60,
+            72,
+            48,
+            72,
             168,
-            145,
-            189,
-            153,
             180,
-            190,
-            184,
-            163,
-            159,
-            179,
-            182,
+            144,
+            168,
+            180,
+            156,
+            180,
+            144,
+            180,
         ]
     )
 
@@ -233,3 +233,8 @@ def test_connectivity_matrix_connect():
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
+
+
+if __name__ == "__main__":
+
+    test_sparse_connect()
