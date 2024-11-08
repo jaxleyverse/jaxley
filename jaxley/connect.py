@@ -144,32 +144,28 @@ def connectivity_matrix_connect(
         connectivity_matrix: A boolean matrix indicating the connections between cells.
     """
     # Get pre- and postsynaptic cell indices
-    pre_cell_inds = pre_cell_view._cells_in_view
-    post_cell_inds = post_cell_view._cells_in_view
-    # setting scope ensure that this works indep of current scope
-    pre_nodes = pre_cell_view.scope("local").branch(0).comp(0).nodes
-    pre_nodes["index"] = pre_nodes.index
-    pre_cell_nodes = pre_nodes.set_index("global_cell_index")
+    global_pre_cell_inds = pre_cell_view._cells_in_view
+    global_post_cell_inds = post_cell_view._cells_in_view
 
     assert connectivity_matrix.shape == (
-        len(pre_cell_inds),
-        len(post_cell_inds),
+        len(global_pre_cell_inds),
+        len(global_post_cell_inds),
     ), "Connectivity matrix must have shape (num_pre, num_post)."
     assert connectivity_matrix.dtype == bool, "Connectivity matrix must be boolean."
 
-    # Get connection pairs from connectivity matrix
+    # Get pre to post connection pairs from connectivity matrix
     from_idx, to_idx = np.where(connectivity_matrix)
 
     # Pre-synapse at the zero-eth branch and zero-eth compartment
-    global_pre_indices = (
+    global_pre_comp_indices = (
         pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
     )  # setting scope ensure that this works indep of current scope
-    pre_rows = pre_cell_view.select(nodes=global_pre_indices[from_idx]).nodes
+    pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
 
     # Post-synapse also at the zero-eth branch and zero-eth compartment
-    global_post_indices = (
+    global_post_comp_indices = (
         post_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
     )
-    post_rows = post_cell_view.select(nodes=global_post_indices[to_idx]).nodes
+    post_rows = post_cell_view.select(nodes=global_post_comp_indices[to_idx]).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
