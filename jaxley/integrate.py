@@ -118,11 +118,11 @@ def add_stimuli(
             if data_stimuli is not None:
                 externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
                 external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[2].global_comp_index.to_numpy()]
+                    [external_inds["i"], data_stimuli[2].index.to_numpy()]
                 )
         else:
             externals["i"] = data_stimuli[1]
-            external_inds["i"] = data_stimuli[2].global_comp_index.to_numpy()
+            external_inds["i"] = data_stimuli[2].index.to_numpy()
 
     return externals, external_inds
 
@@ -148,11 +148,11 @@ def add_clamps(
         if state_name in externals.keys():
             externals[state_name] = jnp.concatenate([externals[state_name], clamps])
             external_inds[state_name] = jnp.concatenate(
-                [external_inds[state_name], inds.global_comp_index.to_numpy()]
+                [external_inds[state_name], inds.index.to_numpy()]
             )
         else:
             externals[state_name] = clamps
-            external_inds[state_name] = inds.global_comp_index.to_numpy()
+            external_inds[state_name] = inds.index.to_numpy()
 
     return externals, external_inds
 

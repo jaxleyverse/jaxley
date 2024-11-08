@@ -1179,6 +1179,15 @@ class Module(ABC):
                 np.concatenate([self.base.groups[group_name], self._nodes_in_view])
             )
 
+    def _get_state_names(self) -> Tuple[List, List]:
+        """Collect all recordable / clampable states in the membrane and synapses.
+
+        Returns states seperated by comps and edges."""
+        channel_states = [name for c in self.channels for name in c.channel_states]
+        synapse_states = [name for s in self.synapses for name in s.synapse_states]
+        membrane_states = ["v", "i"] + self.membrane_current_names
+        return channel_states + membrane_states, synapse_states
+
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
 
@@ -1447,10 +1456,10 @@ class Module(ABC):
         self.base.debug_states["par_inds"] = self.base.par_inds
 
     def record(self, state: str = "v", verbose=True):
-        in_view = None
-        in_view = self._edges_in_view if state in self.edges.columns else in_view
-        in_view = self._nodes_in_view if state in self.nodes.columns else in_view
-        assert in_view is not None, "State not found in nodes or edges."
+        comp_states, edge_states = self._get_state_names()
+        if state not in comp_states + edge_states:
+            raise KeyError(f"{state} is not a recognized state in this module.")
+        in_view = self._nodes_in_view if state in comp_states else self._edges_in_view
 
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
@@ -1514,8 +1523,6 @@ class Module(ABC):
 
         This function sets external states for the compartments.
         """
-        if state_name not in self.nodes.columns:
-            raise KeyError(f"{state_name} is not a recognized state in this module.")
         self._external_input(state_name, state_array, verbose=verbose)
 
     def _external_input(
@@ -1524,15 +1531,16 @@ class Module(ABC):
         values: Optional[jnp.ndarray],
         verbose: bool = True,
     ):
+        comp_states, edge_states = self._get_state_names()
+        if key not in comp_states + edge_states:
+            raise KeyError(f"{key} is not a recognized state in this module.")
         values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
         batch_size = values.shape[0]
-        num_inserted = len(self._nodes_in_view)
-        is_multiple = num_inserted == batch_size
-        values = (
-            values
-            if is_multiple
-            else jnp.repeat(values, len(self._nodes_in_view), axis=0)
+        num_inserted = (
+            len(self._nodes_in_view) if key in comp_states else len(self._edges_in_view)
         )
+        is_multiple = num_inserted == batch_size
+        values = values if is_multiple else jnp.repeat(values, num_inserted, axis=0)
         assert batch_size in [
             1,
             num_inserted,
@@ -1546,9 +1554,12 @@ class Module(ABC):
                 [self.base.external_inds[key], self._nodes_in_view]
             )
         else:
-            self.base.externals[key] = values
-            self.base.external_inds[key] = self._nodes_in_view
-
+            if key in comp_states:
+                self.base.externals[key] = values
+                self.base.external_inds[key] = self._nodes_in_view
+            else:
+                self.base.externals[key] = values
+                self.base.external_inds[key] = self._edges_in_view
         if verbose:
             print(
                 f"Added {num_inserted} external_states. See `.externals` for details."
@@ -1588,8 +1599,12 @@ class Module(ABC):
             verbose: Whether or not to print the number of inserted clamps. `False`
                 by default because this method is meant to be jitted.
         """
+        comp_states, edge_states = self._get_state_names()
+        if state_name not in comp_states + edge_states:
+            raise KeyError(f"{state_name} is not a recognized state in this module.")
+        data = self.nodes if state_name in comp_states else self.edges
         return self._data_external_input(
-            state_name, state_array, data_clamps, self.nodes, verbose=verbose
+            state_name, state_array, data_clamps, data, verbose=verbose
         )
 
     def _data_external_input(
@@ -1600,16 +1615,23 @@ class Module(ABC):
         view: pd.DataFrame,
         verbose: bool = False,
     ):
+        comp_states, edge_states = self._get_state_names()
         state_array = (
             state_array
             if state_array.ndim == 2
             else jnp.expand_dims(state_array, axis=0)
         )
         batch_size = state_array.shape[0]
-        num_inserted = len(self._nodes_in_view)
+        num_inserted = (
+            len(self._nodes_in_view)
+            if state_name in comp_states
+            else len(self._edges_in_view)
+        )
         is_multiple = num_inserted == batch_size
         state_array = (
-            state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
+            state_array
+            if is_multiple
+            else jnp.repeat(state_array, num_inserted, axis=0)
         )
         assert batch_size in [
             1,
@@ -1638,23 +1660,28 @@ class Module(ABC):
         """Removes all stimuli from the module."""
         self.delete_clamps("i")
 
-    def delete_clamps(self, state_name: str):
+    def delete_clamps(self, state_name: Optional[str] = None):
         """Removes all clamps of the given state from the module."""
-        if state_name in self.externals:
-            keep_inds = ~np.isin(
-                self.base.external_inds[state_name], self._nodes_in_view
-            )
-            base_exts = self.base.externals
-            base_exts_inds = self.base.external_inds
-            if np.all(~keep_inds):
-                base_exts.pop(state_name, None)
-                base_exts_inds.pop(state_name, None)
+        all_externals = list(self.externals.keys())
+        if "i" in all_externals:
+            all_externals.remove("i")
+        state_names = all_externals if state_name is None else [state_name]
+        for state_name in state_names:
+            if state_name in self.externals:
+                keep_inds = ~np.isin(
+                    self.base.external_inds[state_name], self._nodes_in_view
+                )
+                base_exts = self.base.externals
+                base_exts_inds = self.base.external_inds
+                if np.all(~keep_inds):
+                    base_exts.pop(state_name, None)
+                    base_exts_inds.pop(state_name, None)
+                else:
+                    base_exts[state_name] = base_exts[state_name][keep_inds]
+                    base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+                self._update_view()
             else:
-                base_exts[state_name] = base_exts[state_name][keep_inds]
-                base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
-            self._update_view()
-        else:
-            pass  # does not have to be deleted if not in externals
+                pass  # does not have to be deleted if not in externals
 
     def insert(self, channel: Channel):
         """Insert a channel into the module.
