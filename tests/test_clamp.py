@@ -3,6 +3,9 @@
 
 import jax
 
+from jaxley.connect import connect
+from jaxley.synapses.ionotropic import IonotropicSynapse
+
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 from typing import Optional
@@ -23,6 +26,54 @@ def test_clamp_pointneuron():
 
     v = jx.integrate(comp, t_max=1.0)
     assert np.all(v[:, 1:] == -50.0)
+
+
+def test_clamp_currents():
+    comp = jx.Compartment()
+    comp.insert(HH())
+    comp.record()
+
+    # test clamp
+    comp.clamp("i_HH", 1.0 * jnp.ones((1000,)))
+    i1 = jx.integrate(comp, t_max=1.0)
+    assert np.all(i1[:, 1:] == 1.0)
+
+    # test data clamp
+    data_clamps = None
+    ipts = 1.0 * jnp.ones((1000,))
+    data_clamps = comp.data_clamp("i_HH", ipts, data_clamps=data_clamps)
+
+    i2 = jx.integrate(comp, data_clamps=data_clamps, t_max=1.0)
+    assert np.all(i2[:, 1:] == 1.0)
+
+    assert np.all(np.isclose(i1, i2))
+
+
+def test_clamp_synapse():
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 1)
+    cell1 = jx.Cell(branch, [-1])
+    cell2 = jx.Cell(branch, [-1])
+    net = jx.Network([cell1, cell2])
+    connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())
+    net.record("IonotropicSynapse_s")
+
+    # test clamp
+    net.clamp("IonotropicSynapse_s", 1.0 * jnp.ones((1000,)))
+    s1 = jx.integrate(net, t_max=1.0)
+    assert np.all(s1[:, 1:] == 1.0)
+
+    net.delete_clamps()
+
+    # test data clamp
+    data_clamps = None
+    ipts = 1.0 * jnp.ones((1000,))
+    data_clamps = net.data_clamp("IonotropicSynapse_s", ipts, data_clamps=data_clamps)
+
+    s2 = jx.integrate(net, data_clamps=data_clamps, t_max=1.0)
+    assert np.all(s2[:, 1:] == 1.0)
+
+    assert np.all(np.isclose(s1, s2))
 
 
 def test_clamp_multicompartment():
