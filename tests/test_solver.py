@@ -23,24 +23,17 @@ def test_exp_euler(x_inf):
     assert np.abs(fwd_euler - exp_euler) / np.abs(fwd_euler) < 1e-4
 
 
-def test_fwd_euler_and_crank_nicolson():
+def test_fwd_euler_and_crank_nicolson(SimpleNet):
     """FWD Euler does not yet support branched cells, but comps, branches, nets work.
 
     Tests whether forward Euler and Crank-Nicolson are sufficiently close to implicit
     Euler."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    branch.insert(HH())
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(2)])
+    net = SimpleNet(2, 1, 4, connect=True, copy=True)
 
     current = jx.step_current(1.0, 1.0, 0.1, 0.025, 10.0)
     net.cell(0).branch(0).comp(0).stimulate(current)
     net.cell(1).branch(0).comp(3).record()
 
-    pre = net.cell(0).branch(0).comp(0)
-    post = net.cell(1).branch(0).comp(0)
-    connect(pre, post, IonotropicSynapse())
     net.IonotropicSynapse.set("IonotropicSynapse_gS", 0.001)
 
     # As expected, using significantly shorter compartments or lower r_a leads to NaN

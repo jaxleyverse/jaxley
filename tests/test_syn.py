@@ -16,12 +16,9 @@ from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 
-def test_set_and_querying_params_one_type():
+def test_set_and_querying_params_one_type(SimpleNet):
     """Test if the correct parameters are set if one type of synapses is inserted."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(4)])
+    net = SimpleNet(4, 1, 4, copy=True)
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:

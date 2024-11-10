@@ -105,7 +105,7 @@ def test_swc_radius(file):
 
 
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
-def test_swc_voltages(file):
+def test_swc_voltages(file, SimpleMorphCell):
     """Check if voltages of SWC recording match.
 
     To match the branch indices between NEURON and jaxley, we rely on comparing the
@@ -143,7 +143,7 @@ def test_swc_voltages(file):
 
     ####################### jaxley ##################
     _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
-    cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
+    cell = SimpleMorphCell(fname, nseg_per_branch, max_branch_len=2_000.0, copy=True)
     cell.insert(HH())
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]

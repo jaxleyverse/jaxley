@@ -16,16 +16,9 @@ from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
-def test_record_and_stimulate_api():
+def test_record_and_stimulate_api(SimpleCell):
     """Test the API for recording and stimulating."""
-    nseg_per_branch = 2
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+    cell = SimpleCell(3, 2, copy=True)
 
     cell.branch(0).loc(0.0).record()
     cell.branch(1).loc(1.0).record()
@@ -37,16 +30,9 @@ def test_record_and_stimulate_api():
     cell.delete_stimuli()
 
 
-def test_record_shape():
+def test_record_shape(SimpleCell):
     """Test the API for recording and stimulating."""
-    nseg_per_branch = 2
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+    cell = SimpleCell(3, 2, copy=True)
 
     current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
     cell.branch(1).loc(1.0).stimulate(current)
@@ -64,7 +50,7 @@ def test_record_shape():
     ), f"Shape of recordings ({voltages.shape}) is not right."
 
 
-def test_record_synaptic_and_membrane_states():
+def test_record_synaptic_and_membrane_states(SimpleNet):
     """Tests recording of synaptic and membrane states.
 
     Tests are functional, not just API. They test whether the voltage and synaptic
@@ -73,10 +59,7 @@ def test_record_synaptic_and_membrane_states():
 
     _ = np.random.seed(0)  # Seed because connectivity is at random postsyn locs.
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(3)])
+    net = SimpleNet(3, 1, 4, copy=True)
     net.insert(HH())
 
     fully_connect(net.cell([0]), net.cell([1]), IonotropicSynapse())

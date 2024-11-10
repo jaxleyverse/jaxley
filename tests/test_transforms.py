@@ -151,10 +151,8 @@ def test_correct(transform):
     "transform",
     [jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2), jt.NegSoftplusTransform(2)],
 )
-def test_user_api(transform):
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+def test_user_api(transform, SimpleCell):
+    cell = SimpleCell(3, 2, copy=True)
 
     cell.branch("all").make_trainable("radius")
     cell.branch(2).make_trainable("radius")
