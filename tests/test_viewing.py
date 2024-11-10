@@ -317,7 +317,7 @@ def test_view_supported_index_types(module):
         [0, 1, 2],
         np.array([0, 1, 2]),
         pd.Index([0, 1, 2]),
-        np.array([True, False, True]),
+        np.array([True, False, True] * 100)[: len(module.nodes)],
     ]
 
     # comp.comp is not allowed
@@ -330,9 +330,9 @@ def test_view_supported_index_types(module):
             assert module.comp(index), f"Failed for {type(index)}"
             assert View(module).comp(index), f"Failed for {type(index)}"
 
-            # for loc test float and list of floats
-            assert module.loc(0.0), "Failed for float"
-            assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
+        # for loc test float and list of floats
+        assert module.loc(0.0), "Failed for float"
+        assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
     else:
         with pytest.raises(AssertionError):
             module.comp(0)

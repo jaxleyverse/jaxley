@@ -231,8 +231,10 @@ class Module(ABC):
 
         I.e. for net -> [cell, branch, comp]. For branch -> [comp]"""
         levels = ["network", "cell", "branch", "comp"]
-        children = levels[levels.index(self._current_view) + 1 :]
-        return children
+        if self._current_view in levels:
+            children = levels[levels.index(self._current_view) + 1 :]
+            return children
+        return []
 
     def _has_childview(self, key: str) -> bool:
         child_views = self._childviews()
@@ -383,21 +385,19 @@ class Module(ABC):
 
         Returns:
             array of indices of shape (N,)"""
+        if is_str_all(idx):  # also asserts that the only allowed str == "all"
+            return idx
+
         np_dtype = np.int64 if dtype is int else np.float64
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
 
-        childviews = self._childviews()
-        childview = childviews[0] if len(childviews) > 0 else None
-        num = len(self._nodes_in_view)
-        num = len(self._branches_in_view) if childview == "branch" else num
-        num = len(self._cells_in_view) if childview == "cell" else num
-
-        idx = np.arange(num)[idx] if isinstance(idx, slice) else idx
-        if is_str_all(idx):  # also asserts that the only allowed str == "all"
-            return idx
-        idx = np.arange(num)[idx] if idx.dtype == bool else idx
+        idx = np.arange(len(self.base.nodes))[idx] if isinstance(idx, slice) else idx
+        if idx.dtype == bool:
+            which_idx = len(idx) == np.array(self.shape)
+            assert np.any(which_idx), "Index not matching num of cells/branches/comps."
+            idx = np.arange(self.shape[np.where(which_idx)[0][0]])[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
         assert idx.dtype in [np_dtype, bool], "Invalid dtype"
         return idx.reshape(-1)
