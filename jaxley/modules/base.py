@@ -395,9 +395,9 @@ class Module(ABC):
         num = len(self._cells_in_view) if childview == "cell" else num
 
         idx = np.arange(num)[idx] if isinstance(idx, slice) else idx
-        idx = np.arange(num)[idx] if idx.dtype == bool else idx
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
+        idx = np.arange(num)[idx] if idx.dtype == bool else idx
         assert isinstance(idx, np.ndarray), "Invalid type"
         assert idx.dtype in [np_dtype, bool], "Invalid dtype"
         return idx.reshape(-1)
