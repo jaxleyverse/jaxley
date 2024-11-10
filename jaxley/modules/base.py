@@ -387,12 +387,19 @@ class Module(ABC):
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
-        num_nodes = len(self._nodes_in_view)
-        idx = np.arange(num_nodes + 1)[idx] if isinstance(idx, slice) else idx
+
+        childviews = self._childviews()
+        childview = childviews[0] if len(childviews) > 0 else None
+        num = len(self._nodes_in_view)
+        num = len(self._branches_in_view) if childview == "branch" else num
+        num = len(self._cells_in_view) if childview == "cell" else num
+
+        idx = np.arange(num)[idx] if isinstance(idx, slice) else idx
+        idx = np.arange(num)[idx] if idx.dtype == bool else idx
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype == np_dtype, "Invalid dtype"
+        assert idx.dtype in [np_dtype, bool], "Invalid dtype"
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):

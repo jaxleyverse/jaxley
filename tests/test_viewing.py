@@ -317,6 +317,7 @@ def test_view_supported_index_types(module):
         [0, 1, 2],
         np.array([0, 1, 2]),
         pd.Index([0, 1, 2]),
+        np.array([True, False, True]),
     ]
 
     # comp.comp is not allowed
