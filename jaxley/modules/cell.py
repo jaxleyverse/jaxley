@@ -127,7 +127,7 @@ class Cell(Module):
         )
 
         # For morphology indexing.
-        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
 
@@ -142,13 +142,13 @@ class Cell(Module):
         user will use. Therefore, we always run this function at `.__init__()`.
         """
         children_and_parents = compute_morphology_indices_in_levels(
-            len(self.par_inds),
+            len(self._par_inds),
             self.child_belongs_to_branchpoint,
-            self.par_inds,
+            self._par_inds,
             self.child_inds,
         )
         branchpoint_group_inds = build_branchpoint_group_inds(
-            len(self.par_inds),
+            len(self._par_inds),
             self.child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
         )
@@ -158,7 +158,7 @@ class Cell(Module):
 
         levels = compute_levels(parents)
         children_in_level = compute_children_in_level(levels, children_inds)
-        parents_in_level = compute_parents_in_level(levels, self.par_inds, parents_inds)
+        parents_in_level = compute_parents_in_level(levels, self._par_inds, parents_inds)
         levels_and_nseg = pd.DataFrame().from_dict(
             {
                 "levels": levels,
@@ -224,8 +224,8 @@ class Cell(Module):
         # Edges from branchpoints to compartments.
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
             {
-                "source": np.arange(len(self.par_inds)) + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self.par_inds + 1] - 1,
+                "source": np.arange(len(self._par_inds)) + self.cumsum_nseg[-1],
+                "sink": self.cumsum_nseg[self._par_inds + 1] - 1,
                 "type": 1,
             }
         )

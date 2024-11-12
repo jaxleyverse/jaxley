@@ -53,7 +53,7 @@ class Compartment(Module):
         )
 
         # For morphology indexing.
-        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
         self._internal_node_inds = jnp.asarray([0])

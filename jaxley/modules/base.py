@@ -1431,9 +1431,9 @@ class Module(ABC):
         """
         # For scipy and jax.scipy.
         row_and_col_inds = compute_morphology_indices(
-            len(self.base.par_inds),
+            len(self.base._par_inds),
             self.base.child_belongs_to_branchpoint,
-            self.base.par_inds,
+            self.base._par_inds,
             self.base.child_inds,
             self.base.nseg,
             self.base.total_nbranches,
@@ -1453,7 +1453,7 @@ class Module(ABC):
 
         self.base.debug_states["nseg"] = self.base.nseg
         self.base.debug_states["child_inds"] = self.base.child_inds
-        self.base.debug_states["par_inds"] = self.base.par_inds
+        self.base.debug_states["par_inds"] = self.base._par_inds
 
     def record(self, state: str = "v", verbose=True):
         comp_states, edge_states = self._get_state_names()
@@ -1814,7 +1814,7 @@ class Module(ABC):
                     "sources": np.asarray(self._comp_edges["source"].to_list()),
                     "types": np.asarray(self._comp_edges["type"].to_list()),
                     "nseg_per_branch": self.nseg_per_branch,
-                    "par_inds": self.par_inds,
+                    "par_inds": self._par_inds,
                     "child_inds": self.child_inds,
                     "nbranches": self.total_nbranches,
                     "solver": voltage_solver,
