@@ -273,7 +273,7 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     exceptions += [
         "_internal_node_inds",
         "_par_inds",
-        "child_inds",
+        "_child_inds",
         "child_belongs_to_branchpoint",
         "solve_indexer",
         "_comp_edges",

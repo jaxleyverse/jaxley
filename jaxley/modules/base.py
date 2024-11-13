@@ -1434,7 +1434,7 @@ class Module(ABC):
             len(self.base._par_inds),
             self.base.child_belongs_to_branchpoint,
             self.base._par_inds,
-            self.base.child_inds,
+            self.base._child_inds,
             self.base.nseg,
             self.base.total_nbranches,
         )
@@ -1452,7 +1452,7 @@ class Module(ABC):
         self.base.debug_states["indptr"] = indptr
 
         self.base.debug_states["nseg"] = self.base.nseg
-        self.base.debug_states["child_inds"] = self.base.child_inds
+        self.base.debug_states["child_inds"] = self.base._child_inds
         self.base.debug_states["par_inds"] = self.base._par_inds
 
     def record(self, state: str = "v", verbose=True):
@@ -1815,7 +1815,7 @@ class Module(ABC):
                     "types": np.asarray(self._comp_edges["type"].to_list()),
                     "nseg_per_branch": self.nseg_per_branch,
                     "par_inds": self._par_inds,
-                    "child_inds": self.child_inds,
+                    "child_inds": self._child_inds,
                     "nbranches": self.total_nbranches,
                     "solver": voltage_solver,
                     "idx": self.solve_indexer,

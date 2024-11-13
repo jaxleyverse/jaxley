@@ -94,7 +94,7 @@ class Network(Module):
         )
 
         # For morphology indexing of both `jax.sparse` and the custom `jaxley` solvers.
-        self._par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self.child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
 
