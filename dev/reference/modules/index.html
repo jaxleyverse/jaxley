@@ -814,6 +814,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#jaxley.modules.base.Module.copy_node_property_to_edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      copy_node_property_to_edges
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#jaxley.modules.base.Module.data_clamp" class="md-nav__link">
     <span class="md-ellipsis">
       data_clamp
@@ -1572,6 +1581,15 @@
   <a href="#jaxley.modules.base.Module.copy" class="md-nav__link">
     <span class="md-ellipsis">
       copy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jaxley.modules.base.Module.copy_node_property_to_edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      copy_node_property_to_edges
     </span>
   </a>
   
@@ -4246,7 +4264,66 @@ branches, cells, networks).</p>
 <span class="normal">2241</span>
 <span class="normal">2242</span>
 <span class="normal">2243</span>
-<span class="normal">2244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="normal">2244</span>
+<span class="normal">2245</span>
+<span class="normal">2246</span>
+<span class="normal">2247</span>
+<span class="normal">2248</span>
+<span class="normal">2249</span>
+<span class="normal">2250</span>
+<span class="normal">2251</span>
+<span class="normal">2252</span>
+<span class="normal">2253</span>
+<span class="normal">2254</span>
+<span class="normal">2255</span>
+<span class="normal">2256</span>
+<span class="normal">2257</span>
+<span class="normal">2258</span>
+<span class="normal">2259</span>
+<span class="normal">2260</span>
+<span class="normal">2261</span>
+<span class="normal">2262</span>
+<span class="normal">2263</span>
+<span class="normal">2264</span>
+<span class="normal">2265</span>
+<span class="normal">2266</span>
+<span class="normal">2267</span>
+<span class="normal">2268</span>
+<span class="normal">2269</span>
+<span class="normal">2270</span>
+<span class="normal">2271</span>
+<span class="normal">2272</span>
+<span class="normal">2273</span>
+<span class="normal">2274</span>
+<span class="normal">2275</span>
+<span class="normal">2276</span>
+<span class="normal">2277</span>
+<span class="normal">2278</span>
+<span class="normal">2279</span>
+<span class="normal">2280</span>
+<span class="normal">2281</span>
+<span class="normal">2282</span>
+<span class="normal">2283</span>
+<span class="normal">2284</span>
+<span class="normal">2285</span>
+<span class="normal">2286</span>
+<span class="normal">2287</span>
+<span class="normal">2288</span>
+<span class="normal">2289</span>
+<span class="normal">2290</span>
+<span class="normal">2291</span>
+<span class="normal">2292</span>
+<span class="normal">2293</span>
+<span class="normal">2294</span>
+<span class="normal">2295</span>
+<span class="normal">2296</span>
+<span class="normal">2297</span>
+<span class="normal">2298</span>
+<span class="normal">2299</span>
+<span class="normal">2300</span>
+<span class="normal">2301</span>
+<span class="normal">2302</span>
+<span class="normal">2303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Module base class.</span>
 
 <span class="sd">    Modules are everything that can be passed to `jx.integrate`, i.e. compartments,</span>
@@ -6429,6 +6506,65 @@ branches, cells, networks).</p>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="n">dims</span><span class="p">]</span> <span class="o">=</span> <span class="n">rot</span>
         <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">copy_node_property_to_edges</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">properties_to_import</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+        <span class="n">pre_or_post</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy a property that is in `node` over to `edges`.</span>
+
+<span class="sd">        By default, `.edges` does not contain the properties (radius, length, cm,</span>
+<span class="sd">        channel properties,...) of the pre- and post-synaptic compartments. This</span>
+<span class="sd">        method allows to copy a property of the pre- and/or post-synaptic compartment</span>
+<span class="sd">        to the edges. It is then accessible as `module.edges.pre_property_name` or</span>
+<span class="sd">        `module.edges.post_property_name`.</span>
+
+<span class="sd">        Note that, if you modify the node property _after_ having run</span>
+<span class="sd">        `copy_node_property_to_edges`, it will not automatically update the value in</span>
+<span class="sd">        `.edges`.</span>
+
+<span class="sd">        Note that, if this method is called on a View (e.g.</span>
+<span class="sd">        `net.cell(0).copy_node_property_to_edges`), then it will return a View, but</span>
+<span class="sd">        it will _not_ modify the module itself.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            properties_to_import: The name of the node properties that should be</span>
+<span class="sd">                imported. To list all available properties, look at</span>
+<span class="sd">                `module.nodes.columns`.</span>
+<span class="sd">            pre_or_post: Whether to import only the pre-synaptic property (&#39;pre&#39;), only</span>
+<span class="sd">                the post-synaptic property (&#39;post&#39;), or both ([&#39;pre&#39;, &#39;post&#39;]).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A new module which has the property copied to the `nodes`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># If a string is passed, wrap it as a list.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pre_or_post</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">pre_or_post</span> <span class="o">=</span> <span class="p">[</span><span class="n">pre_or_post</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">properties_to_import</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">properties_to_import</span> <span class="o">=</span> <span class="p">[</span><span class="n">properties_to_import</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">pre_or_post_val</span> <span class="ow">in</span> <span class="n">pre_or_post</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">pre_or_post_val</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">property_to_import</span> <span class="ow">in</span> <span class="n">properties_to_import</span><span class="p">:</span>
+                <span class="c1"># Delete the column if it already exists. Otherwise it would exist</span>
+                <span class="c1"># twice.</span>
+                <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">property_to_import</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+                        <span class="n">columns</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">property_to_import</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[[</span><span class="n">property_to_import</span><span class="p">,</span> <span class="s2">&quot;global_comp_index&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+                        <span class="s2">&quot;global_comp_index&quot;</span>
+                    <span class="p">),</span>
+                    <span class="n">on</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;global_</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_comp_index&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                    <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+                        <span class="n">property_to_import</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">property_to_import</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -7433,6 +7569,226 @@ are only used for plotting.</p>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Not yet implemented.&quot;</span><span class="p">)</span>
         <span class="c1"># initialize a new module with the same attributes</span>
     <span class="k">return</span> <span class="n">view</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.modules.base.Module.copy_node_property_to_edges" class="doc doc-heading">
+            <code class=" language-python"><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="n">properties_to_import</span><span class="p">,</span> <span class="n">pre_or_post</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;pre&#39;</span><span class="p">,</span> <span class="s1">&#39;post&#39;</span><span class="p">])</span></code>
+
+<a href="#jaxley.modules.base.Module.copy_node_property_to_edges" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Copy a property that is in <code>node</code> over to <code>edges</code>.</p>
+<p>By default, <code>.edges</code> does not contain the properties (radius, length, cm,
+channel properties,&hellip;) of the pre- and post-synaptic compartments. This
+method allows to copy a property of the pre- and/or post-synaptic compartment
+to the edges. It is then accessible as <code>module.edges.pre_property_name</code> or
+<code>module.edges.post_property_name</code>.</p>
+<p>Note that, if you modify the node property <em>after</em> having run
+<code>copy_node_property_to_edges</code>, it will not automatically update the value in
+<code>.edges</code>.</p>
+<p>Note that, if this method is called on a View (e.g.
+<code>net.cell(0).copy_node_property_to_edges</code>), then it will return a View, but
+it will <em>not</em> modify the module itself.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>properties_to_import</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[str, <span title="typing.List">List</span>[str]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The name of the node properties that should be
+imported. To list all available properties, look at
+<code>module.nodes.columns</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pre_or_post</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[str, <span title="typing.List">List</span>[str]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to import only the pre-synaptic property (&lsquo;pre&rsquo;), only
+the post-synaptic property (&lsquo;post&rsquo;), or both ([&lsquo;pre&rsquo;, &lsquo;post&rsquo;]).</p>
+              </div>
+            </td>
+            <td>
+                  <code>[&#39;pre&#39;, &#39;post&#39;]</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="jaxley.modules.base.Module" href="#jaxley.modules.base.Module">Module</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A new module which has the property copied to the <code>nodes</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/modules/base.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2246</span>
+<span class="normal">2247</span>
+<span class="normal">2248</span>
+<span class="normal">2249</span>
+<span class="normal">2250</span>
+<span class="normal">2251</span>
+<span class="normal">2252</span>
+<span class="normal">2253</span>
+<span class="normal">2254</span>
+<span class="normal">2255</span>
+<span class="normal">2256</span>
+<span class="normal">2257</span>
+<span class="normal">2258</span>
+<span class="normal">2259</span>
+<span class="normal">2260</span>
+<span class="normal">2261</span>
+<span class="normal">2262</span>
+<span class="normal">2263</span>
+<span class="normal">2264</span>
+<span class="normal">2265</span>
+<span class="normal">2266</span>
+<span class="normal">2267</span>
+<span class="normal">2268</span>
+<span class="normal">2269</span>
+<span class="normal">2270</span>
+<span class="normal">2271</span>
+<span class="normal">2272</span>
+<span class="normal">2273</span>
+<span class="normal">2274</span>
+<span class="normal">2275</span>
+<span class="normal">2276</span>
+<span class="normal">2277</span>
+<span class="normal">2278</span>
+<span class="normal">2279</span>
+<span class="normal">2280</span>
+<span class="normal">2281</span>
+<span class="normal">2282</span>
+<span class="normal">2283</span>
+<span class="normal">2284</span>
+<span class="normal">2285</span>
+<span class="normal">2286</span>
+<span class="normal">2287</span>
+<span class="normal">2288</span>
+<span class="normal">2289</span>
+<span class="normal">2290</span>
+<span class="normal">2291</span>
+<span class="normal">2292</span>
+<span class="normal">2293</span>
+<span class="normal">2294</span>
+<span class="normal">2295</span>
+<span class="normal">2296</span>
+<span class="normal">2297</span>
+<span class="normal">2298</span>
+<span class="normal">2299</span>
+<span class="normal">2300</span>
+<span class="normal">2301</span>
+<span class="normal">2302</span>
+<span class="normal">2303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">copy_node_property_to_edges</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">properties_to_import</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">pre_or_post</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Module</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Copy a property that is in `node` over to `edges`.</span>
+
+<span class="sd">    By default, `.edges` does not contain the properties (radius, length, cm,</span>
+<span class="sd">    channel properties,...) of the pre- and post-synaptic compartments. This</span>
+<span class="sd">    method allows to copy a property of the pre- and/or post-synaptic compartment</span>
+<span class="sd">    to the edges. It is then accessible as `module.edges.pre_property_name` or</span>
+<span class="sd">    `module.edges.post_property_name`.</span>
+
+<span class="sd">    Note that, if you modify the node property _after_ having run</span>
+<span class="sd">    `copy_node_property_to_edges`, it will not automatically update the value in</span>
+<span class="sd">    `.edges`.</span>
+
+<span class="sd">    Note that, if this method is called on a View (e.g.</span>
+<span class="sd">    `net.cell(0).copy_node_property_to_edges`), then it will return a View, but</span>
+<span class="sd">    it will _not_ modify the module itself.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        properties_to_import: The name of the node properties that should be</span>
+<span class="sd">            imported. To list all available properties, look at</span>
+<span class="sd">            `module.nodes.columns`.</span>
+<span class="sd">        pre_or_post: Whether to import only the pre-synaptic property (&#39;pre&#39;), only</span>
+<span class="sd">            the post-synaptic property (&#39;post&#39;), or both ([&#39;pre&#39;, &#39;post&#39;]).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A new module which has the property copied to the `nodes`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If a string is passed, wrap it as a list.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pre_or_post</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">pre_or_post</span> <span class="o">=</span> <span class="p">[</span><span class="n">pre_or_post</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">properties_to_import</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">properties_to_import</span> <span class="o">=</span> <span class="p">[</span><span class="n">properties_to_import</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">pre_or_post_val</span> <span class="ow">in</span> <span class="n">pre_or_post</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">pre_or_post_val</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">property_to_import</span> <span class="ow">in</span> <span class="n">properties_to_import</span><span class="p">:</span>
+            <span class="c1"># Delete the column if it already exists. Otherwise it would exist</span>
+            <span class="c1"># twice.</span>
+            <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">property_to_import</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+                    <span class="n">columns</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">property_to_import</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[[</span><span class="n">property_to_import</span><span class="p">,</span> <span class="s2">&quot;global_comp_index&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+                    <span class="s2">&quot;global_comp_index&quot;</span>
+                <span class="p">),</span>
+                <span class="n">on</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;global_</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_comp_index&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+                    <span class="n">property_to_import</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre_or_post_val</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">property_to_import</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
