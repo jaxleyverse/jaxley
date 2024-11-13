@@ -13,7 +13,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
-from jaxley.connect import connect
+from jaxley.connect import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
 
@@ -215,6 +215,70 @@ def test_make_subset_trainable_corresponds_to_set():
     net2.cell(0).branch(1).loc(0.4).insert(HH())
     params2 = get_params_set_subset(net2)
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
+
+
+def test_copy_node_property_to_edges():
+    """Test synaptic parameter sharing via `.copy_node_property_to_edges()`.
+
+    This test does not explicitly use `make_trainable`, but
+    `copy_node_property_to_edges` is an important ingredient to parameter sharing.
+    """
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, nseg=2)
+    cell = jx.Cell(branch, parents=[-1, 0])
+    net = jx.Network([cell for _ in range(6)])
+    net.insert(HH())
+    net.cell(1).set("HH_gNa", 1.0)
+    net.cell(0).set("radius", 0.2)
+    net.cell(1).branch(0).comp(0).set("capacitance", 0.3)
+    fully_connect(net.cell("all"), net.cell("all"), IonotropicSynapse())
+
+    net.copy_node_property_to_edges("HH_gNa", "pre")
+    # Run it another time to ensure that it can be run twice.
+    net.copy_node_property_to_edges("HH_gNa", "pre")
+    assert "pre_HH_gNa" in net.edges.columns
+    assert "post_HH_gNa" not in net.edges.columns
+
+    # Query the second cell. Each cell has four compartments.
+    edges_gna_values = net.edges.query("global_pre_comp_index > 3")
+    edges_gna_values = edges_gna_values.query("global_pre_comp_index <= 7")
+    assert np.all(edges_gna_values["pre_HH_gNa"] == 1.0)
+
+    # Query the other cells. The first cell has four compartments.
+    edges_gna_values = net.edges.query("global_pre_comp_index <= 3")
+    assert np.all(edges_gna_values["pre_HH_gNa"] == 0.12)
+    edges_gna_values = net.edges.query("global_pre_comp_index > 7")
+    assert np.all(edges_gna_values["pre_HH_gNa"] == 0.12)
+
+    # Test whether multiple properties can be copied over.
+    net.copy_node_property_to_edges(["radius", "length"])
+    assert "pre_radius" in net.edges.columns
+    assert "post_radius" in net.edges.columns
+    assert "pre_length" in net.edges.columns
+    assert "post_length" in net.edges.columns
+
+    edges_gna_values = net.edges.query("global_pre_comp_index <= 3")
+    assert np.all(edges_gna_values["pre_radius"] == 0.2)
+
+    edges_gna_values = net.edges.query("global_pre_comp_index > 3")
+    assert np.all(edges_gna_values["pre_radius"] == 1.0)
+
+    # Test whether modifying an individual compartment also takes effect.
+    net.copy_node_property_to_edges(["capacitance"])
+    assert "pre_capacitance" in net.edges.columns
+    assert "post_capacitance" in net.edges.columns
+
+    edges_gna_values = net.edges.query("global_pre_comp_index == 4")
+    assert np.all(edges_gna_values["pre_capacitance"] == 0.3)
+
+    edges_gna_values = net.edges.query("global_post_comp_index == 4")
+    assert np.all(edges_gna_values["post_capacitance"] == 0.3)
+
+    edges_gna_values = net.edges.query("global_pre_comp_index != 4")
+    assert np.all(edges_gna_values["pre_capacitance"] == 1.0)
+
+    edges_gna_values = net.edges.query("global_post_comp_index != 4")
+    assert np.all(edges_gna_values["post_capacitance"] == 1.0)
 
 
 def build_two_networks():

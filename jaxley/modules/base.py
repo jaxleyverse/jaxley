@@ -2243,6 +2243,65 @@ class Module(ABC):
         if update_nodes:
             self._update_nodes_with_xyz()
 
+    def copy_node_property_to_edges(
+        self,
+        properties_to_import: Union[str, List[str]],
+        pre_or_post: Union[str, List[str]] = ["pre", "post"],
+    ) -> Module:
+        """Copy a property that is in `node` over to `edges`.
+
+        By default, `.edges` does not contain the properties (radius, length, cm,
+        channel properties,...) of the pre- and post-synaptic compartments. This
+        method allows to copy a property of the pre- and/or post-synaptic compartment
+        to the edges. It is then accessible as `module.edges.pre_property_name` or
+        `module.edges.post_property_name`.
+
+        Note that, if you modify the node property _after_ having run
+        `copy_node_property_to_edges`, it will not automatically update the value in
+        `.edges`.
+
+        Note that, if this method is called on a View (e.g.
+        `net.cell(0).copy_node_property_to_edges`), then it will return a View, but
+        it will _not_ modify the module itself.
+
+        Args:
+            properties_to_import: The name of the node properties that should be
+                imported. To list all available properties, look at
+                `module.nodes.columns`.
+            pre_or_post: Whether to import only the pre-synaptic property ('pre'), only
+                the post-synaptic property ('post'), or both (['pre', 'post']).
+
+        Returns:
+            A new module which has the property copied to the `nodes`.
+        """
+        # If a string is passed, wrap it as a list.
+        if isinstance(pre_or_post, str):
+            pre_or_post = [pre_or_post]
+        if isinstance(properties_to_import, str):
+            properties_to_import = [properties_to_import]
+
+        for pre_or_post_val in pre_or_post:
+            assert pre_or_post_val in ["pre", "post"]
+            for property_to_import in properties_to_import:
+                # Delete the column if it already exists. Otherwise it would exist
+                # twice.
+                if f"{pre_or_post_val}_{property_to_import}" in self.edges.columns:
+                    self.edges.drop(
+                        columns=f"{pre_or_post_val}_{property_to_import}", inplace=True
+                    )
+
+                self.edges = self.edges.join(
+                    self.nodes[[property_to_import, "global_comp_index"]].set_index(
+                        "global_comp_index"
+                    ),
+                    on=f"global_{pre_or_post_val}_comp_index",
+                )
+                self.edges = self.edges.rename(
+                    columns={
+                        property_to_import: f"{pre_or_post_val}_{property_to_import}"
+                    }
+                )
+
 
 class View(Module):
     """Views are instances of Modules which only track a subset of the
