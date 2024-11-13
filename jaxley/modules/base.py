@@ -1432,7 +1432,7 @@ class Module(ABC):
         # For scipy and jax.scipy.
         row_and_col_inds = compute_morphology_indices(
             len(self.base._par_inds),
-            self.base.child_belongs_to_branchpoint,
+            self.base._child_belongs_to_branchpoint,
             self.base._par_inds,
             self.base._child_inds,
             self.base.nseg,

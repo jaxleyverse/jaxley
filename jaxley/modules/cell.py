@@ -127,7 +127,7 @@ class Cell(Module):
         )
 
         # For morphology indexing.
-        self._par_inds, self._child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
 
@@ -143,13 +143,13 @@ class Cell(Module):
         """
         children_and_parents = compute_morphology_indices_in_levels(
             len(self._par_inds),
-            self.child_belongs_to_branchpoint,
+            self._child_belongs_to_branchpoint,
             self._par_inds,
             self._child_inds,
         )
         branchpoint_group_inds = build_branchpoint_group_inds(
             len(self._par_inds),
-            self.child_belongs_to_branchpoint,
+            self._child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
         )
         parents = self.comb_parents
@@ -231,7 +231,7 @@ class Cell(Module):
         )
         branchpoint_to_child_edges = pd.DataFrame().from_dict(
             {
-                "source": self.child_belongs_to_branchpoint + self.cumsum_nseg[-1],
+                "source": self._child_belongs_to_branchpoint + self.cumsum_nseg[-1],
                 "sink": self.cumsum_nseg[self._child_inds],
                 "type": 2,
             }

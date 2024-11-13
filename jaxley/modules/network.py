@@ -94,7 +94,7 @@ class Network(Module):
         )
 
         # For morphology indexing of both `jax.sparse` and the custom `jaxley` solvers.
-        self._par_inds, self._child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
 
@@ -114,7 +114,7 @@ class Network(Module):
     def _init_morph_jaxley_spsolve(self):
         branchpoint_group_inds = build_branchpoint_group_inds(
             len(self._par_inds),
-            self.child_belongs_to_branchpoint,
+            self._child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
         )
         children_in_level = merge_cells(
