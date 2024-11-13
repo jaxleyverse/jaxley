@@ -112,6 +112,7 @@ If you use `Jaxley`, consider citing the `corresponding paper <https://www.biorx
    :maxdepth: 2
    :caption: More guides/resources
 
+   advanced_tutorials
    jaxley
    contributor_guide
    changelog
