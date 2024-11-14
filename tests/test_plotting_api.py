@@ -19,31 +19,58 @@ import jaxley as jx
 from jaxley.synapses import IonotropicSynapse
 
 
-def test_cell():
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell = jx.read_swc(fname, nseg=4)
+@pytest.fixture(scope="module")
+def comp() -> jx.Compartment:
+    comp = jx.Compartment()
+    comp.compute_xyz()
+    return comp
 
+
+@pytest.fixture(scope="module")
+def branch(comp) -> jx.Branch:
+    branch = jx.Branch(comp, 4)
+    branch.compute_xyz()
+    return branch
+
+
+@pytest.fixture(scope="module")
+def cell(branch) -> jx.Cell:
+    cell = jx.Cell(branch, [-1, 0, 0, 1, 1])
+    cell.compute_xyz()
+    return cell
+
+
+@pytest.fixture(scope="module")
+def simple_net(cell) -> jx.Network:
+    net = jx.Network([cell] * 4)
+    net.compute_xyz()
+    return net
+
+
+@pytest.fixture(scope="module")
+def morph_cell() -> jx.Cell:
+    morph_cell = jx.read_swc(
+        os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc"),
+        nseg=1,
+    )
+    return morph_cell
+
+
+def test_cell(morph_cell):
     # Plot 1.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
-    ax = cell.vis(ax=ax)
-    ax = cell.branch([0, 1, 2]).vis(ax=ax, col="r")
-    ax = cell.branch(1).loc(0.9).vis(ax=ax, col="b")
+    ax = morph_cell.vis(ax=ax)
+    ax = morph_cell.branch([0, 1, 2]).vis(ax=ax, col="r")
+    ax = morph_cell.branch(1).loc(0.9).vis(ax=ax, col="b")
 
     # Plot 2.
-    cell.branch(0).add_to_group("soma")
-    cell.branch(1).add_to_group("soma")
-    ax = cell.soma.vis()
+    morph_cell.branch(0).add_to_group("soma")
+    morph_cell.branch(1).add_to_group("soma")
+    ax = morph_cell.soma.vis()
 
 
-def test_network():
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
-    cell2 = jx.read_swc(fname, nseg=4)
-    cell3 = jx.read_swc(fname, nseg=4)
-
-    net = jx.Network([cell1, cell2, cell3])
+def test_network(morph_cell):
+    net = jx.Network([morph_cell, morph_cell, morph_cell])
     connect(
         net.cell(0).branch(0).loc(0.0),
         net.cell(1).branch(0).loc(0.0),
@@ -81,11 +108,7 @@ def test_network():
     ax = net.excitatory.vis()
 
 
-def test_vis_networks_built_from_scartch():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-
+def test_vis_networks_built_from_scratch(comp, branch, cell):
     net = jx.Network([cell, cell])
     connect(
         net.cell(0).branch(0).loc(0.0),
@@ -110,25 +133,15 @@ def test_vis_networks_built_from_scartch():
 
     # Plot 3.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
-    comp.compute_xyz()
     ax = comp.vis(ax=ax)
 
     # Plot 4.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
-    branch.compute_xyz()
     ax = branch.vis(ax=ax)
 
 
-def test_mixed_network():
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-
-    net = jx.Network([cell1, cell2])
+def test_mixed_network(morph_cell, cell):
+    net = jx.Network([morph_cell, cell])
     connect(
         net.cell(0).branch(0).loc(0.0),
         net.cell(1).branch(0).loc(0.0),
@@ -145,9 +158,9 @@ def test_mixed_network():
     net.cell(1).move(0, -800)
     net.rotate(180)
 
-    before_xyzrs = deepcopy(net.xyzr[len(cell1.xyzr) :])
+    before_xyzrs = deepcopy(net.xyzr[len(morph_cell.xyzr) :])
     net.cell(1).rotate(90)
-    after_xyzrs = net.xyzr[len(cell1.xyzr) :]
+    after_xyzrs = net.xyzr[len(morph_cell.xyzr) :]
     # Test that rotation worked as expected.
     for b, a in zip(before_xyzrs, after_xyzrs):
         assert np.allclose(b[:, 0], -a[:, 1], atol=1e-6)
@@ -156,34 +169,24 @@ def test_mixed_network():
     _ = net.vis(detail="full")
 
 
-def test_volume_plotting():
-    comp = jx.Compartment()
-    comp.compute_xyz()
-    branch = jx.Branch(comp, 4)
-    branch.compute_xyz()
-    cell = jx.Cell([branch] * 3, [-1, 0, 0])
-    cell.compute_xyz()
-    net = jx.Network([cell] * 4)
-    net.compute_xyz()
-
-    morph_cell = jx.read_swc(
-        os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc"),
-        nseg=1,
-    )
-
+def test_volume_plotting_2d(comp, branch, cell, simple_net, morph_cell):
     fig, ax = plt.subplots()
-    for module in [comp, branch, cell, net, morph_cell]:
-        module.vis(type="comp", ax=ax)
+    for module in [comp, branch, cell, simple_net, morph_cell]:
+        module.vis(type="comp", ax=ax, morph_plot_kwargs={"resolution": 6})
     plt.close(fig)
 
+
+def test_volume_plotting_3d(comp, branch, cell, simple_net, morph_cell):
     # test 3D plotting
-    for module in [comp, branch, cell, net, morph_cell]:
-        module.vis(type="comp", dims=[0, 1, 2])
+    for module in [comp, branch, cell, simple_net, morph_cell]:
+        module.vis(type="comp", dims=[0, 1, 2], morph_plot_kwargs={"resolution": 6})
     plt.close()
 
+
+def test_morph_plotting(morph_cell):
     # test morph plotting (does not work if no radii in xyzr)
-    morph_cell.vis(type="morph")
+    morph_cell.vis(type="morph", morph_plot_kwargs={"resolution": 6})
     morph_cell.branch(1).vis(
-        type="morph", dims=[0, 1, 2]
+        type="morph", dims=[0, 1, 2], morph_plot_kwargs={"resolution": 6}
     )  # plotting whole thing takes too long
     plt.close()
