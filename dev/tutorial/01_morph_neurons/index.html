@@ -1053,7 +1053,7 @@
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
 </code></pre></div>
-<p>We will now build our first cell in <code>Jaxley</code>. You have two options to do this: you can either build a cell bottom-up by defining the morphology yourselve, or you can <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">load cells from SWC files</a>.</p>
+<p>We will now build our first cell in <code>Jaxley</code>. You have two options to do this: you can either build a cell bottom-up by defining the morphology yourselve, or you can <a href="https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html">load cells from SWC files</a>.</p>
 <h3 id="define-the-cell-from-scratch">Define the cell from scratch<a class="headerlink" href="#define-the-cell-from-scratch" title="Permanent link">&para;</a></h3>
 <p>To define a cell from scratch you first have to define a single compartment and then assemble those compartments into a branch:</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
@@ -1479,7 +1479,7 @@
 <p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_21_0.png" /></p>
 <p>More background and features on indexing as <code>cell.branch(0)</code> is in <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">this tutorial</a>.</p>
 <h3 id="change-parameters-of-the-cell">Change parameters of the cell<a class="headerlink" href="#change-parameters-of-the-cell" title="Permanent link">&para;</a></h3>
-<p>You can change properties of the cell with the <code>.set()</code> method (more details in <a href="http://localhost:8000/tutorials/03_setting_parameters.html">this tutorial</a>):</p>
+<p>You can change properties of the cell with the <code>.set()</code> method:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">)</span>
 </code></pre></div>
 <p>And we can again inspect the <code>.nodes</code> to make sure that the axial resistivity indeed changed:</p>
@@ -1580,12 +1580,12 @@
 <p>2 rows × 25 columns</p>
 </div>
 
-<p>In a similar way, you can modify channel properties or initial states (units are <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
+<p>In a similar way, you can modify channel properties or initial states (all units are the same as for the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;K_gK&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>  <span class="c1"># modify potassium conductance.</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mf">65.0</span><span class="p">)</span>  <span class="c1"># modify initial voltage.</span>
 </code></pre></div>
 <h3 id="stimulate-the-cell">Stimulate the cell<a class="headerlink" href="#stimulate-the-cell" title="Permanent link">&para;</a></h3>
-<p>We next stimulate one of the compartments with a step current. For this, we first define the step current (all units are the same as for the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
+<p>We next stimulate one of the compartments with a step current. For this, we first define the step current (units are again <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.025</span>
 <span class="n">t_max</span> <span class="o">=</span> <span class="mf">10.0</span>
 <span class="n">time_vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">t_max</span><span class="o">+</span><span class="n">dt</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
