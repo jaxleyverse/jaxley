@@ -120,18 +120,18 @@ class Network(Module):
         children_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.children_in_level for cell in self._cells_list],
+            [cell._solve_indexer.children_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         parents_in_level = merge_cells(
             self.cumsum_nbranches,
             self.cumsum_nbranchpoints_per_cell,
-            [cell.solve_indexer.parents_in_level for cell in self._cells_list],
+            [cell._solve_indexer.parents_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         padded_cumsum_nseg = cumsum_leading_zero(
             np.concatenate(
-                [np.diff(cell.solve_indexer.cumsum_nseg) for cell in self._cells_list]
+                [np.diff(cell._solve_indexer.cumsum_nseg) for cell in self._cells_list]
             )
         )
 
@@ -143,7 +143,7 @@ class Network(Module):
             padded_cumsum_nseg,
             self.nseg_per_branch,
         )
-        self.solve_indexer = JaxleySolveIndexer(
+        self._solve_indexer = JaxleySolveIndexer(
             cumsum_nseg=padded_cumsum_nseg,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,

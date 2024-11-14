@@ -1818,7 +1818,7 @@ class Module(ABC):
                     "child_inds": self._child_inds,
                     "nbranches": self.total_nbranches,
                     "solver": voltage_solver,
-                    "idx": self.solve_indexer,
+                    "idx": self._solve_indexer,
                     "debug_states": self.debug_states,
                 }
             )

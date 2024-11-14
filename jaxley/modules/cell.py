@@ -180,7 +180,7 @@ class Cell(Module):
             padded_cumsum_nseg,
             self.nseg_per_branch,
         )
-        self.solve_indexer = JaxleySolveIndexer(
+        self._solve_indexer = JaxleySolveIndexer(
             cumsum_nseg=padded_cumsum_nseg,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,

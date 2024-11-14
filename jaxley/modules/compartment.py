@@ -65,7 +65,7 @@ class Compartment(Module):
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
     def _init_morph_jaxley_spsolve(self):
-        self.solve_indexer = JaxleySolveIndexer(
+        self._solve_indexer = JaxleySolveIndexer(
             cumsum_nseg=self.cumsum_nseg,
             branchpoint_group_inds=np.asarray([]).astype(int),
             children_in_level=[],

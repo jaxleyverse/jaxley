@@ -275,7 +275,7 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
         "_par_inds",
         "_child_inds",
         "_child_belongs_to_branchpoint",
-        "solve_indexer",
+        "_solve_indexer",
         "_comp_edges",
         "_n_nodes",
         "_data_inds",
