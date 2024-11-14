@@ -158,7 +158,9 @@ class Cell(Module):
 
         levels = compute_levels(parents)
         children_in_level = compute_children_in_level(levels, children_inds)
-        parents_in_level = compute_parents_in_level(levels, self._par_inds, parents_inds)
+        parents_in_level = compute_parents_in_level(
+            levels, self._par_inds, parents_inds
+        )
         levels_and_nseg = pd.DataFrame().from_dict(
             {
                 "levels": levels,
