@@ -52,6 +52,7 @@ doc = [
     "sphinx-math-dollar",
     "myst-nb",
     "jupytext",
+    "optax",
     "sphinx-book-theme",
 ]
 dev = [
