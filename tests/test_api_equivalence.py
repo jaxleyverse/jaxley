@@ -103,12 +103,12 @@ def test_solver_backends_net(SimpleNet):
 
     connect(
         net.cell(0).branch(0).loc(1.0),
-        net.cell(1).branch(4).loc(1.0),
+        net.cell(1).branch(3).loc(1.0),
         IonotropicSynapse(),
     )
     connect(
         net.cell(1).branch(1).loc(0.8),
-        net.cell(0).branch(4).loc(0.1),
+        net.cell(0).branch(3).loc(0.1),
         IonotropicSynapse(),
     )
 

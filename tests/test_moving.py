@@ -116,8 +116,8 @@ def test_move_to_arrays(SimpleNet):
     assert net.xyzr[6][0, 1] == 25.0
 
 
-def test_move_to_cellview(net):
-    net = net(3, 3, 2)
+def test_move_to_cellview(SimpleNet):
+    net = SimpleNet(3, 3, 2)
     net.compute_xyz()
 
     # Test with float input
@@ -127,7 +127,7 @@ def test_move_to_cellview(net):
     assert net.xyzr[0][0, 2] == 40.0
 
     # Test with array input
-    net = net(4, 3, 2)
+    net = SimpleNet(4, 3, 2)
     net.compute_xyz()
     testx = np.array([1.0, 2.0, 3.0])
     testy = np.array([4.0, 5.0, 6.0])
