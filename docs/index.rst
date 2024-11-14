@@ -42,17 +42,7 @@ Getting started
    plt.plot(v.T)  # Plot voltage trace.
 
 
-If you want to learn more, we have tutorials on how to:
-
-- `simulate morphologically detailed neurons <notebooks/tutorials/01_morph_neurons.html>`_
-- `simulate networks of such neurons <notebooks/tutorials/02_small_network.html>`_
-- `set parameters of cells and networks <notebooks/tutorials/03_setting_parameters.html>`_
-- `speed up simulations with GPUs and jit <notebooks/tutorials/04_jit_and_vmap.html>`_
-- `define your own channels and synapses <notebooks/tutorials/05_channel_and_synapse_models.html>`_
-- `define groups <notebooks/tutorials/06_groups.html>`_
-- `read and handle SWC files <notebooks/tutorials/08_importing_morphologies.html>`_
-- `compute the gradient and train biophysical models <notebooks/tutorials/07_gradient_descent.html>`_
-
+If you want to learn more, check out our [Tutorials](https://jaxley.readthedocs.io/en/latest/tutorials.html), [FAQ](https://jaxley.readthedocs.io/en/latest/faq.html), or [Advanced tutorials](https://jaxley.readthedocs.io/en/latest/advanced_tutorials.html).
 
 
 Installation
