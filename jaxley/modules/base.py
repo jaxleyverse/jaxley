@@ -231,8 +231,10 @@ class Module(ABC):
 
         I.e. for net -> [cell, branch, comp]. For branch -> [comp]"""
         levels = ["network", "cell", "branch", "comp"]
-        children = levels[levels.index(self._current_view) + 1 :]
-        return children
+        if self._current_view in levels:
+            children = levels[levels.index(self._current_view) + 1 :]
+            return children
+        return []
 
     def _has_childview(self, key: str) -> bool:
         child_views = self._childviews()
@@ -383,16 +385,23 @@ class Module(ABC):
 
         Returns:
             array of indices of shape (N,)"""
+        if is_str_all(idx):  # also asserts that the only allowed str == "all"
+            return idx
+
         np_dtype = np.int64 if dtype is int else np.float64
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
-        num_nodes = len(self._nodes_in_view)
-        idx = np.arange(num_nodes + 1)[idx] if isinstance(idx, slice) else idx
-        if is_str_all(idx):  # also asserts that the only allowed str == "all"
-            return idx
+
+        idx = np.arange(len(self.base.nodes))[idx] if isinstance(idx, slice) else idx
+        if idx.dtype == bool:
+            shape = (*self.shape, len(self.edges))
+            which_idx = len(idx) == np.array(shape)
+            assert np.any(which_idx), "Index not matching num of cells/branches/comps."
+            dim = shape[np.where(which_idx)[0][0]]
+            idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype == np_dtype, "Invalid dtype"
+        assert idx.dtype in [np_dtype, bool], "Invalid dtype"
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):

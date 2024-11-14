@@ -301,9 +301,10 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
 
 
 comp = jx.Compartment()
-branch = jx.Branch([comp] * 4)
-cell = jx.Cell([branch] * 4, parents=[-1, 0, 0, 0])
-net = jx.Network([cell] * 4)
+branch = jx.Branch(nseg=4)
+cell = jx.Cell([branch] * 5, parents=[-1, 0, 0, 1, 1])
+net = jx.Network([cell] * 2)
+connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
 
 @pytest.mark.parametrize("module", [comp, branch, cell, net])
@@ -317,24 +318,37 @@ def test_view_supported_index_types(module):
         [0, 1, 2],
         np.array([0, 1, 2]),
         pd.Index([0, 1, 2]),
+        np.array([True, False, True, False] * 100)[: len(module.nodes)],
     ]
 
     # comp.comp is not allowed
+    all_inds = module.nodes.index.to_numpy()
     if not isinstance(module, jx.Compartment):
         # `_reformat_index` should always return a np.ndarray
         for index in index_types:
             assert isinstance(
                 module._reformat_index(index), np.ndarray
             ), f"Failed for {type(index)}"
+
+            # test indexing into module and view
             assert module.comp(index), f"Failed for {type(index)}"
             assert View(module).comp(index), f"Failed for {type(index)}"
 
-            # for loc test float and list of floats
-            assert module.loc(0.0), "Failed for float"
-            assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
+            expected_inds = all_inds[index]
+            assert np.all(module.select(nodes=index).nodes.index == expected_inds)
+
+        # for loc test float and list of floats
+        assert module.loc(0.0), "Failed for float"
+        assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
     else:
         with pytest.raises(AssertionError):
             module.comp(0)
+
+    if isinstance(module, jx.Network):
+        all_inds = module.edges.index.to_numpy()
+        for index in index_types[:-1] + [np.array([True, False, True, False])]:
+            expected_inds = all_inds[index]
+            assert np.all(net.select(edges=index).edges.index == expected_inds)
 
 
 def test_select():
