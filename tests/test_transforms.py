@@ -152,7 +152,7 @@ def test_correct(transform):
     [jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2), jt.NegSoftplusTransform(2)],
 )
 def test_user_api(transform, SimpleCell):
-    cell = SimpleCell(3, 2, copy=True)
+    cell = SimpleCell(3, 2)
 
     cell.branch("all").make_trainable("radius")
     cell.branch(2).make_trainable("radius")

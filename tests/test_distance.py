@@ -6,20 +6,14 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
-import jax.numpy as jnp
-import numpy as np
-from jax import jit
-
 import jaxley as jx
 
 
-def test_direct_distance():
+def test_direct_distance(SimpleCell):
     nseg = 4
     length = 15.0
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+    cell = SimpleCell(5, nseg)
     cell.branch("all").loc("all").set("length", length)
     cell.compute_xyz()
     dist = cell.branch(0).loc(0.0).distance(cell.branch(0).loc(1.0))

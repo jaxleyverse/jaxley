@@ -341,7 +341,7 @@ def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, Simple
 
 def test_select(SimpleNet):
     """Ensure `select` works correctly and returns expected View of Modules."""
-    net = SimpleNet(3, 3, 2, connect=False, copy=True)
+    net = SimpleNet(3, 3, 2, connect=False)
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
     np.random.seed(0)
@@ -546,7 +546,7 @@ def test_iter(SimpleBranch):
 
 def test_synapse_and_channel_filtering(SimpleNet):
     """Test that synapses and channels are filtered correctly by View."""
-    net = SimpleNet(3, 3, 3, connect=False, copy=True)
+    net = SimpleNet(3, 3, 3, connect=False)
     net.insert(HH())
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
@@ -573,7 +573,7 @@ def test_synapse_and_channel_filtering(SimpleNet):
 def test_view_equals_module(SimpleComp, SimpleBranch):
     """Test that View behaves the same as Module for important attrs and methods."""
     comp = SimpleComp(copy=True)
-    branch = SimpleBranch(3, copy=True)
+    branch = SimpleBranch(3)
 
     comp.insert(HH())
     branch.comp([0, 1]).insert(HH())

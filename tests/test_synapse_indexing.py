@@ -23,7 +23,7 @@ def test_multiparameter_setting(SimpleNet):
 
     Tests global index dropping: d4daaf019596589b9430219a15f1dda0b1c34d85
     """
-    net = SimpleNet(2, 1, 4, copy=True)
+    net = SimpleNet(2, 1, 4)
 
     pre = net.cell(0).branch(0).loc(0.0)
     post = net.cell(1).branch(0).loc(0.0)
@@ -59,7 +59,7 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
 def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
     """Test if the correct parameters are set if one type of synapses is inserted."""
     synapse_type = synapse_type()
-    net = SimpleNet(4, 1, 4, copy=True)
+    net = SimpleNet(4, 1, 4)
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:
@@ -97,7 +97,7 @@ def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
 def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
     """Test whether the correct parameters are set."""
     synapse_type = synapse_type()
-    net = SimpleNet(4, 1, 4, copy=True)
+    net = SimpleNet(4, 1, 4)
 
     for pre_ind in [0, 1]:
         for post_ind, synapse in zip([2, 3], [IonotropicSynapse(), synapse_type]):
@@ -154,8 +154,8 @@ def test_shuffling_order_of_set(synapse_type, SimpleNet):
     """Test whether the result is the same if the order of synapses is changed."""
     synapse_type = synapse_type()
 
-    net1 = SimpleNet(4, 1, 4, copy=True)
-    net2 = SimpleNet(4, 1, 4, copy=True)
+    net1 = SimpleNet(4, 1, 4)
+    net2 = SimpleNet(4, 1, 4)
 
     connect(
         net1.cell(0).branch(0).loc(1.0),

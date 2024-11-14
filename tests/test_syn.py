@@ -18,7 +18,7 @@ from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 def test_set_and_querying_params_one_type(SimpleNet):
     """Test if the correct parameters are set if one type of synapses is inserted."""
-    net = SimpleNet(4, 1, 4, copy=True)
+    net = SimpleNet(4, 1, 4)
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:

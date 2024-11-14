@@ -48,9 +48,9 @@ def test_api_equivalence_morphology():
     ), "Voltages do not match between morphology APIs."
 
 
-def test_solver_backends_comp():
+def test_solver_backends_comp(SimpleComp):
     """Test whether ways of adding synapses are equivalent."""
-    comp = jx.Compartment()
+    comp = SimpleComp()
 
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     comp.stimulate(current)
@@ -64,10 +64,9 @@ def test_solver_backends_comp():
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
 
 
-def test_solver_backends_branch():
+def test_solver_backends_branch(SimpleBranch):
     """Test whether ways of adding synapses are equivalent."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
+    branch = SimpleBranch(4)
 
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     branch.loc(0.0).stimulate(current)
@@ -81,16 +80,14 @@ def test_solver_backends_branch():
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
 
 
-def test_solver_backends_cell():
+def test_solver_backends_cell(SimpleCell):
     """Test whether ways of adding synapses are equivalent."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+    cell = SimpleCell(4, 4)
 
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     cell.branch(0).loc(0.0).stimulate(current)
     cell.branch(0).loc(0.5).record()
-    cell.branch(4).loc(0.5).record()
+    cell.branch(3).loc(0.5).record()
 
     voltages_jx_thomas = jx.integrate(cell, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(cell, voltage_solver="jaxley.stone")
@@ -100,14 +97,10 @@ def test_solver_backends_cell():
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
 
 
-def test_solver_backends_net():
+def test_solver_backends_net(SimpleNet):
     """Test whether ways of adding synapses are equivalent."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell1 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-    cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+    net = SimpleNet(2, 4, 4)
 
-    net = jx.Network([cell1, cell2])
     connect(
         net.cell(0).branch(0).loc(1.0),
         net.cell(1).branch(4).loc(1.0),
@@ -122,7 +115,7 @@ def test_solver_backends_net():
     current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
     net.cell(0).branch(0).loc(0.0).stimulate(current)
     net.cell(0).branch(0).loc(0.5).record()
-    net.cell(1).branch(4).loc(0.5).record()
+    net.cell(1).branch(3).loc(0.5).record()
 
     voltages_jx_thomas = jx.integrate(net, voltage_solver="jaxley.thomas")
     voltages_jx_stone = jx.integrate(net, voltage_solver="jaxley.stone")
@@ -132,39 +125,35 @@ def test_solver_backends_net():
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
 
 
-def test_api_equivalence_synapses():
+def test_api_equivalence_synapses(SimpleNet):
     """Test whether ways of adding synapses are equivalent."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell1 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-    cell2 = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+    net1 = SimpleNet(2, 4, 4)
 
-    net1 = jx.Network([cell1, cell2])
     connect(
         net1.cell(0).branch(0).loc(1.0),
-        net1.cell(1).branch(4).loc(1.0),
+        net1.cell(1).branch(3).loc(1.0),
         IonotropicSynapse(),
     )
     connect(
         net1.cell(1).branch(1).loc(0.8),
-        net1.cell(0).branch(4).loc(0.1),
+        net1.cell(0).branch(3).loc(0.1),
         IonotropicSynapse(),
     )
 
-    net2 = jx.Network([cell1, cell2])
+    net2 = SimpleNet(2, 4, 4)
     pre = net2.cell(0).branch(0).loc(1.0)
-    post = net2.cell(1).branch(4).loc(1.0)
+    post = net2.cell(1).branch(3).loc(1.0)
     connect(pre, post, IonotropicSynapse())
 
     pre = net2.cell(1).branch(1).loc(0.8)
-    post = net2.cell(0).branch(4).loc(0.1)
+    post = net2.cell(0).branch(3).loc(0.1)
     connect(pre, post, IonotropicSynapse())
 
     for net in [net1, net2]:
         current = jx.step_current(0.5, 1.0, 0.5, 0.025, 5.0)
         net.cell(0).branch(0).loc(0.0).stimulate(current)
         net.cell(0).branch(0).loc(0.5).record()
-        net.cell(1).branch(4).loc(0.5).record()
+        net.cell(1).branch(3).loc(0.5).record()
 
     voltages1 = jx.integrate(net1)
     voltages2 = jx.integrate(net2)
@@ -174,10 +163,8 @@ def test_api_equivalence_synapses():
     ), "Voltages do not match between synapse APIs."
 
 
-def test_api_equivalence_continued_simulation():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+def test_api_equivalence_continued_simulation(SimpleCell):
+    cell = SimpleCell(3, 2)
     cell.insert(HH())
     cell[0, 1].record()
 
@@ -189,7 +176,7 @@ def test_api_equivalence_continued_simulation():
     assert np.max(np.abs(v1 - v2)) < 1e-8
 
 
-def test_api_equivalence_network_matches_cell():
+def test_api_equivalence_network_matches_cell(SimpleBranch):
     """Test whether a network with w=0 synapses equals the individual cells.
 
     This runs an unequal number of compartments per branch."""
@@ -197,10 +184,9 @@ def test_api_equivalence_network_matches_cell():
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.1, dt, t_max)
 
-    comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=1)
-    branch2 = jx.Branch(comp, nseg=2)
-    branch3 = jx.Branch(comp, nseg=3)
+    branch1 = SimpleBranch(nseg=1)
+    branch2 = SimpleBranch(nseg=2)
+    branch3 = SimpleBranch(nseg=3)
     cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
     cell2 = jx.Cell([branch1, branch2], parents=[-1, 0])
     cell1.insert(HH())
@@ -232,10 +218,8 @@ def test_api_equivalence_network_matches_cell():
     assert max_error < 1e-8, f"Error is {max_error}"
 
 
-def test_api_init_step_to_integrate():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+def test_api_init_step_to_integrate(SimpleCell):
+    cell = SimpleCell(3, 2)
     cell.insert(HH())
     cell[0, 1].record()
 

@@ -14,10 +14,8 @@ import jaxley as jx
 from jaxley.channels import HH
 
 
-def test_constant_and_data_stimulus():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+def test_constant_and_data_stimulus(SimpleCell):
+    cell = SimpleCell(3, 2)
     cell.branch(0).loc(0.0).record("v")
 
     # test data_stimulate and jit works with trainable parameters see #467
@@ -54,10 +52,8 @@ def test_constant_and_data_stimulus():
     assert np.max(diff) < 1e-8
 
 
-def test_data_vs_constant_stimulus():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+def test_data_vs_constant_stimulus(SimpleCell):
+    cell = SimpleCell(3, 2)
     cell.branch(0).loc(0.0).record("v")
 
     i_amps_data = jnp.asarray([0.01, 0.005])

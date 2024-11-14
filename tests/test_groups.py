@@ -18,10 +18,8 @@ from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse
 
 
-def test_subclassing_groups_cell_api():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0, 0, 1, 1])
+def test_subclassing_groups_cell_api(SimpleCell):
+    cell = SimpleCell(5, 4)
 
     cell.branch([0, 3, 4]).add_to_group("subtree")
 
@@ -30,11 +28,8 @@ def test_subclassing_groups_cell_api():
     cell.subtree.branch(0).comp("all").make_trainable("length")
 
 
-def test_subclassing_groups_net_api():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1])
-    net = jx.Network([cell for _ in range(10)])
+def test_subclassing_groups_net_api(SimpleNet):
+    net = SimpleNet(10, 2, 4)
 
     net.cell([0, 3, 5]).add_to_group("excitatory")
 
@@ -43,13 +38,10 @@ def test_subclassing_groups_net_api():
     net.excitatory.cell(0).branch("all").make_trainable("length")
 
 
-def test_subclassing_groups_net_set_equivalence():
+def test_subclassing_groups_net_set_equivalence(SimpleNet):
     """Test whether calling `.set` on subclasses group is same as on view."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net1 = jx.Network([cell for _ in range(10)])
-    net2 = jx.Network([cell for _ in range(10)])
+    net1 = SimpleNet(10, 2, 4)
+    net2 = SimpleNet(10, 2, 4)
 
     net1.cell([0, 3, 5]).add_to_group("excitatory")
 
@@ -65,13 +57,10 @@ def test_subclassing_groups_net_set_equivalence():
     assert all(net1.nodes == net2.nodes)
 
 
-def test_subclassing_groups_net_make_trainable_equivalence():
+def test_subclassing_groups_net_make_trainable_equivalence(SimpleNet):
     """Test whether calling `.maek_trainable` on subclasses group is same as on view."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net1 = jx.Network([cell for _ in range(10)])
-    net2 = jx.Network([cell for _ in range(10)])
+    net1 = SimpleNet(10, 2, 4)
+    net2 = SimpleNet(10, 2, 4)
 
     net1.cell([0, 3, 5]).add_to_group("excitatory")
 
@@ -101,13 +90,10 @@ def test_subclassing_groups_net_make_trainable_equivalence():
         assert jnp.array_equal(inds1, inds2)
 
 
-def test_fully_connect_groups_equivalence():
+def test_fully_connect_groups_equivalence(SimpleNet):
     """Test whether groups can be used with `fully_connect`."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net1 = jx.Network([cell for _ in range(10)])
-    net2 = jx.Network([cell for _ in range(10)])
+    net1 = SimpleNet(10, 2, 4)
+    net2 = SimpleNet(10, 2, 4)
 
     net1.cell([0, 3, 5]).add_to_group("layer1")
     net1.cell([6, 8]).add_to_group("layer2")

@@ -15,11 +15,8 @@ import jaxley as jx
 from jaxley.channels import HH
 
 
-def _run_long_branch(dt, t_max):
-    nseg_per_branch = 8
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
+def _run_long_branch(dt, t_max, SimpleBranch):
+    branch = SimpleBranch(8)
     branch.insert(HH())
 
     branch.loc("all").make_trainable("radius", 1.0)
@@ -38,13 +35,8 @@ def _run_long_branch(dt, t_max):
     return l, g
 
 
-def _run_short_branches(dt, t_max):
-    nseg_per_branch = 4
-    parents = jnp.asarray([-1, 0])
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+def _run_short_branches(dt, t_max, SimpleCell):
+    cell = SimpleCell(2, 4)
     cell.insert(HH())
 
     cell.branch("all").loc("all").make_trainable("radius", 1.0)

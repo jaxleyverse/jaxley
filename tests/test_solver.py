@@ -28,7 +28,7 @@ def test_fwd_euler_and_crank_nicolson(SimpleNet):
 
     Tests whether forward Euler and Crank-Nicolson are sufficiently close to implicit
     Euler."""
-    net = SimpleNet(2, 1, 4, connect=True, copy=True)
+    net = SimpleNet(2, 1, 4, connect=True)
 
     current = jx.step_current(1.0, 1.0, 0.1, 0.025, 10.0)
     net.cell(0).branch(0).comp(0).stimulate(current)

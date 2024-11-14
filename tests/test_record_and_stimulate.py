@@ -18,7 +18,7 @@ from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 def test_record_and_stimulate_api(SimpleCell):
     """Test the API for recording and stimulating."""
-    cell = SimpleCell(3, 2, copy=True)
+    cell = SimpleCell(3, 2)
 
     cell.branch(0).loc(0.0).record()
     cell.branch(1).loc(1.0).record()
@@ -32,7 +32,7 @@ def test_record_and_stimulate_api(SimpleCell):
 
 def test_record_shape(SimpleCell):
     """Test the API for recording and stimulating."""
-    cell = SimpleCell(3, 2, copy=True)
+    cell = SimpleCell(3, 2)
 
     current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
     cell.branch(1).loc(1.0).stimulate(current)
@@ -59,7 +59,7 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
 
     _ = np.random.seed(0)  # Seed because connectivity is at random postsyn locs.
 
-    net = SimpleNet(3, 1, 4, copy=True)
+    net = SimpleNet(3, 1, 4)
     net.insert(HH())
 
     fully_connect(net.cell([0]), net.cell([1]), IonotropicSynapse())
@@ -107,9 +107,9 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
         assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
 
 
-def test_empty_recordings():
+def test_empty_recordings(SimpleComp):
     # Create an empty compartment
-    comp = jx.Compartment()
+    comp = SimpleComp()
 
     # Check if a ValueError is raised when integrating an empty compartment
     with pytest.raises(ValueError):
