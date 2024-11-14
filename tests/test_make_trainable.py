@@ -203,7 +203,7 @@ def test_copy_node_property_to_edges(SimpleNet):
     This test does not explicitly use `make_trainable`, but
     `copy_node_property_to_edges` is an important ingredient to parameter sharing.
     """
-    net = SimpleNet(6,2,2)
+    net = SimpleNet(6, 2, 2)
     net.insert(HH())
     net.cell(1).set("HH_gNa", 1.0)
     net.cell(0).set("radius", 0.2)

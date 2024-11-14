@@ -35,6 +35,7 @@ def test_cell(SimpleMorphCell):
     cell.branch(1).add_to_group("soma")
     ax = cell.soma.vis()
 
+
 def test_network(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
@@ -159,7 +160,7 @@ def test_volume_plotting(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     comp = SimpleComp()
     branch = SimpleBranch(4)
     cell = SimpleCell(3, 4)
-    net = SimpleNet(2,3,4)
+    net = SimpleNet(2, 3, 4)
     for module in [comp, branch, cell, net]:
         module.compute_xyz()
 
