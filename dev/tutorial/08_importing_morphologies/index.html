@@ -836,12 +836,12 @@
 <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">max_branch_len</span><span class="o">=</span><span class="mf">2000.0</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="c1"># print shape (num_cells, num_branches, num_comps)</span>
+<span class="c1"># print shape (num_branches, num_comps)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
 <span class="n">cell</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>(1, 157, 8)
+<div class="codehilite"><pre><span></span><code>(157, 1256)
 </code></pre></div>
 
 <div>
@@ -862,14 +862,12 @@
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>comp_index</th>
-      <th>branch_index</th>
-      <th>cell_index</th>
-      <th>length</th>
-      <th>radius</th>
-      <th>axial_resistivity</th>
-      <th>capacitance</th>
-      <th>v</th>
+      <th>local_comp_index</th>
+      <th>global_comp_index</th>
+      <th>local_branch_index</th>
+      <th>global_branch_index</th>
+      <th>local_cell_index</th>
+      <th>global_cell_index</th>
     </tr>
   </thead>
   <tbody>
@@ -878,60 +876,48 @@
       <td>0</td>
       <td>0</td>
       <td>0</td>
-      <td>0.01250</td>
-      <td>8.119</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1</th>
       <td>1</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
-      <td>0.01250</td>
-      <td>8.119</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>2</th>
       <td>2</td>
+      <td>2</td>
       <td>0</td>
       <td>0</td>
-      <td>0.01250</td>
-      <td>8.119</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>3</td>
+      <td>3</td>
       <td>0</td>
       <td>0</td>
-      <td>0.01250</td>
-      <td>8.119</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>4</th>
       <td>4</td>
+      <td>4</td>
       <td>0</td>
       <td>0</td>
-      <td>0.01250</td>
-      <td>8.119</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>...</th>
-      <td>...</td>
-      <td>...</td>
       <td>...</td>
       <td>...</td>
       <td>...</td>
@@ -941,73 +927,63 @@
     </tr>
     <tr>
       <th>1251</th>
+      <td>3</td>
       <td>1251</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>24.12382</td>
-      <td>0.550</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1252</th>
+      <td>4</td>
       <td>1252</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>24.12382</td>
-      <td>0.550</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1253</th>
+      <td>5</td>
       <td>1253</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>24.12382</td>
-      <td>0.550</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1254</th>
+      <td>6</td>
       <td>1254</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>24.12382</td>
-      <td>0.550</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1255</th>
+      <td>7</td>
       <td>1255</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>24.12382</td>
-      <td>0.550</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
   </tbody>
 </table>
-<p>1256 rows × 8 columns</p>
+<p>1256 rows × 6 columns</p>
 </div>
 
 <p>As we can see, this yields a morphology that is approximated by 1256 compartments. Depending on the amount of detail that you need, you can also change the number of compartments in each branch:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_branch_len</span><span class="o">=</span><span class="mf">2000.0</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="c1"># print shape (num_cells, num_branches, num_comps)</span>
+<span class="c1"># print shape (num_branches, num_comps)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
 <span class="n">cell</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>(1, 157, 2)
+<div class="codehilite"><pre><span></span><code>(157, 314)
 </code></pre></div>
 
 <div>
@@ -1028,14 +1004,12 @@
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>comp_index</th>
-      <th>branch_index</th>
-      <th>cell_index</th>
-      <th>length</th>
-      <th>radius</th>
-      <th>axial_resistivity</th>
-      <th>capacitance</th>
-      <th>v</th>
+      <th>local_comp_index</th>
+      <th>global_comp_index</th>
+      <th>local_branch_index</th>
+      <th>global_branch_index</th>
+      <th>local_cell_index</th>
+      <th>global_cell_index</th>
     </tr>
   </thead>
   <tbody>
@@ -1044,55 +1018,45 @@
       <td>0</td>
       <td>0</td>
       <td>0</td>
-      <td>0.050000</td>
-      <td>8.119000</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1</th>
       <td>1</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
-      <td>0.050000</td>
-      <td>8.119000</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>2</th>
+      <td>0</td>
       <td>2</td>
       <td>1</td>
+      <td>1</td>
       <td>0</td>
-      <td>6.241557</td>
-      <td>7.493344</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>3</th>
+      <td>1</td>
       <td>3</td>
       <td>1</td>
+      <td>1</td>
       <td>0</td>
-      <td>6.241557</td>
-      <td>4.273686</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>4</th>
+      <td>0</td>
       <td>4</td>
       <td>2</td>
+      <td>2</td>
       <td>0</td>
-      <td>4.160500</td>
-      <td>7.960000</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>...</th>
@@ -1102,67 +1066,55 @@
       <td>...</td>
       <td>...</td>
       <td>...</td>
-      <td>...</td>
-      <td>...</td>
     </tr>
     <tr>
       <th>309</th>
+      <td>1</td>
       <td>309</td>
       <td>154</td>
+      <td>154</td>
       <td>0</td>
-      <td>49.728572</td>
-      <td>0.400000</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>310</th>
+      <td>0</td>
       <td>310</td>
       <td>155</td>
+      <td>155</td>
       <td>0</td>
-      <td>46.557908</td>
-      <td>0.494201</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>311</th>
+      <td>1</td>
       <td>311</td>
       <td>155</td>
+      <td>155</td>
       <td>0</td>
-      <td>46.557908</td>
-      <td>0.302202</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>312</th>
+      <td>0</td>
       <td>312</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>96.495281</td>
-      <td>0.742532</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>313</th>
+      <td>1</td>
       <td>313</td>
       <td>156</td>
+      <td>156</td>
       <td>0</td>
-      <td>96.495281</td>
-      <td>0.550000</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
+      <td>0</td>
     </tr>
   </tbody>
 </table>
-<p>314 rows × 8 columns</p>
+<p>314 rows × 6 columns</p>
 </div>
 
 <p>Once imported the compartmentalized morphology can be viewed using <code>vis</code>.  </p>
@@ -1177,15 +1129,16 @@
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="c1"># define colorwheel with 10 colors</span>
 <span class="n">colors</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">tab10</span><span class="o">.</span><span class="n">colors</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
-    <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="mi">10</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">branch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">branches</span><span class="p">):</span>
+    <span class="n">branch</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="mi">10</span><span class="p">])</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Branches&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_9_0.png" /></p>
 <p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. The morphology lives seperately in the <code>cell.xyzr</code> attribute in a per branch fashion. </p>
-<p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. These can either be projected onto 2D or also rendered in 3D. For details see the documentation of <code>vis</code>.</p>
+<p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. Note that <code>"comp"</code> plots the lengths of each compartment which is equal to the length of the traced neurite. While neurites can be zigzaggy, the compartments that approximate them are straight lines. This can lead to miss-aligment of the compartment ends. For details see the documentation of <code>vis</code>. </p>
+<p>The morphologies can either be projected onto 2D or also rendered in 3D. </p>
 <div class="highlight"><pre><span></span><code><span class="c1"># visualize the cell</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
@@ -1208,7 +1161,7 @@
 </code></pre></div>
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_13_0.png" /></p>
 <p>Since <code>Jaxley</code> supports grouping different branches or compartments together, we can also use the <code>id</code> labels provided by the <code>.swc</code> file to assign group labels to the <code>jx.Cell</code> object.</p>
-<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">group_nodes</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">colors</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">tab10</span><span class="o">.</span><span class="n">colors</span>
