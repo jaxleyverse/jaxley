@@ -1268,6 +1268,7 @@ or even of compartments:
 </table>
 </div>
 
+<p>For more flexible indexing into the <code>cell</code>, see <a href="https://jaxley.readthedocs.io/en/latest/tutorials/00_jaxley_api.html">this tutorial</a>.</p>
 <h3 id="setting-synaptic-parameters">Setting synaptic parameters<a class="headerlink" href="#setting-synaptic-parameters" title="Permanent link">&para;</a></h3>
 <p>In order to set parameters of synapses, you have to use <code>net.SynapseName.set()</code>, e.g.:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
@@ -1348,7 +1349,7 @@ or even of compartments:
 <p>If you want to set individual synaptic parameters, you can use the <code>.select()</code> method:</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># nS</span>
 </code></pre></div>
-<p>For more details on how to flexibly set synaptic parameters (e.g., by cell type, or by pre-synaptic cell index,&hellip;), see <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/09_advanced_indexing/">this tutorial</a>.</p>
+<p>For more details on how to flexibly set synaptic parameters (e.g., by cell type, or by pre-synaptic cell index,&hellip;), see <a href="https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html">this tutorial</a>.</p>
 <h3 id="setting-initial-states">Setting initial states<a class="headerlink" href="#setting-initial-states" title="Permanent link">&para;</a></h3>
 <p>Finally, you can also set initial states. These include the initial voltage <code>v</code> and the states of all channels and synapses (which must be defined in <code>self.channel_states</code> of the channel. For example:</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mf">72.0</span><span class="p">)</span>  <span class="c1"># mV</span>
@@ -1594,7 +1595,7 @@ or even of compartments:
 </div>
 
 <h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
-<p>You can now modify parameters of your <code>Jaxley</code> simulation. In <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/04_jit_and_vmap/">the next tutorial</a>, you will learn how to make parameter sweeps (or stimulus sweeps) fast with jit-compilation and GPU parallelization.</p>
+<p>You can now modify parameters of your <code>Jaxley</code> simulation. In <a href="https://jaxley.readthedocs.io/en/latest/tutorials/04_jit_and_vmap.html">the next tutorial</a>, you will learn how to make parameter sweeps (or stimulus sweeps) fast with jit-compilation and GPU parallelization.</p>
 
 
 

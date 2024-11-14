@@ -902,24 +902,13 @@
 <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;post_global_cell_index == 5&quot;</span><span class="p">)</span>
 <span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;Ionotropic_gS&quot;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span>
 </code></pre></div></p>
-<p>In a <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/03_setting_parameters/">previous tutorial</a> you learned how to set parameters of a <code>jx.Cell</code> or <code>jx.Network</code>. In that tutorial, we briefly mentioned the <code>select()</code> method which allowed to set individual synapses to particular values. In this tutorial, we will go into detail in how you can fully customize your <code>Jaxley</code> simulation.</p>
+<p>In a <a href="https://jaxley.readthedocs.io/en/latest/tutorials/03_setting_parameters.html">previous tutorial</a> you learned how to set parameters of a <code>jx.Cell</code> or <code>jx.Network</code>. In that tutorial, we briefly mentioned the <code>select()</code> method which allowed to set individual synapses to particular values. In this tutorial, we will go into detail in how you can fully customize your <code>Jaxley</code> simulation.</p>
 <p>Let&rsquo;s go!</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 <span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>/Users/michaeldeistler/anaconda3/lib/python3.11/site-packages/pandas/core/arrays/masked.py:60: UserWarning: Pandas requires version &#39;1.3.6&#39; or newer of &#39;bottleneck&#39; (version &#39;1.3.5&#39; currently installed).
-  from pandas.core import (
-</code></pre></div>
-
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">bottleneck</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="n">bottleneck</span><span class="o">.</span><span class="n">__version__</span>
-</code></pre></div>
-<div class="codehilite"><pre><span></span><code>&#39;1.3.5&#39;
-</code></pre></div>
-
 <h3 id="preface-building-the-network">Preface: Building the network<a class="headerlink" href="#preface-building-the-network" title="Permanent link">&para;</a></h3>
 <p>We first build a network consisting of six neurons, in the same way as we showed in the previous tutorials:</p>
 <div class="highlight"><pre><span></span><code><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.025</span>

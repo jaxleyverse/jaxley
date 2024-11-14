@@ -993,7 +993,7 @@
 
 <span class="c1"># Build the cell.</span>
 <span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
-<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 
 <span class="c1"># Insert channels.</span>
@@ -1032,19 +1032,21 @@
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
 </code></pre></div>
-<p>We will now build our first cell in <code>Jaxley</code>. You have two options to do this: you can either build a cell bottom-up by defining the morphology yourselve, or you can <a href="">load cells from SWC files</a>.</p>
+<p>We will now build our first cell in <code>Jaxley</code>. You have two options to do this: you can either build a cell bottom-up by defining the morphology yourselve, or you can <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">load cells from SWC files</a>.</p>
 <h3 id="define-the-cell-from-scratch">Define the cell from scratch<a class="headerlink" href="#define-the-cell-from-scratch" title="Permanent link">&para;</a></h3>
 <p>To define a cell from scratch you first have to define a single compartment and then assemble those compartments into a branch:</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
-<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </code></pre></div>
 <p>Next, we can assemble branches into a cell. To do so, we have to define for each branch what its parent branch is. A <code>-1</code> entry means that this branch does not have a parent.</p>
 <div class="highlight"><pre><span></span><code><span class="n">parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="n">parents</span><span class="p">)</span>
 </code></pre></div>
+<p>To learn more about <code>Compartment</code>s, <code>Branch</code>es, and <code>Cell</code>s, see [this tutorial](More backgrond on compartments, branches, as and indexing like <code>cell.branch(0)</code> is in <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">this tutorial</a>.</p>
 <h3 id="read-the-cell-from-an-swc-file">Read the cell from an SWC file<a class="headerlink" href="#read-the-cell-from-an-swc-file" title="Permanent link">&para;</a></h3>
 <p>Alternatively, you could also load cells from SWC with </p>
-<p><code>cell = jx.read_swc(fname, nseg=4)</code>.</p>
+<p><code>cell = jx.read_swc(fname, nseg=4)</code></p>
+<p>Details on handling SWC files can be found in <a href="https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html">this tutorial</a>.</p>
 <h3 id="visualize-the-cells">Visualize the cells<a class="headerlink" href="#visualize-the-cells" title="Permanent link">&para;</a></h3>
 <p>Cells can be visualized as follows:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">compute_xyz</span><span class="p">()</span>  <span class="c1"># Only needed for visualization.</span>
@@ -1052,20 +1054,409 @@
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_12_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_13_0.png" /></p>
 <h3 id="insert-mechanisms">Insert mechanisms<a class="headerlink" href="#insert-mechanisms" title="Permanent link">&para;</a></h3>
 <p>Currently, the cell does not contain any kind of ion channel (not even a <code>leak</code>). We can fix this by inserting a leak channel into the entire cell, and by inserting sodium and potassium into the zero-eth branch.</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Leak</span><span class="p">())</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Na</span><span class="p">())</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">K</span><span class="p">())</span>
 </code></pre></div>
-<p>The easiest way to know which branch is the zero-eth branch (or, e.g., the zero-eth compartment of the zero-eth branch) is to plot it in a different color:</p>
+<p>Once the cell is created, we can inspect its <code>.nodes</code> attribute which lists all properties of the cell:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">nodes</span>
+</code></pre></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>local_cell_index</th>
+      <th>local_branch_index</th>
+      <th>local_comp_index</th>
+      <th>length</th>
+      <th>radius</th>
+      <th>axial_resistivity</th>
+      <th>capacitance</th>
+      <th>v</th>
+      <th>global_cell_index</th>
+      <th>global_branch_index</th>
+      <th>...</th>
+      <th>Na</th>
+      <th>Na_gNa</th>
+      <th>eNa</th>
+      <th>vt</th>
+      <th>Na_m</th>
+      <th>Na_h</th>
+      <th>K</th>
+      <th>K_gK</th>
+      <th>eK</th>
+      <th>K_n</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>True</td>
+      <td>0.05</td>
+      <td>50.0</td>
+      <td>-60.0</td>
+      <td>0.2</td>
+      <td>0.2</td>
+      <td>True</td>
+      <td>0.005</td>
+      <td>-90.0</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>True</td>
+      <td>0.05</td>
+      <td>50.0</td>
+      <td>-60.0</td>
+      <td>0.2</td>
+      <td>0.2</td>
+      <td>True</td>
+      <td>0.005</td>
+      <td>-90.0</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0</td>
+      <td>2</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>2</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0</td>
+      <td>2</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>2</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0</td>
+      <td>3</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>3</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0</td>
+      <td>3</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>3</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>0</td>
+      <td>4</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>4</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>0</td>
+      <td>4</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>4</td>
+      <td>...</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>10 rows × 25 columns</p>
+</div>
+
+<p>You can also inspect just parts of the <code>cell</code>, for example its 1<sup>st</sup> branch:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
+</code></pre></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>local_cell_index</th>
+      <th>local_branch_index</th>
+      <th>local_comp_index</th>
+      <th>length</th>
+      <th>radius</th>
+      <th>axial_resistivity</th>
+      <th>capacitance</th>
+      <th>v</th>
+      <th>Leak</th>
+      <th>Leak_gLeak</th>
+      <th>...</th>
+      <th>Na_m</th>
+      <th>Na_h</th>
+      <th>K</th>
+      <th>K_gK</th>
+      <th>eK</th>
+      <th>K_n</th>
+      <th>global_cell_index</th>
+      <th>global_branch_index</th>
+      <th>global_comp_index</th>
+      <th>controlled_by_param</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>True</td>
+      <td>0.0001</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>1</td>
+      <td>2</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>True</td>
+      <td>0.0001</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+<p>2 rows × 25 columns</p>
+</div>
+
+<p>The easiest way to know which branch is the 1<sup>st</sup> branch (or, e.g., the zero-eth compartment of the 1<sup>st</sup> branch) is to plot it in a different color:</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_16_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_21_0.png" /></p>
+<p>More background and features on indexing as <code>cell.branch(0)</code> is in <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">this tutorial</a>.</p>
 <h3 id="stimulate-the-cell">Stimulate the cell<a class="headerlink" href="#stimulate-the-cell" title="Permanent link">&para;</a></h3>
 <p>We next stimulate one of the compartments with a step current. For this, we first define the step current (all units are the same as for the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.025</span>
@@ -1076,7 +1467,7 @@
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time_vec</span><span class="p">,</span> <span class="n">current</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_18_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_24_0.png" /></p>
 <p>We then stimulate one of the compartments of the cell with this step current:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">delete_stimuli</span><span class="p">()</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">stimulate</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
@@ -1100,7 +1491,7 @@ Added 1 recordings. See `.recordings` for details.
 <span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_25_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_31_0.png" /></p>
 <h3 id="simulate-the-cell-response">Simulate the cell response<a class="headerlink" href="#simulate-the-cell-response" title="Permanent link">&para;</a></h3>
 <p>Having set up the cell, inserted stimuli and recordings, we are now ready to run a simulation with <code>jx.integrate</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">voltages</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
@@ -1115,9 +1506,11 @@ Added 1 recordings. See `.recordings` for details.
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">voltages</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">voltages</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;orange&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_29_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_35_0.png" /></p>
 <p>At the location of the first recording (in blue) the cell spiked, whereas at the second recording, it did not. This makes sense because we only inserted sodium and potassium channels into the first branch, but not in the entire cell.</p>
-<p>Congrats! You have just run your first morphologically detailed neuron simulation in <code>Jaxley</code>. We suggest to continue by learning how to <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/02_small_network/">build networks</a>. If you are only interested in single cell simulations, you can directly jump to learning how to <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/03_setting_parameters/">modify parameters of your simulation</a>. If you want to simulate detailed morphologies from SWC files, checkout our tutorial on <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/08_importing_morphologies/">working with detailed morphologies</a>.</p>
+<p>Congrats! You have just run your first morphologically detailed neuron simulation in <code>Jaxley</code>. We suggest to continue by learning how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">build networks</a>. If you are only interested in single cell simulations, you can directly jump to learning how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/03_setting_parameters.html">modify parameters of your simulation</a>. If you want to simulate detailed morphologies from SWC files, checkout our tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html">working with detailed morphologies</a>.</p>
+<div class="highlight"><pre><span></span><code>
+</code></pre></div>
 
 
 

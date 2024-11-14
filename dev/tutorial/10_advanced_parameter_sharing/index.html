@@ -860,7 +860,7 @@
 <span class="n">sub_net</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;controlled_by_param&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sub_net</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;pre_global_cell_index&quot;</span><span class="p">]</span>
 <span class="n">sub_net</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;Ionotropic_gS&quot;</span><span class="p">)</span>
 </code></pre></div></p>
-<p>In a <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/03_setting_parameters/">previous tutorial</a> about training networks, we briefly touched on parameter sharing. In this tutorial, we will show you how you can flexibly share parameters within a network.</p>
+<p>In a <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">previous tutorial</a> about training networks, we briefly touched on parameter sharing. In this tutorial, we will show you how you can flexibly share parameters within a network.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 <span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
