@@ -93,7 +93,7 @@ class Cell(Module):
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
-        self.cumsum_nbranches = np.asarray([0, len(branch_list)])
+        self._cumsum_nbranches = np.asarray([0, len(branch_list)])
 
         # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
         # is run.
@@ -127,7 +127,7 @@ class Cell(Module):
         )
 
         # For morphology indexing.
-        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
 
@@ -142,14 +142,14 @@ class Cell(Module):
         user will use. Therefore, we always run this function at `.__init__()`.
         """
         children_and_parents = compute_morphology_indices_in_levels(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.par_inds,
-            self.child_inds,
+            len(self._par_inds),
+            self._child_belongs_to_branchpoint,
+            self._par_inds,
+            self._child_inds,
         )
         branchpoint_group_inds = build_branchpoint_group_inds(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
+            len(self._par_inds),
+            self._child_belongs_to_branchpoint,
             self.cumsum_nseg[-1],
         )
         parents = self.comb_parents
@@ -158,7 +158,9 @@ class Cell(Module):
 
         levels = compute_levels(parents)
         children_in_level = compute_children_in_level(levels, children_inds)
-        parents_in_level = compute_parents_in_level(levels, self.par_inds, parents_inds)
+        parents_in_level = compute_parents_in_level(
+            levels, self._par_inds, parents_inds
+        )
         levels_and_nseg = pd.DataFrame().from_dict(
             {
                 "levels": levels,
@@ -180,7 +182,7 @@ class Cell(Module):
             padded_cumsum_nseg,
             self.nseg_per_branch,
         )
-        self.solve_indexer = JaxleySolveIndexer(
+        self._solve_indexer = JaxleySolveIndexer(
             cumsum_nseg=padded_cumsum_nseg,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,
@@ -224,15 +226,15 @@ class Cell(Module):
         # Edges from branchpoints to compartments.
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
             {
-                "source": np.arange(len(self.par_inds)) + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self.par_inds + 1] - 1,
+                "source": np.arange(len(self._par_inds)) + self.cumsum_nseg[-1],
+                "sink": self.cumsum_nseg[self._par_inds + 1] - 1,
                 "type": 1,
             }
         )
         branchpoint_to_child_edges = pd.DataFrame().from_dict(
             {
-                "source": self.child_belongs_to_branchpoint + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self.child_inds],
+                "source": self._child_belongs_to_branchpoint + self.cumsum_nseg[-1],
+                "sink": self.cumsum_nseg[self._child_inds],
                 "type": 2,
             }
         )

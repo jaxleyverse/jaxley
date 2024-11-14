@@ -59,7 +59,7 @@ class Branch(Module):
         self.nseg_per_branch = np.asarray([self.nseg])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
-        self.cumsum_nbranches = jnp.asarray([0, 1])
+        self._cumsum_nbranches = jnp.asarray([0, 1])
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         # Indexing.
@@ -79,7 +79,7 @@ class Branch(Module):
         )
 
         # For morphology indexing.
-        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
         self._internal_node_inds = jnp.arange(self.nseg)
@@ -90,7 +90,7 @@ class Branch(Module):
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
     def _init_morph_jaxley_spsolve(self):
-        self.solve_indexer = JaxleySolveIndexer(
+        self._solve_indexer = JaxleySolveIndexer(
             cumsum_nseg=self.cumsum_nseg,
             branchpoint_group_inds=np.asarray([]).astype(int),
             remapped_node_indices=self._internal_node_inds,
