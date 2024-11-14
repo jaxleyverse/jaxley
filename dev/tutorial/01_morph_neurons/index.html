@@ -1063,7 +1063,7 @@
 <div class="highlight"><pre><span></span><code><span class="n">parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="n">parents</span><span class="p">)</span>
 </code></pre></div>
-<p>To learn more about <code>Compartment</code>s, <code>Branch</code>es, and <code>Cell</code>s, see <a href="http://localhost:8000/tutorials/00_jaxley_api.html">this tutorial</a>.</p>
+<p>To learn more about <code>Compartment</code>s, <code>Branch</code>es, and <code>Cell</code>s, see <a href="https://jaxley.readthedocs.io/en/latest/tutorials/00_jaxley_api.html">this tutorial</a>.</p>
 <h3 id="read-the-cell-from-an-swc-file">Read the cell from an SWC file<a class="headerlink" href="#read-the-cell-from-an-swc-file" title="Permanent link">&para;</a></h3>
 <p>Alternatively, you could also load cells from SWC with </p>
 <p><code>cell = jx.read_swc(fname, nseg=4)</code></p>
@@ -1372,7 +1372,8 @@
 <p>10 rows × 25 columns</p>
 </div>
 
-<p>Note that <code>Jaxley</code> uses the same units as the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>. You can also inspect just parts of the <code>cell</code>, for example its 1<sup>st</sup> branch:</p>
+<p><em>Note that <code>Jaxley</code> uses the same units as the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>.</em></p>
+<p>You can also inspect just parts of the <code>cell</code>, for example its 1<sup>st</sup> branch:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
 </code></pre></div>
 <div>
@@ -1477,7 +1478,7 @@
 <span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_21_0.png" /></p>
-<p>More background and features on indexing as <code>cell.branch(0)</code> is in <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">this tutorial</a>.</p>
+<p>More background and features on indexing as <code>cell.branch(0)</code> is in <a href="https://jaxley.readthedocs.io/en/latest/tutorials/00_jaxley_api.html">this tutorial</a>.</p>
 <h3 id="change-parameters-of-the-cell">Change parameters of the cell<a class="headerlink" href="#change-parameters-of-the-cell" title="Permanent link">&para;</a></h3>
 <p>You can change properties of the cell with the <code>.set()</code> method:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">)</span>
