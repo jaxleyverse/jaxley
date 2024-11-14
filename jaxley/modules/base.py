@@ -395,9 +395,11 @@ class Module(ABC):
 
         idx = np.arange(len(self.base.nodes))[idx] if isinstance(idx, slice) else idx
         if idx.dtype == bool:
-            which_idx = len(idx) == np.array(self.shape)
+            shape = (*self.shape, len(self.edges))
+            which_idx = len(idx) == np.array(shape)
             assert np.any(which_idx), "Index not matching num of cells/branches/comps."
-            idx = np.arange(self.shape[np.where(which_idx)[0][0]])[idx]
+            dim = shape[np.where(which_idx)[0][0]]
+            idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
         assert idx.dtype in [np_dtype, bool], "Invalid dtype"
         return idx.reshape(-1)
