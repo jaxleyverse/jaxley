@@ -267,7 +267,7 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     exceptions = ["view"]
 
     # TODO: Types are inconsistent between different Modules
-    exceptions += ["cumsum_nbranches"]
+    exceptions += ["_cumsum_nbranches"]
 
     # TODO FROM #447: should be added to View in the future
     exceptions += [
@@ -284,8 +284,8 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     ]  # for base/comp
     exceptions += ["comb_children"]  # for cell
     exceptions += [
-        "cells_list",
-        "cumsum_nbranchpoints_per_cell",
+        "_cells_list",
+        "_cumsum_nbranchpoints_per_cell",
         "_cumsum_nseg_per_cell",
     ]  # for network
 

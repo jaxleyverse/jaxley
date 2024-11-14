@@ -93,7 +93,7 @@ class Cell(Module):
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
-        self.cumsum_nbranches = np.asarray([0, len(branch_list)])
+        self._cumsum_nbranches = np.asarray([0, len(branch_list)])
 
         # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
         # is run.

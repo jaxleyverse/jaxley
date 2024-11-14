@@ -61,7 +61,7 @@ class Network(Module):
 
         self.nbranches_per_cell = [cell.total_nbranches for cell in cells]
         self.total_nbranches = sum(self.nbranches_per_cell)
-        self.cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
+        self._cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])
@@ -78,7 +78,7 @@ class Network(Module):
 
         parents = [cell.comb_parents for cell in cells]
         self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self.cumsum_nbranches[i]) for i, p in enumerate(parents)]
+            [p.at[1:].add(self._cumsum_nbranches[i]) for i, p in enumerate(parents)]
         )
 
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
@@ -100,7 +100,7 @@ class Network(Module):
 
         # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are unique).
         nbranchpoints = jnp.asarray([len(cell._par_inds) for cell in cells])
-        self.cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
+        self._cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
         # Channels.
         self._gather_channels_from_constituents(cells)
@@ -118,14 +118,14 @@ class Network(Module):
             self.cumsum_nseg[-1],
         )
         children_in_level = merge_cells(
-            self.cumsum_nbranches,
-            self.cumsum_nbranchpoints_per_cell,
+            self._cumsum_nbranches,
+            self._cumsum_nbranchpoints_per_cell,
             [cell._solve_indexer.children_in_level for cell in self._cells_list],
             exclude_first=False,
         )
         parents_in_level = merge_cells(
-            self.cumsum_nbranches,
-            self.cumsum_nbranchpoints_per_cell,
+            self._cumsum_nbranches,
+            self._cumsum_nbranchpoints_per_cell,
             [cell._solve_indexer.parents_in_level for cell in self._cells_list],
             exclude_first=False,
         )
@@ -148,7 +148,7 @@ class Network(Module):
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,
             parents_in_level=parents_in_level,
-            root_inds=self.cumsum_nbranches[:-1],
+            root_inds=self._cumsum_nbranches[:-1],
             remapped_node_indices=remapped_node_indices,
         )
 
@@ -188,7 +188,7 @@ class Network(Module):
         start_branchpoints = self.cumsum_nseg[-1]  # Index of the first branchpoint.
         for offset, offset_branchpoints, cell in zip(
             self._cumsum_nseg_per_cell,
-            self.cumsum_nbranchpoints_per_cell,
+            self._cumsum_nbranchpoints_per_cell,
             self._cells_list,
         ):
             offset_within_cell = cell.cumsum_nseg[-1]
@@ -210,7 +210,7 @@ class Network(Module):
         # All compartment-to-branchpoint nodes.
         for offset, offset_branchpoints, cell in zip(
             self._cumsum_nseg_per_cell,
-            self.cumsum_nbranchpoints_per_cell,
+            self._cumsum_nbranchpoints_per_cell,
             self._cells_list,
         ):
             offset_within_cell = cell.cumsum_nseg[-1]

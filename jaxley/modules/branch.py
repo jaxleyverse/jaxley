@@ -59,7 +59,7 @@ class Branch(Module):
         self.nseg_per_branch = np.asarray([self.nseg])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
-        self.cumsum_nbranches = jnp.asarray([0, 1])
+        self._cumsum_nbranches = jnp.asarray([0, 1])
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         # Indexing.

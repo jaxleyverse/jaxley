@@ -36,7 +36,7 @@ class Compartment(Module):
         self.nseg_per_branch = np.asarray([1])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
-        self.cumsum_nbranches = np.asarray([0, 1])
+        self._cumsum_nbranches = np.asarray([0, 1])
         self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
 
         # Setting up the `nodes` for indexing.

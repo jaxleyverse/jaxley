@@ -132,7 +132,7 @@ class Module(ABC):
             ]
         )
 
-        self.cumsum_nbranches: Optional[np.ndarray] = None
+        self._cumsum_nbranches: Optional[np.ndarray] = None
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
 
@@ -2321,7 +2321,7 @@ class View(Module):
         self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
-        self.cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
+        self._cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
         self.nseg_per_branch = self.base.nseg_per_branch[self._branches_in_view]
