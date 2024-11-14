@@ -4396,7 +4396,7 @@ branches, cells, networks).</p>
             <span class="p">]</span>
         <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
@@ -5695,10 +5695,10 @@ branches, cells, networks).</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># For scipy and jax.scipy.</span>
         <span class="n">row_and_col_inds</span> <span class="o">=</span> <span class="n">compute_morphology_indices</span><span class="p">(</span>
-            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">par_inds</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">,</span>
         <span class="p">)</span>
@@ -5716,8 +5716,8 @@ branches, cells, networks).</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;indptr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">indptr</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;nseg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;child_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">child_inds</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;par_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">par_inds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;child_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_child_inds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;par_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_par_inds</span>
 
     <span class="k">def</span> <span class="nf">record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="n">comp_states</span><span class="p">,</span> <span class="n">edge_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_names</span><span class="p">()</span>
@@ -6078,11 +6078,11 @@ branches, cells, networks).</p>
                     <span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                     <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                     <span class="s2">&quot;nseg_per_branch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
-                    <span class="s2">&quot;par_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span>
-                    <span class="s2">&quot;child_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span>
+                    <span class="s2">&quot;par_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
+                    <span class="s2">&quot;child_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
                     <span class="s2">&quot;nbranches&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">,</span>
                     <span class="s2">&quot;solver&quot;</span><span class="p">:</span> <span class="n">voltage_solver</span><span class="p">,</span>
-                    <span class="s2">&quot;idx&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_indexer</span><span class="p">,</span>
+                    <span class="s2">&quot;idx&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="p">,</span>
                     <span class="s2">&quot;debug_states&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug_states</span><span class="p">,</span>
                 <span class="p">}</span>
             <span class="p">)</span>
@@ -11481,11 +11481,11 @@ coefficient matrix of the ODE system. Either of [&ldquo;jaxley.thomas&rdquo;,
                 <span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                 <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                 <span class="s2">&quot;nseg_per_branch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
-                <span class="s2">&quot;par_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span>
-                <span class="s2">&quot;child_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span>
+                <span class="s2">&quot;par_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
+                <span class="s2">&quot;child_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
                 <span class="s2">&quot;nbranches&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">,</span>
                 <span class="s2">&quot;solver&quot;</span><span class="p">:</span> <span class="n">voltage_solver</span><span class="p">,</span>
-                <span class="s2">&quot;idx&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_indexer</span><span class="p">,</span>
+                <span class="s2">&quot;idx&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="p">,</span>
                 <span class="s2">&quot;debug_states&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug_states</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
@@ -12199,7 +12199,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
         <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
 
         <span class="c1"># Setting up the `nodes` for indexing.</span>
@@ -12216,7 +12216,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
         <span class="p">)</span>
 
         <span class="c1"># For morphology indexing.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
@@ -12228,7 +12228,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
         <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">))]</span>
 
     <span class="k">def</span> <span class="nf">_init_morph_jaxley_spsolve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
             <span class="n">cumsum_nseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="p">[],</span>
@@ -12456,7 +12456,7 @@ intricate cell morphologies.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
 
         <span class="c1"># Indexing.</span>
@@ -12476,7 +12476,7 @@ intricate cell morphologies.</p>
         <span class="p">)</span>
 
         <span class="c1"># For morphology indexing.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)</span>
@@ -12487,7 +12487,7 @@ intricate cell morphologies.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">))]</span>
 
     <span class="k">def</span> <span class="nf">_init_morph_jaxley_spsolve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
             <span class="n">cumsum_nseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
             <span class="n">remapped_node_indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span><span class="p">,</span>
@@ -12694,7 +12694,7 @@ create the branch.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">])</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="mi">1</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
 
     <span class="c1"># Indexing.</span>
@@ -12714,7 +12714,7 @@ create the branch.</p>
     <span class="p">)</span>
 
     <span class="c1"># For morphology indexing.</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)</span>
@@ -13000,7 +13000,9 @@ and supports intricate cell morphologies.</p>
 <span class="normal">268</span>
 <span class="normal">269</span>
 <span class="normal">270</span>
-<span class="normal">271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Cell</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Cell</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Cell class.</span>
 
 <span class="sd">    This class defines a single cell that can be simulated by itself or</span>
@@ -13065,7 +13067,7 @@ and supports intricate cell morphologies.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">parents</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">comb_children</span> <span class="o">=</span> <span class="n">compute_children_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)])</span>
 
         <span class="c1"># Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`</span>
         <span class="c1"># is run.</span>
@@ -13099,7 +13101,7 @@ and supports intricate cell morphologies.</p>
         <span class="p">)</span>
 
         <span class="c1"># For morphology indexing.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
         <span class="p">)</span>
 
@@ -13114,14 +13116,14 @@ and supports intricate cell morphologies.</p>
 <span class="sd">        user will use. Therefore, we always run this function at `.__init__()`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">children_and_parents</span> <span class="o">=</span> <span class="n">compute_morphology_indices_in_levels</span><span class="p">(</span>
-            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">branchpoint_group_inds</span> <span class="o">=</span> <span class="n">build_branchpoint_group_inds</span><span class="p">(</span>
-            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
         <span class="p">)</span>
         <span class="n">parents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span>
@@ -13130,7 +13132,9 @@ and supports intricate cell morphologies.</p>
 
         <span class="n">levels</span> <span class="o">=</span> <span class="n">compute_levels</span><span class="p">(</span><span class="n">parents</span><span class="p">)</span>
         <span class="n">children_in_level</span> <span class="o">=</span> <span class="n">compute_children_in_level</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">children_inds</span><span class="p">)</span>
-        <span class="n">parents_in_level</span> <span class="o">=</span> <span class="n">compute_parents_in_level</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="n">parents_inds</span><span class="p">)</span>
+        <span class="n">parents_in_level</span> <span class="o">=</span> <span class="n">compute_parents_in_level</span><span class="p">(</span>
+            <span class="n">levels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="n">parents_inds</span>
+        <span class="p">)</span>
         <span class="n">levels_and_nseg</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;levels&quot;</span><span class="p">:</span> <span class="n">levels</span><span class="p">,</span>
@@ -13152,7 +13156,7 @@ and supports intricate cell morphologies.</p>
             <span class="n">padded_cumsum_nseg</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
             <span class="n">cumsum_nseg</span><span class="o">=</span><span class="n">padded_cumsum_nseg</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">branchpoint_group_inds</span><span class="p">,</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="n">children_in_level</span><span class="p">,</span>
@@ -13196,15 +13200,15 @@ and supports intricate cell morphologies.</p>
         <span class="c1"># Edges from branchpoints to compartments.</span>
         <span class="n">branchpoint_to_parent_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">))</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">))</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="n">branchpoint_to_child_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">],</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">],</span>
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
@@ -13485,7 +13489,7 @@ the stick representation coordinates.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">parents</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">comb_children</span> <span class="o">=</span> <span class="n">compute_children_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)])</span>
 
     <span class="c1"># Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`</span>
     <span class="c1"># is run.</span>
@@ -13519,7 +13523,7 @@ the stick representation coordinates.</p>
     <span class="p">)</span>
 
     <span class="c1"># For morphology indexing.</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
     <span class="p">)</span>
 
@@ -14172,7 +14176,7 @@ the stick representation coordinates.</p>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
@@ -14189,7 +14193,7 @@ the stick representation coordinates.</p>
 
         <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">comb_parents</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-            <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parents</span><span class="p">)]</span>
+            <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parents</span><span class="p">)]</span>
         <span class="p">)</span>
 
         <span class="c1"># Two columns: `parent_branch_index` and `child_branch_index`. One row per</span>
@@ -14205,13 +14209,13 @@ the stick representation coordinates.</p>
         <span class="p">)</span>
 
         <span class="c1"># For morphology indexing of both `jax.sparse` and the custom `jaxley` solvers.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
         <span class="p">)</span>
 
-        <span class="c1"># `nbranchpoints` in each cell == cell.par_inds (because `par_inds` are unique).</span>
-        <span class="n">nbranchpoints</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">par_inds</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranchpoints_per_cell</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nbranchpoints</span><span class="p">)</span>
+        <span class="c1"># `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are unique).</span>
+        <span class="n">nbranchpoints</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nbranchpoints</span><span class="p">)</span>
 
         <span class="c1"># Channels.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gather_channels_from_constituents</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span>
@@ -14224,25 +14228,25 @@ the stick representation coordinates.</p>
 
     <span class="k">def</span> <span class="nf">_init_morph_jaxley_spsolve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">branchpoint_group_inds</span> <span class="o">=</span> <span class="n">build_branchpoint_group_inds</span><span class="p">(</span>
-            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
         <span class="p">)</span>
         <span class="n">children_in_level</span> <span class="o">=</span> <span class="n">merge_cells</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
-            <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">solve_indexer</span><span class="o">.</span><span class="n">children_in_level</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="o">.</span><span class="n">children_in_level</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">],</span>
             <span class="n">exclude_first</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">parents_in_level</span> <span class="o">=</span> <span class="n">merge_cells</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
-            <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">solve_indexer</span><span class="o">.</span><span class="n">parents_in_level</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="o">.</span><span class="n">parents_in_level</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">],</span>
             <span class="n">exclude_first</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">padded_cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">solve_indexer</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">]</span>
+                <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="p">)</span>
 
@@ -14254,12 +14258,12 @@ the stick representation coordinates.</p>
             <span class="n">padded_cumsum_nseg</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
             <span class="n">cumsum_nseg</span><span class="o">=</span><span class="n">padded_cumsum_nseg</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">branchpoint_group_inds</span><span class="p">,</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="n">children_in_level</span><span class="p">,</span>
             <span class="n">parents_in_level</span><span class="o">=</span><span class="n">parents_in_level</span><span class="p">,</span>
-            <span class="n">root_inds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">root_inds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
             <span class="n">remapped_node_indices</span><span class="o">=</span><span class="n">remapped_node_indices</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -14299,7 +14303,7 @@ the stick representation coordinates.</p>
         <span class="n">start_branchpoints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Index of the first branchpoint.</span>
         <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">offset_branchpoints</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">,</span>
         <span class="p">):</span>
             <span class="n">offset_within_cell</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
@@ -14321,7 +14325,7 @@ the stick representation coordinates.</p>
         <span class="c1"># All compartment-to-branchpoint nodes.</span>
         <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">offset_branchpoints</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">,</span>
         <span class="p">):</span>
             <span class="n">offset_within_cell</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
@@ -14874,7 +14878,7 @@ the stick representation coordinates.</p>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
@@ -14891,7 +14895,7 @@ the stick representation coordinates.</p>
 
     <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">comb_parents</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-        <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranches</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parents</span><span class="p">)]</span>
+        <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parents</span><span class="p">)]</span>
     <span class="p">)</span>
 
     <span class="c1"># Two columns: `parent_branch_index` and `child_branch_index`. One row per</span>
@@ -14907,13 +14911,13 @@ the stick representation coordinates.</p>
     <span class="p">)</span>
 
     <span class="c1"># For morphology indexing of both `jax.sparse` and the custom `jaxley` solvers.</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
     <span class="p">)</span>
 
-    <span class="c1"># `nbranchpoints` in each cell == cell.par_inds (because `par_inds` are unique).</span>
-    <span class="n">nbranchpoints</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">par_inds</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nbranchpoints_per_cell</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nbranchpoints</span><span class="p">)</span>
+    <span class="c1"># `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are unique).</span>
+    <span class="n">nbranchpoints</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nbranchpoints</span><span class="p">)</span>
 
     <span class="c1"># Channels.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_gather_channels_from_constituents</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span>
