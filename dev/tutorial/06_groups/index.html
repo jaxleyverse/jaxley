@@ -983,7 +983,7 @@
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 <span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
 </code></pre></div>
-<p>First, we define a network as you saw in the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html">previous tutorial</a>:</p>
+<p>First, we define a network as you saw in the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">previous tutorial</a>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
 <span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
@@ -1820,7 +1820,6 @@ After that, you can directly use <code>cell.soma</code>, <code>cell.apical</code
 <p>This generated two parameters for the axial resistivitiy, each corresponding to one cell.</p>
 <h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
 <p>Groups allow you to organize your simulation in a more intuitive way, and they allow to perform parameter sharing with <code>make_trainable()</code>.</p>
-<p>If you have not done so already, we recommend you to check out the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">how to compute the gradient and train biophysical models</a>.</p>
 
 
 

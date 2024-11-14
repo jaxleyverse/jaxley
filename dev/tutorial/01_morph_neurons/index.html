@@ -1581,7 +1581,7 @@
 <p>2 rows × 25 columns</p>
 </div>
 
-<p>In a similar way, you can modify channel properties or initial states (all units are the same as for the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
+<p>In a similar way, you can modify channel properties or initial states (units are again <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;K_gK&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>  <span class="c1"># modify potassium conductance.</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mf">65.0</span><span class="p">)</span>  <span class="c1"># modify initial voltage.</span>
 </code></pre></div>
