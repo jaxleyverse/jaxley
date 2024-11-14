@@ -14,7 +14,7 @@
         <link rel="prev" href="../01_morph_neurons/">
       
       
-        <link rel="next" href="../03_setting_parameters/">
+        <link rel="next" href="../04_jit_and_vmap/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -362,6 +362,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#inspecting-and-changing-synaptic-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting and changing synaptic parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stimulating-recording-and-simulating-the-network" class="md-nav__link">
     <span class="md-ellipsis">
       Stimulating, recording, and simulating the network
@@ -386,7 +395,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../03_setting_parameters/" class="md-nav__link">
+      <a href="../03_setting_parameters.md" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -860,6 +869,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#inspecting-and-changing-synaptic-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting and changing synaptic parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stimulating-recording-and-simulating-the-network" class="md-nav__link">
     <span class="md-ellipsis">
       Stimulating, recording, and simulating the network
@@ -891,6 +909,7 @@
 <ul>
 <li>connect neurons into a network  </li>
 <li>visualize networks  </li>
+<li>use the <code>.edges</code> attribute to inspect and change synaptic parameters</li>
 </ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
@@ -907,6 +926,9 @@
     <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
     <span class="n">IonotropicSynapse</span><span class="p">(),</span>
 <span class="p">)</span>
+
+<span class="c1"># Change synaptic parameters.</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># nS</span>
 
 <span class="c1"># Visualize the network.</span>
 <span class="n">net</span><span class="o">.</span><span class="n">compute_xyz</span><span class="p">()</span>
@@ -945,17 +967,13 @@
 <span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">})</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_9_0.png" /></p>
-<p>Note: you can use <code>move_to</code> to have more control over the location of cells, e.g.: <code>network.cell(i).move_to(x=0, y=200)</code></p>
+<p>Note: you can use <code>move_to</code> to have more control over the location of cells, e.g.: <code>network.cell(i).move_to(x=0, y=200)</code>.</p>
 <p>As you can see, the neurons are not connected yet. Let&rsquo;s fix this by connecting neurons with synapses. We will build a network consisting of two layers: 10 neurons in the input layer and 1 neuron in the output layer.</p>
 <p>We can use <code>Jaxley</code>&rsquo;s <code>fully_connect</code> method to connect these layers:</p>
 <div class="highlight"><pre><span></span><code><span class="n">pre</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
 <span class="n">post</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 <span class="n">fully_connect</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>/Users/michaeldeistler/Documents/phd/jaxley/jaxley/modules/base.py:1533: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
-  self.pointer.edges = pd.concat(
-</code></pre></div>
-
 <p>Let&rsquo;s visualize this again:</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">})</span>
@@ -970,6 +988,219 @@
 <span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">})</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_17_0.png" /></p>
+<h3 id="inspecting-and-changing-synaptic-parameters">Inspecting and changing synaptic parameters<a class="headerlink" href="#inspecting-and-changing-synaptic-parameters" title="Permanent link">&para;</a></h3>
+<p>You can inspect synaptic parameters via the <code>.edges</code> attribute:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+</code></pre></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>global_edge_index</th>
+      <th>global_pre_comp_index</th>
+      <th>global_post_comp_index</th>
+      <th>type</th>
+      <th>type_ind</th>
+      <th>pre_locs</th>
+      <th>post_locs</th>
+      <th>IonotropicSynapse_gS</th>
+      <th>IonotropicSynapse_e_syn</th>
+      <th>IonotropicSynapse_k_minus</th>
+      <th>IonotropicSynapse_s</th>
+      <th>controlled_by_param</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>292</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.125</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>28</td>
+      <td>307</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.875</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>56</td>
+      <td>299</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.875</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>84</td>
+      <td>304</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.125</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>112</td>
+      <td>296</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.125</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>140</td>
+      <td>282</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.625</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>168</td>
+      <td>299</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.875</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>196</td>
+      <td>295</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.875</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>8</td>
+      <td>224</td>
+      <td>289</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.375</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>9</td>
+      <td>252</td>
+      <td>299</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.875</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>10</td>
+      <td>23</td>
+      <td>280</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.875</td>
+      <td>0.125</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>To modify a parameter of all synapses you can again use <code>.set()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.0003</span><span class="p">)</span>  <span class="c1"># nS</span>
+</code></pre></div>
+<p>To modify individual syanptic parameters, use the <code>.select()</code> method. Below, we change the values of the first two synapses:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.0004</span><span class="p">)</span>  <span class="c1"># nS</span>
+</code></pre></div>
+<p>For more details on how to flexibly set synaptic parameters (e.g., by cell type, or by pre-synaptic cell index,&hellip;), see <a href="https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html">this tutorial</a>.</p>
 <h3 id="stimulating-recording-and-simulating-the-network">Stimulating, recording, and simulating the network<a class="headerlink" href="#stimulating-recording-and-simulating-the-network" title="Permanent link">&para;</a></h3>
 <p>We will now set up a simulation of the network. This works exactly as it does for single neurons:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Stimulus.</span>
@@ -1016,8 +1247,8 @@ Added 1 recordings. See `.recordings` for details.
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../02_small_network_files/02_small_network_28_0.png" /></p>
-<p>That&rsquo;s it! You now know how to simulate networks of morphologically detailed neurons. Next, you should learn how to modify parameters of your simulation in <a href="https://jaxley.readthedocs.io/en/latest/tutorials/03_setting_parameters.html">this tutorial</a>.</p>
+<p><img alt="png" src="../02_small_network_files/02_small_network_36_0.png" /></p>
+<p>That&rsquo;s it! You now know how to simulate networks of morphologically detailed neurons. We recommend that you now have a look at how you can <a href="https://jaxley.readthedocs.io/en/latest/tutorials/04_jit_and_vmap.html">speed up your simulation</a>. To learn more about handling synaptic parameters, we recommend to check out <a href="https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html">this tutorial</a>.</p>
 
 
 

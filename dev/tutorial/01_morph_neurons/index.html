@@ -368,6 +368,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#change-parameters-of-the-cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Change parameters of the cell
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stimulate-the-cell" class="md-nav__link">
     <span class="md-ellipsis">
       Stimulate the cell
@@ -431,7 +440,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../03_setting_parameters/" class="md-nav__link">
+      <a href="../03_setting_parameters.md" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -932,6 +941,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#change-parameters-of-the-cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Change parameters of the cell
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stimulate-the-cell" class="md-nav__link">
     <span class="md-ellipsis">
       Stimulate the cell
@@ -1001,6 +1019,9 @@
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Na</span><span class="p">())</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">K</span><span class="p">())</span>
 
+<span class="c1"># Change parameters.</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">)</span>
+
 <span class="c1"># Visualize the morphology.</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">compute_xyz</span><span class="p">()</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
@@ -1042,7 +1063,7 @@
 <div class="highlight"><pre><span></span><code><span class="n">parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="n">parents</span><span class="p">)</span>
 </code></pre></div>
-<p>To learn more about <code>Compartment</code>s, <code>Branch</code>es, and <code>Cell</code>s, see [this tutorial](More backgrond on compartments, branches, as and indexing like <code>cell.branch(0)</code> is in <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">this tutorial</a>.</p>
+<p>To learn more about <code>Compartment</code>s, <code>Branch</code>es, and <code>Cell</code>s, see <a href="http://localhost:8000/tutorials/00_jaxley_api.html">this tutorial</a>.</p>
 <h3 id="read-the-cell-from-an-swc-file">Read the cell from an SWC file<a class="headerlink" href="#read-the-cell-from-an-swc-file" title="Permanent link">&para;</a></h3>
 <p>Alternatively, you could also load cells from SWC with </p>
 <p><code>cell = jx.read_swc(fname, nseg=4)</code></p>
@@ -1351,7 +1372,7 @@
 <p>10 rows × 25 columns</p>
 </div>
 
-<p>You can also inspect just parts of the <code>cell</code>, for example its 1<sup>st</sup> branch:</p>
+<p>Note that <code>Jaxley</code> uses the same units as the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>. You can also inspect just parts of the <code>cell</code>, for example its 1<sup>st</sup> branch:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
 </code></pre></div>
 <div>
@@ -1457,17 +1478,123 @@
 </code></pre></div>
 <p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_21_0.png" /></p>
 <p>More background and features on indexing as <code>cell.branch(0)</code> is in <a href="https://jaxleyverse.github.io/jaxley/latest/tutorial/00_jaxley_api.ipynb/">this tutorial</a>.</p>
+<h3 id="change-parameters-of-the-cell">Change parameters of the cell<a class="headerlink" href="#change-parameters-of-the-cell" title="Permanent link">&para;</a></h3>
+<p>You can change properties of the cell with the <code>.set()</code> method (more details in <a href="http://localhost:8000/tutorials/03_setting_parameters.html">this tutorial</a>):</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;axial_resistivity&quot;</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">)</span>
+</code></pre></div>
+<p>And we can again inspect the <code>.nodes</code> to make sure that the axial resistivity indeed changed:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
+</code></pre></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>local_cell_index</th>
+      <th>local_branch_index</th>
+      <th>local_comp_index</th>
+      <th>length</th>
+      <th>radius</th>
+      <th>axial_resistivity</th>
+      <th>capacitance</th>
+      <th>v</th>
+      <th>Leak</th>
+      <th>Leak_gLeak</th>
+      <th>...</th>
+      <th>Na_m</th>
+      <th>Na_h</th>
+      <th>K</th>
+      <th>K_gK</th>
+      <th>eK</th>
+      <th>K_n</th>
+      <th>global_cell_index</th>
+      <th>global_branch_index</th>
+      <th>global_comp_index</th>
+      <th>controlled_by_param</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>200.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>True</td>
+      <td>0.0001</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>1</td>
+      <td>2</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>10.0</td>
+      <td>1.0</td>
+      <td>200.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>True</td>
+      <td>0.0001</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+<p>2 rows × 25 columns</p>
+</div>
+
+<p>In a similar way, you can modify channel properties or initial states (units are <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;K_gK&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>  <span class="c1"># modify potassium conductance.</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mf">65.0</span><span class="p">)</span>  <span class="c1"># modify initial voltage.</span>
+</code></pre></div>
 <h3 id="stimulate-the-cell">Stimulate the cell<a class="headerlink" href="#stimulate-the-cell" title="Permanent link">&para;</a></h3>
 <p>We next stimulate one of the compartments with a step current. For this, we first define the step current (all units are the same as for the <code>NEURON</code> simulator, which are listed <a href="https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html">here</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.025</span>
 <span class="n">t_max</span> <span class="o">=</span> <span class="mf">10.0</span>
 <span class="n">time_vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">t_max</span><span class="o">+</span><span class="n">dt</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
-<span class="n">current</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">step_current</span><span class="p">(</span><span class="n">i_delay</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_dur</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_amp</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="n">t_max</span><span class="p">)</span>
+<span class="n">current</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">step_current</span><span class="p">(</span><span class="n">i_delay</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_dur</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">i_amp</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="n">t_max</span><span class="p">)</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time_vec</span><span class="p">,</span> <span class="n">current</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_24_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_30_0.png" /></p>
 <p>We then stimulate one of the compartments of the cell with this step current:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">delete_stimuli</span><span class="p">()</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">stimulate</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
@@ -1488,10 +1615,10 @@ Added 1 recordings. See `.recordings` for details.
 <p>We can again visualize these locations to understand where we inserted recordings:</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_31_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_37_0.png" /></p>
 <h3 id="simulate-the-cell-response">Simulate the cell response<a class="headerlink" href="#simulate-the-cell-response" title="Permanent link">&para;</a></h3>
 <p>Having set up the cell, inserted stimuli and recordings, we are now ready to run a simulation with <code>jx.integrate</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">voltages</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
@@ -1500,17 +1627,15 @@ Added 1 recordings. See `.recordings` for details.
 <div class="codehilite"><pre><span></span><code>voltages.shape (2, 402)
 </code></pre></div>
 
-<p>The <code>jx.integrate</code> function returns an array of shape <code>(num_recordings, num_timepoints). In our case, we inserted</code>2` recordings and we simulated for 10ms at a 0.025 time step, which leads to 402 time steps.</p>
+<p>The <code>jx.integrate</code> function returns an array of shape <code>(num_recordings, num_timepoints)</code>. In our case, we inserted <code>2</code> recordings and we simulated for 10ms at a 0.025 time step, which leads to 402 time steps.</p>
 <p>We can now visualize the voltage response:</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">voltages</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">voltages</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;orange&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_35_0.png" /></p>
+<p><img alt="png" src="../01_morph_neurons_files/01_morph_neurons_41_0.png" /></p>
 <p>At the location of the first recording (in blue) the cell spiked, whereas at the second recording, it did not. This makes sense because we only inserted sodium and potassium channels into the first branch, but not in the entire cell.</p>
-<p>Congrats! You have just run your first morphologically detailed neuron simulation in <code>Jaxley</code>. We suggest to continue by learning how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">build networks</a>. If you are only interested in single cell simulations, you can directly jump to learning how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/03_setting_parameters.html">modify parameters of your simulation</a>. If you want to simulate detailed morphologies from SWC files, checkout our tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html">working with detailed morphologies</a>.</p>
-<div class="highlight"><pre><span></span><code>
-</code></pre></div>
+<p>Congrats! You have just run your first morphologically detailed neuron simulation in <code>Jaxley</code>. We suggest to continue by learning how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">build networks</a>. If you are only interested in single cell simulations, you can directly jump to learning how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/04_jit_and_vmap.html">speed up simulations</a>. If you want to simulate detailed morphologies from SWC files, checkout our tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html">working with detailed morphologies</a>.</p>
 
 
 

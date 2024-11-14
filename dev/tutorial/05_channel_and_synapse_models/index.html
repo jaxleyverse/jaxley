@@ -328,7 +328,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../03_setting_parameters/" class="md-nav__link">
+      <a href="../03_setting_parameters.md" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -917,7 +917,6 @@
 <p>In this tutorial, we will show you how to build your own channel and synapse models.</p>
 <h3 id="your-own-channel">Your own channel<a class="headerlink" href="#your-own-channel" title="Permanent link">&para;</a></h3>
 <p>Below is how you can define your own channel. We will go into detail about individual parts of the code in the next couple of cells.</p>
-<p>Note that a channel needs to have the functions <code>update_states</code> and <code>compute_currents</code> and <code>init_states</code> with all input arguments shown below. </p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
 <span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Channel</span>
 <span class="kn">from</span> <span class="nn">jaxley.solver_gate</span> <span class="kn">import</span> <span class="n">solve_gate_exponential</span>
@@ -976,7 +975,7 @@
 <p>Next, we have the <code>update_states()</code> method, which updates the gating variables:
 <div class="highlight"><pre><span></span><code>    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
 </code></pre></div></p>
-<p>The inputs <code>states</code> to the <code>update_states</code> method is a dictionary which contains all states that are updated (including states of other channels). <code>v</code> is a <code>jnp.ndarray</code> which contains the voltage of a single compartment (shape <code>()</code>). Let&rsquo;s get the state of the potassium channel which we are building here:
+<p>Every channel you define must have an <code>update_states()</code> method which takes exactly these five arguments (self, states, dt, v, params). The inputs <code>states</code> to the <code>update_states</code> method is a dictionary which contains all states that are updated (including states of other channels). <code>v</code> is a <code>jnp.ndarray</code> which contains the voltage of a single compartment (shape <code>()</code>). Let&rsquo;s get the state of the potassium channel which we are building here:
 <div class="highlight"><pre><span></span><code><span class="n">ns</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s2">&quot;n_new&quot;</span><span class="p">]</span>
 </code></pre></div></p>
 <p>Next, we update the state of the channel. In this example, we do this with exponential Euler, but you can implement any solver yourself:
@@ -1077,8 +1076,7 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_20_0.png" /></p>
 <p>That&rsquo;s it! You are now ready to build your own custom simulations and equip them with channel and synapse models!</p>
-<p>This tutorial does not have an immediate follow-up tutorial. You could read the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/06_groups.html">tutorial on groups</a>, which allow to make your <code>Jaxley</code> simulations more elegant and convenient to interact with.</p>
-<p>Alternatively, you can also directly jump ahead to the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
+<p>This tutorial does not have an immediate follow-up tutorial. If you have not done so already, you can check out our <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
 
 
 

@@ -322,7 +322,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../03_setting_parameters/" class="md-nav__link">
+      <a href="../03_setting_parameters.md" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -780,6 +780,65 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modules
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#views" class="md-nav__link">
+    <span class="md-ellipsis">
+      Views
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-create-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      How to create Views
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      Channels
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synapses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Synapses
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -800,7 +859,7 @@
 <p>In this tutorial, we will introduce you to the basic concepts of Jaxley.
 You will learn about:</p>
 <ul>
-<li>Modules<ul>
+<li>Modules (e.g., Cell, Network,&hellip;)<ul>
 <li>nodes</li>
 <li>edges</li>
 </ul>
@@ -857,7 +916,7 @@ You will learn about:</p>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 </code></pre></div>
-<h1 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h1>
+<h2 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h2>
 <p>In Jaxley, we heavily rely on the concept of Modules to build biophyiscal models of neural systems at various scales.
 Jaxley implements four types of Modules:
 - <code>Compartment</code><br />
@@ -1549,7 +1608,7 @@ Jaxley implements four types of Modules:
 </table>
 </div>
 
-<h1 id="views">Views<a class="headerlink" href="#views" title="Permanent link">&para;</a></h1>
+<h2 id="views">Views<a class="headerlink" href="#views" title="Permanent link">&para;</a></h2>
 <p>Since these <code>Module</code>s can become very complex, Jaxley utilizes so called <code>View</code>s to make working with <code>Module</code>s easy and intuitive. </p>
 <p>The simplest way to navigate Modules is by navigating them via the hierachy that we introduced above. A <code>View</code> is what you get when you index into the module. For example, for a <code>Network</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -2409,7 +2468,7 @@ Jaxley implements four types of Modules:
 </table>
 </div>
 
-<h1 id="channels">Channels<a class="headerlink" href="#channels" title="Permanent link">&para;</a></h1>
+<h2 id="channels">Channels<a class="headerlink" href="#channels" title="Permanent link">&para;</a></h2>
 <p>The <code>Module</code>s that we have created above will not do anything interesting, since by default Jaxley initializes them without any mechanisms in the membrane. To change this, we have to insert channels into the membrane. For this purpose <code>Jaxley</code> implements <code>Channel</code>s that can be inserted into any compartment using the <code>insert</code> method of a <code>Module</code> or a <code>View</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># insert a Leak channel into all compartments in the Module.</span>
 <span class="n">net</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Leak</span><span class="p">())</span>
@@ -2619,7 +2678,7 @@ Jaxley implements four types of Modules:
 </table>
 </div>
 
-<h1 id="synapses">Synapses<a class="headerlink" href="#synapses" title="Permanent link">&para;</a></h1>
+<h2 id="synapses">Synapses<a class="headerlink" href="#synapses" title="Permanent link">&para;</a></h2>
 <p>To connect different cells together, Jaxley implements a <code>connect</code> method, that can be used to couple 2 compartments together using a <code>Synapse</code>. Synapses in Jaxley work only on the compartment level, that means to be able to connect two cells, you need to specify the exact compartments on a given cell to make the connections between. Below is an example of this:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># connecting two cells using a Synapse</span>
 <span class="n">pre_comp</span> <span class="o">=</span> <span class="n">cell0</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
