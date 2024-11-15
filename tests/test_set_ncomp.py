@@ -19,7 +19,7 @@ from jaxley.channels import HH
 @pytest.mark.parametrize(
     "property", ["radius", "capacitance", "length", "axial_resistivity"]
 )
-def test_raise_for_heterogenous_modules(property, SimpleBranch):
+def test_raise_for_heterogenous_modules(SimpleBranch, property):
     branch0 = SimpleBranch(4)
     branch1 = SimpleBranch(4)
     branch1.comp(1).set(property, 1.5)
@@ -77,7 +77,7 @@ def test_raise_for_stimulus(SimpleCell):
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(
-    new_ncomp, SimpleBranch
+    SimpleBranch, new_ncomp
 ):
     """Test whether a module built from scratch matches module built with `set_ncomp()`.
 
@@ -109,7 +109,7 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
-    new_ncomp, SimpleBranch
+    SimpleBranch, new_ncomp
 ):
     """Test whether a module built from scratch matches module built with `set_ncomp()`."""
     branch1 = SimpleBranch(new_ncomp)
@@ -141,7 +141,7 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 @pytest.mark.parametrize("file", ["morph_250.swc"])
-def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file, SimpleMorphCell):
+def test_api_equivalence_swc_lengths_and_radiuses(SimpleMorphCell, new_ncomp, file):
     """Test if the radiuses and lenghts of an SWC morph are reconstructed correctly."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
@@ -162,7 +162,7 @@ def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file, SimpleMorphCe
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 @pytest.mark.parametrize("file", ["morph_250.swc"])
-def test_simulation_accuracy_swc_init_vs_set_ncomp(new_ncomp, file, SimpleMorphCell):
+def test_simulation_accuracy_swc_init_vs_set_ncomp(SimpleMorphCell, new_ncomp, file):
     """Test whether an SWC initially built with 4 ncomp works after `set_ncomp()`."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)

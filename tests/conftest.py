@@ -4,13 +4,10 @@
 import os
 from copy import deepcopy
 
-import jax.numpy as jnp
-import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 @pytest.fixture(scope="session")
@@ -30,7 +27,8 @@ def SimpleBranch(SimpleComp):
 
     def branch_w_shape(nseg, copy=True):
         if nseg not in branches:
-            branches[nseg] = jx.Branch([SimpleComp()] * nseg)
+            comp = SimpleComp()
+            branches[nseg] = jx.Branch([comp] * nseg)
         return deepcopy(branches[nseg]) if copy else branches[nseg]
 
     yield branch_w_shape
@@ -49,7 +47,8 @@ def SimpleCell(SimpleBranch):
                 parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
                 depth += 1
             parents = parents[:nbranches]
-            cells[key] = jx.Cell([SimpleBranch(nseg)] * nbranches, parents)
+            branch = SimpleBranch(nseg)
+            cells[key] = jx.Cell([branch] * nbranches, parents)
         return deepcopy(cells[key]) if copy else cells[key]
 
     yield cell_w_shape

@@ -292,22 +292,22 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
 def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     """Check if different ways to index into Modules/Views work correctly."""
     # test int, range, slice, list, np.array, pd.Index
-    index_types = [
-        0,
-        range(3),
-        slice(0, 3),
-        [0, 1, 2],
-        np.array([0, 1, 2]),
-        pd.Index([0, 1, 2]),
-        np.array([True, False, True, False] * 100)[: len(module.nodes)],
-    ]
 
     for module in [
         SimpleComp(),
         SimpleBranch(4),
         SimpleCell(3, 4),
-        SimpleNet(2, 3, 4, connect=True),
+        SimpleNet(2, 3, 4),
     ]:
+        index_types = [
+            0,
+            range(3),
+            slice(0, 3),
+            [0, 1, 2],
+            np.array([0, 1, 2]),
+            pd.Index([0, 1, 2]),
+            np.array([True, False, True, False] * 100)[: len(module.nodes)],
+        ]
 
         # comp.comp is not allowed
         all_inds = module.nodes.index.to_numpy()
@@ -333,6 +333,7 @@ def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, Simple
                 module.comp(0)
 
         if isinstance(module, jx.Network):
+            connect(module[0, 0, :], module[1, 0, :], TestSynapse())
             all_inds = module.edges.index.to_numpy()
             for index in index_types[:-1] + [np.array([True, False, True, False])]:
                 expected_inds = all_inds[index]
