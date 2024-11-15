@@ -65,47 +65,51 @@ class Module(ABC):
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.
 
+    This base class defines the scaffold for all jaxley modules (compartments,
+    branches, cells, networks).
+
     Modules can be traversed and modified using the `at`, `cell`, `branch`, `comp`,
     `edge`, and `loc` methods. The `scope` method can be used to toggle between
     global and local indices. Traversal of Modules will return a `View` of itself,
     that has a modified set of attributes, which only consider the part of the Module
     that is in view.
 
-    This has consequences for how to operate on Module and which changes take affect
-    where. The following guidelines should be followed (copied from `View`):
+    For developers: The above has consequences for how to operate on `Module` and which
+    changes take affect where. The following guidelines should be followed (copied from
+    `View`):
+
     1. We consider a Module to have everything in view.
     2. Views can display and keep track of how a module is traversed. But(!),
-        do not support making changes or setting variables. This still has to be
-        done in the base Module, i.e. `self.base`. In order to enssure that these
-        changes only affects whatever is currently in view `self._nodes_in_view`,
-        or `self._edges_in_view` among others have to be used. Operating on nodes
-        currently in view can for example be done with
-        `self.base.node.loc[self._nodes_in_view]`
+       do not support making changes or setting variables. This still has to be
+       done in the base Module, i.e. `self.base`. In order to enssure that these
+       changes only affects whatever is currently in view `self._nodes_in_view`,
+       or `self._edges_in_view` among others have to be used. Operating on nodes
+       currently in view can for example be done with
+       `self.base.node.loc[self._nodes_in_view]`.
     3. Every attribute of Module that changes based on what's in view, i.e. `xyzr`,
-        needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
-        should be `[self.base.xyzr[0]]` This could be achieved via:
-        `[self.base.xyzr[b] for b in self._branches_in_view]`.
+       needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
+       should be `[self.base.xyzr[0]]` This could be achieved via:
+       `[self.base.xyzr[b] for b in self._branches_in_view]`.
 
+    For developers: If you want to add a new method to `Module`, here is an example of
+    how to make methods of Module compatible with View:
 
-    Example to make methods of Module compatible with View:
-    ```
-    # use data in view to return something
-    def count_small_branches(self):
-        # no need to use self.base.attr + viewed indices,
-        # since no change is made to the attr in question (nodes)
-        comp_lens = self.nodes["length"]
-        branch_lens = comp_lens.groupby("global_branch_index").sum()
-        return np.sum(branch_lens < 10)
+    .. code-block:: python
 
-    # change data in view
-    def change_attr_in_view(self):
-        # changes to attrs have to be made via self.base.attr + viewed indices
-        a = func1(self.base.attr1[self._cells_in_view])
-        b = func2(self.base.attr2[self._edges_in_view])
-        self.base.attr3[self._branches_in_view] = a + b
+        # Use data in view to return something.
+        def count_small_branches(self):
+            # no need to use self.base.attr + viewed indices,
+            # since no change is made to the attr in question (nodes)
+            comp_lens = self.nodes["length"]
+            branch_lens = comp_lens.groupby("global_branch_index").sum()
+            return np.sum(branch_lens < 10)
 
-    This base class defines the scaffold for all jaxley modules (compartments,
-    branches, cells, networks).
+        # Change data in view.
+        def change_attr_in_view(self):
+            # changes to attrs have to be made via self.base.attr + viewed indices
+            a = func1(self.base.attr1[self._cells_in_view])
+            b = func2(self.base.attr2[self._edges_in_view])
+            self.base.attr3[self._branches_in_view] = a + b
     """
 
     def __init__(self):
@@ -616,12 +620,13 @@ class Module(ABC):
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
         Example:
-        ```
-        for cell in network:
-            for branch in cell:
-                for comp in branch:
-                    print(comp.nodes.shape)
-        ```
+        
+        .. code-block:: python
+
+            for cell in network:
+                for branch in cell:
+                    for comp in branch:
+                        print(comp.nodes.shape)
         """
         next_level = self._childviews()[0]
         yield from self._iter_submodules(next_level)
@@ -630,11 +635,12 @@ class Module(ABC):
     def shape(self) -> Tuple[int]:
         """Returns the number of submodules contained in a module.
 
-        ```
-        network.shape = (num_cells, num_branches, num_compartments)
-        cell.shape = (num_branches, num_compartments)
-        branch.shape = (num_compartments,)
-        ```"""
+        .. code-block:: python
+
+            network.shape = (num_cells, num_branches, num_compartments)
+            cell.shape = (num_branches, num_compartments)
+            branch.shape = (num_compartments,)
+        """
         cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
         raw_shape = self.nodes[cols].nunique().to_list()
 
@@ -1173,10 +1179,11 @@ class Module(ABC):
         """Add a view of the module to a group.
 
         Groups can then be indexed. For example:
-        ```python
-        net.cell(0).add_to_group("excitatory")
-        net.excitatory.set("radius", 0.1)
-        ```
+
+        .. code-block:: python
+    
+            net.cell(0).add_to_group("excitatory")
+            net.excitatory.set("radius", 0.1)
 
         Args:
             group_name: The name of the group.
@@ -1224,11 +1231,12 @@ class Module(ABC):
         in `trainable_params()`. This function is run within `jx.integrate()`.
 
         pstate can be obtained by calling `params_to_pstate()`.
-        ```
-        params = module.get_parameters() # i.e. [0, 1, 2]
-        pstate = params_to_pstate(params, module.indices_set_by_trainables)
-        module.to_jax() # needed for call to module.jaxnodes
-        ```
+        
+        .. code-block:: python
+
+            params = module.get_parameters() # i.e. [0, 1, 2]
+            pstate = params_to_pstate(params, module.indices_set_by_trainables)
+            module.to_jax() # needed for call to module.jaxnodes
 
         Args:
             pstate: The state of the trainable parameters. pstate takes the form
@@ -2325,39 +2333,40 @@ class View(Module):
     `self.nodes` (currently in view) and returns the updated list such that we can set
     `self.channels = self._channels_in_view()`.
 
+    For developers: To allow seamless operation on Views and Modules as if they were
+    the same, the following needs to be ensured:
 
-    To allow seamless operation on Views and Modules as if they were the same,
-    the following needs to be ensured:
     1. We consider a Module to have everything in view.
     2. Views can display and keep track of how a module is traversed. But(!),
-        do not support making changes or setting variables. This still has to be
-        done in the base Module, i.e. `self.base`. In order to enssure that these
-        changes only affects whatever is currently in view `self._nodes_in_view`,
-        or `self._edges_in_view` among others have to be used. Operating on nodes
-        currently in view can for example be done with
-        `self.base.node.loc[self._nodes_in_view]`
+       do not support making changes or setting variables. This still has to be
+       done in the base Module, i.e. `self.base`. In order to enssure that these
+       changes only affects whatever is currently in view `self._nodes_in_view`,
+       or `self._edges_in_view` among others have to be used. Operating on nodes
+       currently in view can for example be done with
+       `self.base.node.loc[self._nodes_in_view]`
     3. Every attribute of Module that changes based on what's in view, i.e. `xyzr`,
-        needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
-        should be `[self.base.xyzr[0]]` This could be achieved via:
-        `[self.base.xyzr[b] for b in self._branches_in_view]`.
+       needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
+       should be `[self.base.xyzr[0]]` This could be achieved via:
+       `[self.base.xyzr[b] for b in self._branches_in_view]`.
 
 
-    Example to make methods of Module compatible with View:
-    ```
-    # use data in view to return something
-    def count_small_branches(self):
-        # no need to use self.base.attr + viewed indices,
-        # since no change is made to the attr in question (nodes)
-        comp_lens = self.nodes["length"]
-        branch_lens = comp_lens.groupby("global_branch_index").sum()
-        return np.sum(branch_lens < 10)
+    For developers: Below is an example to make methods of Module compatible with View:
+    
+    .. code-block:: python
+        # Use data in view to return something.
+        def count_small_branches(self):
+            # no need to use self.base.attr + viewed indices,
+            # since no change is made to the attr in question (nodes)
+            comp_lens = self.nodes["length"]
+            branch_lens = comp_lens.groupby("global_branch_index").sum()
+            return np.sum(branch_lens < 10)
 
-    # change data in view
-    def change_attr_in_view(self):
-        # changes to attrs have to be made via self.base.attr + viewed indices
-        a = func1(self.base.attr1[self._cells_in_view])
-        b = func2(self.base.attr2[self._edges_in_view])
-        self.base.attr3[self._branches_in_view] = a + b
+        # Change data in view.
+        def change_attr_in_view(self):
+            # changes to attrs have to be made via self.base.attr + viewed indices
+            a = func1(self.base.attr1[self._cells_in_view])
+            b = func2(self.base.attr2[self._edges_in_view])
+            self.base.attr3[self._branches_in_view] = a + b
     """
 
     def __init__(
