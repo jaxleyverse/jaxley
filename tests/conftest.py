@@ -12,9 +12,20 @@ from jaxley.synapses import IonotropicSynapse
 
 @pytest.fixture(scope="session")
 def SimpleComp():
+    """Fixture for creating or retrieving an already created compartment."""
     comps = {}
 
-    def get_or_build_comp(copy=True, force_init=False):
+    def get_or_build_comp(
+        copy: bool = True, force_init: bool = False
+    ) -> jx.Compartment:
+        """Create or retrieve a compartment.
+
+        Args:
+            copy: Whether to return a copy of the compartment. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Compartment()."""
         if "comp" not in comps or force_init:
             comps["comp"] = jx.Compartment()
         return deepcopy(comps["comp"]) if copy and not force_init else comps["comp"]
@@ -25,9 +36,23 @@ def SimpleComp():
 
 @pytest.fixture(scope="session")
 def SimpleBranch(SimpleComp):
+    """Fixture for creating or retrieving an already created branch."""
     branches = {}
 
-    def get_or_build_branch(nseg, copy=True, force_init=False):
+    def get_or_build_branch(
+        nseg: int, copy: bool = True, force_init: bool = False
+    ) -> jx.Branch:
+        """Create or retrieve a branch.
+
+        If a branch with the same number of compartments already exists, it is returned.
+
+        Args:
+            nseg: Number of compartments in the branch.
+            copy: Whether to return a copy of the branch. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Branch()."""
         if nseg not in branches or force_init:
             comp = SimpleComp(force_init=force_init)
             branches[nseg] = jx.Branch([comp] * nseg)
@@ -39,9 +64,25 @@ def SimpleBranch(SimpleComp):
 
 @pytest.fixture(scope="session")
 def SimpleCell(SimpleBranch):
+    """Fixture for creating or retrieving an already created cell."""
     cells = {}
 
-    def get_or_build_cell(nbranches, nseg, copy=True, force_init=False):
+    def get_or_build_cell(
+        nbranches: int, nseg: int, copy: bool = True, force_init: bool = False
+    ) -> jx.Cell:
+        """Create or retrieve a cell.
+
+        If a cell with the same number of branches and compartments already exists, it
+        is returned. The branch strcuture is assumed as [-1, 0, 0, 1, 1, 2, 2, ...].
+
+        Args:
+            nbranches: Number of branches in the cell.
+            nseg: Number of compartments in each branch.
+            copy: Whether to return a copy of the cell. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Cell()."""
         if key := (nbranches, nseg) not in cells or force_init:
             parents = [-1]
             depth = 0
@@ -59,11 +100,32 @@ def SimpleCell(SimpleBranch):
 
 @pytest.fixture(scope="session")
 def SimpleNet(SimpleCell):
+    """Fixture for creating or retrieving an already created network."""
     nets = {}
 
     def get_or_build_net(
-        ncells, nbranches, nseg, connect=False, copy=True, force_init=False
-    ):
+        ncells: int,
+        nbranches: int,
+        nseg: int,
+        connect: bool = False,
+        copy: bool = True,
+        force_init: bool = False,
+    ) -> jx.Network:
+        """Create or retrieve a network.
+
+        If a network with the same number of cells, branches, compartments, and
+        connections already exists, it is returned.
+
+        Args:
+            ncells: Number of cells in the network.
+            nbranches: Number of branches in each cell.
+            nseg: Number of compartments in each branch.
+            connect: Whether to connect the first two cells in the network.
+            copy: Whether to return a copy of the network. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Network()."""
         if key := (ncells, nbranches, nseg, connect) not in nets or force_init:
             net = jx.Network(
                 [SimpleCell(nbranches=nbranches, nseg=nseg, force_init=force_init)]
@@ -80,14 +142,33 @@ def SimpleNet(SimpleCell):
 
 @pytest.fixture(scope="session")
 def SimpleMorphCell():
-    dirname = os.path.dirname(__file__)
-    default_fname = os.path.join(dirname, "swc_files", "morph.swc")  # n120
+    """Fixture for creating or retrieving an already created morpholgy."""
 
     cells = {}
 
     def get_or_build_cell(
-        fname=None, nseg=1, max_branch_len=2_000.0, copy=True, force_init=False
-    ):
+        fname: str = None,
+        nseg: int = 1,
+        max_branch_len: float = 2_000.0,
+        copy: bool = True,
+        force_init: bool = False,
+    ) -> jx.Cell:
+        """Create or retrieve a cell from an SWC file.
+
+        If a cell with the same SWC file, number of compartments, and maximum branch
+        length already exists, it is returned.
+
+        Args:
+            fname: Path to the SWC file.
+            nseg: Number of compartments in each branch.
+            max_branch_len: Maximum length of a branch.
+            copy: Whether to return a copy of the cell. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Cell()."""
+        dirname = os.path.dirname(__file__)
+        default_fname = os.path.join(dirname, "swc_files", "morph.swc")
         fname = default_fname if fname is None else fname
         if key := (fname, nseg, max_branch_len) not in cells or force_init:
             cells[key] = jx.read_swc(fname, nseg, max_branch_len, assign_groups=True)
@@ -99,14 +180,18 @@ def SimpleMorphCell():
 
 @pytest.fixture(scope="session")
 def swc2jaxley():
-    dirname = os.path.dirname(__file__)
-    default_fname = os.path.join(dirname, "swc_files", "morph.swc")  # n120
+    """Fixture for creating or retrieving an already computed params of a morphology."""
 
     params = {}
 
     def get_or_compute_swc2jaxley_params(
-        fname=None, max_branch_len=2_000.0, sort=True, force_init=False
+        fname: str = None,
+        max_branch_len: float = 2_000.0,
+        sort: bool = True,
+        force_init: bool = False,
     ):
+        dirname = os.path.dirname(__file__)
+        default_fname = os.path.join(dirname, "swc_files", "morph.swc")
         fname = default_fname if fname is None else fname
         if key := (fname, max_branch_len, sort) not in params or force_init:
             params[key] = jx.utils.swc.swc_to_jaxley(fname, max_branch_len, sort)
