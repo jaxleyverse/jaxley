@@ -14,6 +14,7 @@ from math import pi
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax import value_and_grad
 
 import jaxley as jx
@@ -22,12 +23,9 @@ from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
-def test_network_grad():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-
-    net = jx.Network([cell for _ in range(7)])
+@pytest.mark.slow
+def test_network_grad(SimpleNet):
+    net = SimpleNet(7, 5, 4)
     net.insert(HH())
 
     _ = np.random.seed(0)

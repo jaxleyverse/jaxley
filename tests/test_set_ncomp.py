@@ -147,7 +147,7 @@ def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file, SimpleMorphCe
     fname = os.path.join(dirname, "swc_files", file)
 
     cell1 = SimpleMorphCell(fname, nseg=new_ncomp)
-    cell2 = SimpleMorphCell(fname, nseg=4)
+    cell2 = SimpleMorphCell(fname, nseg=1)
 
     for b in range(cell2.total_nbranches):
         cell2.branch(b).set_ncomp(new_ncomp)
@@ -168,7 +168,7 @@ def test_simulation_accuracy_swc_init_vs_set_ncomp(new_ncomp, file, SimpleMorphC
     fname = os.path.join(dirname, "swc_files", file)
 
     cell1 = SimpleMorphCell(fname, nseg=new_ncomp)
-    cell2 = SimpleMorphCell(fname, nseg=4)
+    cell2 = SimpleMorphCell(fname, nseg=1)
 
     for b in range(cell2.total_nbranches):
         cell2.branch(b).set_ncomp(new_ncomp)

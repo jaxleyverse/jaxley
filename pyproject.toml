@@ -66,6 +66,11 @@ dev = [
     "jupyter",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (T > 10s)",
+]
+
 [tool.isort]
 profile = "black"
 

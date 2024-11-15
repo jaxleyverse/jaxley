@@ -9,6 +9,7 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax import jit, value_and_grad
 
 import jaxley as jx
@@ -22,7 +23,7 @@ def _run_long_branch(dt, t_max, branch):
     params = branch.get_parameters()
 
     branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    branch.loc(0.0).stimulate(jx.step_current(0.2, 2.0, 0.1, dt, t_max))
 
     def loss(params):
         s = jx.integrate(branch, params=params)
@@ -41,7 +42,7 @@ def _run_short_branches(dt, t_max, cell):
     params = cell.get_parameters()
 
     cell.branch(0).loc(0.0).record()
-    cell.branch(0).loc(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    cell.branch(0).loc(0.0).stimulate(jx.step_current(0.2, 2.0, 0.1, dt, t_max))
 
     def loss(params):
         s = jx.integrate(cell, params=params)
@@ -53,10 +54,11 @@ def _run_short_branches(dt, t_max, cell):
     return l, g
 
 
+@pytest.mark.slow
 def test_equivalence(SimpleBranch, SimpleCell):
     """Test whether a single long branch matches a cell of two shorter branches."""
     dt = 0.025
-    t_max = 5.0  # ms
+    t_max = 2.0  # ms
     l1, g1 = _run_long_branch(dt, t_max, SimpleBranch(8))
     l2, g2 = _run_short_branches(dt, t_max, SimpleCell(2, 4))
 

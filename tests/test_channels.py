@@ -164,6 +164,7 @@ def test_integration_with_renamed_channels():
     assert np.invert(np.any(np.isnan(v)))
 
 
+@pytest.mark.slow
 def test_init_states(SimpleCell):
     """Functional test for `init_states()`.
 

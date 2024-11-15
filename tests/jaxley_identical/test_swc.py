@@ -21,16 +21,17 @@ from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
-def test_swc_cell(voltage_solver: str, file: str):
+def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.2, dt, t_max)
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", file)
-    cell = jx.read_swc(fname, nseg=2, max_branch_len=300.0, assign_groups=True)
+    cell = SimpleMorphCell(fname, nseg=2, max_branch_len=300.0)
     _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
@@ -81,16 +82,17 @@ def test_swc_cell(voltage_solver: str, file: str):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_swc_net(voltage_solver: str):
+def test_swc_net(voltage_solver: str, SimpleMorphCell):
     dt = 0.025  # ms
     t_max = 5.0  # ms
     current = jx.step_current(0.5, 1.0, 0.2, dt, t_max)
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files/morph.swc")
-    cell1 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
-    cell2 = jx.read_swc(fname, nseg=2, max_branch_len=300.0)
+    cell1 = SimpleMorphCell(fname, nseg=2, max_branch_len=300.0)
+    cell2 = SimpleMorphCell(fname, nseg=2, max_branch_len=300.0)
 
     network = jx.Network([cell1, cell2])
     connect(

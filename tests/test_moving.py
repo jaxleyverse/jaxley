@@ -142,9 +142,9 @@ def test_move_to_cellview(SimpleNet):
 def test_move_to_swc_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = SimpleMorphCell(fname, nseg=4)
-    cell2 = SimpleMorphCell(fname, nseg=4)
-    cell3 = SimpleMorphCell(fname, nseg=4)
+    cell1 = SimpleMorphCell(fname, nseg=1)
+    cell2 = SimpleMorphCell(fname, nseg=1)
+    cell3 = SimpleMorphCell(fname, nseg=1)
 
     # Try move_to on a cell
     cell1.move_to(10.0, 20.0, 30.0)

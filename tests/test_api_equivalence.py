@@ -8,6 +8,7 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -80,6 +81,7 @@ def test_solver_backends_branch(SimpleBranch):
     assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
 
 
+@pytest.mark.slow
 def test_solver_backends_cell(SimpleCell):
     """Test whether ways of adding synapses are equivalent."""
     cell = SimpleCell(4, 4)

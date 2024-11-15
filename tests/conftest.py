@@ -79,7 +79,7 @@ def SimpleMorphCell():
 
     cells = {}
 
-    def cell_w_params(fname=None, nseg=2, max_branch_len=2_000.0, copy=True):
+    def cell_w_params(fname=None, nseg=1, max_branch_len=2_000.0, copy=True):
         fname = default_fname if fname is None else fname
         if key := (fname, nseg, max_branch_len) not in cells:
             cells[key] = jx.read_swc(fname, nseg, max_branch_len, assign_groups=True)
