@@ -17,7 +17,7 @@ from jaxley.integrate import build_init_and_step_fn
 from jaxley.synapses import IonotropicSynapse
 
 
-def test_api_equivalence_morphology():
+def test_api_equivalence_morphology(SimpleComp):
     """Test the API for how one can build morphologies from scratch."""
     nseg_per_branch = 2
     depth = 2
@@ -27,7 +27,7 @@ def test_api_equivalence_morphology():
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
-    comp = jx.Compartment()
+    comp = SimpleComp()
 
     branch1 = jx.Branch([comp for _ in range(nseg_per_branch)])
     cell1 = jx.Cell([branch1 for _ in range(num_branches)], parents=parents)

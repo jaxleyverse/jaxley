@@ -16,14 +16,14 @@ import jaxley as jx
 from jaxley.channels import HH
 
 
-def _run_long_branch(dt, t_max, branch):
+def _run_long_branch(dt, t_max, current, branch):
     branch.insert(HH())
 
     branch.loc("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
 
     branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(jx.step_current(0.2, 2.0, 0.1, dt, t_max))
+    branch.loc(0.0).stimulate(current)
 
     def loss(params):
         s = jx.integrate(branch, params=params)
@@ -35,14 +35,14 @@ def _run_long_branch(dt, t_max, branch):
     return l, g
 
 
-def _run_short_branches(dt, t_max, cell):
+def _run_short_branches(dt, t_max, current, cell):
     cell.insert(HH())
 
     cell.branch("all").loc("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()
 
     cell.branch(0).loc(0.0).record()
-    cell.branch(0).loc(0.0).stimulate(jx.step_current(0.2, 2.0, 0.1, dt, t_max))
+    cell.branch(0).loc(0.0).stimulate(current)
 
     def loss(params):
         s = jx.integrate(cell, params=params)
@@ -58,9 +58,10 @@ def _run_short_branches(dt, t_max, cell):
 def test_equivalence(SimpleBranch, SimpleCell):
     """Test whether a single long branch matches a cell of two shorter branches."""
     dt = 0.025
-    t_max = 2.0  # ms
-    l1, g1 = _run_long_branch(dt, t_max, SimpleBranch(8))
-    l2, g2 = _run_short_branches(dt, t_max, SimpleCell(2, 4))
+    t_max = 5.0  # ms
+    current = jx.step_current(0.5, 5.0, 0.1, dt, t_max)
+    l1, g1 = _run_long_branch(dt, t_max, current, SimpleBranch(8))
+    l2, g2 = _run_short_branches(dt, t_max, current, SimpleCell(2, 4))
 
     assert np.allclose(l1, l2), "Losses do not match."
 
