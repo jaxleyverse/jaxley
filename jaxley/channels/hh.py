@@ -25,6 +25,7 @@ class HH(Channel):
             f"{prefix}_eNa": 50.0,
             f"{prefix}_eK": -77.0,
             f"{prefix}_eLeak": -54.3,
+            f"celsius": 37.0,
         }
         self.channel_states = {
             f"{prefix}_m": 0.2,
@@ -82,6 +83,17 @@ class HH(Channel):
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
             f"{prefix}_n": alpha_n / (alpha_n + beta_n),
         }
+    
+    def init_params(self, states, v, params):
+        """Initialize the parameters given the temperature."""
+        prefix = self._name
+        q10 = 2.3
+        t = params["celsius"]
+        gna = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gNa"]
+        gk = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gK"]
+        gleak = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gLeak"]
+        return {f"{prefix}_gNa": gna, f"{prefix}_gK": gk, f"{prefix}_gLeak": gleak}
+
 
     @staticmethod
     def m_gate(v):
