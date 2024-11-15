@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 import os
+import warnings
 from copy import deepcopy
 
 import pytest
@@ -12,26 +13,28 @@ from jaxley.synapses import IonotropicSynapse
 
 @pytest.fixture(scope="session")
 def SimpleComp():
-    comp = jx.Compartment()
+    comps = {}
 
-    def get_comp(copy=True):
-        return deepcopy(comp) if copy else comp
+    def get_or_build_comp(copy=True, force_init=False):
+        if "comp" not in comps or force_init:
+            comps["comp"] = jx.Compartment()
+        return deepcopy(comps["comp"]) if copy else comps["comp"]
 
-    yield get_comp
-    del comp
+    yield get_or_build_comp
+    comps = {}
 
 
 @pytest.fixture(scope="session")
 def SimpleBranch(SimpleComp):
     branches = {}
 
-    def branch_w_shape(nseg, copy=True):
-        if nseg not in branches:
-            comp = SimpleComp()
+    def get_or_build_branch(nseg, copy=True, force_init=False):
+        if nseg not in branches or force_init:
+            comp = SimpleComp(force_init=force_init)
             branches[nseg] = jx.Branch([comp] * nseg)
         return deepcopy(branches[nseg]) if copy else branches[nseg]
 
-    yield branch_w_shape
+    yield get_or_build_branch
     branches = {}
 
 
@@ -39,19 +42,19 @@ def SimpleBranch(SimpleComp):
 def SimpleCell(SimpleBranch):
     cells = {}
 
-    def cell_w_shape(nbranches, nseg, copy=True):
-        if key := (nbranches, nseg) not in cells:
+    def get_or_build_cell(nbranches, nseg, copy=True, force_init=False):
+        if key := (nbranches, nseg) not in cells or force_init:
             parents = [-1]
             depth = 0
             while nbranches > len(parents):
                 parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
                 depth += 1
             parents = parents[:nbranches]
-            branch = SimpleBranch(nseg)
+            branch = SimpleBranch(nseg=nseg, force_init=force_init)
             cells[key] = jx.Cell([branch] * nbranches, parents)
         return deepcopy(cells[key]) if copy else cells[key]
 
-    yield cell_w_shape
+    yield get_or_build_cell
     cells = {}
 
 
@@ -59,15 +62,20 @@ def SimpleCell(SimpleBranch):
 def SimpleNet(SimpleCell):
     nets = {}
 
-    def net_w_shape(ncells, nbranches, nseg, connect=False, copy=True):
-        if key := (ncells, nbranches, nseg, connect) not in nets:
-            net = jx.Network([SimpleCell(nbranches, nseg)] * ncells)
+    def get_or_build_net(
+        ncells, nbranches, nseg, connect=False, copy=True, force_init=False
+    ):
+        if key := (ncells, nbranches, nseg, connect) not in nets or force_init:
+            net = jx.Network(
+                [SimpleCell(nbranches=nbranches, nseg=nseg, force_init=force_init)]
+                * ncells
+            )
             if connect:
                 jx.connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())
             nets[key] = net
         return deepcopy(nets[key]) if copy else nets[key]
 
-    yield net_w_shape
+    yield get_or_build_net
     nets = {}
 
 
@@ -78,13 +86,15 @@ def SimpleMorphCell():
 
     cells = {}
 
-    def cell_w_params(fname=None, nseg=1, max_branch_len=2_000.0, copy=True):
+    def get_or_build_cell(
+        fname=None, nseg=1, max_branch_len=2_000.0, copy=True, force_init=False
+    ):
         fname = default_fname if fname is None else fname
-        if key := (fname, nseg, max_branch_len) not in cells:
+        if key := (fname, nseg, max_branch_len) not in cells or force_init:
             cells[key] = jx.read_swc(fname, nseg, max_branch_len, assign_groups=True)
         return deepcopy(cells[key]) if copy else cells[key]
 
-    yield cell_w_params
+    yield get_or_build_cell
     cells = {}
 
 
@@ -95,11 +105,13 @@ def swc2jaxley():
 
     params = {}
 
-    def swc2jaxley_params(fname=None, max_branch_len=2_000.0, sort=True):
+    def get_or_compute_swc2jaxley_params(
+        fname=None, max_branch_len=2_000.0, sort=True, force_init=False
+    ):
         fname = default_fname if fname is None else fname
-        if key := (fname, max_branch_len, sort) not in params:
+        if key := (fname, max_branch_len, sort) not in params or force_init:
             params[key] = jx.utils.swc.swc_to_jaxley(fname, max_branch_len, sort)
         return params[key]
 
-    yield swc2jaxley_params
+    yield get_or_compute_swc2jaxley_params
     params = {}
