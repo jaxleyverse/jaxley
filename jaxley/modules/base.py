@@ -620,7 +620,7 @@ class Module(ABC):
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
         Example:
-        
+
         .. code-block:: python
 
             for cell in network:
@@ -1181,7 +1181,7 @@ class Module(ABC):
         Groups can then be indexed. For example:
 
         .. code-block:: python
-    
+
             net.cell(0).add_to_group("excitatory")
             net.excitatory.set("radius", 0.1)
 
@@ -1231,7 +1231,7 @@ class Module(ABC):
         in `trainable_params()`. This function is run within `jx.integrate()`.
 
         pstate can be obtained by calling `params_to_pstate()`.
-        
+
         .. code-block:: python
 
             params = module.get_parameters() # i.e. [0, 1, 2]
@@ -2351,7 +2351,7 @@ class View(Module):
 
 
     For developers: Below is an example to make methods of Module compatible with View:
-    
+
     .. code-block:: python
         # Use data in view to return something.
         def count_small_branches(self):
