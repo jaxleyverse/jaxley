@@ -2,7 +2,6 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 import os
-import warnings
 from copy import deepcopy
 
 import pytest
@@ -18,7 +17,7 @@ def SimpleComp():
     def get_or_build_comp(copy=True, force_init=False):
         if "comp" not in comps or force_init:
             comps["comp"] = jx.Compartment()
-        return deepcopy(comps["comp"]) if copy else comps["comp"]
+        return deepcopy(comps["comp"]) if copy and not force_init else comps["comp"]
 
     yield get_or_build_comp
     comps = {}
@@ -32,7 +31,7 @@ def SimpleBranch(SimpleComp):
         if nseg not in branches or force_init:
             comp = SimpleComp(force_init=force_init)
             branches[nseg] = jx.Branch([comp] * nseg)
-        return deepcopy(branches[nseg]) if copy else branches[nseg]
+        return deepcopy(branches[nseg]) if copy and not force_init else branches[nseg]
 
     yield get_or_build_branch
     branches = {}
@@ -52,7 +51,7 @@ def SimpleCell(SimpleBranch):
             parents = parents[:nbranches]
             branch = SimpleBranch(nseg=nseg, force_init=force_init)
             cells[key] = jx.Cell([branch] * nbranches, parents)
-        return deepcopy(cells[key]) if copy else cells[key]
+        return deepcopy(cells[key]) if copy and not force_init else cells[key]
 
     yield get_or_build_cell
     cells = {}
@@ -73,7 +72,7 @@ def SimpleNet(SimpleCell):
             if connect:
                 jx.connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())
             nets[key] = net
-        return deepcopy(nets[key]) if copy else nets[key]
+        return deepcopy(nets[key]) if copy and not force_init else nets[key]
 
     yield get_or_build_net
     nets = {}
@@ -92,7 +91,7 @@ def SimpleMorphCell():
         fname = default_fname if fname is None else fname
         if key := (fname, nseg, max_branch_len) not in cells or force_init:
             cells[key] = jx.read_swc(fname, nseg, max_branch_len, assign_groups=True)
-        return deepcopy(cells[key]) if copy else cells[key]
+        return deepcopy(cells[key]) if copy and not force_init else cells[key]
 
     yield get_or_build_cell
     cells = {}
