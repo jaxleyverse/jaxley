@@ -1029,11 +1029,11 @@
       <th>0</th>
       <td>0</td>
       <td>0</td>
-      <td>292</td>
+      <td>307</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.125</td>
+      <td>0.875</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1044,7 +1044,7 @@
       <th>1</th>
       <td>1</td>
       <td>28</td>
-      <td>307</td>
+      <td>303</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1059,11 +1059,11 @@
       <th>2</th>
       <td>2</td>
       <td>56</td>
-      <td>299</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.875</td>
+      <td>0.125</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1074,11 +1074,11 @@
       <th>3</th>
       <td>3</td>
       <td>84</td>
-      <td>304</td>
+      <td>281</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.125</td>
+      <td>0.375</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1089,11 +1089,11 @@
       <th>4</th>
       <td>4</td>
       <td>112</td>
-      <td>296</td>
+      <td>306</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.125</td>
+      <td>0.625</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1104,7 +1104,7 @@
       <th>5</th>
       <td>5</td>
       <td>140</td>
-      <td>282</td>
+      <td>298</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1119,37 +1119,7 @@
       <th>6</th>
       <td>6</td>
       <td>168</td>
-      <td>299</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.875</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>7</td>
-      <td>196</td>
-      <td>295</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.875</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>8</td>
-      <td>224</td>
-      <td>289</td>
+      <td>301</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1161,10 +1131,40 @@
       <td>0</td>
     </tr>
     <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>196</td>
+      <td>293</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.375</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>8</td>
+      <td>224</td>
+      <td>300</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.125</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
       <th>9</th>
       <td>9</td>
       <td>252</td>
-      <td>299</td>
+      <td>303</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1242,7 +1242,7 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 
 <p>Finally, we can again run the network simulation and plot the result:</p>
-<div class="highlight"><pre><span></span><code><span class="n">s</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">s</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>

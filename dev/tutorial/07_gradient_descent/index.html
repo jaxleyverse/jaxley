@@ -1099,7 +1099,7 @@
 <span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">datapoint</span><span class="p">):</span>
     <span class="n">current</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">datapoint_to_step_currents</span><span class="p">(</span><span class="n">i_delay</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_dur</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_amps</span><span class="o">=</span><span class="n">datapoint</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.025</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">data_stimulate</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">,</span> <span class="n">checkpoint_inds</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">,</span> <span class="n">checkpoint_inds</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.025</span><span class="p">)</span>
 
 <span class="n">batch_simulate</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">simulate</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
@@ -1235,7 +1235,7 @@ Added 1 recordings. See `.recordings` for details.
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">data_stimulate</span><span class="p">(</span><span class="n">currents</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">)</span>
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">data_stimulate</span><span class="p">(</span><span class="n">currents</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.025</span><span class="p">)</span>
 
 <span class="n">batched_simulate</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">simulate</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 </code></pre></div>
@@ -1401,16 +1401,16 @@ as done below:</p>
 
 <span class="n">final_params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">opt_params</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>epoch 0, loss 25.097769115066576
-epoch 1, loss 21.143421957090222
-epoch 2, loss 15.152694619943718
-epoch 3, loss 8.959925803536182
-epoch 4, loss 6.721850849093422
-epoch 5, loss 6.207057397100044
-epoch 6, loss 6.136331377206082
-epoch 7, loss 6.102978172393111
-epoch 8, loss 6.051937035793608
-epoch 9, loss 6.105838843977726
+<div class="codehilite"><pre><span></span><code>epoch 0, loss 25.033223182772293
+epoch 1, loss 21.00894915349165
+epoch 2, loss 15.092242959956026
+epoch 3, loss 9.061544660383163
+epoch 4, loss 6.925509860325612
+epoch 5, loss 6.273630037897756
+epoch 6, loss 6.1757316054693145
+epoch 7, loss 6.135132525725265
+epoch 8, loss 6.145608619185389
+epoch 9, loss 6.135660902068834
 </code></pre></div>
 
 <div class="highlight"><pre><span></span><code><span class="n">ntest</span> <span class="o">=</span> <span class="mi">32</span>
