@@ -22,7 +22,10 @@ def test_type_optimizer_api(SimpleComp):
     comp = SimpleComp(copy=True)
     comp.insert(HH())
     comp.record()
-    comp.stimulate(jx.step_current(0.1, 3.0, 0.1, 0.025, 5.0))
+    current = jx.step_current(
+        i_delay=0.1, i_dur=3.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
+    comp.stimulate(current)
 
     def simulate(params):
         return jx.integrate(comp, params=params)
@@ -53,7 +56,10 @@ def test_type_optimizer(SimpleComp):
     comp = SimpleComp(copy=True)
     comp.insert(HH())
     comp.record()
-    comp.stimulate(jx.step_current(0.1, 3.0, 0.1, 0.025, 5.0))
+    current = jx.step_current(
+        i_delay=0.1, i_dur=3.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
+    comp.stimulate(current)
 
     comp.set("HH_gNa", 0.4)
     comp.set("radius", 30.0)

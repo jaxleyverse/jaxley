@@ -25,7 +25,9 @@ def test_grad_against_finite_diff_initial_state(key, SimpleComp):
     comp = SimpleComp(copy=True)
     comp.insert(HH())
     comp.record()
-    comp.stimulate(jx.step_current(0.1, 0.2, 0.1, 0.025, 5.0))
+    comp.stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0)
+    )
 
     val = 0.2 if key == "HH_m" else -70.0
     step_size = 0.01
@@ -59,7 +61,9 @@ def test_branch_grad_against_finite_diff_initial_state(key, SimpleBranch):
 
     branch = SimpleBranch(4)
     branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(jx.step_current(0.1, 0.2, 0.1, 0.025, 5.0))
+    branch.loc(0.0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0)
+    )
     branch.loc(0.0).insert(HH())
 
     val = 0.2 if key == "HH_m" else -70.0

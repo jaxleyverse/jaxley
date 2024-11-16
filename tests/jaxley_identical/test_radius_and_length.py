@@ -25,8 +25,9 @@ from jaxley.synapses import IonotropicSynapse
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_radius_and_length_compartment(voltage_solver, SimpleComp):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     comp = SimpleComp()
 
@@ -65,8 +66,9 @@ def test_radius_and_length_compartment(voltage_solver, SimpleComp):
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_radius_and_length_branch(voltage_solver, SimpleBranch):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     branch = SimpleBranch(nseg=2)
 
@@ -105,8 +107,9 @@ def test_radius_and_length_branch(voltage_solver, SimpleBranch):
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_radius_and_length_cell(voltage_solver, SimpleCell):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     num_branches = 3
     cell = SimpleCell(num_branches, nseg=2)
@@ -149,8 +152,9 @@ def test_radius_and_length_cell(voltage_solver, SimpleCell):
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_radius_and_length_net(voltage_solver, SimpleNet):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     num_branches = 3
     net = SimpleNet(2, num_branches, 2)

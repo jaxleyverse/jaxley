@@ -26,8 +26,9 @@ from jaxley.synapses import IonotropicSynapse
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
 def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.2, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
+    )
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", file)
@@ -86,8 +87,9 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_swc_net(voltage_solver: str, SimpleMorphCell):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.2, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
+    )
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files/morph.swc")

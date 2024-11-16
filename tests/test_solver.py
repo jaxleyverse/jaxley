@@ -30,7 +30,9 @@ def test_fwd_euler_and_crank_nicolson(SimpleNet):
     Euler."""
     net = SimpleNet(2, 1, 4, connect=True)
 
-    current = jx.step_current(1.0, 1.0, 0.1, 0.025, 10.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
     net.cell(0).branch(0).comp(0).stimulate(current)
     net.cell(1).branch(0).comp(3).record()
 

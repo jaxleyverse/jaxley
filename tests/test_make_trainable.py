@@ -321,7 +321,9 @@ def test_make_trainable_corresponds_to_set_pospischil(SimpleNet):
     net1.cell(1).branch(1).loc(0.0).record()
     net2.cell(1).branch(1).loc(0.0).record()
 
-    current = jx.step_current(2.0, 3.0, 0.2, 0.025, 5.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+    )
     net1.cell(0).branch(1).loc(0.0).stimulate(current)
     net2.cell(0).branch(1).loc(0.0).stimulate(current)
     voltages1 = jx.integrate(net1, params=params1)
@@ -386,7 +388,9 @@ def test_data_set_vs_make_trainable_pospischil(SimpleNet):
     net1.cell(1).branch(1).loc(0.0).record()
     net2.cell(1).branch(1).loc(0.0).record()
 
-    current = jx.step_current(2.0, 3.0, 0.2, 0.025, 5.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+    )
     net1.cell(0).branch(1).loc(0.0).stimulate(current)
     net2.cell(0).branch(1).loc(0.0).stimulate(current)
     voltages1 = jx.integrate(net1, params=params1)
@@ -397,7 +401,9 @@ def test_data_set_vs_make_trainable_pospischil(SimpleNet):
 def test_data_set_vs_make_trainable_network(SimpleNet):
     net1 = SimpleNet(2, 4, 1)
     net2 = SimpleNet(2, 4, 1)
-    current = jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+    )
     for net in [net1, net2]:
         net.insert(HH())
         pre = net.cell(0).branch(0).loc(0.0)
@@ -483,7 +489,9 @@ def test_write_trainables(SimpleNet):
     net.insert(HH())
     net.cell(0).branch(0).comp(0).record()
     net.cell(1).branch(0).comp(0).record()
-    net.cell(0).branch(0).comp(0).stimulate(jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0))
+    net.cell(0).branch(0).comp(0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0)
+    )
 
     net.make_trainable("radius")
     net.cell(0).make_trainable("length")

@@ -25,8 +25,9 @@ from jaxley.synapses import IonotropicSynapse, TestSynapse
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
     tolerance = 1e-8
 
     voltages_081123 = jnp.asarray(
@@ -87,8 +88,9 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_branch(voltage_solver, SimpleBranch):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     branch = SimpleBranch(2)
     branch.insert(HH())
@@ -121,8 +123,9 @@ def test_branch(voltage_solver, SimpleBranch):
 
 def test_branch_fwd_euler_uneven_radiuses(SimpleBranch):
     dt = 0.025  # ms
-    t_max = 10.0  # ms
-    current = jx.step_current(0.5, 1.0, 2.0, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=2.0, delta_t=0.025, t_max=10.0
+    )
 
     branch = SimpleBranch(8)
     branch.set("axial_resistivity", 500.0)
@@ -159,8 +162,9 @@ def test_branch_fwd_euler_uneven_radiuses(SimpleBranch):
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_cell(voltage_solver, SimpleCell):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     cell = SimpleCell(3, 2)
     cell.insert(HH())
@@ -194,8 +198,9 @@ def test_cell(voltage_solver, SimpleCell):
 def test_cell_unequal_compartment_number(SimpleBranch):
     """Tests a cell where every branch has a different number of compartments."""
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.1, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
 
     branch1 = SimpleBranch(nseg=1)
     branch2 = SimpleBranch(nseg=2)
@@ -227,8 +232,9 @@ def test_cell_unequal_compartment_number(SimpleBranch):
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
 def test_net(voltage_solver, SimpleNet):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
     net = SimpleNet(2, 3, 2)
 
@@ -315,7 +321,9 @@ def test_complex_net(voltage_solver, SimpleNet):
         "TestSynapse_gC", 0.24 / point_process_to_dist_factor
     )
 
-    current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
     for i in range(3):
         net.cell(i).branch(0).loc(0.0).stimulate(current)
 

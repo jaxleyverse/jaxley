@@ -23,7 +23,9 @@ def test_record_and_stimulate_api(SimpleCell):
     cell.branch(0).loc(0.0).record()
     cell.branch(1).loc(1.0).record()
 
-    current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
+    current = jx.step_current(
+        i_delay=0.0, i_dur=0.0, i_amp=0.0, delta_t=0.025, t_max=0.1
+    )
     cell.branch(1).loc(1.0).stimulate(current)
 
     cell.delete_recordings()
@@ -34,7 +36,9 @@ def test_record_shape(SimpleCell):
     """Test the API for recording and stimulating."""
     cell = SimpleCell(3, 2)
 
-    current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
+    current = jx.step_current(
+        i_delay=0.0, i_dur=0.0, i_amp=0.0, delta_t=0.025, t_max=0.1
+    )
     cell.branch(1).loc(1.0).stimulate(current)
 
     cell.branch(0).loc(0.0).record()
@@ -66,7 +70,9 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     fully_connect(net.cell([1]), net.cell([2]), TestSynapse())
     fully_connect(net.cell([2]), net.cell([0]), IonotropicSynapse())
 
-    current = jx.step_current(1.0, 80.0, 0.02, 0.025, 100.0)
+    current = jx.step_current(
+        i_delay=1.0, i_dur=80.0, i_amp=0.02, delta_t=0.025, t_max=100.0
+    )
     net.cell(0).branch(0).loc(0.0).stimulate(current)
 
     net.cell(2).branch(0).loc(0.0).record("v")

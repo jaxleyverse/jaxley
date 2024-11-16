@@ -51,7 +51,9 @@ def test_network_grad(SimpleNet):
         "TestSynapse_gC", 0.24 / point_process_to_dist_factor
     )
 
-    current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
     for i in range(3):
         net.cell(i).branch(0).loc(0.0).stimulate(current)
 

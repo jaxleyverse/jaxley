@@ -53,7 +53,8 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max):
     comp.set("v", -62.0)
     comp.set("capacitance", 5.0)
 
-    comp.stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    current = jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+    comp.stimulate(current)
     comp.record()
 
     voltages = jx.integrate(comp, delta_t=dt)
