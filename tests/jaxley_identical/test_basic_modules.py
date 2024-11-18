@@ -319,13 +319,13 @@ def test_complex_net(voltage_solver: str):
     _ = np.random.seed(0)
     pre = net.cell([0, 1, 2])
     post = net.cell([3, 4, 5])
-    fully_connect(pre, post, IonotropicSynapse())
-    fully_connect(pre, post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
 
     pre = net.cell([3, 4, 5])
     post = net.cell(6)
-    fully_connect(pre, post, IonotropicSynapse())
-    fully_connect(pre, post, TestSynapse())
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
 
     area = 2 * pi * 10.0 * 1.0
     point_process_to_dist_factor = 100_000.0 / area
