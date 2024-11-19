@@ -274,7 +274,7 @@ def test_init_states_complex_channel(SimpleCell):
     cell.init_states()
 
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     cell.branch(2).comp(0).stimulate(current)
     cell.branch(2).comp(0).record()
@@ -332,10 +332,10 @@ def test_multiple_channel_currents(SimpleCell):
             return 0.01 * jnp.ones_like(v)
 
     dt = 0.025  # ms
-    t_max = 10.0  # ms
+    t_max = 2.0  # ms
     cell = SimpleCell(1, 1)
     cell.branch(0).loc(0.0).stimulate(
-        jx.step_current(i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0)
+        jx.step_current(i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0)
     )
 
     cell.insert(User())

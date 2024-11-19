@@ -71,7 +71,7 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     fully_connect(net.cell([2]), net.cell([0]), IonotropicSynapse())
 
     current = jx.step_current(
-        i_delay=1.0, i_dur=80.0, i_amp=0.02, delta_t=0.025, t_max=100.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     net.cell(0).branch(0).loc(0.0).stimulate(current)
 

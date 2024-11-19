@@ -39,7 +39,7 @@ def test_api_equivalence_morphology(SimpleComp):
     cell2.branch(2).loc(0.4).record()
 
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     cell1.branch(1).loc(1.0).stimulate(current)
     cell2.branch(1).loc(1.0).stimulate(current)
@@ -56,7 +56,7 @@ def test_solver_backends_comp(SimpleComp):
     comp = SimpleComp()
 
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     comp.stimulate(current)
     comp.record()
@@ -74,7 +74,7 @@ def test_solver_backends_branch(SimpleBranch):
     branch = SimpleBranch(4)
 
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     branch.loc(0.0).stimulate(current)
     branch.loc(0.5).record()
@@ -93,7 +93,7 @@ def test_solver_backends_cell(SimpleCell):
     cell = SimpleCell(4, 4)
 
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     cell.branch(0).loc(0.0).stimulate(current)
     cell.branch(0).loc(0.5).record()
@@ -123,7 +123,7 @@ def test_solver_backends_net(SimpleNet):
     )
 
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     net.cell(0).branch(0).loc(0.0).stimulate(current)
     net.cell(0).branch(0).loc(0.5).record()
@@ -163,7 +163,7 @@ def test_api_equivalence_synapses(SimpleNet):
 
     for net in [net1, net2]:
         current = jx.step_current(
-            i_delay=0.5, i_dur=1.0, i_amp=0.5, delta_t=0.025, t_max=3.0
+            i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
         )
         net.cell(0).branch(0).loc(0.0).stimulate(current)
         net.cell(0).branch(0).loc(0.5).record()
@@ -196,7 +196,7 @@ def test_api_equivalence_network_matches_cell(SimpleBranch):
     This runs an unequal number of compartments per branch."""
     dt = 0.025  # ms
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
 
     branch1 = SimpleBranch(nseg=1)

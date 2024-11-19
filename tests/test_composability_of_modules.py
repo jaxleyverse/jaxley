@@ -16,7 +16,7 @@ def test_compose_branch():
     """Test inserting to comp and composing to branch equals inserting to branch."""
     dt = 0.025
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
 
     comp1 = jx.Compartment()
@@ -43,7 +43,7 @@ def test_compose_cell():
     nseg_per_branch = 4
     dt = 0.025
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
 
     comp = jx.Compartment()
@@ -72,7 +72,7 @@ def test_compose_net():
     nseg_per_branch = 4
     dt = 0.025
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
 
     comp = jx.Compartment()

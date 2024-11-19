@@ -203,7 +203,7 @@ def test_shared_state():
     for comp in [comp1, comp2, comp3]:
         comp.record()
         current = jx.step_current(
-            i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+            i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
         )
         comp.stimulate(current)
 

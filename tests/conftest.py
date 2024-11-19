@@ -11,22 +11,6 @@ from jaxley.synapses import IonotropicSynapse
 
 
 @pytest.fixture(scope="session")
-def step_current():
-    def get_step_current(
-        i_delay: float = 0.5,
-        i_dur: float = 1.0,
-        i_amp: float = 0.1,
-        dt: float = 0.025,
-        t_max: float = 3.0,
-        i_offset: float = 0.0,
-    ):
-        """Create a step current stimulus."""
-        return jx.step_current(i_delay, i_dur, i_amp, dt, t_max, i_offset)
-
-    yield get_step_current
-
-
-@pytest.fixture(scope="session")
 def SimpleComp():
     """Fixture for creating or retrieving an already created compartment."""
     comps = {}

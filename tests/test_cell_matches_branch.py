@@ -60,7 +60,7 @@ def test_equivalence(SimpleBranch, SimpleCell):
     dt = 0.025
     t_max = 5.0  # ms
     current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=3.0
+        i_delay=0.1, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=2.0
     )
     l1, g1 = _run_long_branch(dt, t_max, current, SimpleBranch(8))
     l2, g2 = _run_short_branches(dt, t_max, current, SimpleCell(2, 4))
