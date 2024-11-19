@@ -288,7 +288,7 @@ def remap_to_consecutive(arr):
 v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 
 
-def interpolate_xyz(loc: float, coords: np.ndarray):
+def interpolate_xyzr(loc: float, coords: np.ndarray):
     """Perform a linear interpolation between xyz-coordinates.
 
     Args:
@@ -302,7 +302,7 @@ def interpolate_xyz(loc: float, coords: np.ndarray):
     pathlens = np.insert(np.cumsum(dl), 0, 0)  # cummulative length of sections
     norm_pathlens = pathlens / np.maximum(1e-8, pathlens[-1])  # norm lengths to [0,1].
 
-    return v_interp(loc, norm_pathlens, coords[:, :3])
+    return v_interp(loc, norm_pathlens, coords)
 
 
 def params_to_pstate(

@@ -29,7 +29,7 @@ from jaxley.utils.cell_utils import (
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
-    interpolate_xyz,
+    interpolate_xyzr,
     loc_of_index,
     params_to_pstate,
     query_channel_states_and_params,
@@ -566,6 +566,8 @@ class Module(ABC):
             global_comp_idxs.append(idx)
         global_comp_idxs = np.concatenate(global_comp_idxs)
         orig_scope = self._scope
+        # global scope needed to select correct comps, for i.e. branches w. nseg=[1,2]
+        # loc(0.9)  will correspond to different local branches (0 vs 1).
         view = self.scope("global").comp(global_comp_idxs).scope(orig_scope)
         view._current_view = "loc"
         return view
@@ -1162,9 +1164,8 @@ class Module(ABC):
             endpoint: The compartment to which to compute the distance to.
         """
         assert len(self.xyzr) == 1 and len(endpoint.xyzr) == 1
-        assert self.xyzr[0].shape[0] == 1 and endpoint.xyzr[0].shape[0] == 1
-        start_xyz = self.xyzr[0][0, :3]
-        end_xyz = endpoint.xyzr[0][0, :3]
+        start_xyz = np.mean(self.xyzr[0][:, :3], axis=0)
+        end_xyz = np.mean(endpoint.xyzr[0][:, :3], axis=0)
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
 
     def delete_trainables(self):
@@ -2653,7 +2654,7 @@ class View(Module):
                 locs = np.hstack(
                     [comp_ends[[i, i + 1]] if i is not None else [np.nan] for i in inds]
                 )
-                xyzr.append(interpolate_xyz(locs, xyzr_i).T)
+                xyzr.append(interpolate_xyzr(locs, xyzr_i).T)
             else:
                 xyzr.append(xyzr_i)
         return xyzr
