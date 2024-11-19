@@ -1081,7 +1081,8 @@ class Module(ABC):
 
         # check if all shapes in comp_inds are the same. If not the case this means
         # the groups in controlled_by_param have different sizes, i.e. due to different
-        # number of comps for two different branches.
+        # number of comps for two different branches. In this case we pad the smaller
+        # groups with -1 to make them the same size.
         lens = np.array([inds.shape[0] for inds in comp_inds])
         max_len = np.max(lens)
         pad = lambda x: np.pad(x, (0, max_len - x.shape[0]), constant_values=-1)
@@ -1091,7 +1092,7 @@ class Module(ABC):
         indices_per_param = jnp.stack(comp_inds)
 
         # Sorted inds are only used to infer the correct starting values.
-        data.loc[-1, key] = np.nan  # assign dummy index to NaN
+        data.loc[-1, key] = np.nan  # assign dummy param (ignored by nanmean later)
         param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
 
         # Set the value which the trainable parameter should take.
