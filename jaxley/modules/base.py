@@ -556,11 +556,17 @@ class Module(ABC):
 
         Returns:
             View of the module at the specified branch location."""
-        comp_locs = np.linspace(0, 1, self.base.nseg)
-        at = comp_locs if is_str_all(at) else self._reformat_index(at, dtype=float)
-        comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
-        idx = np.digitize(at, comp_edges) - 1
-        view = self.comp(idx)
+        global_comp_idxs = []
+        for i in self._branches_in_view:
+            nseg = self.base.nseg_per_branch[i]
+            comp_locs = np.linspace(0, 1, nseg)
+            at = comp_locs if is_str_all(at) else self._reformat_index(at, dtype=float)
+            comp_edges = np.linspace(0, 1 + 1e-10, nseg + 1)
+            idx = np.digitize(at, comp_edges) - 1 + self.base.cumsum_nseg[i]
+            global_comp_idxs.append(idx)
+        global_comp_idxs = np.concatenate(global_comp_idxs)
+        orig_scope = self._scope
+        view = self.scope("global").comp(global_comp_idxs).scope(orig_scope)
         view._current_view = "loc"
         return view
 
