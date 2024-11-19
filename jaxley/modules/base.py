@@ -2087,7 +2087,7 @@ class Module(ABC):
             return plot_morph(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
 
         assert not np.any(
-            [np.isnan(xyzr[:, dims]).any() for xyzr in self.xyzr]
+            [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
         ax = plot_graph(
@@ -2627,26 +2627,29 @@ class View(Module):
         """Return xyzr coordinates of every branch that is in `_branches_in_view`.
 
         If a branch is not completely in view, the coordinates are interpolated."""
-        xyzr = [self.base.xyzr[i] for i in self._branches_in_view].copy()
-
-        # Currently viewing with `.loc` will show the closest compartment
-        # rather than the actual loc along the branch!
+        xyzr = []
         viewed_nseg_for_branch = self.nodes.groupby("global_branch_index").size()
-        incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
-        incomplete_branch_inds = self._branches_in_view[incomplete_inds]
-
-        cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
-        interp_inds = self.nodes.loc[cond]
-        local_inds_per_branch = interp_inds.groupby("global_branch_index")[
-            "local_comp_index"
-        ]
-        locs = [
-            loc_of_index(inds.to_numpy(), 0, self.base.nseg_per_branch)
-            for _, inds in local_inds_per_branch
-        ]
-
-        for i, loc in zip(incomplete_inds, locs):
-            xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
+        for i in self._branches_in_view:
+            xyzr_i = self.base.xyzr[i]
+            nseg_i = self.base.nseg_per_branch[i]
+            global_comp_offset = self.base.cumsum_nseg[i]
+            global_comp_inds = self.nodes["global_comp_index"]
+            if viewed_nseg_for_branch.loc[i] != nseg_i:
+                local_inds = (
+                    global_comp_inds.loc[
+                        self.nodes["global_branch_index"] == i
+                    ].to_numpy()
+                    - global_comp_offset
+                )
+                local_ind_range = np.arange(min(local_inds), max(local_inds) + 1)
+                inds = [i if i in local_inds else None for i in local_ind_range]
+                comp_ends = np.linspace(0, 1, nseg_i + 1)
+                locs = np.hstack(
+                    [comp_ends[[i, i + 1]] if i is not None else [np.nan] for i in inds]
+                )
+                xyzr.append(interpolate_xyz(locs, xyzr_i).T)
+            else:
+                xyzr.append(xyzr_i)
         return xyzr
 
     # needs abstract method to allow init of View
