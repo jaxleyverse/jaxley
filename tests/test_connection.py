@@ -51,7 +51,7 @@ def test_connect(SimpleBranch, SimpleCell, SimpleNet):
 
     # test after all connections are made, to catch "overwritten" connections
     get_comps = lambda locs: [
-        local_index_of_loc(loc, 0, net2.nseg_per_branch) for loc in locs
+        local_index_of_loc(loc, 0, net2.ncomp_per_branch) for loc in locs
     ]
 
     # check if all connections are made correctly

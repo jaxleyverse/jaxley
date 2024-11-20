@@ -3,6 +3,7 @@
 
 import os
 from copy import deepcopy
+from typing import Optional
 
 import pytest
 
@@ -40,23 +41,23 @@ def SimpleBranch(SimpleComp):
     branches = {}
 
     def get_or_build_branch(
-        nseg: int, copy: bool = True, force_init: bool = False
+        ncomp: int, copy: bool = True, force_init: bool = False
     ) -> jx.Branch:
         """Create or retrieve a branch.
 
         If a branch with the same number of compartments already exists, it is returned.
 
         Args:
-            nseg: Number of compartments in the branch.
+            ncomp: Number of compartments in the branch.
             copy: Whether to return a copy of the branch. Default is True.
             force_init: Force the init from scratch. Default is False.
 
         Returns:
             jx.Branch()."""
-        if nseg not in branches or force_init:
+        if ncomp not in branches or force_init:
             comp = SimpleComp(force_init=force_init)
-            branches[nseg] = jx.Branch([comp] * nseg)
-        return deepcopy(branches[nseg]) if copy and not force_init else branches[nseg]
+            branches[ncomp] = jx.Branch([comp] * ncomp)
+        return deepcopy(branches[ncomp]) if copy and not force_init else branches[ncomp]
 
     yield get_or_build_branch
     branches = {}
@@ -68,7 +69,7 @@ def SimpleCell(SimpleBranch):
     cells = {}
 
     def get_or_build_cell(
-        nbranches: int, nseg: int, copy: bool = True, force_init: bool = False
+        nbranches: int, ncomp: int, copy: bool = True, force_init: bool = False
     ) -> jx.Cell:
         """Create or retrieve a cell.
 
@@ -77,20 +78,20 @@ def SimpleCell(SimpleBranch):
 
         Args:
             nbranches: Number of branches in the cell.
-            nseg: Number of compartments in each branch.
+            ncomp: Number of compartments in each branch.
             copy: Whether to return a copy of the cell. Default is True.
             force_init: Force the init from scratch. Default is False.
 
         Returns:
             jx.Cell()."""
-        if key := (nbranches, nseg) not in cells or force_init:
+        if key := (nbranches, ncomp) not in cells or force_init:
             parents = [-1]
             depth = 0
             while nbranches > len(parents):
                 parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
                 depth += 1
             parents = parents[:nbranches]
-            branch = SimpleBranch(nseg=nseg, force_init=force_init)
+            branch = SimpleBranch(ncomp=ncomp, force_init=force_init)
             cells[key] = jx.Cell([branch] * nbranches, parents)
         return deepcopy(cells[key]) if copy and not force_init else cells[key]
 
@@ -106,7 +107,7 @@ def SimpleNet(SimpleCell):
     def get_or_build_net(
         ncells: int,
         nbranches: int,
-        nseg: int,
+        ncomp: int,
         connect: bool = False,
         copy: bool = True,
         force_init: bool = False,
@@ -119,16 +120,16 @@ def SimpleNet(SimpleCell):
         Args:
             ncells: Number of cells in the network.
             nbranches: Number of branches in each cell.
-            nseg: Number of compartments in each branch.
+            ncomp: Number of compartments in each branch.
             connect: Whether to connect the first two cells in the network.
             copy: Whether to return a copy of the network. Default is True.
             force_init: Force the init from scratch. Default is False.
 
         Returns:
             jx.Network()."""
-        if key := (ncells, nbranches, nseg, connect) not in nets or force_init:
+        if key := (ncells, nbranches, ncomp, connect) not in nets or force_init:
             net = jx.Network(
-                [SimpleCell(nbranches=nbranches, nseg=nseg, force_init=force_init)]
+                [SimpleCell(nbranches=nbranches, ncomp=ncomp, force_init=force_init)]
                 * ncells
             )
             if connect:
@@ -147,8 +148,8 @@ def SimpleMorphCell():
     cells = {}
 
     def get_or_build_cell(
-        fname: str = None,
-        nseg: int = 1,
+        fname: Optional[str] = None,
+        ncomp: int = 1,
         max_branch_len: float = 2_000.0,
         copy: bool = True,
         force_init: bool = False,
@@ -160,7 +161,7 @@ def SimpleMorphCell():
 
         Args:
             fname: Path to the SWC file.
-            nseg: Number of compartments in each branch.
+            ncomp: Number of compartments in each branch.
             max_branch_len: Maximum length of a branch.
             copy: Whether to return a copy of the cell. Default is True.
             force_init: Force the init from scratch. Default is False.
@@ -170,8 +171,10 @@ def SimpleMorphCell():
         dirname = os.path.dirname(__file__)
         default_fname = os.path.join(dirname, "swc_files", "morph.swc")
         fname = default_fname if fname is None else fname
-        if key := (fname, nseg, max_branch_len) not in cells or force_init:
-            cells[key] = jx.read_swc(fname, nseg, max_branch_len, assign_groups=True)
+        if key := (fname, ncomp, max_branch_len) not in cells or force_init:
+            cells[key] = jx.read_swc(
+                fname, ncomp=ncomp, max_branch_len=max_branch_len, assign_groups=True
+            )
         return deepcopy(cells[key]) if copy and not force_init else cells[key]
 
     yield get_or_build_cell

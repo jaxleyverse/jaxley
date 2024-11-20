@@ -23,7 +23,7 @@ def step_voltage_explicit(
     sinks: jnp.ndarray,
     sources: jnp.ndarray,
     types: jnp.ndarray,
-    nseg_per_branch: jnp.ndarray,
+    ncomp_per_branch: jnp.ndarray,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -66,7 +66,7 @@ def step_voltage_implicit_with_jaxley_spsolve(
     sinks: jnp.ndarray,
     sources: jnp.ndarray,
     types: jnp.ndarray,
-    nseg_per_branch: jnp.ndarray,
+    ncomp_per_branch: jnp.ndarray,
     par_inds: jnp.ndarray,
     child_inds: jnp.ndarray,
     nbranches: int,
@@ -78,7 +78,7 @@ def step_voltage_implicit_with_jaxley_spsolve(
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
     # Build diagonals.
     c2c = np.isin(types, [0, 1, 2])
-    total_ncomp = idx.cumsum_nseg[-1]
+    total_ncomp = idx.cumsum_ncomp[-1]
     diags = jnp.ones(total_ncomp)
 
     # if-case needed because `.at` does not allow empty inputs, but the input is
@@ -179,7 +179,7 @@ def step_voltage_implicit_with_jaxley_spsolve(
         branchpoint_diags,
         branchpoint_solves,
         solver,
-        nseg_per_branch,
+        ncomp_per_branch,
         idx,
         debug_states,
     )
@@ -204,7 +204,7 @@ def step_voltage_implicit_with_jaxley_spsolve(
         branchpoint_diags,
         branchpoint_solves,
         solver,
-        nseg_per_branch,
+        ncomp_per_branch,
         idx,
         debug_states,
     )
@@ -317,7 +317,7 @@ def _triang_branched(
     branchpoint_diags,
     branchpoint_solves,
     tridiag_solver,
-    nseg_per_branch,
+    ncomp_per_branch,
     idx,
     debug_states,
 ):
@@ -356,7 +356,7 @@ def _triang_branched(
             branchpoint_weights_parents,
             branchpoint_diags,
             branchpoint_solves,
-            nseg_per_branch,
+            ncomp_per_branch,
             idx,
         )
     # At last level, we do not want to eliminate anymore.
@@ -387,7 +387,7 @@ def _backsub_branched(
     branchpoint_diags,
     branchpoint_solves,
     tridiag_solver,
-    nseg_per_branch,
+    ncomp_per_branch,
     idx,
     debug_states,
 ):
@@ -411,7 +411,7 @@ def _backsub_branched(
             solves,
             branchpoint_weights_parents,
             branchpoint_solves,
-            nseg_per_branch,
+            ncomp_per_branch,
             idx,
         )
         branchpoint_conds_children, solves = _eliminate_children_upper(
@@ -527,7 +527,7 @@ def _eliminate_parents_upper(
     branchpoint_weights_parents,
     branchpoint_diags,
     branchpoint_solves,
-    nseg_per_branch: jnp.ndarray,
+    ncomp_per_branch: jnp.ndarray,
     idx,
 ):
     bil = pil[:, 0]
@@ -566,7 +566,7 @@ def _eliminate_parents_lower(
     solves,
     branchpoint_weights_parents,
     branchpoint_solves,
-    nseg_per_branch: jnp.ndarray,
+    ncomp_per_branch: jnp.ndarray,
     idx,
 ):
     bil = pil[:, 0]

@@ -70,7 +70,7 @@ def test_radius_and_length_branch(voltage_solver, SimpleBranch):
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
-    branch = SimpleBranch(nseg=2)
+    branch = SimpleBranch(ncomp=2)
 
     np.random.seed(1)
     branch.set("length", np.flip(5 * np.random.rand(2)))
@@ -112,7 +112,7 @@ def test_radius_and_length_cell(voltage_solver, SimpleCell):
     )
 
     num_branches = 3
-    cell = SimpleCell(num_branches, nseg=2)
+    cell = SimpleCell(num_branches, ncomp=2)
 
     np.random.seed(1)
     rands1 = 5 * np.random.rand(2 * num_branches)

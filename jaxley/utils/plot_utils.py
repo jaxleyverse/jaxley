@@ -369,7 +369,7 @@ def plot_comps(
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
             comp_ends = v_interp(
-                np.linspace(0, lens[-1], module_or_view.nseg + 1), lens, locs
+                np.linspace(0, lens[-1], module_or_view.ncomp + 1), lens, locs
             ).T
             axes = np.diff(comp_ends, axis=0)
             cylinder_lens = np.sqrt(np.sum(axes**2, axis=1))

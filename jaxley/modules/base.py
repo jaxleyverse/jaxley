@@ -113,7 +113,7 @@ class Module(ABC):
     """
 
     def __init__(self):
-        self.nseg: int = None
+        self.ncomp: int = None
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
@@ -335,7 +335,7 @@ class Module(ABC):
 
         Note: For sake of performance, interpolation is not done for each branch
         individually, but only once along a concatenated (and padded) array of all branches.
-        This means for nsegs = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would
+        This means for ncomps = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would
         interpolate xyz at the locations comp_ends = [[0,0.5,1], [0,0.25,0.5,0.75,1]],
         where 0 is the start of the branch and 1 is the end point at the full branch_len.
         To avoid do this in one go we set comp_ends = [0,0.5,1,2,2.25,2.5,2.75,3], and
@@ -344,10 +344,10 @@ class Module(ABC):
         incrementing.
         """
         nodes_by_branches = self.nodes.groupby("global_branch_index")
-        nsegs = nodes_by_branches["global_comp_index"].nunique().to_numpy()
+        ncomps = nodes_by_branches["global_comp_index"].nunique().to_numpy()
 
         comp_ends = [
-            np.linspace(0, 1, nseg + 1) + 2 * i for i, nseg in enumerate(nsegs)
+            np.linspace(0, 1, ncomp + 1) + 2 * i for i, ncomp in enumerate(ncomps)
         ]
         comp_ends = np.hstack(comp_ends)
 
@@ -365,9 +365,9 @@ class Module(ABC):
         xyz = np.vstack(self.xyzr)[:, :3]
         xyz = v_interp(comp_ends, cum_branch_lens, xyz).T
         centers = (xyz[:-1] + xyz[1:]) / 2  # unaware of inter vs intra comp centers
-        cum_nsegs = np.cumsum(nsegs)
+        cum_ncomps = np.cumsum(ncomps)
         # this means centers between comps have to be removed here
-        between_comp_inds = (cum_nsegs + np.arange(len(cum_nsegs)))[:-1]
+        between_comp_inds = (cum_ncomps + np.arange(len(cum_ncomps)))[:-1]
         centers = np.delete(centers, between_comp_inds, axis=0)
         return centers
 
@@ -558,15 +558,15 @@ class Module(ABC):
             View of the module at the specified branch location."""
         global_comp_idxs = []
         for i in self._branches_in_view:
-            nseg = self.base.nseg_per_branch[i]
-            comp_locs = np.linspace(0, 1, nseg)
+            ncomp = self.base.ncomp_per_branch[i]
+            comp_locs = np.linspace(0, 1, ncomp)
             at = comp_locs if is_str_all(at) else self._reformat_index(at, dtype=float)
-            comp_edges = np.linspace(0, 1 + 1e-10, nseg + 1)
-            idx = np.digitize(at, comp_edges) - 1 + self.base.cumsum_nseg[i]
+            comp_edges = np.linspace(0, 1 + 1e-10, ncomp + 1)
+            idx = np.digitize(at, comp_edges) - 1 + self.base.cumsum_ncomp[i]
             global_comp_idxs.append(idx)
         global_comp_idxs = np.concatenate(global_comp_idxs)
         orig_scope = self._scope
-        # global scope needed to select correct comps, for i.e. branches w. nseg=[1,2]
+        # global scope needed to select correct comps, for i.e. branches w. ncomp=[1,2]
         # loc(0.9)  will correspond to different local branches (0 vs 1).
         view = self.scope("global").comp(global_comp_idxs).scope(orig_scope)
         view._current_view = "loc"
@@ -913,7 +913,7 @@ class Module(ABC):
         view = self.nodes.copy()
         all_nodes = self.base.nodes
         start_idx = self.nodes["global_comp_index"].to_numpy()[0]
-        nseg_per_branch = self.base.nseg_per_branch
+        ncomp_per_branch = self.base.ncomp_per_branch
         channel_names = [c._name for c in self.base.channels]
         channel_param_names = list(
             chain(*[c.channel_params for c in self.base.channels])
@@ -993,7 +993,7 @@ class Module(ABC):
                 radius_fns=radius_generating_fns,
                 branch_indices=branch_indices,
                 min_radius=min_radius,
-                nseg=ncomp,
+                ncomp=ncomp,
             )
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
@@ -1014,15 +1014,15 @@ class Module(ABC):
         all_nodes["global_comp_index"] = np.arange(len(all_nodes))
 
         # Update compartment structure arguments.
-        nseg_per_branch[branch_indices] = ncomp
-        nseg = int(np.max(nseg_per_branch))
-        cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
-        internal_node_inds = np.arange(cumsum_nseg[-1])
+        ncomp_per_branch[branch_indices] = ncomp
+        ncomp = int(np.max(ncomp_per_branch))
+        cumsum_ncomp = cumsum_leading_zero(ncomp_per_branch)
+        internal_node_inds = np.arange(cumsum_ncomp[-1])
 
         self.base.nodes = all_nodes
-        self.base.nseg_per_branch = nseg_per_branch
-        self.base.nseg = nseg
-        self.base.cumsum_nseg = cumsum_nseg
+        self.base.ncomp_per_branch = ncomp_per_branch
+        self.base.ncomp = ncomp
+        self.base.cumsum_ncomp = cumsum_ncomp
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
@@ -1054,11 +1054,11 @@ class Module(ABC):
         assert (
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
-        nsegs_per_branch = (
+        ncomps_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
         assert np.all(
-            nsegs_per_branch == nsegs_per_branch[0]
+            ncomps_per_branch == ncomps_per_branch[0]
         ), "Parameter sharing is not allowed for modules containing branches with different numbers of compartments."
 
         data = self.nodes if key in self.nodes.columns else None
@@ -1439,7 +1439,7 @@ class Module(ABC):
                 branchpoint_weights_parents[debug_states["par_inds"]],
                 branchpoint_diags,
                 branchpoint_solves,
-                debug_states["nseg"],
+                debug_states["ncomp"],
                 nbranches,
             )
         )
@@ -1449,7 +1449,7 @@ class Module(ABC):
         )
         solution = spsolve(sparse_matrix, solve)
         solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.
-        solves = jnp.reshape(solution, (debug_states["nseg"], nbranches))
+        solves = jnp.reshape(solution, (debug_states["ncomp"], nbranches))
         return solves
         ```
         """
@@ -1459,7 +1459,7 @@ class Module(ABC):
             self.base._child_belongs_to_branchpoint,
             self.base._par_inds,
             self.base._child_inds,
-            self.base.nseg,
+            self.base.ncomp,
             self.base.total_nbranches,
         )
 
@@ -1475,7 +1475,7 @@ class Module(ABC):
         self.base.debug_states["indices"] = indices
         self.base.debug_states["indptr"] = indptr
 
-        self.base.debug_states["nseg"] = self.base.nseg
+        self.base.debug_states["ncomp"] = self.base.ncomp
         self.base.debug_states["child_inds"] = self.base._child_inds
         self.base.debug_states["par_inds"] = self.base._par_inds
 
@@ -1859,7 +1859,7 @@ class Module(ABC):
                     "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                     "sources": np.asarray(self._comp_edges["source"].to_list()),
                     "types": np.asarray(self._comp_edges["type"].to_list()),
-                    "nseg_per_branch": self.nseg_per_branch,
+                    "ncomp_per_branch": self.ncomp_per_branch,
                     "par_inds": self._par_inds,
                     "child_inds": self._child_inds,
                     "nbranches": self.total_nbranches,
@@ -2415,7 +2415,7 @@ class View(Module):
         # attrs affected by view
         # indices need to be update first, since they are used in the following
         self._set_inds_in_view(pointer, nodes, edges)
-        self.nseg = pointer.nseg
+        self.ncomp = pointer.ncomp
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
         ptr_edges = pointer.edges
@@ -2424,14 +2424,14 @@ class View(Module):
         )
 
         self.xyzr = self._xyzr_in_view()
-        self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
+        self.ncomp = 1 if len(self.nodes) == 1 else pointer.ncomp
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
         self._cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
-        self.nseg_per_branch = self.base.nseg_per_branch[self._branches_in_view]
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self.ncomp_per_branch = self.base.ncomp_per_branch[self._branches_in_view]
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
 
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)
@@ -2452,7 +2452,7 @@ class View(Module):
             .item()
         )
 
-        self.nseg_per_branch = pointer.base.nseg_per_branch[self._branches_in_view]
+        self.ncomp_per_branch = pointer.base.ncomp_per_branch[self._branches_in_view]
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
         self.groups = {
@@ -2657,13 +2657,13 @@ class View(Module):
 
         If a branch is not completely in view, the coordinates are interpolated."""
         xyzr = []
-        viewed_nseg_for_branch = self.nodes.groupby("global_branch_index").size()
+        viewed_ncomp_for_branch = self.nodes.groupby("global_branch_index").size()
         for i in self._branches_in_view:
             xyzr_i = self.base.xyzr[i]
-            nseg_i = self.base.nseg_per_branch[i]
-            global_comp_offset = self.base.cumsum_nseg[i]
+            ncomp_i = self.base.ncomp_per_branch[i]
+            global_comp_offset = self.base.cumsum_ncomp[i]
             global_comp_inds = self.nodes["global_comp_index"]
-            if viewed_nseg_for_branch.loc[i] != nseg_i:
+            if viewed_ncomp_for_branch.loc[i] != ncomp_i:
                 local_inds = (
                     global_comp_inds.loc[
                         self.nodes["global_branch_index"] == i
@@ -2672,7 +2672,7 @@ class View(Module):
                 )
                 local_ind_range = np.arange(min(local_inds), max(local_inds) + 1)
                 inds = [i if i in local_inds else None for i in local_ind_range]
-                comp_ends = np.linspace(0, 1, nseg_i + 1)
+                comp_ends = np.linspace(0, 1, ncomp_i + 1)
                 locs = np.hstack(
                     [comp_ends[[i, i + 1]] if i is not None else [np.nan] for i in inds]
                 )

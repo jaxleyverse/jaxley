@@ -64,10 +64,10 @@ def test_dummy_compartment_length(swc2jaxley):
 
 @pytest.mark.parametrize("file", ["morph_250_single_point_soma.swc", "morph_250.swc"])
 def test_swc_radius(file, swc2jaxley):
-    """We expect them to match for sufficiently large nseg. See #140."""
-    nseg = 64
-    non_split = 1 / nseg
-    range_16 = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
+    """We expect them to match for sufficiently large ncomp. See #140."""
+    ncomp = 64
+    non_split = 1 / ncomp
+    range_16 = np.linspace(non_split / 2, 1 - non_split / 2, ncomp)
 
     # Can not use full morphology because of branch sorting.
     dirname = os.path.dirname(__file__)
@@ -88,7 +88,7 @@ def test_swc_radius(file, swc2jaxley):
 
     neuron_diams = []
     for sec in h.allsec():
-        sec.nseg = nseg
+        sec.nseg = ncomp
         diams_in_branch = []
         for seg in sec:
             diams_in_branch.append(seg.diam)
@@ -119,7 +119,7 @@ def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
     t_max = 20.0
     dt = 0.025
 
-    nseg_per_branch = 8
+    ncomp_per_branch = 8
 
     ##################### NEURON ##################
     h.secondorder = 0
@@ -133,13 +133,13 @@ def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
     i3d.instantiate(None)
 
     for sec in h.allsec():
-        sec.nseg = nseg_per_branch
+        sec.nseg = ncomp_per_branch
 
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### jaxley ##################
     _, pathlengths, _, _, _ = swc2jaxley(fname, max_branch_len=2_000)
-    cell = SimpleMorphCell(fname, nseg_per_branch, max_branch_len=2_000.0)
+    cell = SimpleMorphCell(fname, ncomp_per_branch, max_branch_len=2_000.0)
     cell.insert(HH())
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]

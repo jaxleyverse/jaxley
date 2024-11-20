@@ -17,6 +17,7 @@ from jaxley.utils.cell_utils import (
     _split_into_branches_and_sort,
     build_radiuses_from_xyzr,
 )
+from jaxley.utils.misc_utils import deprecated_kwargs
 
 
 def swc_to_jaxley(
@@ -93,9 +94,11 @@ def swc_to_jaxley(
     return parents, pathlengths, radius_fns, types, all_coords_of_branches
 
 
+@deprecated_kwargs("0.6.0", ["nseg"])
 def read_swc(
     fname: str,
-    nseg: int,
+    ncomp: Optional[int] = None,
+    nseg: Optional[int] = None,
     max_branch_len: float = 300.0,
     min_radius: Optional[float] = None,
     assign_groups: bool = False,
@@ -109,7 +112,8 @@ def read_swc(
 
     Args:
         fname: Path to the swc file.
-        nseg: The number of compartments per branch.
+        ncomp: The number of compartments per branch.
+        nseg: Deprecated. Use `ncomp` instead.
         max_branch_len: If a branch is longer than this value it is split into two
             branches.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
@@ -121,13 +125,21 @@ def read_swc(
     Returns:
         A `Cell` object.
     """
+    # Deak with deprecation of `nseg`.
+    assert ncomp is not None or nseg is not None, "You must pass `ncomp`."
+    assert not (
+        ncomp is not None and nseg is not None
+    ), "Cannot set `ncomp` and `nseg`. Only use `ncomp`."
+    if ncomp is None and nseg is not None:
+        ncomp = nseg
+
     parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None
     )
     nbranches = len(parents)
 
     comp = Compartment()
-    branch = Branch([comp for _ in range(nseg)])
+    branch = Branch([comp for _ in range(ncomp)])
     cell = Cell(
         [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
     )
@@ -135,14 +147,14 @@ def read_swc(
     # of compartments with `.set_ncomp()`.
     cell._radius_generating_fns = radius_fns
 
-    lengths_each = np.repeat(pathlengths, nseg) / nseg
+    lengths_each = np.repeat(pathlengths, ncomp) / ncomp
     cell.set("length", lengths_each)
 
     radiuses_each = build_radiuses_from_xyzr(
         radius_fns,
         range(len(parents)),
         min_radius,
-        nseg,
+        ncomp,
     )
     cell.set("radius", radiuses_each)
 

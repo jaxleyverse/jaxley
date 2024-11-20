@@ -152,7 +152,7 @@ def test_integration_with_renamed_channels():
     standard_hh = HH()
 
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = jx.Branch(comp, ncomp=4)
 
     branch.loc(0.0).insert(standard_hh)
     branch.insert(neuron_hh)
@@ -352,15 +352,15 @@ def test_multiple_channel_currents(SimpleCell):
 
 def test_delete_channel(SimpleBranch):
     # test complete removal of a channel from a module
-    branch1 = SimpleBranch(nseg=3)
+    branch1 = SimpleBranch(ncomp=3)
     branch1.comp(0).insert(K())
     branch1.delete_channel(K())
 
-    branch2 = SimpleBranch(nseg=3)
+    branch2 = SimpleBranch(ncomp=3)
     branch2.comp(0).insert(K())
     branch2.comp(0).delete_channel(K())
 
-    branch3 = SimpleBranch(nseg=3)
+    branch3 = SimpleBranch(ncomp=3)
     branch3.insert(K())
     branch3.delete_channel(K())
 
@@ -393,7 +393,7 @@ def test_delete_channel(SimpleBranch):
         assert not channel_present(branch, K())
 
     # test correct channels are removed only in the viewed part of the module
-    branch4 = SimpleBranch(nseg=3)
+    branch4 = SimpleBranch(ncomp=3)
     branch4.insert(HH())
     branch4.comp(0).insert(K())
     branch4.comp([1, 2]).insert(Leak())

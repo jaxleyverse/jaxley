@@ -58,16 +58,16 @@ def test_getitem(SimpleBranch, SimpleCell, SimpleNet):
 
 def test_loc_v_comp(SimpleBranch):
     branch = SimpleBranch(4)
-    nsegs = branch.nseg_per_branch
+    ncomps = branch.ncomp_per_branch
     branch_ind = 0
 
     assert np.all(branch.comp(0).show() == branch.loc(0.0).show())
     assert np.all(branch.comp(3).show() == branch.loc(1.0).show())
 
-    inferred_loc = loc_of_index(2, branch_ind, nsegs)
+    inferred_loc = loc_of_index(2, branch_ind, ncomps)
     assert np.all(branch.loc(inferred_loc).show() == branch.comp(2).show())
 
-    inferred_ind = local_index_of_loc(0.4, branch_ind, nsegs)
+    inferred_ind = local_index_of_loc(0.4, branch_ind, ncomps)
     assert np.all(branch.comp(inferred_ind).show() == branch.loc(0.4).show())
 
 
@@ -199,9 +199,9 @@ def test_local_indexing(SimpleNet):
 
 
 def test_indexing_a_compartment_of_many_branches(SimpleBranch):
-    branch1 = SimpleBranch(nseg=3)
-    branch2 = SimpleBranch(nseg=4)
-    branch3 = SimpleBranch(nseg=5)
+    branch1 = SimpleBranch(ncomp=3)
+    branch2 = SimpleBranch(ncomp=4)
+    branch3 = SimpleBranch(ncomp=5)
     cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
     cell2 = jx.Cell([branch3, branch2], parents=[-1, 0])
     net = jx.Network([cell1, cell2])
@@ -227,9 +227,9 @@ def test_indexing_a_compartment_of_many_branches(SimpleBranch):
 
 
 def test_solve_indexer():
-    nsegs = [4, 3, 4, 2, 2, 3, 3]
-    cumsum_nseg = cumsum_leading_zero(nsegs)
-    idx = JaxleySolveIndexer(cumsum_nseg)
+    ncomps = [4, 3, 4, 2, 2, 3, 3]
+    cumsum_ncomp = cumsum_leading_zero(ncomps)
+    idx = JaxleySolveIndexer(cumsum_ncomp)
     branch_inds = np.asarray([0, 2])
     assert np.all(idx.first(branch_inds) == np.asarray([0, 7]))
     assert np.all(idx.last(branch_inds) == np.asarray([3, 10]))
@@ -269,7 +269,7 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     exceptions += [
         "_cells_list",
         "_cumsum_nbranchpoints_per_cell",
-        "_cumsum_nseg_per_cell",
+        "_cumsum_ncomp_per_cell",
     ]  # for network
 
     for module in [
