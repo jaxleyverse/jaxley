@@ -36,6 +36,7 @@ def branch(comp) -> jx.Branch:
 @pytest.fixture(scope="module")
 def cell(branch) -> jx.Cell:
     cell = jx.Cell(branch, [-1, 0, 0, 1, 1])
+    cell.branch(0).set_ncomp(3)
     cell.compute_xyz()
     return cell
 
@@ -53,6 +54,7 @@ def morph_cell() -> jx.Cell:
         os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc"),
         nseg=1,
     )
+    morph_cell.branch(0).set_ncomp(2)
     return morph_cell
 
 
