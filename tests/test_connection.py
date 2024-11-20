@@ -84,7 +84,6 @@ def test_fully_connect():
 
     fully_connect(net[8:12], net[12:16], TestSynapse())
 
-    # This was previously visually inspected
     assert all(
         net.edges.global_post_comp_index
         == [
@@ -136,7 +135,6 @@ def test_sparse_connect():
 
     sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5)
 
-    # This was previously visually inspected
     assert all(
         net.edges.global_post_comp_index
         == [
@@ -209,7 +207,7 @@ def test_connectivity_matrix_connect():
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
 
-    # Test with different view ranges
+    # Test with different cell views
     net = jx.Network([cell for _ in range(4 * 4)])
     connectivity_matrix_connect(
         net[1:4], net[2:6], TestSynapse(), m_by_n_adjacency_matrix
@@ -219,7 +217,7 @@ def test_connectivity_matrix_connect():
     cols = ["global_pre_comp_index", "global_post_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
-    # adjust the cell indices based on the view range passed
+    # adjust the cell indices based on the views passed
     incides_of_connected_cells[:, 0] += 1
     incides_of_connected_cells[:, 1] += 2
     assert np.all(cell_inds == incides_of_connected_cells)
@@ -238,8 +236,3 @@ def test_connectivity_matrix_connect():
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
-
-
-if __name__ == "__main__":
-
-    test_sparse_connect()

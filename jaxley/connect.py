@@ -48,12 +48,14 @@ def fully_connect(
 ):
     """Appends multiple connections which build a fully connected layer.
 
-    Connections are from branch 0 location 0 to a randomly chosen branch and loc.
+    Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
+    location 0 of the post-synaptic cell unless random_post_comp=True.
 
     Args:
         pre_cell_view: View of the presynaptic cell.
         post_cell_view: View of the postsynaptic cell.
         synapse_type: The synapse to append.
+        random_post_comp: If True, randomly samples the postsynaptic compartments.
     """
     # Get pre- and postsynaptic cell indices.
     num_pre = len(pre_cell_view._cells_in_view)
@@ -101,13 +103,15 @@ def sparse_connect(
 ):
     """Appends multiple connections which build a sparse, randomly connected layer.
 
-    Connections are from branch 0 location 0 to branch 0 location 0.
+    Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
+    location 0 of the post-synaptic cell unless random_post_comp=True.
 
     Args:
         pre_cell_view: View of the presynaptic cell.
         post_cell_view: View of the postsynaptic cell.
         synapse_type: The synapse to append.
         p: Probability of connection.
+        random_post_comp: If True, randomly samples the postsynaptic compartments.
     """
     # Get pre- and postsynaptic cell indices.
     num_pre = len(pre_cell_view._cells_in_view)
@@ -151,18 +155,18 @@ def connectivity_matrix_connect(
     connectivity_matrix: np.ndarray[bool],
     random_post_comp: bool = False,
 ):
-    """Appends multiple connections which build a custom connected network.
+    """Appends multiple connections according to a custom connectivity matrix.
 
-    Connects pre- and postsynaptic cells according to a custom connectivity matrix.
     Entries > 0 in the matrix indicate a connection between the corresponding cells.
-    Connections are from branch 0 location 0 on the presynaptic cell to branch 0
-    location 0 on the postsynaptic cell.
+    Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
+    location 0 of the post-synaptic cell unless random_post_comp=True.
 
     Args:
         pre_cell_view: View of the presynaptic cell.
         post_cell_view: View of the postsynaptic cell.
         synapse_type: The synapse to append.
         connectivity_matrix: A boolean matrix indicating the connections between cells.
+        random_post_comp: If True, randomly samples the postsynaptic compartments.
     """
     # Get pre- and postsynaptic cell indices
     num_pre = len(pre_cell_view._cells_in_view)
