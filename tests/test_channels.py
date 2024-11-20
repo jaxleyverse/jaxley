@@ -332,7 +332,7 @@ def test_multiple_channel_currents(SimpleCell):
             return 0.01 * jnp.ones_like(v)
 
     dt = 0.025  # ms
-    t_max = 2.0  # ms
+    t_max = 5.0  # ms
     cell = SimpleCell(1, 1)
     cell.branch(0).loc(0.0).stimulate(
         jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
