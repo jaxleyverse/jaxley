@@ -1735,6 +1735,26 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
+    def uninsert(self, channel: Channel):
+        """Remove a channel from the module.
+
+        Args:
+            channel: The channel to remove."""
+        name = channel._name
+        channel_names = [c._name for c in self.channels]
+        if name in channel_names:
+            channel_cols = channel.channel_params + channel.channel_states
+            self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
+            self.base.nodes.loc[self._nodes_in_view, name] = False
+
+            # only delete cols if no other comps in the module have the same channel
+            if np.all(~self.base.nodes[name]):
+                self.base.channels.pop(channel_names.index(name))
+                self.base.membrane_current_names.remove(channel.current_name)
+                self.base.nodes.drop(columns=channel_cols + [name], inplace=True)
+        else:
+            raise ValueError(f"Channel {name} not found in the module.")
+
     @only_allow_module
     def step(
         self,
