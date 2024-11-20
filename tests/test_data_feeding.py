@@ -25,13 +25,13 @@ def test_constant_and_data_stimulus(SimpleCell):
     i_amps_data = jnp.asarray([0.01, 0.005])
 
     current = jx.step_current(
-        i_delay=0.1, i_dur=1.0, i_amp=i_amp_const, delta_t=0.025, t_max=2.0
+        i_delay=0.5, i_dur=1.0, i_amp=i_amp_const, delta_t=0.025, t_max=5.0
     )
     cell.branch(1).loc(0.6).stimulate(current)
 
     def provide_data(i_amps):
         current = jx.datapoint_to_step_currents(
-            i_delay=0.1, i_dur=1.0, i_amp=i_amps, delta_t=0.025, t_max=2.0
+            i_delay=0.5, i_dur=1.0, i_amp=i_amps, delta_t=0.025, t_max=5.0
         )
         data_stimuli = None
         data_stimuli = cell.branch(1).loc(0.6).data_stimulate(current[0], data_stimuli)
@@ -48,7 +48,7 @@ def test_constant_and_data_stimulus(SimpleCell):
     cell.delete_stimuli()
     i_amp_summed = i_amp_const + jnp.sum(i_amps_data)
     current_sum = jx.step_current(
-        i_delay=0.1, i_dur=1.0, i_amp=i_amp_summed, delta_t=0.025, t_max=2.0
+        i_delay=0.5, i_dur=1.0, i_amp=i_amp_summed, delta_t=0.025, t_max=5.0
     )
     cell.branch(1).loc(0.6).stimulate(current_sum)
 
@@ -65,7 +65,7 @@ def test_data_vs_constant_stimulus(SimpleCell):
     i_amps_data = jnp.asarray([0.01, 0.005])
 
     def provide_data(i_amps):
-        current = jx.datapoint_to_step_currents(0.1, 1.0, i_amps, 0.025, 2.0)
+        current = jx.datapoint_to_step_currents(0.5, 1.0, i_amps, 0.025, 5.0)
         data_stimuli = None
         data_stimuli = cell.branch(1).loc(0.6).data_stimulate(current[0], data_stimuli)
         data_stimuli = cell.branch(1).loc(0.6).data_stimulate(current[1], data_stimuli)
@@ -81,7 +81,7 @@ def test_data_vs_constant_stimulus(SimpleCell):
     cell.delete_stimuli()
     i_amp_summed = jnp.sum(i_amps_data)
     current_sum = jx.step_current(
-        i_delay=0.1, i_dur=1.0, i_amp=i_amp_summed, delta_t=0.025, t_max=2.0
+        i_delay=0.5, i_dur=1.0, i_amp=i_amp_summed, delta_t=0.025, t_max=5.0
     )
     cell.branch(1).loc(0.6).stimulate(current_sum)
 

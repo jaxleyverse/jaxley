@@ -159,7 +159,7 @@ def test_set_and_insert(SimpleBranch, SimpleCell, SimpleNet):
 
     # test insert multiple stimuli
     single_current = jx.step_current(
-        i_delay=0.0, i_dur=0.0, i_amp=0.0, delta_t=0.025, t_max=0.1
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
     batch_of_currents = np.vstack([single_current for _ in range(4)])
 
