@@ -1087,7 +1087,9 @@ class Module(ABC):
         max_len = np.max(lens)
         pad = lambda x: np.pad(x, (0, max_len - x.shape[0]), constant_values=-1)
         if not np.all(lens == max_len):
-            comp_inds = [pad(inds) for inds in comp_inds if inds.shape[0] < max_len]
+            comp_inds = [
+                pad(inds) if inds.shape[0] < max_len else inds for inds in comp_inds
+            ]
 
         indices_per_param = jnp.stack(comp_inds)
 

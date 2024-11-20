@@ -531,3 +531,15 @@ def test_write_trainables(SimpleNet):
     # Test whether synapse view raises an error.
     with pytest.raises(AssertionError):
         net.select(edges=[0, 2, 3]).write_trainables(params)
+
+
+def test_param_sharing_w_different_group_sizes():
+    branch = jx.Branch(nseg=6)
+    branch.nodes["controlled_by_param"] = np.array([0, 0, 0, 1, 1, 2])
+    branch.make_trainable("radius")
+    assert branch.num_trainable_params == 3
+
+    params = branch.get_parameters()
+    branch.to_jax()
+    pstate = params_to_pstate(params, branch.indices_set_by_trainables)
+    branch.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
