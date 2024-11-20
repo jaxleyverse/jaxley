@@ -1210,7 +1210,10 @@ class Module(ABC):
         channel_states = [name for c in self.channels for name in c.channel_states]
         synapse_states = [name for s in self.synapses for name in s.synapse_states]
         membrane_states = ["v", "i"] + self.membrane_current_names
-        return channel_states + membrane_states, synapse_states + self.synapse_current_names
+        return (
+            channel_states + membrane_states,
+            synapse_states + self.synapse_current_names,
+        )
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
