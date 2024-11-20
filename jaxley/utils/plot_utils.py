@@ -345,7 +345,7 @@ def plot_comps(
         np.isnan(module_or_view.xyzr[0][:, :3])
     ), "missing xyz coordinates."
     if "x" not in module_or_view.nodes.columns:
-        module_or_view._update_nodes_with_xyz()
+        module_or_view.compute_compartment_centers()
 
     for idx, xyzr in zip(module_or_view._branches_in_view, module_or_view.xyzr):
         locs = xyzr[:, :3]
