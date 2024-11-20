@@ -16,39 +16,29 @@ from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
-def test_record_and_stimulate_api():
+def test_record_and_stimulate_api(SimpleCell):
     """Test the API for recording and stimulating."""
-    nseg_per_branch = 2
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+    cell = SimpleCell(3, 2)
 
     cell.branch(0).loc(0.0).record()
     cell.branch(1).loc(1.0).record()
 
-    current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     cell.branch(1).loc(1.0).stimulate(current)
 
     cell.delete_recordings()
     cell.delete_stimuli()
 
 
-def test_record_shape():
+def test_record_shape(SimpleCell):
     """Test the API for recording and stimulating."""
-    nseg_per_branch = 2
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
+    cell = SimpleCell(3, 2)
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
-
-    current = jx.step_current(0.0, 1.0, 1.0, 0.025, 3.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     cell.branch(1).loc(1.0).stimulate(current)
 
     cell.branch(0).loc(0.0).record()
@@ -64,7 +54,7 @@ def test_record_shape():
     ), f"Shape of recordings ({voltages.shape}) is not right."
 
 
-def test_record_synaptic_and_membrane_states():
+def test_record_synaptic_and_membrane_states(SimpleNet):
     """Tests recording of synaptic and membrane states.
 
     Tests are functional, not just API. They test whether the voltage and synaptic
@@ -73,17 +63,16 @@ def test_record_synaptic_and_membrane_states():
 
     _ = np.random.seed(0)  # Seed because connectivity is at random postsyn locs.
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(3)])
+    net = SimpleNet(3, 1, 4)
     net.insert(HH())
 
     fully_connect(net.cell([0]), net.cell([1]), IonotropicSynapse())
     fully_connect(net.cell([1]), net.cell([2]), TestSynapse())
     fully_connect(net.cell([2]), net.cell([0]), IonotropicSynapse())
 
-    current = jx.step_current(1.0, 80.0, 0.02, 0.025, 100.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     net.cell(0).branch(0).loc(0.0).stimulate(current)
 
     net.cell(2).branch(0).loc(0.0).record("v")
@@ -124,9 +113,9 @@ def test_record_synaptic_and_membrane_states():
         assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
 
 
-def test_empty_recordings():
+def test_empty_recordings(SimpleComp):
     # Create an empty compartment
-    comp = jx.Compartment()
+    comp = SimpleComp()
 
     # Check if a ValueError is raised when integrating an empty compartment
     with pytest.raises(ValueError):

@@ -17,16 +17,13 @@ from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
 
 
-def test_multiparameter_setting():
+def test_multiparameter_setting(SimpleNet):
     """
     Test if the correct parameters are set if one type of synapses is inserted.
 
     Tests global index dropping: d4daaf019596589b9430219a15f1dda0b1c34d85
     """
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(2)])
+    net = SimpleNet(2, 1, 4)
 
     pre = net.cell(0).branch(0).loc(0.0)
     post = net.cell(1).branch(0).loc(0.0)
@@ -59,13 +56,10 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
 @pytest.mark.parametrize(
     "synapse_type", [IonotropicSynapse, TanhRateSynapse, TestSynapse]
 )
-def test_set_and_querying_params_one_type(synapse_type):
+def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
     """Test if the correct parameters are set if one type of synapses is inserted."""
     synapse_type = synapse_type()
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(4)])
+    net = SimpleNet(4, 1, 4)
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:
@@ -100,13 +94,10 @@ def test_set_and_querying_params_one_type(synapse_type):
 
 
 @pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse])
-def test_set_and_querying_params_two_types(synapse_type):
+def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
     """Test whether the correct parameters are set."""
     synapse_type = synapse_type()
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1])
-    net = jx.Network([cell for _ in range(4)])
+    net = SimpleNet(4, 1, 4)
 
     for pre_ind in [0, 1]:
         for post_ind, synapse in zip([2, 3], [IonotropicSynapse(), synapse_type]):
@@ -159,15 +150,12 @@ def test_set_and_querying_params_two_types(synapse_type):
 
 
 @pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse])
-def test_shuffling_order_of_set(synapse_type):
+def test_shuffling_order_of_set(synapse_type, SimpleNet):
     """Test whether the result is the same if the order of synapses is changed."""
     synapse_type = synapse_type()
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1])
 
-    net1 = jx.Network([cell for _ in range(4)])
-    net2 = jx.Network([cell for _ in range(4)])
+    net1 = SimpleNet(4, 1, 4)
+    net2 = SimpleNet(4, 1, 4)
 
     connect(
         net1.cell(0).branch(0).loc(1.0),

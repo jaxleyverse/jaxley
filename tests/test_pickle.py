@@ -29,4 +29,9 @@ jx.connect(
 def test_pickle(module):
     pickled = pickle.dumps(module)
     unpickled = pickle.loads(pickled)
+
+    view = module.select(0)
+    pickled = pickle.dumps(view)
+    unpickled = pickle.loads(pickled)
+
     # assert module == unpickled # TODO: implement __eq__ for all classes

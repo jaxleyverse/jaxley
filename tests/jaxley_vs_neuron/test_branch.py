@@ -64,7 +64,8 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
     branch.set("HH_n", 0.3644787002343737)
     branch.set("v", -62.0)
 
-    branch.loc(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    current = jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+    branch.loc(0.0).stimulate(current)
     branch.loc(0.0).record()
     branch.loc(1.0).record()
 
@@ -207,7 +208,8 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solve
         counter += 1
 
     # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for jaxley.
-    branch.loc(0.02).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    current = jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+    branch.loc(0.02).stimulate(current)
     branch.loc(0.02).record()
     branch.loc(0.52).record()
     branch.loc(0.98).record()
