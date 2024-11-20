@@ -2318,7 +2318,7 @@ class Module(ABC):
                     self.nodes[[property_to_import, "global_comp_index"]].set_index(
                         "global_comp_index"
                     ),
-                    on=f"global_{pre_or_post_val}_comp_index",
+                    on=f"{pre_or_post_val}_global_comp_index",
                 )
                 self.edges = self.edges.rename(
                     columns={
