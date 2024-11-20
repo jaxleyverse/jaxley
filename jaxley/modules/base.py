@@ -371,7 +371,7 @@ class Module(ABC):
         centers = np.delete(centers, between_comp_inds, axis=0)
         return centers
 
-    def _update_nodes_with_xyz(self):
+    def compute_compartment_centers(self):
         """Add compartment centers to nodes dataframe"""
         centers = self._compute_coords_of_comp_centers()
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
@@ -2171,7 +2171,7 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(
-        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = True
+        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = False
     ):
         """Move cells or networks by adding to their (x, y, z) coordinates.
 
@@ -2188,14 +2188,14 @@ class Module(ABC):
         for i in self._branches_in_view:
             self.base.xyzr[i][:, :3] += np.array([x, y, z])
         if update_nodes:
-            self._update_nodes_with_xyz()
+            self.compute_compartment_centers()
 
     def move_to(
         self,
         x: Union[float, np.ndarray] = 0.0,
         y: Union[float, np.ndarray] = 0.0,
         z: Union[float, np.ndarray] = 0.0,
-        update_nodes: bool = True,
+        update_nodes: bool = False,
     ):
         """Move cells or networks to a location (x, y, z).
 
@@ -2235,10 +2235,10 @@ class Module(ABC):
             for idx in cell._branches_in_view:
                 self.base.xyzr[idx][:, :3] += offset
         if update_nodes:
-            self._update_nodes_with_xyz()
+            self.compute_compartment_centers()
 
     def rotate(
-        self, degrees: float, rotation_axis: str = "xy", update_nodes: bool = True
+        self, degrees: float, rotation_axis: str = "xy", update_nodes: bool = False
     ):
         """Rotate jaxley modules clockwise. Used only for visualization.
 
@@ -2265,7 +2265,7 @@ class Module(ABC):
             rot = np.dot(rotation_matrix, self.base.xyzr[i][:, dims].T).T
             self.base.xyzr[i][:, dims] = rot
         if update_nodes:
-            self._update_nodes_with_xyz()
+            self.compute_compartment_centers()
 
     def copy_node_property_to_edges(
         self,
