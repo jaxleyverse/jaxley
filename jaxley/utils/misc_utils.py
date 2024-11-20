@@ -63,7 +63,7 @@ class deprecated:
         return wrapper
 
 
-class deprecated_signature:
+class deprecated_kwargs:
     """Decorator to mark a keyword arguemnt of a function as deprecated.
 
     Can be used to mark kwargs that will be removed in future versions. This will
@@ -77,10 +77,10 @@ class deprecated_signature:
         amend_msg: An optional message to append to the deprecation warning.
     """
 
-    def __init__(self, version: str, deprecated_kwargs: List = [], amend_msg: str = ""):
+    def __init__(self, version: str, kwargs: List = [], amend_msg: str = ""):
         self._version: str = version
         self._amend_msg: str = amend_msg
-        self._depcrecated_kwargs: List = deprecated_kwargs
+        self._depcrecated_kwargs: List = kwargs
 
     def __call__(self, func):
         def wrapper(*args, **kwargs):
