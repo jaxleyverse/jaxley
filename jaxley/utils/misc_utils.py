@@ -1,12 +1,12 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+import warnings
 from typing import List, Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import warnings
 
 
 def concat_and_ignore_empty(dfs: List[pd.DataFrame], **kwargs) -> pd.DataFrame:
