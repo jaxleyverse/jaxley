@@ -23,6 +23,7 @@ def test_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
     cell = SimpleMorphCell(fname, nseg=1)
+    cell.branch(0).set_ncomp(2)  # test inhomogeneous ncomp
 
     # Plot 1.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -81,10 +82,11 @@ def test_network(SimpleMorphCell):
     ax = net.excitatory.vis()
 
 
-def test_vis_networks_built_from_scartch(SimpleComp, SimpleBranch, SimpleCell):
+def test_vis_networks_built_from_scratch(SimpleComp, SimpleBranch, SimpleCell):
     comp = SimpleComp(copy=True)
     branch = SimpleBranch(4)
     cell = SimpleCell(5, 3)
+    cell.branch(0).set_ncomp(3)  # test inhomogeneous ncomp
 
     net = jx.Network([cell, cell])
     connect(
@@ -162,7 +164,9 @@ def test_volume_plotting(
     comp = SimpleComp()
     branch = SimpleBranch(2)
     cell = SimpleCell(2, 2)
+    cell.branch(0).set_ncomp(3)  # test inhomogeneous ncomp
     net = SimpleNet(2, 2, 2)
+
     for module in [comp, branch, cell, net]:
         module.compute_xyz()
 
