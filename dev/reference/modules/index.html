@@ -778,6 +778,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#jaxley.modules.base.Module.compute_compartment_centers" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_compartment_centers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#jaxley.modules.base.Module.compute_xyz" class="md-nav__link">
     <span class="md-ellipsis">
       compute_xyz
@@ -1527,6 +1536,15 @@
   <a href="#jaxley.modules.base.Module.comp" class="md-nav__link">
     <span class="md-ellipsis">
       comp
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jaxley.modules.base.Module.compute_compartment_centers" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_compartment_centers
     </span>
   </a>
   
@@ -4629,7 +4647,7 @@ def change_attr_in_view(self):
         <span class="n">centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">between_comp_inds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">centers</span>
 
-    <span class="k">def</span> <span class="nf">_update_nodes_with_xyz</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">compute_compartment_centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Add compartment centers to nodes dataframe&quot;&quot;&quot;</span>
         <span class="n">centers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_coords_of_comp_centers</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">centers</span>
@@ -6429,7 +6447,7 @@ def change_attr_in_view(self):
                 <span class="n">endpoints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,)))</span>
 
     <span class="k">def</span> <span class="nf">move</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Move cells or networks by adding to their (x, y, z) coordinates.</span>
 
@@ -6446,14 +6464,14 @@ def change_attr_in_view(self):
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_branches_in_view</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">])</span>
         <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compute_compartment_centers</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">move_to</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">z</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Move cells or networks to a location (x, y, z).</span>
 
@@ -6493,10 +6511,10 @@ def change_attr_in_view(self):
             <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">_branches_in_view</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">idx</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">offset</span>
         <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compute_compartment_centers</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;xy&quot;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;xy&quot;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Rotate jaxley modules clockwise. Used only for visualization.</span>
 
@@ -6523,7 +6541,7 @@ def change_attr_in_view(self):
             <span class="n">rot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="n">dims</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="n">dims</span><span class="p">]</span> <span class="o">=</span> <span class="n">rot</span>
         <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compute_compartment_centers</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">copy_node_property_to_edges</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -7315,6 +7333,34 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
 <span class="sd">    Returns:</span>
 <span class="sd">        View of the module at the specified compartment index.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_at_nodes</span><span class="p">(</span><span class="s2">&quot;comp&quot;</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.modules.base.Module.compute_compartment_centers" class="doc doc-heading">
+            <code class=" language-python"><span class="n">compute_compartment_centers</span><span class="p">()</span></code>
+
+<a href="#jaxley.modules.base.Module.compute_compartment_centers" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Add compartment centers to nodes dataframe</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/modules/base.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_compartment_centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add compartment centers to nodes dataframe&quot;&quot;&quot;</span>
+    <span class="n">centers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_coords_of_comp_centers</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">centers</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9648,7 +9694,7 @@ total number of parameters.</p>
 
 
 <h3 id="jaxley.modules.base.Module.move" class="doc doc-heading">
-            <code class=" language-python"><span class="n">move</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">move</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.base.Module.move" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -9733,7 +9779,7 @@ total number of parameters.</p>
               </div>
             </td>
             <td>
-                  <code>True</code>
+                  <code>False</code>
             </td>
           </tr>
       </tbody>
@@ -9760,7 +9806,7 @@ total number of parameters.</p>
 <span class="normal">2189</span>
 <span class="normal">2190</span>
 <span class="normal">2191</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Move cells or networks by adding to their (x, y, z) coordinates.</span>
 
@@ -9777,7 +9823,7 @@ total number of parameters.</p>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_branches_in_view</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_compartment_centers</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9788,7 +9834,7 @@ total number of parameters.</p>
 
 
 <h3 id="jaxley.modules.base.Module.move_to" class="doc doc-heading">
-            <code class=" language-python"><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.base.Module.move_to" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -9831,7 +9877,7 @@ cell is moved to the specified location.</p>
               </div>
             </td>
             <td>
-                  <code>True</code>
+                  <code>False</code>
             </td>
           </tr>
       </tbody>
@@ -9889,7 +9935,7 @@ cell is moved to the specified location.</p>
     <span class="n">x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
     <span class="n">z</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-    <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Move cells or networks to a location (x, y, z).</span>
 
@@ -9929,7 +9975,7 @@ cell is moved to the specified location.</p>
         <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">_branches_in_view</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">idx</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">offset</span>
     <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_compartment_centers</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9940,7 +9986,7 @@ cell is moved to the specified location.</p>
 
 
 <h3 id="jaxley.modules.base.Module.rotate" class="doc doc-heading">
-            <code class=" language-python"><span class="n">rotate</span><span class="p">(</span><span class="n">degrees</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="o">=</span><span class="s1">&#39;xy&#39;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">rotate</span><span class="p">(</span><span class="n">degrees</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="o">=</span><span class="s1">&#39;xy&#39;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.base.Module.rotate" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -10028,7 +10074,7 @@ cell is moved to the specified location.</p>
 <span class="normal">2266</span>
 <span class="normal">2267</span>
 <span class="normal">2268</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;xy&quot;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;xy&quot;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rotate jaxley modules clockwise. Used only for visualization.</span>
 
@@ -10055,7 +10101,7 @@ cell is moved to the specified location.</p>
         <span class="n">rot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="n">dims</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="n">dims</span><span class="p">]</span> <span class="o">=</span> <span class="n">rot</span>
     <span class="k">if</span> <span class="n">update_nodes</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_nodes_with_xyz</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_compartment_centers</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
