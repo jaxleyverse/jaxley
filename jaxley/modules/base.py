@@ -1742,14 +1742,16 @@ class Module(ABC):
             channel: The channel to remove."""
         name = channel._name
         channel_names = [c._name for c in self.channels]
+        all_channel_names = [c._name for c in self.base.channels]
         if name in channel_names:
-            channel_cols = channel.channel_params + channel.channel_states
+            channel_cols = list(channel.channel_params.keys())
+            channel_cols += list(channel.channel_states.keys())
             self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
             self.base.nodes.loc[self._nodes_in_view, name] = False
 
             # only delete cols if no other comps in the module have the same channel
             if np.all(~self.base.nodes[name]):
-                self.base.channels.pop(channel_names.index(name))
+                self.base.channels.pop(all_channel_names.index(name))
                 self.base.membrane_current_names.remove(channel.current_name)
                 self.base.nodes.drop(columns=channel_cols + [name], inplace=True)
         else:
