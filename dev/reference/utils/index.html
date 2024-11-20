@@ -855,9 +855,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils.interpolate_xyz" class="md-nav__link">
+  <a href="#jaxley.utils.cell_utils.interpolate_xyzr" class="md-nav__link">
     <span class="md-ellipsis">
-      interpolate_xyz
+      interpolate_xyzr
     </span>
   </a>
   
@@ -1268,9 +1268,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils.interpolate_xyz" class="md-nav__link">
+  <a href="#jaxley.utils.cell_utils.interpolate_xyzr" class="md-nav__link">
     <span class="md-ellipsis">
-      interpolate_xyz
+      interpolate_xyzr
     </span>
   </a>
   
@@ -2309,10 +2309,10 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="jaxley.utils.cell_utils.interpolate_xyz" class="doc doc-heading">
-            <code class=" language-python"><span class="n">interpolate_xyz</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span></code>
+<h3 id="jaxley.utils.cell_utils.interpolate_xyzr" class="doc doc-heading">
+            <code class=" language-python"><span class="n">interpolate_xyzr</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span></code>
 
-<a href="#jaxley.utils.cell_utils.interpolate_xyz" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#jaxley.utils.cell_utils.interpolate_xyzr" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2387,7 +2387,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">302</span>
 <span class="normal">303</span>
 <span class="normal">304</span>
-<span class="normal">305</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">interpolate_xyz</span><span class="p">(</span><span class="n">loc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coords</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="normal">305</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">interpolate_xyzr</span><span class="p">(</span><span class="n">loc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coords</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform a linear interpolation between xyz-coordinates.</span>
 
 <span class="sd">    Args:</span>
@@ -2401,7 +2401,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
     <span class="n">pathlens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dl</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># cummulative length of sections</span>
     <span class="n">norm_pathlens</span> <span class="o">=</span> <span class="n">pathlens</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">pathlens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>  <span class="c1"># norm lengths to [0,1].</span>
 
-    <span class="k">return</span> <span class="n">v_interp</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">norm_pathlens</span><span class="p">,</span> <span class="n">coords</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">v_interp</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">norm_pathlens</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
