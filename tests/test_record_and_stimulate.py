@@ -81,10 +81,11 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     net.cell(1).branch(0).loc(0.0).record("v")
     net.TestSynapse.edge(0).record("TestSynapse_c")
     net.cell(1).branch(0).loc(0.0).record("HH_m")
+    net.IonotropicSynapse.edge(1).record("IonotropicSynapse_current")
 
     recs = jx.integrate(net)
 
-    # Loop over first two recorings and then the second two recordings.
+    # Loop over first two recordings and then the second two recordings.
     for index in [0, 3]:
         # Local maxima of voltage trace.
         y = recs[index]
