@@ -262,8 +262,8 @@ class Network(Module):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["global_post_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
+        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         for i, synapse_type in enumerate(syn_channels):
@@ -309,8 +309,8 @@ class Network(Module):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["global_pre_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["global_post_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
+        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         syn_voltage_terms = jnp.zeros_like(voltages)
@@ -471,10 +471,10 @@ class Network(Module):
 
             pre_locs = self.edges["pre_locs"].to_numpy()
             post_locs = self.edges["post_locs"].to_numpy()
-            pre_comp = self.edges["global_pre_comp_index"].to_numpy()
+            pre_comp = self.edges["pre_global_comp_index"].to_numpy()
             nodes = self.nodes.set_index("global_comp_index")
             pre_branch = nodes.loc[pre_comp, "global_branch_index"].to_numpy()
-            post_comp = self.edges["global_post_comp_index"].to_numpy()
+            post_comp = self.edges["post_global_comp_index"].to_numpy()
             post_branch = nodes.loc[post_comp, "global_branch_index"].to_numpy()
 
             dims_np = np.asarray(dims)
@@ -536,10 +536,10 @@ class Network(Module):
         else:
             graph.add_nodes_from(range(len(self._cells_in_view)))
 
-        pre_comp = self.edges["global_pre_comp_index"].to_numpy()
+        pre_comp = self.edges["pre_global_comp_index"].to_numpy()
         nodes = self.nodes.set_index("global_comp_index")
         pre_cell = nodes.loc[pre_comp, "global_cell_index"].to_numpy()
-        post_comp = self.edges["global_post_comp_index"].to_numpy()
+        post_comp = self.edges["post_global_comp_index"].to_numpy()
         post_cell = nodes.loc[post_comp, "global_cell_index"].to_numpy()
 
         inds = np.stack([pre_cell, post_cell]).T
@@ -583,9 +583,9 @@ class Network(Module):
 
         # Define new synapses. Each row is one synapse.
         pre_nodes = pre_nodes[["global_comp_index"]]
-        pre_nodes.columns = ["global_pre_comp_index"]
+        pre_nodes.columns = ["pre_global_comp_index"]
         post_nodes = post_nodes[["global_comp_index"]]
-        post_nodes.columns = ["global_post_comp_index"]
+        post_nodes.columns = ["post_global_comp_index"]
         new_rows = pd.concat(
             [
                 global_edge_index,

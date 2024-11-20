@@ -57,7 +57,7 @@ def test_connect(SimpleBranch, SimpleCell, SimpleNet):
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
     nodes = net2.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[first_set_edges[cols].to_numpy().flatten()]
     branch_inds = comp_inds["global_branch_index"].to_numpy().reshape(-1, 2)
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
@@ -84,7 +84,7 @@ def test_fully_connect():
     fully_connect(net[8:12], net[12:16], TestSynapse())
 
     assert all(
-        net.edges.global_post_comp_index
+        net.edges.post_global_comp_index
         == [
             108,
             135,
@@ -171,7 +171,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 4
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
@@ -192,7 +192,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)

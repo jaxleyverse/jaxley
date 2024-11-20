@@ -359,7 +359,7 @@ def test_select(SimpleNet):
 
     # check if pre and post comps of edges are in nodes
     edge_node_inds = np.unique(
-        view.edges[["global_pre_comp_index", "global_post_comp_index"]]
+        view.edges[["pre_global_comp_index", "post_global_comp_index"]]
         .to_numpy()
         .flatten()
     )
