@@ -127,8 +127,8 @@ class Module(ABC):
         self.edges = pd.DataFrame(
             columns=[
                 "global_edge_index",
-                "global_pre_comp_index",
-                "global_post_comp_index",
+                "pre_global_comp_index",
+                "post_global_comp_index",
                 "pre_locs",
                 "post_locs",
                 "type",
@@ -2466,8 +2466,8 @@ class View(Module):
             incl_comps = pointer.nodes.loc[
                 self._nodes_in_view, "global_comp_index"
             ].unique()
-            pre = base_edges["global_pre_comp_index"].isin(incl_comps).to_numpy()
-            post = base_edges["global_post_comp_index"].isin(incl_comps).to_numpy()
+            pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
+            post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
             possible_edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
             self._edges_in_view = np.intersect1d(
                 possible_edges_in_view, self._edges_in_view
@@ -2476,7 +2476,7 @@ class View(Module):
             base_nodes = self.base.nodes
             self._edges_in_view = edges
             incl_comps = pointer.edges.loc[
-                self._edges_in_view, ["global_pre_comp_index", "global_post_comp_index"]
+                self._edges_in_view, ["pre_global_comp_index", "post_global_comp_index"]
             ]
             incl_comps = np.unique(incl_comps.to_numpy().flatten())
             where_comps = base_nodes["global_comp_index"].isin(incl_comps)

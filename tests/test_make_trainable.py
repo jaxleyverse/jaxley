@@ -217,14 +217,14 @@ def test_copy_node_property_to_edges(SimpleNet):
     assert "post_HH_gNa" not in net.edges.columns
 
     # Query the second cell. Each cell has four compartments.
-    edges_gna_values = net.edges.query("global_pre_comp_index > 3")
-    edges_gna_values = edges_gna_values.query("global_pre_comp_index <= 7")
+    edges_gna_values = net.edges.query("pre_global_comp_index > 3")
+    edges_gna_values = edges_gna_values.query("pre_global_comp_index <= 7")
     assert np.all(edges_gna_values["pre_HH_gNa"] == 1.0)
 
     # Query the other cells. The first cell has four compartments.
-    edges_gna_values = net.edges.query("global_pre_comp_index <= 3")
+    edges_gna_values = net.edges.query("pre_global_comp_index <= 3")
     assert np.all(edges_gna_values["pre_HH_gNa"] == 0.12)
-    edges_gna_values = net.edges.query("global_pre_comp_index > 7")
+    edges_gna_values = net.edges.query("pre_global_comp_index > 7")
     assert np.all(edges_gna_values["pre_HH_gNa"] == 0.12)
 
     # Test whether multiple properties can be copied over.
@@ -234,10 +234,10 @@ def test_copy_node_property_to_edges(SimpleNet):
     assert "pre_length" in net.edges.columns
     assert "post_length" in net.edges.columns
 
-    edges_gna_values = net.edges.query("global_pre_comp_index <= 3")
+    edges_gna_values = net.edges.query("pre_global_comp_index <= 3")
     assert np.all(edges_gna_values["pre_radius"] == 0.2)
 
-    edges_gna_values = net.edges.query("global_pre_comp_index > 3")
+    edges_gna_values = net.edges.query("pre_global_comp_index > 3")
     assert np.all(edges_gna_values["pre_radius"] == 1.0)
 
     # Test whether modifying an individual compartment also takes effect.
@@ -245,16 +245,16 @@ def test_copy_node_property_to_edges(SimpleNet):
     assert "pre_capacitance" in net.edges.columns
     assert "post_capacitance" in net.edges.columns
 
-    edges_gna_values = net.edges.query("global_pre_comp_index == 4")
+    edges_gna_values = net.edges.query("pre_global_comp_index == 4")
     assert np.all(edges_gna_values["pre_capacitance"] == 0.3)
 
-    edges_gna_values = net.edges.query("global_post_comp_index == 4")
+    edges_gna_values = net.edges.query("post_global_comp_index == 4")
     assert np.all(edges_gna_values["post_capacitance"] == 0.3)
 
-    edges_gna_values = net.edges.query("global_pre_comp_index != 4")
+    edges_gna_values = net.edges.query("pre_global_comp_index != 4")
     assert np.all(edges_gna_values["pre_capacitance"] == 1.0)
 
-    edges_gna_values = net.edges.query("global_post_comp_index != 4")
+    edges_gna_values = net.edges.query("post_global_comp_index != 4")
     assert np.all(edges_gna_values["post_capacitance"] == 1.0)
 
 
