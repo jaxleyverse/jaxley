@@ -350,19 +350,19 @@ def test_multiple_channel_currents(SimpleCell):
     assert np.abs(target - s[0, -1]) < 1e-8
 
 
-def test_uninsert_channels(SimpleBranch):
+def test_delete_channel(SimpleBranch):
     # test complete removal of a channel from a module
     branch1 = SimpleBranch(nseg=3)
     branch1.comp(0).insert(K())
-    branch1.uninsert(K())
+    branch1.delete_channel(K())
 
     branch2 = SimpleBranch(nseg=3)
     branch2.comp(0).insert(K())
-    branch2.comp(0).uninsert(K())
+    branch2.comp(0).delete_channel(K())
 
     branch3 = SimpleBranch(nseg=3)
     branch3.insert(K())
-    branch3.uninsert(K())
+    branch3.delete_channel(K())
 
     def channel_present(view, channel, partial=False):
         states_and_params = list(channel.channel_states.keys()) + list(
@@ -398,13 +398,13 @@ def test_uninsert_channels(SimpleBranch):
     branch4.comp(0).insert(K())
     branch4.comp([1, 2]).insert(Leak())
 
-    branch4.comp(1).uninsert(Leak())
+    branch4.comp(1).delete_channel(Leak())
     # assert K in comp 0 and Leak still present in branch
     assert channel_present(branch4.comp(0), K())
     assert channel_present(branch4.comp(2), Leak(), partial=True)
     assert not channel_present(branch4.comp(1), Leak(), partial=True)
     assert channel_present(branch4, Leak())
 
-    branch4.comp(2).uninsert(Leak())
+    branch4.comp(2).delete_channel(Leak())
     # assert no more Leak
     assert not channel_present(branch4, Leak())

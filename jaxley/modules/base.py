@@ -1735,7 +1735,7 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
-    def uninsert(self, channel: Channel):
+    def delete_channel(self, channel: Channel):
         """Remove a channel from the module.
 
         Args:
