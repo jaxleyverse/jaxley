@@ -43,13 +43,13 @@ def test_similarity(solver):
 
 
 def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
-    nseg_per_branch = 8
+    ncomp_per_branch = 8
     comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
+    branch = jx.Branch([comp for _ in range(ncomp_per_branch)])
     branch.insert(HH())
 
-    radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
-    for i, loc in enumerate(np.linspace(0, 1, nseg_per_branch)):
+    radiuses = np.linspace(3.0, 15.0, ncomp_per_branch)
+    for i, loc in enumerate(np.linspace(0, 1, ncomp_per_branch)):
         branch.loc(loc).set("radius", radiuses[i])
 
     branch.set("length", 10.0)
@@ -82,19 +82,19 @@ def _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver):
     else:
         raise ValueError
 
-    nseg_per_branch = 8
+    ncomp_per_branch = 8
     h.dt = dt
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
     branch = h.Section()
 
-    branch.nseg = nseg_per_branch
+    branch.nseg = ncomp_per_branch
     branch.Ra = 1_000.0
-    branch.L = 10.0 * nseg_per_branch
+    branch.L = 10.0 * ncomp_per_branch
     branch.cm = 5.0
 
-    radiuses = np.linspace(3.0, 15.0, nseg_per_branch)
+    radiuses = np.linspace(3.0, 15.0, ncomp_per_branch)
     for i, comp in enumerate(branch):
         comp.diam = 2 * radiuses[i]
 
@@ -178,9 +178,9 @@ def test_similarity_complex(solver):
 
 
 def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solver):
-    nseg = 16
+    ncomp = 16
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg)
+    branch = jx.Branch(comp, ncomp)
 
     branch.insert(HH())
 
@@ -202,12 +202,12 @@ def _jaxley_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solve
         branch.loc(loc).set("axial_resistivity", 800.0)
 
     counter = 0
-    for loc in np.linspace(0, 1, nseg):
+    for loc in np.linspace(0, 1, ncomp):
         branch.loc(loc).set("radius", diams[counter] / 2)
         branch.loc(loc).set("capacitance", capacitances[counter])
         counter += 1
 
-    # 0.02 is fine here because nseg=8 for NEURON, but nseg=16 for jaxley.
+    # 0.02 is fine here because ncomp=8 for NEURON, but ncomp=16 for jaxley.
     current = jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     branch.loc(0.02).stimulate(current)
     branch.loc(0.02).record()
@@ -257,13 +257,13 @@ def _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solve
             seg.cm = capacitances[counter]
             counter += 1
 
-    # 0.05 is fine here because nseg=8, but nseg=16 for jaxley.
+    # 0.05 is fine here because ncomp=8, but ncomp=16 for jaxley.
     stim = h.IClamp(branch1(0.05))
     stim.delay = i_delay
     stim.dur = i_dur
     stim.amp = i_amp
 
-    # 0.05 is fine here because nseg=8, but nseg=16 for jaxley.
+    # 0.05 is fine here because ncomp=8, but ncomp=16 for jaxley.
     voltage_recs = {}
     v = h.Vector()
     v.record(branch1(0.05)._ref_v)

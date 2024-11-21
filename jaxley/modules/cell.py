@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Callable, Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 import jax.numpy as jnp
 import numpy as np
@@ -18,7 +19,7 @@ from jaxley.utils.cell_utils import (
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
 )
-from jaxley.utils.misc_utils import cumsum_leading_zero
+from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
@@ -95,18 +96,18 @@ class Cell(Module):
 
         # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
         # is run.
-        self.nseg_per_branch = np.asarray([branch.nseg for branch in branch_list])
-        self.nseg = int(np.max(self.nseg_per_branch))
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self.ncomp_per_branch = np.asarray([branch.ncomp for branch in branch_list])
+        self.ncomp = int(np.max(self.ncomp_per_branch))
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
+        self._internal_node_inds = np.arange(self.cumsum_ncomp[-1])
 
         # Build nodes. Has to be changed when `.set_ncomp()` is run.
         self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
-        self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])
+        self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
-            np.arange(self.total_nbranches), self.nseg_per_branch
+            np.arange(self.total_nbranches), self.ncomp_per_branch
         ).tolist()
-        self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
+        self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
         self._update_local_indices()
         self._init_view()
 
@@ -148,7 +149,7 @@ class Cell(Module):
         branchpoint_group_inds = build_branchpoint_group_inds(
             len(self._par_inds),
             self._child_belongs_to_branchpoint,
-            self.cumsum_nseg[-1],
+            self.cumsum_ncomp[-1],
         )
         parents = self.comb_parents
         children_inds = children_and_parents["children"]
@@ -159,29 +160,29 @@ class Cell(Module):
         parents_in_level = compute_parents_in_level(
             levels, self._par_inds, parents_inds
         )
-        levels_and_nseg = pd.DataFrame().from_dict(
+        levels_and_ncomp = pd.DataFrame().from_dict(
             {
                 "levels": levels,
-                "nsegs": self.nseg_per_branch,
+                "ncomps": self.ncomp_per_branch,
             }
         )
-        levels_and_nseg["max_nseg_in_level"] = levels_and_nseg.groupby("levels")[
-            "nsegs"
+        levels_and_ncomp["max_ncomp_in_level"] = levels_and_ncomp.groupby("levels")[
+            "ncomps"
         ].transform("max")
-        padded_cumsum_nseg = cumsum_leading_zero(
-            levels_and_nseg["max_nseg_in_level"].to_numpy()
+        padded_cumsum_ncomp = cumsum_leading_zero(
+            levels_and_ncomp["max_ncomp_in_level"].to_numpy()
         )
 
         # Generate mapping to deal with the masking which allows using the custom
-        # sparse solver to deal with different nseg per branch.
+        # sparse solver to deal with different ncomp per branch.
         remapped_node_indices = remap_index_to_masked(
             self._internal_node_inds,
             self.nodes,
-            padded_cumsum_nseg,
-            self.nseg_per_branch,
+            padded_cumsum_ncomp,
+            self.ncomp_per_branch,
         )
         self._solve_indexer = JaxleySolveIndexer(
-            cumsum_nseg=padded_cumsum_nseg,
+            cumsum_ncomp=padded_cumsum_ncomp,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,
             parents_in_level=parents_in_level,
@@ -209,14 +210,14 @@ class Cell(Module):
                 pd.DataFrame()
                 .from_dict(
                     {
-                        "source": list(range(cumsum_nseg, nseg - 1 + cumsum_nseg))
-                        + list(range(1 + cumsum_nseg, nseg + cumsum_nseg)),
-                        "sink": list(range(1 + cumsum_nseg, nseg + cumsum_nseg))
-                        + list(range(cumsum_nseg, nseg - 1 + cumsum_nseg)),
+                        "source": list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp))
+                        + list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp)),
+                        "sink": list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp))
+                        + list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp)),
                     }
                 )
                 .astype(int)
-                for nseg, cumsum_nseg in zip(self.nseg_per_branch, self.cumsum_nseg)
+                for ncomp, cumsum_ncomp in zip(self.ncomp_per_branch, self.cumsum_ncomp)
             ]
         )
         self._comp_edges["type"] = 0
@@ -224,15 +225,15 @@ class Cell(Module):
         # Edges from branchpoints to compartments.
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
             {
-                "source": np.arange(len(self._par_inds)) + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self._par_inds + 1] - 1,
+                "source": np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1],
+                "sink": self.cumsum_ncomp[self._par_inds + 1] - 1,
                 "type": 1,
             }
         )
         branchpoint_to_child_edges = pd.DataFrame().from_dict(
             {
-                "source": self._child_belongs_to_branchpoint + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self._child_inds],
+                "source": self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1],
+                "sink": self.cumsum_ncomp[self._child_inds],
                 "type": 2,
             }
         )

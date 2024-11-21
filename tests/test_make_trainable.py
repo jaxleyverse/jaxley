@@ -336,7 +336,7 @@ def test_group_trainable_corresponds_to_set():
 
     def build_net():
         comp = jx.Compartment()
-        branch = jx.Branch(comp, nseg=4)
+        branch = jx.Branch(comp, ncomp=4)
         cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
         net = jx.Network([cell for _ in range(4)])
         net.cell(0).add_to_group("test")

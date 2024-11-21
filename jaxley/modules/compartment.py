@@ -32,12 +32,12 @@ class Compartment(Module):
     def __init__(self):
         super().__init__()
 
-        self.nseg = 1
-        self.nseg_per_branch = np.asarray([1])
+        self.ncomp = 1
+        self.ncomp_per_branch = np.asarray([1])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
         self._cumsum_nbranches = np.asarray([0, 1])
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
@@ -66,7 +66,7 @@ class Compartment(Module):
 
     def _init_morph_jaxley_spsolve(self):
         self._solve_indexer = JaxleySolveIndexer(
-            cumsum_nseg=self.cumsum_nseg,
+            cumsum_ncomp=self.cumsum_ncomp,
             branchpoint_group_inds=np.asarray([]).astype(int),
             children_in_level=[],
             parents_in_level=[],

@@ -53,10 +53,12 @@ class Network(Module):
             self.xyzr += deepcopy(cell.xyzr)
 
         self._cells_list = cells
-        self.nseg_per_branch = np.concatenate([cell.nseg_per_branch for cell in cells])
-        self.nseg = int(np.max(self.nseg_per_branch))
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self.ncomp_per_branch = np.concatenate(
+            [cell.ncomp_per_branch for cell in cells]
+        )
+        self.ncomp = int(np.max(self.ncomp_per_branch))
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
+        self._internal_node_inds = np.arange(self.cumsum_ncomp[-1])
         self._append_params_and_states(self.network_params, self.network_states)
 
         self.nbranches_per_cell = [cell.total_nbranches for cell in cells]
@@ -64,13 +66,13 @@ class Network(Module):
         self._cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
         self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
-        self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])
+        self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
-            np.arange(self.total_nbranches), self.nseg_per_branch
+            np.arange(self.total_nbranches), self.ncomp_per_branch
         ).tolist()
         self.nodes["global_cell_index"] = list(
             itertools.chain(
-                *[[i] * int(cell.cumsum_nseg[-1]) for i, cell in enumerate(cells)]
+                *[[i] * int(cell.cumsum_ncomp[-1]) for i, cell in enumerate(cells)]
             )
         )
         self._update_local_indices()
@@ -115,7 +117,7 @@ class Network(Module):
         branchpoint_group_inds = build_branchpoint_group_inds(
             len(self._par_inds),
             self._child_belongs_to_branchpoint,
-            self.cumsum_nseg[-1],
+            self.cumsum_ncomp[-1],
         )
         children_in_level = merge_cells(
             self._cumsum_nbranches,
@@ -129,22 +131,22 @@ class Network(Module):
             [cell._solve_indexer.parents_in_level for cell in self._cells_list],
             exclude_first=False,
         )
-        padded_cumsum_nseg = cumsum_leading_zero(
+        padded_cumsum_ncomp = cumsum_leading_zero(
             np.concatenate(
-                [np.diff(cell._solve_indexer.cumsum_nseg) for cell in self._cells_list]
+                [np.diff(cell._solve_indexer.cumsum_ncomp) for cell in self._cells_list]
             )
         )
 
         # Generate mapping to dealing with the masking which allows using the custom
-        # sparse solver to deal with different nseg per branch.
+        # sparse solver to deal with different ncomp per branch.
         remapped_node_indices = remap_index_to_masked(
             self._internal_node_inds,
             self.nodes,
-            padded_cumsum_nseg,
-            self.nseg_per_branch,
+            padded_cumsum_ncomp,
+            self.ncomp_per_branch,
         )
         self._solve_indexer = JaxleySolveIndexer(
-            cumsum_nseg=padded_cumsum_nseg,
+            cumsum_ncomp=padded_cumsum_ncomp,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,
             parents_in_level=parents_in_level,
@@ -158,7 +160,7 @@ class Network(Module):
         The reason that this function is a bit involved for a `Network` is that Jaxley
         considers branchpoint nodes to be at the very end of __all__ nodes (i.e. the
         branchpoints of the first cell are even after the compartments of the second
-        cell. The reason for this is that, otherwise, `cumsum_nseg` becomes tricky).
+        cell. The reason for this is that, otherwise, `cumsum_ncomp` becomes tricky).
 
         To achieve this, we first loop over all compartments and append them, and then
         loop over all branchpoints and append those. The code for building the indices
@@ -171,13 +173,13 @@ class Network(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
-        self._cumsum_nseg_per_cell = cumsum_leading_zero(
-            jnp.asarray([cell.cumsum_nseg[-1] for cell in self.cells])
+        self._cumsum_ncomp_per_cell = cumsum_leading_zero(
+            jnp.asarray([cell.cumsum_ncomp[-1] for cell in self.cells])
         )
         self._comp_edges = pd.DataFrame()
 
         # Add all the internal nodes.
-        for offset, cell in zip(self._cumsum_nseg_per_cell, self._cells_list):
+        for offset, cell in zip(self._cumsum_ncomp_per_cell, self._cells_list):
             condition = cell._comp_edges["type"].to_numpy() == 0
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
@@ -185,13 +187,13 @@ class Network(Module):
             )
 
         # All branchpoint-to-compartment nodes.
-        start_branchpoints = self.cumsum_nseg[-1]  # Index of the first branchpoint.
+        start_branchpoints = self.cumsum_ncomp[-1]  # Index of the first branchpoint.
         for offset, offset_branchpoints, cell in zip(
-            self._cumsum_nseg_per_cell,
+            self._cumsum_ncomp_per_cell,
             self._cumsum_nbranchpoints_per_cell,
             self._cells_list,
         ):
-            offset_within_cell = cell.cumsum_nseg[-1]
+            offset_within_cell = cell.cumsum_ncomp[-1]
             condition = cell._comp_edges["type"].isin([1, 2])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
@@ -209,11 +211,11 @@ class Network(Module):
 
         # All compartment-to-branchpoint nodes.
         for offset, offset_branchpoints, cell in zip(
-            self._cumsum_nseg_per_cell,
+            self._cumsum_ncomp_per_cell,
             self._cumsum_nbranchpoints_per_cell,
             self._cells_list,
         ):
-            offset_within_cell = cell.cumsum_nseg[-1]
+            offset_within_cell = cell.cumsum_ncomp[-1]
             condition = cell._comp_edges["type"].isin([3, 4])
             rows = cell._comp_edges[condition]
             self._comp_edges = pd.concat(
@@ -573,12 +575,12 @@ class Network(Module):
         post_loc = loc_of_index(
             post_nodes["global_comp_index"].to_numpy(),
             post_nodes["global_branch_index"].to_numpy(),
-            self.nseg_per_branch,
+            self.ncomp_per_branch,
         )
         pre_loc = loc_of_index(
             pre_nodes["global_comp_index"].to_numpy(),
             pre_nodes["global_branch_index"].to_numpy(),
-            self.nseg_per_branch,
+            self.ncomp_per_branch,
         )
 
         # Define new synapses. Each row is one synapse.

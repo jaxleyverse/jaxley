@@ -9,25 +9,25 @@ import pandas as pd
 
 
 def remap_index_to_masked(
-    index, nodes: pd.DataFrame, padded_cumsum_nseg, nseg_per_branch: jnp.ndarray
+    index, nodes: pd.DataFrame, padded_cumsum_ncomp, ncomp_per_branch: jnp.ndarray
 ):
     """Convert actual index of the compartment to the index in the masked system.
 
-    E.g. if `nsegs = [2, 4]`, then the index `3` would be mapped to `5` because the
-    masked `nsegs` are `[4, 4]`. I.e.:
+    E.g. if `ncomps = [2, 4]`, then the index `3` would be mapped to `5` because the
+    masked `ncomps` are `[4, 4]`. I.e.:
 
     original: [0, 1,           2, 3, 4, 5]
     masked:   [0, 1, (2) ,(3) ,4, 5, 6, 7]
     """
-    cumsum_nseg_per_branch = jnp.concatenate(
+    cumsum_ncomp_per_branch = jnp.concatenate(
         [
             jnp.asarray([0]),
-            jnp.cumsum(nseg_per_branch),
+            jnp.cumsum(ncomp_per_branch),
         ]
     )
     branch_inds = nodes.loc[index, "global_branch_index"].to_numpy()
-    remainders = index - cumsum_nseg_per_branch[branch_inds]
-    return padded_cumsum_nseg[branch_inds] + remainders
+    remainders = index - cumsum_ncomp_per_branch[branch_inds]
+    return padded_cumsum_ncomp[branch_inds] + remainders
 
 
 def convert_to_csc(
@@ -114,14 +114,14 @@ class JaxleySolveIndexer:
 
     def __init__(
         self,
-        cumsum_nseg: np.ndarray,
+        cumsum_ncomp: np.ndarray,
         branchpoint_group_inds: Optional[np.ndarray] = None,
         children_in_level: Optional[np.ndarray] = None,
         parents_in_level: Optional[np.ndarray] = None,
         root_inds: Optional[np.ndarray] = None,
         remapped_node_indices: Optional[np.ndarray] = None,
     ):
-        self.cumsum_nseg = np.asarray(cumsum_nseg)
+        self.cumsum_ncomp = np.asarray(cumsum_ncomp)
 
         # Save items for easier access.
         self.branchpoint_group_inds = branchpoint_group_inds
@@ -132,11 +132,11 @@ class JaxleySolveIndexer:
 
     def first(self, branch_inds: np.ndarray) -> np.ndarray:
         """Return the indices of the first compartment of all `branch_inds`."""
-        return self.cumsum_nseg[branch_inds]
+        return self.cumsum_ncomp[branch_inds]
 
     def last(self, branch_inds: np.ndarray) -> np.ndarray:
         """Return the indices of the last compartment of all `branch_inds`."""
-        return self.cumsum_nseg[branch_inds + 1] - 1
+        return self.cumsum_ncomp[branch_inds + 1] - 1
 
     def branch(self, branch_inds: np.ndarray) -> np.ndarray:
         """Return indices of all compartments in all `branch_inds`."""
@@ -169,7 +169,7 @@ class JaxleySolveIndexer:
     ) -> np.ndarray:
         """Return array of all indices in [start, end], for every start, end.
 
-        It also reshape the indices to `(nbranches, nseg)`.
+        It also reshape the indices to `(nbranches, ncomp)`.
 
         E.g.:
         ```

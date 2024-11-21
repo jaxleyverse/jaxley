@@ -117,7 +117,7 @@ def sparse_connect(
     post_rows = post_cell_view.base.nodes.loc[global_post_indices]
 
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
-    global_pre_indices = pre_cell_view.base._cumsum_nseg_per_cell[pre_syn_neurons]
+    global_pre_indices = pre_cell_view.base._cumsum_ncomp_per_cell[pre_syn_neurons]
     pre_rows = pre_cell_view.base.nodes.loc[global_pre_indices]
 
     if len(pre_rows) > 0:

@@ -268,21 +268,21 @@ def build_radiuses_from_xyzr(
     radius_fns: List[Callable],
     branch_indices: List[int],
     min_radius: Optional[float],
-    nseg: int,
+    ncomp: int,
 ) -> jnp.ndarray:
     """Return the radiuses of branches given SWC file xyzr.
 
-    Returns an array of shape `(num_branches, nseg)`.
+    Returns an array of shape `(num_branches, ncomp)`.
 
     Args:
         radius_fns: Functions which, given compartment locations return the radius.
         branch_indices: The indices of the branches for which to return the radiuses.
         min_radius: If passed, the radiuses are clipped to be at least as large.
-        nseg: The number of compartments that every branch is discretized into.
+        ncomp: The number of compartments that every branch is discretized into.
     """
     # Compartment locations are at the center of the internal nodes.
-    non_split = 1 / nseg
-    range_ = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
+    non_split = 1 / ncomp
+    range_ = np.linspace(non_split / 2, 1 - non_split / 2, ncomp)
 
     # Build radiuses.
     radiuses = np.asarray([radius_fns[b](range_) for b in branch_indices])
@@ -297,7 +297,7 @@ def build_radiuses_from_xyzr(
     return radiuses_each
 
 
-def equal_segments(branch_property: list, nseg_per_branch: int):
+def equal_segments(branch_property: list, ncomp_per_branch: int):
     """Generates segments where some property is the same in each segment.
 
     Args:
@@ -305,11 +305,11 @@ def equal_segments(branch_property: list, nseg_per_branch: int):
             `len(branch_property) == num_branches`.
     """
     assert isinstance(branch_property, list), "branch_property must be a list."
-    return jnp.asarray([branch_property] * nseg_per_branch).T
+    return jnp.asarray([branch_property] * ncomp_per_branch).T
 
 
 def linear_segments(
-    initial_val: float, endpoint_vals: list, parents: jnp.ndarray, nseg_per_branch: int
+    initial_val: float, endpoint_vals: list, parents: jnp.ndarray, ncomp_per_branch: int
 ):
     """Generates segments where some property is linearly interpolated.
 
@@ -327,11 +327,11 @@ def linear_segments(
         end = endpoint_radiuses[branch_ind]
         return (end - start) * loc + start
 
-    branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), nseg_per_branch)
-    locs_of_each_comp = jnp.linspace(1, 0, nseg_per_branch).repeat(num_branches)
+    branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), ncomp_per_branch)
+    locs_of_each_comp = jnp.linspace(1, 0, ncomp_per_branch).repeat(num_branches)
     rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
 
-    return jnp.reshape(rad_of_each_comp, (nseg_per_branch, num_branches)).T
+    return jnp.reshape(rad_of_each_comp, (ncomp_per_branch, num_branches)).T
 
 
 def merge_cells(
@@ -467,21 +467,23 @@ def compute_children_indices(parents) -> List[jnp.ndarray]:
 
 def get_num_neighbours(
     num_children: jnp.ndarray,
-    nseg_per_branch: int,
+    ncomp_per_branch: int,
     num_branches: int,
 ):
     """
     Number of neighbours of each compartment.
     """
-    num_neighbours = 2 * jnp.ones((num_branches * nseg_per_branch))
-    num_neighbours = num_neighbours.at[nseg_per_branch - 1].set(1.0)
-    num_neighbours = num_neighbours.at[jnp.arange(num_branches) * nseg_per_branch].set(
+    num_neighbours = 2 * jnp.ones((num_branches * ncomp_per_branch))
+    num_neighbours = num_neighbours.at[ncomp_per_branch - 1].set(1.0)
+    num_neighbours = num_neighbours.at[jnp.arange(num_branches) * ncomp_per_branch].set(
         num_children + 1.0
     )
     return num_neighbours
 
 
-def local_index_of_loc(loc: float, global_branch_ind: int, nseg_per_branch: int) -> int:
+def local_index_of_loc(
+    loc: float, global_branch_ind: int, ncomp_per_branch: int
+) -> int:
     """Returns the local index of a comp given a loc [0, 1] and the index of a branch.
 
     This is used because we specify locations such as synapses as a value between 0 and
@@ -490,23 +492,23 @@ def local_index_of_loc(loc: float, global_branch_ind: int, nseg_per_branch: int)
     Args:
         branch_ind: Index of the branch.
         loc: Location (in [0, 1]) along that branch.
-        nseg_per_branch: Number of segments of each branch.
+        ncomp_per_branch: Number of segments of each branch.
 
     Returns:
         The local index of the compartment.
     """
-    nseg = nseg_per_branch[global_branch_ind]  # only for convenience.
-    possible_locs = np.linspace(0.5 / nseg, 1 - 0.5 / nseg, nseg)
+    ncomp = ncomp_per_branch[global_branch_ind]  # only for convenience.
+    possible_locs = np.linspace(0.5 / ncomp, 1 - 0.5 / ncomp, ncomp)
     ind_along_branch = np.argmin(np.abs(possible_locs - loc))
     return ind_along_branch
 
 
-def loc_of_index(global_comp_index, global_branch_index, nseg_per_branch):
+def loc_of_index(global_comp_index, global_branch_index, ncomp_per_branch):
     """Return location corresponding to global compartment index."""
-    cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
-    index = global_comp_index - cumsum_nseg[global_branch_index]
-    nseg = nseg_per_branch[global_branch_index]
-    return (0.5 + index) / nseg
+    cumsum_ncomp = cumsum_leading_zero(ncomp_per_branch)
+    index = global_comp_index - cumsum_ncomp[global_branch_index]
+    ncomp = ncomp_per_branch[global_branch_index]
+    return (0.5 + index) / ncomp
 
 
 def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):

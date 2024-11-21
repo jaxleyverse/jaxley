@@ -19,7 +19,7 @@ from jaxley.synapses import IonotropicSynapse
 
 def test_api_equivalence_morphology(SimpleComp):
     """Test the API for how one can build morphologies from scratch."""
-    nseg_per_branch = 2
+    ncomp_per_branch = 2
     depth = 2
     dt = 0.025
 
@@ -29,10 +29,10 @@ def test_api_equivalence_morphology(SimpleComp):
 
     comp = SimpleComp()
 
-    branch1 = jx.Branch([comp for _ in range(nseg_per_branch)])
+    branch1 = jx.Branch([comp for _ in range(ncomp_per_branch)])
     cell1 = jx.Cell([branch1 for _ in range(num_branches)], parents=parents)
 
-    branch2 = jx.Branch(comp, nseg=nseg_per_branch)
+    branch2 = jx.Branch(comp, ncomp=ncomp_per_branch)
     cell2 = jx.Cell(branch2, parents=parents)
 
     cell1.branch(2).loc(0.4).record()
@@ -199,9 +199,9 @@ def test_api_equivalence_network_matches_cell(SimpleBranch):
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
 
-    branch1 = SimpleBranch(nseg=1)
-    branch2 = SimpleBranch(nseg=2)
-    branch3 = SimpleBranch(nseg=3)
+    branch1 = SimpleBranch(ncomp=1)
+    branch2 = SimpleBranch(ncomp=2)
+    branch3 = SimpleBranch(ncomp=3)
     cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
     cell2 = jx.Cell([branch1, branch2], parents=[-1, 0])
     cell1.insert(HH())

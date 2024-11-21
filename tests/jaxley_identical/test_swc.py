@@ -32,7 +32,7 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", file)
-    cell = SimpleMorphCell(fname, nseg=2, max_branch_len=300.0)
+    cell = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
     _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
@@ -93,8 +93,8 @@ def test_swc_net(voltage_solver: str, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files/morph.swc")
-    cell1 = SimpleMorphCell(fname, nseg=2, max_branch_len=300.0)
-    cell2 = SimpleMorphCell(fname, nseg=2, max_branch_len=300.0)
+    cell1 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
+    cell2 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
 
     network = jx.Network([cell1, cell2])
     connect(
@@ -104,7 +104,7 @@ def test_swc_net(voltage_solver: str, SimpleMorphCell):
     )
     network.insert(HH())
 
-    # first cell, 0-eth branch, 1-st compartment because loc=0.0 -> comp = nseg-1 = 1
+    # first cell, 0-eth branch, 1-st compartment because loc=0.0 -> comp = ncomp-1 = 1
     radius_post = network[1, 0, 1].nodes["radius"].item()
     lenght_post = network[1, 0, 1].nodes["length"].item()
     area = 2 * pi * lenght_post * radius_post

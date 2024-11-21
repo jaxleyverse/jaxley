@@ -17,7 +17,7 @@ import jaxley as jx
 
 def test_move_cell(SimpleBranch, SimpleCell):
     # Test move on a cell with compute_xyz()
-    cell = SimpleCell(5, nseg=4)
+    cell = SimpleCell(5, ncomp=4)
     cell.compute_xyz()
     cell.move(20.0, 30.0, 5.0)
     assert cell.xyzr[0][0, 0] == 20.0
@@ -25,7 +25,7 @@ def test_move_cell(SimpleBranch, SimpleCell):
     assert cell.xyzr[0][0, 2] == 5.0
 
     # Test move_to on a cell that starts with a specified xyzr
-    branch = SimpleBranch(nseg=4)
+    branch = SimpleBranch(ncomp=4)
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -64,7 +64,7 @@ def test_move_to_cell(SimpleBranch, SimpleCell):
     assert cell.xyzr[0][0, 1] == 30.0
     assert cell.xyzr[0][0, 2] == 5.0
 
-    branch = SimpleBranch(nseg=4)
+    branch = SimpleBranch(ncomp=4)
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -100,15 +100,15 @@ def test_move_to_network(SimpleNet):
 
 def test_move_to_arrays(SimpleNet):
     """Test with network"""
-    nseg = 4
-    net = SimpleNet(3, 3, nseg)
+    ncomp = 4
+    net = SimpleNet(3, 3, ncomp)
     net.compute_xyz()
     x_coords = np.array([10.0, 20.0, 30.0])
     y_coords = np.array([5.0, 15.0, 25.0])
     z_coords = np.array([1.0, 2.0, 3.0])
     net.move_to(x_coords, y_coords, z_coords)
     assert net.xyzr[0][0, 0] == 10.0
-    assert net.xyzr[0][1, 0] == nseg * 10.0 + 10.0
+    assert net.xyzr[0][1, 0] == ncomp * 10.0 + 10.0
     assert net.xyzr[0][0, 1] == 5.0
     assert net.xyzr[0][0, 2] == 1.0
     assert net.xyzr[3][0, 0] == 20.0
@@ -142,9 +142,9 @@ def test_move_to_cellview(SimpleNet):
 def test_move_to_swc_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = SimpleMorphCell(fname, nseg=1)
-    cell2 = SimpleMorphCell(fname, nseg=1)
-    cell3 = SimpleMorphCell(fname, nseg=1)
+    cell1 = SimpleMorphCell(fname, ncomp=1)
+    cell2 = SimpleMorphCell(fname, ncomp=1)
+    cell3 = SimpleMorphCell(fname, ncomp=1)
 
     # Try move_to on a cell
     cell1.move_to(10.0, 20.0, 30.0)

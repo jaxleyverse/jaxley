@@ -58,7 +58,7 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
     assert max_error <= tolerance, f"Compartment error is {max_error} > {tolerance}"
 
     # Test branch of a single compartment.
-    branch = SimpleBranch(nseg=1)
+    branch = SimpleBranch(ncomp=1)
     branch.insert(HH())
     branch.record()
     branch.stimulate(current)
@@ -202,10 +202,10 @@ def test_cell_unequal_compartment_number(SimpleBranch):
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
 
-    branch1 = SimpleBranch(nseg=1)
-    branch2 = SimpleBranch(nseg=2)
-    branch3 = SimpleBranch(nseg=3)
-    branch4 = SimpleBranch(nseg=4)
+    branch1 = SimpleBranch(ncomp=1)
+    branch2 = SimpleBranch(ncomp=2)
+    branch3 = SimpleBranch(ncomp=3)
+    branch4 = SimpleBranch(ncomp=4)
     cell = jx.Cell([branch1, branch2, branch3, branch4], parents=[-1, 0, 0, 1])
     cell.set("axial_resistivity", 10_000.0)
     cell.insert(HH())

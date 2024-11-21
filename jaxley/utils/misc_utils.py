@@ -56,7 +56,10 @@ class deprecated:
 
     def __call__(self, func):
         def wrapper(*args, **kwargs):
-            msg = f"{func.__name__} is deprecated and will be removed in version {self._version}."
+            msg = (
+                f"{func.__name__} is deprecated and will be removed in version "
+                f"{self._version}."
+            )
             warnings.warn(msg + self._amend_msg)
             return func(*args, **kwargs)
 
@@ -64,7 +67,7 @@ class deprecated:
 
 
 class deprecated_kwargs:
-    """Decorator to mark a keyword arguemnt of a function as deprecated.
+    """Decorator to mark a keyword argument of a function as deprecated.
 
     Can be used to mark kwargs that will be removed in future versions. This will
     also be tested in the CI pipeline to ensure that deprecated kwargs are removed.
@@ -72,7 +75,8 @@ class deprecated_kwargs:
     Warns with: "kwarg is deprecated and will be removed in version version."
 
     Args:
-        version: The version in which the keyword argument will be removed, i.e. "0.1.0".
+        version: The version in which the keyword argument will be removed, i.e.
+            `0.1.0`.
         deprecated_kwargs: A list of keyword arguments that are deprecated.
         amend_msg: An optional message to append to the deprecation warning.
     """
@@ -86,7 +90,10 @@ class deprecated_kwargs:
         def wrapper(*args, **kwargs):
             for deprecated_kwarg in self._depcrecated_kwargs:
                 if deprecated_kwarg in kwargs and kwargs[deprecated_kwarg] is not None:
-                    msg = f"{deprecated_kwarg} is deprecated and will be removed in version {self._version}."
+                    msg = (
+                        f"{deprecated_kwarg} is deprecated and will be removed in "
+                        f"version {self._version}."
+                    )
                     warnings.warn(msg + self._amend_msg)
             return func(*args, **kwargs)
 
