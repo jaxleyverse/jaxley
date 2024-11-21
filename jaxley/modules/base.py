@@ -17,7 +17,6 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
-from jaxley.io.swc import build_radiuses_from_xyzr
 from jaxley.solver_voltage import (
     step_voltage_explicit,
     step_voltage_implicit_with_jax_spsolve,
@@ -27,6 +26,7 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
+    build_radiuses_from_xyzr,
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
