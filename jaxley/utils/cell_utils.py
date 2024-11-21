@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+from functools import partial
 from math import pi
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
@@ -186,6 +187,20 @@ def _radius_generating_fns(
     return radius_fns
 
 
+def _radius(loc: float, cutoffs: np.ndarray, radiuses: np.ndarray) -> float:
+    """Function which returns the radius via linear interpolation.
+
+    Defined outside of `_radius_generating_fns` to allow for pickling of the resulting
+    Cell object."""
+    index = np.digitize(loc, cutoffs, right=False)
+    left_rad = radiuses[index - 1]
+    right_rad = radiuses[index]
+    left_loc = cutoffs[index - 1]
+    right_loc = cutoffs[index]
+    loc_within_bin = (loc - left_loc) / (right_loc - left_loc)
+    return left_rad + (right_rad - left_rad) * loc_within_bin
+
+
 def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Callable:
     # Avoid division by 0 with the `summed_len` below.
     each_length[each_length < 1e-8] = 1e-8
@@ -201,17 +216,7 @@ def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Call
     if len(radiuses) == 1:
         radiuses = np.tile(radiuses, 2)
 
-    def radius(loc: float) -> float:
-        """Function which returns the radius via linear interpolation."""
-        index = np.digitize(loc, cutoffs, right=False)
-        left_rad = radiuses[index - 1]
-        right_rad = radiuses[index]
-        left_loc = cutoffs[index - 1]
-        right_loc = cutoffs[index]
-        loc_within_bin = (loc - left_loc) / (right_loc - left_loc)
-        return left_rad + (right_rad - left_rad) * loc_within_bin
-
-    return radius
+    return partial(_radius, cutoffs=cutoffs, radiuses=radiuses)
 
 
 def _compute_pathlengths(
