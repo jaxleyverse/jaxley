@@ -187,6 +187,10 @@ def _radius_generating_fns(
     return radius_fns
 
 
+def _padded_radius(loc: float, radiuses: np.ndarray) -> float:
+    return radiuses * np.ones_like(loc)
+
+
 def _radius(loc: float, cutoffs: np.ndarray, radiuses: np.ndarray) -> float:
     """Function which returns the radius via linear interpolation.
 
@@ -199,6 +203,10 @@ def _radius(loc: float, cutoffs: np.ndarray, radiuses: np.ndarray) -> float:
     right_loc = cutoffs[index]
     loc_within_bin = (loc - left_loc) / (right_loc - left_loc)
     return left_rad + (right_rad - left_rad) * loc_within_bin
+
+
+def _padded_radius_generating_fn(radiuses: np.ndarray) -> Callable:
+    return partial(_padded_radius, radiuses=radiuses)
 
 
 def _radius_generating_fn(radiuses: np.ndarray, each_length: np.ndarray) -> Callable:

@@ -12,6 +12,7 @@ from jaxley.modules import Branch, Cell, Compartment
 from jaxley.utils.cell_utils import (
     _build_parents,
     _compute_pathlengths,
+    _padded_radius_generating_fn,
     _radius_generating_fns,
     _split_into_branches_and_sort,
     build_radiuses_from_xyzr,
@@ -69,7 +70,7 @@ def swc_to_jaxley(
         parents[1:] += 1
         parents = parents.tolist()
         pathlengths = [0.1] + pathlengths
-        radius_fns = [lambda x: content[0, 5] * np.ones_like(x)] + radius_fns
+        radius_fns = [_padded_radius_generating_fn(content[0, 5])] + radius_fns
         sorted_branches = [[0]] + sorted_branches
 
         # Type of padded section is assumed to be of `custom` type:

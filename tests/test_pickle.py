@@ -27,7 +27,7 @@ jx.connect(
 
 
 @pytest.mark.parametrize(
-    "module", [comp, branch, cell, net], ids=lambda x: x.__class__.__name__
+    "module", [comp, branch, cell, morph_cell, net], ids=lambda x: x.__class__.__name__
 )
 def test_pickle(module):
     pickled = pickle.dumps(module)
