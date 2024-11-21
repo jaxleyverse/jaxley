@@ -953,7 +953,7 @@
 <h3 id="define-the-network">Define the network<a class="headerlink" href="#define-the-network" title="Permanent link">&para;</a></h3>
 <p>First, we define a cell as you saw in the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html">previous tutorial</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
-<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
 </code></pre></div>
 <p>We can assemble multiple cells into a network by using <code>jx.Network</code>, which takes a list of <code>jx.Cell</code>s. Here, we assemble 11 cells into a network:</p>
@@ -1029,11 +1029,11 @@
       <th>0</th>
       <td>0</td>
       <td>0</td>
-      <td>307</td>
+      <td>286</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.875</td>
+      <td>0.625</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1044,7 +1044,37 @@
       <th>1</th>
       <td>1</td>
       <td>28</td>
-      <td>303</td>
+      <td>298</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.625</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>56</td>
+      <td>286</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.625</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>84</td>
+      <td>295</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1056,40 +1086,10 @@
       <td>0</td>
     </tr>
     <tr>
-      <th>2</th>
-      <td>2</td>
-      <td>56</td>
-      <td>280</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.125</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>3</td>
-      <td>84</td>
-      <td>281</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.375</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
       <th>4</th>
       <td>4</td>
       <td>112</td>
-      <td>306</td>
+      <td>302</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1104,11 +1104,11 @@
       <th>5</th>
       <td>5</td>
       <td>140</td>
-      <td>298</td>
+      <td>288</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.625</td>
+      <td>0.125</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1119,11 +1119,11 @@
       <th>6</th>
       <td>6</td>
       <td>168</td>
-      <td>301</td>
+      <td>287</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.375</td>
+      <td>0.875</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1134,7 +1134,7 @@
       <th>7</th>
       <td>7</td>
       <td>196</td>
-      <td>293</td>
+      <td>305</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1149,11 +1149,11 @@
       <th>8</th>
       <td>8</td>
       <td>224</td>
-      <td>300</td>
+      <td>299</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.125</td>
+      <td>0.875</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
@@ -1164,11 +1164,11 @@
       <th>9</th>
       <td>9</td>
       <td>252</td>
-      <td>303</td>
+      <td>284</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.875</td>
+      <td>0.125</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>

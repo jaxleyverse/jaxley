@@ -1719,7 +1719,7 @@ Connections are from branch 0 location 0 to a randomly chosen branch and loc.</p
     <span class="n">post_rows</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_post_indices</span><span class="p">]</span>
 
     <span class="c1"># Pre-synapse is at the zero-eth branch and zero-eth compartment.</span>
-    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span><span class="p">[</span><span class="n">pre_syn_neurons</span><span class="p">]</span>
+    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span><span class="p">[</span><span class="n">pre_syn_neurons</span><span class="p">]</span>
     <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_pre_indices</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>

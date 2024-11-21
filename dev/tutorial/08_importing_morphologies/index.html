@@ -822,7 +822,8 @@
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
 
-<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="s2">&quot;my_cell.swc&quot;</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="s2">&quot;my_cell.swc&quot;</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">set_ncomp</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Modify the number of compartments of a branch.</span>
 </code></pre></div></p>
 <p>To work with more complicated morphologies, <code>Jaxley</code> supports importing morphological reconstructions via <code>.swc</code> files.
 <code>.swc</code> is currently the only supported format. Other formats like <code>.asc</code> need to be converted to <code>.swc</code> first, for example using the BlueBrain&rsquo;s <a href="https://github.com/BlueBrain/morph-tool">morph-tool</a>. For more information on the exact specifications of <code>.swc</code> see <a href="http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html">here</a>.</p>
@@ -834,7 +835,7 @@
 <p>To demonstrate this, let&rsquo;s import an example morphology of a Layer 5 pyramidal cell and visualize it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># import swc file into jx.Cell object</span>
 <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
-<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">max_branch_len</span><span class="o">=</span><span class="mf">2000.0</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>  <span class="c1"># Use four compartments per branch.</span>
 
 <span class="c1"># print shape (num_branches, num_comps)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
@@ -976,7 +977,7 @@
 </div>
 
 <p>As we can see, this yields a morphology that is approximated by 1256 compartments. Depending on the amount of detail that you need, you can also change the number of compartments in each branch:</p>
-<div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_branch_len</span><span class="o">=</span><span class="mf">2000.0</span><span class="p">,</span> <span class="n">assign_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
 <span class="c1"># print shape (num_branches, num_comps)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
@@ -1117,6 +1118,139 @@
 <p>314 rows × 6 columns</p>
 </div>
 
+<p>The above assigns the same number of compartments to every branch. To use a different number of compartments in individual branches, you can use <code>.set_ncomp()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">set_ncomp</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+</code></pre></div>
+<p>As you can see below, branch <code>0</code> has two compartments (because this is what was passed to <code>jx.read_swc(..., ncomp=2)</code>), but branch <code>1</code> has four compartments:</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">nodes</span>
+</code></pre></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>local_cell_index</th>
+      <th>local_branch_index</th>
+      <th>local_comp_index</th>
+      <th>length</th>
+      <th>radius</th>
+      <th>axial_resistivity</th>
+      <th>capacitance</th>
+      <th>v</th>
+      <th>global_cell_index</th>
+      <th>global_branch_index</th>
+      <th>global_comp_index</th>
+      <th>controlled_by_param</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0.050000</td>
+      <td>8.119000</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0.050000</td>
+      <td>8.119000</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>3.120779</td>
+      <td>7.806172</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>2</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3.120779</td>
+      <td>7.111231</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0</td>
+      <td>1</td>
+      <td>2</td>
+      <td>3.120779</td>
+      <td>5.652394</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>4</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0</td>
+      <td>1</td>
+      <td>3</td>
+      <td>3.120779</td>
+      <td>3.869247</td>
+      <td>5000.0</td>
+      <td>1.0</td>
+      <td>-70.0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>5</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
 <p>Once imported the compartmentalized morphology can be viewed using <code>vis</code>.  </p>
 <div class="highlight"><pre><span></span><code><span class="c1"># visualize the cell</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">()</span>
@@ -1124,7 +1258,7 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;L5PC&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_7_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_11_0.png" /></p>
 <p><code>vis</code> can be called on any <code>jx.Module</code> and every <code>View</code> of the module. This means we can also for example use <code>vis</code> to highlight each branch. This can be done by iterating over each branch index and calling <code>cell.branch(i).vis()</code>. Within the loop.</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="c1"># define colorwheel with 10 colors</span>
@@ -1135,7 +1269,7 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Branches&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_9_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_13_0.png" /></p>
 <p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. The morphology lives seperately in the <code>cell.xyzr</code> attribute in a per branch fashion. </p>
 <p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. Note that <code>"comp"</code> plots the lengths of each compartment which is equal to the length of the traced neurite. While neurites can be zigzaggy, the compartments that approximate them are straight lines. This can lead to miss-aligment of the compartment ends. For details see the documentation of <code>vis</code>. </p>
 <p>The morphologies can either be projected onto 2D or also rendered in 3D. </p>
@@ -1148,7 +1282,7 @@
 <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Comparison of plot types&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_11_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_15_0.png" /></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># set to interactive mode</span>
 <span class="c1"># %matplotlib notebook</span>
 </code></pre></div>
@@ -1159,7 +1293,7 @@
 <span class="n">ax</span><span class="o">.</span><span class="n">view_init</span><span class="p">(</span><span class="n">elev</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">azim</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_13_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_17_0.png" /></p>
 <p>Since <code>Jaxley</code> supports grouping different branches or compartments together, we can also use the <code>id</code> labels provided by the <code>.swc</code> file to assign group labels to the <code>jx.Cell</code> object.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
 
@@ -1175,7 +1309,7 @@
 <div class="codehilite"><pre><span></span><code>[&#39;soma&#39;, &#39;basal&#39;, &#39;apical&#39;, &#39;custom&#39;]
 </code></pre></div>
 
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_15_1.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_19_1.png" /></p>
 <p>To build a network of morphologically detailed cells, we can now connect several reconstructed cells together and also visualize the network. However, since all cells are going to have the same center, <code>Jaxley</code> will naively plot all of them on top of each other. To seperate out the cells, we therefore have to move them to a new location first.</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span><span class="p">]</span><span class="o">*</span><span class="mi">5</span><span class="p">)</span>
 <span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
@@ -1199,7 +1333,7 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_17_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_21_0.png" /></p>
 <p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a>.</p>
 
 

@@ -4429,7 +4429,7 @@ def change_attr_in_view(self):
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -4651,7 +4651,7 @@ def change_attr_in_view(self):
 
 <span class="sd">        Note: For sake of performance, interpolation is not done for each branch</span>
 <span class="sd">        individually, but only once along a concatenated (and padded) array of all branches.</span>
-<span class="sd">        This means for nsegs = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would</span>
+<span class="sd">        This means for ncomps = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would</span>
 <span class="sd">        interpolate xyz at the locations comp_ends = [[0,0.5,1], [0,0.25,0.5,0.75,1]],</span>
 <span class="sd">        where 0 is the start of the branch and 1 is the end point at the full branch_len.</span>
 <span class="sd">        To avoid do this in one go we set comp_ends = [0,0.5,1,2,2.25,2.5,2.75,3], and</span>
@@ -4660,10 +4660,10 @@ def change_attr_in_view(self):
 <span class="sd">        incrementing.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">nodes_by_branches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">)</span>
-        <span class="n">nsegs</span> <span class="o">=</span> <span class="n">nodes_by_branches</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">ncomps</span> <span class="o">=</span> <span class="n">nodes_by_branches</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
 
         <span class="n">comp_ends</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">nseg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nsegs</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ncomp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ncomps</span><span class="p">)</span>
         <span class="p">]</span>
         <span class="n">comp_ends</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">comp_ends</span><span class="p">)</span>
 
@@ -4681,9 +4681,9 @@ def change_attr_in_view(self):
         <span class="n">xyz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">)[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
         <span class="n">xyz</span> <span class="o">=</span> <span class="n">v_interp</span><span class="p">(</span><span class="n">comp_ends</span><span class="p">,</span> <span class="n">cum_branch_lens</span><span class="p">,</span> <span class="n">xyz</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
         <span class="n">centers</span> <span class="o">=</span> <span class="p">(</span><span class="n">xyz</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">xyz</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>  <span class="c1"># unaware of inter vs intra comp centers</span>
-        <span class="n">cum_nsegs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">nsegs</span><span class="p">)</span>
+        <span class="n">cum_ncomps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">ncomps</span><span class="p">)</span>
         <span class="c1"># this means centers between comps have to be removed here</span>
-        <span class="n">between_comp_inds</span> <span class="o">=</span> <span class="p">(</span><span class="n">cum_nsegs</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cum_nsegs</span><span class="p">)))[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">between_comp_inds</span> <span class="o">=</span> <span class="p">(</span><span class="n">cum_ncomps</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cum_ncomps</span><span class="p">)))[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">between_comp_inds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">centers</span>
 
@@ -4874,15 +4874,15 @@ def change_attr_in_view(self):
 <span class="sd">            View of the module at the specified branch location.&quot;&quot;&quot;</span>
         <span class="n">global_comp_idxs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_branches_in_view</span><span class="p">:</span>
-            <span class="n">nseg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">comp_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nseg</span><span class="p">)</span>
+            <span class="n">ncomp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">comp_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">)</span>
             <span class="n">at</span> <span class="o">=</span> <span class="n">comp_locs</span> <span class="k">if</span> <span class="n">is_str_all</span><span class="p">(</span><span class="n">at</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reformat_index</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-            <span class="n">comp_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">comp_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">comp_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">comp_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
             <span class="n">global_comp_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
         <span class="n">global_comp_idxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">global_comp_idxs</span><span class="p">)</span>
         <span class="n">orig_scope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scope</span>
-        <span class="c1"># global scope needed to select correct comps, for i.e. branches w. nseg=[1,2]</span>
+        <span class="c1"># global scope needed to select correct comps, for i.e. branches w. ncomp=[1,2]</span>
         <span class="c1"># loc(0.9)  will correspond to different local branches (0 vs 1).</span>
         <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;global&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="n">global_comp_idxs</span><span class="p">)</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="n">orig_scope</span><span class="p">)</span>
         <span class="n">view</span><span class="o">.</span><span class="n">_current_view</span> <span class="o">=</span> <span class="s2">&quot;loc&quot;</span>
@@ -5229,7 +5229,7 @@ def change_attr_in_view(self):
         <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">all_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span>
         <span class="n">start_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg_per_branch</span>
+        <span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp_per_branch</span>
         <span class="n">channel_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">_name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">channels</span><span class="p">]</span>
         <span class="n">channel_param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
             <span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">channel_params</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">channels</span><span class="p">])</span>
@@ -5309,7 +5309,7 @@ def change_attr_in_view(self):
                 <span class="n">radius_fns</span><span class="o">=</span><span class="n">radius_generating_fns</span><span class="p">,</span>
                 <span class="n">branch_indices</span><span class="o">=</span><span class="n">branch_indices</span><span class="p">,</span>
                 <span class="n">min_radius</span><span class="o">=</span><span class="n">min_radius</span><span class="p">,</span>
-                <span class="n">nseg</span><span class="o">=</span><span class="n">ncomp</span><span class="p">,</span>
+                <span class="n">ncomp</span><span class="o">=</span><span class="n">ncomp</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">view</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">within_branch_radiuses</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ncomp</span><span class="p">)</span>
@@ -5330,15 +5330,15 @@ def change_attr_in_view(self):
         <span class="n">all_nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">all_nodes</span><span class="p">))</span>
 
         <span class="c1"># Update compartment structure arguments.</span>
-        <span class="n">nseg_per_branch</span><span class="p">[</span><span class="n">branch_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">ncomp</span>
-        <span class="n">nseg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">nseg_per_branch</span><span class="p">))</span>
-        <span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-        <span class="n">internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ncomp_per_branch</span><span class="p">[</span><span class="n">branch_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">ncomp</span>
+        <span class="n">ncomp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ncomp_per_branch</span><span class="p">))</span>
+        <span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+        <span class="n">internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">all_nodes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">nseg_per_branch</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="n">nseg</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_nseg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">ncomp_per_branch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="n">ncomp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_ncomp</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">internal_node_inds</span>
 
         <span class="c1"># Update the morphology indexing (e.g., `.comp_edges`).</span>
@@ -5370,11 +5370,11 @@ def change_attr_in_view(self):
         <span class="k">assert</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">allow_make_trainable</span>
         <span class="p">),</span> <span class="s2">&quot;network.cell(&#39;all&#39;).make_trainable() is not supported. Use a for-loop over cells.&quot;</span>
-        <span class="n">nsegs_per_branch</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">ncomps_per_branch</span> <span class="o">=</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="p">)</span>
         <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span>
-            <span class="n">nsegs_per_branch</span> <span class="o">==</span> <span class="n">nsegs_per_branch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ncomps_per_branch</span> <span class="o">==</span> <span class="n">ncomps_per_branch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="p">),</span> <span class="s2">&quot;Parameter sharing is not allowed for modules containing branches with different numbers of compartments.&quot;</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="kc">None</span>
@@ -5755,7 +5755,7 @@ def change_attr_in_view(self):
 <span class="sd">                branchpoint_weights_parents[debug_states[&quot;par_inds&quot;]],</span>
 <span class="sd">                branchpoint_diags,</span>
 <span class="sd">                branchpoint_solves,</span>
-<span class="sd">                debug_states[&quot;nseg&quot;],</span>
+<span class="sd">                debug_states[&quot;ncomp&quot;],</span>
 <span class="sd">                nbranches,</span>
 <span class="sd">            )</span>
 <span class="sd">        )</span>
@@ -5765,7 +5765,7 @@ def change_attr_in_view(self):
 <span class="sd">        )</span>
 <span class="sd">        solution = spsolve(sparse_matrix, solve)</span>
 <span class="sd">        solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.</span>
-<span class="sd">        solves = jnp.reshape(solution, (debug_states[&quot;nseg&quot;], nbranches))</span>
+<span class="sd">        solves = jnp.reshape(solution, (debug_states[&quot;ncomp&quot;], nbranches))</span>
 <span class="sd">        return solves</span>
 <span class="sd">        ```</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -5775,7 +5775,7 @@ def change_attr_in_view(self):
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -5791,7 +5791,7 @@ def change_attr_in_view(self):
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;indices&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">indices</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;indptr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">indptr</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;nseg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;ncomp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;child_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_child_inds</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;par_inds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_par_inds</span>
 
@@ -6175,7 +6175,7 @@ def change_attr_in_view(self):
                     <span class="s2">&quot;sinks&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;sink&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                     <span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                     <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
-                    <span class="s2">&quot;nseg_per_branch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+                    <span class="s2">&quot;ncomp_per_branch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
                     <span class="s2">&quot;par_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
                     <span class="s2">&quot;child_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
                     <span class="s2">&quot;nbranches&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">,</span>
@@ -9584,15 +9584,15 @@ function will default to different building methods.</p>
 <span class="sd">        View of the module at the specified branch location.&quot;&quot;&quot;</span>
     <span class="n">global_comp_idxs</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_branches_in_view</span><span class="p">:</span>
-        <span class="n">nseg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="n">comp_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nseg</span><span class="p">)</span>
+        <span class="n">ncomp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">comp_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">)</span>
         <span class="n">at</span> <span class="o">=</span> <span class="n">comp_locs</span> <span class="k">if</span> <span class="n">is_str_all</span><span class="p">(</span><span class="n">at</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reformat_index</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-        <span class="n">comp_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">comp_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">comp_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">comp_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
         <span class="n">global_comp_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
     <span class="n">global_comp_idxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">global_comp_idxs</span><span class="p">)</span>
     <span class="n">orig_scope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scope</span>
-    <span class="c1"># global scope needed to select correct comps, for i.e. branches w. nseg=[1,2]</span>
+    <span class="c1"># global scope needed to select correct comps, for i.e. branches w. ncomp=[1,2]</span>
     <span class="c1"># loc(0.9)  will correspond to different local branches (0 vs 1).</span>
     <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;global&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="n">global_comp_idxs</span><span class="p">)</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="n">orig_scope</span><span class="p">)</span>
     <span class="n">view</span><span class="o">.</span><span class="n">_current_view</span> <span class="o">=</span> <span class="s2">&quot;loc&quot;</span>
@@ -9787,11 +9787,11 @@ total number of parameters.</p>
     <span class="k">assert</span> <span class="p">(</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">allow_make_trainable</span>
     <span class="p">),</span> <span class="s2">&quot;network.cell(&#39;all&#39;).make_trainable() is not supported. Use a for-loop over cells.&quot;</span>
-    <span class="n">nsegs_per_branch</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ncomps_per_branch</span> <span class="o">=</span> <span class="p">(</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="p">)</span>
     <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span>
-        <span class="n">nsegs_per_branch</span> <span class="o">==</span> <span class="n">nsegs_per_branch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ncomps_per_branch</span> <span class="o">==</span> <span class="n">ncomps_per_branch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="p">),</span> <span class="s2">&quot;Parameter sharing is not allowed for modules containing branches with different numbers of compartments.&quot;</span>
 
     <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="kc">None</span>
@@ -10888,7 +10888,7 @@ the radius is capped to be at least this value.</p>
     <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">all_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span>
     <span class="n">start_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg_per_branch</span>
+    <span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp_per_branch</span>
     <span class="n">channel_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">_name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">channels</span><span class="p">]</span>
     <span class="n">channel_param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
         <span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">channel_params</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">channels</span><span class="p">])</span>
@@ -10968,7 +10968,7 @@ the radius is capped to be at least this value.</p>
             <span class="n">radius_fns</span><span class="o">=</span><span class="n">radius_generating_fns</span><span class="p">,</span>
             <span class="n">branch_indices</span><span class="o">=</span><span class="n">branch_indices</span><span class="p">,</span>
             <span class="n">min_radius</span><span class="o">=</span><span class="n">min_radius</span><span class="p">,</span>
-            <span class="n">nseg</span><span class="o">=</span><span class="n">ncomp</span><span class="p">,</span>
+            <span class="n">ncomp</span><span class="o">=</span><span class="n">ncomp</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">view</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">within_branch_radiuses</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ncomp</span><span class="p">)</span>
@@ -10989,15 +10989,15 @@ the radius is capped to be at least this value.</p>
     <span class="n">all_nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">all_nodes</span><span class="p">))</span>
 
     <span class="c1"># Update compartment structure arguments.</span>
-    <span class="n">nseg_per_branch</span><span class="p">[</span><span class="n">branch_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">ncomp</span>
-    <span class="n">nseg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">nseg_per_branch</span><span class="p">))</span>
-    <span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-    <span class="n">internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ncomp_per_branch</span><span class="p">[</span><span class="n">branch_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">ncomp</span>
+    <span class="n">ncomp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ncomp_per_branch</span><span class="p">))</span>
+    <span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+    <span class="n">internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">all_nodes</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">nseg_per_branch</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="n">nseg</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_nseg</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">ncomp_per_branch</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="n">ncomp</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_ncomp</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">internal_node_inds</span>
 
     <span class="c1"># Update the morphology indexing (e.g., `.comp_edges`).</span>
@@ -11723,7 +11723,7 @@ coefficient matrix of the ODE system. Either of [&ldquo;jaxley.thomas&rdquo;,
                 <span class="s2">&quot;sinks&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;sink&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                 <span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;source&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
                 <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()),</span>
-                <span class="s2">&quot;nseg_per_branch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+                <span class="s2">&quot;ncomp_per_branch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
                 <span class="s2">&quot;par_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span>
                 <span class="s2">&quot;child_inds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span>
                 <span class="s2">&quot;nbranches&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">,</span>
@@ -12438,12 +12438,12 @@ connected up into branches. It is the basic building block of a neuron model.</p
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
 
         <span class="c1"># Setting up the `nodes` for indexing.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
@@ -12472,7 +12472,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
 
     <span class="k">def</span> <span class="nf">_init_morph_jaxley_spsolve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
-            <span class="n">cumsum_nseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">,</span>
+            <span class="n">cumsum_ncomp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="p">[],</span>
             <span class="n">parents_in_level</span><span class="o">=</span><span class="p">[],</span>
@@ -12545,8 +12545,7 @@ intricate cell morphologies.</p>
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/modules/branch.py</code></summary>
-                <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 17</span>
-<span class="normal"> 18</span>
+                <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 18</span>
 <span class="normal"> 19</span>
 <span class="normal"> 20</span>
 <span class="normal"> 21</span>
@@ -12654,7 +12653,17 @@ intricate cell morphologies.</p>
 <span class="normal">123</span>
 <span class="normal">124</span>
 <span class="normal">125</span>
-<span class="normal">126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Branch</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Branch</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Branch class.</span>
 
 <span class="sd">    This class defines a single branch that can be simulated by itself or</span>
@@ -12666,48 +12675,57 @@ intricate cell morphologies.</p>
     <span class="n">branch_params</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">branch_states</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{}</span>
 
+    <span class="nd">@deprecated_kwargs</span><span class="p">(</span><span class="s2">&quot;0.6.0&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;nseg&quot;</span><span class="p">])</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">compartments</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Compartment</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Compartment</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ncomp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">nseg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Args:</span>
 <span class="sd">            compartments: A single compartment or a list of compartments that make up the</span>
 <span class="sd">                branch.</span>
-<span class="sd">            nseg: Number of segments to divide the branch into. If `compartments` is an</span>
-<span class="sd">                a single compartment, than the compartment is repeated `nseg` times to</span>
+<span class="sd">            ncomp: Number of segments to divide the branch into. If `compartments` is an</span>
+<span class="sd">                a single compartment, than the compartment is repeated `ncomp` times to</span>
 <span class="sd">                create the branch.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Warnings and errors that deal with the change from `nseg` to `ncomp` change</span>
+        <span class="c1"># in Jaxley v0.5.0.</span>
+        <span class="k">if</span> <span class="n">ncomp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nseg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;You passed `ncomp` and `nseg`. Please pass only `ncomp`.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ncomp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nseg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ncomp</span> <span class="o">=</span> <span class="n">nseg</span>
+
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="k">assert</span> <span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="n">compartments</span><span class="p">,</span> <span class="p">(</span><span class="n">Compartment</span><span class="p">,</span> <span class="n">List</span><span class="p">))</span> <span class="ow">or</span> <span class="n">compartments</span> <span class="ow">is</span> <span class="kc">None</span>
         <span class="p">),</span> <span class="s2">&quot;Only Compartment or List[Compartment] is allowed.&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">compartments</span><span class="p">,</span> <span class="n">Compartment</span><span class="p">):</span>
             <span class="k">assert</span> <span class="p">(</span>
-                <span class="n">nseg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="p">),</span> <span class="s2">&quot;If `compartments` is not a list then you have to set `nseg`.&quot;</span>
+                <span class="n">ncomp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="p">),</span> <span class="s2">&quot;If `compartments` is not a list then you have to set `ncomp`.&quot;</span>
         <span class="n">compartments</span> <span class="o">=</span> <span class="n">Compartment</span><span class="p">()</span> <span class="k">if</span> <span class="n">compartments</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">compartments</span>
-        <span class="n">nseg</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">nseg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">nseg</span>
+        <span class="n">ncomp</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">ncomp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">ncomp</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">compartments</span><span class="p">,</span> <span class="n">Compartment</span><span class="p">):</span>
-            <span class="n">compartment_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">compartments</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseg</span>
+            <span class="n">compartment_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">compartments</span><span class="p">]</span> <span class="o">*</span> <span class="n">ncomp</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">compartment_list</span> <span class="o">=</span> <span class="n">compartments</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">compartment_list</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">compartment_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
 
         <span class="c1"># Indexing.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">compartment_list</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_append_params_and_states</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_states</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_local_indices</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_init_view</span><span class="p">()</span>
 
@@ -12722,7 +12740,7 @@ intricate cell morphologies.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
 
@@ -12731,7 +12749,7 @@ intricate cell morphologies.</p>
 
     <span class="k">def</span> <span class="nf">_init_morph_jaxley_spsolve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
-            <span class="n">cumsum_nseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">,</span>
+            <span class="n">cumsum_ncomp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
             <span class="n">remapped_node_indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span><span class="p">,</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="p">[],</span>
@@ -12751,8 +12769,8 @@ intricate cell morphologies.</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)),</span>
-                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)),</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">)),</span>
+                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)),</span>
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
@@ -12763,7 +12781,7 @@ intricate cell morphologies.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_indptr_jax_spsolve</span> <span class="o">=</span> <span class="n">indptr</span>
 
     <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -12783,7 +12801,7 @@ intricate cell morphologies.</p>
 
 
 <h3 id="jaxley.modules.branch.Branch.__init__" class="doc doc-heading">
-            <code class=" language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">compartments</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">compartments</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.branch.Branch.__init__" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -12822,7 +12840,7 @@ branch.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>nseg</code>
+                <code>ncomp</code>
             </td>
             <td>
                   <code><span title="typing.Optional">Optional</span>[int]</code>
@@ -12830,7 +12848,7 @@ branch.</p>
             <td>
               <div class="doc-md-description">
                 <p>Number of segments to divide the branch into. If <code>compartments</code> is an
-a single compartment, than the compartment is repeated <code>nseg</code> times to
+a single compartment, than the compartment is repeated <code>ncomp</code> times to
 create the branch.</p>
               </div>
             </td>
@@ -12843,109 +12861,127 @@ create the branch.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/branch.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated_kwargs</span><span class="p">(</span><span class="s2">&quot;0.6.0&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;nseg&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">compartments</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Compartment</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Compartment</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ncomp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">nseg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Args:</span>
 <span class="sd">        compartments: A single compartment or a list of compartments that make up the</span>
 <span class="sd">            branch.</span>
-<span class="sd">        nseg: Number of segments to divide the branch into. If `compartments` is an</span>
-<span class="sd">            a single compartment, than the compartment is repeated `nseg` times to</span>
+<span class="sd">        ncomp: Number of segments to divide the branch into. If `compartments` is an</span>
+<span class="sd">            a single compartment, than the compartment is repeated `ncomp` times to</span>
 <span class="sd">            create the branch.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Warnings and errors that deal with the change from `nseg` to `ncomp` change</span>
+    <span class="c1"># in Jaxley v0.5.0.</span>
+    <span class="k">if</span> <span class="n">ncomp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nseg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;You passed `ncomp` and `nseg`. Please pass only `ncomp`.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ncomp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nseg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ncomp</span> <span class="o">=</span> <span class="n">nseg</span>
+
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
     <span class="k">assert</span> <span class="p">(</span>
         <span class="nb">isinstance</span><span class="p">(</span><span class="n">compartments</span><span class="p">,</span> <span class="p">(</span><span class="n">Compartment</span><span class="p">,</span> <span class="n">List</span><span class="p">))</span> <span class="ow">or</span> <span class="n">compartments</span> <span class="ow">is</span> <span class="kc">None</span>
     <span class="p">),</span> <span class="s2">&quot;Only Compartment or List[Compartment] is allowed.&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">compartments</span><span class="p">,</span> <span class="n">Compartment</span><span class="p">):</span>
         <span class="k">assert</span> <span class="p">(</span>
-            <span class="n">nseg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="p">),</span> <span class="s2">&quot;If `compartments` is not a list then you have to set `nseg`.&quot;</span>
+            <span class="n">ncomp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">),</span> <span class="s2">&quot;If `compartments` is not a list then you have to set `ncomp`.&quot;</span>
     <span class="n">compartments</span> <span class="o">=</span> <span class="n">Compartment</span><span class="p">()</span> <span class="k">if</span> <span class="n">compartments</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">compartments</span>
-    <span class="n">nseg</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">nseg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">nseg</span>
+    <span class="n">ncomp</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">ncomp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">ncomp</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">compartments</span><span class="p">,</span> <span class="n">Compartment</span><span class="p">):</span>
-        <span class="n">compartment_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">compartments</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseg</span>
+        <span class="n">compartment_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">compartments</span><span class="p">]</span> <span class="o">*</span> <span class="n">ncomp</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">compartment_list</span> <span class="o">=</span> <span class="n">compartments</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">compartment_list</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">compartment_list</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">])</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="o">=</span> <span class="mi">1</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
 
     <span class="c1"># Indexing.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">compartment_list</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_append_params_and_states</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_states</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_update_local_indices</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_init_view</span><span class="p">()</span>
 
@@ -12960,7 +12996,7 @@ create the branch.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">compute_children_and_parents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">branch_edges</span><span class="p">)</span>
     <span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
 
@@ -13003,8 +13039,7 @@ and supports intricate cell morphologies.</p>
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
-                <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 29</span>
-<span class="normal"> 30</span>
+                <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 30</span>
 <span class="normal"> 31</span>
 <span class="normal"> 32</span>
 <span class="normal"> 33</span>
@@ -13245,7 +13280,8 @@ and supports intricate cell morphologies.</p>
 <span class="normal">268</span>
 <span class="normal">269</span>
 <span class="normal">270</span>
-<span class="normal">271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Cell</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">271</span>
+<span class="normal">272</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Cell</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Cell class.</span>
 
 <span class="sd">    This class defines a single cell that can be simulated by itself or</span>
@@ -13314,18 +13350,18 @@ and supports intricate cell morphologies.</p>
 
         <span class="c1"># Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`</span>
         <span class="c1"># is run.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">branch</span><span class="o">.</span><span class="n">nseg</span> <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">branch_list</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">branch</span><span class="o">.</span><span class="n">ncomp</span> <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">branch_list</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
         <span class="c1"># Build nodes. Has to be changed when `.set_ncomp()` is run.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">branch_list</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span>
         <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_local_indices</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_init_view</span><span class="p">()</span>
 
@@ -13367,7 +13403,7 @@ and supports intricate cell morphologies.</p>
         <span class="n">branchpoint_group_inds</span> <span class="o">=</span> <span class="n">build_branchpoint_group_inds</span><span class="p">(</span>
             <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">),</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
         <span class="p">)</span>
         <span class="n">parents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comb_parents</span>
         <span class="n">children_inds</span> <span class="o">=</span> <span class="n">children_and_parents</span><span class="p">[</span><span class="s2">&quot;children&quot;</span><span class="p">]</span>
@@ -13378,29 +13414,29 @@ and supports intricate cell morphologies.</p>
         <span class="n">parents_in_level</span> <span class="o">=</span> <span class="n">compute_parents_in_level</span><span class="p">(</span>
             <span class="n">levels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">,</span> <span class="n">parents_inds</span>
         <span class="p">)</span>
-        <span class="n">levels_and_nseg</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+        <span class="n">levels_and_ncomp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;levels&quot;</span><span class="p">:</span> <span class="n">levels</span><span class="p">,</span>
-                <span class="s2">&quot;nsegs&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+                <span class="s2">&quot;ncomps&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
-        <span class="n">levels_and_nseg</span><span class="p">[</span><span class="s2">&quot;max_nseg_in_level&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">levels_and_nseg</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;levels&quot;</span><span class="p">)[</span>
-            <span class="s2">&quot;nsegs&quot;</span>
+        <span class="n">levels_and_ncomp</span><span class="p">[</span><span class="s2">&quot;max_ncomp_in_level&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">levels_and_ncomp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;levels&quot;</span><span class="p">)[</span>
+            <span class="s2">&quot;ncomps&quot;</span>
         <span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">)</span>
-        <span class="n">padded_cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
-            <span class="n">levels_and_nseg</span><span class="p">[</span><span class="s2">&quot;max_nseg_in_level&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">padded_cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
+            <span class="n">levels_and_ncomp</span><span class="p">[</span><span class="s2">&quot;max_ncomp_in_level&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="p">)</span>
 
         <span class="c1"># Generate mapping to deal with the masking which allows using the custom</span>
-        <span class="c1"># sparse solver to deal with different nseg per branch.</span>
+        <span class="c1"># sparse solver to deal with different ncomp per branch.</span>
         <span class="n">remapped_node_indices</span> <span class="o">=</span> <span class="n">remap_index_to_masked</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span>
-            <span class="n">padded_cumsum_nseg</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+            <span class="n">padded_cumsum_ncomp</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
-            <span class="n">cumsum_nseg</span><span class="o">=</span><span class="n">padded_cumsum_nseg</span><span class="p">,</span>
+            <span class="n">cumsum_ncomp</span><span class="o">=</span><span class="n">padded_cumsum_ncomp</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">branchpoint_group_inds</span><span class="p">,</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="n">children_in_level</span><span class="p">,</span>
             <span class="n">parents_in_level</span><span class="o">=</span><span class="n">parents_in_level</span><span class="p">,</span>
@@ -13428,14 +13464,14 @@ and supports intricate cell morphologies.</p>
                 <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
                 <span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
                     <span class="p">{</span>
-                        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">cumsum_nseg</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_nseg</span><span class="p">))</span>
-                        <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_nseg</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">+</span> <span class="n">cumsum_nseg</span><span class="p">)),</span>
-                        <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_nseg</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">+</span> <span class="n">cumsum_nseg</span><span class="p">))</span>
-                        <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">cumsum_nseg</span><span class="p">,</span> <span class="n">nseg</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_nseg</span><span class="p">)),</span>
+                        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">cumsum_ncomp</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_ncomp</span><span class="p">))</span>
+                        <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_ncomp</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">+</span> <span class="n">cumsum_ncomp</span><span class="p">)),</span>
+                        <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_ncomp</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">+</span> <span class="n">cumsum_ncomp</span><span class="p">))</span>
+                        <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">cumsum_ncomp</span><span class="p">,</span> <span class="n">ncomp</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">cumsum_ncomp</span><span class="p">)),</span>
                     <span class="p">}</span>
                 <span class="p">)</span>
                 <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">nseg</span><span class="p">,</span> <span class="n">cumsum_nseg</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">ncomp</span><span class="p">,</span> <span class="n">cumsum_ncomp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">)</span>
             <span class="p">]</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
@@ -13443,15 +13479,15 @@ and supports intricate cell morphologies.</p>
         <span class="c1"># Edges from branchpoints to compartments.</span>
         <span class="n">branchpoint_to_parent_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">))</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">))</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="n">branchpoint_to_child_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">],</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;sink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_child_inds</span><span class="p">],</span>
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
@@ -13586,8 +13622,7 @@ the stick representation coordinates.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 40</span>
-<span class="normal"> 41</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 41</span>
 <span class="normal"> 42</span>
 <span class="normal"> 43</span>
 <span class="normal"> 44</span>
@@ -13678,7 +13713,8 @@ the stick representation coordinates.</p>
 <span class="normal">129</span>
 <span class="normal">130</span>
 <span class="normal">131</span>
-<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">132</span>
+<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">branches</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Branch</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Branch</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">parents</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -13736,18 +13772,18 @@ the stick representation coordinates.</p>
 
     <span class="c1"># Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`</span>
     <span class="c1"># is run.</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">branch</span><span class="o">.</span><span class="n">nseg</span> <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">branch_list</span><span class="p">])</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">))</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">branch</span><span class="o">.</span><span class="n">ncomp</span> <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">branch_list</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
     <span class="c1"># Build nodes. Has to be changed when `.set_ncomp()` is run.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">branch_list</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span>
     <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_update_local_indices</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_init_view</span><span class="p">()</span>
 
@@ -14388,7 +14424,9 @@ the stick representation coordinates.</p>
 <span class="normal">612</span>
 <span class="normal">613</span>
 <span class="normal">614</span>
-<span class="normal">615</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Network</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">615</span>
+<span class="normal">616</span>
+<span class="normal">617</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Network</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Network class.</span>
 
 <span class="sd">    This class defines a network of cells that can be connected with synapses.</span>
@@ -14411,10 +14449,12 @@ the stick representation coordinates.</p>
             <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span> <span class="o">+=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span> <span class="o">=</span> <span class="n">cells</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">cell</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_append_params_and_states</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_states</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
@@ -14422,13 +14462,13 @@ the stick representation coordinates.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span>
         <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
             <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span>
-                <span class="o">*</span><span class="p">[[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cells</span><span class="p">)]</span>
+                <span class="o">*</span><span class="p">[[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cells</span><span class="p">)]</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_local_indices</span><span class="p">()</span>
@@ -14473,7 +14513,7 @@ the stick representation coordinates.</p>
         <span class="n">branchpoint_group_inds</span> <span class="o">=</span> <span class="n">build_branchpoint_group_inds</span><span class="p">(</span>
             <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_par_inds</span><span class="p">),</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_child_belongs_to_branchpoint</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
         <span class="p">)</span>
         <span class="n">children_in_level</span> <span class="o">=</span> <span class="n">merge_cells</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span><span class="p">,</span>
@@ -14487,22 +14527,22 @@ the stick representation coordinates.</p>
             <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="o">.</span><span class="n">parents_in_level</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">],</span>
             <span class="n">exclude_first</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">padded_cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
+        <span class="n">padded_cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">]</span>
+                <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">_solve_indexer</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="p">)</span>
 
         <span class="c1"># Generate mapping to dealing with the masking which allows using the custom</span>
-        <span class="c1"># sparse solver to deal with different nseg per branch.</span>
+        <span class="c1"># sparse solver to deal with different ncomp per branch.</span>
         <span class="n">remapped_node_indices</span> <span class="o">=</span> <span class="n">remap_index_to_masked</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span>
-            <span class="n">padded_cumsum_nseg</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+            <span class="n">padded_cumsum_ncomp</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_indexer</span> <span class="o">=</span> <span class="n">JaxleySolveIndexer</span><span class="p">(</span>
-            <span class="n">cumsum_nseg</span><span class="o">=</span><span class="n">padded_cumsum_nseg</span><span class="p">,</span>
+            <span class="n">cumsum_ncomp</span><span class="o">=</span><span class="n">padded_cumsum_ncomp</span><span class="p">,</span>
             <span class="n">branchpoint_group_inds</span><span class="o">=</span><span class="n">branchpoint_group_inds</span><span class="p">,</span>
             <span class="n">children_in_level</span><span class="o">=</span><span class="n">children_in_level</span><span class="p">,</span>
             <span class="n">parents_in_level</span><span class="o">=</span><span class="n">parents_in_level</span><span class="p">,</span>
@@ -14516,7 +14556,7 @@ the stick representation coordinates.</p>
 <span class="sd">        The reason that this function is a bit involved for a `Network` is that Jaxley</span>
 <span class="sd">        considers branchpoint nodes to be at the very end of __all__ nodes (i.e. the</span>
 <span class="sd">        branchpoints of the first cell are even after the compartments of the second</span>
-<span class="sd">        cell. The reason for this is that, otherwise, `cumsum_nseg` becomes tricky).</span>
+<span class="sd">        cell. The reason for this is that, otherwise, `cumsum_ncomp` becomes tricky).</span>
 
 <span class="sd">        To achieve this, we first loop over all compartments and append them, and then</span>
 <span class="sd">        loop over all branchpoints and append those. The code for building the indices</span>
@@ -14529,13 +14569,13 @@ the stick representation coordinates.</p>
 <span class="sd">        `type == 3`: parent-compartment --&gt; branchpoint</span>
 <span class="sd">        `type == 4`: child-compartment --&gt; branchpoint</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
-            <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span>
+            <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">cell</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">])</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
         <span class="c1"># Add all the internal nodes.</span>
-        <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">):</span>
             <span class="n">condition</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
             <span class="n">rows</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
@@ -14543,13 +14583,13 @@ the stick representation coordinates.</p>
             <span class="p">)</span>
 
         <span class="c1"># All branchpoint-to-compartment nodes.</span>
-        <span class="n">start_branchpoints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Index of the first branchpoint.</span>
+        <span class="n">start_branchpoints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Index of the first branchpoint.</span>
         <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">offset_branchpoints</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">,</span>
         <span class="p">):</span>
-            <span class="n">offset_within_cell</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">offset_within_cell</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="n">condition</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
             <span class="n">rows</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
@@ -14567,11 +14607,11 @@ the stick representation coordinates.</p>
 
         <span class="c1"># All compartment-to-branchpoint nodes.</span>
         <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">offset_branchpoints</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nseg_per_cell</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranchpoints_per_cell</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span><span class="p">,</span>
         <span class="p">):</span>
-            <span class="n">offset_within_cell</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">offset_within_cell</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="n">condition</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
             <span class="n">rows</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">_comp_edges</span><span class="p">[</span><span class="n">condition</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_comp_edges</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
@@ -14931,12 +14971,12 @@ the stick representation coordinates.</p>
         <span class="n">post_loc</span> <span class="o">=</span> <span class="n">loc_of_index</span><span class="p">(</span>
             <span class="n">post_nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
             <span class="n">post_nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">pre_loc</span> <span class="o">=</span> <span class="n">loc_of_index</span><span class="p">(</span>
             <span class="n">pre_nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
             <span class="n">pre_nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Define new synapses. Each row is one synapse.</span>
@@ -15099,7 +15139,9 @@ the stick representation coordinates.</p>
 <span class="normal">106</span>
 <span class="normal">107</span>
 <span class="normal">108</span>
-<span class="normal">109</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">cells</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Cell</span><span class="p">],</span>
 <span class="p">):</span>
@@ -15113,10 +15155,12 @@ the stick representation coordinates.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span> <span class="o">+=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_cells_list</span> <span class="o">=</span> <span class="n">cells</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">cell</span><span class="o">.</span><span class="n">nseg_per_branch</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">])</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nseg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">))</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ncomp_per_branch</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_internal_node_inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_append_params_and_states</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_states</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">total_nbranches</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
@@ -15124,13 +15168,13 @@ the stick representation coordinates.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">_cumsum_nbranches</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbranches_per_cell</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">nodes</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nseg_per_branch</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncomp_per_branch</span>
     <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
         <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span>
-            <span class="o">*</span><span class="p">[[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">cumsum_nseg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cells</span><span class="p">)]</span>
+            <span class="o">*</span><span class="p">[[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cells</span><span class="p">)]</span>
         <span class="p">)</span>
     <span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_update_local_indices</span><span class="p">()</span>
@@ -15394,9 +15438,7 @@ Can have the following entries: <code>within_layer_offset</code> (float),
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">384</span>
-<span class="normal">385</span>
-<span class="normal">386</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">386</span>
 <span class="normal">387</span>
 <span class="normal">388</span>
 <span class="normal">389</span>
@@ -15533,7 +15575,9 @@ Can have the following entries: <code>within_layer_offset</code> (float),
 <span class="normal">520</span>
 <span class="normal">521</span>
 <span class="normal">522</span>
-<span class="normal">523</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>

@@ -882,7 +882,7 @@ You will learn about:</p>
 
 <span class="c1"># Assembling different Modules into a Network</span>
 <span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
-<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
 <span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>
 
@@ -927,9 +927,9 @@ Jaxley implements four types of Modules:
 <p><code>Compartment</code>s are the atoms of biophysical models in Jaxley. All mechanisms and synaptic connections live on the level of <code>Compartment</code>s and can already be simulated using <code>jx.integrate</code> on their own. Everything you do in Jaxley starts with a <code>Compartment</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span> <span class="c1"># single compartment model.</span>
 </code></pre></div>
-<p>Mutliple <code>Compartments</code> can be connected together to form longer, linear segments / cables, which we call <code>Branch</code>es and are equivalent to sections in <code>NEURON</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="n">nseg</span> <span class="o">=</span> <span class="mi">4</span>
-<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">([</span><span class="n">comp</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseg</span><span class="p">)</span>
+<p>Mutliple <code>Compartments</code> can be connected together to form longer, linear cables, which we call <code>Branch</code>es and are equivalent to sections in <code>NEURON</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">ncomp</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">([</span><span class="n">comp</span><span class="p">]</span> <span class="o">*</span> <span class="n">ncomp</span><span class="p">)</span>
 </code></pre></div>
 <p>In order to construct cell morphologies in Jaxley, multiple <code>Branches</code> can to be connected together as a <code>Cell</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># -1 indicates that the first branch has no parent branch.</span>
@@ -977,15 +977,6 @@ Jaxley implements four types of Modules:
       <th>axial_resistivity</th>
       <th>capacitance</th>
       <th>v</th>
-      <th>x</th>
-      <th>y</th>
-      <th>...</th>
-      <th>Na_m</th>
-      <th>Na_h</th>
-      <th>K</th>
-      <th>K_gK</th>
-      <th>eK</th>
-      <th>K_n</th>
       <th>global_cell_index</th>
       <th>global_branch_index</th>
       <th>global_comp_index</th>
@@ -999,19 +990,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -1023,19 +1005,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>1</td>
@@ -1047,19 +1020,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>2</td>
@@ -1071,19 +1035,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>3</td>
@@ -1095,19 +1050,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>4</td>
@@ -1119,19 +1065,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>5</td>
@@ -1143,19 +1080,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>6</td>
@@ -1167,19 +1095,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>7</td>
@@ -1191,19 +1110,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>8</td>
@@ -1215,19 +1125,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>9</td>
@@ -1239,19 +1140,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>10</td>
@@ -1263,19 +1155,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>11</td>
@@ -1287,19 +1170,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>3</td>
       <td>12</td>
@@ -1311,19 +1185,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>3</td>
       <td>13</td>
@@ -1335,19 +1200,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>3</td>
       <td>14</td>
@@ -1359,19 +1215,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>3</td>
       <td>15</td>
@@ -1383,19 +1230,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>4</td>
       <td>16</td>
@@ -1407,19 +1245,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>4</td>
       <td>17</td>
@@ -1431,19 +1260,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>4</td>
       <td>18</td>
@@ -1455,19 +1275,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>4</td>
       <td>19</td>
@@ -1479,19 +1290,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>5</td>
       <td>20</td>
@@ -1503,19 +1305,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>5</td>
       <td>21</td>
@@ -1527,19 +1320,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>5</td>
       <td>22</td>
@@ -1551,19 +1335,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>1</td>
       <td>5</td>
       <td>23</td>
@@ -1571,7 +1346,6 @@ Jaxley implements four types of Modules:
     </tr>
   </tbody>
 </table>
-<p>24 rows × 28 columns</p>
 </div>
 
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">head</span><span class="p">()</span> <span class="c1"># this is currently empty since we have not made any connections yet</span>
@@ -1613,7 +1387,7 @@ Jaxley implements four types of Modules:
 <p>The simplest way to navigate Modules is by navigating them via the hierachy that we introduced above. A <code>View</code> is what you get when you index into the module. For example, for a <code>Network</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>View with 1 different channels. Use `.nodes` for details.
+<div class="codehilite"><pre><span></span><code>View with 0 different channels. Use `.nodes` for details.
 </code></pre></div>
 
 <p>Views behave very similarly to <code>Module</code>s, i.e. the <code>cell(0)</code> (the 0<sup>th</sup> cell of the network) behaves like the <code>cell</code> we instantiated earlier. As such, <code>cell(0)</code> also has a <code>nodes</code> attribute, which keeps track of it&rsquo;s part of the network:</p>
@@ -1645,15 +1419,6 @@ Jaxley implements four types of Modules:
       <th>axial_resistivity</th>
       <th>capacitance</th>
       <th>v</th>
-      <th>x</th>
-      <th>y</th>
-      <th>...</th>
-      <th>Na_m</th>
-      <th>Na_h</th>
-      <th>K</th>
-      <th>K_gK</th>
-      <th>eK</th>
-      <th>K_n</th>
       <th>global_cell_index</th>
       <th>global_branch_index</th>
       <th>global_comp_index</th>
@@ -1667,19 +1432,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -1691,19 +1447,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>1</td>
@@ -1715,19 +1462,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>2</td>
@@ -1739,19 +1477,10 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>0</td>
       <td>3</td>
@@ -1763,19 +1492,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>4</td>
@@ -1787,19 +1507,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>5</td>
@@ -1811,19 +1522,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>6</td>
@@ -1835,19 +1537,10 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>1</td>
       <td>7</td>
@@ -1859,19 +1552,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>8</td>
@@ -1883,19 +1567,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>9</td>
@@ -1907,19 +1582,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>10</td>
@@ -1931,19 +1597,10 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
       <td>0</td>
       <td>2</td>
       <td>11</td>
@@ -1951,7 +1608,6 @@ Jaxley implements four types of Modules:
     </tr>
   </tbody>
 </table>
-<p>12 rows × 28 columns</p>
 </div>
 
 <p>Let&rsquo;s use <code>View</code>s to visualize only parts of the <code>Network</code>. Before we do that, we create x, y, and z coordinates for the <code>Network</code>:</p>
@@ -1963,7 +1619,7 @@ Jaxley implements four types of Modules:
 </code></pre></div>
 <p>We can now visualize the entire <code>net</code> (i.e., the entire <code>Module</code>) with the <code>.vis()</code> method&hellip;</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># We can use the vis function to visualize Modules.</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
 <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
 </code></pre></div>
 <div class="codehilite"><pre><span></span><code>&lt;Axes: &gt;
@@ -1995,7 +1651,7 @@ Jaxley implements four types of Modules:
 <span class="n">cell0</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Views can be assigned to variables and only track the parts of the Module they belong to</span>
 <span class="n">cell0</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Views can be continuely indexed</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>View with 1 different channels. Use `.nodes` for details.
+<div class="codehilite"><pre><span></span><code>View with 0 different channels. Use `.nodes` for details.
 </code></pre></div>
 
 <div class="highlight"><pre><span></span><code><span class="n">cell0</span><span class="o">.</span><span class="n">nodes</span>
@@ -2028,13 +1684,7 @@ Jaxley implements four types of Modules:
       <th>v</th>
       <th>x</th>
       <th>y</th>
-      <th>...</th>
-      <th>Na_m</th>
-      <th>Na_h</th>
-      <th>K</th>
-      <th>K_gK</th>
-      <th>eK</th>
-      <th>K_n</th>
+      <th>z</th>
       <th>global_cell_index</th>
       <th>global_branch_index</th>
       <th>global_comp_index</th>
@@ -2048,19 +1698,13 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>5.000000</td>
       <td>30.000000</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -2072,19 +1716,13 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>15.000000</td>
       <td>30.000000</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>1</td>
@@ -2096,19 +1734,13 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>25.000000</td>
       <td>30.000000</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>2</td>
@@ -2120,19 +1752,13 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>35.000000</td>
       <td>30.000000</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>3</td>
@@ -2144,19 +1770,13 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>44.850713</td>
       <td>28.787322</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>1</td>
       <td>4</td>
@@ -2168,19 +1788,13 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>54.552138</td>
       <td>26.361966</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>1</td>
       <td>5</td>
@@ -2192,19 +1806,13 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>64.253563</td>
       <td>23.936609</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>1</td>
       <td>6</td>
@@ -2216,19 +1824,13 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>73.954988</td>
       <td>21.511253</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>1</td>
       <td>7</td>
@@ -2240,19 +1842,13 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>44.850713</td>
       <td>31.212678</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>2</td>
       <td>8</td>
@@ -2264,19 +1860,13 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>1</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>54.552138</td>
       <td>33.638034</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>2</td>
       <td>9</td>
@@ -2288,19 +1878,13 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>2</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>64.253563</td>
       <td>36.063391</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>2</td>
       <td>10</td>
@@ -2312,19 +1896,13 @@ Jaxley implements four types of Modules:
       <td>2</td>
       <td>3</td>
       <td>10.0</td>
-      <td>0.020703</td>
+      <td>1.0</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>73.954988</td>
       <td>38.488747</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>False</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>0.0</td>
       <td>0</td>
       <td>2</td>
       <td>11</td>
@@ -2332,7 +1910,6 @@ Jaxley implements four types of Modules:
     </tr>
   </tbody>
 </table>
-<p>12 rows × 28 columns</p>
 </div>
 
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">shape</span>
@@ -2381,28 +1958,28 @@ Jaxley implements four types of Modules:
   <tbody>
     <tr>
       <th>0</th>
-      <td>0.988127</td>
+      <td>0.763057</td>
       <td>100.0</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>0.568548</td>
-      <td>100.0</td>
+      <td>0.334882</td>
+      <td>10.0</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>0.064304</td>
-      <td>2.5</td>
+      <td>0.805696</td>
+      <td>100.0</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>0.859943</td>
+      <td>0.717921</td>
       <td>100.0</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>0.879433</td>
-      <td>100.0</td>
+      <td>0.079569</td>
+      <td>10.0</td>
     </tr>
   </tbody>
 </table>
@@ -2461,8 +2038,8 @@ Jaxley implements four types of Modules:
     </tr>
     <tr>
       <th>4</th>
-      <td>0.879433</td>
-      <td>100.0</td>
+      <td>0.079569</td>
+      <td>10.0</td>
     </tr>
   </tbody>
 </table>
@@ -2500,13 +2077,13 @@ Jaxley implements four types of Modules:
       <th>axial_resistivity</th>
       <th>capacitance</th>
       <th>v</th>
-      <th>x</th>
-      <th>y</th>
-      <th>z</th>
       <th>global_cell_index</th>
       <th>global_branch_index</th>
       <th>global_comp_index</th>
       <th>controlled_by_param</th>
+      <th>x</th>
+      <th>y</th>
+      <th>z</th>
       <th>Leak</th>
       <th>Leak_gLeak</th>
       <th>Leak_eLeak</th>
@@ -2518,18 +2095,18 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>0</td>
-      <td>100.0</td>
-      <td>0.924252</td>
+      <td>2.5</td>
+      <td>2.000000</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
       <td>5.000000</td>
       <td>30.000000</td>
       <td>0.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
       <td>True</td>
       <td>0.0001</td>
       <td>-70.0</td>
@@ -2539,18 +2116,18 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>1</td>
-      <td>100.0</td>
-      <td>0.566347</td>
+      <td>2.5</td>
+      <td>2.000000</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>15.000000</td>
-      <td>30.000000</td>
-      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>1</td>
       <td>0</td>
+      <td>15.000000</td>
+      <td>30.000000</td>
+      <td>0.0</td>
       <td>True</td>
       <td>0.0001</td>
       <td>-70.0</td>
@@ -2560,18 +2137,18 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>2</td>
-      <td>10.0</td>
-      <td>0.208471</td>
+      <td>2.5</td>
+      <td>2.000000</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>25.000000</td>
-      <td>30.000000</td>
-      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>2</td>
       <td>0</td>
+      <td>25.000000</td>
+      <td>30.000000</td>
+      <td>0.0</td>
       <td>True</td>
       <td>0.0001</td>
       <td>-70.0</td>
@@ -2581,18 +2158,18 @@ Jaxley implements four types of Modules:
       <td>0</td>
       <td>0</td>
       <td>3</td>
-      <td>100.0</td>
-      <td>0.596002</td>
+      <td>2.5</td>
+      <td>2.000000</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>35.000000</td>
-      <td>30.000000</td>
-      <td>0.0</td>
       <td>0</td>
       <td>0</td>
       <td>3</td>
       <td>0</td>
+      <td>35.000000</td>
+      <td>30.000000</td>
+      <td>0.0</td>
       <td>True</td>
       <td>0.0001</td>
       <td>-70.0</td>
@@ -2603,17 +2180,17 @@ Jaxley implements four types of Modules:
       <td>1</td>
       <td>0</td>
       <td>10.0</td>
-      <td>0.027419</td>
+      <td>0.079569</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>44.850713</td>
-      <td>28.787322</td>
-      <td>0.0</td>
       <td>0</td>
       <td>1</td>
       <td>4</td>
       <td>0</td>
+      <td>44.850713</td>
+      <td>28.787322</td>
+      <td>0.0</td>
       <td>True</td>
       <td>0.0001</td>
       <td>-70.0</td>

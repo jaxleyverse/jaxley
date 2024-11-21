@@ -1504,7 +1504,7 @@
 
 
 <h3 id="jaxley.utils.cell_utils.build_radiuses_from_xyzr" class="doc doc-heading">
-            <code class=" language-python"><span class="n">build_radiuses_from_xyzr</span><span class="p">(</span><span class="n">radius_fns</span><span class="p">,</span> <span class="n">branch_indices</span><span class="p">,</span> <span class="n">min_radius</span><span class="p">,</span> <span class="n">nseg</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">build_radiuses_from_xyzr</span><span class="p">(</span><span class="n">radius_fns</span><span class="p">,</span> <span class="n">branch_indices</span><span class="p">,</span> <span class="n">min_radius</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.cell_utils.build_radiuses_from_xyzr" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -1512,7 +1512,7 @@
     <div class="doc doc-contents ">
 
         <p>Return the radiuses of branches given SWC file xyzr.</p>
-<p>Returns an array of shape <code>(num_branches, nseg)</code>.</p>
+<p>Returns an array of shape <code>(num_branches, ncomp)</code>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1576,7 +1576,7 @@
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>nseg</code>
+                <code>ncomp</code>
             </td>
             <td>
                   <code>int</code>
@@ -1629,21 +1629,21 @@
     <span class="n">radius_fns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">],</span>
     <span class="n">branch_indices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">min_radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-    <span class="n">nseg</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">ncomp</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the radiuses of branches given SWC file xyzr.</span>
 
-<span class="sd">    Returns an array of shape `(num_branches, nseg)`.</span>
+<span class="sd">    Returns an array of shape `(num_branches, ncomp)`.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        radius_fns: Functions which, given compartment locations return the radius.</span>
 <span class="sd">        branch_indices: The indices of the branches for which to return the radiuses.</span>
 <span class="sd">        min_radius: If passed, the radiuses are clipped to be at least as large.</span>
-<span class="sd">        nseg: The number of compartments that every branch is discretized into.</span>
+<span class="sd">        ncomp: The number of compartments that every branch is discretized into.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Compartment locations are at the center of the internal nodes.</span>
-    <span class="n">non_split</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">nseg</span>
-    <span class="n">range_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">non_split</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">non_split</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">nseg</span><span class="p">)</span>
+    <span class="n">non_split</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">ncomp</span>
+    <span class="n">range_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">non_split</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">non_split</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">)</span>
 
     <span class="c1"># Build radiuses.</span>
     <span class="n">radiuses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">radius_fns</span><span class="p">[</span><span class="n">b</span><span class="p">](</span><span class="n">range_</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">branch_indices</span><span class="p">])</span>
@@ -1679,9 +1679,7 @@ capacitance <code>cm</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">701</span>
-<span class="normal">702</span>
-<span class="normal">703</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">703</span>
 <span class="normal">704</span>
 <span class="normal">705</span>
 <span class="normal">706</span>
@@ -1740,7 +1738,9 @@ capacitance <code>cm</code>.</p>
 <span class="normal">759</span>
 <span class="normal">760</span>
 <span class="normal">761</span>
-<span class="normal">762</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_axial_conductances</span><span class="p">(</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_axial_conductances</span><span class="p">(</span>
     <span class="n">comp_edges</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.</span>
@@ -1823,15 +1823,15 @@ capacitance <code>cm</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">765</span>
-<span class="normal">766</span>
-<span class="normal">767</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">767</span>
 <span class="normal">768</span>
 <span class="normal">769</span>
 <span class="normal">770</span>
 <span class="normal">771</span>
 <span class="normal">772</span>
-<span class="normal">773</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_children_and_parents</span><span class="p">(</span>
+<span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_children_and_parents</span><span class="p">(</span>
     <span class="n">branch_edges</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build indices used during `._init_morph_custom_spsolve().&quot;&quot;&quot;</span>
@@ -1918,9 +1918,7 @@ compute_children_indices(parents) -&gt; [[1, 2], [], []]
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">512</span>
-<span class="normal">513</span>
-<span class="normal">514</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">514</span>
 <span class="normal">515</span>
 <span class="normal">516</span>
 <span class="normal">517</span>
@@ -1929,7 +1927,9 @@ compute_children_indices(parents) -&gt; [[1, 2], [], []]
 <span class="normal">520</span>
 <span class="normal">521</span>
 <span class="normal">522</span>
-<span class="normal">523</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_coupling_cond</span><span class="p">(</span><span class="n">rad1</span><span class="p">,</span> <span class="n">rad2</span><span class="p">,</span> <span class="n">r_a1</span><span class="p">,</span> <span class="n">r_a2</span><span class="p">,</span> <span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">):</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_coupling_cond</span><span class="p">(</span><span class="n">rad1</span><span class="p">,</span> <span class="n">rad2</span><span class="p">,</span> <span class="n">r_a1</span><span class="p">,</span> <span class="n">r_a2</span><span class="p">,</span> <span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the coupling conductance between two compartments.</span>
 
 <span class="sd">    Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.</span>
@@ -1972,9 +1972,7 @@ g = r / r_a / L**2</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">526</span>
-<span class="normal">527</span>
-<span class="normal">528</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">528</span>
 <span class="normal">529</span>
 <span class="normal">530</span>
 <span class="normal">531</span>
@@ -1992,7 +1990,9 @@ g = r / r_a / L**2</p>
 <span class="normal">543</span>
 <span class="normal">544</span>
 <span class="normal">545</span>
-<span class="normal">546</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_coupling_cond_branchpoint</span><span class="p">(</span><span class="n">rad</span><span class="p">,</span> <span class="n">r_a</span><span class="p">,</span> <span class="n">l</span><span class="p">):</span>
+<span class="normal">546</span>
+<span class="normal">547</span>
+<span class="normal">548</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_coupling_cond_branchpoint</span><span class="p">(</span><span class="n">rad</span><span class="p">,</span> <span class="n">r_a</span><span class="p">,</span> <span class="n">l</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return the coupling conductance between one compartment and a comp with l=0.</span>
 
 <span class="sd">    From https://en.wikipedia.org/wiki/Compartmental_neuron_models</span>
@@ -2041,9 +2041,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">549</span>
-<span class="normal">550</span>
-<span class="normal">551</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">551</span>
 <span class="normal">552</span>
 <span class="normal">553</span>
 <span class="normal">554</span>
@@ -2053,7 +2051,9 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">558</span>
 <span class="normal">559</span>
 <span class="normal">560</span>
-<span class="normal">561</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_impact_on_node</span><span class="p">(</span><span class="n">rad</span><span class="p">,</span> <span class="n">r_a</span><span class="p">,</span> <span class="n">l</span><span class="p">):</span>
+<span class="normal">561</span>
+<span class="normal">562</span>
+<span class="normal">563</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_impact_on_node</span><span class="p">(</span><span class="n">rad</span><span class="p">,</span> <span class="n">r_a</span><span class="p">,</span> <span class="n">l</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Compute the weight with which a compartment influences its node.</span>
 
 <span class="sd">    In order to satisfy Kirchhoffs current law, the current at a branch point must be</span>
@@ -2088,9 +2088,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">645</span>
-<span class="normal">646</span>
-<span class="normal">647</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">647</span>
 <span class="normal">648</span>
 <span class="normal">649</span>
 <span class="normal">650</span>
@@ -2106,7 +2104,9 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">660</span>
 <span class="normal">661</span>
 <span class="normal">662</span>
-<span class="normal">663</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_morphology_indices_in_levels</span><span class="p">(</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_morphology_indices_in_levels</span><span class="p">(</span>
     <span class="n">num_branchpoints</span><span class="p">,</span>
     <span class="n">child_belongs_to_branchpoint</span><span class="p">,</span>
     <span class="n">par_inds</span><span class="p">,</span>
@@ -2215,9 +2215,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">610</span>
-<span class="normal">611</span>
-<span class="normal">612</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">612</span>
 <span class="normal">613</span>
 <span class="normal">614</span>
 <span class="normal">615</span>
@@ -2232,7 +2230,9 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">624</span>
 <span class="normal">625</span>
 <span class="normal">626</span>
-<span class="normal">627</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_point_process_to_distributed</span><span class="p">(</span>
+<span class="normal">627</span>
+<span class="normal">628</span>
+<span class="normal">629</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_point_process_to_distributed</span><span class="p">(</span>
     <span class="n">current</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert current point process (nA) to distributed current (uA/cm2).</span>
@@ -2260,7 +2260,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
 
 <h3 id="jaxley.utils.cell_utils.equal_segments" class="doc doc-heading">
-            <code class=" language-python"><span class="n">equal_segments</span><span class="p">(</span><span class="n">branch_property</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">equal_segments</span><span class="p">(</span><span class="n">branch_property</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.cell_utils.equal_segments" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -2311,7 +2311,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">305</span>
 <span class="normal">306</span>
 <span class="normal">307</span>
-<span class="normal">308</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">equal_segments</span><span class="p">(</span><span class="n">branch_property</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="normal">308</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">equal_segments</span><span class="p">(</span><span class="n">branch_property</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates segments where some property is the same in each segment.</span>
 
 <span class="sd">    Args:</span>
@@ -2319,7 +2319,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="sd">            `len(branch_property) == num_branches`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">branch_property</span><span class="p">,</span> <span class="nb">list</span><span class="p">),</span> <span class="s2">&quot;branch_property must be a list.&quot;</span>
-    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">branch_property</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseg_per_branch</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">branch_property</span><span class="p">]</span> <span class="o">*</span> <span class="n">ncomp_per_branch</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2330,7 +2330,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
 
 <h3 id="jaxley.utils.cell_utils.get_num_neighbours" class="doc doc-heading">
-            <code class=" language-python"><span class="n">get_num_neighbours</span><span class="p">(</span><span class="n">num_children</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">,</span> <span class="n">num_branches</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">get_num_neighbours</span><span class="p">(</span><span class="n">num_children</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">num_branches</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.cell_utils.get_num_neighbours" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -2356,15 +2356,15 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">480</span>
 <span class="normal">481</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_num_neighbours</span><span class="p">(</span>
     <span class="n">num_children</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">nseg_per_branch</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">ncomp_per_branch</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">num_branches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Number of neighbours of each compartment.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">num_neighbours</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">num_branches</span> <span class="o">*</span> <span class="n">nseg_per_branch</span><span class="p">))</span>
-    <span class="n">num_neighbours</span> <span class="o">=</span> <span class="n">num_neighbours</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">nseg_per_branch</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
-    <span class="n">num_neighbours</span> <span class="o">=</span> <span class="n">num_neighbours</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_branches</span><span class="p">)</span> <span class="o">*</span> <span class="n">nseg_per_branch</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+    <span class="n">num_neighbours</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">num_branches</span> <span class="o">*</span> <span class="n">ncomp_per_branch</span><span class="p">))</span>
+    <span class="n">num_neighbours</span> <span class="o">=</span> <span class="n">num_neighbours</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">ncomp_per_branch</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">num_neighbours</span> <span class="o">=</span> <span class="n">num_neighbours</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_branches</span><span class="p">)</span> <span class="o">*</span> <span class="n">ncomp_per_branch</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
         <span class="n">num_children</span> <span class="o">+</span> <span class="mf">1.0</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">num_neighbours</span>
@@ -2391,9 +2391,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">666</span>
-<span class="normal">667</span>
-<span class="normal">668</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">668</span>
 <span class="normal">669</span>
 <span class="normal">670</span>
 <span class="normal">671</span>
@@ -2408,7 +2406,9 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">680</span>
 <span class="normal">681</span>
 <span class="normal">682</span>
-<span class="normal">683</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">group_and_sum</span><span class="p">(</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">group_and_sum</span><span class="p">(</span>
     <span class="n">values_to_sum</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">inds_to_group_by</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">num_branchpoints</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Group values by whether they have the same integer and sum values within group.</span>
@@ -2499,9 +2499,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">576</span>
-<span class="normal">577</span>
-<span class="normal">578</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">578</span>
 <span class="normal">579</span>
 <span class="normal">580</span>
 <span class="normal">581</span>
@@ -2513,7 +2511,9 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">587</span>
 <span class="normal">588</span>
 <span class="normal">589</span>
-<span class="normal">590</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">interpolate_xyzr</span><span class="p">(</span><span class="n">loc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coords</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">interpolate_xyzr</span><span class="p">(</span><span class="n">loc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coords</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform a linear interpolation between xyz-coordinates.</span>
 
 <span class="sd">    Args:</span>
@@ -2538,7 +2538,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
 
 <h3 id="jaxley.utils.cell_utils.linear_segments" class="doc doc-heading">
-            <code class=" language-python"><span class="n">linear_segments</span><span class="p">(</span><span class="n">initial_val</span><span class="p">,</span> <span class="n">endpoint_vals</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">linear_segments</span><span class="p">(</span><span class="n">initial_val</span><span class="p">,</span> <span class="n">endpoint_vals</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.cell_utils.linear_segments" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -2620,7 +2620,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">332</span>
 <span class="normal">333</span>
 <span class="normal">334</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">linear_segments</span><span class="p">(</span>
-    <span class="n">initial_val</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">endpoint_vals</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">parents</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">initial_val</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">endpoint_vals</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">parents</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates segments where some property is linearly interpolated.</span>
 
@@ -2638,11 +2638,11 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
         <span class="n">end</span> <span class="o">=</span> <span class="n">endpoint_radiuses</span><span class="p">[</span><span class="n">branch_ind</span><span class="p">]</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">*</span> <span class="n">loc</span> <span class="o">+</span> <span class="n">start</span>
 
-    <span class="n">branch_inds_of_each_comp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_branches</span><span class="p">),</span> <span class="n">nseg_per_branch</span><span class="p">)</span>
-    <span class="n">locs_of_each_comp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">)</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">num_branches</span><span class="p">)</span>
+    <span class="n">branch_inds_of_each_comp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_branches</span><span class="p">),</span> <span class="n">ncomp_per_branch</span><span class="p">)</span>
+    <span class="n">locs_of_each_comp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">)</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">num_branches</span><span class="p">)</span>
     <span class="n">rad_of_each_comp</span> <span class="o">=</span> <span class="n">compute_rad</span><span class="p">(</span><span class="n">branch_inds_of_each_comp</span><span class="p">,</span> <span class="n">locs_of_each_comp</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">rad_of_each_comp</span><span class="p">,</span> <span class="p">(</span><span class="n">nseg_per_branch</span><span class="p">,</span> <span class="n">num_branches</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">rad_of_each_comp</span><span class="p">,</span> <span class="p">(</span><span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">num_branches</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2653,7 +2653,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
 
 <h3 id="jaxley.utils.cell_utils.loc_of_index" class="doc doc-heading">
-            <code class=" language-python"><span class="n">loc_of_index</span><span class="p">(</span><span class="n">global_comp_index</span><span class="p">,</span> <span class="n">global_branch_index</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">loc_of_index</span><span class="p">(</span><span class="n">global_comp_index</span><span class="p">,</span> <span class="n">global_branch_index</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.cell_utils.loc_of_index" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -2664,17 +2664,17 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">504</span>
-<span class="normal">505</span>
-<span class="normal">506</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">506</span>
 <span class="normal">507</span>
 <span class="normal">508</span>
-<span class="normal">509</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">loc_of_index</span><span class="p">(</span><span class="n">global_comp_index</span><span class="p">,</span> <span class="n">global_branch_index</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">):</span>
+<span class="normal">509</span>
+<span class="normal">510</span>
+<span class="normal">511</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">loc_of_index</span><span class="p">(</span><span class="n">global_comp_index</span><span class="p">,</span> <span class="n">global_branch_index</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return location corresponding to global compartment index.&quot;&quot;&quot;</span>
-    <span class="n">cumsum_nseg</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">nseg_per_branch</span><span class="p">)</span>
-    <span class="n">index</span> <span class="o">=</span> <span class="n">global_comp_index</span> <span class="o">-</span> <span class="n">cumsum_nseg</span><span class="p">[</span><span class="n">global_branch_index</span><span class="p">]</span>
-    <span class="n">nseg</span> <span class="o">=</span> <span class="n">nseg_per_branch</span><span class="p">[</span><span class="n">global_branch_index</span><span class="p">]</span>
-    <span class="k">return</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">index</span><span class="p">)</span> <span class="o">/</span> <span class="n">nseg</span>
+    <span class="n">cumsum_ncomp</span> <span class="o">=</span> <span class="n">cumsum_leading_zero</span><span class="p">(</span><span class="n">ncomp_per_branch</span><span class="p">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">global_comp_index</span> <span class="o">-</span> <span class="n">cumsum_ncomp</span><span class="p">[</span><span class="n">global_branch_index</span><span class="p">]</span>
+    <span class="n">ncomp</span> <span class="o">=</span> <span class="n">ncomp_per_branch</span><span class="p">[</span><span class="n">global_branch_index</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">index</span><span class="p">)</span> <span class="o">/</span> <span class="n">ncomp</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2685,7 +2685,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
 
 <h3 id="jaxley.utils.cell_utils.local_index_of_loc" class="doc doc-heading">
-            <code class=" language-python"><span class="n">local_index_of_loc</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">global_branch_ind</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">local_index_of_loc</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">global_branch_ind</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.cell_utils.local_index_of_loc" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -2741,7 +2741,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>nseg_per_branch</code>
+                <code>ncomp_per_branch</code>
             </td>
             <td>
                   <code>int</code>
@@ -2800,7 +2800,11 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="normal">498</span>
 <span class="normal">499</span>
 <span class="normal">500</span>
-<span class="normal">501</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">local_index_of_loc</span><span class="p">(</span><span class="n">loc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">global_branch_ind</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">nseg_per_branch</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">local_index_of_loc</span><span class="p">(</span>
+    <span class="n">loc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">global_branch_ind</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns the local index of a comp given a loc [0, 1] and the index of a branch.</span>
 
 <span class="sd">    This is used because we specify locations such as synapses as a value between 0 and</span>
@@ -2809,13 +2813,13 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <span class="sd">    Args:</span>
 <span class="sd">        branch_ind: Index of the branch.</span>
 <span class="sd">        loc: Location (in [0, 1]) along that branch.</span>
-<span class="sd">        nseg_per_branch: Number of segments of each branch.</span>
+<span class="sd">        ncomp_per_branch: Number of segments of each branch.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        The local index of the compartment.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">nseg</span> <span class="o">=</span> <span class="n">nseg_per_branch</span><span class="p">[</span><span class="n">global_branch_ind</span><span class="p">]</span>  <span class="c1"># only for convenience.</span>
-    <span class="n">possible_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">/</span> <span class="n">nseg</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="n">nseg</span><span class="p">,</span> <span class="n">nseg</span><span class="p">)</span>
+    <span class="n">ncomp</span> <span class="o">=</span> <span class="n">ncomp_per_branch</span><span class="p">[</span><span class="n">global_branch_ind</span><span class="p">]</span>  <span class="c1"># only for convenience.</span>
+    <span class="n">possible_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">/</span> <span class="n">ncomp</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="n">ncomp</span><span class="p">,</span> <span class="n">ncomp</span><span class="p">)</span>
     <span class="n">ind_along_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">possible_locs</span> <span class="o">-</span> <span class="n">loc</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">ind_along_branch</span>
 </code></pre></div></td></tr></table></div>
@@ -3064,9 +3068,7 @@ are of the same shape as the outputs of <code>.data_set()</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">593</span>
-<span class="normal">594</span>
-<span class="normal">595</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">595</span>
 <span class="normal">596</span>
 <span class="normal">597</span>
 <span class="normal">598</span>
@@ -3078,7 +3080,9 @@ are of the same shape as the outputs of <code>.data_set()</code>.</p>
 <span class="normal">604</span>
 <span class="normal">605</span>
 <span class="normal">606</span>
-<span class="normal">607</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">params_to_pstate</span><span class="p">(</span>
+<span class="normal">607</span>
+<span class="normal">608</span>
+<span class="normal">609</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">params_to_pstate</span><span class="p">(</span>
     <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
     <span class="n">indices_set_by_trainables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
 <span class="p">):</span>
@@ -3120,9 +3124,7 @@ the ones that are relevant for the channel. E.g.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">686</span>
-<span class="normal">687</span>
-<span class="normal">688</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">688</span>
 <span class="normal">689</span>
 <span class="normal">690</span>
 <span class="normal">691</span>
@@ -3132,7 +3134,9 @@ the ones that are relevant for the channel. E.g.</p>
 <span class="normal">695</span>
 <span class="normal">696</span>
 <span class="normal">697</span>
-<span class="normal">698</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">query_channel_states_and_params</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">idcs</span><span class="p">):</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">query_channel_states_and_params</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">idcs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get dict with subset of keys and values from d.</span>
 
 <span class="sd">    This is used to restrict a dict where every item contains __all__ states to only</span>
@@ -3167,13 +3171,13 @@ the ones that are relevant for the channel. E.g.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">564</span>
-<span class="normal">565</span>
-<span class="normal">566</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">566</span>
 <span class="normal">567</span>
 <span class="normal">568</span>
 <span class="normal">569</span>
-<span class="normal">570</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">remap_to_consecutive</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+<span class="normal">570</span>
+<span class="normal">571</span>
+<span class="normal">572</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">remap_to_consecutive</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Maps an array of integers to an array of consecutive integers.</span>
 
 <span class="sd">    E.g. `[0, 0, 1, 4, 4, 6, 6] -&gt; [0, 0, 1, 2, 2, 3, 3]`</span>
@@ -4428,7 +4432,7 @@ Useful too have a simpler mesh for plotting.</p>
             <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">locs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
             <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">([</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">lens</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
             <span class="n">comp_ends</span> <span class="o">=</span> <span class="n">v_interp</span><span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">lens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">module_or_view</span><span class="o">.</span><span class="n">nseg</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">lens</span><span class="p">,</span> <span class="n">locs</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">lens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">module_or_view</span><span class="o">.</span><span class="n">ncomp</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">lens</span><span class="p">,</span> <span class="n">locs</span>
             <span class="p">)</span><span class="o">.</span><span class="n">T</span>
             <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">comp_ends</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
             <span class="n">cylinder_lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axes</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
