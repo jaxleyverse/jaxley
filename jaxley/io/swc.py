@@ -22,7 +22,7 @@ from jaxley.utils.misc_utils import deprecated_kwargs
 
 def swc_to_jaxley(
     fname: str,
-    max_branch_len: float = 100.0,
+    max_branch_len: Optional[float] = None,
     sort: bool = True,
     num_lines: Optional[int] = None,
 ) -> Tuple[List[int], List[float], List[Callable], List[float], List[np.ndarray]]:
@@ -99,9 +99,9 @@ def read_swc(
     fname: str,
     ncomp: Optional[int] = None,
     nseg: Optional[int] = None,
-    max_branch_len: float = 300.0,
+    max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
-    assign_groups: bool = False,
+    assign_groups: bool = True,
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
