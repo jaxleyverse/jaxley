@@ -194,7 +194,7 @@ def swc2jaxley():
         default_fname = os.path.join(dirname, "swc_files", "morph.swc")
         fname = default_fname if fname is None else fname
         if key := (fname, max_branch_len, sort) not in params or force_init:
-            params[key] = jx.utils.swc.swc_to_jaxley(fname, max_branch_len, sort)
+            params[key] = jx.io.swc.swc_to_jaxley(fname, max_branch_len, sort)
         return params[key]
 
     yield get_or_compute_swc2jaxley_params
