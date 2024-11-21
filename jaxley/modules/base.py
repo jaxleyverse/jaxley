@@ -17,6 +17,7 @@ from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
+from jaxley.io.swc import build_radiuses_from_xyzr
 from jaxley.solver_voltage import (
     step_voltage_explicit,
     step_voltage_implicit_with_jax_spsolve,
@@ -39,7 +40,6 @@ from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
-from jaxley.utils.swc import build_radiuses_from_xyzr
 
 
 def only_allow_module(func):
