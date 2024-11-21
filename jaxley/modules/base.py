@@ -26,6 +26,7 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
+    build_radiuses_from_xyzr,
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
@@ -39,7 +40,6 @@ from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
-from jaxley.utils.swc import build_radiuses_from_xyzr
 
 
 def only_allow_module(func):

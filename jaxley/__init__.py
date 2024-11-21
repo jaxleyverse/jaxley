@@ -8,6 +8,7 @@ from jaxley.connect import (
     sparse_connect,
 )
 from jaxley.integrate import integrate
+from jaxley.io.swc import read_swc
 from jaxley.modules import *
 from jaxley.optimize import ParamTransform
 from jaxley.stimulus import datapoint_to_step_currents, step_current

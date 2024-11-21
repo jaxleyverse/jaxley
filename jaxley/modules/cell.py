@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules.base import Module
-from jaxley.modules.branch import Branch, Compartment
-from jaxley.synapses import Synapse
+from jaxley.modules.branch import Branch
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     compute_children_and_parents,
@@ -25,7 +24,6 @@ from jaxley.utils.solver_utils import (
     comp_edges_to_indices,
     remap_index_to_masked,
 )
-from jaxley.utils.swc import build_radiuses_from_xyzr, swc_to_jaxley
 
 
 class Cell(Module):
@@ -271,79 +269,3 @@ class Cell(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-
-def read_swc(
-    fname: str,
-    nseg: int,
-    max_branch_len: float = 300.0,
-    min_radius: Optional[float] = None,
-    assign_groups: bool = False,
-) -> Cell:
-    """Reads SWC file into a `jx.Cell`.
-
-    Jaxley assumes cylindrical compartments and therefore defines length and radius
-    for every compartment. The surface area is then 2*pi*r*length. For branches
-    consisting of a single traced point we assume for them to have area 4*pi*r*r.
-    Therefore, in these cases, we set lenght=2*r.
-
-    Args:
-        fname: Path to the swc file.
-        nseg: The number of compartments per branch.
-        max_branch_len: If a branch is longer than this value it is split into two
-            branches.
-        min_radius: If the radius of a reconstruction is below this value it is clipped.
-        assign_groups: If True, then the identity of reconstructed points in the SWC
-            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
-            `apical`, `custom`. See here:
-            http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-
-    Returns:
-        A `jx.Cell` object.
-    """
-    parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
-        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
-    )
-    nbranches = len(parents)
-
-    comp = Compartment()
-    branch = Branch([comp for _ in range(nseg)])
-    cell = Cell(
-        [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
-    )
-    # Also save the radius generating functions in case users post-hoc modify the number
-    # of compartments with `.set_ncomp()`.
-    cell._radius_generating_fns = radius_fns
-
-    lengths_each = np.repeat(pathlengths, nseg) / nseg
-    cell.set("length", lengths_each)
-
-    radiuses_each = build_radiuses_from_xyzr(
-        radius_fns,
-        range(len(parents)),
-        min_radius,
-        nseg,
-    )
-    cell.set("radius", radiuses_each)
-
-    # Description of SWC file format:
-    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-    ind_name_lookup = {
-        0: "undefined",
-        1: "soma",
-        2: "axon",
-        3: "basal",
-        4: "apical",
-        5: "custom",
-    }
-    types = np.asarray(types).astype(int)
-    if assign_groups:
-        for type_ind in np.unique(types):
-            if type_ind < 5.5:
-                name = ind_name_lookup[type_ind]
-            else:
-                name = f"custom{type_ind}"
-            indices = np.where(types == type_ind)[0].tolist()
-            if len(indices) > 0:
-                cell.branch(indices).add_to_group(name)
-    return cell
