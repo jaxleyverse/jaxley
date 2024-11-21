@@ -362,7 +362,7 @@ def read_swc(
     max_branch_len: float = 300.0,
     min_radius: Optional[float] = None,
     assign_groups: bool = False,
-) -> Cell:
+) -> jx.Cell:
     """Reads SWC file into a `jx.Cell`.
 
     Jaxley assumes cylindrical compartments and therefore defines length and radius
