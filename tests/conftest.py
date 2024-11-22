@@ -1,10 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-<<<<<<< HEAD
-=======
 import json
->>>>>>> wip: new baselines
 import os
 from copy import deepcopy
 from typing import Optional
@@ -13,10 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.synapses import IonotropicSynapse
-<<<<<<< HEAD
-=======
 from tests.test_regression import generate_regression_report, load_json
->>>>>>> wip: new baselines
 
 
 @pytest.fixture(scope="session")
@@ -210,8 +204,6 @@ def swc2jaxley():
 
     yield get_or_compute_swc2jaxley_params
     params = {}
-<<<<<<< HEAD
-=======
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -249,4 +241,3 @@ def print_session_report(request):
 
     request.addfinalizer(update_baseline)
     request.addfinalizer(print_regression_report)
->>>>>>> wip: new baselines
