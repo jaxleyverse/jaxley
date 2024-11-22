@@ -12,7 +12,7 @@ def compute_morphology_indices(
     child_belongs_to_branchpoint,
     par_inds,
     child_inds,
-    nseg,
+    ncomp,
     nbranches,
 ):
     """Return (row, col) to build the sparse matrix defining the voltage eqs.
@@ -32,23 +32,23 @@ def compute_morphology_indices(
     7) All child branchpoint rows
     8) All branchpoint diagonals
     """
-    diag_col_inds = jnp.arange(nseg * nbranches)
-    diag_row_inds = jnp.arange(nseg * nbranches)
+    diag_col_inds = jnp.arange(ncomp * nbranches)
+    diag_row_inds = jnp.arange(ncomp * nbranches)
 
-    upper_col_inds = drop_nseg_th_element(diag_col_inds, nseg, nbranches, 0)
-    upper_row_inds = drop_nseg_th_element(diag_row_inds, nseg, nbranches, nseg - 1)
+    upper_col_inds = drop_ncomp_th_element(diag_col_inds, ncomp, nbranches, 0)
+    upper_row_inds = drop_ncomp_th_element(diag_row_inds, ncomp, nbranches, ncomp - 1)
 
-    lower_col_inds = drop_nseg_th_element(diag_col_inds, nseg, nbranches, nseg - 1)
-    lower_row_inds = drop_nseg_th_element(diag_row_inds, nseg, nbranches, 0)
+    lower_col_inds = drop_ncomp_th_element(diag_col_inds, ncomp, nbranches, ncomp - 1)
+    lower_row_inds = drop_ncomp_th_element(diag_row_inds, ncomp, nbranches, 0)
 
-    start_ind_for_branchpoints = nseg * nbranches
+    start_ind_for_branchpoints = ncomp * nbranches
     branchpoint_inds_parents = start_ind_for_branchpoints + jnp.arange(num_branchpoints)
     branchpoint_inds_children = (
         start_ind_for_branchpoints + child_belongs_to_branchpoint
     )
 
-    branch_inds_parents = par_inds * nseg + (nseg - 1)
-    branch_inds_children = child_inds * nseg
+    branch_inds_parents = par_inds * ncomp + (ncomp - 1)
+    branch_inds_children = child_inds * ncomp
 
     branchpoint_parent_columns_col_inds = branchpoint_inds_parents
     branchpoint_parent_columns_row_inds = branch_inds_parents
@@ -107,7 +107,7 @@ def build_voltage_matrix_elements(
     branchpoint_weights_parents,
     branchpoint_diags,
     branchpoint_solves,
-    nseg,
+    ncomp,
     nbranches,
 ):
     """Return data to build the sparse matrix defining the voltage equations.
@@ -123,13 +123,13 @@ def build_voltage_matrix_elements(
     8) All branchpoint diagonals
     """
     num_branchpoints = len(branchpoint_conds_parents)
-    num_entries = nseg * nbranches + num_branchpoints
+    num_entries = ncomp * nbranches + num_branchpoints
 
     diag_elements = diags.flatten()
     upper_elements = uppers.flatten()
     lower_elements = lowers.flatten()
 
-    start_ind_for_branchpoints = nseg * nbranches
+    start_ind_for_branchpoints = ncomp * nbranches
     branchpoint_parent_columns_elements = branchpoint_conds_parents
     branchpoint_children_columns_elements = branchpoint_conds_children
     branchpoint_parent_row_elements = branchpoint_weights_parents
@@ -161,8 +161,8 @@ def build_voltage_matrix_elements(
     )
 
 
-def drop_nseg_th_element(
-    arr: jnp.ndarray, nseg: int, nbranches: int, start: int
+def drop_ncomp_th_element(
+    arr: jnp.ndarray, ncomp: int, nbranches: int, start: int
 ) -> jnp.ndarray:
     """
     Create an array of integers from 0 to limit, dropping every n-th element.
@@ -171,7 +171,7 @@ def drop_nseg_th_element(
 
     Args:
         arr: The array from which to drop elements.
-        nseg: The interval of elements to drop (every n-th element).
+        ncomp: The interval of elements to drop (every n-th element).
         start: An offset on where to start removing.
 
     Returns:
@@ -179,7 +179,7 @@ def drop_nseg_th_element(
     """
     # Drop every n-th element
     result = jnp.delete(
-        arr, jnp.arange(start, nseg * nbranches, nseg), assume_unique_indices=True
+        arr, jnp.arange(start, ncomp * nbranches, ncomp), assume_unique_indices=True
     )
 
     return result

@@ -23,11 +23,11 @@ _ = h.load_file("import3d.hoc")
 # Test is failing for "morph.swc". This is because NEURON and Jaxley handle interrupted
 # soma differently, see issue #140.
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph_minimal.swc"])
-def test_swc_reader_lengths(file):
+def test_swc_reader_lengths(file, swc2jaxley):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2000.0)
+    _, pathlengths, _, _, _ = swc2jaxley(fname, max_branch_len=2000.0)
     if pathlengths[0] == 0.1:
         pathlengths = pathlengths[1:]
 
@@ -53,31 +53,27 @@ def test_swc_reader_lengths(file):
     ), "Number of branches does not match."
 
 
-def test_dummy_compartment_length():
+def test_dummy_compartment_length(swc2jaxley):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_soma_both_ends.swc")
 
-    parents, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(
-        fname, max_branch_len=2000.0
-    )
+    parents, pathlengths, _, _, _ = swc2jaxley(fname, max_branch_len=2000.0)
     assert parents == [-1, 0, 0, 1]
     assert pathlengths == [0.1, 1.0, 2.6, 2.2]
 
 
 @pytest.mark.parametrize("file", ["morph_250_single_point_soma.swc", "morph_250.swc"])
-def test_swc_radius(file):
-    """We expect them to match for sufficiently large nseg. See #140."""
-    nseg = 64
-    non_split = 1 / nseg
-    range_16 = np.linspace(non_split / 2, 1 - non_split / 2, nseg)
+def test_swc_radius(file, swc2jaxley):
+    """We expect them to match for sufficiently large ncomp. See #140."""
+    ncomp = 64
+    non_split = 1 / ncomp
+    range_16 = np.linspace(non_split / 2, 1 - non_split / 2, ncomp)
 
     # Can not use full morphology because of branch sorting.
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    _, pathlen, radius_fns, _, _ = jx.utils.swc.swc_to_jaxley(
-        fname, max_branch_len=2000.0, sort=False
-    )
+    _, pathlen, radius_fns, _, _ = swc2jaxley(fname, max_branch_len=2000.0, sort=False)
     jaxley_diams = []
     for r in radius_fns:
         jaxley_diams.append(r(range_16) * 2)
@@ -92,7 +88,7 @@ def test_swc_radius(file):
 
     neuron_diams = []
     for sec in h.allsec():
-        sec.nseg = nseg
+        sec.nseg = ncomp
         diams_in_branch = []
         for seg in sec:
             diams_in_branch.append(seg.diam)
@@ -105,7 +101,7 @@ def test_swc_radius(file):
 
 
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
-def test_swc_voltages(file):
+def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
     """Check if voltages of SWC recording match.
 
     To match the branch indices between NEURON and jaxley, we rely on comparing the
@@ -123,7 +119,7 @@ def test_swc_voltages(file):
     t_max = 20.0
     dt = 0.025
 
-    nseg_per_branch = 8
+    ncomp_per_branch = 8
 
     ##################### NEURON ##################
     h.secondorder = 0
@@ -137,13 +133,13 @@ def test_swc_voltages(file):
     i3d.instantiate(None)
 
     for sec in h.allsec():
-        sec.nseg = nseg_per_branch
+        sec.nseg = ncomp_per_branch
 
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### jaxley ##################
-    _, pathlengths, _, _, _ = jx.utils.swc.swc_to_jaxley(fname, max_branch_len=2_000)
-    cell = jx.read_swc(fname, nseg_per_branch, max_branch_len=2_000.0)
+    _, pathlengths, _, _, _ = swc2jaxley(fname, max_branch_len=2_000)
+    cell = SimpleMorphCell(fname, ncomp_per_branch, max_branch_len=2_000.0)
     cell.insert(HH())
 
     trunk_inds = [1, 4, 5, 13, 15, 21, 23, 24, 29, 33]
@@ -180,7 +176,7 @@ def test_swc_voltages(file):
     for i in trunk_inds + tuft_inds + basal_inds:
         cell.branch(i).loc(0.05).record()
 
-    voltages_jaxley = jx.integrate(cell, delta_t=dt)
+    voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
 
     ################### NEURON #################
     stim = h.IClamp(h.soma[0](0.1))

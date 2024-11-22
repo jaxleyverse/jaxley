@@ -23,11 +23,10 @@ from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import JaxleySolveIndexer
 
 
-def test_getitem():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(3)], parents=jnp.asarray([-1, 0, 0]))
-    net = jx.Network([cell for _ in range(3)])
+def test_getitem(SimpleBranch, SimpleCell, SimpleNet):
+    branch = SimpleBranch(4)
+    cell = SimpleCell(3, 4)
+    net = SimpleNet(3, 3, 4)
 
     # test API equivalence
     assert all(net.cell(0).branch(0).show() == net[0, 0].show())
@@ -57,29 +56,26 @@ def test_getitem():
         pass
 
 
-def test_loc_v_comp():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-
-    cum_nseg = branch.cumsum_nseg
-    nsegs = branch.nseg_per_branch
+def test_loc_v_comp(SimpleBranch):
+    branch = SimpleBranch(4)
+    ncomps = branch.ncomp_per_branch
     branch_ind = 0
 
     assert np.all(branch.comp(0).show() == branch.loc(0.0).show())
     assert np.all(branch.comp(3).show() == branch.loc(1.0).show())
 
-    inferred_loc = loc_of_index(2, branch_ind, nsegs)
+    inferred_loc = loc_of_index(2, branch_ind, ncomps)
     assert np.all(branch.loc(inferred_loc).show() == branch.comp(2).show())
 
-    inferred_ind = local_index_of_loc(0.4, branch_ind, nsegs)
+    inferred_ind = local_index_of_loc(0.4, branch_ind, ncomps)
     assert np.all(branch.comp(inferred_ind).show() == branch.loc(0.4).show())
 
 
-def test_shape():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(3)], parents=jnp.asarray([-1, 0, 0]))
-    net = jx.Network([cell for _ in range(3)])
+def test_shape(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
+    comp = SimpleComp()
+    branch = SimpleBranch(4)
+    cell = SimpleCell(3, 4)
+    net = SimpleNet(3, 3, 4)
 
     assert net.shape == (3, 3 * 3, 3 * 3 * 4)
     assert cell.shape == (3, 3 * 4)
@@ -98,11 +94,10 @@ def test_shape():
     assert net.cell(0).branch(0).comp(0).shape == (1, 1, 1)
 
 
-def test_set_and_insert():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 0, 1, 1]))
-    net = jx.Network([cell for _ in range(5)])
+def test_set_and_insert(SimpleBranch, SimpleCell, SimpleNet):
+    branch = SimpleBranch(4)
+    cell = SimpleCell(5, 4)
+    net = SimpleNet(5, 5, 4)
     net1 = deepcopy(net)
     net2 = deepcopy(net)
     net3 = deepcopy(net)
@@ -164,7 +159,7 @@ def test_set_and_insert():
 
     # test insert multiple stimuli
     single_current = jx.step_current(
-        i_delay=10.0, i_dur=80.0, i_amp=5.0, delta_t=0.025, t_max=100.0
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
     batch_of_currents = np.vstack([single_current for _ in range(4)])
 
@@ -186,11 +181,8 @@ def test_set_and_insert():
     assert np.all(cell1.recordings == cell2.recordings)
 
 
-def test_local_indexing():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(5)], parents=jnp.asarray([-1, 0, 0, 1, 1]))
-    net = jx.Network([cell for _ in range(2)])
+def test_local_indexing(SimpleNet):
+    net = SimpleNet(2, 5, 4)
 
     local_idxs = net.nodes[
         ["local_cell_index", "local_branch_index", "local_comp_index"]
@@ -206,11 +198,10 @@ def test_local_indexing():
                 global_index += 1
 
 
-def test_indexing_a_compartment_of_many_branches():
-    comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=3)
-    branch2 = jx.Branch(comp, nseg=4)
-    branch3 = jx.Branch(comp, nseg=5)
+def test_indexing_a_compartment_of_many_branches(SimpleBranch):
+    branch1 = SimpleBranch(ncomp=3)
+    branch2 = SimpleBranch(ncomp=4)
+    branch3 = SimpleBranch(ncomp=5)
     cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
     cell2 = jx.Cell([branch3, branch2], parents=[-1, 0])
     net = jx.Network([cell1, cell2])
@@ -236,9 +227,9 @@ def test_indexing_a_compartment_of_many_branches():
 
 
 def test_solve_indexer():
-    nsegs = [4, 3, 4, 2, 2, 3, 3]
-    cumsum_nseg = cumsum_leading_zero(nsegs)
-    idx = JaxleySolveIndexer(cumsum_nseg)
+    ncomps = [4, 3, 4, 2, 2, 3, 3]
+    cumsum_ncomp = cumsum_leading_zero(ncomps)
+    idx = JaxleySolveIndexer(cumsum_ncomp)
     branch_inds = np.asarray([0, 2])
     assert np.all(idx.first(branch_inds) == np.asarray([0, 7]))
     assert np.all(idx.last(branch_inds) == np.asarray([3, 10]))
@@ -247,16 +238,8 @@ def test_solve_indexer():
     assert np.all(idx.upper(branch_inds) == np.asarray([[0, 1, 2], [7, 8, 9]]))
 
 
-comp = jx.Compartment()
-branch = jx.Branch(comp, nseg=3)
-cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
-net = jx.Network([cell] * 3)
-connect(net[0, 0, 0], net[0, 0, 1], TestSynapse())
-
-
 # make sure all attrs in module also have a corresponding attr in view
-@pytest.mark.parametrize("module", [comp, branch, cell, net])
-def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
+def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     """Check if all attributes of Module have a corresponding attribute in View.
 
     To ensure that View behaves like a Module as much as possible, View should support
@@ -267,15 +250,15 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     exceptions = ["view"]
 
     # TODO: Types are inconsistent between different Modules
-    exceptions += ["cumsum_nbranches"]
+    exceptions += ["_cumsum_nbranches"]
 
     # TODO FROM #447: should be added to View in the future
     exceptions += [
         "_internal_node_inds",
-        "par_inds",
-        "child_inds",
-        "child_belongs_to_branchpoint",
-        "solve_indexer",
+        "_par_inds",
+        "_child_inds",
+        "_child_belongs_to_branchpoint",
+        "_solve_indexer",
         "_comp_edges",
         "_n_nodes",
         "_data_inds",
@@ -284,65 +267,82 @@ def test_view_attrs(module: jx.Compartment | jx.Branch | jx.Cell | jx.Network):
     ]  # for base/comp
     exceptions += ["comb_children"]  # for cell
     exceptions += [
-        "cells_list",
-        "cumsum_nbranchpoints_per_cell",
-        "_cumsum_nseg_per_cell",
+        "_cells_list",
+        "_cumsum_nbranchpoints_per_cell",
+        "_cumsum_ncomp_per_cell",
     ]  # for network
 
-    for name, attr in module.__dict__.items():
-        if name not in exceptions:
-            # check if attr is in view
-            view = View(module)
-            assert hasattr(view, name), f"View missing attribute: {name}"
-            # check if types match
-            assert type(getattr(module, name)) == type(
-                getattr(view, name)
-            ), f"Type mismatch: {name}, Module type: {type(getattr(module, name))}, View type: {type(getattr(view, name))}"
+    for module in [
+        SimpleComp(),
+        SimpleBranch(2),
+        SimpleCell(2, 3),
+        SimpleNet(2, 2, 3, connect=True),
+    ]:
+        for name, attr in module.__dict__.items():
+            if name not in exceptions:
+                # check if attr is in view
+                view = View(module)
+                assert hasattr(view, name), f"View missing attribute: {name}"
+                # check if types match
+                assert type(getattr(module, name)) == type(
+                    getattr(view, name)
+                ), f"Type mismatch: {name}, Module type: {type(getattr(module, name))}, View type: {type(getattr(view, name))}"
 
 
-comp = jx.Compartment()
-branch = jx.Branch([comp] * 4)
-cell = jx.Cell([branch] * 4, parents=[-1, 0, 0, 0])
-net = jx.Network([cell] * 4)
-
-
-@pytest.mark.parametrize("module", [comp, branch, cell, net])
-def test_view_supported_index_types(module):
+def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     """Check if different ways to index into Modules/Views work correctly."""
     # test int, range, slice, list, np.array, pd.Index
-    index_types = [
-        0,
-        range(3),
-        slice(0, 3),
-        [0, 1, 2],
-        np.array([0, 1, 2]),
-        pd.Index([0, 1, 2]),
-    ]
 
-    # comp.comp is not allowed
-    if not isinstance(module, jx.Compartment):
-        # `_reformat_index` should always return a np.ndarray
-        for index in index_types:
-            assert isinstance(
-                module._reformat_index(index), np.ndarray
-            ), f"Failed for {type(index)}"
-            assert module.comp(index), f"Failed for {type(index)}"
-            assert View(module).comp(index), f"Failed for {type(index)}"
+    for module in [
+        SimpleComp(),
+        SimpleBranch(4),
+        SimpleCell(3, 4),
+        SimpleNet(2, 3, 4),
+    ]:
+        index_types = [
+            0,
+            range(3),
+            slice(0, 3),
+            [0, 1, 2],
+            np.array([0, 1, 2]),
+            pd.Index([0, 1, 2]),
+            np.array([True, False, True, False] * 100)[: len(module.nodes)],
+        ]
+
+        # comp.comp is not allowed
+        all_inds = module.nodes.index.to_numpy()
+        if not isinstance(module, jx.Compartment):
+            # `_reformat_index` should always return a np.ndarray
+            for index in index_types:
+                assert isinstance(
+                    module._reformat_index(index), np.ndarray
+                ), f"Failed for {type(index)}"
+
+                # test indexing into module and view
+                assert module.comp(index), f"Failed for {type(index)}"
+                assert View(module).comp(index), f"Failed for {type(index)}"
+
+                expected_inds = all_inds[index]
+                assert np.all(module.select(nodes=index).nodes.index == expected_inds)
 
             # for loc test float and list of floats
             assert module.loc(0.0), "Failed for float"
             assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
-    else:
-        with pytest.raises(AssertionError):
-            module.comp(0)
+        else:
+            with pytest.raises(AssertionError):
+                module.comp(0)
+
+        if isinstance(module, jx.Network):
+            connect(module[0, 0, :], module[1, 0, :], TestSynapse())
+            all_inds = module.edges.index.to_numpy()
+            for index in index_types[:-1] + [np.array([True, False, True, False])]:
+                expected_inds = all_inds[index]
+                assert np.all(module.select(edges=index).edges.index == expected_inds)
 
 
-def test_select():
+def test_select(SimpleNet):
     """Ensure `select` works correctly and returns expected View of Modules."""
-    comp = jx.Compartment()
-    branch = jx.Branch([comp] * 3)
-    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
-    net = jx.Network([cell] * 3)
+    net = SimpleNet(3, 3, 2, connect=False)
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
     np.random.seed(0)
@@ -359,7 +359,7 @@ def test_select():
 
     # check if pre and post comps of edges are in nodes
     edge_node_inds = np.unique(
-        view.edges[["global_pre_comp_index", "global_post_comp_index"]]
+        view.edges[["pre_global_comp_index", "post_global_comp_index"]]
         .to_numpy()
         .flatten()
     )
@@ -379,12 +379,10 @@ def test_select():
     ), "Selecting nodes and edges by index failed for edges."
 
 
-def test_viewing():
+def test_viewing(SimpleCell, SimpleNet):
     """Test that the View object is working correctly."""
-    comp = jx.Compartment()
-    branch = jx.Branch([comp] * 3)
-    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
-    net = jx.Network([cell] * 3)
+    cell = SimpleCell(3, 3)
+    net = SimpleNet(3, 3, 3)
 
     # test parameter sharing works correctly
     nodes1 = net.branch(0).comp("all").nodes
@@ -433,11 +431,9 @@ def test_viewing():
         net.scope("global").comp(999)  # Nothing should be in View
 
 
-def test_scope():
+def test_scope(SimpleCell):
     """Ensure scope has the intended effect for Modules and Views."""
-    comp = jx.Compartment()
-    branch = jx.Branch([comp] * 3)
-    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+    cell = SimpleCell(3, 3)
 
     view = cell.scope("global").branch(1)
     assert view._scope == "global"
@@ -467,11 +463,9 @@ def test_scope():
     )
 
 
-def test_context_manager():
+def test_context_manager(SimpleCell):
     """Test that context manager works correctly for Module."""
-    comp = jx.Compartment()
-    branch = jx.Branch([comp] * 3)
-    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+    cell = SimpleCell(3, 3)
 
     with cell.branch(0).comp(0) as comp:
         comp.set("v", -71)
@@ -492,11 +486,10 @@ def test_context_manager():
     ), "Context management of View not working."
 
 
-def test_iter():
+def test_iter(SimpleBranch):
     """Test that __iter__ works correctly for all modules."""
-    comp = jx.Compartment()
-    branch1 = jx.Branch([comp] * 2)
-    branch2 = jx.Branch([comp] * 3)
+    branch1 = SimpleBranch(2)
+    branch2 = SimpleBranch(3)
     cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
     net = jx.Network([cell] * 2)
 
@@ -552,12 +545,9 @@ def test_iter():
     assert np.all(cell.nodes["v"] == -73), "Setting parameters with __iter__ failed."
 
 
-def test_synapse_and_channel_filtering():
+def test_synapse_and_channel_filtering(SimpleNet):
     """Test that synapses and channels are filtered correctly by View."""
-    comp = jx.Compartment()
-    branch = jx.Branch([comp] * 3)
-    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
-    net = jx.Network([cell] * 3)
+    net = SimpleNet(3, 3, 3, connect=False)
     net.insert(HH())
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
@@ -581,10 +571,10 @@ def test_synapse_and_channel_filtering():
     assert np.all(edges1 == edges2)
 
 
-def test_view_equals_module():
+def test_view_equals_module(SimpleComp, SimpleBranch):
     """Test that View behaves the same as Module for important attrs and methods."""
-    comp = jx.Compartment()
-    branch = jx.Branch([comp] * 3)
+    comp = SimpleComp(copy=True)
+    branch = SimpleBranch(3)
 
     comp.insert(HH())
     branch.comp([0, 1]).insert(HH())

@@ -23,10 +23,11 @@ from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_compartment(voltage_solver: str):
+def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
     tolerance = 1e-8
 
     voltages_081123 = jnp.asarray(
@@ -48,7 +49,7 @@ def test_compartment(voltage_solver: str):
     )
 
     # Test compartment.
-    comp = jx.Compartment()
+    comp = SimpleComp()
     comp.insert(HH())
     comp.record()
     comp.stimulate(current)
@@ -57,7 +58,7 @@ def test_compartment(voltage_solver: str):
     assert max_error <= tolerance, f"Compartment error is {max_error} > {tolerance}"
 
     # Test branch of a single compartment.
-    branch = jx.Branch()
+    branch = SimpleBranch(ncomp=1)
     branch.insert(HH())
     branch.record()
     branch.stimulate(current)
@@ -66,7 +67,7 @@ def test_compartment(voltage_solver: str):
     assert max_error <= tolerance, f"Branch error is {max_error} > {tolerance}"
 
     # Test cell of a single compartment.
-    cell = jx.Cell()
+    cell = SimpleCell(1, 1)
     cell.insert(HH())
     cell.record()
     cell.stimulate(current)
@@ -75,8 +76,7 @@ def test_compartment(voltage_solver: str):
     assert max_error <= tolerance, f"Cell error is {max_error} > {tolerance}"
 
     # Test net of a single compartment.
-    cell = jx.Cell()
-    net = jx.Network([cell])
+    net = SimpleNet(1, 1, 1)
     net.insert(HH())
     net.record()
     net.stimulate(current)
@@ -86,14 +86,13 @@ def test_compartment(voltage_solver: str):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_branch(voltage_solver: str):
-    nseg_per_branch = 2
+def test_branch(voltage_solver, SimpleBranch):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
+    branch = SimpleBranch(2)
     branch.insert(HH())
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
@@ -122,13 +121,13 @@ def test_branch(voltage_solver: str):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_branch_fwd_euler_uneven_radiuses():
+def test_branch_fwd_euler_uneven_radiuses(SimpleBranch):
     dt = 0.025  # ms
-    t_max = 10.0  # ms
-    current = jx.step_current(0.5, 1.0, 2.0, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=2.0, delta_t=0.025, t_max=10.0
+    )
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 8)
+    branch = SimpleBranch(8)
     branch.set("axial_resistivity", 500.0)
 
     rands1 = np.linspace(20, 300, 8)
@@ -161,18 +160,13 @@ def test_branch_fwd_euler_uneven_radiuses():
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_cell(voltage_solver: str):
-    nseg_per_branch = 2
+def test_cell(voltage_solver, SimpleCell):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
-    cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
+    cell = SimpleCell(3, 2)
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
@@ -201,17 +195,17 @@ def test_cell(voltage_solver: str):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_cell_unequal_compartment_number():
+def test_cell_unequal_compartment_number(SimpleBranch):
     """Tests a cell where every branch has a different number of compartments."""
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.1, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
 
-    comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=1)
-    branch2 = jx.Branch(comp, nseg=2)
-    branch3 = jx.Branch(comp, nseg=3)
-    branch4 = jx.Branch(comp, nseg=4)
+    branch1 = SimpleBranch(ncomp=1)
+    branch2 = SimpleBranch(ncomp=2)
+    branch3 = SimpleBranch(ncomp=3)
+    branch4 = SimpleBranch(ncomp=4)
     cell = jx.Cell([branch1, branch2, branch3, branch4], parents=[-1, 0, 0, 1])
     cell.set("axial_resistivity", 10_000.0)
     cell.insert(HH())
@@ -236,40 +230,33 @@ def test_cell_unequal_compartment_number():
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_net(voltage_solver: str):
-    nseg_per_branch = 2
+def test_net(voltage_solver, SimpleNet):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
+    net = SimpleNet(2, 3, 2)
 
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
-    cell1 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
-    cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
-
-    network = jx.Network([cell1, cell2])
     connect(
-        network.cell(0).branch(0).loc(0.0),
-        network.cell(1).branch(0).loc(0.0),
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(0).loc(0.0),
         IonotropicSynapse(),
     )
-    network.insert(HH())
+    net.insert(HH())
 
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).loc(0.0).record()
+        net.cell(cell_ind).branch(1).loc(0.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
+        net.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
     area = 2 * pi * 10.0 * 1.0
     point_process_to_dist_factor = 100_000.0 / area
-    network.IonotropicSynapse.set(
+    net.IonotropicSynapse.set(
         "IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor
     )
-    voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
+    voltages = jx.integrate(net, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [
@@ -308,12 +295,8 @@ def test_net(voltage_solver: str):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_complex_net(voltage_solver: str):
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
-
-    net = jx.Network([cell for _ in range(7)])
+def test_complex_net(voltage_solver, SimpleNet):
+    net = SimpleNet(7, 5, 4)
     net.insert(HH())
 
     _ = np.random.seed(0)
@@ -338,7 +321,9 @@ def test_complex_net(voltage_solver: str):
         "TestSynapse_gC", 0.24 / point_process_to_dist_factor
     )
 
-    current = jx.step_current(0.5, 0.5, 0.1, 0.025, 10.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
     for i in range(3):
         net.cell(i).branch(0).loc(0.0).stimulate(current)
 

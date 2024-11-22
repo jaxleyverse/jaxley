@@ -19,30 +19,27 @@ from jaxley.channels import HH
 @pytest.mark.parametrize(
     "property", ["radius", "capacitance", "length", "axial_resistivity"]
 )
-def test_raise_for_heterogenous_modules(property):
-    comp = jx.Compartment()
-    branch0 = jx.Branch(comp, nseg=4)
-    branch1 = jx.Branch(comp, nseg=4)
+def test_raise_for_heterogenous_modules(SimpleBranch, property):
+    branch0 = SimpleBranch(4)
+    branch1 = SimpleBranch(4)
     branch1.comp(1).set(property, 1.5)
     cell = jx.Cell([branch0, branch1], parents=[-1, 0])
     with pytest.raises(ValueError):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_heterogenous_channel_existance():
-    comp = jx.Compartment()
-    branch0 = jx.Branch(comp, nseg=4)
-    branch1 = jx.Branch(comp, nseg=4)
+def test_raise_for_heterogenous_channel_existance(SimpleBranch):
+    branch0 = SimpleBranch(4)
+    branch1 = SimpleBranch(4)
     branch1.comp(2).insert(HH())
     cell = jx.Cell([branch0, branch1], parents=[-1, 0])
     with pytest.raises(ValueError):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_heterogenous_channel_properties():
-    comp = jx.Compartment()
-    branch0 = jx.Branch(comp, nseg=4)
-    branch1 = jx.Branch(comp, nseg=4)
+def test_raise_for_heterogenous_channel_properties(SimpleBranch):
+    branch0 = SimpleBranch(4)
+    branch1 = SimpleBranch(4)
     branch1.insert(HH())
     branch1.comp(3).set("HH_gNa", 0.5)
     cell = jx.Cell([branch0, branch1], parents=[-1, 0])
@@ -50,54 +47,47 @@ def test_raise_for_heterogenous_channel_properties():
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_entire_cells():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+def test_raise_for_entire_cells(SimpleCell):
+    cell = SimpleCell(3, 4)
     with pytest.raises(AssertionError):
         cell.set_ncomp(2)
 
 
-def test_raise_for_networks():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell1 = jx.Cell(branch, parents=[-1, 0, 0])
-    cell2 = jx.Cell(branch, parents=[-1, 0, 0])
+def test_raise_for_networks(SimpleCell):
+    cell1 = SimpleCell(3, 4)
+    cell2 = SimpleCell(3, 4)
     net = jx.Network([cell1, cell2])
     with pytest.raises(AssertionError):
         net.cell(0).branch(1).set_ncomp(2)
 
 
-def test_raise_for_recording():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1, 0])
+def test_raise_for_recording(SimpleCell):
+    cell = SimpleCell(3, 2)
     cell.branch(0).comp(0).record()
     with pytest.raises(AssertionError):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_stimulus():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1, 0])
+def test_raise_for_stimulus(SimpleCell):
+    cell = SimpleCell(3, 2)
     cell.branch(0).comp(0).stimulate(0.4 * jnp.ones(100))
     with pytest.raises(AssertionError):
         cell.branch(1).set_ncomp(2)
 
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
-def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(new_ncomp):
+def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(
+    SimpleBranch, new_ncomp
+):
     """Test whether a module built from scratch matches module built with `set_ncomp()`.
 
     This makes one branch, whose `ncomp` is not modified, heterogenous.
     """
-    comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=new_ncomp)
+    branch1 = SimpleBranch(new_ncomp)
 
     # The second branch is originally instantiated to have 4 ncomp, but is later
     # modified to have `new_ncomp` compartments.
-    branch2 = jx.Branch(comp, nseg=4)
+    branch2 = SimpleBranch(4)
     branch2.comp("all").set("length", 10.0)
     total_branch_len = 4 * 10.0
 
@@ -118,14 +108,15 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(new_ncomp):
 
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
-def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(new_ncomp):
+def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
+    SimpleBranch, new_ncomp
+):
     """Test whether a module built from scratch matches module built with `set_ncomp()`."""
-    comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=new_ncomp)
+    branch1 = SimpleBranch(new_ncomp)
 
     # The second branch is originally instantiated to have 4 ncomp, but is later
     # modified to have `new_ncomp` compartments.
-    branch2 = jx.Branch(comp, nseg=4)
+    branch2 = SimpleBranch(4)
     branch2.comp("all").set("length", 10.0)
     total_branch_len = 4 * 10.0
 
@@ -150,13 +141,13 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(new_ncomp):
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 @pytest.mark.parametrize("file", ["morph_250.swc"])
-def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file):
+def test_api_equivalence_swc_lengths_and_radiuses(SimpleMorphCell, new_ncomp, file):
     """Test if the radiuses and lenghts of an SWC morph are reconstructed correctly."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    cell1 = jx.read_swc(fname, nseg=new_ncomp, max_branch_len=2000.0)
-    cell2 = jx.read_swc(fname, nseg=4, max_branch_len=2000.0)
+    cell1 = SimpleMorphCell(fname, ncomp=new_ncomp)
+    cell2 = SimpleMorphCell(fname, ncomp=1)
 
     for b in range(cell2.total_nbranches):
         cell2.branch(b).set_ncomp(new_ncomp)
@@ -171,13 +162,13 @@ def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file):
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 @pytest.mark.parametrize("file", ["morph_250.swc"])
-def test_simulation_accuracy_swc_init_vs_set_ncomp(new_ncomp, file):
+def test_simulation_accuracy_swc_init_vs_set_ncomp(SimpleMorphCell, new_ncomp, file):
     """Test whether an SWC initially built with 4 ncomp works after `set_ncomp()`."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    cell1 = jx.read_swc(fname, nseg=new_ncomp, max_branch_len=2000.0)
-    cell2 = jx.read_swc(fname, nseg=4, max_branch_len=2000.0)
+    cell1 = SimpleMorphCell(fname, ncomp=new_ncomp)
+    cell2 = SimpleMorphCell(fname, ncomp=1)
 
     for b in range(cell2.total_nbranches):
         cell2.branch(b).set_ncomp(new_ncomp)

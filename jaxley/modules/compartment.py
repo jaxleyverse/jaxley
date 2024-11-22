@@ -32,12 +32,12 @@ class Compartment(Module):
     def __init__(self):
         super().__init__()
 
-        self.nseg = 1
-        self.nseg_per_branch = np.asarray([1])
+        self.ncomp = 1
+        self.ncomp_per_branch = np.asarray([1])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
-        self.cumsum_nbranches = np.asarray([0, 1])
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self._cumsum_nbranches = np.asarray([0, 1])
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
@@ -53,7 +53,7 @@ class Compartment(Module):
         )
 
         # For morphology indexing.
-        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
         self._internal_node_inds = jnp.asarray([0])
@@ -65,8 +65,8 @@ class Compartment(Module):
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
     def _init_morph_jaxley_spsolve(self):
-        self.solve_indexer = JaxleySolveIndexer(
-            cumsum_nseg=self.cumsum_nseg,
+        self._solve_indexer = JaxleySolveIndexer(
+            cumsum_ncomp=self.cumsum_ncomp,
             branchpoint_group_inds=np.asarray([]).astype(int),
             children_in_level=[],
             parents_in_level=[],

@@ -15,13 +15,9 @@ from jax import jit
 import jaxley as jx
 
 
-def test_move_cell():
-    nseg = 4
-
+def test_move_cell(SimpleBranch, SimpleCell):
     # Test move on a cell with compute_xyz()
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+    cell = SimpleCell(5, ncomp=4)
     cell.compute_xyz()
     cell.move(20.0, 30.0, 5.0)
     assert cell.xyzr[0][0, 0] == 20.0
@@ -29,8 +25,7 @@ def test_move_cell():
     assert cell.xyzr[0][0, 2] == 5.0
 
     # Test move_to on a cell that starts with a specified xyzr
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
+    branch = SimpleBranch(ncomp=4)
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -50,11 +45,8 @@ def test_move_cell():
     assert cell.xyzr[0][0, 3] == 10.0
 
 
-def test_move_network():
-    nseg = 2
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
+def test_move_network(SimpleCell):
+    cell = SimpleCell(3, 3)
     cell.compute_xyz()
     net = jx.Network([cell, cell, cell])
     net.move(20.0, 30.0, 5.0)
@@ -64,19 +56,15 @@ def test_move_network():
         assert net.xyzr[i][0, 2] == 5.0
 
 
-def test_move_to_cell():
-    nseg = 4
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+def test_move_to_cell(SimpleBranch, SimpleCell):
+    cell = SimpleCell(5, 4)
     cell.compute_xyz()
     cell.move_to(20.0, 30.0, 5.0)
     assert cell.xyzr[0][0, 0] == 20.0
     assert cell.xyzr[0][0, 1] == 30.0
     assert cell.xyzr[0][0, 2] == 5.0
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
+    branch = SimpleBranch(ncomp=4)
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -96,13 +84,9 @@ def test_move_to_cell():
     assert cell.xyzr[0][0, 3] == 10.0
 
 
-def test_move_to_network():
-    nseg = 4
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
-    cell.compute_xyz()
-    net = jx.Network([cell, cell, cell])
+def test_move_to_network(SimpleNet):
+    net = SimpleNet(3, 3, 4)
+    net.compute_xyz()
     net.move_to(10.0, 20.0, 30.0)
     # Branch 0 of cell 0
     assert net.xyzr[0][0, 0] == 10.0
@@ -114,20 +98,17 @@ def test_move_to_network():
     assert net.xyzr[3][0, 2] == 30.0
 
 
-def test_move_to_arrays():
+def test_move_to_arrays(SimpleNet):
     """Test with network"""
-    nseg = 4
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=nseg)
-    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
-    cell.compute_xyz()
-    net = jx.Network([cell, cell, cell])
+    ncomp = 4
+    net = SimpleNet(3, 3, ncomp)
+    net.compute_xyz()
     x_coords = np.array([10.0, 20.0, 30.0])
     y_coords = np.array([5.0, 15.0, 25.0])
     z_coords = np.array([1.0, 2.0, 3.0])
     net.move_to(x_coords, y_coords, z_coords)
     assert net.xyzr[0][0, 0] == 10.0
-    assert net.xyzr[0][1, 0] == nseg * 10.0 + 10.0
+    assert net.xyzr[0][1, 0] == ncomp * 10.0 + 10.0
     assert net.xyzr[0][0, 1] == 5.0
     assert net.xyzr[0][0, 2] == 1.0
     assert net.xyzr[3][0, 0] == 20.0
@@ -135,12 +116,9 @@ def test_move_to_arrays():
     assert net.xyzr[6][0, 1] == 25.0
 
 
-def test_move_to_cellview():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=2)
-    cell = jx.Cell([branch, branch, branch], parents=[-1, 0, 0])
-    cell.compute_xyz()
-    net = jx.Network([cell for _ in range(3)])
+def test_move_to_cellview(SimpleNet):
+    net = SimpleNet(3, 3, 2)
+    net.compute_xyz()
 
     # Test with float input
     net.cell(0).move_to(50.0, 3.0, 40.0)
@@ -149,7 +127,8 @@ def test_move_to_cellview():
     assert net.xyzr[0][0, 2] == 40.0
 
     # Test with array input
-    net = jx.Network([cell for _ in range(4)])
+    net = SimpleNet(4, 3, 2)
+    net.compute_xyz()
     testx = np.array([1.0, 2.0, 3.0])
     testy = np.array([4.0, 5.0, 6.0])
     testz = np.array([7.0, 8.0, 9.0])
@@ -160,12 +139,12 @@ def test_move_to_cellview():
     assert net.xyzr[9][0, 0] == 0.0
 
 
-def test_move_to_swc_cell():
+def test_move_to_swc_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
-    cell2 = jx.read_swc(fname, nseg=4)
-    cell3 = jx.read_swc(fname, nseg=4)
+    cell1 = SimpleMorphCell(fname, ncomp=1)
+    cell2 = SimpleMorphCell(fname, ncomp=1)
+    cell3 = SimpleMorphCell(fname, ncomp=1)
 
     # Try move_to on a cell
     cell1.move_to(10.0, 20.0, 30.0)

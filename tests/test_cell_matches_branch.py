@@ -9,24 +9,21 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax import jit, value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
 
 
-def _run_long_branch(dt, t_max):
-    nseg_per_branch = 8
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
+def _run_long_branch(dt, t_max, current, branch):
     branch.insert(HH())
 
     branch.loc("all").make_trainable("radius", 1.0)
     params = branch.get_parameters()
 
     branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    branch.loc(0.0).stimulate(current)
 
     def loss(params):
         s = jx.integrate(branch, params=params)
@@ -38,20 +35,14 @@ def _run_long_branch(dt, t_max):
     return l, g
 
 
-def _run_short_branches(dt, t_max):
-    nseg_per_branch = 4
-    parents = jnp.asarray([-1, 0])
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+def _run_short_branches(dt, t_max, current, cell):
     cell.insert(HH())
 
     cell.branch("all").loc("all").make_trainable("radius", 1.0)
     params = cell.get_parameters()
 
     cell.branch(0).loc(0.0).record()
-    cell.branch(0).loc(0.0).stimulate(jx.step_current(0.5, 5.0, 0.1, dt, t_max))
+    cell.branch(0).loc(0.0).stimulate(current)
 
     def loss(params):
         s = jx.integrate(cell, params=params)
@@ -63,12 +54,16 @@ def _run_short_branches(dt, t_max):
     return l, g
 
 
-def test_equivalence():
+@pytest.mark.slow
+def test_equivalence(SimpleBranch, SimpleCell):
     """Test whether a single long branch matches a cell of two shorter branches."""
     dt = 0.025
     t_max = 5.0  # ms
-    l1, g1 = _run_long_branch(dt, t_max)
-    l2, g2 = _run_short_branches(dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
+    l1, g1 = _run_long_branch(dt, t_max, current, SimpleBranch(8))
+    l2, g2 = _run_short_branches(dt, t_max, current, SimpleCell(2, 4))
 
     assert np.allclose(l1, l2), "Losses do not match."
 

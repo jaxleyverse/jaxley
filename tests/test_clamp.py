@@ -3,6 +3,9 @@
 
 import jax
 
+from jaxley.connect import connect
+from jaxley.synapses.ionotropic import IonotropicSynapse
+
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 from typing import Optional
@@ -15,8 +18,8 @@ import jaxley as jx
 from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
 
 
-def test_clamp_pointneuron():
-    comp = jx.Compartment()
+def test_clamp_pointneuron(SimpleComp):
+    comp = SimpleComp()
     comp.insert(HH())
     comp.record()
     comp.clamp("v", -50.0 * jnp.ones((1000,)))
@@ -25,9 +28,52 @@ def test_clamp_pointneuron():
     assert np.all(v[:, 1:] == -50.0)
 
 
-def test_clamp_multicompartment():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
+def test_clamp_currents(SimpleComp):
+    comp = SimpleComp()
+    comp.insert(HH())
+    comp.record("i_HH")
+
+    # test clamp
+    comp.clamp("i_HH", 1.0 * jnp.ones((1000,)))
+    i1 = jx.integrate(comp, t_max=1.0)
+    assert np.all(i1[:, 1:] == 1.0)
+
+    # test data clamp
+    data_clamps = None
+    ipts = 1.0 * jnp.ones((1000,))
+    data_clamps = comp.data_clamp("i_HH", ipts, data_clamps=data_clamps)
+
+    i2 = jx.integrate(comp, data_clamps=data_clamps, t_max=1.0)
+    assert np.all(i2[:, 1:] == 1.0)
+
+    assert np.all(np.isclose(i1, i2))
+
+
+def test_clamp_synapse(SimpleNet):
+    net = SimpleNet(2, 1, 1)
+    connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())
+    net.record("IonotropicSynapse_s")
+
+    # test clamp
+    net.clamp("IonotropicSynapse_s", 1.0 * jnp.ones((1000,)))
+    s1 = jx.integrate(net, t_max=1.0)
+    assert np.all(s1[:, 1:] == 1.0)
+
+    net.delete_clamps()
+
+    # test data clamp
+    data_clamps = None
+    ipts = 1.0 * jnp.ones((1000,))
+    data_clamps = net.data_clamp("IonotropicSynapse_s", ipts, data_clamps=data_clamps)
+
+    s2 = jx.integrate(net, data_clamps=data_clamps, t_max=1.0)
+    assert np.all(s2[:, 1:] == 1.0)
+
+    assert np.all(np.isclose(s1, s2))
+
+
+def test_clamp_multicompartment(SimpleBranch):
+    branch = SimpleBranch(4)
     branch.insert(HH())
     branch.record()
     branch.comp(0).clamp("v", -50.0 * jnp.ones((1000,)))
@@ -41,12 +87,10 @@ def test_clamp_multicompartment():
     assert np.all(np.std(v[1:, 1:], axis=1) > 0.1)
 
 
-def test_clamp_and_stimulate_api():
+def test_clamp_and_stimulate_api(SimpleCell):
     """Ensure proper behaviour when `.clamp()` and `.stimulate()` are combined."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell1 = jx.Cell(branch, [-1])
-    cell2 = jx.Cell(branch, [-1])
+    cell1 = SimpleCell(1, 4)
+    cell2 = SimpleCell(1, 4)
     net = jx.Network([cell1, cell2])
 
     net.insert(HH())
@@ -72,9 +116,9 @@ def test_clamp_and_stimulate_api():
     assert np.max(np.abs(vs1 - vs2)) < 1e-8
 
 
-def test_data_clamp():
+def test_data_clamp(SimpleComp):
     """Data clamp with no stimuli or data_stimuli, and no t_max (should get defined by the clamp)."""
-    comp = jx.Compartment()
+    comp = SimpleComp()
     comp.insert(HH())
     comp.record()
     clamp = -50.0 * jnp.ones((1000,))
@@ -93,9 +137,9 @@ def test_data_clamp():
     assert np.all(s[:, 1:] == -50.0)
 
 
-def test_data_clamp_and_data_stimulate():
+def test_data_clamp_and_data_stimulate(SimpleComp):
     """In theory people shouldn't use these two together, but at least it shouldn't break."""
-    comp = jx.Compartment()
+    comp = SimpleComp()
     comp.insert(HH())
     comp.record()
     clamp = -50.0 * jnp.ones((1000,))
@@ -116,9 +160,9 @@ def test_data_clamp_and_data_stimulate():
     assert np.all(s[:, 1:] == -50.0)
 
 
-def test_data_clamp_and_stimulate():
+def test_data_clamp_and_stimulate(SimpleComp):
     """Test that data clamp overrides a previously set stimulus."""
-    comp = jx.Compartment()
+    comp = SimpleComp()
     comp.insert(HH())
     comp.record()
     clamp = -50.0 * jnp.ones((1000,))
@@ -136,9 +180,9 @@ def test_data_clamp_and_stimulate():
     assert np.all(s[:, 1:] == -50.0)
 
 
-def test_data_clamp_and_clamp():
+def test_data_clamp_and_clamp(SimpleComp):
     """Test that data clamp can override (same loc.) and add (another loc.) to clamp."""
-    comp = jx.Compartment()
+    comp = SimpleComp()
     comp.insert(HH())
     comp.record()
     clamp1 = -50.0 * jnp.ones((1000,))
@@ -157,7 +201,7 @@ def test_data_clamp_and_clamp():
     s = jitted_simulate(clamp2)
     assert np.all(s[:, 1:] == -60.0)
 
-    comp2 = jx.Compartment()
+    comp2 = SimpleComp()
     comp2.insert(HH())
     branch1 = jx.Branch(comp, 4)
     branch2 = jx.Branch(comp2, 4)

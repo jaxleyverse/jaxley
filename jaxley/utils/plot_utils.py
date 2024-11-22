@@ -103,6 +103,7 @@ def create_cone_frustum_mesh(
     radius_top: float,
     bottom_dome: bool = False,
     top_dome: bool = False,
+    resolution: int = 100,
 ) -> ndarray:
     """Generates mesh points for a cone frustum, with optional domes at either end.
 
@@ -120,12 +121,14 @@ def create_cone_frustum_mesh(
             The dome is a hemisphere with radius `radius_bottom`.
         top_dome: If True, a dome is added to the top of the frustum.
             The dome is a hemisphere with radius `radius_top`.
+        resolution: defines the resolution of the mesh.
+            If too low (typically <10), can result in errors.
+            Useful too have a simpler mesh for plotting.
 
     Returns:
         An array of mesh points.
     """
 
-    resolution = 100
     t = np.linspace(0, 2 * np.pi, resolution)
 
     # Determine the total height including domes
@@ -175,7 +178,9 @@ def create_cone_frustum_mesh(
     return np.stack([x_coords, y_coords, z_coords])
 
 
-def create_cylinder_mesh(length: float, radius: float) -> ndarray:
+def create_cylinder_mesh(
+    length: float, radius: float, resolution: int = 100
+) -> ndarray:
     """Generates mesh points for a cylinder.
 
     This is used to render cylindrical compartments in 3D (and to project it to 2D)
@@ -184,12 +189,14 @@ def create_cylinder_mesh(length: float, radius: float) -> ndarray:
     Args:
         length: The length of the cylinder.
         radius: The radius of the cylinder.
+        resolution: defines the resolution of the mesh.
+            If too low (typically <10), can result in errors.
+            Useful too have a simpler mesh for plotting.
 
     Returns:
         An array of mesh points.
     """
     # Define cylinder
-    resolution = 100
     t = np.linspace(0, 2 * np.pi, resolution)
     z_coords = np.linspace(-length / 2, length / 2, resolution)
     t_grid, z_coords = np.meshgrid(t, z_coords)
@@ -199,7 +206,7 @@ def create_cylinder_mesh(length: float, radius: float) -> ndarray:
     return np.stack([x_coords, y_coords, z_coords])
 
 
-def create_sphere_mesh(radius: float) -> np.ndarray:
+def create_sphere_mesh(radius: float, resolution: int = 100) -> np.ndarray:
     """Generates mesh points for a sphere.
 
     This is used to render spherical compartments in 3D (and to project it to 2D)
@@ -207,11 +214,13 @@ def create_sphere_mesh(radius: float) -> np.ndarray:
 
     Args:
         radius: The radius of the sphere.
+        resolution: defines the resolution of the mesh.
+            If too low (typically <10), can result in errors.
+            Useful too have a simpler mesh for plotting.
 
     Returns:
         An array of mesh points.
     """
-    resolution = 100
     phi = np.linspace(0, np.pi, resolution)
     theta = np.linspace(0, 2 * np.pi, resolution)
 
@@ -302,8 +311,9 @@ def plot_comps(
     ax: Optional[Axes] = None,
     comp_plot_kwargs: Dict = {},
     true_comp_length: bool = True,
+    resolution: int = 100,
 ) -> Axes:
-    """Plot compartmentalized neural mrophology.
+    """Plot compartmentalized neural morphology.
 
     Plots the projection of the cylindrical compartments.
 
@@ -320,6 +330,9 @@ def plot_comps(
             start and end point of the neurite. This can lead to overlapping and
             miss-aligned cylinders. Setting this False will use the straight-line
             distance instead for nicer plots.
+        resolution: defines the resolution of the mesh.
+            If too low (typically <10), can result in errors.
+            Useful too have a simpler mesh for plotting.
 
     Returns:
         Plot of the compartmentalized morphology.
@@ -332,7 +345,7 @@ def plot_comps(
         np.isnan(module_or_view.xyzr[0][:, :3])
     ), "missing xyz coordinates."
     if "x" not in module_or_view.nodes.columns:
-        module_or_view._update_nodes_with_xyz()
+        module_or_view.compute_compartment_centers()
 
     for idx, xyzr in zip(module_or_view._branches_in_view, module_or_view.xyzr):
         locs = xyzr[:, :3]
@@ -340,7 +353,7 @@ def plot_comps(
             radius = xyzr[:, -1]
             center = xyzr[0, :3]
             if len(dims) == 3:
-                xyz = create_sphere_mesh(radius)
+                xyz = create_sphere_mesh(radius, resolution)
                 ax = plot_mesh(
                     xyz,
                     np.array([0, 0, 1]),
@@ -356,7 +369,7 @@ def plot_comps(
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
             comp_ends = v_interp(
-                np.linspace(0, lens[-1], module_or_view.nseg + 1), lens, locs
+                np.linspace(0, lens[-1], module_or_view.ncomp + 1), lens, locs
             ).T
             axes = np.diff(comp_ends, axis=0)
             cylinder_lens = np.sqrt(np.sum(axes**2, axis=1))
@@ -368,7 +381,7 @@ def plot_comps(
                 center = comp[["x", "y", "z"]]
                 radius = comp["radius"]
                 length = comp["length"] if true_comp_length else l
-                xyz = create_cylinder_mesh(length, radius)
+                xyz = create_cylinder_mesh(length, radius, resolution)
                 ax = plot_mesh(
                     xyz,
                     axis,
@@ -386,6 +399,7 @@ def plot_morph(
     dims: Tuple[int] = (0, 1),
     col: str = "k",
     ax: Optional[Axes] = None,
+    resolution: int = 100,
     morph_plot_kwargs: Dict = {},
 ) -> Axes:
     """Plot the detailed morphology.
@@ -403,6 +417,10 @@ def plot_morph(
         col: The color for all branches
         ax: The matplotlib axis to plot on.
         morph_plot_kwargs: The plot kwargs for plt.fill.
+
+        resolution: defines the resolution of the mesh.
+            If too low (typically <10), can result in errors.
+            Useful too have a simpler mesh for plotting.
 
     Returns:
         Plot of the detailed morphology."""
@@ -424,7 +442,12 @@ def plot_morph(
                 dxyz = xyzr2[:3] - xyzr1[:3]
                 length = np.sqrt(np.sum(dxyz**2))
                 points = create_cone_frustum_mesh(
-                    length, xyzr1[-1], xyzr2[-1], bottom_dome=True, top_dome=True
+                    length,
+                    xyzr1[-1],
+                    xyzr2[-1],
+                    bottom_dome=True,
+                    top_dome=True,
+                    resolution=resolution,
                 )
                 plot_mesh(
                     points,
@@ -437,7 +460,12 @@ def plot_morph(
                 )
         else:
             points = create_cone_frustum_mesh(
-                0, xyzr[:, -1], xyzr[:, -1], bottom_dome=True, top_dome=True
+                0,
+                xyzr[:, -1],
+                xyzr[:, -1],
+                bottom_dome=True,
+                top_dome=True,
+                resolution=resolution,
             )
             plot_mesh(
                 points,

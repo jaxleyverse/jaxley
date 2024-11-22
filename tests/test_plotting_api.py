@@ -19,10 +19,11 @@ import jaxley as jx
 from jaxley.synapses import IonotropicSynapse
 
 
-def test_cell():
+def test_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell = jx.read_swc(fname, nseg=4)
+    cell = SimpleMorphCell(fname, ncomp=1)
+    cell.branch(0).set_ncomp(2)  # test inhomogeneous ncomp
 
     # Plot 1.
     _, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -36,12 +37,12 @@ def test_cell():
     ax = cell.soma.vis()
 
 
-def test_network():
+def test_network(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
-    cell2 = jx.read_swc(fname, nseg=4)
-    cell3 = jx.read_swc(fname, nseg=4)
+    cell1 = SimpleMorphCell(fname, ncomp=1)
+    cell2 = SimpleMorphCell(fname, ncomp=1)
+    cell3 = SimpleMorphCell(fname, ncomp=1)
 
     net = jx.Network([cell1, cell2, cell3])
     connect(
@@ -81,10 +82,11 @@ def test_network():
     ax = net.excitatory.vis()
 
 
-def test_vis_networks_built_from_scartch():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+def test_vis_networks_built_from_scratch(SimpleComp, SimpleBranch, SimpleCell):
+    comp = SimpleComp(copy=True)
+    branch = SimpleBranch(4)
+    cell = SimpleCell(5, 3)
+    cell.branch(0).set_ncomp(3)  # test inhomogeneous ncomp
 
     net = jx.Network([cell, cell])
     connect(
@@ -119,10 +121,10 @@ def test_vis_networks_built_from_scartch():
     ax = branch.vis(ax=ax)
 
 
-def test_mixed_network():
+def test_mixed_network(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph.swc")
-    cell1 = jx.read_swc(fname, nseg=4)
+    cell1 = SimpleMorphCell(fname, ncomp=1)
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
@@ -156,34 +158,34 @@ def test_mixed_network():
     _ = net.vis(detail="full")
 
 
-def test_volume_plotting():
-    comp = jx.Compartment()
-    comp.compute_xyz()
-    branch = jx.Branch(comp, 4)
-    branch.compute_xyz()
-    cell = jx.Cell([branch] * 3, [-1, 0, 0])
-    cell.compute_xyz()
-    net = jx.Network([cell] * 4)
-    net.compute_xyz()
+def test_volume_plotting(
+    SimpleComp, SimpleBranch, SimpleCell, SimpleNet, SimpleMorphCell
+):
+    comp = SimpleComp()
+    branch = SimpleBranch(2)
+    cell = SimpleCell(2, 2)
+    cell.branch(0).set_ncomp(3)  # test inhomogeneous ncomp
+    net = SimpleNet(2, 2, 2)
 
-    morph_cell = jx.read_swc(
-        os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc"),
-        nseg=1,
-    )
+    for module in [comp, branch, cell, net]:
+        module.compute_xyz()
+
+    fname = os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc")
+    morph_cell = SimpleMorphCell(fname, ncomp=1)
 
     fig, ax = plt.subplots()
     for module in [comp, branch, cell, net, morph_cell]:
-        module.vis(type="comp", ax=ax)
+        module.vis(type="comp", ax=ax, morph_plot_kwargs={"resolution": 6})
     plt.close(fig)
 
     # test 3D plotting
     for module in [comp, branch, cell, net, morph_cell]:
-        module.vis(type="comp", dims=[0, 1, 2])
+        module.vis(type="comp", dims=[0, 1, 2], morph_plot_kwargs={"resolution": 6})
     plt.close()
 
     # test morph plotting (does not work if no radii in xyzr)
-    morph_cell.vis(type="morph")
+    morph_cell.branch(1).vis(type="morph")
     morph_cell.branch(1).vis(
-        type="morph", dims=[0, 1, 2]
+        type="morph", dims=[0, 1, 2], morph_plot_kwargs={"resolution": 6}
     )  # plotting whole thing takes too long
     plt.close()

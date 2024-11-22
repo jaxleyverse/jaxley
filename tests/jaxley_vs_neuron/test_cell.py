@@ -40,9 +40,9 @@ def test_similarity(solver):
 
 
 def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
-    nseg_per_branch = 8
+    ncomp_per_branch = 8
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
+    branch = jx.Branch(comp, ncomp_per_branch)
     cell = jx.Cell(branch, parents=[-1, 0, 0])
     cell.insert(HH())
 
@@ -59,7 +59,8 @@ def _run_jaxley(i_delay, i_dur, i_amp, dt, t_max, solver):
     cell.set("HH_n", 0.3644787002343737)
     cell.set("v", -62.0)
 
-    cell.branch(0).loc(0.0).stimulate(jx.step_current(i_delay, i_dur, i_amp, dt, t_max))
+    current = jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+    cell.branch(0).loc(0.0).stimulate(current)
     cell.branch(0).loc(0.0).record()
     cell.branch(1).loc(1.0).record()
     cell.branch(2).loc(1.0).record()
@@ -76,7 +77,7 @@ def _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver):
     else:
         raise ValueError
 
-    nseg_per_branch = 8
+    ncomp_per_branch = 8
     h.dt = dt
 
     for sec in h.allsec():
@@ -90,10 +91,10 @@ def _run_neuron(i_delay, i_dur, i_amp, dt, t_max, solver):
     branch3.connect(branch1, 1, 0)
 
     for sec in h.allsec():
-        sec.nseg = nseg_per_branch
+        sec.nseg = ncomp_per_branch
 
         sec.Ra = 1_000.0
-        sec.L = 10.0 * nseg_per_branch
+        sec.L = 10.0 * ncomp_per_branch
         sec.diam = 2 * 5.0
         sec.cm = 7.0
 
@@ -151,10 +152,10 @@ def test_similarity_unequal_number_of_compartments():
 
 def _run_jaxley_unequal_ncomp(i_delay, i_dur, i_amp, dt, t_max):
     comp = jx.Compartment()
-    branch1 = jx.Branch(comp, nseg=1)
-    branch2 = jx.Branch(comp, nseg=2)
-    branch3 = jx.Branch(comp, nseg=3)
-    branch4 = jx.Branch(comp, nseg=4)
+    branch1 = jx.Branch(comp, ncomp=1)
+    branch2 = jx.Branch(comp, ncomp=2)
+    branch3 = jx.Branch(comp, ncomp=3)
+    branch4 = jx.Branch(comp, ncomp=4)
     cell = jx.Cell([branch1, branch2, branch3, branch4], parents=[-1, 0, 0, 1])
     cell.set("axial_resistivity", 10_000.0)
     cell.insert(HH())
@@ -200,12 +201,12 @@ def _run_neuron_unequal_ncomp(i_delay, i_dur, i_amp, dt, t_max):
     branch3.connect(branch1, 1, 0)
     branch4.connect(branch2, 1, 0)
 
-    nsegs = [1, 2, 3, 4]
+    ncomps = [1, 2, 3, 4]
     for i, sec in enumerate(h.allsec()):
-        sec.nseg = nsegs[i]
+        sec.nseg = ncomps[i]
 
         sec.Ra = 1_000.0
-        sec.L = 20.0 * nsegs[i]
+        sec.L = 20.0 * ncomps[i]
         sec.diam = 2 * 5.0
 
         sec.insert("hh")

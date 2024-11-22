@@ -26,10 +26,11 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
+    build_radiuses_from_xyzr,
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
-    interpolate_xyz,
+    interpolate_xyzr,
     loc_of_index,
     params_to_pstate,
     query_channel_states_and_params,
@@ -39,7 +40,6 @@ from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
-from jaxley.utils.swc import build_radiuses_from_xyzr
 
 
 def only_allow_module(func):
@@ -65,51 +65,55 @@ class Module(ABC):
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.
 
+    This base class defines the scaffold for all jaxley modules (compartments,
+    branches, cells, networks).
+
     Modules can be traversed and modified using the `at`, `cell`, `branch`, `comp`,
     `edge`, and `loc` methods. The `scope` method can be used to toggle between
     global and local indices. Traversal of Modules will return a `View` of itself,
     that has a modified set of attributes, which only consider the part of the Module
     that is in view.
 
-    This has consequences for how to operate on Module and which changes take affect
-    where. The following guidelines should be followed (copied from `View`):
+    For developers: The above has consequences for how to operate on `Module` and which
+    changes take affect where. The following guidelines should be followed (copied from
+    `View`):
+
     1. We consider a Module to have everything in view.
     2. Views can display and keep track of how a module is traversed. But(!),
-        do not support making changes or setting variables. This still has to be
-        done in the base Module, i.e. `self.base`. In order to enssure that these
-        changes only affects whatever is currently in view `self._nodes_in_view`,
-        or `self._edges_in_view` among others have to be used. Operating on nodes
-        currently in view can for example be done with
-        `self.base.node.loc[self._nodes_in_view]`
+       do not support making changes or setting variables. This still has to be
+       done in the base Module, i.e. `self.base`. In order to enssure that these
+       changes only affects whatever is currently in view `self._nodes_in_view`,
+       or `self._edges_in_view` among others have to be used. Operating on nodes
+       currently in view can for example be done with
+       `self.base.node.loc[self._nodes_in_view]`.
     3. Every attribute of Module that changes based on what's in view, i.e. `xyzr`,
-        needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
-        should be `[self.base.xyzr[0]]` This could be achieved via:
-        `[self.base.xyzr[b] for b in self._branches_in_view]`.
+       needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
+       should be `[self.base.xyzr[0]]` This could be achieved via:
+       `[self.base.xyzr[b] for b in self._branches_in_view]`.
 
+    For developers: If you want to add a new method to `Module`, here is an example of
+    how to make methods of Module compatible with View:
 
-    Example to make methods of Module compatible with View:
-    ```
-    # use data in view to return something
-    def count_small_branches(self):
-        # no need to use self.base.attr + viewed indices,
-        # since no change is made to the attr in question (nodes)
-        comp_lens = self.nodes["length"]
-        branch_lens = comp_lens.groupby("global_branch_index").sum()
-        return np.sum(branch_lens < 10)
+    .. code-block:: python
 
-    # change data in view
-    def change_attr_in_view(self):
-        # changes to attrs have to be made via self.base.attr + viewed indices
-        a = func1(self.base.attr1[self._cells_in_view])
-        b = func2(self.base.attr2[self._edges_in_view])
-        self.base.attr3[self._branches_in_view] = a + b
+        # Use data in view to return something.
+        def count_small_branches(self):
+            # no need to use self.base.attr + viewed indices,
+            # since no change is made to the attr in question (nodes)
+            comp_lens = self.nodes["length"]
+            branch_lens = comp_lens.groupby("global_branch_index").sum()
+            return np.sum(branch_lens < 10)
 
-    This base class defines the scaffold for all jaxley modules (compartments,
-    branches, cells, networks).
+        # Change data in view.
+        def change_attr_in_view(self):
+            # changes to attrs have to be made via self.base.attr + viewed indices
+            a = func1(self.base.attr1[self._cells_in_view])
+            b = func2(self.base.attr2[self._edges_in_view])
+            self.base.attr3[self._branches_in_view] = a + b
     """
 
     def __init__(self):
-        self.nseg: int = None
+        self.ncomp: int = None
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
@@ -123,8 +127,8 @@ class Module(ABC):
         self.edges = pd.DataFrame(
             columns=[
                 "global_edge_index",
-                "global_pre_comp_index",
-                "global_post_comp_index",
+                "pre_global_comp_index",
+                "post_global_comp_index",
                 "pre_locs",
                 "post_locs",
                 "type",
@@ -132,7 +136,7 @@ class Module(ABC):
             ]
         )
 
-        self.cumsum_nbranches: Optional[np.ndarray] = None
+        self._cumsum_nbranches: Optional[np.ndarray] = None
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
 
@@ -231,8 +235,10 @@ class Module(ABC):
 
         I.e. for net -> [cell, branch, comp]. For branch -> [comp]"""
         levels = ["network", "cell", "branch", "comp"]
-        children = levels[levels.index(self._current_view) + 1 :]
-        return children
+        if self._current_view in levels:
+            children = levels[levels.index(self._current_view) + 1 :]
+            return children
+        return []
 
     def _has_childview(self, key: str) -> bool:
         child_views = self._childviews()
@@ -329,7 +335,7 @@ class Module(ABC):
 
         Note: For sake of performance, interpolation is not done for each branch
         individually, but only once along a concatenated (and padded) array of all branches.
-        This means for nsegs = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would
+        This means for ncomps = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would
         interpolate xyz at the locations comp_ends = [[0,0.5,1], [0,0.25,0.5,0.75,1]],
         where 0 is the start of the branch and 1 is the end point at the full branch_len.
         To avoid do this in one go we set comp_ends = [0,0.5,1,2,2.25,2.5,2.75,3], and
@@ -338,10 +344,10 @@ class Module(ABC):
         incrementing.
         """
         nodes_by_branches = self.nodes.groupby("global_branch_index")
-        nsegs = nodes_by_branches["global_comp_index"].nunique().to_numpy()
+        ncomps = nodes_by_branches["global_comp_index"].nunique().to_numpy()
 
         comp_ends = [
-            np.linspace(0, 1, nseg + 1) + 2 * i for i, nseg in enumerate(nsegs)
+            np.linspace(0, 1, ncomp + 1) + 2 * i for i, ncomp in enumerate(ncomps)
         ]
         comp_ends = np.hstack(comp_ends)
 
@@ -359,13 +365,13 @@ class Module(ABC):
         xyz = np.vstack(self.xyzr)[:, :3]
         xyz = v_interp(comp_ends, cum_branch_lens, xyz).T
         centers = (xyz[:-1] + xyz[1:]) / 2  # unaware of inter vs intra comp centers
-        cum_nsegs = np.cumsum(nsegs)
+        cum_ncomps = np.cumsum(ncomps)
         # this means centers between comps have to be removed here
-        between_comp_inds = (cum_nsegs + np.arange(len(cum_nsegs)))[:-1]
+        between_comp_inds = (cum_ncomps + np.arange(len(cum_ncomps)))[:-1]
         centers = np.delete(centers, between_comp_inds, axis=0)
         return centers
 
-    def _update_nodes_with_xyz(self):
+    def compute_compartment_centers(self):
         """Add compartment centers to nodes dataframe"""
         centers = self._compute_coords_of_comp_centers()
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
@@ -383,16 +389,23 @@ class Module(ABC):
 
         Returns:
             array of indices of shape (N,)"""
+        if is_str_all(idx):  # also asserts that the only allowed str == "all"
+            return idx
+
         np_dtype = np.int64 if dtype is int else np.float64
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
-        num_nodes = len(self._nodes_in_view)
-        idx = np.arange(num_nodes + 1)[idx] if isinstance(idx, slice) else idx
-        if is_str_all(idx):  # also asserts that the only allowed str == "all"
-            return idx
+
+        idx = np.arange(len(self.base.nodes))[idx] if isinstance(idx, slice) else idx
+        if idx.dtype == bool:
+            shape = (*self.shape, len(self.edges))
+            which_idx = len(idx) == np.array(shape)
+            assert np.any(which_idx), "Index not matching num of cells/branches/comps."
+            dim = shape[np.where(which_idx)[0][0]]
+            idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype == np_dtype, "Invalid dtype"
+        assert idx.dtype in [np_dtype, bool], "Invalid dtype"
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):
@@ -543,11 +556,19 @@ class Module(ABC):
 
         Returns:
             View of the module at the specified branch location."""
-        comp_locs = np.linspace(0, 1, self.base.nseg)
-        at = comp_locs if is_str_all(at) else self._reformat_index(at, dtype=float)
-        comp_edges = np.linspace(0, 1 + 1e-10, self.base.nseg + 1)
-        idx = np.digitize(at, comp_edges) - 1
-        view = self.comp(idx)
+        global_comp_idxs = []
+        for i in self._branches_in_view:
+            ncomp = self.base.ncomp_per_branch[i]
+            comp_locs = np.linspace(0, 1, ncomp)
+            at = comp_locs if is_str_all(at) else self._reformat_index(at, dtype=float)
+            comp_edges = np.linspace(0, 1 + 1e-10, ncomp + 1)
+            idx = np.digitize(at, comp_edges) - 1 + self.base.cumsum_ncomp[i]
+            global_comp_idxs.append(idx)
+        global_comp_idxs = np.concatenate(global_comp_idxs)
+        orig_scope = self._scope
+        # global scope needed to select correct comps, for i.e. branches w. ncomp=[1,2]
+        # loc(0.9)  will correspond to different local branches (0 vs 1).
+        view = self.scope("global").comp(global_comp_idxs).scope(orig_scope)
         view._current_view = "loc"
         return view
 
@@ -607,12 +628,13 @@ class Module(ABC):
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
         Example:
-        ```
-        for cell in network:
-            for branch in cell:
-                for comp in branch:
-                    print(comp.nodes.shape)
-        ```
+
+        .. code-block:: python
+
+            for cell in network:
+                for branch in cell:
+                    for comp in branch:
+                        print(comp.nodes.shape)
         """
         next_level = self._childviews()[0]
         yield from self._iter_submodules(next_level)
@@ -621,11 +643,12 @@ class Module(ABC):
     def shape(self) -> Tuple[int]:
         """Returns the number of submodules contained in a module.
 
-        ```
-        network.shape = (num_cells, num_branches, num_compartments)
-        cell.shape = (num_branches, num_compartments)
-        branch.shape = (num_compartments,)
-        ```"""
+        .. code-block:: python
+
+            network.shape = (num_cells, num_branches, num_compartments)
+            cell.shape = (num_branches, num_compartments)
+            branch.shape = (num_compartments,)
+        """
         cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
         raw_shape = self.nodes[cols].nunique().to_list()
 
@@ -890,7 +913,7 @@ class Module(ABC):
         view = self.nodes.copy()
         all_nodes = self.base.nodes
         start_idx = self.nodes["global_comp_index"].to_numpy()[0]
-        nseg_per_branch = self.base.nseg_per_branch
+        ncomp_per_branch = self.base.ncomp_per_branch
         channel_names = [c._name for c in self.base.channels]
         channel_param_names = list(
             chain(*[c.channel_params for c in self.base.channels])
@@ -970,7 +993,7 @@ class Module(ABC):
                 radius_fns=radius_generating_fns,
                 branch_indices=branch_indices,
                 min_radius=min_radius,
-                nseg=ncomp,
+                ncomp=ncomp,
             )
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
@@ -991,15 +1014,15 @@ class Module(ABC):
         all_nodes["global_comp_index"] = np.arange(len(all_nodes))
 
         # Update compartment structure arguments.
-        nseg_per_branch[branch_indices] = ncomp
-        nseg = int(np.max(nseg_per_branch))
-        cumsum_nseg = cumsum_leading_zero(nseg_per_branch)
-        internal_node_inds = np.arange(cumsum_nseg[-1])
+        ncomp_per_branch[branch_indices] = ncomp
+        ncomp = int(np.max(ncomp_per_branch))
+        cumsum_ncomp = cumsum_leading_zero(ncomp_per_branch)
+        internal_node_inds = np.arange(cumsum_ncomp[-1])
 
         self.base.nodes = all_nodes
-        self.base.nseg_per_branch = nseg_per_branch
-        self.base.nseg = nseg
-        self.base.cumsum_nseg = cumsum_nseg
+        self.base.ncomp_per_branch = ncomp_per_branch
+        self.base.ncomp = ncomp
+        self.base.cumsum_ncomp = cumsum_ncomp
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
@@ -1031,11 +1054,11 @@ class Module(ABC):
         assert (
             self.allow_make_trainable
         ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
-        nsegs_per_branch = (
+        ncomps_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
         assert np.all(
-            nsegs_per_branch == nsegs_per_branch[0]
+            ncomps_per_branch == ncomps_per_branch[0]
         ), "Parameter sharing is not allowed for modules containing branches with different numbers of compartments."
 
         data = self.nodes if key in self.nodes.columns else None
@@ -1141,9 +1164,8 @@ class Module(ABC):
             endpoint: The compartment to which to compute the distance to.
         """
         assert len(self.xyzr) == 1 and len(endpoint.xyzr) == 1
-        assert self.xyzr[0].shape[0] == 1 and endpoint.xyzr[0].shape[0] == 1
-        start_xyz = self.xyzr[0][0, :3]
-        end_xyz = endpoint.xyzr[0][0, :3]
+        start_xyz = np.mean(self.xyzr[0][:, :3], axis=0)
+        end_xyz = np.mean(endpoint.xyzr[0][:, :3], axis=0)
         return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
 
     def delete_trainables(self):
@@ -1164,10 +1186,11 @@ class Module(ABC):
         """Add a view of the module to a group.
 
         Groups can then be indexed. For example:
-        ```python
-        net.cell(0).add_to_group("excitatory")
-        net.excitatory.set("radius", 0.1)
-        ```
+
+        .. code-block:: python
+
+            net.cell(0).add_to_group("excitatory")
+            net.excitatory.set("radius", 0.1)
 
         Args:
             group_name: The name of the group.
@@ -1178,6 +1201,15 @@ class Module(ABC):
             self.base.groups[group_name] = np.unique(
                 np.concatenate([self.base.groups[group_name], self._nodes_in_view])
             )
+
+    def _get_state_names(self) -> Tuple[List, List]:
+        """Collect all recordable / clampable states in the membrane and synapses.
+
+        Returns states seperated by comps and edges."""
+        channel_states = [name for c in self.channels for name in c.channel_states]
+        synapse_states = [name for s in self.synapses for name in s.synapse_states]
+        membrane_states = ["v", "i"] + self.membrane_current_names
+        return channel_states + membrane_states, synapse_states
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
@@ -1206,11 +1238,12 @@ class Module(ABC):
         in `trainable_params()`. This function is run within `jx.integrate()`.
 
         pstate can be obtained by calling `params_to_pstate()`.
-        ```
-        params = module.get_parameters() # i.e. [0, 1, 2]
-        pstate = params_to_pstate(params, module.indices_set_by_trainables)
-        module.to_jax() # needed for call to module.jaxnodes
-        ```
+
+        .. code-block:: python
+
+            params = module.get_parameters() # i.e. [0, 1, 2]
+            pstate = params_to_pstate(params, module.indices_set_by_trainables)
+            module.to_jax() # needed for call to module.jaxnodes
 
         Args:
             pstate: The state of the trainable parameters. pstate takes the form
@@ -1406,7 +1439,7 @@ class Module(ABC):
                 branchpoint_weights_parents[debug_states["par_inds"]],
                 branchpoint_diags,
                 branchpoint_solves,
-                debug_states["nseg"],
+                debug_states["ncomp"],
                 nbranches,
             )
         )
@@ -1416,17 +1449,17 @@ class Module(ABC):
         )
         solution = spsolve(sparse_matrix, solve)
         solution = solution[:start_ind_for_branchpoints]  # Delete branchpoint voltages.
-        solves = jnp.reshape(solution, (debug_states["nseg"], nbranches))
+        solves = jnp.reshape(solution, (debug_states["ncomp"], nbranches))
         return solves
         ```
         """
         # For scipy and jax.scipy.
         row_and_col_inds = compute_morphology_indices(
-            len(self.base.par_inds),
-            self.base.child_belongs_to_branchpoint,
-            self.base.par_inds,
-            self.base.child_inds,
-            self.base.nseg,
+            len(self.base._par_inds),
+            self.base._child_belongs_to_branchpoint,
+            self.base._par_inds,
+            self.base._child_inds,
+            self.base.ncomp,
             self.base.total_nbranches,
         )
 
@@ -1442,15 +1475,15 @@ class Module(ABC):
         self.base.debug_states["indices"] = indices
         self.base.debug_states["indptr"] = indptr
 
-        self.base.debug_states["nseg"] = self.base.nseg
-        self.base.debug_states["child_inds"] = self.base.child_inds
-        self.base.debug_states["par_inds"] = self.base.par_inds
+        self.base.debug_states["ncomp"] = self.base.ncomp
+        self.base.debug_states["child_inds"] = self.base._child_inds
+        self.base.debug_states["par_inds"] = self.base._par_inds
 
     def record(self, state: str = "v", verbose=True):
-        in_view = None
-        in_view = self._edges_in_view if state in self.edges.columns else in_view
-        in_view = self._nodes_in_view if state in self.nodes.columns else in_view
-        assert in_view is not None, "State not found in nodes or edges."
+        comp_states, edge_states = self._get_state_names()
+        if state not in comp_states + edge_states:
+            raise KeyError(f"{state} is not a recognized state in this module.")
+        in_view = self._nodes_in_view if state in comp_states else self._edges_in_view
 
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
@@ -1514,8 +1547,6 @@ class Module(ABC):
 
         This function sets external states for the compartments.
         """
-        if state_name not in self.nodes.columns:
-            raise KeyError(f"{state_name} is not a recognized state in this module.")
         self._external_input(state_name, state_array, verbose=verbose)
 
     def _external_input(
@@ -1524,15 +1555,16 @@ class Module(ABC):
         values: Optional[jnp.ndarray],
         verbose: bool = True,
     ):
+        comp_states, edge_states = self._get_state_names()
+        if key not in comp_states + edge_states:
+            raise KeyError(f"{key} is not a recognized state in this module.")
         values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
         batch_size = values.shape[0]
-        num_inserted = len(self._nodes_in_view)
-        is_multiple = num_inserted == batch_size
-        values = (
-            values
-            if is_multiple
-            else jnp.repeat(values, len(self._nodes_in_view), axis=0)
+        num_inserted = (
+            len(self._nodes_in_view) if key in comp_states else len(self._edges_in_view)
         )
+        is_multiple = num_inserted == batch_size
+        values = values if is_multiple else jnp.repeat(values, num_inserted, axis=0)
         assert batch_size in [
             1,
             num_inserted,
@@ -1546,9 +1578,12 @@ class Module(ABC):
                 [self.base.external_inds[key], self._nodes_in_view]
             )
         else:
-            self.base.externals[key] = values
-            self.base.external_inds[key] = self._nodes_in_view
-
+            if key in comp_states:
+                self.base.externals[key] = values
+                self.base.external_inds[key] = self._nodes_in_view
+            else:
+                self.base.externals[key] = values
+                self.base.external_inds[key] = self._edges_in_view
         if verbose:
             print(
                 f"Added {num_inserted} external_states. See `.externals` for details."
@@ -1588,8 +1623,12 @@ class Module(ABC):
             verbose: Whether or not to print the number of inserted clamps. `False`
                 by default because this method is meant to be jitted.
         """
+        comp_states, edge_states = self._get_state_names()
+        if state_name not in comp_states + edge_states:
+            raise KeyError(f"{state_name} is not a recognized state in this module.")
+        data = self.nodes if state_name in comp_states else self.edges
         return self._data_external_input(
-            state_name, state_array, data_clamps, self.nodes, verbose=verbose
+            state_name, state_array, data_clamps, data, verbose=verbose
         )
 
     def _data_external_input(
@@ -1600,16 +1639,23 @@ class Module(ABC):
         view: pd.DataFrame,
         verbose: bool = False,
     ):
+        comp_states, edge_states = self._get_state_names()
         state_array = (
             state_array
             if state_array.ndim == 2
             else jnp.expand_dims(state_array, axis=0)
         )
         batch_size = state_array.shape[0]
-        num_inserted = len(self._nodes_in_view)
+        num_inserted = (
+            len(self._nodes_in_view)
+            if state_name in comp_states
+            else len(self._edges_in_view)
+        )
         is_multiple = num_inserted == batch_size
         state_array = (
-            state_array if is_multiple else jnp.repeat(state_array, len(view), axis=0)
+            state_array
+            if is_multiple
+            else jnp.repeat(state_array, num_inserted, axis=0)
         )
         assert batch_size in [
             1,
@@ -1638,23 +1684,28 @@ class Module(ABC):
         """Removes all stimuli from the module."""
         self.delete_clamps("i")
 
-    def delete_clamps(self, state_name: str):
+    def delete_clamps(self, state_name: Optional[str] = None):
         """Removes all clamps of the given state from the module."""
-        if state_name in self.externals:
-            keep_inds = ~np.isin(
-                self.base.external_inds[state_name], self._nodes_in_view
-            )
-            base_exts = self.base.externals
-            base_exts_inds = self.base.external_inds
-            if np.all(~keep_inds):
-                base_exts.pop(state_name, None)
-                base_exts_inds.pop(state_name, None)
+        all_externals = list(self.externals.keys())
+        if "i" in all_externals:
+            all_externals.remove("i")
+        state_names = all_externals if state_name is None else [state_name]
+        for state_name in state_names:
+            if state_name in self.externals:
+                keep_inds = ~np.isin(
+                    self.base.external_inds[state_name], self._nodes_in_view
+                )
+                base_exts = self.base.externals
+                base_exts_inds = self.base.external_inds
+                if np.all(~keep_inds):
+                    base_exts.pop(state_name, None)
+                    base_exts_inds.pop(state_name, None)
+                else:
+                    base_exts[state_name] = base_exts[state_name][keep_inds]
+                    base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+                self._update_view()
             else:
-                base_exts[state_name] = base_exts[state_name][keep_inds]
-                base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
-            self._update_view()
-        else:
-            pass  # does not have to be deleted if not in externals
+                pass  # does not have to be deleted if not in externals
 
     def insert(self, channel: Channel):
         """Insert a channel into the module.
@@ -1683,6 +1734,28 @@ class Module(ABC):
         # Loop over all new parameters, e.g. gNa, eNa.
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
+
+    def delete_channel(self, channel: Channel):
+        """Remove a channel from the module.
+
+        Args:
+            channel: The channel to remove."""
+        name = channel._name
+        channel_names = [c._name for c in self.channels]
+        all_channel_names = [c._name for c in self.base.channels]
+        if name in channel_names:
+            channel_cols = list(channel.channel_params.keys())
+            channel_cols += list(channel.channel_states.keys())
+            self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
+            self.base.nodes.loc[self._nodes_in_view, name] = False
+
+            # only delete cols if no other comps in the module have the same channel
+            if np.all(~self.base.nodes[name]):
+                self.base.channels.pop(all_channel_names.index(name))
+                self.base.membrane_current_names.remove(channel.current_name)
+                self.base.nodes.drop(columns=channel_cols + [name], inplace=True)
+        else:
+            raise ValueError(f"Channel {name} not found in the module.")
 
     @only_allow_module
     def step(
@@ -1786,12 +1859,12 @@ class Module(ABC):
                     "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                     "sources": np.asarray(self._comp_edges["source"].to_list()),
                     "types": np.asarray(self._comp_edges["type"].to_list()),
-                    "nseg_per_branch": self.nseg_per_branch,
-                    "par_inds": self.par_inds,
-                    "child_inds": self.child_inds,
+                    "ncomp_per_branch": self.ncomp_per_branch,
+                    "par_inds": self._par_inds,
+                    "child_inds": self._child_inds,
                     "nbranches": self.total_nbranches,
                     "solver": voltage_solver,
-                    "idx": self.solve_indexer,
+                    "idx": self._solve_indexer,
                     "debug_states": self.debug_states,
                 }
             )
@@ -2043,7 +2116,7 @@ class Module(ABC):
             return plot_morph(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
 
         assert not np.any(
-            [np.isnan(xyzr[:, dims]).any() for xyzr in self.xyzr]
+            [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
         ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
 
         ax = plot_graph(
@@ -2120,7 +2193,7 @@ class Module(ABC):
                 endpoints.append(np.zeros((2,)))
 
     def move(
-        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = True
+        self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = False
     ):
         """Move cells or networks by adding to their (x, y, z) coordinates.
 
@@ -2137,14 +2210,14 @@ class Module(ABC):
         for i in self._branches_in_view:
             self.base.xyzr[i][:, :3] += np.array([x, y, z])
         if update_nodes:
-            self._update_nodes_with_xyz()
+            self.compute_compartment_centers()
 
     def move_to(
         self,
         x: Union[float, np.ndarray] = 0.0,
         y: Union[float, np.ndarray] = 0.0,
         z: Union[float, np.ndarray] = 0.0,
-        update_nodes: bool = True,
+        update_nodes: bool = False,
     ):
         """Move cells or networks to a location (x, y, z).
 
@@ -2184,10 +2257,10 @@ class Module(ABC):
             for idx in cell._branches_in_view:
                 self.base.xyzr[idx][:, :3] += offset
         if update_nodes:
-            self._update_nodes_with_xyz()
+            self.compute_compartment_centers()
 
     def rotate(
-        self, degrees: float, rotation_axis: str = "xy", update_nodes: bool = True
+        self, degrees: float, rotation_axis: str = "xy", update_nodes: bool = False
     ):
         """Rotate jaxley modules clockwise. Used only for visualization.
 
@@ -2214,7 +2287,66 @@ class Module(ABC):
             rot = np.dot(rotation_matrix, self.base.xyzr[i][:, dims].T).T
             self.base.xyzr[i][:, dims] = rot
         if update_nodes:
-            self._update_nodes_with_xyz()
+            self.compute_compartment_centers()
+
+    def copy_node_property_to_edges(
+        self,
+        properties_to_import: Union[str, List[str]],
+        pre_or_post: Union[str, List[str]] = ["pre", "post"],
+    ) -> Module:
+        """Copy a property that is in `node` over to `edges`.
+
+        By default, `.edges` does not contain the properties (radius, length, cm,
+        channel properties,...) of the pre- and post-synaptic compartments. This
+        method allows to copy a property of the pre- and/or post-synaptic compartment
+        to the edges. It is then accessible as `module.edges.pre_property_name` or
+        `module.edges.post_property_name`.
+
+        Note that, if you modify the node property _after_ having run
+        `copy_node_property_to_edges`, it will not automatically update the value in
+        `.edges`.
+
+        Note that, if this method is called on a View (e.g.
+        `net.cell(0).copy_node_property_to_edges`), then it will return a View, but
+        it will _not_ modify the module itself.
+
+        Args:
+            properties_to_import: The name of the node properties that should be
+                imported. To list all available properties, look at
+                `module.nodes.columns`.
+            pre_or_post: Whether to import only the pre-synaptic property ('pre'), only
+                the post-synaptic property ('post'), or both (['pre', 'post']).
+
+        Returns:
+            A new module which has the property copied to the `nodes`.
+        """
+        # If a string is passed, wrap it as a list.
+        if isinstance(pre_or_post, str):
+            pre_or_post = [pre_or_post]
+        if isinstance(properties_to_import, str):
+            properties_to_import = [properties_to_import]
+
+        for pre_or_post_val in pre_or_post:
+            assert pre_or_post_val in ["pre", "post"]
+            for property_to_import in properties_to_import:
+                # Delete the column if it already exists. Otherwise it would exist
+                # twice.
+                if f"{pre_or_post_val}_{property_to_import}" in self.edges.columns:
+                    self.edges.drop(
+                        columns=f"{pre_or_post_val}_{property_to_import}", inplace=True
+                    )
+
+                self.edges = self.edges.join(
+                    self.nodes[[property_to_import, "global_comp_index"]].set_index(
+                        "global_comp_index"
+                    ),
+                    on=f"{pre_or_post_val}_global_comp_index",
+                )
+                self.edges = self.edges.rename(
+                    columns={
+                        property_to_import: f"{pre_or_post_val}_{property_to_import}"
+                    }
+                )
 
 
 class View(Module):
@@ -2230,39 +2362,40 @@ class View(Module):
     `self.nodes` (currently in view) and returns the updated list such that we can set
     `self.channels = self._channels_in_view()`.
 
+    For developers: To allow seamless operation on Views and Modules as if they were
+    the same, the following needs to be ensured:
 
-    To allow seamless operation on Views and Modules as if they were the same,
-    the following needs to be ensured:
     1. We consider a Module to have everything in view.
     2. Views can display and keep track of how a module is traversed. But(!),
-        do not support making changes or setting variables. This still has to be
-        done in the base Module, i.e. `self.base`. In order to enssure that these
-        changes only affects whatever is currently in view `self._nodes_in_view`,
-        or `self._edges_in_view` among others have to be used. Operating on nodes
-        currently in view can for example be done with
-        `self.base.node.loc[self._nodes_in_view]`
+       do not support making changes or setting variables. This still has to be
+       done in the base Module, i.e. `self.base`. In order to enssure that these
+       changes only affects whatever is currently in view `self._nodes_in_view`,
+       or `self._edges_in_view` among others have to be used. Operating on nodes
+       currently in view can for example be done with
+       `self.base.node.loc[self._nodes_in_view]`
     3. Every attribute of Module that changes based on what's in view, i.e. `xyzr`,
-        needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
-        should be `[self.base.xyzr[0]]` This could be achieved via:
-        `[self.base.xyzr[b] for b in self._branches_in_view]`.
+       needs to modified when View is instantiated. I.e. `xyzr` of `cell.branch(0)`,
+       should be `[self.base.xyzr[0]]` This could be achieved via:
+       `[self.base.xyzr[b] for b in self._branches_in_view]`.
 
 
-    Example to make methods of Module compatible with View:
-    ```
-    # use data in view to return something
-    def count_small_branches(self):
-        # no need to use self.base.attr + viewed indices,
-        # since no change is made to the attr in question (nodes)
-        comp_lens = self.nodes["length"]
-        branch_lens = comp_lens.groupby("global_branch_index").sum()
-        return np.sum(branch_lens < 10)
+    For developers: Below is an example to make methods of Module compatible with View:
 
-    # change data in view
-    def change_attr_in_view(self):
-        # changes to attrs have to be made via self.base.attr + viewed indices
-        a = func1(self.base.attr1[self._cells_in_view])
-        b = func2(self.base.attr2[self._edges_in_view])
-        self.base.attr3[self._branches_in_view] = a + b
+    .. code-block:: python
+        # Use data in view to return something.
+        def count_small_branches(self):
+            # no need to use self.base.attr + viewed indices,
+            # since no change is made to the attr in question (nodes)
+            comp_lens = self.nodes["length"]
+            branch_lens = comp_lens.groupby("global_branch_index").sum()
+            return np.sum(branch_lens < 10)
+
+        # Change data in view.
+        def change_attr_in_view(self):
+            # changes to attrs have to be made via self.base.attr + viewed indices
+            a = func1(self.base.attr1[self._cells_in_view])
+            b = func2(self.base.attr2[self._edges_in_view])
+            self.base.attr3[self._branches_in_view] = a + b
     """
 
     def __init__(
@@ -2282,7 +2415,7 @@ class View(Module):
         # attrs affected by view
         # indices need to be update first, since they are used in the following
         self._set_inds_in_view(pointer, nodes, edges)
-        self.nseg = pointer.nseg
+        self.ncomp = pointer.ncomp
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
         ptr_edges = pointer.edges
@@ -2291,14 +2424,14 @@ class View(Module):
         )
 
         self.xyzr = self._xyzr_in_view()
-        self.nseg = 1 if len(self.nodes) == 1 else pointer.nseg
+        self.ncomp = 1 if len(self.nodes) == 1 else pointer.ncomp
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
-        self.cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
+        self._cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
-        self.nseg_per_branch = self.base.nseg_per_branch[self._branches_in_view]
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
+        self.ncomp_per_branch = self.base.ncomp_per_branch[self._branches_in_view]
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
 
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)
@@ -2319,7 +2452,7 @@ class View(Module):
             .item()
         )
 
-        self.nseg_per_branch = pointer.base.nseg_per_branch[self._branches_in_view]
+        self.ncomp_per_branch = pointer.base.ncomp_per_branch[self._branches_in_view]
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
         self.groups = {
@@ -2355,8 +2488,8 @@ class View(Module):
             incl_comps = pointer.nodes.loc[
                 self._nodes_in_view, "global_comp_index"
             ].unique()
-            pre = base_edges["global_pre_comp_index"].isin(incl_comps).to_numpy()
-            post = base_edges["global_post_comp_index"].isin(incl_comps).to_numpy()
+            pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
+            post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
             possible_edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
             self._edges_in_view = np.intersect1d(
                 possible_edges_in_view, self._edges_in_view
@@ -2365,7 +2498,7 @@ class View(Module):
             base_nodes = self.base.nodes
             self._edges_in_view = edges
             incl_comps = pointer.edges.loc[
-                self._edges_in_view, ["global_pre_comp_index", "global_post_comp_index"]
+                self._edges_in_view, ["pre_global_comp_index", "post_global_comp_index"]
             ]
             incl_comps = np.unique(incl_comps.to_numpy().flatten())
             where_comps = base_nodes["global_comp_index"].isin(incl_comps)
@@ -2523,26 +2656,29 @@ class View(Module):
         """Return xyzr coordinates of every branch that is in `_branches_in_view`.
 
         If a branch is not completely in view, the coordinates are interpolated."""
-        xyzr = [self.base.xyzr[i] for i in self._branches_in_view].copy()
-
-        # Currently viewing with `.loc` will show the closest compartment
-        # rather than the actual loc along the branch!
-        viewed_nseg_for_branch = self.nodes.groupby("global_branch_index").size()
-        incomplete_inds = np.where(viewed_nseg_for_branch != self.base.nseg)[0]
-        incomplete_branch_inds = self._branches_in_view[incomplete_inds]
-
-        cond = self.nodes["global_branch_index"].isin(incomplete_branch_inds)
-        interp_inds = self.nodes.loc[cond]
-        local_inds_per_branch = interp_inds.groupby("global_branch_index")[
-            "local_comp_index"
-        ]
-        locs = [
-            loc_of_index(inds.to_numpy(), 0, self.base.nseg_per_branch)
-            for _, inds in local_inds_per_branch
-        ]
-
-        for i, loc in zip(incomplete_inds, locs):
-            xyzr[i] = interpolate_xyz(loc, xyzr[i]).T
+        xyzr = []
+        viewed_ncomp_for_branch = self.nodes.groupby("global_branch_index").size()
+        for i in self._branches_in_view:
+            xyzr_i = self.base.xyzr[i]
+            ncomp_i = self.base.ncomp_per_branch[i]
+            global_comp_offset = self.base.cumsum_ncomp[i]
+            global_comp_inds = self.nodes["global_comp_index"]
+            if viewed_ncomp_for_branch.loc[i] != ncomp_i:
+                local_inds = (
+                    global_comp_inds.loc[
+                        self.nodes["global_branch_index"] == i
+                    ].to_numpy()
+                    - global_comp_offset
+                )
+                local_ind_range = np.arange(min(local_inds), max(local_inds) + 1)
+                inds = [i if i in local_inds else None for i in local_ind_range]
+                comp_ends = np.linspace(0, 1, ncomp_i + 1)
+                locs = np.hstack(
+                    [comp_ends[[i, i + 1]] if i is not None else [np.nan] for i in inds]
+                )
+                xyzr.append(interpolate_xyzr(locs, xyzr_i).T)
+            else:
+                xyzr.append(xyzr_i)
         return xyzr
 
     # needs abstract method to allow init of View

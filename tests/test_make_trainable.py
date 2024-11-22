@@ -13,22 +13,14 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH, K, Na
-from jaxley.connect import connect
+from jaxley.connect import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
 
 
-def test_make_trainable():
+def test_make_trainable(SimpleCell):
     """Test make_trainable."""
-    nseg_per_branch = 8
-
-    depth = 5
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+    cell = SimpleCell(4, 4)
     cell.insert(HH())
 
     cell.branch(0).loc(0.0).set("length", 12.0)
@@ -44,17 +36,9 @@ def test_make_trainable():
     cell.get_parameters()
 
 
-def test_delete_trainables():
+def test_delete_trainables(SimpleCell):
     """Test make_trainable."""
-    nseg_per_branch = 8
-
-    depth = 5
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+    cell = SimpleCell(4, 4)
 
     cell.branch(0).loc(0.0).make_trainable("length", 12.0)
     assert cell.num_trainable_params == 1
@@ -66,17 +50,9 @@ def test_delete_trainables():
     cell.get_parameters()
 
 
-def test_make_trainable_network():
+def test_make_trainable_network(SimpleCell):
     """Test make_trainable."""
-    nseg_per_branch = 8
-
-    depth = 5
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    parents = jnp.asarray(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
-    cell = jx.Cell(branch, parents=parents)
+    cell = SimpleCell(4, 4)
     cell.insert(HH())
 
     net = jx.Network([cell, cell])
@@ -99,13 +75,9 @@ def test_make_trainable_network():
     assert cell.num_trainable_params == 8  # `set()` is ignored.
 
 
-def test_diverse_synapse_types():
+def test_diverse_synapse_types(SimpleNet):
     """Runs `.get_all_parameters()` and checks if the output is as expected."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=1)
-    cell = jx.Cell(branch, parents=[-1])
-
-    net = jx.Network([cell for _ in range(4)])
+    net = SimpleNet(4, 1, 1)
     for pre_ind in [0, 1]:
         for post_ind, syn in zip([2, 3], [IonotropicSynapse(), TestSynapse()]):
             pre = net.cell(pre_ind).branch(0).loc(0.0)
@@ -149,9 +121,10 @@ def test_diverse_synapse_types():
     assert np.all(all_parameters["IonotropicSynapse_gS"][1] == 5.5)
 
 
-def test_make_all_trainable_corresponds_to_set():
+def test_make_all_trainable_corresponds_to_set(SimpleNet):
     # Scenario 1.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.insert(HH())
     params1 = get_params_all_trainable(net1)
     net2.insert(HH())
@@ -159,7 +132,8 @@ def test_make_all_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
     # Scenario 2.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(1).insert(HH())
     params1 = get_params_all_trainable(net1)
     net2.cell(1).insert(HH())
@@ -167,7 +141,8 @@ def test_make_all_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
     # Scenario 3.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(1).branch(0).insert(HH())
     params1 = get_params_all_trainable(net1)
     net2.cell(1).branch(0).insert(HH())
@@ -175,7 +150,8 @@ def test_make_all_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
     # Scenario 4.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(1).branch(0).loc(0.4).insert(HH())
     params1 = get_params_all_trainable(net1)
     net2.cell(1).branch(0).loc(0.4).insert(HH())
@@ -183,9 +159,10 @@ def test_make_all_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
 
-def test_make_subset_trainable_corresponds_to_set():
+def test_make_subset_trainable_corresponds_to_set(SimpleNet):
     # Scenario 1.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.insert(HH())
     params1 = get_params_subset_trainable(net1)
     net2.insert(HH())
@@ -193,7 +170,8 @@ def test_make_subset_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
     # Scenario 2.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(0).insert(HH())
     params1 = get_params_subset_trainable(net1)
     net2.cell(0).insert(HH())
@@ -201,7 +179,8 @@ def test_make_subset_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
     # Scenario 3.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(0).branch(1).insert(HH())
     params1 = get_params_subset_trainable(net1)
     net2.cell(0).branch(1).insert(HH())
@@ -209,7 +188,8 @@ def test_make_subset_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
     # Scenario 4.
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(0).branch(1).loc(0.4).insert(HH())
     params1 = get_params_subset_trainable(net1)
     net2.cell(0).branch(1).loc(0.4).insert(HH())
@@ -217,13 +197,65 @@ def test_make_subset_trainable_corresponds_to_set():
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
 
-def build_two_networks():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
-    cell = jx.Cell(branch, parents=[-1, 0])
-    net1 = jx.Network([cell, cell])
-    net2 = jx.Network([cell, cell])
-    return net1, net2
+def test_copy_node_property_to_edges(SimpleNet):
+    """Test synaptic parameter sharing via `.copy_node_property_to_edges()`.
+
+    This test does not explicitly use `make_trainable`, but
+    `copy_node_property_to_edges` is an important ingredient to parameter sharing.
+    """
+    net = SimpleNet(6, 2, 2)
+    net.insert(HH())
+    net.cell(1).set("HH_gNa", 1.0)
+    net.cell(0).set("radius", 0.2)
+    net.cell(1).branch(0).comp(0).set("capacitance", 0.3)
+    fully_connect(net.cell("all"), net.cell("all"), IonotropicSynapse())
+
+    net.copy_node_property_to_edges("HH_gNa", "pre")
+    # Run it another time to ensure that it can be run twice.
+    net.copy_node_property_to_edges("HH_gNa", "pre")
+    assert "pre_HH_gNa" in net.edges.columns
+    assert "post_HH_gNa" not in net.edges.columns
+
+    # Query the second cell. Each cell has four compartments.
+    edges_gna_values = net.edges.query("pre_global_comp_index > 3")
+    edges_gna_values = edges_gna_values.query("pre_global_comp_index <= 7")
+    assert np.all(edges_gna_values["pre_HH_gNa"] == 1.0)
+
+    # Query the other cells. The first cell has four compartments.
+    edges_gna_values = net.edges.query("pre_global_comp_index <= 3")
+    assert np.all(edges_gna_values["pre_HH_gNa"] == 0.12)
+    edges_gna_values = net.edges.query("pre_global_comp_index > 7")
+    assert np.all(edges_gna_values["pre_HH_gNa"] == 0.12)
+
+    # Test whether multiple properties can be copied over.
+    net.copy_node_property_to_edges(["radius", "length"])
+    assert "pre_radius" in net.edges.columns
+    assert "post_radius" in net.edges.columns
+    assert "pre_length" in net.edges.columns
+    assert "post_length" in net.edges.columns
+
+    edges_gna_values = net.edges.query("pre_global_comp_index <= 3")
+    assert np.all(edges_gna_values["pre_radius"] == 0.2)
+
+    edges_gna_values = net.edges.query("pre_global_comp_index > 3")
+    assert np.all(edges_gna_values["pre_radius"] == 1.0)
+
+    # Test whether modifying an individual compartment also takes effect.
+    net.copy_node_property_to_edges(["capacitance"])
+    assert "pre_capacitance" in net.edges.columns
+    assert "post_capacitance" in net.edges.columns
+
+    edges_gna_values = net.edges.query("pre_global_comp_index == 4")
+    assert np.all(edges_gna_values["pre_capacitance"] == 0.3)
+
+    edges_gna_values = net.edges.query("post_global_comp_index == 4")
+    assert np.all(edges_gna_values["post_capacitance"] == 0.3)
+
+    edges_gna_values = net.edges.query("pre_global_comp_index != 4")
+    assert np.all(edges_gna_values["pre_capacitance"] == 1.0)
+
+    edges_gna_values = net.edges.query("post_global_comp_index != 4")
+    assert np.all(edges_gna_values["post_capacitance"] == 1.0)
 
 
 def get_params_subset_trainable(net):
@@ -260,9 +292,10 @@ def get_params_set(net):
     return net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
 
 
-def test_make_trainable_corresponds_to_set_pospischil():
+def test_make_trainable_corresponds_to_set_pospischil(SimpleNet):
     """Test whether shared parameters are also set correctly."""
-    net1, net2 = build_two_networks()
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(0).insert(Na())
     net1.insert(K())
     net1.cell("all").branch("all").loc("all").make_trainable("vt")
@@ -288,7 +321,9 @@ def test_make_trainable_corresponds_to_set_pospischil():
     net1.cell(1).branch(1).loc(0.0).record()
     net2.cell(1).branch(1).loc(0.0).record()
 
-    current = jx.step_current(2.0, 3.0, 0.2, 0.025, 5.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     net1.cell(0).branch(1).loc(0.0).stimulate(current)
     net2.cell(0).branch(1).loc(0.0).stimulate(current)
     voltages1 = jx.integrate(net1, params=params1)
@@ -301,7 +336,7 @@ def test_group_trainable_corresponds_to_set():
 
     def build_net():
         comp = jx.Compartment()
-        branch = jx.Branch(comp, nseg=4)
+        branch = jx.Branch(comp, ncomp=4)
         cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
         net = jx.Network([cell for _ in range(4)])
         net.cell(0).add_to_group("test")
@@ -327,8 +362,9 @@ def test_group_trainable_corresponds_to_set():
     assert np.allclose(all_parameters1["radius"], all_parameters2["radius"])
 
 
-def test_data_set_vs_make_trainable_pospischil():
-    net1, net2 = build_two_networks()
+def test_data_set_vs_make_trainable_pospischil(SimpleNet):
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
     net1.cell(0).insert(Na())
     net1.insert(K())
     net1.make_trainable("vt")
@@ -352,7 +388,9 @@ def test_data_set_vs_make_trainable_pospischil():
     net1.cell(1).branch(1).loc(0.0).record()
     net2.cell(1).branch(1).loc(0.0).record()
 
-    current = jx.step_current(2.0, 3.0, 0.2, 0.025, 5.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     net1.cell(0).branch(1).loc(0.0).stimulate(current)
     net2.cell(0).branch(1).loc(0.0).stimulate(current)
     voltages1 = jx.integrate(net1, params=params1)
@@ -360,9 +398,12 @@ def test_data_set_vs_make_trainable_pospischil():
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
 
 
-def test_data_set_vs_make_trainable_network():
-    net1, net2 = build_two_networks()
-    current = jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0)
+def test_data_set_vs_make_trainable_network(SimpleNet):
+    net1 = SimpleNet(2, 4, 1)
+    net2 = SimpleNet(2, 4, 1)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     for net in [net1, net2]:
         net.insert(HH())
         pre = net.cell(0).branch(0).loc(0.0)
@@ -404,11 +445,8 @@ def test_data_set_vs_make_trainable_network():
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
 
 
-def test_make_states_trainable_api():
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net = jx.Network([cell for _ in range(2)])
+def test_make_states_trainable_api(SimpleNet):
+    net = SimpleNet(2, 2, 4)
     net.insert(HH())
     net.cell(0).branch(0).comp(0).record()
 
@@ -425,12 +463,9 @@ def test_make_states_trainable_api():
     assert np.invert(np.any(np.isnan(v))), "Found NaN in voltage."
 
 
-def test_write_trainables():
+def test_write_trainables(SimpleNet):
     """Test whether `write_trainables()` gives the same result as using the trainables."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
-    net = jx.Network([cell for _ in range(2)])
+    net = SimpleNet(2, 2, 4)
     connect(
         net.cell(0).branch(0).loc(0.9),
         net.cell(1).branch(1).loc(0.1),
@@ -454,7 +489,9 @@ def test_write_trainables():
     net.insert(HH())
     net.cell(0).branch(0).comp(0).record()
     net.cell(1).branch(0).comp(0).record()
-    net.cell(0).branch(0).comp(0).stimulate(jx.step_current(0.1, 4.0, 0.1, 0.025, 5.0))
+    net.cell(0).branch(0).comp(0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
+    )
 
     net.make_trainable("radius")
     net.cell(0).make_trainable("length")

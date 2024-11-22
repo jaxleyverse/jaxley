@@ -23,12 +23,13 @@ from jaxley.synapses import IonotropicSynapse
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_radius_and_length_compartment(voltage_solver: str):
+def test_radius_and_length_compartment(voltage_solver, SimpleComp):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    comp = jx.Compartment()
+    comp = SimpleComp()
 
     np.random.seed(1)
     comp.set("length", 5 * np.random.rand(1))
@@ -63,14 +64,13 @@ def test_radius_and_length_compartment(voltage_solver: str):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_radius_and_length_branch(voltage_solver: str):
-    nseg_per_branch = 2
+def test_radius_and_length_branch(voltage_solver, SimpleBranch):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
+    branch = SimpleBranch(ncomp=2)
 
     np.random.seed(1)
     branch.set("length", np.flip(5 * np.random.rand(2)))
@@ -105,19 +105,14 @@ def test_radius_and_length_branch(voltage_solver: str):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_radius_and_length_cell(voltage_solver: str):
-    nseg_per_branch = 2
+def test_radius_and_length_cell(voltage_solver, SimpleCell):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    num_branches = len(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
-    cell = jx.Cell([branch for _ in range(len(parents))], parents=parents)
+    num_branches = 3
+    cell = SimpleCell(num_branches, ncomp=2)
 
     np.random.seed(1)
     rands1 = 5 * np.random.rand(2 * num_branches)
@@ -155,57 +150,50 @@ def test_radius_and_length_cell(voltage_solver: str):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_radius_and_length_net(voltage_solver: str):
-    nseg_per_branch = 2
+def test_radius_and_length_net(voltage_solver, SimpleNet):
     dt = 0.025  # ms
-    t_max = 5.0  # ms
-    current = jx.step_current(0.5, 1.0, 0.02, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
+    )
 
-    depth = 2
-    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
-    num_branches = len(parents)
-
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(nseg_per_branch)])
-    cell1 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
-    cell2 = jx.Cell([branch for _ in range(len(parents))], parents=parents)
+    num_branches = 3
+    net = SimpleNet(2, num_branches, 2)
 
     np.random.seed(1)
     rands1 = 5 * np.random.rand(2 * num_branches)
     rands2 = np.random.rand(2 * num_branches)
     for b in range(num_branches):
-        cell1.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
-        cell1.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
+        net.cell(0).branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        net.cell(0).branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
     np.random.seed(2)
     rands1 = 5 * np.random.rand(2 * num_branches)
     rands2 = np.random.rand(2 * num_branches)
     for b in range(num_branches):
-        cell2.branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
-        cell2.branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
+        net.cell(1).branch(b).set("length", np.flip(rands1[2 * b : 2 * b + 2]))
+        net.cell(1).branch(b).set("radius", np.flip(rands2[2 * b : 2 * b + 2]))
 
-    network = jx.Network([cell1, cell2])
     connect(
-        network.cell(0).branch(0).loc(0.0),
-        network.cell(1).branch(0).loc(0.0),
+        net.cell(0).branch(0).loc(0.0),
+        net.cell(1).branch(0).loc(0.0),
         IonotropicSynapse(),
     )
-    network.insert(HH())
+    net.insert(HH())
 
     # first cell, 0-eth branch, 0-st compartment because loc=0.0
-    radius_post = network[1, 0, 0].nodes["radius"].item()
-    lenght_post = network[1, 0, 0].nodes["length"].item()
+    radius_post = net[1, 0, 0].nodes["radius"].item()
+    lenght_post = net[1, 0, 0].nodes["length"].item()
     area = 2 * pi * lenght_post * radius_post
     point_process_to_dist_factor = 100_000.0 / area
-    network.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
+    net.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
 
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).loc(0.0).record()
+        net.cell(cell_ind).branch(1).loc(0.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
+        net.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
 
-    voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
+    voltages = jx.integrate(net, delta_t=dt, voltage_solver=voltage_solver)
 
     voltages_300724 = jnp.asarray(
         [

@@ -2,14 +2,14 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Callable, Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
 from jaxley.modules.base import Module
-from jaxley.modules.branch import Branch, Compartment
-from jaxley.synapses import Synapse
+from jaxley.modules.branch import Branch
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     compute_children_and_parents,
@@ -19,13 +19,12 @@ from jaxley.utils.cell_utils import (
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
 )
-from jaxley.utils.misc_utils import cumsum_leading_zero
+from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
     remap_index_to_masked,
 )
-from jaxley.utils.swc import build_radiuses_from_xyzr, swc_to_jaxley
 
 
 class Cell(Module):
@@ -93,22 +92,22 @@ class Cell(Module):
         self.nbranches_per_cell = [len(branch_list)]
         self.comb_parents = jnp.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
-        self.cumsum_nbranches = np.asarray([0, len(branch_list)])
+        self._cumsum_nbranches = np.asarray([0, len(branch_list)])
 
         # Compartment structure. These arguments have to be rebuilt when `.set_ncomp()`
         # is run.
-        self.nseg_per_branch = np.asarray([branch.nseg for branch in branch_list])
-        self.nseg = int(np.max(self.nseg_per_branch))
-        self.cumsum_nseg = cumsum_leading_zero(self.nseg_per_branch)
-        self._internal_node_inds = np.arange(self.cumsum_nseg[-1])
+        self.ncomp_per_branch = np.asarray([branch.ncomp for branch in branch_list])
+        self.ncomp = int(np.max(self.ncomp_per_branch))
+        self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
+        self._internal_node_inds = np.arange(self.cumsum_ncomp[-1])
 
         # Build nodes. Has to be changed when `.set_ncomp()` is run.
         self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
-        self.nodes["global_comp_index"] = np.arange(self.cumsum_nseg[-1])
+        self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
-            np.arange(self.total_nbranches), self.nseg_per_branch
+            np.arange(self.total_nbranches), self.ncomp_per_branch
         ).tolist()
-        self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_nseg[-1]).tolist()
+        self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
         self._update_local_indices()
         self._init_view()
 
@@ -127,7 +126,7 @@ class Cell(Module):
         )
 
         # For morphology indexing.
-        self.par_inds, self.child_inds, self.child_belongs_to_branchpoint = (
+        self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
 
@@ -142,15 +141,15 @@ class Cell(Module):
         user will use. Therefore, we always run this function at `.__init__()`.
         """
         children_and_parents = compute_morphology_indices_in_levels(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.par_inds,
-            self.child_inds,
+            len(self._par_inds),
+            self._child_belongs_to_branchpoint,
+            self._par_inds,
+            self._child_inds,
         )
         branchpoint_group_inds = build_branchpoint_group_inds(
-            len(self.par_inds),
-            self.child_belongs_to_branchpoint,
-            self.cumsum_nseg[-1],
+            len(self._par_inds),
+            self._child_belongs_to_branchpoint,
+            self.cumsum_ncomp[-1],
         )
         parents = self.comb_parents
         children_inds = children_and_parents["children"]
@@ -158,30 +157,32 @@ class Cell(Module):
 
         levels = compute_levels(parents)
         children_in_level = compute_children_in_level(levels, children_inds)
-        parents_in_level = compute_parents_in_level(levels, self.par_inds, parents_inds)
-        levels_and_nseg = pd.DataFrame().from_dict(
+        parents_in_level = compute_parents_in_level(
+            levels, self._par_inds, parents_inds
+        )
+        levels_and_ncomp = pd.DataFrame().from_dict(
             {
                 "levels": levels,
-                "nsegs": self.nseg_per_branch,
+                "ncomps": self.ncomp_per_branch,
             }
         )
-        levels_and_nseg["max_nseg_in_level"] = levels_and_nseg.groupby("levels")[
-            "nsegs"
+        levels_and_ncomp["max_ncomp_in_level"] = levels_and_ncomp.groupby("levels")[
+            "ncomps"
         ].transform("max")
-        padded_cumsum_nseg = cumsum_leading_zero(
-            levels_and_nseg["max_nseg_in_level"].to_numpy()
+        padded_cumsum_ncomp = cumsum_leading_zero(
+            levels_and_ncomp["max_ncomp_in_level"].to_numpy()
         )
 
         # Generate mapping to deal with the masking which allows using the custom
-        # sparse solver to deal with different nseg per branch.
+        # sparse solver to deal with different ncomp per branch.
         remapped_node_indices = remap_index_to_masked(
             self._internal_node_inds,
             self.nodes,
-            padded_cumsum_nseg,
-            self.nseg_per_branch,
+            padded_cumsum_ncomp,
+            self.ncomp_per_branch,
         )
-        self.solve_indexer = JaxleySolveIndexer(
-            cumsum_nseg=padded_cumsum_nseg,
+        self._solve_indexer = JaxleySolveIndexer(
+            cumsum_ncomp=padded_cumsum_ncomp,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,
             parents_in_level=parents_in_level,
@@ -209,14 +210,14 @@ class Cell(Module):
                 pd.DataFrame()
                 .from_dict(
                     {
-                        "source": list(range(cumsum_nseg, nseg - 1 + cumsum_nseg))
-                        + list(range(1 + cumsum_nseg, nseg + cumsum_nseg)),
-                        "sink": list(range(1 + cumsum_nseg, nseg + cumsum_nseg))
-                        + list(range(cumsum_nseg, nseg - 1 + cumsum_nseg)),
+                        "source": list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp))
+                        + list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp)),
+                        "sink": list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp))
+                        + list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp)),
                     }
                 )
                 .astype(int)
-                for nseg, cumsum_nseg in zip(self.nseg_per_branch, self.cumsum_nseg)
+                for ncomp, cumsum_ncomp in zip(self.ncomp_per_branch, self.cumsum_ncomp)
             ]
         )
         self._comp_edges["type"] = 0
@@ -224,15 +225,15 @@ class Cell(Module):
         # Edges from branchpoints to compartments.
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
             {
-                "source": np.arange(len(self.par_inds)) + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self.par_inds + 1] - 1,
+                "source": np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1],
+                "sink": self.cumsum_ncomp[self._par_inds + 1] - 1,
                 "type": 1,
             }
         )
         branchpoint_to_child_edges = pd.DataFrame().from_dict(
             {
-                "source": self.child_belongs_to_branchpoint + self.cumsum_nseg[-1],
-                "sink": self.cumsum_nseg[self.child_inds],
+                "source": self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1],
+                "sink": self.cumsum_ncomp[self._child_inds],
                 "type": 2,
             }
         )
@@ -269,79 +270,3 @@ class Cell(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-
-def read_swc(
-    fname: str,
-    nseg: int,
-    max_branch_len: float = 300.0,
-    min_radius: Optional[float] = None,
-    assign_groups: bool = False,
-) -> Cell:
-    """Reads SWC file into a `jx.Cell`.
-
-    Jaxley assumes cylindrical compartments and therefore defines length and radius
-    for every compartment. The surface area is then 2*pi*r*length. For branches
-    consisting of a single traced point we assume for them to have area 4*pi*r*r.
-    Therefore, in these cases, we set lenght=2*r.
-
-    Args:
-        fname: Path to the swc file.
-        nseg: The number of compartments per branch.
-        max_branch_len: If a branch is longer than this value it is split into two
-            branches.
-        min_radius: If the radius of a reconstruction is below this value it is clipped.
-        assign_groups: If True, then the identity of reconstructed points in the SWC
-            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
-            `apical`, `custom`. See here:
-            http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-
-    Returns:
-        A `jx.Cell` object.
-    """
-    parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
-        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
-    )
-    nbranches = len(parents)
-
-    comp = Compartment()
-    branch = Branch([comp for _ in range(nseg)])
-    cell = Cell(
-        [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
-    )
-    # Also save the radius generating functions in case users post-hoc modify the number
-    # of compartments with `.set_ncomp()`.
-    cell._radius_generating_fns = radius_fns
-
-    lengths_each = np.repeat(pathlengths, nseg) / nseg
-    cell.set("length", lengths_each)
-
-    radiuses_each = build_radiuses_from_xyzr(
-        radius_fns,
-        range(len(parents)),
-        min_radius,
-        nseg,
-    )
-    cell.set("radius", radiuses_each)
-
-    # Description of SWC file format:
-    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-    ind_name_lookup = {
-        0: "undefined",
-        1: "soma",
-        2: "axon",
-        3: "basal",
-        4: "apical",
-        5: "custom",
-    }
-    types = np.asarray(types).astype(int)
-    if assign_groups:
-        for type_ind in np.unique(types):
-            if type_ind < 5.5:
-                name = ind_name_lookup[type_ind]
-            else:
-                name = f"custom{type_ind}"
-            indices = np.where(types == type_ind)[0].tolist()
-            if len(indices) > 0:
-                cell.branch(indices).add_to_group(name)
-    return cell

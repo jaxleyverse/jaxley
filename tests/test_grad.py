@@ -15,17 +15,19 @@ from jaxley.channels import HH
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])
-def test_grad_against_finite_diff_initial_state(key):
+def test_grad_against_finite_diff_initial_state(key, SimpleComp):
     def simulate():
         return jnp.sum(jx.integrate(comp))
 
     def simulate_with_params(params):
         return jnp.sum(jx.integrate(comp, params=params))
 
-    comp = jx.Compartment()
+    comp = SimpleComp(copy=True)
     comp.insert(HH())
     comp.record()
-    comp.stimulate(jx.step_current(0.1, 0.2, 0.1, 0.025, 5.0))
+    comp.stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
+    )
 
     val = 0.2 if key == "HH_m" else -70.0
     step_size = 0.01
@@ -50,17 +52,18 @@ def test_grad_against_finite_diff_initial_state(key):
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])
-def test_branch_grad_against_finite_diff_initial_state(key):
+def test_branch_grad_against_finite_diff_initial_state(key, SimpleBranch):
     def simulate():
         return jnp.sum(jx.integrate(branch))
 
     def simulate_with_params(params):
         return jnp.sum(jx.integrate(branch, params=params))
 
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = SimpleBranch(4)
     branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(jx.step_current(0.1, 0.2, 0.1, 0.025, 5.0))
+    branch.loc(0.0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
+    )
     branch.loc(0.0).insert(HH())
 
     val = 0.2 if key == "HH_m" else -70.0

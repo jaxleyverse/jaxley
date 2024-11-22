@@ -3,6 +3,9 @@
   <img src="logo.png?raw=true" width="360">
 </p>
 
+> :warning: **The official documentation for Jaxley has moved to [jaxley.readthedocs.io](https://jaxley.readthedocs.io/en/latest/)**. 
+> The website you are currently on will be taken down in the future.
+
 `Jaxley` is a differentiable simulator for biophysical neuron models in [JAX](https://github.com/google/jax). Its key features are:
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  

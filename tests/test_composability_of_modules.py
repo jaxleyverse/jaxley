@@ -15,8 +15,9 @@ from jaxley.channels import HH
 def test_compose_branch():
     """Test inserting to comp and composing to branch equals inserting to branch."""
     dt = 0.025
-    t_max = 3.0
-    current = jx.step_current(1.0, 1.0, 0.1, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
 
     comp1 = jx.Compartment()
     comp1.insert(HH())
@@ -26,7 +27,7 @@ def test_compose_branch():
     branch1.loc(0.0).stimulate(current)
 
     comp = jx.Compartment()
-    branch2 = jx.Branch(comp, nseg=2)
+    branch2 = jx.Branch(comp, ncomp=2)
     branch2.loc(0.0).insert(HH())
     branch2.loc(0.0).record()
     branch2.loc(0.0).stimulate(current)
@@ -39,21 +40,22 @@ def test_compose_branch():
 
 def test_compose_cell():
     """Test inserting to branch and composing to cell equals inserting to cell."""
-    nseg_per_branch = 4
+    ncomp_per_branch = 4
     dt = 0.025
-    t_max = 3.0
-    current = jx.step_current(1.0, 1.0, 0.1, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
 
     comp = jx.Compartment()
 
-    branch1 = jx.Branch(comp, nseg_per_branch)
+    branch1 = jx.Branch(comp, ncomp_per_branch)
     branch1.insert(HH())
-    branch2 = jx.Branch(comp, nseg_per_branch)
+    branch2 = jx.Branch(comp, ncomp_per_branch)
     cell1 = jx.Cell([branch1, branch2], parents=[-1, 0])
     cell1.branch(0).loc(0.0).record()
     cell1.branch(0).loc(0.0).stimulate(current)
 
-    branch = jx.Branch(comp, nseg_per_branch)
+    branch = jx.Branch(comp, ncomp_per_branch)
     cell2 = jx.Cell(branch, parents=[-1, 0])
     cell2.branch(0).insert(HH())
     cell2.branch(0).loc(0.0).record()
@@ -67,13 +69,14 @@ def test_compose_cell():
 
 def test_compose_net():
     """Test inserting to cell and composing to net equals inserting to net."""
-    nseg_per_branch = 4
+    ncomp_per_branch = 4
     dt = 0.025
-    t_max = 3.0
-    current = jx.step_current(1.0, 1.0, 0.1, dt, t_max)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
 
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg_per_branch)
+    branch = jx.Branch(comp, ncomp_per_branch)
 
     cell1 = jx.Cell(branch, parents=[-1, 0, 0])
     cell1.insert(HH())

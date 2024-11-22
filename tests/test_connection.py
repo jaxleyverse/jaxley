@@ -21,12 +21,11 @@ from jaxley.connect import (
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
-def test_connect():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(8)])
-    cell = jx.Cell([branch for _ in range(4)], parents=np.array([-1, 0, 0, 0]))
-    net1 = jx.Network([cell for _ in range(4)])
-    net2 = jx.Network([cell for _ in range(4)])
+def test_connect(SimpleBranch, SimpleCell, SimpleNet):
+    branch = SimpleBranch(4)
+    cell = SimpleCell(3, 4)
+    net1 = SimpleNet(4, 3, 8)
+    net2 = SimpleNet(4, 3, 8)
 
     cell1_net1 = net1[0, 0, 0]
     cell2_net1 = net1[1, 0, 0]
@@ -52,17 +51,17 @@ def test_connect():
 
     # test after all connections are made, to catch "overwritten" connections
     get_comps = lambda locs: [
-        local_index_of_loc(loc, 0, net2.nseg_per_branch) for loc in locs
+        local_index_of_loc(loc, 0, net2.ncomp_per_branch) for loc in locs
     ]
 
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
     nodes = net2.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[first_set_edges[cols].to_numpy().flatten()]
     branch_inds = comp_inds["global_branch_index"].to_numpy().reshape(-1, 2)
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
-    assert np.all(branch_inds == (4, 8))
+    assert np.all(branch_inds == (3, 6))
     assert (cell_inds == (1, 2)).all()
     assert (
         get_comps(first_set_edges["pre_locs"])
@@ -85,7 +84,7 @@ def test_fully_connect():
     fully_connect(net[8:12], net[12:16], TestSynapse())
 
     assert all(
-        net.edges.global_post_comp_index
+        net.edges.post_global_comp_index
         == [
             96,
             120,
@@ -123,11 +122,8 @@ def test_fully_connect():
     )
 
 
-def test_sparse_connect():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(4)])
-    cell = jx.Cell([branch for _ in range(3)], parents=np.array([-1, 0, 0]))
-    net = jx.Network([cell for _ in range(4 * 4)])
+def test_sparse_connect(SimpleNet):
+    net = SimpleNet(4 * 4, 4, 4)
 
     _ = np.random.seed(0)
     for i in range(4):
@@ -163,10 +159,8 @@ def test_sparse_connect():
     )
 
 
-def test_connectivity_matrix_connect():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(8)])
-    cell = jx.Cell([branch for _ in range(3)], parents=np.array([-1, 0, 0]))
+def test_connectivity_matrix_connect(SimpleNet):
+    net = SimpleNet(4 * 4, 3, 8)
 
     _ = np.random.seed(0)
     n_by_n_adjacency_matrix = np.array(
@@ -175,13 +169,12 @@ def test_connectivity_matrix_connect():
     incides_of_connected_cells = np.stack(np.where(n_by_n_adjacency_matrix)).T
     incides_of_connected_cells[:, 1] += 4
 
-    net = jx.Network([cell for _ in range(4 * 4)])
     connectivity_matrix_connect(
         net[:4], net[4:8], TestSynapse(), n_by_n_adjacency_matrix
     )
     assert len(net.edges.index) == 4
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
@@ -191,7 +184,7 @@ def test_connectivity_matrix_connect():
     )
     incides_of_connected_cells = np.stack(np.where(m_by_n_adjacency_matrix)).T
 
-    net = jx.Network([cell for _ in range(4 * 4)])
+    net = SimpleNet(4 * 4, 3, 8)
     with pytest.raises(AssertionError):
         connectivity_matrix_connect(
             net[:4], net[:4], TestSynapse(), m_by_n_adjacency_matrix
@@ -202,7 +195,7 @@ def test_connectivity_matrix_connect():
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)

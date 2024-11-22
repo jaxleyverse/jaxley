@@ -152,7 +152,7 @@ def test_integration_with_renamed_channels():
     standard_hh = HH()
 
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = jx.Branch(comp, ncomp=4)
 
     branch.loc(0.0).insert(standard_hh)
     branch.insert(neuron_hh)
@@ -164,15 +164,14 @@ def test_integration_with_renamed_channels():
     assert np.invert(np.any(np.isnan(v)))
 
 
-def test_init_states():
+@pytest.mark.slow
+def test_init_states(SimpleCell):
     """Functional test for `init_states()`.
 
     Checks whether, if everything is initialized in its steady state, the voltage
     after 10ms is almost exactly the same as after 0ms.
     """
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 4)
-    cell = jx.Cell(branch, [-1, 0])
+    cell = SimpleCell(2, 4)
     cell.branch(0).loc(0.0).record()
 
     cell.branch(0).insert(Na())
@@ -257,7 +256,7 @@ class KCA11(Channel):
         return m_inf, tau_m
 
 
-def test_init_states_complex_channel():
+def test_init_states_complex_channel(SimpleCell):
     """Test for `init_states()` with a more complicated channel model.
 
     The channel model used for this test uses the `states` in `init_state` and it also
@@ -265,9 +264,7 @@ def test_init_states_complex_channel():
     an issue I had with Jaxley in v0.2.0 (fixed in v0.2.1).
     """
     ## Create cell
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=1)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
+    cell = SimpleCell(3, 1)
 
     # CA channels.
     cell.branch([0, 1]).insert(CaNernstReversal())
@@ -276,14 +273,16 @@ def test_init_states_complex_channel():
 
     cell.init_states()
 
-    current = jx.step_current(1.0, 1.0, 0.1, 0.025, 3.0)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
     cell.branch(2).comp(0).stimulate(current)
     cell.branch(2).comp(0).record()
     voltages = jx.integrate(cell)
     assert np.invert(np.any(np.isnan(voltages))), "NaN voltage found"
 
 
-def test_multiple_channel_currents():
+def test_multiple_channel_currents(SimpleCell):
     """Test whether all channels can"""
 
     class User(Channel):
@@ -333,11 +332,11 @@ def test_multiple_channel_currents():
             return 0.01 * jnp.ones_like(v)
 
     dt = 0.025  # ms
-    t_max = 10.0  # ms
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, 1)
-    cell = jx.Cell(branch, parents=[-1])
-    cell.branch(0).loc(0.0).stimulate(jx.step_current(1.0, 2.0, 0.1, dt, t_max))
+    t_max = 5.0  # ms
+    cell = SimpleCell(1, 1)
+    cell.branch(0).loc(0.0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
+    )
 
     cell.insert(User())
     cell.insert(Dummy1())
@@ -349,3 +348,63 @@ def test_multiple_channel_currents():
     num_channels = 2
     target = (t_max // dt + 2) * 0.001 * 0.01 * num_channels
     assert np.abs(target - s[0, -1]) < 1e-8
+
+
+def test_delete_channel(SimpleBranch):
+    # test complete removal of a channel from a module
+    branch1 = SimpleBranch(ncomp=3)
+    branch1.comp(0).insert(K())
+    branch1.delete_channel(K())
+
+    branch2 = SimpleBranch(ncomp=3)
+    branch2.comp(0).insert(K())
+    branch2.comp(0).delete_channel(K())
+
+    branch3 = SimpleBranch(ncomp=3)
+    branch3.insert(K())
+    branch3.delete_channel(K())
+
+    def channel_present(view, channel, partial=False):
+        states_and_params = list(channel.channel_states.keys()) + list(
+            channel.channel_params.keys()
+        )
+        # none of the states or params should be in nodes
+        cols = view.nodes.columns.to_list()
+        channel_cols = [
+            col
+            for col in cols
+            if col.startswith(channel._name) and col != channel._name
+        ]
+        diff = set(channel_cols).difference(set(states_and_params))
+        has_params_or_states = len(diff) > 0
+        has_channel_col = channel._name in view.nodes.columns
+        has_channel = channel._name in [c._name for c in view.channels]
+        has_mem_current = channel.current_name in view.membrane_current_names
+        if partial:
+            all_nans = (
+                not view.nodes[channel_cols].isna().all().all()
+                & ~view.nodes[channel._name].all()
+            )
+            return has_channel or has_mem_current or all_nans
+        return has_params_or_states or has_channel_col or has_channel or has_mem_current
+
+    for branch in [branch1, branch2, branch3]:
+        assert len(branch.channels) == 0
+        assert not channel_present(branch, K())
+
+    # test correct channels are removed only in the viewed part of the module
+    branch4 = SimpleBranch(ncomp=3)
+    branch4.insert(HH())
+    branch4.comp(0).insert(K())
+    branch4.comp([1, 2]).insert(Leak())
+
+    branch4.comp(1).delete_channel(Leak())
+    # assert K in comp 0 and Leak still present in branch
+    assert channel_present(branch4.comp(0), K())
+    assert channel_present(branch4.comp(2), Leak(), partial=True)
+    assert not channel_present(branch4.comp(1), Leak(), partial=True)
+    assert channel_present(branch4, Leak())
+
+    branch4.comp(2).delete_channel(Leak())
+    # assert no more Leak
+    assert not channel_present(branch4, Leak())
