@@ -20,8 +20,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    env:
-      username: ${{ github.event.pull_request.user.login }} # ${{ github.actor }}
     
     steps:
     - name: Get PR branch
@@ -48,8 +46,8 @@ jobs:
     - name: Update baseline
       if: github.event.pull_request.base.ref == 'main'
       run: |
-        git config --global user.name '$username'
-        git config --global user.email '$username@users.noreply.github.com'
+        git config --global user.name '${{ github.event.pull_request.user.login }}'
+        git config --global user.email '${{ github.event.pull_request.user.login }}@users.noreply.github.com'
         # Check if regression test results exist in main branch
         if [ -f 'git cat-file -e main:tests/regression_test_baselines.json' ]; then
           git checkout main tests/regression_test_baselines.json
@@ -60,7 +58,7 @@ jobs:
 
     - name: Add Baseline update report to PR comment
       uses: actions/github-script@v7
-      if: github.event.pull_request.base.ref == 'main' # might need `always()` to work
+      if: github.event.pull_request.base.ref == 'main' # might need `always()` to work for comments
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
