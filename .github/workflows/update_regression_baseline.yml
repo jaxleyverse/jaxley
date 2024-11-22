@@ -1,0 +1,90 @@
+# .github/workflows/update_regression_tests.yml
+
+# for details on triggering a workflow from a comment, see:
+# https://dev.to/zirkelc/trigger-github-workflow-for-comment-on-pull-request-45l2
+name: Update Regression Baseline
+
+on:
+  issue_comment: # trigger from comment; event runs on the default branch
+    types: [created]
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  update_regression_tests:
+    name: update_regression_tests
+    runs-on: ubuntu-20.04
+    # Trigger from a comment
+    # if: github.event.issue.pull_request && contains(github.event.comment.body, '/update_baseline')
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      username: ${{ github.event.pull_request.user.login }} # ${{ github.actor }}
+    
+    steps:
+    - name: Get PR branch
+      uses: xt0rted/pull-request-comment-branch@v1
+      id: comment-branch
+
+    - name: Checkout PR branch
+      uses: actions/checkout@v3
+      with:
+        # ref: ${{ steps.comment-branch.outputs.head_sha }} # using head_sha vs. head_ref makes this work for forks
+        lfs: true
+        fetch-depth: 0 # This ensures we can checkout main branch too
+    
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        architecture: 'x64'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+       
+    - name: Update baseline
+      if: github.event.pull_request.base.ref == 'main'
+      run: |
+        git config --global user.name '$username'
+        git config --global user.email '$username@users.noreply.github.com'
+        # Check if regression test results exist in main branch
+        if [ -f 'git cat-file -e main:tests/regression_test_baselines.json' ]; then
+          git checkout main tests/regression_test_baselines.json
+        else
+          echo "No regression test results found in main branch"
+        fi
+        NEW_BASELINE=1 pytest -m regression
+
+    - name: Add Baseline update report to PR comment
+      uses: actions/github-script@v7
+      if: github.event.pull_request.base.ref == 'main' # might need `always()` to work
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const fs = require('fs');
+          const TestReport = fs.readFileSync('tests/regression_test_report.txt', 'utf8');
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## New Baselines \n\`\`\`\n${TestReport}\n\`\`\``
+          });
+                
+    - name: Commit and push
+      if: github.event.pull_request.base.ref == 'main'
+      run: |
+        git add -f tests/regression_test_baselines.json # since it's in .gitignore
+        git commit -m "Update regression test baselines"
+        git push origin HEAD:${{ github.head_ref }}
+    
+    # Needed when workflow is triggered from a comment
+    # - name: Commit and push
+    #   if: github.event.pull_request.base.ref == 'main'
+    #   run: |
+    #     git add -f tests/regression_test_baselines.json # since it's in .gitignore
+    #     git commit -m "Update regression test baselines"
+    #     git push origin HEAD:${{ steps.comment-branch.outputs.head_sha }}

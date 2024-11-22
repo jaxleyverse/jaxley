@@ -1,12 +1,12 @@
 name: Tests
 
 on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-      - main
+#   push:
+#     branches:
+#     - main
+#   pull_request:
+#     branches:
+#       - main
 
 jobs:
   build:
@@ -39,4 +39,4 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest tests/ --cov=jaxley --cov-report=xml
+        pytest tests/ -m "not regression" --cov=jaxley --cov-report=xml
