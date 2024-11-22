@@ -2,9 +2,9 @@
 name: Regression Tests
 
 on:
-  # pull_request:
-  #   branches:
-  #     - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   regression_tests:

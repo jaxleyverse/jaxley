@@ -28,6 +28,17 @@ from jaxley.synapses import IonotropicSynapse
 #   t3 = time.time()
 #   return {"sth": t2-t1, sth_else: t3-t2}
 
+# The test should return a dictionary with the runtime of each part of the test.
+# This way the runtimes of different parts of the code can be compared to each other.
+
+# The @compare_to_baseline decorator will compare the runtime of the test to the baseline
+# and raise an assertion error if the runtime is significanlty slower than the baseline.
+# The decorator will also save the runtime of the test to a database, which will be used
+# to generate a report comparing the runtime of the tests to the baseline. The database
+# takes into account the input_kwargs of the test, the name of the test and the runtimes
+# of each part.
+
+
 def load_json(fpath):
     dct = {}
     if os.path.exists(fpath):
@@ -45,7 +56,7 @@ fpath_results = os.path.join(dirname, "regression_test_results.json")
 tolerance = 0.2
 
 baselines = load_json(fpath_baselines)
-with open(fpath_results, "w") as f: # clear previous results
+with open(fpath_results, "w") as f:  # clear previous results
     f.write("{}")
 
 
@@ -130,7 +141,9 @@ class compare_to_baseline:
                 runs.append(runtimes)
             runtimes = {k: np.mean([d[k] for d in runs]) for k in runs[0]}
 
-            append_to_json(fpath_results, header["test_name"], header["input_kwargs"], runtimes)
+            append_to_json(
+                fpath_results, header["test_name"], header["input_kwargs"], runtimes
+            )
 
             if not NEW_BASELINE:
                 assert key in baselines, f"No basline found for {header}"

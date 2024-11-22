@@ -7,16 +7,16 @@ name: Update Regression Baseline
 on:
   issue_comment: # trigger from comment; event runs on the default branch
     types: [created]
-  pull_request:
-    branches:
-      - main
+  # pull_request:
+  #   branches:
+  #     - main
 
 jobs:
   update_regression_tests:
     name: update_regression_tests
     runs-on: ubuntu-20.04
     # Trigger from a comment
-    # if: github.event.issue.pull_request && contains(github.event.comment.body, '/update_baseline')
+    # if: github.event.issue.pull_request && contains(github.event.comment.body, '/update_regression_baselines')
     permissions:
       contents: write
       pull-requests: write

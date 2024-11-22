@@ -210,7 +210,7 @@ def swc2jaxley():
 def print_session_report(request):
     """Cleanup a testing directory once we are finished."""
     NEW_BASELINE = os.environ["NEW_BASELINE"] if "NEW_BASELINE" in os.environ else 0
-    
+
     dirname = os.path.dirname(__file__)
     baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
     results_fname = os.path.join(dirname, "regression_test_results.json")
