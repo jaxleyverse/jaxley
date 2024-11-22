@@ -207,13 +207,17 @@ def swc2jaxley():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def print_session_report(request):
+def print_session_report(request, pytestconfig):
     """Cleanup a testing directory once we are finished."""
     NEW_BASELINE = os.environ["NEW_BASELINE"] if "NEW_BASELINE" in os.environ else 0
 
     dirname = os.path.dirname(__file__)
     baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
     results_fname = os.path.join(dirname, "regression_test_results.json")
+
+    collected_regression_tests = [
+        item for item in request.session.items if item.get_closest_marker("regression")
+    ]
 
     def update_baseline():
         if NEW_BASELINE:
@@ -235,9 +239,9 @@ def print_session_report(request):
         # capturing the output and without specifying the "-s" flag
         capmanager = request.config.pluginmanager.getplugin("capturemanager")
         with capmanager.global_and_fixture_disabled():
-
             print("\n\n\nRegression Test Report\n----------------------\n")
             print(report)
 
-    request.addfinalizer(update_baseline)
-    request.addfinalizer(print_regression_report)
+    if len(collected_regression_tests) > 0:
+        request.addfinalizer(update_baseline)
+        request.addfinalizer(print_regression_report)
