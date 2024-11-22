@@ -42,7 +42,7 @@ Getting started
    plt.plot(v.T)  # Plot voltage trace.
 
 
-If you want to learn more, check out our [Tutorials](https://jaxley.readthedocs.io/en/latest/tutorials.html), [FAQ](https://jaxley.readthedocs.io/en/latest/faq.html), or [Advanced tutorials](https://jaxley.readthedocs.io/en/latest/advanced_tutorials.html).
+If you want to learn more, check out our `Tutorial on the basics of Jaxley <https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html>`_. For more resources, see the `FAQ <https://jaxley.readthedocs.io/en/latest/faq.html>`_ or `Advanced tutorials <https://jaxley.readthedocs.io/en/latest/advanced_tutorials.html>`_.
 
 
 Installation
