@@ -16,18 +16,19 @@ from jaxley.utils.misc_utils import cumsum_leading_zero
 
 def _split_into_branches_and_sort(
     content: np.ndarray,
-    max_branch_len: float,
+    max_branch_len: Optional[float],
     is_single_point_soma: bool,
     sort: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
     branches, types = _split_into_branches(content, is_single_point_soma)
-    branches, types = _split_long_branches(
-        branches,
-        types,
-        content,
-        max_branch_len,
-        is_single_point_soma=is_single_point_soma,
-    )
+    if max_branch_len is not None:
+        branches, types = _split_long_branches(
+            branches,
+            types,
+            content,
+            max_branch_len,
+            is_single_point_soma=is_single_point_soma,
+        )
 
     if sort:
         first_val = np.asarray([b[0] for b in branches])
