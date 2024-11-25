@@ -1,10 +1,12 @@
 # How can I implement rate-based neuron models in Jaxley?
 
 In this FAQ, we explain how one can implement rate-based neuron models of the form:
+
 $$
 \tau \frac{dV}{dt} = -V + \sum w_{\text{syn}} \phi(V_{\text{pre}})
 $$
-Here, $\phi$ is a nonlinearity such as a `TanH` or a `ReLU`.
+
+Here, $\phi$ is a nonlinearity such as a `tanh` or a `ReLU`.
 
 To implement this in `Jaxley`, we first have to set up a network consisting of 
 point-neurons:
