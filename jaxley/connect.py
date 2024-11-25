@@ -74,14 +74,10 @@ def fully_connect(
     num_pre = len(pre_cell_view._cells_in_view)
     num_post = len(post_cell_view._cells_in_view)
 
-    # Get the indices of the connections (from is the pre cell index)
-    from_idx = np.repeat(range(0, num_pre), num_post)
-
-    # Pre-synapse at the zero-eth branch and zero-eth compartment
-    global_pre_comp_indices = (
-        pre_cell_view.nodes.groupby("global_cell_index").first()["global_comp_index"]
-    ).to_numpy()
-    pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
+    # Get a view of the zeroeth compartment of each cell as the pre compartments
+    pre_comps = pre_cell_view.scope("local").branch(0).comp(0).nodes.copy()
+    # Repeat rows `num_post` times
+    pre_rows = pre_comps.loc[pre_comps.index.repeat(num_post)].reset_index(drop=True)
 
     if random_post_comp:
         global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
@@ -126,25 +122,23 @@ def sparse_connect(
     # connectivity matrix to save memory and time (smaller cut size saves memory,
     # larger saves time)
     cut_size = 100  # --> (100, 100) dim blocks
-    pre_cuts, pre_mod = divmod(num_pre, cut_size)
-    post_cuts, post_mod = divmod(num_post, cut_size)
-
-    x_inds = []
-    y_inds = []
-    for i in range(pre_cuts + min(1, pre_mod)):
-        for j in range(post_cuts + min(1, post_mod)):
+    pre_inds, post_inds = [], []
+    for i in range((num_pre + cut_size - 1) // cut_size):
+        for j in range((num_post + cut_size - 1) // cut_size):
             block = np.random.binomial(1, p, size=(cut_size, cut_size))
-            xb, yb = np.where(block)
-            xb += i * cut_size
-            yb += j * cut_size
-            x_inds.append(xb)
-            y_inds.append(yb)
-    all_inds = np.stack((np.concatenate(x_inds), np.concatenate(y_inds)), axis=1)
+            block_pre, block_post = np.where(block)
+            block_pre += i * cut_size  # block inds --> full adj mat inds
+            block_post += j * cut_size  # block inds --> full adj mat inds
+            pre_inds.append(block_pre)
+            post_inds.append(block_post)
+    pre_post_inds = np.stack(
+        (np.concatenate(pre_inds), np.concatenate(post_inds)), axis=1
+    )
     # Filter out connections where either pre or post index is out of range
-    all_inds = all_inds[(all_inds[:, 0] < num_pre) & (all_inds[:, 1] < num_post)]
-    from_idx = all_inds[:, 0]
-    to_idx = all_inds[:, 1]
-    del all_inds
+    pre_post_inds = pre_post_inds[
+        (pre_post_inds[:, 0] < num_pre) & (pre_post_inds[:, 1] < num_post)
+    ]
+    from_idx, to_idx = pre_post_inds[:, 0], pre_post_inds[:, 1]
 
     # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_comp_indices = (
