@@ -18,6 +18,19 @@ def sample_comp(cell_view: "View", num: int = 1, replace=True) -> "CompartmentVi
     return np.random.choice(cell_view._comps_in_view, num, replace=replace)
 
 
+def get_random_post_comps(post_cell_view: "View", num_post: int) -> "CompartmentView":
+    """Sample global compartment indices from all postsynaptic cells."""
+    global_post_comp_indices = (
+        post_cell_view.nodes.groupby("global_cell_index")
+        .sample(num_post, replace=True)
+        .index.to_numpy()
+    )
+    global_post_comp_indices = global_post_comp_indices.reshape(
+        (-1, num_post), order="F"
+    ).ravel()
+    return global_post_comp_indices
+
+
 def connect(
     pre: "View",
     post: "View",
@@ -61,33 +74,25 @@ def fully_connect(
     num_pre = len(pre_cell_view._cells_in_view)
     num_post = len(post_cell_view._cells_in_view)
 
-    # Get the indices of the connections, like it's a fully connected connectivity matrix
+    # Get the indices of the connections (from is the pre cell index)
     from_idx = np.repeat(range(0, num_pre), num_post)
-    to_idx = np.tile(
-        range(0, num_post), num_pre
-    )  # used only if random_post_comp is False
 
     # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_comp_indices = (
-        pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-    )  # setting scope ensure that this works indep of current scope
+        pre_cell_view.nodes.groupby("global_cell_index").first()["global_comp_index"]
+    ).to_numpy()
     pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
 
     if random_post_comp:
-        # Randomly sample the post-synaptic compartments
-        global_post_comp_indices = (
-            post_cell_view.nodes.groupby("global_cell_index")
-            .sample(num_pre, replace=True)
-            .index.to_numpy()
-        )
-        global_post_comp_indices = global_post_comp_indices.reshape(
-            (-1, num_pre), order="F"
-        ).ravel()
+        global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
     else:
         # Post-synapse also at the zero-eth branch and zero-eth compartment
+        to_idx = np.tile(range(0, num_post), num_pre)
         global_post_comp_indices = (
-            post_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-        )
+            post_cell_view.nodes.groupby("global_cell_index").first()[
+                "global_comp_index"
+            ]
+        ).to_numpy()
         global_post_comp_indices = global_post_comp_indices[to_idx]
     post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
 
@@ -117,31 +122,45 @@ def sparse_connect(
     num_pre = len(pre_cell_view._cells_in_view)
     num_post = len(post_cell_view._cells_in_view)
 
-    # Generate random cxns without duplicates --> respects p but memory intesive if extremely large n cells
-    connectivity_matrix = np.random.binomial(1, p, (num_pre, num_post))
-    from_idx, to_idx = np.where(connectivity_matrix)
+    # Generate random cxns via Bernoulli trials (no duplicates), done in blocks of the
+    # connectivity matrix to save memory and time (smaller cut size saves memory,
+    # larger saves time)
+    cut_size = 100  # --> (100, 100) dim blocks
+    pre_cuts, pre_mod = divmod(num_pre, cut_size)
+    post_cuts, post_mod = divmod(num_post, cut_size)
+
+    x_inds = []
+    y_inds = []
+    for i in range(pre_cuts + min(1, pre_mod)):
+        for j in range(post_cuts + min(1, post_mod)):
+            block = np.random.binomial(1, p, size=(cut_size, cut_size))
+            xb, yb = np.where(block)
+            xb += i * cut_size
+            yb += j * cut_size
+            x_inds.append(xb)
+            y_inds.append(yb)
+    all_inds = np.stack((np.concatenate(x_inds), np.concatenate(y_inds)), axis=1)
+    # Filter out connections where either pre or post index is out of range
+    all_inds = all_inds[(all_inds[:, 0] < num_pre) & (all_inds[:, 1] < num_post)]
+    from_idx = all_inds[:, 0]
+    to_idx = all_inds[:, 1]
+    del all_inds
 
     # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_comp_indices = (
-        pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-    )  # setting scope ensure that this works indep of current scope
+        pre_cell_view.nodes.groupby("global_cell_index").first()["global_comp_index"]
+    ).to_numpy()
     pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
 
     if random_post_comp:
-        # Randomly sample the post-synaptic compartments
-        global_post_comp_indices = (
-            post_cell_view.nodes.groupby("global_cell_index")
-            .sample(num_pre, replace=True)
-            .index.to_numpy()
-        )
-        global_post_comp_indices = global_post_comp_indices.reshape(
-            (-1, num_pre), order="F"
-        ).ravel()
+        global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
     else:
         # Post-synapse also at the zero-eth branch and zero-eth compartment
         global_post_comp_indices = (
-            post_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-        )
+            post_cell_view.nodes.groupby("global_cell_index").first()[
+                "global_comp_index"
+            ]
+        ).to_numpy()
     post_rows = post_cell_view.select(nodes=global_post_comp_indices[to_idx]).nodes
 
     if len(pre_rows) > 0:
@@ -183,24 +202,19 @@ def connectivity_matrix_connect(
 
     # Pre-synapse at the zero-eth branch and zero-eth compartment
     global_pre_comp_indices = (
-        pre_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-    )  # setting scope ensure that this works indep of current scope
+        pre_cell_view.nodes.groupby("global_cell_index").first()["global_comp_index"]
+    ).to_numpy()
     pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
 
     if random_post_comp:
-        global_post_comp_indices = (
-            post_cell_view.nodes.groupby("global_cell_index")
-            .sample(len(from_idx), replace=True)
-            .index.to_numpy()
-        )
-        global_post_comp_indices = global_post_comp_indices.reshape(
-            (-1, len(from_idx)), order="F"
-        ).ravel()
+        global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
     else:
         # Post-synapse also at the zero-eth branch and zero-eth compartment
         global_post_comp_indices = (
-            post_cell_view.scope("local").branch(0).comp(0).nodes.index.to_numpy()
-        )
+            post_cell_view.nodes.groupby("global_cell_index").first()[
+                "global_comp_index"
+            ]
+        ).to_numpy()
     post_rows = post_cell_view.select(nodes=global_post_comp_indices[to_idx]).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)

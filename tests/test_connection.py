@@ -132,30 +132,8 @@ def test_sparse_connect(SimpleNet):
     sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5)
 
     assert all(
-        net.edges.global_post_comp_index
-        == [
-            48,
-            60,
-            72,
-            84,
-            60,
-            84,
-            48,
-            72,
-            84,
-            48,
-            60,
-            156,
-            168,
-            180,
-            144,
-            156,
-            180,
-            156,
-            180,
-            144,
-            180,
-        ]
+        net.edges.post_global_comp_index
+        == [64, 80, 96, 112, 64, 96, 64, 80, 112, 208, 224, 240, 192, 208, 240, 208]
     )
 
 
@@ -201,13 +179,13 @@ def test_connectivity_matrix_connect(SimpleNet):
     assert np.all(cell_inds == incides_of_connected_cells)
 
     # Test with different cell views
-    net = jx.Network([cell for _ in range(4 * 4)])
+    net = SimpleNet(4 * 4, 3, 8)
     connectivity_matrix_connect(
         net[1:4], net[2:6], TestSynapse(), m_by_n_adjacency_matrix
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     # adjust the cell indices based on the views passed
@@ -225,7 +203,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["global_pre_comp_index", "global_post_comp_index"]
+    cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == incides_of_connected_cells)
