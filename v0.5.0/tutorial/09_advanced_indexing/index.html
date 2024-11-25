@@ -1,0 +1,1306 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/v0.5.0/tutorial/09_advanced_indexing/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.46">
+    
+    
+      
+        <title>Customizing synaptic parameters - Jaxley</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#customizing-synaptic-parameters" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Jaxley" class="md-header__button md-logo" aria-label="Jaxley" data-md-component="logo">
+      
+  <img src="../../logo_white.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Jaxley
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Customizing synaptic parameters
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="http://github.com/jaxleyverse/jaxley" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaxleyverse/jaxley
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Jaxley" class="md-nav__button md-logo" aria-label="Jaxley" data-md-component="logo">
+      
+  <img src="../../logo_white.png" alt="logo">
+
+    </a>
+    Jaxley
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="http://github.com/jaxleyverse/jaxley" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaxleyverse/jaxley
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_morph_neurons/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_small_network/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Run a network simulation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_setting_parameters.md" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Set parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_jit_and_vmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Accelerate simulations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_channel_and_synapse_models/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Define your own channels
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_groups/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Define groups
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_gradient_descent/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Training models
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contribute/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code_of_conduct/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Code of Conduct
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/modules/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Simulation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/mechanisms/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mechansims
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/connect/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Connecting Cells
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/optimize/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Optimization
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/utils/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utils
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../credits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Credits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#preface-building-the-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      Preface: Building the network
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-individual-synapse-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting individual synapse parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-1-setting-synaptic-parameters-which-connect-particular-neurons" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1: Setting synaptic parameters which connect particular neurons
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-2-setting-parameters-given-pre-and-post-synaptic-cell-indices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2: Setting parameters given pre- and post-synaptic cell indices
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-3-applying-this-strategy-to-cell-level-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3: Applying this strategy to cell level parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-4-flexibly-setting-parameters-based-on-their-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 4: Flexibly setting parameters based on their groups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-5-setting-synaptic-parameters-based-on-properties-of-the-presynaptic-cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 5: Setting synaptic parameters based on properties of the presynaptic cell
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="customizing-synaptic-parameters">Customizing synaptic parameters<a class="headerlink" href="#customizing-synaptic-parameters" title="Permanent link">&para;</a></h1>
+<p>In this tutorial, you will learn how to:</p>
+<ul>
+<li>use the <code>select()</code> method to fully customize network simulations with <code>Jaxley</code>.  </li>
+<li>use the <code>copy_node_property_to_edges()</code> method to flexibly modify synapses.  </li>
+</ul>
+<p>Here is a code snippet which you will learn to understand in this tutorial:
+<div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># See tutorial on Basics of Jaxley.</span>
+
+<span class="c1"># Set synaptic conductance of the synapse with index 0 and 1.</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;Ionotropic_gS&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+
+<span class="c1"># Set synaptic conductance of all synapses that have cells 3 or 4 as presynaptic neuron.</span>
+<span class="n">net</span><span class="o">.</span><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;pre_global_cell_index in [3, 4]&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;Ionotropic_gS&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+
+<span class="c1"># Set synaptic conductance of all synapses that</span>
+<span class="c1"># 1) have cells 2 or 3 as presynaptic neuron and</span>
+<span class="c1"># 2) has cell 5 as postsynaptic neuron</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;pre_global_cell_index in [2, 3]&quot;</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;post_global_cell_index == 5&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;Ionotropic_gS&quot;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span>
+</code></pre></div></p>
+<p>In a <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">previous tutorial</a> you learned how to set parameters of a <code>jx.Network</code>. In that tutorial, we briefly mentioned the <code>select()</code> method which allowed to set individual synapses to particular values. In this tutorial, we will go into detail in how you can fully customize your <code>Jaxley</code> simulation.</p>
+<p>Let&rsquo;s go!</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
+<span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
+<span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
+<span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
+</code></pre></div>
+<h3 id="preface-building-the-network">Preface: Building the network<a class="headerlink" href="#preface-building-the-network" title="Permanent link">&para;</a></h3>
+<p>We first build a network consisting of six neurons, in the same way as we showed in the previous tutorials:</p>
+<div class="highlight"><pre><span></span><code><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.025</span>
+<span class="n">t_max</span> <span class="o">=</span> <span class="mf">10.0</span>
+
+<span class="n">comp</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Compartment</span><span class="p">()</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Branch</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">nseg</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
+<span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+</code></pre></div>
+<h3 id="setting-individual-synapse-parameters">Setting individual synapse parameters<a class="headerlink" href="#setting-individual-synapse-parameters" title="Permanent link">&para;</a></h3>
+<p>As always, you can use the <code>.edges</code> table to inspect synaptic parameters of the network:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+</code></pre></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>global_edge_index</th>
+      <th>pre_global_comp_index</th>
+      <th>post_global_comp_index</th>
+      <th>type</th>
+      <th>type_ind</th>
+      <th>pre_locs</th>
+      <th>post_locs</th>
+      <th>IonotropicSynapse_gS</th>
+      <th>IonotropicSynapse_e_syn</th>
+      <th>IonotropicSynapse_k_minus</th>
+      <th>IonotropicSynapse_s</th>
+      <th>controlled_by_param</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>13</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.75</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>0</td>
+      <td>19</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.75</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>0</td>
+      <td>20</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.25</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>4</td>
+      <td>12</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.25</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>4</td>
+      <td>16</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.25</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>4</td>
+      <td>21</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.75</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>8</td>
+      <td>13</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.75</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>8</td>
+      <td>17</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.75</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>8</td>
+      <td>8</td>
+      <td>21</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.75</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>This table has nine rows, each corresponding to one synapse. This makes sense because we fully connected three neurons (0, 1, 2) to three other neurons (3, 4, 5), giving a total of <code>3x3=9</code> synapses.</p>
+<p>You can modify parameters of individual synapses as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+</code></pre></div>
+<p>Above, we are modifying the synapses with indices <code>[3, 4, 5]</code> (i.e., the indices of the <code>net.edges</code> DataFrame). The resulting values are indeed changed:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">IonotropicSynapse_gS</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>0    0.0001
+1    0.0001
+2    0.0001
+3    0.2000
+4    0.2000
+5    0.2000
+6    0.0001
+7    0.0001
+8    0.0001
+Name: IonotropicSynapse_gS, dtype: float64
+</code></pre></div>
+
+<h3 id="example-1-setting-synaptic-parameters-which-connect-particular-neurons">Example 1: Setting synaptic parameters which connect particular neurons<a class="headerlink" href="#example-1-setting-synaptic-parameters-which-connect-particular-neurons" title="Permanent link">&para;</a></h3>
+<p>This is great, but setting synaptic parameters just by their index can be exhausting, in particular in very large networks. Instead, we would want to, for example, set the maximal conductance of all synapses that connect from cell 0 or 1 to any other neuron.</p>
+<p>In <code>Jaxley</code>, such customization can be achieved by filtering the <code>.edges</code> dataframe accordingly, as shown below:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
+<span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+
+<span class="n">net</span><span class="o">.</span><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;pre_global_cell_index in [0, 1]&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.23</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">IonotropicSynapse_gS</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>0    0.2300
+1    0.2300
+2    0.2300
+3    0.2300
+4    0.2300
+5    0.2300
+6    0.0001
+7    0.0001
+8    0.0001
+Name: IonotropicSynapse_gS, dtype: float64
+</code></pre></div>
+
+<p>Indeed, the first six synapses now have the value <code>0.23</code>! Let&rsquo;s look at the individual lines to understand how this worked:</p>
+<p>We want to set parameter by cell index. However, by default, the pre- or post-synaptic cell-indices are not listed in <code>net.edges</code>. We can add the cell index to the <code>.edges</code> dataframe by calling <code>.copy_node_property_to_edges()</code>:
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<p>After this, the pre- and post-synaptic cell indices are listed in <code>net.edges</code> as <code>pre_global_cell_index</code> and <code>post_global_cell_index</code>.</p>
+<p>Next, we take <code>.edges</code>, which is a <a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html">pandas DataFrame</a>:
+<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+</code></pre></div></p>
+<p>We then modify this DataFrame to only contain those rows where the global cell index is in 0 or 1:
+<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;pre_global_cell_index in [0, 1]&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<p>For the above step, you use any column of the DataFrame to filter it (you can see all columns with <code>df.columns</code>). Note that, while we used <code>.query()</code> here, you can really filter the pandas DataFrame however you want. For example, the <code>query</code> above is identical to <code>df = df[df["pre_global_cell_index"].isin([0, 1])]</code>.</p>
+<p>Finally, we use the <code>.select()</code> method, which returns a subset of the <code>Network</code> at the specified indices. This subset of the network can be modified with <code>.set()</code>:
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.23</span><span class="p">)</span>
+</code></pre></div></p>
+<h3 id="example-2-setting-parameters-given-pre-and-post-synaptic-cell-indices">Example 2: Setting parameters given pre- and post-synaptic cell indices<a class="headerlink" href="#example-2-setting-parameters-given-pre-and-post-synaptic-cell-indices" title="Permanent link">&para;</a></h3>
+<p>Say you want to select all synapses that have cells 1 or 2 as presynaptic neuron and cell 4 or 5 as postsynaptic neuron.</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
+<span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+</code></pre></div>
+<p>Just like before, we can simply use <code>.query()</code> as already shown above. However, this time, call <code>.query()</code> to twice to filter by pre- and post-synaptic cell indices:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;pre_global_cell_index in [1, 2]&quot;</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;post_global_cell_index in [4, 5]&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">IonotropicSynapse_gS</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>0    0.0001
+1    0.0001
+2    0.0001
+3    0.0001
+4    0.3000
+5    0.3000
+6    0.0001
+7    0.3000
+8    0.3000
+Name: IonotropicSynapse_gS, dtype: float64
+</code></pre></div>
+
+<h3 id="example-3-applying-this-strategy-to-cell-level-parameters">Example 3: Applying this strategy to cell level parameters<a class="headerlink" href="#example-3-applying-this-strategy-to-cell-level-parameters" title="Permanent link">&para;</a></h3>
+<p>You had previously seen that you can modify parameters with, e.g., <code>net.cell(0).set(...)</code>. However, if you need more flexibility than this, you can also use the above strategy to modify cell-level parameters:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
+<span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">nodes</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;global_cell_index in [0, 1]&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;radius&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="example-4-flexibly-setting-parameters-based-on-their-groups">Example 4: Flexibly setting parameters based on their <code>groups</code><a class="headerlink" href="#example-4-flexibly-setting-parameters-based-on-their-groups" title="Permanent link">&para;</a></h3>
+<p>If you are using groups, as shown in <a href="https://jaxley.readthedocs.io/en/latest/tutorials/06_groups.html">this tutorial</a>, then you can also use this for querying synapses. To demonstrate this, let&rsquo;s create a group of excitatory neurons (e.g., cells 0, 3, 5):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Redefine network.</span>
+<span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
+<span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+
+<span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span><span class="o">.</span><span class="n">add_to_group</span><span class="p">(</span><span class="s2">&quot;exc&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Now, say we want all synapses that start from these excitatory neurons. You can do this as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># First, we have to identify which cells are in the `exc` group.</span>
+<span class="n">indices_of_excitatory_cells</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>  <span class="c1"># [0, 3, 5]</span>
+
+<span class="c1"># Then we can proceed as before:</span>
+<span class="n">net</span><span class="o">.</span><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;pre_global_cell_index in </span><span class="si">{</span><span class="n">indices_of_excitatory_cells</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="example-5-setting-synaptic-parameters-based-on-properties-of-the-presynaptic-cell">Example 5: Setting synaptic parameters based on properties of the presynaptic cell<a class="headerlink" href="#example-5-setting-synaptic-parameters-based-on-properties-of-the-presynaptic-cell" title="Permanent link">&para;</a></h3>
+<p>Let&rsquo;s discuss one more example: Imagine we only want to modify those synapses whose presynaptic compartment has a sodium channel. Let&rsquo;s first add a sodium channel to some of the cells:</p>
+<div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
+<span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+
+<span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Na</span><span class="p">())</span>
+<span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Na</span><span class="p">())</span>
+</code></pre></div>
+<p>Now, let us query which cells have the desired synapses:</p>
+<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">nodes</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Na&quot;</span><span class="p">)</span>
+<span class="n">indices_of_sodium_compartments</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+</code></pre></div>
+<p><code>indices_of_sodium_compartments</code> lists all compartments which contained sodium:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="n">indices_of_sodium_compartments</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>[0, 11]
+</code></pre></div>
+
+<p>Then, we can proceed as always and filter for the global pre-synaptic <strong>compartment</strong> index:</p>
+<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">edges</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;pre_global_comp_index in </span><span class="si">{</span><span class="n">indices_of_sodium_compartments</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">edges</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;IonotropicSynapse_gS&quot;</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">IonotropicSynapse_gS</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>0    0.6000
+1    0.6000
+2    0.6000
+3    0.0001
+4    0.0001
+5    0.0001
+6    0.0001
+7    0.0001
+8    0.0001
+Name: IonotropicSynapse_gS, dtype: float64
+</code></pre></div>
+
+<p>Indeed, only synapses coming from the first neuron were modified (as its presynaptic compartment contained sodium), in contrast to synapses from neuron 2 (whose presynaptic compartment did not).</p>
+<h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
+<p>In this tutorial, you learned how to fully customize your <code>Jaxley</code> simulation. This works by querying rows from the <code>.edges</code> DataFrame.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      
+    
+  </body>
+</html>
