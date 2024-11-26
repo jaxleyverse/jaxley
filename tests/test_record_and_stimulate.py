@@ -81,7 +81,8 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     net.cell(1).branch(0).loc(0.0).record("v")
     net.TestSynapse.edge(0).record("TestSynapse_c")
     net.cell(1).branch(0).loc(0.0).record("HH_m")
-    net.IonotropicSynapse.edge(1).record("IonotropicSynapse_current")
+    net.cell(1).branch(0).loc(0.0).record("i_HH")
+    net.IonotropicSynapse.edge(1).record("i_IonotropicSynapse")
 
     recs = jx.integrate(net)
 

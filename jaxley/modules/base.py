@@ -2448,7 +2448,7 @@ class View(Module):
         )
 
         self.channels = self._channels_in_view(pointer)
-        self.membrane_current_names = [c._name for c in self.channels]
+        self.membrane_current_names = [c.current_name for c in self.channels]
         self.synapse_current_names = pointer.synapse_current_names
         self._set_trainables_in_view()  # run after synapses and channels
         self.num_trainable_params = (
@@ -2640,7 +2640,7 @@ class View(Module):
         viewed_synapses = []
         viewed_params = []
         viewed_states = []
-        if not pointer.synapses is None:
+        if pointer.synapses is not None:
             for syn in pointer.synapses:
                 if syn is not None:  # needed for recurive viewing
                     in_view = syn._name in self.synapse_names
