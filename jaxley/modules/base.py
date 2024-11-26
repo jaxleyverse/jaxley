@@ -2495,7 +2495,7 @@ class View(Module):
             ].unique()
             pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
             post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
-            possible_edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
+            possible_edges_in_view = base_edges.index.to_numpy()[(pre | post).flatten()]
             self._edges_in_view = np.intersect1d(
                 possible_edges_in_view, self._edges_in_view
             )
