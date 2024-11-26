@@ -1208,7 +1208,9 @@ class Module(ABC):
 
         Returns states seperated by comps and edges."""
         channel_states = [name for c in self.channels for name in c.channel_states]
-        synapse_states = [name for s in self.synapses for name in s.synapse_states]
+        synapse_states = [
+            name for s in self.synapses if s is not None for name in s.synapse_states
+        ]
         membrane_states = ["v", "i"] + self.membrane_current_names
         return (
             channel_states + membrane_states,
@@ -2493,9 +2495,8 @@ class View(Module):
             incl_comps = pointer.nodes.loc[
                 self._nodes_in_view, "global_comp_index"
             ].unique()
-            pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
             post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
-            possible_edges_in_view = base_edges.index.to_numpy()[(pre | post).flatten()]
+            possible_edges_in_view = base_edges.index.to_numpy()[(post).flatten()]
             self._edges_in_view = np.intersect1d(
                 possible_edges_in_view, self._edges_in_view
             )
