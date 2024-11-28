@@ -148,6 +148,7 @@ class Module(ABC):
         self.synapse_param_names = []
         self.synapse_state_names = []
         self.synapse_names = []
+        self.synapse_current_names: List[str] = []
 
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
@@ -1207,9 +1208,14 @@ class Module(ABC):
 
         Returns states seperated by comps and edges."""
         channel_states = [name for c in self.channels for name in c.channel_states]
-        synapse_states = [name for s in self.synapses for name in s.synapse_states]
+        synapse_states = [
+            name for s in self.synapses if s is not None for name in s.synapse_states
+        ]
         membrane_states = ["v", "i"] + self.membrane_current_names
-        return channel_states + membrane_states, synapse_states
+        return (
+            channel_states + membrane_states,
+            synapse_states + self.synapse_current_names,
+        )
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
@@ -2444,7 +2450,8 @@ class View(Module):
         )
 
         self.channels = self._channels_in_view(pointer)
-        self.membrane_current_names = [c._name for c in self.channels]
+        self.membrane_current_names = [c.current_name for c in self.channels]
+        self.synapse_current_names = pointer.synapse_current_names
         self._set_trainables_in_view()  # run after synapses and channels
         self.num_trainable_params = (
             np.sum([len(inds) for inds in self.indices_set_by_trainables])
@@ -2635,7 +2642,7 @@ class View(Module):
         viewed_synapses = []
         viewed_params = []
         viewed_states = []
-        if not pointer.synapses is None:
+        if pointer.synapses is not None:
             for syn in pointer.synapses:
                 if syn is not None:  # needed for recurive viewing
                     in_view = syn._name in self.synapse_names

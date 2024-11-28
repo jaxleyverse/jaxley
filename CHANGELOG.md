@@ -1,3 +1,13 @@
+# 0.6.0
+
+### New Features
+
+- Add ability to record synaptic currents (#523, @ntolley). Recordings can be turned on with
+```python
+net.record("i_IonotropicSynapse")
+```
+
+
 # 0.5.0
 
 ### API changes

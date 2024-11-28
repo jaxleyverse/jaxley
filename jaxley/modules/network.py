@@ -379,7 +379,7 @@ class Network(Module):
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
-            states[f"{synapse_type._name}_current"] = synapse_currents[0]
+            states[f"i_{synapse_type._name}"] = synapse_currents[0]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 
@@ -565,9 +565,11 @@ class Network(Module):
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name
+        synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
         if is_new:  # synapse is not known
             self._update_synapse_state_names(synapse_type)
+            self.base.synapse_current_names.append(synapse_current_name)
 
         index = len(self.base.edges)
         indices = [idx for idx in range(index, index + len(pre_nodes))]
