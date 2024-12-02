@@ -36,6 +36,20 @@ jobs:
       run: |
         isort -c jaxley tests
 
+    - name: Ensure that the changelog reflects the changes
+      run: |
+        # Ensure the main branch is up-to-date
+        git fetch origin main
+
+        # Check if CHANGELOG.md was updated
+        changed_files=$(git diff --name-only origin/main)
+        if echo "$changed_files" | grep -q 'CHANGELOG.md'; then
+          echo "CHANGELOG.md was updated"
+        else
+          echo "CHANGELOG.md was not updated"
+          exit 1
+        fi
+
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
