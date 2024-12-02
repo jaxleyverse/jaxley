@@ -47,6 +47,8 @@ class SigmoidTransform(Transform):
         x = (y - self.lower) / self.width
         x = -jnp.log((1.0 / x) - 1.0)
         return x
+    
+    print("something")
 
 
 class SoftplusTransform(Transform):
