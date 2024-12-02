@@ -84,10 +84,11 @@ jobs:
         fi
         NEW_BASELINE=1 pytest -m regression
         
-    # The following will not work if the PR is initiated from a fork. In this case
-    # we create a new PR to update the baseline (see below).
-    # Only run if baseline generation succeeded
+    # Pushing to the PR branch does not work if the PR is initiated from a fork. This is
+    # because the GITHUB_TOKEN has read-only access by default for workflows triggered by 
+    # fork PRs. Hence we have to create a new PR to update the baseline (see below).
     - name: Commit and push to PR branch (non-fork)
+      # Only run if baseline generation succeeded
       if: success() && steps.update-baseline.outcome == 'success' && !fromJson(steps.check-fork.outputs.result)
       run: |
         git add -f tests/regression_test_baselines.json # since it's in .gitignore
