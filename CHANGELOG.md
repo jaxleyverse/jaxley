@@ -7,7 +7,7 @@
 net.record("i_IonotropicSynapse")
 ```
 - Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
-  - Regression tests can be triggered by commenting on a PR.
+  - Regression tests can be triggered by commenting "/test_regression" on a PR.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
 
 - refactor plotting (#539, @jnsbck).
