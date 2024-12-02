@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.46">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
     
     
       
@@ -831,11 +831,11 @@
 <span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 </code></pre></div>
-<p>To work with <code>.swc</code> files, <code>Jaxley</code> implements a custom <code>.swc</code> reader. The reader traces the morphology and identifies all uninterrupted sections. These are then partitioned into branches, each of which will be approximated by a number of equally many compartments that can be simulated fully in parallel.</p>
+<p>To work with <code>.swc</code> files, <code>Jaxley</code> implements a custom <code>.swc</code> reader. The reader traces the morphology and identifies all uninterrupted sections. These uninterrupted sections are called <code>branches</code> in <code>Jaxley</code>. Each <code>branch</code> is then further partitioned into <code>compartments</code>.</p>
 <p>To demonstrate this, let&rsquo;s import an example morphology of a Layer 5 pyramidal cell and visualize it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># import swc file into jx.Cell object</span>
 <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
-<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>  <span class="c1"># Use four compartments per branch.</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>  <span class="c1"># Use eight compartments per branch.</span>
 
 <span class="c1"># print shape (num_branches, num_comps)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
