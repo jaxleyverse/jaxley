@@ -1,0 +1,39 @@
+# .github/workflows/regression_tests.yml
+name: Regression Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  regression_tests:
+    name: regression_tests
+    runs-on: ubuntu-20.04
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        lfs: true
+        fetch-depth: 0 # This ensures we can checkout main branch too
+    
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        architecture: 'x64'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+       
+    - name: Run benchmarks and compare to baseline
+      if: github.event.pull_request.base.ref == 'main'
+      run: |
+        # Check if regression test results exist in main branch
+        if [ -f 'git cat-file -e main:tests/regression_test_baselines.json' ]; then
+          git checkout main tests/regression_test_baselines.json
+        else
+          echo "No regression test results found in main branch"
+        fi
+        pytest -m regression

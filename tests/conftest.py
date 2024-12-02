@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+import json
 import os
 from copy import deepcopy
 from typing import Optional
@@ -9,6 +10,7 @@ import pytest
 
 import jaxley as jx
 from jaxley.synapses import IonotropicSynapse
+from tests.test_regression import generate_regression_report, load_json
 
 
 @pytest.fixture(scope="session")
@@ -202,3 +204,44 @@ def swc2jaxley():
 
     yield get_or_compute_swc2jaxley_params
     params = {}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def print_session_report(request, pytestconfig):
+    """Cleanup a testing directory once we are finished."""
+    NEW_BASELINE = os.environ["NEW_BASELINE"] if "NEW_BASELINE" in os.environ else 0
+
+    dirname = os.path.dirname(__file__)
+    baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
+    results_fname = os.path.join(dirname, "regression_test_results.json")
+
+    collected_regression_tests = [
+        item for item in request.session.items if item.get_closest_marker("regression")
+    ]
+
+    def update_baseline():
+        if NEW_BASELINE:
+            results = load_json(results_fname)
+            with open(baseline_fname, "w") as f:
+                json.dump(results, f, indent=2)
+            os.remove(results_fname)
+
+    def print_regression_report():
+        baselines = load_json(baseline_fname)
+        results = load_json(results_fname)
+
+        report = generate_regression_report(baselines, results)
+        # "No baselines found. Run `git checkout main;UPDATE_BASELINE=1 pytest -m regression; git checkout -`"
+        with open(dirname + "/regression_test_report.txt", "w") as f:
+            f.write(report)
+
+        # the following allows to print the report to the console despite pytest
+        # capturing the output and without specifying the "-s" flag
+        capmanager = request.config.pluginmanager.getplugin("capturemanager")
+        with capmanager.global_and_fixture_disabled():
+            print("\n\n\nRegression Test Report\n----------------------\n")
+            print(report)
+
+    if len(collected_regression_tests) > 0:
+        request.addfinalizer(update_baseline)
+        request.addfinalizer(print_regression_report)

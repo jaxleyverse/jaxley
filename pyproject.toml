@@ -69,6 +69,7 @@ dev = [
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (T > 10s)",
+    "regression: marks regression tests",
 ]
 
 [tool.isort]
