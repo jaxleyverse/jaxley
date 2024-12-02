@@ -1,1 +1,92 @@
-{}
+{
+  "ec3a4fad11d2bfb1bc5f8f10529cb06f2ff9919b377e9c0a3419c7f7f237f06e": {
+    "test_name": "test_runtime",
+    "input_kwargs": {
+      "num_cells": 1,
+      "artificial": false,
+      "connect": false,
+      "connection_prob": 0.0,
+      "voltage_solver": "jaxley.stone"
+    },
+    "runtimes": {
+      "build_time": 0.5469788710276285,
+      "compile_time": 18.719950834910076,
+      "run_time": 2.8165321350097656
+    }
+  },
+  "128cfe30d4ffb9c1abd9dc0fa25b0e86940437b3eb1d46584e21f2c780ed78e8": {
+    "test_name": "test_runtime",
+    "input_kwargs": {
+      "num_cells": 1,
+      "artificial": false,
+      "connect": false,
+      "connection_prob": 0.0,
+      "voltage_solver": "jax.sparse"
+    },
+    "runtimes": {
+      "build_time": 0.3167983690897624,
+      "compile_time": 3.1070560614267984,
+      "run_time": 2.4420499006907144
+    }
+  },
+  "45cb5fa937517154a8d7bd2ac6d4542ff66c7cd3f5199976706ae44134eec301": {
+    "test_name": "test_runtime",
+    "input_kwargs": {
+      "num_cells": 10,
+      "artificial": false,
+      "connect": true,
+      "connection_prob": 0.1,
+      "voltage_solver": "jaxley.stone"
+    },
+    "runtimes": {
+      "build_time": 1.6278504530588787,
+      "compile_time": 29.477131684621174,
+      "run_time": 19.02045528093974
+    }
+  },
+  "872ba2d409d18daf5e0e947953385c3d0967087ed122f72ba01990397429318e": {
+    "test_name": "test_runtime",
+    "input_kwargs": {
+      "num_cells": 10,
+      "artificial": false,
+      "connect": true,
+      "connection_prob": 0.1,
+      "voltage_solver": "jax.sparse"
+    },
+    "runtimes": {
+      "build_time": 1.2527097860972087,
+      "compile_time": 26.463435173034668,
+      "run_time": 25.086068153381348
+    }
+  },
+  "da2f14fe319cf40d2ec65fdde6f3e0c997ef803e637d1ae7d2f2846c2369dbb2": {
+    "test_name": "test_runtime",
+    "input_kwargs": {
+      "num_cells": 1000,
+      "artificial": true,
+      "connect": true,
+      "connection_prob": 0.001,
+      "voltage_solver": "jaxley.stone"
+    },
+    "runtimes": {
+      "build_time": 110.89498209953308,
+      "compile_time": 45.626126766204834,
+      "run_time": 41.24793847401937
+    }
+  },
+  "4a250131b8b31132e19d9f82ececa4d2dc26b0678326089f8a2c9de3696418fc": {
+    "test_name": "test_runtime",
+    "input_kwargs": {
+      "num_cells": 1000,
+      "artificial": true,
+      "connect": true,
+      "connection_prob": 0.001,
+      "voltage_solver": "jax.sparse"
+    },
+    "runtimes": {
+      "build_time": 108.67493462562561,
+      "compile_time": 60.997525453567505,
+      "run_time": 59.05851753552755
+    }
+  }
+}
