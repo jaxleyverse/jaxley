@@ -463,10 +463,13 @@ class Network(Module):
             fig = plt.figure(figsize=(3, 3))
             ax = fig.add_subplot(111) if len(dims) < 3 else plt.axes(projection="3d")
 
+        # detail="point" -> pos taken to be the mean of all traced points on the cell.
+        cell_to_point_xyz = lambda cell: np.mean(np.vstack(cell.xyzr)[:, :3], axis=0)
+
         dims_np = np.asarray(dims)
         if detail == "point":
             for cell in self.cells:
-                pos = np.mean(cell.xyzr[0], axis=0)[dims_np]
+                pos = cell_to_point_xyz(cell)[dims_np]
                 ax.scatter(*pos, color=color, **cell_plot_kwargs)
         elif detail == "full":
             ax = super().vis(
@@ -486,7 +489,7 @@ class Network(Module):
 
                 xyz_loc = branch_xyz
                 if detail == "point":
-                    xyz_loc = np.mean(self.cell(cell).xyzr[0], axis=0)
+                    xyz_loc = cell_to_point_xyz(self.cell(cell))
                 elif len(branch_xyz) == 2:
                     # If only start and end point of a branch are traced, perform a
                     # linear interpolation to get the synpase location.
