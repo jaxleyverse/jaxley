@@ -76,9 +76,9 @@ def generate_regression_report(base_results, new_results):
             status = ""
             if base_time is None:
                 status = "🆕"
-            elif new_time < base_time:
+            elif new_time <= base_time:
                 status = "🟢" if diff is not None and diff < -0.05 else "🟠"
-            elif new_time >= base_time:
+            elif new_time > base_time:
                 status = "🔴"
             else:
                 status = "❌"  # This should never happen.
@@ -104,8 +104,8 @@ def generate_unique_key(d):
 
 def compute_conf_bounds(X):
     df = len(X) - 1  # degrees of freedom = n-1
-    t_value = t_dist.ppf(CONFIDENCE, df)
-    return np.mean(X) + t_value * np.std(X, ddof=1)  # sample std
+    critical_value = t_dist.ppf(CONFIDENCE, df)
+    return np.mean(X) + critical_value * np.std(X, ddof=1)  # sample std
 
 
 def load_json(fpath):
