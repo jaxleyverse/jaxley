@@ -98,9 +98,8 @@ jobs:
         fi
         echo "✅ All checks passed"
 
-  # Regular Tests Job
   pytest:
-    name: Tests
+    name: Pytest
     runs-on: ubuntu-20.04
 
     steps:
@@ -123,11 +122,10 @@ jobs:
         pip install pytest pytest-cov
         pytest tests/ -m "not regression" --cov=jaxley --cov-report=xml
 
-  # Regression Tests Job
   regression_tests:
     name: Regression Tests
     runs-on: ubuntu-20.04
-    needs: pytest  # This ensures that regression tests only run if the pytest job is successful
+    needs: pytest  # ensure regression tests are only run if tests pass
 
     steps:
     - uses: actions/checkout@v3
