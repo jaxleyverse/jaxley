@@ -2116,10 +2116,11 @@ class Module(ABC):
             type: The type of plot. One of ["line", "scatter", "comp", "morph"].
             kwargs: Keyword arguments passed to the plotting function.
         """
+        res = 100 if "resolution" not in kwargs else kwargs.pop("resolution")
         if "comp" in type.lower():
-            return plot_comps(self, dims=dims, ax=ax, color=color, **kwargs)
+            return plot_comps(self, dims=dims, ax=ax, color=color, resolution=res, **kwargs)
         if "morph" in type.lower():
-            return plot_morph(self, dims=dims, ax=ax, color=color, **kwargs)
+            return plot_morph(self, dims=dims, ax=ax, color=color, resolution=res, **kwargs)
 
         assert not np.any(
             [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]

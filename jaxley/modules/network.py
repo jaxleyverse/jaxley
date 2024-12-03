@@ -485,6 +485,7 @@ class Network(Module):
                 cell = nodes.loc[comp, "global_cell_index"]
                 branch_xyz = self.xyzr[branch]
 
+                xyz_loc = branch_xyz
                 if detail == "point":
                     xyz_loc = np.mean(self.cell(cell).xyzr[0], axis=0)
                 elif len(branch_xyz) == 2:
