@@ -11,6 +11,7 @@ net.record("i_IonotropicSynapse")
   - Baselines are maintained in the main branch.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
   - If a PR introduces new baseline tests or reduces runtimes, then a new baseline can be created by commenting "/update_regression_baselines" on the PR.
+- add github action to check every PR edits `CHANGELOG.md` (#537, @jnsbck)
 
 - refactor plotting (#539, @jnsbck).
   - rm networkx dependency
