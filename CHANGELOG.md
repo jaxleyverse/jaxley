@@ -12,6 +12,15 @@ net.record("i_IonotropicSynapse")
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
   - If a PR introduces new baseline tests or reduces runtimes, then a new baseline can be created by commenting "/update_regression_baselines" on the PR.
 
+- refactor plotting (#539, @jnsbck).
+  - rm networkx dependency
+  - add `Network.arrange_in_layers`
+  - disentangle moving of cells and plotting in `Network.vis`. To get the same as `net.vis(layers=[3,3])`, one now has to do:
+```python
+net.arrange_in_layers([3,3])
+net.vis()
+```
+
 # 0.5.0
 
 ### API changes

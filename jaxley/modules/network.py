@@ -436,7 +436,7 @@ class Network(Module):
 
         Args:
             detail: Either of [point, full]. `point` visualizes every neuron in the
-                network as a dot (and it uses `networkx` to obtain cell positions).
+                network as a dot.
                 `full` plots the full morphology of every neuron. It requires that
                 `compute_xyz()` has been run and allows for indivual neurons to be
                 moved with `.move()`.
