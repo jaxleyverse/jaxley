@@ -4110,7 +4110,7 @@ the input points.</p>
 
 
 <h3 id="jaxley.utils.plot_utils.plot_comps" class="doc doc-heading">
-            <code class=" language-python"><span class="n">plot_comps</span><span class="p">(</span><span class="n">module_or_view</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">comp_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">true_comp_length</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">plot_comps</span><span class="p">(</span><span class="n">module_or_view</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">true_comp_length</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.plot_utils.plot_comps" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -4167,7 +4167,7 @@ i.e. [0,1] xy-plane or [0,1,2] for 3D.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>col</code>
+                <code>color</code>
             </td>
             <td>
                   <code>str</code>
@@ -4195,22 +4195,6 @@ i.e. [0,1] xy-plane or [0,1,2] for 3D.</p>
             </td>
             <td>
                   <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>comp_plot_kwargs</code>
-            </td>
-            <td>
-                  <code><span title="typing.Dict">Dict</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The plot kwargs for plt.fill.</p>
-              </div>
-            </td>
-            <td>
-                  <code>{}</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -4250,6 +4234,21 @@ Useful too have a simpler mesh for plotting.</p>
             </td>
             <td>
                   <code>100</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The plot kwargs for plt.fill.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
             </td>
           </tr>
       </tbody>
@@ -4370,11 +4369,11 @@ Useful too have a simpler mesh for plotting.</p>
 <span class="normal">394</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_comps</span><span class="p">(</span>
     <span class="n">module_or_view</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;jx.Module&quot;</span><span class="p">,</span> <span class="s2">&quot;jx.View&quot;</span><span class="p">],</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">comp_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="n">true_comp_length</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">resolution</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot compartmentalized neural morphology.</span>
 
@@ -4384,9 +4383,8 @@ Useful too have a simpler mesh for plotting.</p>
 <span class="sd">        module_or_view: The module or view to plot.</span>
 <span class="sd">        dims: The dimensions to plot / to project the cylinder onto,</span>
 <span class="sd">            i.e. [0,1] xy-plane or [0,1,2] for 3D.</span>
-<span class="sd">        col: The color for all compartments</span>
+<span class="sd">        color: The color for all compartments</span>
 <span class="sd">        ax: The matplotlib axis to plot on.</span>
-<span class="sd">        comp_plot_kwargs: The plot kwargs for plt.fill.</span>
 <span class="sd">        true_comp_length: If True, the length of the compartment is used, i.e. the</span>
 <span class="sd">            length of the traced neurite. This means for zig-zagging neurites the</span>
 <span class="sd">            cylinders will be longer than the straight-line distance between the</span>
@@ -4396,6 +4394,7 @@ Useful too have a simpler mesh for plotting.</p>
 <span class="sd">        resolution: defines the resolution of the mesh.</span>
 <span class="sd">            If too low (typically &lt;10), can result in errors.</span>
 <span class="sd">            Useful too have a simpler mesh for plotting.</span>
+<span class="sd">        kwargs: The plot kwargs for plt.fill.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Plot of the compartmentalized morphology.</span>
@@ -4423,11 +4422,11 @@ Useful too have a simpler mesh for plotting.</p>
                     <span class="n">center</span><span class="p">,</span>
                     <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
                     <span class="n">ax</span><span class="p">,</span>
-                    <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">comp_plot_kwargs</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span><span class="n">locs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">dims</span><span class="p">],</span> <span class="n">radius</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">))</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span><span class="n">locs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">dims</span><span class="p">],</span> <span class="n">radius</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">locs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
             <span class="n">lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">([</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">lens</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
@@ -4451,8 +4450,8 @@ Useful too have a simpler mesh for plotting.</p>
                     <span class="n">center</span><span class="p">,</span>
                     <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
                     <span class="n">ax</span><span class="p">,</span>
-                    <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">comp_plot_kwargs</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
                 <span class="p">)</span>
     <span class="k">return</span> <span class="n">ax</span>
 </code></pre></div></td></tr></table></div>
@@ -4465,7 +4464,7 @@ Useful too have a simpler mesh for plotting.</p>
 
 
 <h3 id="jaxley.utils.plot_utils.plot_graph" class="doc doc-heading">
-            <code class=" language-python"><span class="n">plot_graph</span><span class="p">(</span><span class="n">xyzr</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+            <code class=" language-python"><span class="n">plot_graph</span><span class="p">(</span><span class="n">xyzr</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.plot_utils.plot_graph" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -4521,7 +4520,7 @@ two or three of them.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>col</code>
+                <code>color</code>
             </td>
             <td>
                   <code>str</code>
@@ -4569,10 +4568,9 @@ two or three of them.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>morph_plot_kwargs</code>
+                <code>kwargs</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4625,10 +4623,10 @@ two or three of them.</p>
 <span class="normal">51</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_graph</span><span class="p">(</span>
     <span class="n">xyzr</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
-    <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot morphology.</span>
 
@@ -4636,10 +4634,10 @@ two or three of them.</p>
 <span class="sd">        xyzr: The coordinates of the morphology.</span>
 <span class="sd">        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">            two or three of them.</span>
-<span class="sd">        col: The color for all branches.</span>
+<span class="sd">        color: The color for all branches.</span>
 <span class="sd">        ax: The matplotlib axis to plot on.</span>
 <span class="sd">        type: Either `line` or `scatter`.</span>
-<span class="sd">        morph_plot_kwargs: The plot kwargs for plt.plot or plt.scatter.</span>
+<span class="sd">        kwargs: The plot kwargs for plt.plot or plt.scatter.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -4650,9 +4648,9 @@ two or three of them.</p>
         <span class="n">points</span> <span class="o">=</span> <span class="n">coords_of_branch</span><span class="p">[:,</span> <span class="n">dims</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
 
         <span class="k">if</span> <span class="s2">&quot;line&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">elif</span> <span class="s2">&quot;scatter&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
@@ -4946,7 +4944,7 @@ two or three of them.</p>
 
 
 <h3 id="jaxley.utils.plot_utils.plot_morph" class="doc doc-heading">
-            <code class=" language-python"><span class="n">plot_morph</span><span class="p">(</span><span class="n">module_or_view</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+            <code class=" language-python"><span class="n">plot_morph</span><span class="p">(</span><span class="n">module_or_view</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 <a href="#jaxley.utils.plot_utils.plot_morph" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -5007,7 +5005,7 @@ i.e. [0,1] xy-plane or [0,1,2] for 3D.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>col</code>
+                <code>color</code>
             </td>
             <td>
                   <code>str</code>
@@ -5039,10 +5037,9 @@ i.e. [0,1] xy-plane or [0,1,2] for 3D.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>morph_plot_kwargs</code>
+                <code>kwargs</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -5185,10 +5182,10 @@ Useful too have a simpler mesh for plotting.</p>
 <span class="normal">480</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">plot_morph</span><span class="p">(</span>
     <span class="n">module_or_view</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;jx.Module&quot;</span><span class="p">,</span> <span class="s2">&quot;jx.View&quot;</span><span class="p">],</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">resolution</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-    <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot the detailed morphology.</span>
 
@@ -5202,9 +5199,9 @@ Useful too have a simpler mesh for plotting.</p>
 <span class="sd">        module_or_view: The module or view to plot.</span>
 <span class="sd">        dims: The dimensions to plot / to project the cylinder onto,</span>
 <span class="sd">            i.e. [0,1] xy-plane or [0,1,2] for 3D.</span>
-<span class="sd">        col: The color for all branches</span>
+<span class="sd">        color: The color for all branches</span>
 <span class="sd">        ax: The matplotlib axis to plot on.</span>
-<span class="sd">        morph_plot_kwargs: The plot kwargs for plt.fill.</span>
+<span class="sd">        kwargs: The plot kwargs for plt.fill.</span>
 
 <span class="sd">        resolution: defines the resolution of the mesh.</span>
 <span class="sd">            If too low (typically &lt;10), can result in errors.</span>
@@ -5242,9 +5239,9 @@ Useful too have a simpler mesh for plotting.</p>
                     <span class="n">dxyz</span><span class="p">,</span>
                     <span class="n">xyzr1</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span>
                     <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
-                    <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
                     <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">points</span> <span class="o">=</span> <span class="n">create_cone_frustum_mesh</span><span class="p">(</span>
@@ -5260,9 +5257,9 @@ Useful too have a simpler mesh for plotting.</p>
                 <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
                 <span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span>
                 <span class="n">dims</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dims</span><span class="p">),</span>
-                <span class="n">color</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
                 <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-                <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ax</span>

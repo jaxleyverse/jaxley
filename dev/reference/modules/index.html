@@ -1216,6 +1216,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#jaxley.modules.network.Network.arrange_in_layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      arrange_in_layers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#jaxley.modules.network.Network.vis" class="md-nav__link">
     <span class="md-ellipsis">
       vis
@@ -1983,6 +1992,15 @@
   <a href="#jaxley.modules.network.Network.__init__" class="md-nav__link">
     <span class="md-ellipsis">
       __init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jaxley.modules.network.Network.arrange_in_layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      arrange_in_layers
     </span>
   </a>
   
@@ -4381,7 +4399,12 @@ def change_attr_in_view(self):
 <span class="normal">2352</span>
 <span class="normal">2353</span>
 <span class="normal">2354</span>
-<span class="normal">2355</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="normal">2355</span>
+<span class="normal">2356</span>
+<span class="normal">2357</span>
+<span class="normal">2358</span>
+<span class="normal">2359</span>
+<span class="normal">2360</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Module base class.</span>
 
 <span class="sd">    Modules are everything that can be passed to `jx.integrate`, i.e. compartments,</span>
@@ -6408,10 +6431,10 @@ def change_attr_in_view(self):
     <span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
         <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
         <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
-        <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize the module.</span>
 
@@ -6424,7 +6447,7 @@ def change_attr_in_view(self):
 <span class="sd">        - `scatter`: All traced points, are plotted as scatter points.</span>
 <span class="sd">        - `comp`: Plots the compartmentalized morphology, including radius</span>
 <span class="sd">        and shape. (shows the true compartment lengths per default, but this can</span>
-<span class="sd">        be changed via the `morph_plot_kwargs`, for details see</span>
+<span class="sd">        be changed via the `kwargs`, for details see</span>
 <span class="sd">        `jaxley.utils.plot_utils.plot_comps`).</span>
 <span class="sd">        - `morph`: Reconstructs the 3D shape of the traced morphology. For details see</span>
 <span class="sd">        `jaxley.utils.plot_utils.plot_morph`. Warning: For 3D plots and morphologies</span>
@@ -6432,16 +6455,21 @@ def change_attr_in_view(self):
 
 <span class="sd">        Args:</span>
 <span class="sd">            ax: An axis into which to plot.</span>
-<span class="sd">            col: The color for all branches.</span>
+<span class="sd">            color: The color for all branches.</span>
 <span class="sd">            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">                two of them.</span>
 <span class="sd">            type: The type of plot. One of [&quot;line&quot;, &quot;scatter&quot;, &quot;comp&quot;, &quot;morph&quot;].</span>
-<span class="sd">            morph_plot_kwargs: Keyword arguments passed to the plotting function.</span>
+<span class="sd">            kwargs: Keyword arguments passed to the plotting function.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="mi">100</span> <span class="k">if</span> <span class="s2">&quot;resolution&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">else</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;resolution&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="s2">&quot;comp&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">plot_comps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">plot_comps</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
         <span class="k">if</span> <span class="s2">&quot;morph&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">plot_morph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">plot_morph</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
 
         <span class="k">assert</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span>
             <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">xyzr</span><span class="p">[:,</span> <span class="n">dims</span><span class="p">])</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">for</span> <span class="n">xyzr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">]</span>
@@ -6450,10 +6478,10 @@ def change_attr_in_view(self):
         <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_graph</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">,</span>
             <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
-            <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span>
-            <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ax</span>
@@ -7460,12 +7488,7 @@ are only used for plotting.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2139</span>
-<span class="normal">2140</span>
-<span class="normal">2141</span>
-<span class="normal">2142</span>
-<span class="normal">2143</span>
-<span class="normal">2144</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2144</span>
 <span class="normal">2145</span>
 <span class="normal">2146</span>
 <span class="normal">2147</span>
@@ -7520,7 +7543,12 @@ are only used for plotting.</p>
 <span class="normal">2196</span>
 <span class="normal">2197</span>
 <span class="normal">2198</span>
-<span class="normal">2199</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_xyz</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">2199</span>
+<span class="normal">2200</span>
+<span class="normal">2201</span>
+<span class="normal">2202</span>
+<span class="normal">2203</span>
+<span class="normal">2204</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_xyz</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return xyz coordinates of every branch, based on the branch length.</span>
 
 <span class="sd">    This function should not be called if the morphology was read from an `.swc`</span>
@@ -7819,12 +7847,7 @@ the post-synaptic property (&lsquo;post&rsquo;), or both ([&lsquo;pre&rsquo;, &l
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2298</span>
-<span class="normal">2299</span>
-<span class="normal">2300</span>
-<span class="normal">2301</span>
-<span class="normal">2302</span>
-<span class="normal">2303</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2303</span>
 <span class="normal">2304</span>
 <span class="normal">2305</span>
 <span class="normal">2306</span>
@@ -7876,7 +7899,12 @@ the post-synaptic property (&lsquo;post&rsquo;), or both ([&lsquo;pre&rsquo;, &l
 <span class="normal">2352</span>
 <span class="normal">2353</span>
 <span class="normal">2354</span>
-<span class="normal">2355</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">copy_node_property_to_edges</span><span class="p">(</span>
+<span class="normal">2355</span>
+<span class="normal">2356</span>
+<span class="normal">2357</span>
+<span class="normal">2358</span>
+<span class="normal">2359</span>
+<span class="normal">2360</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">copy_node_property_to_edges</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">properties_to_import</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
     <span class="n">pre_or_post</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">],</span>
@@ -9954,12 +9982,7 @@ total number of parameters.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2201</span>
-<span class="normal">2202</span>
-<span class="normal">2203</span>
-<span class="normal">2204</span>
-<span class="normal">2205</span>
-<span class="normal">2206</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2206</span>
 <span class="normal">2207</span>
 <span class="normal">2208</span>
 <span class="normal">2209</span>
@@ -9972,7 +9995,12 @@ total number of parameters.</p>
 <span class="normal">2216</span>
 <span class="normal">2217</span>
 <span class="normal">2218</span>
-<span class="normal">2219</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move</span><span class="p">(</span>
+<span class="normal">2219</span>
+<span class="normal">2220</span>
+<span class="normal">2221</span>
+<span class="normal">2222</span>
+<span class="normal">2223</span>
+<span class="normal">2224</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Move cells or networks by adding to their (x, y, z) coordinates.</span>
@@ -10052,12 +10080,7 @@ cell is moved to the specified location.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2221</span>
-<span class="normal">2222</span>
-<span class="normal">2223</span>
-<span class="normal">2224</span>
-<span class="normal">2225</span>
-<span class="normal">2226</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2226</span>
 <span class="normal">2227</span>
 <span class="normal">2228</span>
 <span class="normal">2229</span>
@@ -10097,7 +10120,12 @@ cell is moved to the specified location.</p>
 <span class="normal">2263</span>
 <span class="normal">2264</span>
 <span class="normal">2265</span>
-<span class="normal">2266</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move_to</span><span class="p">(</span>
+<span class="normal">2266</span>
+<span class="normal">2267</span>
+<span class="normal">2268</span>
+<span class="normal">2269</span>
+<span class="normal">2270</span>
+<span class="normal">2271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">move_to</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
@@ -10212,12 +10240,7 @@ cell is moved to the specified location.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2268</span>
-<span class="normal">2269</span>
-<span class="normal">2270</span>
-<span class="normal">2271</span>
-<span class="normal">2272</span>
-<span class="normal">2273</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2273</span>
 <span class="normal">2274</span>
 <span class="normal">2275</span>
 <span class="normal">2276</span>
@@ -10240,7 +10263,12 @@ cell is moved to the specified location.</p>
 <span class="normal">2293</span>
 <span class="normal">2294</span>
 <span class="normal">2295</span>
-<span class="normal">2296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span>
+<span class="normal">2296</span>
+<span class="normal">2297</span>
+<span class="normal">2298</span>
+<span class="normal">2299</span>
+<span class="normal">2300</span>
+<span class="normal">2301</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rotation_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;xy&quot;</span><span class="p">,</span> <span class="n">update_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rotate jaxley modules clockwise. Used only for visualization.</span>
@@ -11948,7 +11976,7 @@ differentiated. <code>.to_jax()</code> copies the <code>.nodes</code> to <code>.
 
 
 <h3 id="jaxley.modules.base.Module.vis" class="doc doc-heading">
-            <code class=" language-python"><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+            <code class=" language-python"><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.base.Module.vis" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -11964,7 +11992,7 @@ with a line plot.
 - <code>scatter</code>: All traced points, are plotted as scatter points.
 - <code>comp</code>: Plots the compartmentalized morphology, including radius
 and shape. (shows the true compartment lengths per default, but this can
-be changed via the <code>morph_plot_kwargs</code>, for details see
+be changed via the <code>kwargs</code>, for details see
 <code>jaxley.utils.plot_utils.plot_comps</code>).
 - <code>morph</code>: Reconstructs the 3D shape of the traced morphology. For details see
 <code>jaxley.utils.plot_utils.plot_morph</code>. Warning: For 3D plots and morphologies
@@ -12000,7 +12028,7 @@ with many traced points this can be very slow.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>col</code>
+                <code>color</code>
             </td>
             <td>
                   <code>str</code>
@@ -12049,10 +12077,9 @@ two of them.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>morph_plot_kwargs</code>
+                <code>kwargs</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -12119,13 +12146,18 @@ two of them.</p>
 <span class="normal">2134</span>
 <span class="normal">2135</span>
 <span class="normal">2136</span>
-<span class="normal">2137</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
+<span class="normal">2137</span>
+<span class="normal">2138</span>
+<span class="normal">2139</span>
+<span class="normal">2140</span>
+<span class="normal">2141</span>
+<span class="normal">2142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
-    <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Visualize the module.</span>
 
@@ -12138,7 +12170,7 @@ two of them.</p>
 <span class="sd">    - `scatter`: All traced points, are plotted as scatter points.</span>
 <span class="sd">    - `comp`: Plots the compartmentalized morphology, including radius</span>
 <span class="sd">    and shape. (shows the true compartment lengths per default, but this can</span>
-<span class="sd">    be changed via the `morph_plot_kwargs`, for details see</span>
+<span class="sd">    be changed via the `kwargs`, for details see</span>
 <span class="sd">    `jaxley.utils.plot_utils.plot_comps`).</span>
 <span class="sd">    - `morph`: Reconstructs the 3D shape of the traced morphology. For details see</span>
 <span class="sd">    `jaxley.utils.plot_utils.plot_morph`. Warning: For 3D plots and morphologies</span>
@@ -12146,16 +12178,21 @@ two of them.</p>
 
 <span class="sd">    Args:</span>
 <span class="sd">        ax: An axis into which to plot.</span>
-<span class="sd">        col: The color for all branches.</span>
+<span class="sd">        color: The color for all branches.</span>
 <span class="sd">        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">            two of them.</span>
 <span class="sd">        type: The type of plot. One of [&quot;line&quot;, &quot;scatter&quot;, &quot;comp&quot;, &quot;morph&quot;].</span>
-<span class="sd">        morph_plot_kwargs: Keyword arguments passed to the plotting function.</span>
+<span class="sd">        kwargs: Keyword arguments passed to the plotting function.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="mi">100</span> <span class="k">if</span> <span class="s2">&quot;resolution&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">else</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;resolution&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="s2">&quot;comp&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">plot_comps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">plot_comps</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="s2">&quot;morph&quot;</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">plot_morph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="o">**</span><span class="n">morph_plot_kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">plot_morph</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
 
     <span class="k">assert</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span>
         <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">xyzr</span><span class="p">[:,</span> <span class="n">dims</span><span class="p">])</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">for</span> <span class="n">xyzr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">]</span>
@@ -12164,10 +12201,10 @@ two of them.</p>
     <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_graph</span><span class="p">(</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">,</span>
         <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
-        <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
         <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span>
-        <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ax</span>
@@ -13854,8 +13891,7 @@ the stick representation coordinates.</p>
 
               <details class="quote">
                 <summary>Source code in <code>jaxley/modules/network.py</code></summary>
-                <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 33</span>
-<span class="normal"> 34</span>
+                <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 34</span>
 <span class="normal"> 35</span>
 <span class="normal"> 36</span>
 <span class="normal"> 37</span>
@@ -14397,50 +14433,7 @@ the stick representation coordinates.</p>
 <span class="normal">573</span>
 <span class="normal">574</span>
 <span class="normal">575</span>
-<span class="normal">576</span>
-<span class="normal">577</span>
-<span class="normal">578</span>
-<span class="normal">579</span>
-<span class="normal">580</span>
-<span class="normal">581</span>
-<span class="normal">582</span>
-<span class="normal">583</span>
-<span class="normal">584</span>
-<span class="normal">585</span>
-<span class="normal">586</span>
-<span class="normal">587</span>
-<span class="normal">588</span>
-<span class="normal">589</span>
-<span class="normal">590</span>
-<span class="normal">591</span>
-<span class="normal">592</span>
-<span class="normal">593</span>
-<span class="normal">594</span>
-<span class="normal">595</span>
-<span class="normal">596</span>
-<span class="normal">597</span>
-<span class="normal">598</span>
-<span class="normal">599</span>
-<span class="normal">600</span>
-<span class="normal">601</span>
-<span class="normal">602</span>
-<span class="normal">603</span>
-<span class="normal">604</span>
-<span class="normal">605</span>
-<span class="normal">606</span>
-<span class="normal">607</span>
-<span class="normal">608</span>
-<span class="normal">609</span>
-<span class="normal">610</span>
-<span class="normal">611</span>
-<span class="normal">612</span>
-<span class="normal">613</span>
-<span class="normal">614</span>
-<span class="normal">615</span>
-<span class="normal">616</span>
-<span class="normal">617</span>
-<span class="normal">618</span>
-<span class="normal">619</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Network</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">576</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Network</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Network class.</span>
 
 <span class="sd">    This class defines a network of cells that can be connected with synapses.</span>
@@ -14793,171 +14786,127 @@ the stick representation coordinates.</p>
 
         <span class="k">return</span> <span class="n">states</span><span class="p">,</span> <span class="p">(</span><span class="n">syn_voltage_terms</span><span class="p">,</span> <span class="n">syn_constant_terms</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">arrange_in_layers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">layers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">within_layer_offset</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">500.0</span><span class="p">,</span>
+        <span class="n">between_layer_offset</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1500.0</span><span class="p">,</span>
+        <span class="n">vertical_layers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Arrange the cells in the network to form layers.</span>
+
+<span class="sd">        Moves the cells in the network to arrange them into layers.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            layers: List of integers specifying the number of cells in each layer.</span>
+<span class="sd">            within_layer_offset: Offset between cells within the same layer.</span>
+<span class="sd">            between_layer_offset: Offset between layers.</span>
+<span class="sd">            vertical_layers: If True, layers are arranged vertically.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">),</span> <span class="s2">&quot;The number of cells in the layers must match the number of cells in the network.&quot;</span>
+        <span class="n">cells_in_layers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">layers</span><span class="p">[:</span><span class="n">i</span><span class="p">]),</span> <span class="nb">sum</span><span class="p">(</span><span class="n">layers</span><span class="p">[:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">))</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">l</span><span class="p">,</span> <span class="n">cell_inds</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cells_in_layers</span><span class="p">):</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">cell_inds</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">cells</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">vertical_layers</span><span class="p">:</span>
+                    <span class="n">x_offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cell_inds</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">within_layer_offset</span>
+                    <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">l</span><span class="p">)</span> <span class="o">*</span> <span class="n">between_layer_offset</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">x_offset</span> <span class="o">=</span> <span class="n">l</span> <span class="o">*</span> <span class="n">between_layer_offset</span>
+                    <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cell_inds</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">within_layer_offset</span>
+
+                <span class="n">cell</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_offset</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_offset</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span>
         <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
-        <span class="n">synapse_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+        <span class="n">synapse_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>
         <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
         <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
-        <span class="n">layers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">cell_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">synapse_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
-        <span class="n">synapse_scatter_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
-        <span class="n">networkx_options</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
-        <span class="n">layer_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize the module.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            detail: Either of [point, full]. `point` visualizes every neuron in the</span>
-<span class="sd">                network as a dot (and it uses `networkx` to obtain cell positions).</span>
+<span class="sd">                network as a dot.</span>
 <span class="sd">                `full` plots the full morphology of every neuron. It requires that</span>
 <span class="sd">                `compute_xyz()` has been run and allows for indivual neurons to be</span>
 <span class="sd">                moved with `.move()`.</span>
-<span class="sd">            col: The color in which cells are plotted. Only takes effect if</span>
+<span class="sd">            color: The color in which cells are plotted. Only takes effect if</span>
 <span class="sd">                `detail=&#39;full&#39;`.</span>
 <span class="sd">            type: Either `line` or `scatter`. Only takes effect if `detail=&#39;full&#39;`.</span>
-<span class="sd">            synapse_col: The color in which synapses are plotted. Only takes effect if</span>
+<span class="sd">            synapse_color: The color in which synapses are plotted. Only takes effect if</span>
 <span class="sd">                `detail=&#39;full&#39;`.</span>
 <span class="sd">            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">                two of them.</span>
-<span class="sd">            layers: Allows to plot the network in layers. Should provide the number of</span>
-<span class="sd">                neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input</span>
-<span class="sd">                neurons, 10 hidden layer neurons, and 1 output neuron.</span>
-<span class="sd">            morph_plot_kwargs: Keyword arguments passed to the plotting function for</span>
+<span class="sd">            cell_plot_kwargs: Keyword arguments passed to the plotting function for</span>
 <span class="sd">                cell morphologies. Only takes effect for `detail=&#39;full&#39;`.</span>
 <span class="sd">            synapse_plot_kwargs: Keyword arguments passed to the plotting function for</span>
 <span class="sd">                syanpses. Only takes effect for `detail=&#39;full&#39;`.</span>
-<span class="sd">            synapse_scatter_kwargs: Keyword arguments passed to the scatter function</span>
-<span class="sd">                for the end point of synapses. Only takes effect for `detail=&#39;full&#39;`.</span>
-<span class="sd">            networkx_options: Options passed to `networkx.draw()`. Only takes effect if</span>
-<span class="sd">                `detail=&#39;point&#39;`.</span>
-<span class="sd">            layer_kwargs: Only used if `layers` is specified and if `detail=&#39;full&#39;`.</span>
-<span class="sd">                Can have the following entries: `within_layer_offset` (float),</span>
-<span class="sd">                `between_layer_offset` (float), `vertical_layers` (bool).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
-            <span class="n">graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_graph</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">layers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">pos</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">multipartite_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">subset_key</span><span class="o">=</span><span class="s2">&quot;layer&quot;</span><span class="p">)</span>
-                <span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">networkx_options</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">networkx_options</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">layers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># Assemble cells in the network into layers.</span>
-                <span class="n">global_counter</span> <span class="o">=</span> <span class="mi">0</span>
-                <span class="n">layers_config</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mf">500.0</span><span class="p">,</span>
-                    <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mf">1500.0</span><span class="p">,</span>
-                    <span class="s2">&quot;vertical_layers&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-                <span class="p">}</span>
-                <span class="n">layers_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">layer_kwargs</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">layer_ind</span><span class="p">,</span> <span class="n">num_in_layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layers</span><span class="p">):</span>
-                    <span class="k">for</span> <span class="n">ind_within_layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_in_layer</span><span class="p">):</span>
-                        <span class="k">if</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;vertical_layers&quot;</span><span class="p">]:</span>
-                            <span class="n">x_offset</span> <span class="o">=</span> <span class="p">(</span>
-                                <span class="n">ind_within_layer</span> <span class="o">-</span> <span class="p">(</span><span class="n">num_in_layer</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-                            <span class="p">)</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">]</span>
-                            <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">layer_ind</span><span class="p">)</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span>
-                                <span class="s2">&quot;between_layer_offset&quot;</span>
-                            <span class="p">]</span>
-                        <span class="k">else</span><span class="p">:</span>
-                            <span class="n">x_offset</span> <span class="o">=</span> <span class="n">layer_ind</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;between_layer_offset&quot;</span><span class="p">]</span>
-                            <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span>
-                                <span class="n">ind_within_layer</span> <span class="o">-</span> <span class="p">(</span><span class="n">num_in_layer</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-                            <span class="p">)</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">]</span>
-
-                        <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">global_counter</span><span class="p">)</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_offset</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_offset</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-                        <span class="n">global_counter</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span>
-                <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
-                <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
-                <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-                <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span>
-                <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+        <span class="n">xyz0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">same_xyz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">xyz0</span> <span class="o">==</span> <span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">same_xyz</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Same coordinates for all cells. Consider using `move`, `move_to` or `arrange_in_layers` to move them.&quot;</span>
             <span class="p">)</span>
 
-            <span class="n">pre_locs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;pre_locs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-            <span class="n">post_locs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;post_locs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-            <span class="n">pre_comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;pre_global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-            <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">)</span>
-            <span class="n">pre_branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pre_comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-            <span class="n">post_comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;post_global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-            <span class="n">post_branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">post_comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
 
-            <span class="n">dims_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span>
+        <span class="c1"># detail=&quot;point&quot; -&gt; pos taken to be the mean of all traced points on the cell.</span>
+        <span class="n">cell_to_point_xyz</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">cell</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">)[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
-            <span class="k">for</span> <span class="n">pre_loc</span><span class="p">,</span> <span class="n">post_loc</span><span class="p">,</span> <span class="n">pre_b</span><span class="p">,</span> <span class="n">post_b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-                <span class="n">pre_locs</span><span class="p">,</span> <span class="n">post_locs</span><span class="p">,</span> <span class="n">pre_branch</span><span class="p">,</span> <span class="n">post_branch</span>
-            <span class="p">):</span>
-                <span class="n">pre_coord</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">pre_b</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_coord</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                    <span class="c1"># If only start and end point of a branch are traced, perform a</span>
-                    <span class="c1"># linear interpolation to get the synpase location.</span>
-                    <span class="n">pre_coord</span> <span class="o">=</span> <span class="n">pre_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">pre_coord</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pre_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">pre_loc</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># If densely traced, use intermediate trace values for synapse loc.</span>
-                    <span class="n">middle_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">pre_coord</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pre_loc</span><span class="p">)</span>
-                    <span class="n">pre_coord</span> <span class="o">=</span> <span class="n">pre_coord</span><span class="p">[</span><span class="n">middle_ind</span><span class="p">]</span>
-
-                <span class="n">post_coord</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">post_b</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">post_coord</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                    <span class="c1"># If only start and end point of a branch are traced, perform a</span>
-                    <span class="c1"># linear interpolation to get the synpase location.</span>
-                    <span class="n">post_coord</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="n">post_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">post_coord</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">post_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">post_loc</span>
-                    <span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># If densely traced, use intermediate trace values for synapse loc.</span>
-                    <span class="n">middle_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">post_coord</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">post_loc</span><span class="p">)</span>
-                    <span class="n">post_coord</span> <span class="o">=</span> <span class="n">post_coord</span><span class="p">[</span><span class="n">middle_ind</span><span class="p">]</span>
-
-                <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">pre_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">],</span> <span class="n">post_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">]])</span><span class="o">.</span><span class="n">T</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-                    <span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                    <span class="n">coords</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-                    <span class="n">c</span><span class="o">=</span><span class="n">synapse_col</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">synapse_plot_kwargs</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-                    <span class="n">post_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
-                    <span class="n">post_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span>
-                    <span class="n">c</span><span class="o">=</span><span class="n">synapse_col</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">synapse_scatter_kwargs</span><span class="p">,</span>
-                <span class="p">)</span>
+        <span class="n">dims_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">:</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">cell_to_point_xyz</span><span class="p">(</span><span class="n">cell</span><span class="p">)[</span><span class="n">dims_np</span><span class="p">]</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">pos</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span>
+                <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;detail must be in {full, point}.&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">ax</span>
-
-    <span class="k">def</span> <span class="nf">_build_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
-        <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
-
-        <span class="k">def</span> <span class="nf">build_extents</span><span class="p">(</span><span class="o">*</span><span class="n">subset_sizes</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">nx</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">pairwise</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">accumulate</span><span class="p">((</span><span class="mi">0</span><span class="p">,)</span> <span class="o">+</span> <span class="n">subset_sizes</span><span class="p">))</span>
-
-        <span class="k">if</span> <span class="n">layers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">extents</span> <span class="o">=</span> <span class="n">build_extents</span><span class="p">(</span><span class="o">*</span><span class="n">layers</span><span class="p">)</span>
-            <span class="n">layers</span> <span class="o">=</span> <span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">extents</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layers</span><span class="p">):</span>
-                <span class="n">graph</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">graph</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cells_in_view</span><span class="p">)))</span>
-
-        <span class="n">pre_comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;pre_global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">)</span>
-        <span class="n">pre_cell</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pre_comp</span><span class="p">,</span> <span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">post_comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;post_global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">post_cell</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">post_comp</span><span class="p">,</span> <span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">edge</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">prepost_locs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">prepost</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">]:</span>
+                <span class="n">loc</span><span class="p">,</span> <span class="n">comp</span> <span class="o">=</span> <span class="n">edge</span><span class="p">[[</span><span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_locs&quot;</span><span class="p">,</span> <span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_global_comp_index&quot;</span><span class="p">]]</span>
+                <span class="n">branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span>
+                <span class="n">cell</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span>
+                <span class="n">branch_xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">branch</span><span class="p">]</span>
 
-        <span class="n">inds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">pre_cell</span><span class="p">,</span> <span class="n">post_cell</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
-        <span class="n">graph</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">inds</span><span class="p">)</span>
+                <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">branch_xyz</span>
+                <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
+                    <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">cell_to_point_xyz</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">cell</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">branch_xyz</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="c1"># If only start and end point of a branch are traced, perform a</span>
+                    <span class="c1"># linear interpolation to get the synpase location.</span>
+                    <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">branch_xyz</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">branch_xyz</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">branch_xyz</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">loc</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># If densely traced, use intermediate trace values for synapse loc.</span>
+                    <span class="n">middle_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">branch_xyz</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">loc</span><span class="p">)</span>
+                    <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">xyz_loc</span><span class="p">[</span><span class="n">middle_ind</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">graph</span>
+                <span class="n">prepost_locs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xyz_loc</span><span class="p">)</span>
+            <span class="n">prepost_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">prepost_locs</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">prepost_locs</span><span class="p">[</span><span class="n">dims_np</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">synapse_color</span><span class="p">,</span> <span class="o">**</span><span class="n">synapse_plot_kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ax</span>
 
     <span class="k">def</span> <span class="nf">_infer_synapse_type_ind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">synapse_name</span><span class="p">):</span>
         <span class="n">syn_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">synapse_names</span>
@@ -15088,8 +15037,7 @@ the stick representation coordinates.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 42</span>
-<span class="normal"> 43</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 43</span>
 <span class="normal"> 44</span>
 <span class="normal"> 45</span>
 <span class="normal"> 46</span>
@@ -15157,7 +15105,8 @@ the stick representation coordinates.</p>
 <span class="normal">108</span>
 <span class="normal">109</span>
 <span class="normal">110</span>
-<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">111</span>
+<span class="normal">112</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">cells</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Cell</span><span class="p">],</span>
 <span class="p">):</span>
@@ -15236,15 +15185,16 @@ the stick representation coordinates.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="jaxley.modules.network.Network.vis" class="doc doc-heading">
-            <code class=" language-python"><span class="n">vis</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">synapse_col</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">synapse_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">synapse_scatter_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">networkx_options</span><span class="o">=</span><span class="p">{},</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+<h3 id="jaxley.modules.network.Network.arrange_in_layers" class="doc doc-heading">
+            <code class=" language-python"><span class="n">arrange_in_layers</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">within_layer_offset</span><span class="o">=</span><span class="mf">500.0</span><span class="p">,</span> <span class="n">between_layer_offset</span><span class="o">=</span><span class="mf">1500.0</span><span class="p">,</span> <span class="n">vertical_layers</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
-<a href="#jaxley.modules.network.Network.vis" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#jaxley.modules.network.Network.arrange_in_layers" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Visualize the module.</p>
+        <p>Arrange the cells in the network to form layers.</p>
+<p>Moves the cells in the network to arrange them into layers.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -15260,193 +15210,66 @@ the stick representation coordinates.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>detail</code>
-            </td>
-            <td>
-                  <code>str</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Either of [point, full]. <code>point</code> visualizes every neuron in the
-network as a dot (and it uses <code>networkx</code> to obtain cell positions).
-<code>full</code> plots the full morphology of every neuron. It requires that
-<code>compute_xyz()</code> has been run and allows for indivual neurons to be
-moved with <code>.move()</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;full&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>col</code>
-            </td>
-            <td>
-                  <code>str</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The color in which cells are plotted. Only takes effect if
-<code>detail='full'</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;k&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>type</code>
-            </td>
-            <td>
-                  <code>str</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Either <code>line</code> or <code>scatter</code>. Only takes effect if <code>detail='full'</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;line&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>synapse_col</code>
-            </td>
-            <td>
-                  <code>str</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The color in which synapses are plotted. Only takes effect if
-<code>detail='full'</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;b&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>dims</code>
-            </td>
-            <td>
-                  <code><span title="typing.Tuple">Tuple</span>[int]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
-two of them.</p>
-              </div>
-            </td>
-            <td>
-                  <code>(0, 1)</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>layers</code>
             </td>
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>]</code>
+                  <code><span title="typing.List">List</span>[int]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Allows to plot the network in layers. Should provide the number of
-neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input
-neurons, 10 hidden layer neurons, and 1 output neuron.</p>
+                <p>List of integers specifying the number of cells in each layer.</p>
               </div>
             </td>
             <td>
-                  <code>None</code>
+                <em>required</em>
             </td>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>morph_plot_kwargs</code>
+                <code>within_layer_offset</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span></code>
+                  <code>float</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Keyword arguments passed to the plotting function for
-cell morphologies. Only takes effect for <code>detail='full'</code>.</p>
+                <p>Offset between cells within the same layer.</p>
               </div>
             </td>
             <td>
-                  <code>{}</code>
+                  <code>500.0</code>
             </td>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>synapse_plot_kwargs</code>
+                <code>between_layer_offset</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span></code>
+                  <code>float</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Keyword arguments passed to the plotting function for
-syanpses. Only takes effect for <code>detail='full'</code>.</p>
+                <p>Offset between layers.</p>
               </div>
             </td>
             <td>
-                  <code>{}</code>
+                  <code>1500.0</code>
             </td>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>synapse_scatter_kwargs</code>
+                <code>vertical_layers</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Keyword arguments passed to the scatter function
-for the end point of synapses. Only takes effect for <code>detail='full'</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>{}</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>networkx_options</code>
-            </td>
-            <td>
-                  <code><span title="typing.Dict">Dict</span></code>
+                  <code>bool</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Options passed to <code>networkx.draw()</code>. Only takes effect if
-<code>detail='point'</code>.</p>
+                <p>If True, layers are arranged vertically.</p>
               </div>
             </td>
             <td>
-                  <code>{}</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>layer_kwargs</code>
-            </td>
-            <td>
-                  <code><span title="typing.Dict">Dict</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Only used if <code>layers</code> is specified and if <code>detail='full'</code>.
-Can have the following entries: <code>within_layer_offset</code> (float),
-<code>between_layer_offset</code> (float), <code>vertical_layers</code> (bool).</p>
-              </div>
-            </td>
-            <td>
-                  <code>{}</code>
+                  <code>False</code>
             </td>
           </tr>
       </tbody>
@@ -15454,8 +15277,7 @@ Can have the following entries: <code>within_layer_offset</code> (float),
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">386</span>
-<span class="normal">387</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">387</span>
 <span class="normal">388</span>
 <span class="normal">389</span>
 <span class="normal">390</span>
@@ -15490,9 +15312,200 @@ Can have the following entries: <code>within_layer_offset</code> (float),
 <span class="normal">419</span>
 <span class="normal">420</span>
 <span class="normal">421</span>
-<span class="normal">422</span>
-<span class="normal">423</span>
-<span class="normal">424</span>
+<span class="normal">422</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">arrange_in_layers</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">layers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">within_layer_offset</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">500.0</span><span class="p">,</span>
+    <span class="n">between_layer_offset</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1500.0</span><span class="p">,</span>
+    <span class="n">vertical_layers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Arrange the cells in the network to form layers.</span>
+
+<span class="sd">    Moves the cells in the network to arrange them into layers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        layers: List of integers specifying the number of cells in each layer.</span>
+<span class="sd">        within_layer_offset: Offset between cells within the same layer.</span>
+<span class="sd">        between_layer_offset: Offset between layers.</span>
+<span class="sd">        vertical_layers: If True, layers are arranged vertically.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="p">),</span> <span class="s2">&quot;The number of cells in the layers must match the number of cells in the network.&quot;</span>
+    <span class="n">cells_in_layers</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">layers</span><span class="p">[:</span><span class="n">i</span><span class="p">]),</span> <span class="nb">sum</span><span class="p">(</span><span class="n">layers</span><span class="p">[:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">))</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">l</span><span class="p">,</span> <span class="n">cell_inds</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cells_in_layers</span><span class="p">):</span>
+        <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">cell_inds</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">cells</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">vertical_layers</span><span class="p">:</span>
+                <span class="n">x_offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cell_inds</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">within_layer_offset</span>
+                <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">l</span><span class="p">)</span> <span class="o">*</span> <span class="n">between_layer_offset</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x_offset</span> <span class="o">=</span> <span class="n">l</span> <span class="o">*</span> <span class="n">between_layer_offset</span>
+                <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cell_inds</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">within_layer_offset</span>
+
+            <span class="n">cell</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_offset</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_offset</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.modules.network.Network.vis" class="doc doc-heading">
+            <code class=" language-python"><span class="n">vis</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">synapse_color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">cell_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">synapse_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+
+<a href="#jaxley.modules.network.Network.vis" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Visualize the module.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>detail</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Either of [point, full]. <code>point</code> visualizes every neuron in the
+network as a dot.
+<code>full</code> plots the full morphology of every neuron. It requires that
+<code>compute_xyz()</code> has been run and allows for indivual neurons to be
+moved with <code>.move()</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;full&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>color</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The color in which cells are plotted. Only takes effect if
+<code>detail='full'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;k&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>type</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Either <code>line</code> or <code>scatter</code>. Only takes effect if <code>detail='full'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;line&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>synapse_color</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The color in which synapses are plotted. Only takes effect if
+<code>detail='full'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;b&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dims</code>
+            </td>
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[int]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
+two of them.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(0, 1)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell_plot_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keyword arguments passed to the plotting function for
+cell morphologies. Only takes effect for <code>detail='full'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>synapse_plot_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keyword arguments passed to the plotting function for
+syanpses. Only takes effect for <code>detail='full'</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/modules/network.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">424</span>
 <span class="normal">425</span>
 <span class="normal">426</span>
 <span class="normal">427</span>
@@ -15575,162 +15588,88 @@ Can have the following entries: <code>within_layer_offset</code> (float),
 <span class="normal">504</span>
 <span class="normal">505</span>
 <span class="normal">506</span>
-<span class="normal">507</span>
-<span class="normal">508</span>
-<span class="normal">509</span>
-<span class="normal">510</span>
-<span class="normal">511</span>
-<span class="normal">512</span>
-<span class="normal">513</span>
-<span class="normal">514</span>
-<span class="normal">515</span>
-<span class="normal">516</span>
-<span class="normal">517</span>
-<span class="normal">518</span>
-<span class="normal">519</span>
-<span class="normal">520</span>
-<span class="normal">521</span>
-<span class="normal">522</span>
-<span class="normal">523</span>
-<span class="normal">524</span>
-<span class="normal">525</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
+<span class="normal">507</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
-    <span class="n">synapse_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>
+    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
+    <span class="n">synapse_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
-    <span class="n">layers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">morph_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="n">cell_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="n">synapse_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
-    <span class="n">synapse_scatter_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
-    <span class="n">networkx_options</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
-    <span class="n">layer_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Visualize the module.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        detail: Either of [point, full]. `point` visualizes every neuron in the</span>
-<span class="sd">            network as a dot (and it uses `networkx` to obtain cell positions).</span>
+<span class="sd">            network as a dot.</span>
 <span class="sd">            `full` plots the full morphology of every neuron. It requires that</span>
 <span class="sd">            `compute_xyz()` has been run and allows for indivual neurons to be</span>
 <span class="sd">            moved with `.move()`.</span>
-<span class="sd">        col: The color in which cells are plotted. Only takes effect if</span>
+<span class="sd">        color: The color in which cells are plotted. Only takes effect if</span>
 <span class="sd">            `detail=&#39;full&#39;`.</span>
 <span class="sd">        type: Either `line` or `scatter`. Only takes effect if `detail=&#39;full&#39;`.</span>
-<span class="sd">        synapse_col: The color in which synapses are plotted. Only takes effect if</span>
+<span class="sd">        synapse_color: The color in which synapses are plotted. Only takes effect if</span>
 <span class="sd">            `detail=&#39;full&#39;`.</span>
 <span class="sd">        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">            two of them.</span>
-<span class="sd">        layers: Allows to plot the network in layers. Should provide the number of</span>
-<span class="sd">            neurons in each layer, e.g., [5, 10, 1] would be a network with 5 input</span>
-<span class="sd">            neurons, 10 hidden layer neurons, and 1 output neuron.</span>
-<span class="sd">        morph_plot_kwargs: Keyword arguments passed to the plotting function for</span>
+<span class="sd">        cell_plot_kwargs: Keyword arguments passed to the plotting function for</span>
 <span class="sd">            cell morphologies. Only takes effect for `detail=&#39;full&#39;`.</span>
 <span class="sd">        synapse_plot_kwargs: Keyword arguments passed to the plotting function for</span>
 <span class="sd">            syanpses. Only takes effect for `detail=&#39;full&#39;`.</span>
-<span class="sd">        synapse_scatter_kwargs: Keyword arguments passed to the scatter function</span>
-<span class="sd">            for the end point of synapses. Only takes effect for `detail=&#39;full&#39;`.</span>
-<span class="sd">        networkx_options: Options passed to `networkx.draw()`. Only takes effect if</span>
-<span class="sd">            `detail=&#39;point&#39;`.</span>
-<span class="sd">        layer_kwargs: Only used if `layers` is specified and if `detail=&#39;full&#39;`.</span>
-<span class="sd">            Can have the following entries: `within_layer_offset` (float),</span>
-<span class="sd">            `between_layer_offset` (float), `vertical_layers` (bool).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
-        <span class="n">graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_graph</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">layers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">pos</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">multipartite_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">subset_key</span><span class="o">=</span><span class="s2">&quot;layer&quot;</span><span class="p">)</span>
-            <span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">networkx_options</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">networkx_options</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">layers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># Assemble cells in the network into layers.</span>
-            <span class="n">global_counter</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">layers_config</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mf">500.0</span><span class="p">,</span>
-                <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mf">1500.0</span><span class="p">,</span>
-                <span class="s2">&quot;vertical_layers&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-            <span class="p">}</span>
-            <span class="n">layers_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">layer_kwargs</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">layer_ind</span><span class="p">,</span> <span class="n">num_in_layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layers</span><span class="p">):</span>
-                <span class="k">for</span> <span class="n">ind_within_layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_in_layer</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;vertical_layers&quot;</span><span class="p">]:</span>
-                        <span class="n">x_offset</span> <span class="o">=</span> <span class="p">(</span>
-                            <span class="n">ind_within_layer</span> <span class="o">-</span> <span class="p">(</span><span class="n">num_in_layer</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-                        <span class="p">)</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">]</span>
-                        <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">layer_ind</span><span class="p">)</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span>
-                            <span class="s2">&quot;between_layer_offset&quot;</span>
-                        <span class="p">]</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">x_offset</span> <span class="o">=</span> <span class="n">layer_ind</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;between_layer_offset&quot;</span><span class="p">]</span>
-                        <span class="n">y_offset</span> <span class="o">=</span> <span class="p">(</span>
-                            <span class="n">ind_within_layer</span> <span class="o">-</span> <span class="p">(</span><span class="n">num_in_layer</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-                        <span class="p">)</span> <span class="o">*</span> <span class="n">layers_config</span><span class="p">[</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">]</span>
-
-                    <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">global_counter</span><span class="p">)</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_offset</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_offset</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-                    <span class="n">global_counter</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span>
-            <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
-            <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
-            <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-            <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span>
-            <span class="n">morph_plot_kwargs</span><span class="o">=</span><span class="n">morph_plot_kwargs</span><span class="p">,</span>
+    <span class="n">xyz0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">same_xyz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">xyz0</span> <span class="o">==</span> <span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">same_xyz</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;Same coordinates for all cells. Consider using `move`, `move_to` or `arrange_in_layers` to move them.&quot;</span>
         <span class="p">)</span>
 
-        <span class="n">pre_locs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;pre_locs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">post_locs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;post_locs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">pre_comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;pre_global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">)</span>
-        <span class="n">pre_branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pre_comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">post_comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="s2">&quot;post_global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
-        <span class="n">post_branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">post_comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
 
-        <span class="n">dims_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span>
+    <span class="c1"># detail=&quot;point&quot; -&gt; pos taken to be the mean of all traced points on the cell.</span>
+    <span class="n">cell_to_point_xyz</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">cell</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">)[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">pre_loc</span><span class="p">,</span> <span class="n">post_loc</span><span class="p">,</span> <span class="n">pre_b</span><span class="p">,</span> <span class="n">post_b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-            <span class="n">pre_locs</span><span class="p">,</span> <span class="n">post_locs</span><span class="p">,</span> <span class="n">pre_branch</span><span class="p">,</span> <span class="n">post_branch</span>
-        <span class="p">):</span>
-            <span class="n">pre_coord</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">pre_b</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_coord</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="c1"># If only start and end point of a branch are traced, perform a</span>
-                <span class="c1"># linear interpolation to get the synpase location.</span>
-                <span class="n">pre_coord</span> <span class="o">=</span> <span class="n">pre_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">pre_coord</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pre_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">pre_loc</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># If densely traced, use intermediate trace values for synapse loc.</span>
-                <span class="n">middle_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">pre_coord</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pre_loc</span><span class="p">)</span>
-                <span class="n">pre_coord</span> <span class="o">=</span> <span class="n">pre_coord</span><span class="p">[</span><span class="n">middle_ind</span><span class="p">]</span>
-
-            <span class="n">post_coord</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">post_b</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">post_coord</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="c1"># If only start and end point of a branch are traced, perform a</span>
-                <span class="c1"># linear interpolation to get the synpase location.</span>
-                <span class="n">post_coord</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">post_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">post_coord</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">post_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">post_loc</span>
-                <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># If densely traced, use intermediate trace values for synapse loc.</span>
-                <span class="n">middle_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">post_coord</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">post_loc</span><span class="p">)</span>
-                <span class="n">post_coord</span> <span class="o">=</span> <span class="n">post_coord</span><span class="p">[</span><span class="n">middle_ind</span><span class="p">]</span>
-
-            <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">pre_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">],</span> <span class="n">post_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">]])</span><span class="o">.</span><span class="n">T</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-                <span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                <span class="n">coords</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-                <span class="n">c</span><span class="o">=</span><span class="n">synapse_col</span><span class="p">,</span>
-                <span class="o">**</span><span class="n">synapse_plot_kwargs</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-                <span class="n">post_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
-                <span class="n">post_coord</span><span class="p">[</span><span class="n">dims_np</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span>
-                <span class="n">c</span><span class="o">=</span><span class="n">synapse_col</span><span class="p">,</span>
-                <span class="o">**</span><span class="n">synapse_scatter_kwargs</span><span class="p">,</span>
-            <span class="p">)</span>
+    <span class="n">dims_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="n">cell_to_point_xyz</span><span class="p">(</span><span class="n">cell</span><span class="p">)[</span><span class="n">dims_np</span><span class="p">]</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">pos</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span>
+            <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span>
+        <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;detail must be in {full, point}.&quot;</span><span class="p">)</span>
+
+    <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">edge</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">prepost_locs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">prepost</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;pre&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">]:</span>
+            <span class="n">loc</span><span class="p">,</span> <span class="n">comp</span> <span class="o">=</span> <span class="n">edge</span><span class="p">[[</span><span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_locs&quot;</span><span class="p">,</span> <span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_global_comp_index&quot;</span><span class="p">]]</span>
+            <span class="n">branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span>
+            <span class="n">cell</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span>
+            <span class="n">branch_xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">branch</span><span class="p">]</span>
+
+            <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">branch_xyz</span>
+            <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
+                <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">cell_to_point_xyz</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">cell</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">branch_xyz</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># If only start and end point of a branch are traced, perform a</span>
+                <span class="c1"># linear interpolation to get the synpase location.</span>
+                <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">branch_xyz</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">branch_xyz</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">branch_xyz</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">loc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># If densely traced, use intermediate trace values for synapse loc.</span>
+                <span class="n">middle_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">branch_xyz</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">loc</span><span class="p">)</span>
+                <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">xyz_loc</span><span class="p">[</span><span class="n">middle_ind</span><span class="p">]</span>
+
+            <span class="n">prepost_locs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xyz_loc</span><span class="p">)</span>
+        <span class="n">prepost_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">prepost_locs</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">prepost_locs</span><span class="p">[</span><span class="n">dims_np</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">synapse_color</span><span class="p">,</span> <span class="o">**</span><span class="n">synapse_plot_kwargs</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ax</span>
 </code></pre></div></td></tr></table></div>
