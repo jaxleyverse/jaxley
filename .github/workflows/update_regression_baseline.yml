@@ -12,8 +12,8 @@ jobs:
   update_regression_tests:
     name: update_regression_tests
     runs-on: ubuntu-20.04
-    # Trigger from a comment that contains '/update_regression_baselines'
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/update_regression_baselines')
+    # Trigger from a comment that contains '/update_regression_baseline'
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/update_regression_baseline')
     # workflow needs permissions to write to the PR
     permissions:
       contents: write
