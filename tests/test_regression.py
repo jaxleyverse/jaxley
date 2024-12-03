@@ -10,11 +10,14 @@ from functools import wraps
 import numpy as np
 import pytest
 from jax import jit
+from scipy.stats import t as t_dist
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import sparse_connect
 from jaxley.synapses import IonotropicSynapse
+
+pytestmark = pytest.mark.regression  # mark all tests as regression tests in this file
 
 # Every runtime test needs to have the following structure:
 #
@@ -38,24 +41,12 @@ from jaxley.synapses import IonotropicSynapse
 # takes into account the input_kwargs of the test, the name of the test and the runtimes
 # of each part.
 
-
-def load_json(fpath):
-    dct = {}
-    if os.path.exists(fpath):
-        with open(fpath, "r") as f:
-            dct = json.load(f)
-    return dct
-
-
-pytestmark = pytest.mark.regression  # mark all tests as regression tests in this file
 NEW_BASELINE = os.environ["NEW_BASELINE"] if "NEW_BASELINE" in os.environ else 0
+CONFIDENCE = 0.95
+
 dirname = os.path.dirname(__file__)
 fpath_baselines = os.path.join(dirname, "regression_test_baselines.json")
 fpath_results = os.path.join(dirname, "regression_test_results.json")
-
-tolerance = 0.2
-
-baselines = load_json(fpath_baselines)
 with open(fpath_results, "w") as f:  # clear previous results
     f.write("{}")
 
@@ -80,18 +71,20 @@ def generate_regression_report(base_results, new_results):
         report.append(func_signature)
         for key, new_time in new_runtimes.items():
             base_time = base_runtimes.get(key)
-            diff = None if base_time is None else ((new_time - base_time) / base_time)
 
             status = ""
-            if diff is None:
+            if base_time is None:
                 status = "🆕"
-            elif diff > tolerance:
+            elif new_time >= base_time:
                 status = "🔴"
-            elif diff < 0:
+            elif new_time < base_time * (1 - 0.05):
+                status = "🟠"  # time is very close to the confidence bound
+            elif new_time < base_time:
                 status = "🟢"
             else:
-                status = "⚪"
+                status = "❌"  # This should never happen.
 
+            diff = None if base_time is None else ((new_time - base_time) / base_time)
             time_str = (
                 f"({new_time:.3f}s)"
                 if diff is None
@@ -111,6 +104,20 @@ def generate_unique_key(d):
     return str(hash)
 
 
+def compute_conf_bounds(X):
+    df = len(X) - 1  # degrees of freedom = n-1
+    t_value = t_dist.ppf(CONFIDENCE, df)
+    return np.mean(X) + t_value * np.std(X, ddof=1)  # sample std
+
+
+def load_json(fpath):
+    dct = {}
+    if os.path.exists(fpath):
+        with open(fpath, "r") as f:
+            dct = json.load(f)
+    return dct
+
+
 def append_to_json(fpath, test_name, input_kwargs, runtimes):
     header = {"test_name": test_name, "input_kwargs": input_kwargs}
     data = {generate_unique_key(header): {**header, "runtimes": runtimes}}
@@ -124,9 +131,10 @@ def append_to_json(fpath, test_name, input_kwargs, runtimes):
 
 
 class compare_to_baseline:
-    def __init__(self, baseline_iters=3, test_iters=1):
+    def __init__(self, baseline_iters=5, test_iters=1):
         self.baseline_iters = baseline_iters
         self.test_iters = test_iters
+        self.baselines = load_json(fpath_baselines)
 
     def __call__(self, func):
         @wraps(func)  # ensures kwargs exposed to pytest
@@ -139,24 +147,23 @@ class compare_to_baseline:
             for _ in range(num_iters):
                 runtimes = func(**kwargs)
                 runs.append(runtimes)
-            runtimes = {k: np.mean([d[k] for d in runs]) for k in runs[0]}
+
+            # the baseline time is taken as the upper bound of the confidence interval,
+            # while the runtimes that we test against the baseline are taken as the mean
+            agg = compute_conf_bounds if NEW_BASELINE else np.mean
+            runtimes = {k: agg([d[k] for d in runs]) for k in runs[0]}
 
             append_to_json(
                 fpath_results, header["test_name"], header["input_kwargs"], runtimes
             )
 
             if not NEW_BASELINE:
-                assert key in baselines, f"No basline found for {header}"
-                func_baselines = baselines[key]["runtimes"]
+                assert key in self.baselines, f"No basline found for {header}"
+                func_baselines = self.baselines[key]["runtimes"]
                 for key, baseline in func_baselines.items():
-                    diff = (
-                        float("nan")
-                        if np.isclose(baseline, 0)
-                        else (runtimes[key] - baseline) / baseline
-                    )
-                    assert runtimes[key] <= baseline * (
-                        1 + tolerance
-                    ), f"{key} is {diff:.2%} slower than the baseline."
+                    assert (
+                        runtimes[key] < baseline
+                    ), f"{key} is significantly slower than the baseline at {runtimes[key]:.3f}s vs. {baseline:.3f}s."
 
         return test_wrapper
 
