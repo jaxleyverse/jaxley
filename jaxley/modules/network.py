@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
-import networkx as nx
 import numpy as np
 import pandas as pd
 from jax import vmap

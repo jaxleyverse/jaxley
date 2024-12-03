@@ -2118,9 +2118,13 @@ class Module(ABC):
         """
         res = 100 if "resolution" not in kwargs else kwargs.pop("resolution")
         if "comp" in type.lower():
-            return plot_comps(self, dims=dims, ax=ax, color=color, resolution=res, **kwargs)
+            return plot_comps(
+                self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
+            )
         if "morph" in type.lower():
-            return plot_morph(self, dims=dims, ax=ax, color=color, resolution=res, **kwargs)
+            return plot_morph(
+                self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
+            )
 
         assert not np.any(
             [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
