@@ -44,21 +44,32 @@ jobs:
       id: license
       if: always() # Run this step even if the previous one fails
       run: |
-        expected_header="# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is\n# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>"
-        exit_code=0
-        
-        while IFS= read -r file; do
-          header=$(head -n 2 "$file")
-          if [ "$header" != "$expected_header" ]; then
-            echo "❌ Missing or incorrect license header in $file"
-            exit_code=1
+          expected_header_1="# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is"
+          expected_header_2="# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>"
+          
+          exit_code=0
+      
+          while IFS= read -r file; do
+          # Extract the first two lines of the file
+          file_header_1=$(head -n 1 "$file")
+          file_header_2=$(head -n 2 "$file" | tail -n 1)
+      
+          # Compare the first line
+          if [ "$file_header_1" != "$expected_header_1" ]; then
+              echo "❌ Incorrect first line in $file"
+              exit_code=1
           fi
-        done < <(find jaxley tests -name "*.py" -type f)
-        
-        if [ $exit_code -ne 0 ]; then
-          echo "License header check failed"
+      
+          # Compare the second line
+          if [ "$file_header_2" != "$expected_header_2" ]; then
+              echo "❌ Incorrect second line in $file"
+              exit_code=1
+          fi
+          done < <(find jaxley tests -name "*.py" -type f)
+          
+          if [ $exit_code -ne 0 ]; then
           exit 1
-        fi
+          fi
 
     - name: Ensure that the changelog reflects the changes
       id: changelog
