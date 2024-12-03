@@ -160,7 +160,7 @@ class compare_to_baseline:
                 func_baselines = self.baselines[key]["runtimes"]
                 for key, baseline in func_baselines.items():
                     assert (
-                        runtimes[key] < baseline
+                        runtimes[key] <= baseline
                     ), f"{key} is significantly slower than the baseline at {runtimes[key]:.3f}s vs. {baseline:.3f}s."
 
         return test_wrapper
