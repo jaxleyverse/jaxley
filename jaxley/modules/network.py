@@ -449,7 +449,7 @@ class Network(Module):
                 two of them.
             cell_plot_kwargs: Keyword arguments passed to the plotting function for
                 cell morphologies. Only takes effect for `detail='full'`.
-            synapse_kwargs: Keyword arguments passed to the plotting function for
+            synapse_plot_kwargs: Keyword arguments passed to the plotting function for
                 syanpses. Only takes effect for `detail='full'`.
         """
         xyz0 = self.cell(0).xyzr[0][:, :3]
