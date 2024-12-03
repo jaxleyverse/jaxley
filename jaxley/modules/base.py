@@ -2086,10 +2086,10 @@ class Module(ABC):
     def vis(
         self,
         ax: Optional[Axes] = None,
-        col: str = "k",
+        color: str = "k",
         dims: Tuple[int] = (0, 1),
         type: str = "line",
-        morph_plot_kwargs: Dict = {},
+        **kwargs,
     ) -> Axes:
         """Visualize the module.
 
@@ -2102,7 +2102,7 @@ class Module(ABC):
         - `scatter`: All traced points, are plotted as scatter points.
         - `comp`: Plots the compartmentalized morphology, including radius
         and shape. (shows the true compartment lengths per default, but this can
-        be changed via the `morph_plot_kwargs`, for details see
+        be changed via the `kwargs`, for details see
         `jaxley.utils.plot_utils.plot_comps`).
         - `morph`: Reconstructs the 3D shape of the traced morphology. For details see
         `jaxley.utils.plot_utils.plot_morph`. Warning: For 3D plots and morphologies
@@ -2110,16 +2110,21 @@ class Module(ABC):
 
         Args:
             ax: An axis into which to plot.
-            col: The color for all branches.
+            color: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             type: The type of plot. One of ["line", "scatter", "comp", "morph"].
-            morph_plot_kwargs: Keyword arguments passed to the plotting function.
+            kwargs: Keyword arguments passed to the plotting function.
         """
+        res = 100 if "resolution" not in kwargs else kwargs.pop("resolution")
         if "comp" in type.lower():
-            return plot_comps(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
+            return plot_comps(
+                self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
+            )
         if "morph" in type.lower():
-            return plot_morph(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
+            return plot_morph(
+                self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
+            )
 
         assert not np.any(
             [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
@@ -2128,10 +2133,10 @@ class Module(ABC):
         ax = plot_graph(
             self.xyzr,
             dims=dims,
-            col=col,
+            color=color,
             ax=ax,
             type=type,
-            morph_plot_kwargs=morph_plot_kwargs,
+            **kwargs,
         )
 
         return ax

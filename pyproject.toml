@@ -28,7 +28,6 @@ keywords = ["neuroscience", "biophysics", "simulator", "jax"]
 dependencies = [
     "jax",
     "matplotlib",
-    "networkx",
     "numpy",
     "pandas>=2.2.0",
     "tridiax",
