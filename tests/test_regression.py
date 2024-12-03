@@ -41,7 +41,7 @@ pytestmark = pytest.mark.regression  # mark all tests as regression tests in thi
 # takes into account the input_kwargs of the test, the name of the test and the runtimes
 # of each part.
 
-NEW_BASELINE = os.environ["NEW_BASELINE"] if "NEW_BASELINE" in os.environ else 0
+NEW_BASELINE = int(os.environ["NEW_BASELINE"]) if "NEW_BASELINE" in os.environ else 0
 CONFIDENCE = 0.95
 
 dirname = os.path.dirname(__file__)
@@ -71,20 +71,18 @@ def generate_regression_report(base_results, new_results):
         report.append(func_signature)
         for key, new_time in new_runtimes.items():
             base_time = base_runtimes.get(key)
+            diff = None if base_time is None else ((new_time - base_time) / base_time)
 
             status = ""
             if base_time is None:
                 status = "🆕"
+            elif new_time < base_time:
+                status = "🟢" if diff is not None and diff < -0.05 else "🟠"
             elif new_time >= base_time:
                 status = "🔴"
-            elif new_time < base_time * (1 - 0.05):
-                status = "🟠"  # time is very close to the confidence bound
-            elif new_time < base_time:
-                status = "🟢"
             else:
                 status = "❌"  # This should never happen.
 
-            diff = None if base_time is None else ((new_time - base_time) / base_time)
             time_str = (
                 f"({new_time:.3f}s)"
                 if diff is None

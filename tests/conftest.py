@@ -209,7 +209,9 @@ def swc2jaxley():
 @pytest.fixture(scope="session", autouse=True)
 def print_session_report(request, pytestconfig):
     """Cleanup a testing directory once we are finished."""
-    NEW_BASELINE = os.environ["NEW_BASELINE"] if "NEW_BASELINE" in os.environ else 0
+    NEW_BASELINE = (
+        int(os.environ["NEW_BASELINE"]) if "NEW_BASELINE" in os.environ else 0
+    )
 
     dirname = os.path.dirname(__file__)
     baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
@@ -220,11 +222,10 @@ def print_session_report(request, pytestconfig):
     ]
 
     def update_baseline():
-        if NEW_BASELINE:
-            results = load_json(results_fname)
-            with open(baseline_fname, "w") as f:
-                json.dump(results, f, indent=2)
-            os.remove(results_fname)
+        results = load_json(results_fname)
+        with open(baseline_fname, "w") as f:
+            json.dump(results, f, indent=2)
+        os.remove(results_fname)
 
     def print_regression_report():
         baselines = load_json(baseline_fname)
@@ -243,5 +244,6 @@ def print_session_report(request, pytestconfig):
             print(report)
 
     if len(collected_regression_tests) > 0:
-        request.addfinalizer(update_baseline)
+        if NEW_BASELINE:
+            request.addfinalizer(update_baseline)
         request.addfinalizer(print_regression_report)
