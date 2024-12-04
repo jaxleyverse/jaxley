@@ -2,7 +2,7 @@
 
 # for details on triggering a workflow from a comment, see:
 # https://dev.to/zirkelc/trigger-github-workflow-for-comment-on-pull-request-45l2
-name: Update Regression Baseline
+name: Regression Tests
 
 on:
   issue_comment: # trigger from comment; event runs on the default branch
@@ -12,8 +12,8 @@ jobs:
   update_regression_tests:
     name: update_regression_tests
     runs-on: ubuntu-20.04
-    # Trigger from a comment that contains '/update_regression_baseline'
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/update_regression_baseline')
+    # Trigger from a comment that contains '/test_regression'
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/test_regression')
     # workflow needs permissions to write to the PR
     permissions:
       contents: write
@@ -31,7 +31,7 @@ jobs:
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: '## Updating Regression Baselines\n⏳ Workflow is currently running...'
+            body: '## Regression Test\n⏳ Workflow is currently running...'
           });
           return response.data.id;
       
@@ -47,7 +47,13 @@ jobs:
             pull_number: context.issue.number
           });
           return pr.data.head.repo.fork;
-  
+
+    - uses: actions/checkout@v3
+      with:
+        ref: main
+        lfs: true
+        fetch-depth: 0
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -62,10 +68,8 @@ jobs:
     - name: Update baseline
       id: update-baseline
       run: |
-        git config --global user.name '${{ github.event.comment.user.login }}'
-        git config --global user.email '${{ github.event.comment.user.login }}@users.noreply.github.com'
-        git checkout main
         NEW_BASELINE=1 pytest -m regression
+        cp tests/regression_test_baselines.json /tmp/regression_test_baselines.json
 
     - name: Get PR branch
       uses: xt0rted/pull-request-comment-branch@v3
@@ -80,38 +84,11 @@ jobs:
         lfs: true
         fetch-depth: 0 # This ensures we can checkout main branch too
 
-    - name: Run benchmarks and compare to baseline
-      if: github.event.pull_request.base.ref == 'main'
+    - name: Run comparison
+      id: comparison
       run: |
-        # Check if regression test results exist in main branch
-        if [ -f 'git cat-file -e main:tests/regression_test_baselines.json' ]; then
-          git checkout main tests/regression_test_baselines.json
-        else
-          echo "No regression test results found in main branch"
-        fi
+        cp /tmp/regression_test_baselines.json tests/regression_test_baselines.json
         pytest -m regression
-        
-    # Pushing to the PR branch does not work if the PR is initiated from a fork. This is
-    # because the GITHUB_TOKEN has read-only access by default for workflows triggered by 
-    # fork PRs. Hence we have to create a new PR to update the baseline (see below).
-    - name: Commit and push to PR branch (non-fork)
-      # Only run if baseline generation succeeded
-      if: success() && steps.update-baseline.outcome == 'success' && !fromJson(steps.check-fork.outputs.result)
-      run: |
-        git add -f tests/regression_test_baselines.json # since it's in .gitignore
-        git commit -m "Update regression test baselines"
-        git push origin HEAD:${{ steps.comment-branch.outputs.head_ref }} # head_ref will probably not work for forks!
-
-    - name: Create PR with updates (fork)
-      if: success() && steps.update-baseline.outcome == 'success' && fromJson(steps.check-fork.outputs.result)
-      uses: peter-evans/create-pull-request@v5
-      id: create-pr
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: Update regression test baselines
-        title: 'Update regression test baselines'
-        branch: regression-baseline-update-${{ github.event.issue.number }}
-        base: ${{ steps.comment-branch.outputs.head_ref }}
 
     - name: Update comment with results
       uses: actions/github-script@v7
@@ -120,7 +97,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const fs = require('fs');
-          let status = '${{ steps.update-baseline.outcome }}' === 'success' ? '✅' : '❌';
+          let status = '${{ steps.comparison.outcome }}' === 'success' ? '✅' : '❌';
           let message = '## Regression Baseline Update\n' + status + ' Process completed\n\n';
           
           try {
@@ -128,7 +105,7 @@ jobs:
             message += '```\n' + TestReport + '\n```\n\n';
             
             // Add information about where the changes were pushed
-            if ('${{ steps.update-baseline.outcome }}' === 'success') {
+            if ('${{ steps.comparison.outcome }}' === 'success') {
               if (!${{ fromJson(steps.check-fork.outputs.result) }}) {
                 message += '✨ Changes have been pushed directly to this PR\n';
               } else {
