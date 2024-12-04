@@ -40,11 +40,11 @@ class Leak(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gLeak": 1e-4,
             f"{prefix}_eLeak": -70.0,
         }
-        self.channel_states = {}
+        self.states = {}
         self.current_name = f"i_{prefix}"
 
     def update_states(
@@ -77,12 +77,12 @@ class Na(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gNa": 50e-3,
             "eNa": 50.0,
             "vt": -60.0,  # Global parameter, not prefixed with `Na`.
         }
-        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
         self.current_name = f"i_Na"
 
     def update_states(
@@ -148,12 +148,12 @@ class K(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gK": 5e-3,
             "eK": -90.0,
             "vt": -60.0,  # Global parameter, not prefixed with `Na`.
         }
-        self.channel_states = {f"{prefix}_n": 0.2}
+        self.states = {f"{prefix}_n": 0.2}
         self.current_name = f"i_K"
 
     def update_states(
@@ -204,12 +204,12 @@ class Km(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gKm": 0.004e-3,
             f"{prefix}_taumax": 4000.0,
             f"eK": -90.0,
         }
-        self.channel_states = {f"{prefix}_p": 0.2}
+        self.states = {f"{prefix}_p": 0.2}
         self.current_name = f"i_K"
 
     def update_states(
@@ -261,11 +261,11 @@ class CaL(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gCaL": 0.1e-3,
             "eCa": 120.0,
         }
-        self.channel_states = {f"{prefix}_q": 0.2, f"{prefix}_r": 0.2}
+        self.states = {f"{prefix}_q": 0.2, f"{prefix}_r": 0.2}
         self.current_name = f"i_Ca"
 
     def update_states(
@@ -329,12 +329,12 @@ class CaT(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gCaT": 0.4e-4,
             f"{prefix}_vx": 2.0,
             "eCa": 120.0,  # Global parameter, not prefixed with `CaT`.
         }
-        self.channel_states = {f"{prefix}_u": 0.2}
+        self.states = {f"{prefix}_u": 0.2}
         self.current_name = f"i_Ca"
 
     def update_states(
