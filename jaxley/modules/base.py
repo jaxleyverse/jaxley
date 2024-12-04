@@ -1058,9 +1058,6 @@ class Module(ABC):
         ncomps_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
-        assert np.all(
-            ncomps_per_branch == ncomps_per_branch[0]
-        ), "Parameter sharing is not allowed for modules containing branches with different numbers of compartments."
 
         data = self.nodes if key in self.nodes.columns else None
         data = self.edges if key in self.edges.columns else data
