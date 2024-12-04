@@ -22,8 +22,8 @@ class Dummy1(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {}
-        self.channel_states = {"Dummy_s": 0.0}
+        self.params = {}
+        self.states = {"Dummy_s": 0.0}
         self.current_name = f"i_Dummy1"
 
     @staticmethod
@@ -45,8 +45,8 @@ class Dummy2(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {}
-        self.channel_states = {"Dummy_s": 0.0}
+        self.params = {}
+        self.states = {"Dummy_s": 0.0}
         self.current_name = f"i_Dummy2"
 
     @staticmethod
@@ -68,10 +68,10 @@ class CaHVA(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.1,  # Initial value for m gating variable
             f"{self._name}_h": 0.1,  # Initial value for h gating variable
             "eCa": 0.0,  # mV, assuming eca for demonstration
@@ -140,13 +140,13 @@ class CaPump(Channel):
     ):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
             f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
             f"{self._name}_depth": 0.1,  # Depth of shell in um
             f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
         }
-        self.channel_states = {
+        self.states = {
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
         self.current_name = f"i_Ca"
