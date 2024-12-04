@@ -534,12 +534,25 @@ def test_write_trainables(SimpleNet):
 
 
 def test_param_sharing_w_different_group_sizes():
-    branch = jx.Branch(nseg=6)
-    branch.nodes["controlled_by_param"] = np.array([0, 0, 0, 1, 1, 2])
-    branch.make_trainable("radius")
-    assert branch.num_trainable_params == 3
+    # test if make_trainable corresponds to set
+    branch1 = jx.Branch(nseg=6)
+    branch1.nodes["controlled_by_param"] = np.array([0, 0, 0, 1, 1, 2])
+    branch1.make_trainable("radius")
+    assert branch1.num_trainable_params == 3
 
-    params = branch.get_parameters()
-    branch.to_jax()
-    pstate = params_to_pstate(params, branch.indices_set_by_trainables)
-    branch.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    # make trainable
+    params = branch1.get_parameters()
+    params[0]["radius"] = params[0]["radius"].at[:].set([2, 3, 4])
+    branch1.to_jax()
+    pstate = params_to_pstate(params, branch1.indices_set_by_trainables)
+    params1 = branch1.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+
+    # set
+    branch2 = jx.Branch(nseg=6)
+    branch2.set("radius", np.array([2, 2, 2, 3, 3, 4]))
+    params = branch2.get_parameters()
+    branch2.to_jax()
+    pstate = params_to_pstate(params, branch2.indices_set_by_trainables)
+    params2 = branch2.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+
+    assert np.array_equal(params1["radius"], params2["radius"], equal_nan=True)
