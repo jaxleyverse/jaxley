@@ -25,13 +25,13 @@ class CaPump(Channel):
     ):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
             f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
             f"{self._name}_depth": 0.1,  # Depth of shell in um
             f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
         }
-        self.channel_states = {
+        self.states = {
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
         self.current_name = f"i_Ca"
@@ -84,8 +84,8 @@ class CaNernstReversal(Channel):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.params = {}
+        self.states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
 
     def update_states(self, u, dt, voltages, params):
@@ -117,21 +117,21 @@ def test_channel_set_name():
     # channel name can be set in the constructor
     na = Na(name="NaPospischil")
     assert na.name == "NaPospischil"
-    assert "NaPospischil_gNa" in na.channel_params.keys()
-    assert "eNa" in na.channel_params.keys()
-    assert "NaPospischil_h" in na.channel_states.keys()
-    assert "NaPospischil_m" in na.channel_states.keys()
-    assert "NaPospischil_vt" not in na.channel_params.keys()
-    assert "vt" in na.channel_params.keys()
+    assert "NaPospischil_gNa" in na.params.keys()
+    assert "eNa" in na.params.keys()
+    assert "NaPospischil_h" in na.states.keys()
+    assert "NaPospischil_m" in na.states.keys()
+    assert "NaPospischil_vt" not in na.params.keys()
+    assert "vt" in na.params.keys()
 
     # channel name can not be changed directly
     k = K()
     with pytest.raises(AttributeError):
         k.name = "KPospischil"
-    assert "KPospischil_gNa" not in k.channel_params.keys()
-    assert "eNa" not in k.channel_params.keys()
-    assert "KPospischil_h" not in k.channel_states.keys()
-    assert "KPospischil_m" not in k.channel_states.keys()
+    assert "KPospischil_gNa" not in k.params.keys()
+    assert "eNa" not in k.params.keys()
+    assert "KPospischil_h" not in k.states.keys()
+    assert "KPospischil_m" not in k.states.keys()
 
 
 def test_channel_change_name():
@@ -139,12 +139,12 @@ def test_channel_change_name():
     # (and only this way after initialization)
     na = Na().change_name("NaPospischil")
     assert na.name == "NaPospischil"
-    assert "NaPospischil_gNa" in na.channel_params.keys()
-    assert "eNa" in na.channel_params.keys()
-    assert "NaPospischil_h" in na.channel_states.keys()
-    assert "NaPospischil_m" in na.channel_states.keys()
-    assert "NaPospischil_vt" not in na.channel_params.keys()
-    assert "vt" in na.channel_params.keys()
+    assert "NaPospischil_gNa" in na.params.keys()
+    assert "eNa" in na.params.keys()
+    assert "NaPospischil_h" in na.states.keys()
+    assert "NaPospischil_m" in na.states.keys()
+    assert "NaPospischil_vt" not in na.params.keys()
+    assert "vt" in na.params.keys()
 
 
 def test_integration_with_renamed_channels():
@@ -200,12 +200,12 @@ class KCA11(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_q10_ch": 3,
             f"{prefix}_q10_ch0": 22,
             "celsius": 22,
         }
-        self.channel_states = {f"{prefix}_m": 0.02, "CaCon_i": 1e-4}
+        self.states = {f"{prefix}_m": 0.02, "CaCon_i": 1e-4}
         self.current_name = f"i_K"
 
     def update_states(
@@ -291,8 +291,8 @@ def test_multiple_channel_currents(SimpleCell):
         def __init__(self, name: Optional[str] = None):
             self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
-            self.channel_params = {}
-            self.channel_states = {"cumulative": 0.0}
+            self.params = {}
+            self.states = {"cumulative": 0.0}
             self.current_name = f"i_User"
 
         def update_states(self, states, dt, v, params):
@@ -307,8 +307,8 @@ def test_multiple_channel_currents(SimpleCell):
         def __init__(self, name: Optional[str] = None):
             self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
-            self.channel_params = {}
-            self.channel_states = {}
+            self.params = {}
+            self.states = {}
             self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
@@ -321,8 +321,8 @@ def test_multiple_channel_currents(SimpleCell):
         def __init__(self, name: Optional[str] = None):
             self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
-            self.channel_params = {}
-            self.channel_states = {}
+            self.params = {}
+            self.states = {}
             self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):

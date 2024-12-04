@@ -59,22 +59,22 @@ class Channel:
         new_prefix = new_name + "_"
 
         self._name = new_name
-        self.channel_params = {
+        self.params = {
             (
                 new_prefix + key[len(old_prefix) :]
                 if key.startswith(old_prefix)
                 else key
             ): value
-            for key, value in self.channel_params.items()
+            for key, value in self.params.items()
         }
 
-        self.channel_states = {
+        self.states = {
             (
                 new_prefix + key[len(old_prefix) :]
                 if key.startswith(old_prefix)
                 else key
             ): value
-            for key, value in self.channel_states.items()
+            for key, value in self.states.items()
         }
         return self
 
