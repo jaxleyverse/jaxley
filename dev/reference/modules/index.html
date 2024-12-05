@@ -14432,8 +14432,7 @@ the stick representation coordinates.</p>
 <span class="normal">572</span>
 <span class="normal">573</span>
 <span class="normal">574</span>
-<span class="normal">575</span>
-<span class="normal">576</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Network</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">575</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Network</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Network class.</span>
 
 <span class="sd">    This class defines a network of cells that can be connected with synapses.</span>
@@ -14830,9 +14829,10 @@ the stick representation coordinates.</p>
         <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
         <span class="n">synapse_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>
         <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-        <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
         <span class="n">cell_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">synapse_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">synapse_scatter_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># absorb add. kwargs, i.e. to enable net.cell(0).vis(type=&quot;line&quot;)</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize the module.</span>
 
@@ -14840,19 +14840,17 @@ the stick representation coordinates.</p>
 <span class="sd">            detail: Either of [point, full]. `point` visualizes every neuron in the</span>
 <span class="sd">                network as a dot.</span>
 <span class="sd">                `full` plots the full morphology of every neuron. It requires that</span>
-<span class="sd">                `compute_xyz()` has been run and allows for indivual neurons to be</span>
-<span class="sd">                moved with `.move()`.</span>
-<span class="sd">            color: The color in which cells are plotted. Only takes effect if</span>
-<span class="sd">                `detail=&#39;full&#39;`.</span>
-<span class="sd">            type: Either `line` or `scatter`. Only takes effect if `detail=&#39;full&#39;`.</span>
-<span class="sd">            synapse_color: The color in which synapses are plotted. Only takes effect if</span>
-<span class="sd">                `detail=&#39;full&#39;`.</span>
+<span class="sd">                `compute_xyz()` has been run.</span>
+<span class="sd">            color: The color in which cells are plotted.</span>
+<span class="sd">            synapse_color: The color in which synapses are plotted.</span>
 <span class="sd">            dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">                two of them.</span>
 <span class="sd">            cell_plot_kwargs: Keyword arguments passed to the plotting function for</span>
 <span class="sd">                cell morphologies. Only takes effect for `detail=&#39;full&#39;`.</span>
 <span class="sd">            synapse_plot_kwargs: Keyword arguments passed to the plotting function for</span>
-<span class="sd">                syanpses. Only takes effect for `detail=&#39;full&#39;`.</span>
+<span class="sd">                syanpses.</span>
+<span class="sd">            synapse_scatter_kwargs: Keyword arguments passed to the scatter function for</span>
+<span class="sd">                syanpse terminals.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">xyz0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
         <span class="n">same_xyz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">xyz0</span> <span class="o">==</span> <span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">])</span>
@@ -14874,9 +14872,7 @@ the stick representation coordinates.</p>
                 <span class="n">pos</span> <span class="o">=</span> <span class="n">cell_to_point_xyz</span><span class="p">(</span><span class="n">cell</span><span class="p">)[</span><span class="n">dims_np</span><span class="p">]</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">pos</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
-            <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span>
-                <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span>
-            <span class="p">)</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;detail must be in {full, point}.&quot;</span><span class="p">)</span>
 
@@ -14887,7 +14883,7 @@ the stick representation coordinates.</p>
                 <span class="n">loc</span><span class="p">,</span> <span class="n">comp</span> <span class="o">=</span> <span class="n">edge</span><span class="p">[[</span><span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_locs&quot;</span><span class="p">,</span> <span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_global_comp_index&quot;</span><span class="p">]]</span>
                 <span class="n">branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span>
                 <span class="n">cell</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span>
-                <span class="n">branch_xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">branch</span><span class="p">]</span>
+                <span class="n">branch_xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">branch</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
 
                 <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">branch_xyz</span>
                 <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
@@ -14903,8 +14899,10 @@ the stick representation coordinates.</p>
 
                 <span class="n">prepost_locs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xyz_loc</span><span class="p">)</span>
             <span class="n">prepost_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">prepost_locs</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
-
             <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">prepost_locs</span><span class="p">[</span><span class="n">dims_np</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">synapse_color</span><span class="p">,</span> <span class="o">**</span><span class="n">synapse_plot_kwargs</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                <span class="o">*</span><span class="n">prepost_locs</span><span class="p">[</span><span class="n">dims_np</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">synapse_color</span><span class="p">,</span> <span class="o">**</span><span class="n">synapse_scatter_kwargs</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ax</span>
 
@@ -15358,7 +15356,7 @@ the stick representation coordinates.</p>
 
 
 <h3 id="jaxley.modules.network.Network.vis" class="doc doc-heading">
-            <code class=" language-python"><span class="n">vis</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">synapse_color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;line&#39;</span><span class="p">,</span> <span class="n">cell_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">synapse_plot_kwargs</span><span class="o">=</span><span class="p">{})</span></code>
+            <code class=" language-python"><span class="n">vis</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">synapse_color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">cell_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">synapse_plot_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">synapse_scatter_kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 <a href="#jaxley.modules.network.Network.vis" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -15391,8 +15389,7 @@ the stick representation coordinates.</p>
                 <p>Either of [point, full]. <code>point</code> visualizes every neuron in the
 network as a dot.
 <code>full</code> plots the full morphology of every neuron. It requires that
-<code>compute_xyz()</code> has been run and allows for indivual neurons to be
-moved with <code>.move()</code>.</p>
+<code>compute_xyz()</code> has been run.</p>
               </div>
             </td>
             <td>
@@ -15408,28 +15405,11 @@ moved with <code>.move()</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The color in which cells are plotted. Only takes effect if
-<code>detail='full'</code>.</p>
+                <p>The color in which cells are plotted.</p>
               </div>
             </td>
             <td>
                   <code>&#39;k&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>type</code>
-            </td>
-            <td>
-                  <code>str</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Either <code>line</code> or <code>scatter</code>. Only takes effect if <code>detail='full'</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;line&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -15441,8 +15421,7 @@ moved with <code>.move()</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The color in which synapses are plotted. Only takes effect if
-<code>detail='full'</code>.</p>
+                <p>The color in which synapses are plotted.</p>
               </div>
             </td>
             <td>
@@ -15493,7 +15472,24 @@ cell morphologies. Only takes effect for <code>detail='full'</code>.</p>
             <td>
               <div class="doc-md-description">
                 <p>Keyword arguments passed to the plotting function for
-syanpses. Only takes effect for <code>detail='full'</code>.</p>
+syanpses.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>synapse_scatter_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keyword arguments passed to the scatter function for
+syanpse terminals.</p>
               </div>
             </td>
             <td>
@@ -15587,17 +15583,17 @@ syanpses. Only takes effect for <code>detail='full'</code>.</p>
 <span class="normal">503</span>
 <span class="normal">504</span>
 <span class="normal">505</span>
-<span class="normal">506</span>
-<span class="normal">507</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
+<span class="normal">506</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">vis</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k&quot;</span><span class="p">,</span>
     <span class="n">synapse_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>
     <span class="n">dims</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
     <span class="n">cell_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="n">synapse_plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="n">synapse_scatter_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># absorb add. kwargs, i.e. to enable net.cell(0).vis(type=&quot;line&quot;)</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Visualize the module.</span>
 
@@ -15605,19 +15601,17 @@ syanpses. Only takes effect for <code>detail='full'</code>.</p>
 <span class="sd">        detail: Either of [point, full]. `point` visualizes every neuron in the</span>
 <span class="sd">            network as a dot.</span>
 <span class="sd">            `full` plots the full morphology of every neuron. It requires that</span>
-<span class="sd">            `compute_xyz()` has been run and allows for indivual neurons to be</span>
-<span class="sd">            moved with `.move()`.</span>
-<span class="sd">        color: The color in which cells are plotted. Only takes effect if</span>
-<span class="sd">            `detail=&#39;full&#39;`.</span>
-<span class="sd">        type: Either `line` or `scatter`. Only takes effect if `detail=&#39;full&#39;`.</span>
-<span class="sd">        synapse_color: The color in which synapses are plotted. Only takes effect if</span>
-<span class="sd">            `detail=&#39;full&#39;`.</span>
+<span class="sd">            `compute_xyz()` has been run.</span>
+<span class="sd">        color: The color in which cells are plotted.</span>
+<span class="sd">        synapse_color: The color in which synapses are plotted.</span>
 <span class="sd">        dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of</span>
 <span class="sd">            two of them.</span>
 <span class="sd">        cell_plot_kwargs: Keyword arguments passed to the plotting function for</span>
 <span class="sd">            cell morphologies. Only takes effect for `detail=&#39;full&#39;`.</span>
 <span class="sd">        synapse_plot_kwargs: Keyword arguments passed to the plotting function for</span>
-<span class="sd">            syanpses. Only takes effect for `detail=&#39;full&#39;`.</span>
+<span class="sd">            syanpses.</span>
+<span class="sd">        synapse_scatter_kwargs: Keyword arguments passed to the scatter function for</span>
+<span class="sd">            syanpse terminals.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">xyz0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
     <span class="n">same_xyz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">xyz0</span> <span class="o">==</span> <span class="n">cell</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">])</span>
@@ -15639,9 +15633,7 @@ syanpses. Only takes effect for <code>detail='full'</code>.</p>
             <span class="n">pos</span> <span class="o">=</span> <span class="n">cell_to_point_xyz</span><span class="p">(</span><span class="n">cell</span><span class="p">)[</span><span class="n">dims_np</span><span class="p">]</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">pos</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span>
-            <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span>
-        <span class="p">)</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">cell_plot_kwargs</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;detail must be in {full, point}.&quot;</span><span class="p">)</span>
 
@@ -15652,7 +15644,7 @@ syanpses. Only takes effect for <code>detail='full'</code>.</p>
             <span class="n">loc</span><span class="p">,</span> <span class="n">comp</span> <span class="o">=</span> <span class="n">edge</span><span class="p">[[</span><span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_locs&quot;</span><span class="p">,</span> <span class="n">prepost</span> <span class="o">+</span> <span class="s2">&quot;_global_comp_index&quot;</span><span class="p">]]</span>
             <span class="n">branch</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_branch_index&quot;</span><span class="p">]</span>
             <span class="n">cell</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">,</span> <span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span>
-            <span class="n">branch_xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">branch</span><span class="p">]</span>
+            <span class="n">branch_xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">branch</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
 
             <span class="n">xyz_loc</span> <span class="o">=</span> <span class="n">branch_xyz</span>
             <span class="k">if</span> <span class="n">detail</span> <span class="o">==</span> <span class="s2">&quot;point&quot;</span><span class="p">:</span>
@@ -15668,8 +15660,10 @@ syanpses. Only takes effect for <code>detail='full'</code>.</p>
 
             <span class="n">prepost_locs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xyz_loc</span><span class="p">)</span>
         <span class="n">prepost_locs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">prepost_locs</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
-
         <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">prepost_locs</span><span class="p">[</span><span class="n">dims_np</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">synapse_color</span><span class="p">,</span> <span class="o">**</span><span class="n">synapse_plot_kwargs</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">prepost_locs</span><span class="p">[</span><span class="n">dims_np</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">synapse_color</span><span class="p">,</span> <span class="o">**</span><span class="n">synapse_scatter_kwargs</span>
+        <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ax</span>
 </code></pre></div></td></tr></table></div>
