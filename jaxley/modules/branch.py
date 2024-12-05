@@ -10,7 +10,7 @@ import pandas as pd
 
 from jaxley.modules.base import Module
 from jaxley.modules.compartment import Compartment
-from jaxley.utils.cell_utils import compute_children_and_parents
+from jaxley.utils.cell_utils import compute_children_and_parents, dtype_aware_concat
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
@@ -73,7 +73,7 @@ class Branch(Module):
         self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
 
         # Indexing.
-        self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
+        self.nodes = dtype_aware_concat([c.nodes for c in compartment_list])
         self._append_params_and_states(self.branch_params, self.branch_states)
         self.nodes["global_comp_index"] = np.arange(self.ncomp).tolist()
         self.nodes["global_branch_index"] = [0] * self.ncomp
