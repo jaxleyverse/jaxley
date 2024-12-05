@@ -1088,10 +1088,14 @@ class Module(ABC):
                 pad(inds) if inds.shape[0] < max_len else inds for inds in comp_inds
             ]
 
+        # Sorted inds are only used to infer the correct starting values.
         indices_per_param = jnp.stack(comp_inds)
 
-        # Sorted inds are only used to infer the correct starting values.
-        data.loc[-1, key] = np.nan  # assign dummy param (ignored by nanmean later)
+        # Assign dummy param (ignored by nanmean later). This adds a new row to the
+        # `data` (which is, e.g., self.nodes). That new row has index `-1`, which does
+        # not clash with any other node index (they are in
+        # `[0, ..., num_total_comps-1]`).
+        data.loc[-1, key] = np.nan
         param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
 
         # Set the value which the trainable parameter should take.
