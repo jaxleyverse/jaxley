@@ -774,3 +774,16 @@ def compute_children_and_parents(
     child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
     par_inds = np.unique(par_inds)
     return par_inds, child_inds, child_belongs_to_branchpoint
+
+
+def dtype_aware_concat(dfs):
+    concat_df = pd.concat(dfs, ignore_index=True)
+    # replace nans with Nones
+    # this correctly casts float(None) -> NaN, bool(None) -> NaN, etc.
+    concat_df[concat_df.isna()] = None
+    for col in concat_df.columns[concat_df.dtypes == "object"]:
+        for df in dfs:
+            if col in df.columns:
+                concat_df[col] = concat_df[col].astype(df[col].dtype)
+            break  # first match is sufficient
+    return concat_df

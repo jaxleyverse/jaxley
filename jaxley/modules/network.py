@@ -19,6 +19,7 @@ from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
     compute_children_and_parents,
     compute_current_density,
+    dtype_aware_concat,
     loc_of_index,
     merge_cells,
     query_states_and_params,
@@ -67,7 +68,7 @@ class Network(Module):
         self.total_nbranches = sum(self.nbranches_per_cell)
         self._cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
-        self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
+        self.nodes = dtype_aware_concat([c.nodes for c in cells])
         self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.ncomp_per_branch
@@ -267,8 +268,8 @@ class Network(Module):
 
         for i, group in edges.groupby("type_ind"):
             synapse = syn_channels[i]
-            pre_inds = group["global_pre_comp_index"].to_numpy()
-            post_inds = group["global_post_comp_index"].to_numpy()
+            pre_inds = group["pre_global_comp_index"].to_numpy()
+            post_inds = group["post_global_comp_index"].to_numpy()
             edge_inds = group.index.to_numpy()
 
             query_syn = lambda d, names: query_states_and_params(d, names, edge_inds)
@@ -311,8 +312,8 @@ class Network(Module):
         synapse_current_states = {f"{s._name}_current": zeros for s in syn_channels}
         for i, group in edges.groupby("type_ind"):
             synapse = syn_channels[i]
-            pre_inds = group["global_pre_comp_index"].to_numpy()
-            post_inds = group["global_post_comp_index"].to_numpy()
+            pre_inds = group["pre_global_comp_index"].to_numpy()
+            post_inds = group["post_global_comp_index"].to_numpy()
             edge_inds = group.index.to_numpy()
 
             query_syn = lambda d, names: query_states_and_params(d, names, edge_inds)
