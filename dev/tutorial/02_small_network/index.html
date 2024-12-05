@@ -963,8 +963,10 @@
 <p>At this point, we can already visualize this network:</p>
 <div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">compute_xyz</span><span class="p">()</span>
 <span class="n">net</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="mi">180</span><span class="p">)</span>
+<span class="n">net</span><span class="o">.</span><span class="n">arrange_in_layers</span><span class="p">(</span><span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">within_layer_offset</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">between_layer_offset</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">})</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_9_0.png" /></p>
 <p><em>Note: you can use <code>move_to</code> to have more control over the location of cells, e.g.: <code>network.cell(i).move_to(x=0, y=200)</code>.</em></p>
@@ -976,7 +978,7 @@
 </code></pre></div>
 <p>Let&rsquo;s visualize this again:</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">})</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_14_0.png" /></p>
 <p>As you can see, the <code>full_connect</code> method inserted one synapse (in blue) from every neuron in the first layer to the output neuron. The <code>fully_connect</code> method builds this synapse from the zero-eth compartment and zero-eth branch of the presynaptic neuron onto a random branch of the postsynaptic neuron. If you want more control over the pre- and post-synaptic branches, you can use the <code>connect</code> method:</p>
@@ -985,7 +987,7 @@
 <span class="n">connect</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">layer_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;within_layer_offset&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;between_layer_offset&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">})</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_17_0.png" /></p>
 <h3 id="inspecting-and-changing-synaptic-parameters">Inspecting and changing synaptic parameters<a class="headerlink" href="#inspecting-and-changing-synaptic-parameters" title="Permanent link">&para;</a></h3>
@@ -1011,8 +1013,8 @@
     <tr style="text-align: right;">
       <th></th>
       <th>global_edge_index</th>
-      <th>global_pre_comp_index</th>
-      <th>global_post_comp_index</th>
+      <th>pre_global_comp_index</th>
+      <th>post_global_comp_index</th>
       <th>type</th>
       <th>type_ind</th>
       <th>pre_locs</th>
@@ -1029,96 +1031,6 @@
       <th>0</th>
       <td>0</td>
       <td>0</td>
-      <td>286</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.625</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>28</td>
-      <td>298</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.625</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2</td>
-      <td>56</td>
-      <td>286</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.625</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>3</td>
-      <td>84</td>
-      <td>295</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.875</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>4</td>
-      <td>112</td>
-      <td>302</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.625</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>5</td>
-      <td>140</td>
-      <td>288</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.125</td>
-      <td>0.125</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>6</td>
-      <td>168</td>
       <td>287</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
@@ -1131,10 +1043,10 @@
       <td>0</td>
     </tr>
     <tr>
-      <th>7</th>
-      <td>7</td>
-      <td>196</td>
-      <td>305</td>
+      <th>1</th>
+      <td>1</td>
+      <td>28</td>
+      <td>289</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1146,10 +1058,100 @@
       <td>0</td>
     </tr>
     <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>56</td>
+      <td>289</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.375</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>84</td>
+      <td>301</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.375</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>112</td>
+      <td>281</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.375</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>140</td>
+      <td>295</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.875</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>168</td>
+      <td>289</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.375</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>196</td>
+      <td>290</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.125</td>
+      <td>0.625</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
       <th>8</th>
       <td>8</td>
       <td>224</td>
-      <td>299</td>
+      <td>303</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
@@ -1164,7 +1166,7 @@
       <th>9</th>
       <td>9</td>
       <td>252</td>
-      <td>284</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
