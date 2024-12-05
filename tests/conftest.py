@@ -206,6 +206,36 @@ def swc2jaxley():
     params = {}
 
 
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--runslow"):
+        # --runslow given in cli: do not skip slow tests
+        return
+    skip_slow = pytest.mark.skip(reason="need --runslow option to run")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(skip_slow)
+
+
+def pytest_collection_modifyitems(config, items):
+    NEW_BASELINE = (
+        int(os.environ["NEW_BASELINE"]) if "NEW_BASELINE" in os.environ else 0
+    )
+
+    dirname = os.path.dirname(__file__)
+    baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
+
+    def should_skip_regression():
+        return not NEW_BASELINE and not os.path.exists(baseline_fname)
+
+    if should_skip_regression():
+        for item in items:
+            if "regression" in item.keywords:
+                skip_regression = pytest.mark.skip(
+                    reason="need NEW_BASELINE env to run"
+                )
+                item.add_marker(skip_regression)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def print_session_report(request, pytestconfig):
     """Cleanup a testing directory once we are finished."""
