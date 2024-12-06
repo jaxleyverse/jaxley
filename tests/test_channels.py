@@ -365,9 +365,7 @@ def test_delete_channel(SimpleBranch):
     branch3.delete_channel(K())
 
     def channel_present(view, channel, partial=False):
-        states_and_params = list(channel.channel_states.keys()) + list(
-            channel.channel_params.keys()
-        )
+        states_and_params = list(channel.states.keys()) + list(channel.params.keys())
         # none of the states or params should be in nodes
         cols = view.nodes.columns.to_list()
         channel_cols = [
