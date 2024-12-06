@@ -747,7 +747,7 @@ class Module(ABC):
                     inds = data.index[data["type"] == mech._name]
                 states_params = list(mech.params) + list(mech.states)
                 params = data[states_params].loc[inds]
-                jax_arrays.update({mech._name: inds})
+                # jax_arrays.update({mech._name: inds})
                 jax_arrays.update(params.to_dict(orient="list"))
 
         morph_params = ["radius", "length", "axial_resistivity", "capacitance"]
