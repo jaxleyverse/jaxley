@@ -1256,14 +1256,17 @@ class Module(ABC):
         for key in global_states_params:
             yield key, self.jaxnodes[key]
 
+        # for key in self.synapse_current_names:
+        #     yield key, self.jaxedges[key]
+
         # Join node and edge states into a single state dictionary.
         for jax_arrays, mechs in zip(
             [self.jaxnodes, self.jaxedges],
             [self.channels, self.synapses],
         ):
             for mech in mechs:
-                mech_params_states = mech.__dict__["params"] if params else {}
-                mech_params_states.update(mech.__dict__["states"] if states else {})
+                mech_params_states = mech.params if params else {}
+                mech_params_states.update(mech.states if states else {})
                 for key in mech_params_states:
                     yield key, jax_arrays[key]
 
@@ -1307,8 +1310,8 @@ class Module(ABC):
         states=False,
     ) -> Dict[str, jnp.ndarray]:
         states_params = {}
-        for key, jax_array in self.base._iter_states_params(params, states):
-            states_params[key] = jax_array
+        for key, jax_arrays in self.base._iter_states_params(params, states):
+            states_params[key] = jax_arrays
 
         # Override with those parameters set by `.make_trainable()`.
         for parameter in pstate:
@@ -1428,8 +1431,8 @@ class Module(ABC):
         self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
         channel_nodes = self.base.nodes
         states = {}
-        for key, jax_array in self.base._iter_states_params(states=True):
-            states[key] = jax_array
+        for key, jax_arrays in self.base._iter_states_params(states=True):
+            states[key] = jax_arrays
 
         # We do not use any `pstate` for initializing. In principle, we could change
         # that by allowing an input `params` and `pstate` to this function.
@@ -1798,8 +1801,8 @@ class Module(ABC):
         channel_names = [c._name for c in self.channels]
         all_channel_names = [c._name for c in self.base.channels]
         if name in channel_names:
-            channel_cols = list(channel.channel_params.keys())
-            channel_cols += list(channel.channel_states.keys())
+            channel_cols = list(channel.params.keys())
+            channel_cols += list(channel.states.keys())
             self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
             self.base.nodes.loc[self._nodes_in_view, name] = False
 
@@ -2583,16 +2586,16 @@ class View(Module):
                 elif v in mechs + ["v"] + morph_params:
                     self._mech_lookup_table[k] = v
 
-        for jax_array, base_jax_array, viewed_inds in zip(
+        for jax_arrays, base_jax_arrays, viewed_inds in zip(
             [jaxnodes, jaxedges],
             [self.base.jaxnodes, self.base.jaxedges],
             [self._nodes_in_view, self._edges_in_view],
         ):
-            if base_jax_array is not None and len(viewed_inds) > 0:
-                for key, values in base_jax_array.items():
+            if base_jax_arrays is not None and len(viewed_inds) > 0:
+                for key, values in base_jax_arrays.items():
                     mech, mech_inds = self.base._get_mech_inds_of_param_state(key)
                     if mech is None or mech in mechs:
-                        jax_array[key] = values[
+                        jax_arrays[key] = values.at[
                             a_intersects_b_at(mech_inds, viewed_inds)
                         ]
 
