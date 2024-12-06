@@ -740,14 +740,11 @@ class Module(ABC):
             [self.base.nodes, self.base.edges],
             [self.base.channels, self.base.synapses],
         ):
-            jax_arrays.update({"index": data.index.to_numpy()})
-            all_inds = jax_arrays["index"]
             for mech in mechs:
-                inds = (
-                    all_inds[data["type"] == mech._name]
-                    if "type" in data.columns
-                    else all_inds[data[mech._name]]
-                )
+                if isinstance(mech, Channel):
+                    inds = data.index[data[mech._name]]
+                else:
+                    inds = data.index[data["type"] == mech._name]
                 states_params = list(mech.params) + list(mech.states)
                 params = data[states_params].loc[inds]
                 jax_arrays.update({mech._name: inds})
@@ -757,6 +754,14 @@ class Module(ABC):
         jaxnodes.update(self.nodes[["v"] + morph_params].to_dict(orient="list"))
         self.base.jaxnodes = {k: jnp.asarray(v) for k, v in jaxnodes.items()}
         self.base.jaxedges = {k: jnp.asarray(v) for k, v in jaxedges.items()}
+
+        # the parameters and states in the jaxnodes are stored on a per-mechanism basis,
+        #  i.e. if only compartment #2 has a HH channels, then the jaxnodes will be
+        #  {HH_gNa: [0.1], ...} vs. {gbar_HH: [NaN, NaN, 0.1, ...], ...}. This means
+        # a seperate lookup table is needed to figure out which parameters and states
+        # belong to which mechanism and at which global indices the mechanism lives.
+
+        self.base._update_mech_lookup_table()
 
     def show(
         self,
@@ -1240,7 +1245,7 @@ class Module(ABC):
 
     def _iter_states_params(
         self, params=False, states=False
-    ) -> Tuple[str, jnp.ndarray, jnp.ndarray]:
+    ) -> Tuple[str, jnp.ndarray]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
 
         # assert that either params or states is True
@@ -1249,7 +1254,7 @@ class Module(ABC):
         global_states_params = morph_params if params else []
         global_states_params += ["v"] if states else []
         for key in global_states_params:
-            yield key, self.jaxnodes["index"], self.jaxnodes[key]
+            yield key, self.jaxnodes[key]
 
         # Join node and edge states into a single state dictionary.
         for jax_arrays, mechs in zip(
@@ -1257,20 +1262,39 @@ class Module(ABC):
             [self.channels, self.synapses],
         ):
             for mech in mechs:
-                mech_inds = jax_arrays[mech._name]
                 mech_params_states = mech.__dict__["params"] if params else {}
                 mech_params_states.update(mech.__dict__["states"] if states else {})
                 for key in mech_params_states:
-                    yield key, mech_inds, jax_arrays[key]
+                    yield key, jax_arrays[key]
+
+    def _update_mech_lookup_table(self):
+        chan_items = [(list(c.params) + list(c.states), c._name) for c in self.channels]
+        syn_items = [(list(s.params) + list(s.states), s._name) for s in self.synapses]
+
+        chan_inds = [
+            {c._name + "_index": self.nodes.index[self.nodes[c._name]].to_numpy()}
+            for c in self.channels
+        ]
+        syn_inds = [
+            {
+                s._name
+                + "_index": self.edges.index[self.edges["type"] == s._name].to_numpy()
+            }
+            for s in self.synapses
+        ]
+
+        mech_items = [dict(zip(k, [v] * len(k))) for (k, v) in chan_items + syn_items]
+        mech_items += chan_inds + syn_inds
+
+        self._mech_lookup_table = {k: v for d in mech_items for k, v in d.items()}
 
     def _get_mech_inds_of_param_state(self, key: str) -> Tuple[str, jnp.ndarray]:
-        jax_array = self.jaxnodes if key in self.nodes.columns else self.jaxedges
+        if key in self._mech_lookup_table:
+            mech = self._mech_lookup_table[key]
+            inds = self._mech_lookup_table[mech + "_index"]
+            return mech, inds
 
-        if "_" in key and key not in ["axial_resistivity", "axial_conductances"]:
-            mech = key.split("_")[0]
-            return mech, jax_array[mech]
-
-        return None, jax_array["index"]
+        return None, self._nodes_in_view
 
     @only_allow_module
     def _get_all_states_params(
@@ -1283,7 +1307,7 @@ class Module(ABC):
         states=False,
     ) -> Dict[str, jnp.ndarray]:
         states_params = {}
-        for key, _, jax_array in self.base._iter_states_params(params, states):
+        for key, jax_array in self.base._iter_states_params(params, states):
             states_params[key] = jax_array
 
         # Override with those parameters set by `.make_trainable()`.
@@ -1404,7 +1428,7 @@ class Module(ABC):
         self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
         channel_nodes = self.base.nodes
         states = {}
-        for key, _, jax_array in self.base._iter_states_params(states=True):
+        for key, jax_array in self.base._iter_states_params(states=True):
             states[key] = jax_array
 
         # We do not use any `pstate` for initializing. In principle, we could change
@@ -2537,11 +2561,28 @@ class View(Module):
     def _jax_arrays_in_view(self, pointer: Union[Module, View]):
         """Update jaxnodes/jaxedges to show only those currently in view."""
         a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
+        morph_params = ["radius", "length", "axial_resistivity", "capacitance"]
 
-        jaxnodes = {} if self.base.jaxnodes is not None else None
-        jaxedges = {} if self.base.jaxedges is not None else None
+        jaxnodes = {} if self.base.jaxnodes else None
+        jaxedges = {} if self.base.jaxedges else None
 
-        mechs = [m._name for m in self.channels + self.synapses if m is not None]
+        # None check is needed for View -> see `View._jax_arrays_in_view`
+        chan_mechs = [m._name for m in self.channels]
+        syn_mechs = [m._name for m in self.synapses if m is not None]
+        mechs = chan_mechs + syn_mechs
+        if self.base._mech_lookup_table:
+            self._mech_lookup_table = {}
+            for k, v in self.base._mech_lookup_table.items():
+                if "index" in k:
+                    mech = k.replace("_index", "")
+                    if mech in chan_mechs:
+                        v = v[a_intersects_b_at(v, self._nodes_in_view)]
+                    elif mech in syn_mechs:
+                        v = v[a_intersects_b_at(v, self._edges_in_view)]
+                    self._mech_lookup_table[k] = v
+                elif v in mechs + ["v"] + morph_params:
+                    self._mech_lookup_table[k] = v
+
         for jax_array, base_jax_array, viewed_inds in zip(
             [jaxnodes, jaxedges],
             [self.base.jaxnodes, self.base.jaxedges],
@@ -2554,7 +2595,6 @@ class View(Module):
                         jax_array[key] = values[
                             a_intersects_b_at(mech_inds, viewed_inds)
                         ]
-                jax_array["index"] = np.asarray(viewed_inds)
 
         return jaxnodes, jaxedges
 
