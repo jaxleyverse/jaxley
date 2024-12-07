@@ -1442,9 +1442,7 @@ class Module(ABC):
 
         for channel in self.base.channels:
             name = channel._name
-            channel_indices = channel_nodes.loc[channel_nodes[name]][
-                "global_comp_index"
-            ].to_numpy()
+            channel_indices = self._mech_lookup_table[name + "_index"]
             voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
             channel_param_names = list(channel.params.keys())
@@ -1980,23 +1978,20 @@ class Module(ABC):
         morph_params = ["radius", "length", "axial_resistivity", "capacitance"]
 
         for channel in channels:
-            is_channel = channel_nodes[channel._name]
-            channel_inds = channel_nodes.loc[is_channel, "global_comp_index"].to_numpy()
-
-            query_channel = lambda d, names: query_states_and_params(d, names)
             channel_param_names = list(channel.params) + morph_params
-            channel_params = query_channel(params, channel_param_names)
+            channel_params = query_states_and_params(params, channel_param_names)
             channel_state_names = list(channel.states) + self.membrane_current_names
-            channel_states = query_channel(states, channel_state_names)
+            channel_states = query_states_and_params(states, channel_state_names)
 
             # States updates.
+            channel_inds = self._mech_lookup_table[channel._name + "_index"]
             states_updated = channel.update_states(
                 channel_states, delta_t, voltages[channel_inds], channel_params
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in states_updated.items():
-                states[key] = states[key].at[channel_inds].set(val)
+                states[key] = states[key].at[:].set(val)
 
         return states
 
@@ -2024,14 +2019,11 @@ class Module(ABC):
 
         current_states = {name: zeros for name in self.membrane_current_names}
         for channel in channels:
-            is_channel = channel_nodes[channel._name]
-            channel_inds = channel_nodes.loc[is_channel, "global_comp_index"].to_numpy()
-
-            query_channel = lambda d, names: query_states_and_params(d, names)
             channel_param_names = list(channel.params) + morph_params
-            channel_params = query_channel(params, channel_param_names)
-            channel_states = query_channel(states, channel.states)
+            channel_params = query_states_and_params(params, channel_param_names)
+            channel_states = query_states_and_params(states, channel.states)
 
+            channel_inds = self._mech_lookup_table[channel._name + "_index"]
             v_channel = voltages[channel_inds]
             v_and_perturbed = jnp.array([v_channel, v_channel + diff])
 
