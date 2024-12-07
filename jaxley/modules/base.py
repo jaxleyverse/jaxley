@@ -1449,12 +1449,8 @@ class Module(ABC):
 
             channel_param_names = list(channel.params.keys())
             channel_state_names = list(channel.states.keys())
-            channel_states = query_states_and_params(
-                states, channel_state_names, channel_indices
-            )
-            channel_params = query_states_and_params(
-                params, channel_param_names, channel_indices
-            )
+            channel_states = query_states_and_params(states, channel_state_names)
+            channel_params = query_states_and_params(params, channel_param_names)
 
             init_state = channel.init_state(
                 channel_states, voltages, channel_params, delta_t
@@ -1987,9 +1983,7 @@ class Module(ABC):
             is_channel = channel_nodes[channel._name]
             channel_inds = channel_nodes.loc[is_channel, "global_comp_index"].to_numpy()
 
-            query_channel = lambda d, names: query_states_and_params(
-                d, names, channel_inds
-            )
+            query_channel = lambda d, names: query_states_and_params(d, names)
             channel_param_names = list(channel.params) + morph_params
             channel_params = query_channel(params, channel_param_names)
             channel_state_names = list(channel.states) + self.membrane_current_names
@@ -2033,9 +2027,7 @@ class Module(ABC):
             is_channel = channel_nodes[channel._name]
             channel_inds = channel_nodes.loc[is_channel, "global_comp_index"].to_numpy()
 
-            query_channel = lambda d, names: query_states_and_params(
-                d, names, channel_inds
-            )
+            query_channel = lambda d, names: query_states_and_params(d, names)
             channel_param_names = list(channel.params) + morph_params
             channel_params = query_channel(params, channel_param_names)
             channel_states = query_channel(states, channel.states)
