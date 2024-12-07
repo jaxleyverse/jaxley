@@ -309,18 +309,16 @@ class Network(Module):
         # offset.
         diff = 1e-3
 
+        num_comp = len(voltages)
         synapse_current_states = {f"i_{s._name}": zeros for s in syn_channels}
         for i, group in edges.groupby("type_ind"):
             synapse = syn_channels[i]
             pre_inds = group["pre_global_comp_index"].to_numpy()
             post_inds = group["post_global_comp_index"].to_numpy()
-            edge_inds = group.index.to_numpy()
 
-            query_syn = lambda d, names: query_states_and_params(d, names, edge_inds)
-            synapse_params = query_syn(params, synapse.params)
-            synapse_states = query_syn(states, synapse.states)
+            synapse_params = query_states_and_params(params, synapse.params)
+            synapse_states = query_states_and_params(states, synapse.states)
 
-            num_comp = len(voltages)
             v_pre, v_post = voltages[pre_inds], voltages[post_inds]
             pre_v_and_perturbed = jnp.array([v_pre, v_pre + diff])
             post_v_and_perturbed = jnp.array([v_post, v_post + diff])
@@ -345,6 +343,7 @@ class Network(Module):
             syn_voltages = voltage_term, constant_term
 
             # Gather slope and offset for every postsynaptic compartment.
+            # import jax; jax.debug.print("{}", synapse_params)
             gathered_syn_currents = gather_synapes(num_comp, post_inds, *syn_voltages)
 
             syn_voltage_terms = syn_voltage_terms.at[:].add(gathered_syn_currents[0])
@@ -357,10 +356,10 @@ class Network(Module):
                 .add(synapse_currents_dist[0])
             )
 
-        # Copy the currents into the `state` dictionary such that they can be
-        # recorded and used by `Channel.update_states()`.
-        for name in [s._name for s in self.synapses]:
-            states[f"i_{name}"] = synapse_current_states[f"i_{name}"]
+            # Copy the currents into the `state` dictionary such that they can be
+            # recorded and used by `Channel.update_states()`.
+            for name in [s._name for s in self.synapses]:
+                states[f"i_{name}"] = synapse_current_states[f"i_{name}"]
         return states, (syn_voltage_terms, syn_constant_terms)
 
     def arrange_in_layers(
