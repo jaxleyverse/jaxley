@@ -610,7 +610,7 @@ def params_to_pstate(
     ]
 
 
-def convert_point_process_to_distributed(
+def compute_current_density(
     current: jnp.ndarray, radius: jnp.ndarray, length: jnp.ndarray
 ) -> jnp.ndarray:
     """Convert current point process (nA) to distributed current (uA/cm2).
@@ -686,7 +686,7 @@ def group_and_sum(
     return group_sums
 
 
-def query_channel_states_and_params(d, keys, idcs):
+def query_states_and_params(d, keys, idcs=None):
     """Get dict with subset of keys and values from d.
 
     This is used to restrict a dict where every item contains __all__ states to only
@@ -698,7 +698,7 @@ def query_channel_states_and_params(d, keys, idcs):
     ```states = {'eCa': Array([ 0.,  0.]}```
 
     Only loops over necessary keys, as opposed to looping over `d.items()`."""
-    return dict(zip(keys, (v[idcs] for v in map(d.get, keys))))
+    return dict(zip(keys, (v if idcs is None else v[idcs] for v in map(d.get, keys))))
 
 
 def compute_axial_conductances(
@@ -774,3 +774,16 @@ def compute_children_and_parents(
     child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
     par_inds = np.unique(par_inds)
     return par_inds, child_inds, child_belongs_to_branchpoint
+
+
+def dtype_aware_concat(dfs):
+    concat_df = pd.concat(dfs, ignore_index=True)
+    # replace nans with Nones
+    # this correctly casts float(None) -> NaN, bool(None) -> NaN, etc.
+    concat_df[concat_df.isna()] = None
+    for col in concat_df.columns[concat_df.dtypes == "object"]:
+        for df in dfs:
+            if col in df.columns:
+                concat_df[col] = concat_df[col].astype(df[col].dtype)
+            break  # first match is sufficient
+    return concat_df
