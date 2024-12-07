@@ -271,11 +271,9 @@ class Network(Module):
             synapse = syn_channels[i]
             pre_inds = group["pre_global_comp_index"].to_numpy()
             post_inds = group["post_global_comp_index"].to_numpy()
-            edge_inds = group.index.to_numpy()
 
-            query_syn = lambda d, names: query_states_and_params(d, names, edge_inds)
-            synapse_params = query_syn(params, synapse.params)
-            synapse_states = query_syn(states, synapse.states)
+            synapse_params = query_states_and_params(params, synapse.params)
+            synapse_states = query_states_and_params(states, synapse.states)
 
             # State updates.
             states_updated = synapse.update_states(
@@ -290,6 +288,7 @@ class Network(Module):
             # multiple channels which modify the same state.
             for key, val in states_updated.items():
                 states[key] = states[key].at[:].set(val)
+
         return states
 
     def _synapse_currents(
@@ -356,10 +355,10 @@ class Network(Module):
                 .add(synapse_currents_dist[0])
             )
 
-            # Copy the currents into the `state` dictionary such that they can be
-            # recorded and used by `Channel.update_states()`.
-            for name in [s._name for s in self.synapses]:
-                states[f"i_{name}"] = synapse_current_states[f"i_{name}"]
+        # Copy the currents into the `state` dictionary such that they can be
+        # recorded and used by `Channel.update_states()`.
+        for name in [s._name for s in self.synapses]:
+            states[f"i_{name}"] = synapse_current_states[f"i_{name}"]
         return states, (syn_voltage_terms, syn_constant_terms)
 
     def arrange_in_layers(
