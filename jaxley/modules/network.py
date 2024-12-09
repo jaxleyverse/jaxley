@@ -22,7 +22,6 @@ from jaxley.utils.cell_utils import (
     dtype_aware_concat,
     loc_of_index,
     merge_cells,
-    query_states_and_params,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import (
@@ -267,16 +266,16 @@ class Network(Module):
     ) -> Dict:
         voltages = states["v"]
 
-        for i, group in edges.groupby("type_ind"):
-            synapse = syn_channels[i]
-            pre_inds = group["pre_global_comp_index"].to_numpy()
-            post_inds = group["post_global_comp_index"].to_numpy()
+        for synapse in syn_channels:
+            inds = self._mech_inds[synapse._name]
+            pre_inds = edges.loc[inds, "pre_global_comp_index"].to_numpy()
+            post_inds = edges.loc[inds, "post_global_comp_index"].to_numpy()
 
-            synapse_params = query_states_and_params(params, synapse.params)
-            synapse_states = query_states_and_params(states, synapse.states)
+            synapse_params = self._filter_states_params(params, synapse)
+            synapse_states = self._filter_states_params(states, synapse)
 
             # State updates.
-            states_updated = synapse.update_states(
+            synapse_states_updated = synapse.update_states(
                 synapse_states,
                 delta_t,
                 voltages[pre_inds],
@@ -286,8 +285,9 @@ class Network(Module):
 
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
-            for key, val in states_updated.items():
-                states[key] = states[key].at[:].set(val)
+            for key, val in synapse_states_updated.items():
+                synapse_inds = self._mech_lookup[key][synapse._name]["local_inds"]
+                states[key] = states[key].at[synapse_inds].set(val)
 
         return states
 
@@ -303,7 +303,7 @@ class Network(Module):
 
         # Compute current through synapses.
         zeros = jnp.zeros_like(voltages)
-        syn_voltage_terms, syn_constant_terms = zeros, zeros
+        syn_voltage_terms, syn_const_terms = zeros, zeros
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
@@ -315,8 +315,8 @@ class Network(Module):
             pre_inds = group["pre_global_comp_index"].to_numpy()
             post_inds = group["post_global_comp_index"].to_numpy()
 
-            synapse_params = query_states_and_params(params, synapse.params)
-            synapse_states = query_states_and_params(states, synapse.states)
+            synapse_params = self._filter_states_params(params, synapse)
+            synapse_states = self._filter_states_params(states, synapse)
 
             v_pre, v_post = voltages[pre_inds], voltages[post_inds]
             pre_v_and_perturbed = jnp.array([v_pre, v_pre + diff])
@@ -346,7 +346,7 @@ class Network(Module):
             gathered_syn_currents = gather_synapes(num_comp, post_inds, *syn_voltages)
 
             syn_voltage_terms = syn_voltage_terms.at[:].add(gathered_syn_currents[0])
-            syn_constant_terms = syn_constant_terms.at[:].add(-gathered_syn_currents[1])
+            syn_const_terms = syn_const_terms.at[:].add(-gathered_syn_currents[1])
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
             synapse_current_states[f"i_{synapse._name}"] = (
@@ -359,7 +359,7 @@ class Network(Module):
         # recorded and used by `Channel.update_states()`.
         for name in [s._name for s in self.synapses]:
             states[f"i_{name}"] = synapse_current_states[f"i_{name}"]
-        return states, (syn_voltage_terms, syn_constant_terms)
+        return states, (syn_voltage_terms, syn_const_terms)
 
     def arrange_in_layers(
         self,
