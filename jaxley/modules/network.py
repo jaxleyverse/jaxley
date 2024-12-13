@@ -250,7 +250,6 @@ class Network(Module):
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
-        # import jax; jax.debug.print("1 {}", states["TestSynapse_c"])
         states, current_terms = self._synapse_currents(
             states, syn_channels, params, delta_t, edges
         )
@@ -267,27 +266,22 @@ class Network(Module):
         voltages = states["v"]
 
         for synapse in syn_channels:
-            inds = self._mech_inds[synapse._name]
-            pre_inds = edges.loc[inds, "pre_global_comp_index"].to_numpy()
-            post_inds = edges.loc[inds, "post_global_comp_index"].to_numpy()
-
-            synapse_params = self._filter_states_params(params, synapse)
-            synapse_states = self._filter_states_params(states, synapse)
+            pre_inds = edges.loc[synapse.indices, "pre_global_comp_index"].to_numpy()
+            post_inds = edges.loc[synapse.indices, "post_global_comp_index"].to_numpy()
 
             # State updates.
             synapse_states_updated = synapse.update_states(
-                synapse_states,
+                states,
                 delta_t,
                 voltages[pre_inds],
                 voltages[post_inds],
-                synapse_params,
+                params,
             )
 
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in synapse_states_updated.items():
-                synapse_inds = self._mech_lookup[key][synapse._name]["local_inds"]
-                states[key] = states[key].at[synapse_inds].set(val)
+                states[key] = states[key].at[:].set(val)
 
         return states
 
@@ -315,9 +309,6 @@ class Network(Module):
             pre_inds = group["pre_global_comp_index"].to_numpy()
             post_inds = group["post_global_comp_index"].to_numpy()
 
-            synapse_params = self._filter_states_params(params, synapse)
-            synapse_states = self._filter_states_params(states, synapse)
-
             v_pre, v_post = voltages[pre_inds], voltages[post_inds]
             pre_v_and_perturbed = jnp.array([v_pre, v_pre + diff])
             post_v_and_perturbed = jnp.array([v_post, v_post + diff])
@@ -325,10 +316,10 @@ class Network(Module):
             synapse_currents = vmap(
                 synapse.compute_current, in_axes=(None, 0, 0, None)
             )(
-                synapse_states,
+                states,
                 pre_v_and_perturbed,
                 post_v_and_perturbed,
-                synapse_params,
+                params,
             )
             synapse_currents_dist = compute_current_density(
                 synapse_currents,
@@ -483,17 +474,10 @@ class Network(Module):
         return ax
 
     def _infer_synapse_type_ind(self, synapse_name):
-        syn_names = self.base.synapse_names
+        syn_names = [s._name for s in self.base.synapses]
         is_new_type = False if synapse_name in syn_names else True
         type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
         return type_ind, is_new_type
-
-    def _update_synapse_state_names(self, synapse_type):
-        # (Potentially) update variables that track meta information about synapses.
-        self.base.synapse_names.append(synapse_type._name)
-        self.base.synapse_param_names += list(synapse_type.params.keys())
-        self.base.synapse_state_names += list(synapse_type.states.keys())
-        self.base.synapses.append(synapse_type)
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
@@ -501,7 +485,7 @@ class Network(Module):
         synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
         if is_new:  # synapse is not known
-            self._update_synapse_state_names(synapse_type)
+            self.base.synapses.append(synapse_type)
             self.base.synapse_current_names.append(synapse_current_name)
 
         index = len(self.base.edges)
