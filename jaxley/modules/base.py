@@ -1261,11 +1261,11 @@ class Module(ABC):
 
         current_names = self.membrane_current_names + self.synapse_current_names
         global_states_params = global_states + global_params + current_names
-        node_attrs = self.nodes.columns.to_list() + current_names + channel_names
 
         channel_names = [c._name for c in self.channels]
         syn_names = [s._name for s in self.synapses]
 
+        node_attrs = self.nodes.columns.to_list() + current_names + channel_names
         def inds_of_key(key: str) -> np.ndarray:
             """Return the indices for params, states, mechanisms and currents."""
             data = self.nodes if key in node_attrs else pd.DataFrame()
