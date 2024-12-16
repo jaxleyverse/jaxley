@@ -303,7 +303,7 @@ class Network(Module):
         diff = 1e-3
 
         num_comp = len(voltages)
-        synapse_current_states = {f"i_{s._name}": zeros for s in syn_channels}
+        synapse_current_states = {f"i_{s.name}": zeros for s in syn_channels}
         for i, group in edges.groupby("type_ind"):
             synapse = syn_channels[i]
             pre_inds = group["pre_global_comp_index"].to_numpy()
@@ -340,15 +340,15 @@ class Network(Module):
             syn_const_terms = syn_const_terms.at[:].add(-gathered_syn_currents[1])
             # Save the current (for the unperturbed voltage) as a state that will
             # also be passed to the state update.
-            synapse_current_states[f"i_{synapse._name}"] = (
-                synapse_current_states[f"i_{synapse._name}"]
+            synapse_current_states[f"i_{synapse.name}"] = (
+                synapse_current_states[f"i_{synapse.name}"]
                 .at[post_inds]
                 .add(synapse_currents_dist[0])
             )
 
         # Copy the currents into the `state` dictionary such that they can be
         # recorded and used by `Channel.update_states()`.
-        for name in [s._name for s in self.synapses]:
+        for name in [s.name for s in self.synapses]:
             states[f"i_{name}"] = synapse_current_states[f"i_{name}"]
         return states, (syn_voltage_terms, syn_const_terms)
 
@@ -474,14 +474,14 @@ class Network(Module):
         return ax
 
     def _infer_synapse_type_ind(self, synapse_name):
-        syn_names = [s._name for s in self.base.synapses]
+        syn_names = [s.name for s in self.base.synapses]
         is_new_type = False if synapse_name in syn_names else True
         type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
         return type_ind, is_new_type
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
-        synapse_name = synapse_type._name
+        synapse_name = synapse_type.name
         synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
         if is_new:  # synapse is not known
