@@ -31,6 +31,7 @@ from jaxley.utils.cell_utils import (
     compute_axial_conductances,
     compute_current_density,
     compute_levels,
+    index_of_a_in_b,
     interpolate_xyzr,
     params_to_pstate,
     v_interp,
@@ -1355,7 +1356,7 @@ class Module(ABC):
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)`
                 #  for the `.set()` to work. This is done with `[:, None]`.
-                inds = jnp.searchsorted(param_state_inds, inds)
+                inds = index_of_a_in_b(inds, param_state_inds)
                 states_params[key] = states_params[key].at[inds].set(set_param[:, None])
 
         if params:
