@@ -6,11 +6,9 @@
 ```python
 net.record("i_IonotropicSynapse")
 ```
-- Add regression tests and supporting workflows for maintaining baselines (#475, @jnsbck).
-  - PRs now trigger both tests and regression tests.
-  - Baselines are maintained in the main branch.
+- Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
+  - Regression tests can be triggered by commenting on a PR.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
-  - If a PR introduces new baseline tests or reduces runtimes, then a new baseline can be created by commenting "/update_regression_baselines" on the PR.
 
 - refactor plotting (#539, @jnsbck).
   - rm networkx dependency
