@@ -772,3 +772,32 @@ def dtype_aware_concat(dfs):
                 concat_df[col] = concat_df[col].astype(df[col].dtype)
             break  # first match is sufficient
     return concat_df
+
+
+def index_of_a_in_b(A: jnp.ndarray, B: jnp.ndarray) -> jnp.ndarray:
+    """Replace values in A with the indices of the corresponding values in B.
+
+    Mainly used to determine the indices of parameters in jaxnodes based on the global
+    indices of the parameters in the cell. All values in A that are not in B are
+    replaced with -1.
+
+    Example:
+    - indices_of_gNa = [5,6,7,8,9]
+    - indices_to_change = [6,7]
+    - index_of_a_in_b(indices_to_change, indices_of_gNa) -> [1,2]
+
+    Args:
+        A: Array of shape (N, M).
+        B: Array of shape (N, K).
+
+    Returns:
+        Array of shape of A with the indices of the values of A in B."""
+    matches = A[:, :, None] == B
+    # Get mask for values that exist in B
+    exists_in_B = matches.any(axis=-1)
+    # Get indices where matches occur
+    indices = jnp.where(matches, jnp.arange(len(B))[None, None, :], 0)
+    # Sum along last axis to get the indices
+    result = jnp.sum(indices, axis=-1)
+    # Replace values not in B with -1
+    return jnp.where(exists_in_B, result, -1)
