@@ -21,7 +21,7 @@ net.vis()
 
 - Allow parameter sharing for groups of different sizes, i.e. due to inhomogenous numbers of compartments or for synapses with the same (pre-)synaptic parameters but different numbers of post-synaptic partners. (#514, @jnsbck)
 
-- changelog added to CI
+- changelog added to CI (#537, #558,  @jnsbck)
 
 # 0.5.0
 
