@@ -83,7 +83,7 @@ jobs:
         if echo "$changed_files" | grep -q 'CHANGELOG.md'; then
           echo "CHANGELOG.md was updated"
         else
-          echo "CHANGELOG.md was not updated"
+          echo "CHANGELOG.md was not updated. Please add your changes if significant. Otherwise, this check can be safely ignored."
           exit 1
         fi
 
