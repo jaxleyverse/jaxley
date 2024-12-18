@@ -7,7 +7,7 @@
 net.record("i_IonotropicSynapse")
 ```
 - Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
-  - Regression tests can be triggered by commenting on a PR.
+  - Regression tests can be triggered by commenting "/test_regression" on a PR.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
 
 - refactor plotting (#539, @jnsbck).
@@ -20,6 +20,8 @@ net.vis()
 ```
 
 - Allow parameter sharing for groups of different sizes, i.e. due to inhomogenous numbers of compartments or for synapses with the same (pre-)synaptic parameters but different numbers of post-synaptic partners. (#514, @jnsbck)
+
+- changelog added to CI
 
 # 0.5.0
 
