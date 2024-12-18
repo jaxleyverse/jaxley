@@ -56,14 +56,14 @@ jobs:
       
           # Compare the first line
           if [ "$file_header_1" != "$expected_header_1" ]; then
-              echo "❌ Incorrect first line in $file"
-              exit_code=1
+              echo "❌ Missing or incorrect license header in $file"
+              exit 1
           fi
       
           # Compare the second line
           if [ "$file_header_2" != "$expected_header_2" ]; then
-              echo "❌ Incorrect second line in $file"
-              exit_code=1
+              echo "❌ Missing or incorrect license header in $file"
+              exit 1
           fi
           done < <(find jaxley tests -name "*.py" -type f)
           
