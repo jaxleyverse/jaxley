@@ -73,7 +73,7 @@ jobs:
 
     - name: Ensure that the changelog was updated
       id: changelog
-      if: always() # Run this step even if the previous one fails
+      if: github.event_name == 'pull_request' # Only run on pull requests
       run: |
         # Ensure the main branch is up-to-date
         git fetch origin main
@@ -88,14 +88,32 @@ jobs:
         fi
 
     - name: Final check
+      if: always() # Run this step even if the previous one fails
       run: |
-        if [[ "${{ steps.black.outcome }}" != "success" || 
-              "${{ steps.isort.outcome }}" != "success" || 
-              "${{ steps.license.outcome }}" != "success" || 
-              "${{ steps.changelog.outcome }}" != "success" ]]; then
-          echo "❌ Some checks failed!"
+        failed_checks=()
+        
+        if [[ "${{ steps.black.outcome }}" != "success" ]]; then
+          failed_checks+=("black formatting")
+        fi
+        
+        if [[ "${{ steps.isort.outcome }}" != "success" ]]; then
+          failed_checks+=("isort imports")
+        fi
+        
+        if [[ "${{ steps.license.outcome }}" != "success" ]]; then
+          failed_checks+=("license headers")
+        fi
+        
+        if [[ "${{ steps.changelog.outcome }}" != "success" && "${{ github.event_name }}" == "pull_request" ]]; then
+          failed_checks+=("changelog update")
+        fi
+        
+        if (( ${#failed_checks[@]} > 0 )); then
+          echo "❌ The following checks failed:"
+          printf '%s\n' "${failed_checks[@]}"
           exit 1
         fi
+        
         echo "✅ All checks passed"
 
   pytest:
