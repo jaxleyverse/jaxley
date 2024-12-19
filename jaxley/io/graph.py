@@ -12,6 +12,208 @@ from jax import vmap
 import jaxley as jx
 from jaxley.utils.cell_utils import v_interp
 
+# helper functions
+is_leaf = lambda G, n: G.out_degree(n) == 0 and G.in_degree(n) == 1
+is_root = lambda G, n: G.to_undirected().degree(n) == 1
+is_branching = lambda G, n: G.out_degree(n) > 1
+has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
+get_soma_idxs = lambda G: [
+    i for i, n in nx.get_node_attributes(G, "id").items() if n == 1
+]
+
+unpack = lambda d, keys: [d[k] for k in keys]
+branch_e2n = lambda b: np.unique(np.concatenate(b)).tolist()
+branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]
+v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
+
+
+def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
+    """Read a swc file and convert it to a networkx graph.
+
+    The graph is read such that each entry in the swc file becomes a graph node
+    with the column attributes (id, x, y, z, r). Then each node is connected to its
+    designated parent via an edge. A "type" attribute is added to the graph to identify
+    its processing stage for subsequent steps.
+
+    Args:
+        fname: Path to the swc file.
+        num_lines: Number of lines to read from the file. If None, all lines are read.
+
+    Returns:
+        A networkx graph of the traced morphology in the swc file.
+    """
+    i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
+
+    graph = nx.DiGraph()
+    graph.add_nodes_from(
+        (
+            (int(i), {"id": int(id), "x": x, "y": y, "z": z, "r": r})
+            for i, id, x, y, z, r, p in i_id_xyzr_p
+        )
+    )
+    graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:, [-1, 0]] if p != -1])
+    graph = nx.relabel_nodes(graph, {i: i - 1 for i in graph.nodes})
+    graph.graph["type"] = "swc"
+
+    return graph
+
+
+def trace_branches(graph: nx.DiGraph, max_len=1000) -> List[np.ndarray]:
+    """Get all linearly connected paths in a graph aka. branches.
+
+    The graph is traversed depth-first starting from the source node.
+
+    Args:
+        graph: A networkx graph.
+        source_node: node at which to start graph traversal. If "leaf", the traversal
+            starts at the first identified leaf node.
+
+    Returns:
+        A list of linear paths in the graph. Each path is represented as an array of
+        edges."""
+    branches, current_branch = [], []
+
+    for i, j in nx.dfs_edges(graph, 0):
+        current_branch += [(i, j)]
+        if is_leaf(graph, j) or is_branching(graph, j):
+            branches.append(current_branch)
+            current_branch = []
+        elif not has_same_id(graph, i, j):  # start new branch if ids differ
+            branches.append(current_branch[:-1])
+            current_branch = [current_branch[-1]]
+
+    branch_edges = [np.array(p) for p in branches if len(p) > 0]
+
+    edge_lens = nx.get_edge_attributes(graph, "l")
+    branch_edges = split_branches(branch_edges, edge_lens, max_len)
+    for br_idx, br_edges in enumerate(branch_edges):
+        graph.add_edges_from(br_edges, branch_index=br_idx)
+    return graph
+
+
+def add_edge_lens(graph: nx.DiGraph) -> nx.DiGraph:
+    """Add edge lengths to graph.edges based on the xyz coordinates of graph.nodes."""
+    xyz = lambda i: np.array(unpack(graph.nodes[i], "xyz"))
+    for i, j in graph.edges:
+        d_ij = (
+            np.sqrt(((xyz(i) - xyz(j)) ** 2).sum())
+            if i != j
+            else 2 * graph.nodes[i]["r"]
+        )
+        graph.edges[i, j]["l"] = d_ij
+    return graph
+
+
+def add_missing_graph_attrs(graph: nx.DiGraph) -> nx.DiGraph:
+    """Add missing attributes to the graph nodes and edges.
+
+    The following attributes are added to the graph:
+    - id: int (default: 0)
+    - x, y, z: float (default: NaN)
+    - r: float (default: 1)
+    - l: float (default: 1)
+
+    Args:
+        graph: A networkx graph.
+
+    Returns:
+        The graph with the added attributes."""
+    available_keys = graph.nodes[0].keys()
+    defaults = {
+        "id": 0,
+        "x": float("nan"),
+        "y": float("nan"),
+        "z": float("nan"),
+        "r": 1,
+    }
+    # add defaults if not present
+    for key in set(defaults.keys()).difference(available_keys):
+        nx.set_node_attributes(graph, defaults[key], key)
+
+    graph = add_edge_lens(graph)
+    edge_lens = nx.get_edge_attributes(graph, "l")
+    if np.isnan(list(edge_lens.values())[0]):
+        nx.set_edge_attributes(graph, 1, "l")
+
+    return graph
+
+
+def split_branches(
+    branches: List[np.ndarray], edge_lens: Dict, max_len: int = 100
+) -> List[np.ndarray]:
+    """Split branches into approximately equally long sections <= max_len.
+
+    Args:
+        branches: List of branches represented as arrays of edges.
+        edge_lens: Dict for length of each edge in the graph.
+        max_len: Maximum length of a branch section. If a branch exceeds this length,
+            it is split into equal parts.
+
+    Returns:
+        A list of branches, where each branch is split into sections of length <= max_len.
+    """
+    # TODO: split branches into exactly equally long sections
+    edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})
+    new_branches = []
+    for branch in branches:
+        cum_branch_len = np.cumsum([edge_lens[i, j] for i, j in branch])
+        k = cum_branch_len // max_len
+        split_branch = [branch[np.where(np.array(k) == kk)[0]] for kk in np.unique(k)]
+        new_branches += split_branch
+    return new_branches
+
+
+def insert_compartments(graph: nx.DiGraph, ncomps_per_branch: int) -> nx.DiGraph:
+    comp_offset = 0
+
+    branch_inds = nx.get_edge_attributes(graph, "branch_index")
+    branch_edge_df = pd.DataFrame(branch_inds.items(), columns=["edge", "branch_index"])
+    for branch_index, branch_edges in branch_edge_df.groupby("branch_index")["edge"]:
+        path_lens = np.cumsum([0] + [graph.edges[u, v]["l"] for u, v in branch_edges])
+        branch_nodes = branch_e2n(branch_edges.to_numpy())
+        branch_data = pd.DataFrame([graph.nodes[i] for i in branch_nodes])
+        branch_data["node_index"] = branch_nodes
+        branch_data["l"] = path_lens
+
+        # fix id and r bleed over from neighboring neurites of a different type
+        if branch_data.loc[0, "id"] != branch_data.loc[1, "id"]:
+            branch_data.loc[0, ["r", "id"]] = branch_data.loc[1, ["r", "id"]]
+
+        branch_len = branch_data["l"].max()
+        comp_len = branch_len / ncomps_per_branch
+        locs = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomps_per_branch)
+
+        new_branch_nodes = v_interp(locs, branch_data["l"].values, branch_data.values)
+        new_branch_nodes = pd.DataFrame(
+            np.array(new_branch_nodes.T), columns=branch_data.columns
+        )
+        new_branch_nodes["id"] = new_branch_nodes["id"].astype(int)
+        new_branch_nodes["branch_index"] = branch_index
+        new_branch_nodes["comp_index"] = comp_offset + np.arange(ncomps_per_branch)
+        new_branch_nodes["node_index"] = (
+            max(graph.nodes) + 1 + np.arange(ncomps_per_branch)
+        )
+        comp_offset += ncomps_per_branch
+
+        # splice comps into morphology graph func could be reused in to_graph
+        branch_data = pd.concat([branch_data, new_branch_nodes]).sort_values(
+            "l", ignore_index=True
+        )
+        new_branch_nodes = new_branch_nodes.set_index("node_index")
+        graph.add_nodes_from(new_branch_nodes.to_dict(orient="index").items())
+
+        graph.remove_edges_from(branch_edges.to_numpy())
+        new_branch_edges = branch_n2e(branch_data["node_index"])
+        graph.add_edges_from(new_branch_edges, branch_index=branch_index)
+
+    # add missing edge lengths
+    graph = add_edge_lens(graph)
+
+    # re-enumerate in dfs from 0
+    mapping = {old: new for new, old in enumerate(nx.dfs_preorder_nodes(graph, 0))}
+    graph = nx.relabel_nodes(graph, mapping)
+    return graph
+
 
 def infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
     nuniques = idxs[["cell_index", "branch_index", "comp_index"]].nunique()
@@ -190,129 +392,6 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
             module_graph.edges[pre, post]["parameters"] = [attrs]
 
     return module_graph
-
-
-# helper functions
-is_leaf = lambda G, n: G.out_degree(n) == 0 and G.in_degree(n) == 1
-is_root = lambda G, n: G.to_undirected().degree(n) == 1
-is_branching = lambda G, n: G.out_degree(n) > 1
-has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
-get_soma_idxs = lambda G: [
-    i for i, n in nx.get_node_attributes(G, "id").items() if n == 1
-]
-
-unpack = lambda d, keys: [d[k] for k in keys]
-branch_e2n = lambda b: ([b[0][0]] + [e[1] for e in b] if b.shape[0] > 1 else [*b[0]])
-branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]
-v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
-
-
-def trace_branches(
-    graph: nx.DiGraph, source_node: Union[str, int] = 0
-) -> List[np.ndarray]:
-    """Get all linearly connected paths in a graph aka. branches.
-
-    The graph is traversed depth-first starting from the source node.
-
-    Args:
-        graph: A networkx graph.
-        source_node: node at which to start graph traversal. If "leaf", the traversal
-            starts at the first identified leaf node.
-
-    Returns:
-        A list of linear paths in the graph. Each path is represented as an array of
-        edges."""
-    branches, current_branch = [], []
-    # i -> i with length attr means a node can form a branch by itself
-    branches += [[e] for e in nx.selfloop_edges(graph)]
-
-    # starting from leaf node avoids need to reconnect multiple root nodes later.
-    # graph needs to be undirected for this to work
-    leaf = next(n for n in graph.nodes() if is_leaf(graph, n))
-    source = leaf if source_node == "leaf" else source_node
-
-    graph_edges = lambda: nx.dfs_edges(graph.to_undirected(), source)
-    for i, j in graph_edges():
-        current_branch += [(i, j)]
-        if is_leaf(graph, j) or is_branching(graph, j):
-            branches.append(current_branch)
-            current_branch = []
-        elif not has_same_id(graph, i, j):  # start new branch if ids differ
-            branches.append(current_branch[:-1])
-            current_branch = [current_branch[-1]]
-    branches = [np.array(p) for p in branches if len(p) > 0]
-
-    return branches
-
-
-def split_branches(
-    branches: List[np.ndarray], edge_lens: Dict, max_len: int = 100
-) -> List[np.ndarray]:
-    """Split branches into approximately equally long sections <= max_len.
-
-    Args:
-        branches: List of branches represented as arrays of edges.
-        edge_lens: Dict for length of each edge in the graph.
-        max_len: Maximum length of a branch section. If a branch exceeds this length,
-            it is split into equal parts.
-
-    Returns:
-        A list of branches, where each branch is split into sections of length <= max_len.
-    """
-    # TODO: split branches into exactly equally long sections
-    edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})
-    new_branches = []
-    for branch in branches:
-        cum_branch_len = np.cumsum([edge_lens[e[0], e[1]] for e in branch])
-        k = cum_branch_len // max_len
-        split_branch = [branch[np.where(np.array(k) == kk)[0]] for kk in np.unique(k)]
-        new_branches += split_branch
-    return new_branches
-
-
-def add_edge_lens(graph: nx.DiGraph) -> nx.DiGraph:
-    """Add edge lengths to graph.edges based on the xyz coordinates of graph.nodes."""
-    xyz = lambda i: np.array(unpack(graph.nodes[i], "xyz"))
-    for i, j in graph.edges:
-        d_ij = (
-            np.sqrt(((xyz(i) - xyz(j)) ** 2).sum())
-            if i != j
-            else 2 * graph.nodes[i]["r"]
-        )
-        graph.edges[i, j]["l"] = d_ij
-    return graph
-
-
-def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
-    """Read a swc file and convert it to a networkx graph.
-
-    The graph is read such that each entry in the swc file becomes a graph node
-    with the column attributes (id, x, y, z, r). Then each node is connected to its
-    designated parent via an edge. A "type" attribute is added to the graph to identify
-    its processing stage for subsequent steps.
-
-    Args:
-        fname: Path to the swc file.
-        num_lines: Number of lines to read from the file. If None, all lines are read.
-
-    Returns:
-        A networkx graph of the traced morphology in the swc file.
-    """
-    i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
-
-    graph = nx.DiGraph()
-    graph.add_nodes_from(
-        (
-            (int(i), {"id": int(id), "x": x, "y": y, "z": z, "r": r})
-            for i, id, x, y, z, r, p in i_id_xyzr_p
-        )
-    )
-    graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:, [-1, 0]] if p != -1])
-    graph = nx.relabel_nodes(graph, {i: i - 1 for i in graph.nodes})
-    graph.graph["type"] = "swc"
-
-    graph = add_edge_lens(graph)
-    return graph
 
 
 def get_nodes_and_parents(graph: nx.DiGraph) -> np.ndarray:
