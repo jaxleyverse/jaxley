@@ -53,9 +53,16 @@ def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
     )
     graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:, [-1, 0]] if p != -1])
     graph = nx.relabel_nodes(graph, {i: i - 1 for i in graph.nodes})
-    graph.graph["type"] = "swc"
-
     return graph
+
+
+def get_nodes_and_parents(graph: nx.DiGraph) -> np.ndarray:
+    """List (node, parent) pairs for a graph."""
+    edges = []
+    for node in graph.nodes():
+        parents = list(graph.predecessors(node))
+        edges += [(node, parent) for parent in parents] if parents else [(node, -1)]
+    return np.array(edges)
 
 
 def find_swc_trace_errors(graph: nx.DiGraph, ignore: Optional[List] = []) -> np.ndarray:
@@ -256,7 +263,7 @@ def split_branches(
     return new_branches
 
 
-def insert_compartments(graph: nx.DiGraph, ncomps_per_branch: int) -> nx.DiGraph:
+def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
     comp_offset = 0
 
     branch_inds = nx.get_edge_attributes(graph, "branch_index")
@@ -273,8 +280,8 @@ def insert_compartments(graph: nx.DiGraph, ncomps_per_branch: int) -> nx.DiGraph
             branch_data.loc[0, ["r", "id"]] = branch_data.loc[1, ["r", "id"]]
 
         branch_len = branch_data["l"].max()
-        comp_len = branch_len / ncomps_per_branch
-        locs = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomps_per_branch)
+        comp_len = branch_len / ncomp_per_branch
+        locs = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp_per_branch)
 
         new_branch_nodes = v_interp(locs, branch_data["l"].values, branch_data.values)
         new_branch_nodes = pd.DataFrame(
@@ -283,11 +290,11 @@ def insert_compartments(graph: nx.DiGraph, ncomps_per_branch: int) -> nx.DiGraph
         new_branch_nodes["id"] = new_branch_nodes["id"].astype(int)
         new_branch_nodes["comp_length"] = comp_len
         new_branch_nodes["branch_index"] = branch_index
-        new_branch_nodes["comp_index"] = comp_offset + np.arange(ncomps_per_branch)
+        new_branch_nodes["comp_index"] = comp_offset + np.arange(ncomp_per_branch)
         new_branch_nodes["node_index"] = (
-            max(graph.nodes) + 1 + np.arange(ncomps_per_branch)
+            max(graph.nodes) + 1 + np.arange(ncomp_per_branch)
         )
-        comp_offset += ncomps_per_branch
+        comp_offset += ncomp_per_branch
 
         # splice comps into morphology graph func could be reused in to_graph
         branch_data = pd.concat([branch_data, new_branch_nodes]).sort_values(
@@ -369,7 +376,7 @@ def extract_comp_graph(graph):
 
 def make_jaxley_compatible(
     graph: nx.DiGraph,
-    ncomps: int = 4,
+    ncomp: int = 4,
     max_branch_len: float = 2000.0,
     ignore_swc_trace_errors: bool = True,
 ) -> nx.DiGraph:
@@ -444,7 +451,7 @@ def make_jaxley_compatible(
 
     graph = trace_branches(graph, max_branch_len, ignore_swc_trace_errors)
 
-    graph = insert_compartments(graph, ncomps)
+    graph = insert_compartments(graph, ncomp)
 
     comp_graph = extract_comp_graph(graph)
 
@@ -455,7 +462,7 @@ def make_jaxley_compatible(
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
     group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
     for n in comp_graph.nodes:
-        comp_graph.nodes[n]["group"] = group_ids[comp_graph.nodes[n].pop("id")]
+        comp_graph.nodes[n]["group"] = [group_ids[comp_graph.nodes[n].pop("id")]]
         comp_graph.nodes[n]["radius"] = comp_graph.nodes[n].pop("r")
         comp_graph.nodes[n]["length"] = comp_graph.nodes[n].pop("comp_length")
 
@@ -463,22 +470,23 @@ def make_jaxley_compatible(
 
     # compute additional attributes
     edge_df = pd.DataFrame(
-        [v["branch_index"] for i, j, v in graph.edges(data=True)],
+        [
+            d["branch_index"] for i, j, d in graph.edges(data=True)
+        ],  # TODO: filter out added comp indices to get original morphology
         index=graph.edges,
         columns=["branch_index"],
     )
 
     # xyzr
     edges_in_branches = edge_df.groupby("branch_index")
-    edge_nodes_in_branches = edges_in_branches.apply(
-        lambda x: branch_e2n(x.index.values)
-    )
-    xyzr = edge_nodes_in_branches.apply(
-        lambda x: np.stack([unpack(graph.nodes[n], "xyzr") for n in x])
-    ).to_list()
+    nodes_in_branches = edges_in_branches.apply(lambda x: branch_e2n(x.index.values))
+    stack_branch_xyzr = lambda x: np.stack([unpack(graph.nodes[n], "xyzr") for n in x])
+    xyzr = nodes_in_branches.apply(stack_branch_xyzr).to_list()
+    same_rows = lambda x: np.all(np.nan_to_num(x[0]) == np.nan_to_num(x))
+    xyzr = [xyzr_i[[0, -1]] if same_rows(xyzr_i) else xyzr_i for xyzr_i in xyzr]
 
     comp_graph.graph["xyzr"] = xyzr
-    comp_graph.graph["type"] = "swc"
+    comp_graph.graph["type"] = "cell"
 
     return comp_graph
 
@@ -544,7 +552,7 @@ def build_module_scaffold(
 
 def from_graph(
     graph: nx.DiGraph,
-    nseg: int = 4,
+    ncomp: int = 4,
     max_branch_len: float = 2000.0,
     assign_groups: bool = True,
     ignore_swc_trace_errors: bool = True,
@@ -582,8 +590,7 @@ def from_graph(
 
     Possible attributes that can be read off of the graph include:
     - graph
-        - nseg: int
-        - module: str
+        - ncomp: int
         - total_nbranches: int
         - cumsum_nbranches: np.ndarray
         - channels
@@ -632,152 +639,135 @@ def from_graph(
         try:
             graph = make_jaxley_compatible(
                 graph,
-                nseg=nseg,
+                ncomp=ncomp,
                 max_branch_len=max_branch_len,
                 ignore_swc_trace_errors=ignore_swc_trace_errors,
             )
         except:
             raise Exception("Graph appears to be incompatible with jaxley.")
-    elif graph.graph["type"] == "swc":
-        graph = make_jaxley_compatible(
-            graph,
-            nseg=nseg,
-            max_branch_len=max_branch_len,
-            ignore_swc_trace_errors=ignore_swc_trace_errors,
-        )
 
     #################################
     ### Import graph as jx.Module ###
     #################################
 
-    # import nodes and edges
-    nodes = pd.DataFrame((n for i, n in graph.nodes(data=True)))
-    nodes = nodes.sort_values(
-        "comp_index", ignore_index=True
-    )  # ensure index == comp_index
-    edge_type = nx.get_edge_attributes(graph, "type")
-    edges = pd.DataFrame(edge_type.values(), index=edge_type.keys(), columns=["type"])
+    # nodes and edges
+    node_df = pd.DataFrame(
+        [d for i, d in graph.nodes(data=True)], index=graph.nodes
+    ).sort_index()
+    edge_df = pd.DataFrame([d for i, j, d in graph.edges(data=True)], index=graph.edges)
 
-    if edges.empty:  # handles comp without edges
-        edges = pd.DataFrame(graph.edges, columns=["pre", "post", "type"], dtype=int)
-    else:
-        edges = edges.reset_index(names=["pre", "post"])
+    # drop special attrs from nodes and ignore error if col does not exist
+    # x,y,z can be re-computed from xyzr if needed
+    optional_attrs = ["recordings", "externals", "trainable", "x", "y", "z"]
+    node_df = node_df.drop(columns=optional_attrs, errors="ignore")
 
-    is_synapse = edges["type"] == "synapse"
-    is_inter_branch = edges["type"] == "inter_branch"
-    inter_branch_edges = edges.loc[is_inter_branch][["pre", "post"]].values
-    synapse_edges = edges.loc[is_synapse][["pre", "post"]].values
-    branch_edges = pd.DataFrame(
-        nodes["branch_index"].values[inter_branch_edges],
-        columns=["parent_branch_index", "child_branch_index"],
+    # synapses
+    synapse_edges = edge_df[edge_df["type"] == "synapse"]
+    synapse_edges = synapse_edges.drop(["l", "type"], axis=1)
+    synapse_edges = synapse_edges.rename({"syn_type": "type"}, axis=1)
+
+    # branches
+    branch_edges = edge_df[edge_df["type"] == "inter_branch"]
+    branch_edges = branch_edges.drop(["l", "type"], axis=1).reset_index(
+        names=["parent_branch_index", "child_branch_index"]
     )
+    branch_edges = branch_edges.map(lambda x: node_df["branch_index"].loc[x])
 
-    edge_params = nx.get_edge_attributes(graph, "parameters")
-    edge_params = {k: v for k, v in edge_params.items() if k in synapse_edges}
-    synapse_edges = pd.DataFrame(sum(edge_params.values(), [])).T
-
+    # build module
     acc_parents = []
     parent_branch_inds = branch_edges.set_index("child_branch_index").sort_index()[
         "parent_branch_index"
     ]
-    for branch_inds in nodes.groupby("cell_index")["branch_index"].unique():
+    for branch_inds in node_df.groupby("cell_index")["branch_index"].unique():
         root_branch_idx = branch_inds[0]
         parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
         acc_parents.append([-1] + parents.tolist())
 
-    # drop special attrs from nodes and ignore error if col does not exist
-    # x,y,z can be re-computed from xyzr if needed
-    optional_attrs = ["recordings", "externals", "groups", "trainable", "x", "y", "z"]
-    nodes.drop(columns=optional_attrs, inplace=True, errors="ignore")
-
-    # build module
-    idxs = nodes[["cell_index", "branch_index", "comp_index"]]
-    module = build_module_scaffold(idxs, graph.graph["type"], acc_parents)
+    # TODO: support inhom ncomps
+    module = build_module_scaffold(node_df, graph.graph["type"], acc_parents)
 
     # set global attributes of module
     graph.graph.pop("type")
     for k, v in graph.graph.items():
         setattr(module, k, v)
 
-    module.nodes[nodes.columns] = nodes  # set column-wise. preserves cols not in nodes.
+    if assign_groups:
+        groups = node_df.pop("group").explode()
+        groups = (
+            pd.DataFrame(groups)
+            .groupby("group")
+            .apply(lambda x: x.index.values, include_groups=False)
+            .to_dict()
+        )
+        module.groups = groups
+
+    node_df = node_df.rename(
+        {k: f"global_{k}" for k in ["comp_index", "branch_index", "cell_index"]}, axis=1
+    )
+    module.nodes[node_df.columns] = (
+        node_df  # set column-wise. preserves cols not in nodes.
+    )
     module.edges = synapse_edges.T if not synapse_edges.empty else module.edges
 
+    # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
-    get_names = lambda x: [list(s.__dict__[x].keys()) for s in module.synapses]
-    module.synapse_param_names = sum(get_names("synapse_params"), [])
-    module.synapse_state_names = sum(get_names("synapse_states"), [])
 
-    # Add optional attributes if they can be found in nodes
-    recordings = pd.DataFrame(nx.get_node_attributes(graph, "recordings"))
-    externals = pd.DataFrame(nx.get_node_attributes(graph, "externals")).T
-    groups = pd.DataFrame(nx.get_node_attributes(graph, "groups").items())
-    trainables = pd.DataFrame(nx.get_node_attributes(graph, "trainable"), dtype=float)
+    # if not recordings.empty:
+    #     recordings = recordings.T.unstack().reset_index().set_index("level_0")
+    #     recordings = recordings.rename(columns={"level_1": "rec_index", 0: "state"})
+    #     module.recordings = recordings
 
-    if not recordings.empty:
-        recordings = recordings.T.unstack().reset_index().set_index("level_0")
-        recordings = recordings.rename(columns={"level_1": "rec_index", 0: "state"})
-        module.recordings = recordings
+    # if not externals.empty:
+    #     cached_external_inds = {}
+    #     cached_externals = {}
+    #     for key, data in externals.items():
+    #         cached_externals[key] = jnp.array(
+    #             np.stack(data[~data.isna()].explode().values)
+    #         )
+    #         cached_external_inds[key] = jnp.array(
+    #             data[~data.isna()].explode().index.to_numpy()
+    #         )
+    #     module.externals = cached_externals
+    #     module.external_inds = cached_external_inds
 
-    if not externals.empty:
-        cached_external_inds = {}
-        cached_externals = {}
-        for key, data in externals.items():
-            cached_externals[key] = jnp.array(
-                np.stack(data[~data.isna()].explode().values)
-            )
-            cached_external_inds[key] = jnp.array(
-                data[~data.isna()].explode().index.to_numpy()
-            )
-        module.externals = cached_externals
-        module.external_inds = cached_external_inds
+    # if not trainables.empty:
+    #     # trainables require special handling, since some of them are shared
+    #     # and some are set individually
+    #     trainables = pd.DataFrame(
+    #         nx.get_node_attributes(graph, "trainable"), dtype=float
+    #     )
+    #     # prepare trainables dataframe
+    #     trainables = trainables.T.unstack().reset_index().dropna()
+    #     trainables = trainables.rename(
+    #         columns={"level_0": "param", "level_1": "index", 0: "value"}
+    #     )
+    #     # 1. merge indices with same trainables into lists
+    #     grouped_trainables = trainables.groupby(["param", "value"])
+    #     merged_trainables = grouped_trainables.agg(
+    #         {"index": lambda x: jnp.array(x.values)}
+    #     ).reset_index()
+    #     concat_here = merged_trainables["index"].apply(lambda x: len(x) == 1)
 
-    if not trainables.empty:
-        # trainables require special handling, since some of them are shared
-        # and some are set individually
-        trainables = pd.DataFrame(
-            nx.get_node_attributes(graph, "trainable"), dtype=float
-        )
-        # prepare trainables dataframe
-        trainables = trainables.T.unstack().reset_index().dropna()
-        trainables = trainables.rename(
-            columns={"level_0": "param", "level_1": "index", 0: "value"}
-        )
-        # 1. merge indices with same trainables into lists
-        grouped_trainables = trainables.groupby(["param", "value"])
-        merged_trainables = grouped_trainables.agg(
-            {"index": lambda x: jnp.array(x.values)}
-        ).reset_index()
-        concat_here = merged_trainables["index"].apply(lambda x: len(x) == 1)
+    #     # 2. split into shared and seperate trainables
+    #     shared_trainables = merged_trainables.loc[~concat_here]
+    #     sep_trainables = (
+    #         merged_trainables.loc[concat_here].groupby("param").agg(list).reset_index()
+    #     )
+    #     # 3. convert lists to jnp arrays and stack indices
+    #     sep_trainables.loc[:, "index"] = sep_trainables["index"].apply(jnp.stack)
+    #     sep_trainables.loc[:, "value"] = sep_trainables["value"].apply(jnp.array)
+    #     shared_trainables.loc[:, "value"] = shared_trainables["value"].apply(np.array)
 
-        # 2. split into shared and seperate trainables
-        shared_trainables = merged_trainables.loc[~concat_here]
-        sep_trainables = (
-            merged_trainables.loc[concat_here].groupby("param").agg(list).reset_index()
-        )
-        # 3. convert lists to jnp arrays and stack indices
-        sep_trainables.loc[:, "index"] = sep_trainables["index"].apply(jnp.stack)
-        sep_trainables.loc[:, "value"] = sep_trainables["value"].apply(jnp.array)
-        shared_trainables.loc[:, "value"] = shared_trainables["value"].apply(np.array)
-
-        # 4. format to match module.trainable_params and module.indices_set_by_trainables
-        trainable_params = pd.concat([shared_trainables, sep_trainables])
-        indices_set_by_trainables = trainable_params["index"].values.tolist()
-        trainable_params = [
-            {k: jnp.array(v).reshape(-1)}
-            for k, v in trainable_params[["param", "value"]].values
-        ]
-        module.trainable_params = trainable_params
-        module.indices_set_by_trainables = indices_set_by_trainables
-
-    if not groups.empty and assign_groups:
-        groups = groups.explode(1).rename(columns={0: "index", 1: "group"})
-        groups = groups[groups["group"] != "undefined"]  # skip undefined comps
-        # module[:] ensure group nodes in module reflect what is shown in view
-        group_nodes = {
-            k: module[:].view.loc[v["index"]] for k, v in groups.groupby("group")
-        }
-        module.group_nodes = group_nodes
+    #     # 4. format to match module.trainable_params and module.indices_set_by_trainables
+    #     trainable_params = pd.concat([shared_trainables, sep_trainables])
+    #     indices_set_by_trainables = trainable_params["index"].values.tolist()
+    #     trainable_params = [
+    #         {k: jnp.array(v).reshape(-1)}
+    #         for k, v in trainable_params[["param", "value"]].values
+    #     ]
+    #     module.trainable_params = trainable_params
+    #     module.indices_set_by_trainables = indices_set_by_trainables
 
     return module
 
@@ -802,12 +792,12 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         A networkx graph of the module.
     """
     module_graph = nx.DiGraph()
-    module._update_nodes_with_xyz()  # make xyz coords attr of nodes
+    module.compute_compartment_centers()  # make xyz coords attr of nodes
 
     # add global attrs
     module_graph.graph["type"] = module.__class__.__name__.lower()
     for attr in [
-        "nseg",
+        "ncomp",
         "initialized_morph",
         "initialized_syns",
         "synapses",
@@ -819,93 +809,76 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         module_graph.graph[attr] = getattr(module, attr)
 
     # add nodes
-    module_graph.add_nodes_from(
-        module.nodes.to_dict("index").items()
-    )  # preserves dtypes
+    nodes = module.nodes
+    nodes = nodes.drop([col for col in nodes.columns if "local" in col], axis=1)
+    nodes = nodes.rename(
+        {f"global_{k}": k for k in ["comp_index", "branch_index", "cell_index"]}, axis=1
+    )
 
-    # add groups to nodes
-    group_node_dict = {k: list(v.index) for k, v in module.group_nodes.items()}
-    nodes_in_groups = sum(list(group_node_dict.values()), [])
-    node_group_dict = {
-        k: [i for i, v in group_node_dict.items() if k in v] for k in nodes_in_groups
-    }
-    # asumes multiple groups per node are allowed
-    for idx, key in node_group_dict.items():
-        module_graph.add_node(idx, **{"groups": key})
+    group_inds = pd.DataFrame(
+        [(k, v) for k, vals in module.groups.items() for v in vals],
+        columns=["group", "index"],
+    )
+    nodes = pd.concat([nodes, group_inds.groupby("index")["group"].agg(list)], axis=1)
 
-    # add recordings to nodes
-    if not module.recordings.empty:
-        for index, group in module.recordings.groupby("rec_index"):
-            rec_index = group["rec_index"].loc[0]
-            rec_states = group["state"].values
-            module_graph.add_node(rec_index, **{"recordings": rec_states})
+    module_graph = nx.DiGraph()
+    module_graph.add_nodes_from(nodes.T.to_dict().items())
 
-    # add externals to nodes
-    if module.externals is not None:
-        for key, inds in module.external_inds.items():
-            unique_inds = np.unique(inds.flatten())
-            for i in unique_inds:
-                which = np.where(inds == i)[0]
-                if "externals" not in module_graph.nodes[i]:
-                    module_graph.nodes[i]["externals"] = {}
-                module_graph.nodes[i]["externals"].update(
-                    {key: module.externals[key][which]}
-                )
+    syn_edges = module.edges
+    # syn_edges["syn_type"] = syn_edges["type"]
+    # syn_edges["type"] = "synapse"
+    # syn_edges = syn_edges.set_index(["pre_global_comp_index", "post_global_comp_index"])
+    # module_graph.add_edges_from(syn_edges)
 
-    # add trainable params to nodes
-    if module.trainable_params:
-        d = {"index": [], "param": [], "value": []}
-        for params, inds in zip(
-            module.trainable_params, module.indices_set_by_trainables
-        ):
-            inds = inds.flatten()
-            key, values = next(iter(params.items()))
-            d["index"] += inds.tolist()
-            d["param"] += np.broadcast_to([key], inds.shape).tolist()
-            d["value"] += np.broadcast_to(values.flatten(), inds.shape).tolist()
-        df = pd.DataFrame(d)
-        to_dicts = lambda x: x.set_index("param").to_dict()["value"]
-        trainable_iter = df.groupby("index").apply(to_dicts).to_dict()
-        trainable_iter = {k: {"trainable": v} for k, v in trainable_iter.items()}
-        module_graph.add_nodes_from(trainable_iter.items())
+    inter_branch_edges = module.branch_edges.copy()
+    intra_branch_edges = []
+    for i, branch_data in nodes.groupby("branch_index"):
+        inds = branch_data.index.values
+        intra_branch_edges += branch_n2e(inds)
 
-    # connect comps within branches
-    for index, group in module.nodes.groupby("branch_index"):
-        module_graph.add_edges_from(
-            zip(group.index[:-1], group.index[1:]), type="intra_branch"
-        )
+        parents = module.branch_edges["parent_branch_index"]
+        children = module.branch_edges["child_branch_index"]
+        inter_branch_edges.loc[parents == i, "parent_branch_index"] = inds[-1]
+        inter_branch_edges.loc[children == i, "child_branch_index"] = inds[0]
 
-    # connect branches
-    for index, edge in module.branch_edges.iterrows():
-        parent_branch_idx = edge["parent_branch_index"]
-        parent_comp_idx = max(
-            module.nodes[module.nodes["branch_index"] == parent_branch_idx].index
-        )
-        child_branch_idx = edge["child_branch_index"]
-        child_comp_idx = min(
-            module.nodes[module.nodes["branch_index"] == child_branch_idx].index
-        )
-        module_graph.add_edge(parent_comp_idx, child_comp_idx, type="inter_branch")
+    inter_branch_edges = inter_branch_edges.to_numpy()
+    module_graph.add_edges_from(inter_branch_edges, type="inter_branch")
+    module_graph.add_edges_from(intra_branch_edges, type="intra_branch")
 
-    # connect synapses
-    for index, edge in module.edges.iterrows():
-        attrs = edge.to_dict()
-        pre = attrs["global_pre_comp_index"]
-        post = attrs["global_post_comp_index"]
-        module_graph.add_edge(pre, post, type="synapse")
-        # allow for multiple synapses between the same compartments
-        if "parameters" in module_graph.edges[pre, post]:
-            module_graph.edges[pre, post]["parameters"].append(attrs)
-        else:
-            module_graph.edges[pre, post]["parameters"] = [attrs]
+    # # add recordings to nodes
+    # if not module.recordings.empty:
+    #     for index, group in module.recordings.groupby("rec_index"):
+    #         rec_index = group["rec_index"].loc[0]
+    #         rec_states = group["state"].values
+    #         module_graph.add_node(rec_index, **{"recordings": rec_states})
+
+    # # add externals to nodes
+    # if module.externals is not None:
+    #     for key, inds in module.external_inds.items():
+    #         unique_inds = np.unique(inds.flatten())
+    #         for i in unique_inds:
+    #             which = np.where(inds == i)[0]
+    #             if "externals" not in module_graph.nodes[i]:
+    #                 module_graph.nodes[i]["externals"] = {}
+    #             module_graph.nodes[i]["externals"].update(
+    #                 {key: module.externals[key][which]}
+    #             )
+
+    # # add trainable params to nodes
+    # if module.trainable_params:
+    #     d = {"index": [], "param": [], "value": []}
+    #     for params, inds in zip(
+    #         module.trainable_params, module.indices_set_by_trainables
+    #     ):
+    #         inds = inds.flatten()
+    #         key, values = next(iter(params.items()))
+    #         d["index"] += inds.tolist()
+    #         d["param"] += np.broadcast_to([key], inds.shape).tolist()
+    #         d["value"] += np.broadcast_to(values.flatten(), inds.shape).tolist()
+    #     df = pd.DataFrame(d)
+    #     to_dicts = lambda x: x.set_index("param").to_dict()["value"]
+    #     trainable_iter = df.groupby("index").apply(to_dicts).to_dict()
+    #     trainable_iter = {k: {"trainable": v} for k, v in trainable_iter.items()}
+    #     module_graph.add_nodes_from(trainable_iter.items())
 
     return module_graph
-
-
-def get_nodes_and_parents(graph: nx.DiGraph) -> np.ndarray:
-    """List (node, parent) pairs for a graph."""
-    edges = []
-    for node in graph.nodes():
-        parents = list(graph.predecessors(node))
-        edges += [(node, parent) for parent in parents] if parents else [(node, -1)]
-    return np.array(edges)
