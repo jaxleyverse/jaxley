@@ -8,7 +8,6 @@ from warnings import warn
 import networkx as nx
 import numpy as np
 
-# from jaxley.io.graph import from_graph
 import jaxley as jx
 
 
@@ -398,14 +397,3 @@ def read_swc(
             if len(indices) > 0:
                 cell.branch(indices).add_to_group(name)
     return cell
-
-
-# def swc_to_graph_to_jaxley(
-#     fname: str,
-#     nseg: int = 4,
-#     max_branch_len: float = 100.0,
-#     sort: bool = True,
-#     num_lines: Optional[int] = None,
-# ):
-#     graph = swc_to_graph(fname, num_lines, sort)
-#     return from_graph(graph, nseg=nseg, max_branch_len=max_branch_len)
