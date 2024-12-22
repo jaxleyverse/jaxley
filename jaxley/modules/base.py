@@ -187,10 +187,6 @@ class Module(ABC):
     def __str__(self):
         return f"jx.{type(self).__name__}"
 
-    # def __eq__(self, other):
-    #     # TODO: Add tests!
-    #     return recursive_compare(self.__dict__, other.__dict__)
-
     def __dir__(self):
         base_dir = object.__dir__(self)
         return sorted(base_dir + self.synapse_names + list(self.group_nodes.keys()))
