@@ -152,7 +152,7 @@ def simulate_swc_trace_errors(
 
 
 def trace_branches(
-    graph: nx.DiGraph, max_len=1000, ignore_swc_trace_errors=True
+    graph: nx.DiGraph, max_len=None, ignore_swc_trace_errors=True
 ) -> List[np.ndarray]:
     """Get all linearly connected paths in a graph aka. branches.
 
@@ -167,6 +167,25 @@ def trace_branches(
     Returns:
         A list of linear paths in the graph. Each path is represented as an array of
         edges."""
+
+    # handles special case of a single soma node
+    if len(soma_idxs := get_soma_idxs(graph)) == 1:
+        soma = soma_idxs[0]
+        # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere
+        graph.add_node(-1, **graph.nodes[0])
+        graph.add_edge(-1, soma, l=2 * graph.nodes[soma]["r"])
+        graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
+
+        # edges connecting nodes to soma are considered part of the soma -> l = 0.
+        for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
+            graph.edges[i, j]["l"] = 0
+
+    # ensure linear root segment to ensure root branch can be created.
+    if graph.out_degree(0) > 1:
+        graph.add_node(-1, **graph.nodes[0])
+        graph.add_edge(-1, 0, l=0.1)
+        graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
+
     branches, current_branch = [], []
 
     root = find_root(graph)
@@ -181,8 +200,9 @@ def trace_branches(
 
     branch_edges = [np.array(p) for p in branches if len(p) > 0]
 
-    edge_lens = nx.get_edge_attributes(graph, "l")
-    branch_edges = split_branches(branch_edges, edge_lens, max_len)
+    if max_len:
+        edge_lens = nx.get_edge_attributes(graph, "l")
+        branch_edges = split_branches(branch_edges, edge_lens, max_len)
 
     if not ignore_swc_trace_errors:
         # ignore added index by default; only relevant in case it was added
@@ -241,7 +261,7 @@ def add_missing_graph_attrs(graph: nx.DiGraph) -> nx.DiGraph:
 
 
 def split_branches(
-    branches: List[np.ndarray], edge_lens: Dict, max_len: int = 100
+    branches: List[np.ndarray], edge_lens: Dict, max_len: int = 1000
 ) -> List[np.ndarray]:
     """Split branches into approximately equally long sections <= max_len.
 
@@ -427,7 +447,7 @@ def extract_comp_graph(graph: nx.DiGraph) -> nx.DiGraph:
 def make_jaxley_compatible(
     graph: nx.DiGraph,
     ncomp: int = 4,
-    max_branch_len: float = 2000.0,
+    max_branch_len: float = None,
     ignore_swc_trace_errors: bool = True,
 ) -> nx.DiGraph:
     """Make a swc traced graph compatible with jaxley.
@@ -479,24 +499,6 @@ def make_jaxley_compatible(
     # pre-processing
     graph = add_missing_graph_attrs(graph)
 
-    # handles special case of a single soma node
-    if len(soma_idxs := get_soma_idxs(graph)) == 1:
-        soma = soma_idxs[0]
-        # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere
-        graph.add_node(-1, **graph.nodes[0])
-        graph.add_edge(-1, soma, l=2 * graph.nodes[soma]["r"])
-        graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
-
-        # edges connecting nodes to soma are considered part of the soma -> l = 0.
-        for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
-            graph.edges[i, j]["l"] = 0
-
-    # ensure linear root segment to ensure root branch can be created.
-    if graph.out_degree(0) > 1:
-        graph.add_node(-1, **graph.nodes[0])
-        graph.add_edge(-1, 0, l=0.1)
-        graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
-
     graph = trace_branches(graph, max_branch_len, ignore_swc_trace_errors)
 
     graph = insert_compartments(graph, ncomp)
@@ -527,7 +529,11 @@ def make_jaxley_compatible(
 
     # xyzr
     edges_in_branches = edge_df.groupby("branch_index")
-    nodes_in_branches = edges_in_branches.apply(lambda x: branch_e2n(x.index.values))
+    nodes_in_branches = edges_in_branches.apply(
+        lambda x: [
+            n for n in branch_e2n(x.index.values) if "comp_index" not in graph.nodes[n]
+        ]
+    )
     stack_branch_xyzr = lambda x: np.stack([unpack(graph.nodes[n], "xyzr") for n in x])
     xyzr = nodes_in_branches.apply(stack_branch_xyzr).to_list()
     same_rows = lambda x: np.all(np.nan_to_num(x[0]) == np.nan_to_num(x))
