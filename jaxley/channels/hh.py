@@ -16,16 +16,8 @@ class Na(Channel):
         self.current_is_in_mA_per_cm2 = True
 
         super().__init__(name)
-        prefix = self._name
-        self.params = {
-            f"{prefix}_gNa": 0.12,
-            f"{prefix}_eNa": 50.0,
-        }
-        self.states = {
-            f"{prefix}_m": 0.2,
-            f"{prefix}_h": 0.2,
-        }
-        self.current_name = f"i_Na"
+        self.params = {"gNa": 0.12, "eNa": 50.0}
+        self.states = {"m": 0.2, "h": 0.2}
 
     def update_states(
         self,
@@ -35,11 +27,11 @@ class Na(Channel):
         params: Dict[str, jnp.ndarray],
     ) -> Dict[str, jnp.ndarray]:
         """Return updated HH channel state."""
-        prefix = self._name
-        m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
+        m, h = states["m"], states["h"]
+
         new_m = solve_gate_exponential(m, dt, *self.m_gate(v))
         new_h = solve_gate_exponential(h, dt, *self.h_gate(v))
-        return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
+        return {"m": new_m, "h": new_h}
 
     def compute_current(
         self,
@@ -48,12 +40,11 @@ class Na(Channel):
         params: Dict[str, jnp.ndarray],
     ) -> jnp.ndarray:
         """Return current through HH channels."""
-        prefix = self._name
-        m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
+        m, h = states["m"], states["h"]
+        gNa, eNa = params["gNa"], params["eNa"]
 
-        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
-
-        return gNa * (v - params[f"{prefix}_eNa"])
+        gNa = gNa * (m**3) * h  # S/cm^2
+        return gNa * (v - eNa)
 
     def init_state(
         self,
@@ -63,13 +54,9 @@ class Na(Channel):
         dt: float,
     ) -> Dict[str, jnp.ndarray]:
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
-        return {
-            f"{prefix}_m": alpha_m / (alpha_m + beta_m),
-            f"{prefix}_h": alpha_h / (alpha_h + beta_h),
-        }
+        return {"m": alpha_m / (alpha_m + beta_m), "h": alpha_h / (alpha_h + beta_h)}
 
     @staticmethod
     def m_gate(v):
@@ -91,15 +78,8 @@ class K(Channel):
         self.current_is_in_mA_per_cm2 = True
 
         super().__init__(name)
-        prefix = self._name
-        self.params = {
-            f"{prefix}_gK": 0.036,
-            f"{prefix}_eK": -77.0,
-        }
-        self.states = {
-            f"{prefix}_n": 0.2,
-        }
-        self.current_name = f"i_K"
+        self.params = {"gK": 0.036, "eK": -77.0}
+        self.states = {"n": 0.2}
 
     def update_states(
         self,
@@ -109,10 +89,10 @@ class K(Channel):
         params: Dict[str, jnp.ndarray],
     ) -> Dict[str, jnp.ndarray]:
         """Return updated HH channel state."""
-        prefix = self._name
-        n = states[f"{prefix}_n"]
+        n = states["n"]
+
         new_n = solve_gate_exponential(n, dt, *self.n_gate(v))
-        return {f"{prefix}_n": new_n}
+        return {"n": new_n}
 
     def compute_current(
         self,
@@ -121,12 +101,11 @@ class K(Channel):
         params: Dict[str, jnp.ndarray],
     ) -> jnp.ndarray:
         """Return current through HH channels."""
-        prefix = self._name
-        n = states[f"{prefix}_n"]
+        n = states["n"]
+        gK, eK = params["gK"], params["eK"]
 
-        gK = params[f"{prefix}_gK"] * n**4  # S/cm^2
-
-        return gK * (v - params[f"{prefix}_eK"])
+        gK = gK * n**4  # S/cm^2
+        return gK * (v - eK)
 
     def init_state(
         self,
@@ -136,9 +115,8 @@ class K(Channel):
         dt: float,
     ) -> Dict[str, jnp.ndarray]:
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
         alpha_n, beta_n = self.n_gate(v)
-        return {f"{prefix}_n": alpha_n / (alpha_n + beta_n)}
+        return {"n": alpha_n / (alpha_n + beta_n)}
 
     @staticmethod
     def n_gate(v):
@@ -154,13 +132,8 @@ class Leak(Channel):
         self.current_is_in_mA_per_cm2 = True
 
         super().__init__(name)
-        prefix = self._name
-        self.params = {
-            f"{prefix}_gLeak": 0.0003,
-            f"{prefix}_eLeak": -54.3,
-        }
+        self.params = {"gLeak": 0.0003, "eLeak": -54.3}
         self.states = {}
-        self.current_name = f"i_Leak"
 
     def update_states(
         self,
@@ -179,10 +152,9 @@ class Leak(Channel):
         params: Dict[str, jnp.ndarray],
     ) -> jnp.ndarray:
         """Return current through HH channels."""
-        prefix = self._name
-        gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
+        gLeak, eLeak = params["gLeak"], params["eLeak"]
 
-        return gLeak * (v - params[f"{prefix}_eLeak"])
+        return gLeak * (v - eLeak)
 
     def init_state(
         self,
@@ -218,8 +190,6 @@ class HH(Channel):
             **self.K.states,
             **self.Leak.states,
         }
-
-        self.current_name = f"i_HH"
 
     def change_name(self, new_name: str):
         self._name = new_name

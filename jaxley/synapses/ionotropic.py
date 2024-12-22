@@ -31,13 +31,12 @@ class IonotropicSynapse(Synapse):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        prefix = self._name
         self.params = {
-            f"{prefix}_gS": 1e-4,
-            f"{prefix}_e_syn": 0.0,
-            f"{prefix}_k_minus": 0.025,
+            "gS": 1e-4,
+            "e_syn": 0.0,
+            "k_minus": 0.025,
         }
-        self.states = {f"{prefix}_s": 0.2}
+        self.states = {"s": 0.2}
 
     def update_states(
         self,
@@ -48,21 +47,19 @@ class IonotropicSynapse(Synapse):
         params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
-        prefix = self._name
         v_th = -35.0  # mV
         delta = 10.0  # mV
 
         s_inf = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
-        tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
+        tau_s = (1.0 - s_inf) / params["k_minus"]
 
         slope = -1.0 / tau_s
         exp_term = save_exp(slope * delta_t)
-        new_s = states[f"{prefix}_s"] * exp_term + s_inf * (1.0 - exp_term)
-        return {f"{prefix}_s": new_s}
+        new_s = states["s"] * exp_term + s_inf * (1.0 - exp_term)
+        return {"s": new_s}
 
     def compute_current(
         self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
     ) -> float:
-        prefix = self._name
-        g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
-        return g_syn * (post_voltage - params[f"{prefix}_e_syn"])
+        g_syn = params["gS"] * states["s"]
+        return g_syn * (post_voltage - params["e_syn"])

@@ -15,11 +15,10 @@ class TanhRateSynapse(Synapse):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        prefix = self._name
         self.params = {
-            f"{prefix}_gS": 1e-4,
-            f"{prefix}_x_offset": -70.0,
-            f"{prefix}_slope": 1.0,
+            "gS": 1e-4,
+            "x_offset": -70.0,
+            "slope": 1.0,
         }
         self.states = {}
 
@@ -38,12 +37,9 @@ class TanhRateSynapse(Synapse):
         self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
     ) -> float:
         """Return updated synapse state and current."""
-        prefix = self._name
         current = (
             -1
-            * params[f"{prefix}_gS"]
-            * jnp.tanh(
-                (pre_voltage - params[f"{prefix}_x_offset"]) * params[f"{prefix}_slope"]
-            )
+            * params["gS"]
+            * jnp.tanh((pre_voltage - params["x_offset"]) * params["slope"])
         )
         return current

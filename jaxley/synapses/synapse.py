@@ -15,8 +15,8 @@ class Synapse:
     """
 
     _name = None
-    synapse_params = None
-    synapse_states = None
+    params = None
+    states = None
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__

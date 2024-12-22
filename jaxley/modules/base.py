@@ -11,6 +11,7 @@ from warnings import warn
 
 import jax.numpy as jnp
 import numpy as np
+from optree import tree_map_with_path
 import pandas as pd
 from jax import jit, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
@@ -2734,3 +2735,108 @@ class View(Module):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         pass
+
+
+class AutoPrefix:
+    """Wrapper for Channel classes that transparently handles name prefixing using pytrees."""
+
+    def __init__(self, mech: Union[Channel, Synapse]):
+        """Initialize wrapper with a channel instance."""
+        # Store the wrapped channel
+        self._wrapped = mech
+        self.prefix = f"{self._wrapped.name}_"
+        self._name = self._wrapped._name
+        self.current_name = "i_" + self.prefix[:-1]
+
+        # Make this class pretend to be the wrapped class
+        self.__class__.__name__ = mech.__class__.__name__
+        self.__class__.__qualname__ = mech.__class__.__qualname__
+        self.__class__.__module__ = mech.__class__.__module__
+
+        if isinstance(self._wrapped, Synapse):
+            delattr(self.__class__, "init_state")
+
+    def __getattr__(self, name: str):
+        """Delegate unknown attributes to the wrapped channel."""
+        return getattr(self._wrapped, name)
+
+    def __repr__(self):
+        """Return the same representation as the wrapped channel."""
+        return repr(self._wrapped)
+
+    def __str__(self):
+        """Return the same string representation as the wrapped channel."""
+        return str(self._wrapped)
+
+    def _transform_dict_keys(
+        self, d: Dict[str, Any], add_prefix: bool = True
+    ) -> Dict[str, Any]:
+        """Transform dictionary keys using pytree operations."""
+
+        def transform_key(path, value):
+            key = path[-1]  # Get the leaf key
+            if isinstance(key, str):
+                if add_prefix:
+                    return f"{self.prefix}{key}", value
+                elif key.startswith(self.prefix):
+                    return key[len(self.prefix) :], value
+            return key, value
+
+        transformed = tree_map_with_path(
+            lambda p, v: transform_key(p, v)[1],
+            d,
+            is_leaf=lambda x: isinstance(x, (jnp.ndarray, float, int)),
+        )
+        return transformed
+
+    @property
+    def params(self) -> Dict[str, Any]:
+        """Get prefixed parameters."""
+        return self._transform_dict_keys(self._wrapped.params, add_prefix=True)
+
+    @property
+    def states(self) -> Dict[str, Any]:
+        """Get prefixed states."""
+        return self._transform_dict_keys(self._wrapped.states, add_prefix=True)
+
+    def update_states(
+        self,
+        states: Dict[str, Any],
+        dt: float,
+        v: jnp.ndarray,
+        params: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Update states with automatic prefix handling using pytrees."""
+        states = self._transform_dict_keys(states, add_prefix=False)
+        params = self._transform_dict_keys(params, add_prefix=False)
+
+        states = self._wrapped.update_states(states, dt, v, params)
+
+        return self._transform_dict_keys(states, add_prefix=True)
+
+    def compute_current(
+        self,
+        states: Dict[str, Any],
+        v: jnp.ndarray,
+        params: Dict[str, Any],
+    ) -> jnp.ndarray:
+        """Compute current with automatic prefix handling using pytrees."""
+        states = self._transform_dict_keys(states, add_prefix=False)
+        params = self._transform_dict_keys(params, add_prefix=False)
+
+        return self._wrapped.compute_current(states, v, params)
+
+    def init_state(
+        self,
+        states: Dict[str, Any],
+        v: jnp.ndarray,
+        params: Dict[str, Any],
+        dt: float,
+    ) -> Dict[str, Any]:
+        """Initialize states with automatic prefix handling using pytrees."""
+        states = self._transform_dict_keys(states, add_prefix=False)
+        params = self._transform_dict_keys(params, add_prefix=False)
+
+        init_states = self._wrapped.init_state(states, v, params, dt)
+
+        return self._transform_dict_keys(init_states, add_prefix=True)

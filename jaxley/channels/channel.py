@@ -16,9 +16,8 @@ class Channel:
     `uA/cm2`."""
 
     _name = None
-    channel_params = None
-    channel_states = None
-    current_name = None
+    params = None
+    states = None
 
     def __init__(self, name: Optional[str] = None):
         contact = (
