@@ -32,12 +32,12 @@ class IonotropicSynapse(Synapse):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
-        self.synapse_params = {
+        self.params = {
             f"{prefix}_gS": 1e-4,
             f"{prefix}_e_syn": 0.0,
             f"{prefix}_k_minus": 0.025,
         }
-        self.synapse_states = {f"{prefix}_s": 0.2}
+        self.states = {f"{prefix}_s": 0.2}
 
     def update_states(
         self,

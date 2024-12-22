@@ -273,8 +273,8 @@ class Network(Module):
             assert (
                 synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
+            synapse_param_names = list(synapse_type.params.keys())
+            synapse_state_names = list(synapse_type.states.keys())
 
             synapse_params = {}
             for p in synapse_param_names:
@@ -325,8 +325,8 @@ class Network(Module):
             assert (
                 synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
+            synapse_param_names = list(synapse_type.params.keys())
+            synapse_state_names = list(synapse_type.states.keys())
 
             synapse_params = {}
             for p in synapse_param_names:
@@ -514,8 +514,8 @@ class Network(Module):
     def _update_synapse_state_names(self, synapse_type):
         # (Potentially) update variables that track meta information about synapses.
         self.base.synapse_names.append(synapse_type._name)
-        self.base.synapse_param_names += list(synapse_type.synapse_params.keys())
-        self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
+        self.base.synapse_param_names += list(synapse_type.params.keys())
+        self.base.synapse_state_names += list(synapse_type.states.keys())
         self.base.synapses.append(synapse_type)
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
@@ -567,9 +567,9 @@ class Network(Module):
 
     def _add_params_to_edges(self, synapse_type, indices):
         # Add parameters and states to the `.edges` table.
-        for key, param_val in synapse_type.synapse_params.items():
+        for key, param_val in synapse_type.params.items():
             self.base.edges.loc[indices, key] = param_val
 
         # Update synaptic state array.
-        for key, state_val in synapse_type.synapse_states.items():
+        for key, state_val in synapse_type.states.items():
             self.base.edges.loc[indices, key] = state_val

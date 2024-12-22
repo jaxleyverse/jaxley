@@ -17,7 +17,7 @@ class HH(Channel):
 
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gNa": 0.12,
             f"{prefix}_gK": 0.036,
             f"{prefix}_gLeak": 0.0003,
@@ -25,7 +25,7 @@ class HH(Channel):
             f"{prefix}_eK": -77.0,
             f"{prefix}_eLeak": -54.3,
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_m": 0.2,
             f"{prefix}_h": 0.2,
             f"{prefix}_n": 0.2,
