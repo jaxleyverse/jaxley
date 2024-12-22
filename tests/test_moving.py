@@ -13,7 +13,6 @@ import numpy as np
 from jax import jit
 
 import jaxley as jx
-from jaxley import io
 
 
 def test_move_cell(SimpleBranch, SimpleCell):

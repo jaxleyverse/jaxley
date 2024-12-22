@@ -14,7 +14,6 @@ import pytest
 from neuron import h
 
 import jaxley as jx
-from jaxley import io
 from jaxley.channels import HH
 
 _ = h.load_file("stdlib.hoc")
