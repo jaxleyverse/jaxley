@@ -1725,6 +1725,7 @@ class Module(ABC):
 
         Args:
             channel: The channel to insert."""
+        channel = AutoPrefix(channel)
         name = channel._name
 
         # Channel does not yet exist in the `jx.Module` at all.
@@ -2746,7 +2747,11 @@ class AutoPrefix:
         self._wrapped = mech
         self.prefix = f"{self._wrapped.name}_"
         self._name = self._wrapped._name
-        self.current_name = "i_" + self.prefix[:-1]
+        self.current_name = (
+            self._wrapped.current_name
+            if hasattr(self._wrapped, "current_name")
+            else "i_" + self.prefix[:-1]
+        )
 
         # Make this class pretend to be the wrapped class
         self.__class__.__name__ = mech.__class__.__name__
@@ -2840,3 +2845,35 @@ class AutoPrefix:
         init_states = self._wrapped.init_state(states, v, params, dt)
 
         return self._transform_dict_keys(init_states, add_prefix=True)
+
+
+def infer_global_params_states(mech: Union[Channel, Synapse]) -> List[str]:
+    """Infer the global parameters and states of a channel or synapse.
+
+    Infers global params and states by testing for KeyErrors in the `update_states`,
+    `compute_current`, and `init_state` methods.
+
+    Args:
+        mech: The channel or synapse to infer the global params and states of.
+
+    Returns:
+        A list of the inferred global parameters and states.
+    """
+    global_state_params = {}
+    mech_states = mech.states
+    mech_params = mech.params
+
+    while True:
+        try:
+            states = {**global_state_params, **mech_states}
+            params = {**global_state_params, **mech_params}
+
+            mech.update_states(states, 0.025, -70, params)
+            mech.compute_current(states, -70, params)
+            if isinstance(mech, Channel):
+                mech.init_state(states, -70, params, 0.025)
+            break
+        except KeyError as e:
+            missing_key = e.args[0]
+            global_state_params[missing_key] = 0
+    return list(global_state_params)

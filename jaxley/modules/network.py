@@ -13,7 +13,7 @@ from jax import vmap
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from jaxley.modules.base import Module
+from jaxley.modules.base import AutoPrefix, Module
 from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
@@ -520,6 +520,7 @@ class Network(Module):
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
+        synapse_type = AutoPrefix(synapse_type)
         synapse_name = synapse_type._name
         synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
