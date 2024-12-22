@@ -9,6 +9,8 @@ import jax.numpy as jnp
 import numpy as np
 
 from jaxley.modules import Branch, Cell, Compartment
+
+# TODO: move the functions below here?
 from jaxley.utils.cell_utils import (
     _build_parents,
     _compute_pathlengths,
