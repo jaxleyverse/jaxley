@@ -10,6 +10,7 @@ import numpy as np
 
 from jaxley.modules import Branch, Cell, Compartment
 from jaxley.utils.cell_utils import (
+    # TODO: move here?
     _build_parents,
     _compute_pathlengths,
     _padded_radius_generating_fn,
