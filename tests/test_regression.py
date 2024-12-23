@@ -77,7 +77,7 @@ def generate_regression_report(base_results, new_results):
             if base_time is None:
                 status = "🆕"
             elif new_time <= base_time:
-                status = "🟢" if diff is not None and diff < -0.05 else "🟠"
+                status = "🟢" if diff is not None and diff < 0.05 else "🟠"
             elif new_time > base_time:
                 status = "🔴"
             else:
