@@ -23,6 +23,8 @@ net.vis()
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
+- Refactor of channel and synapse stepping internals and how the model is transferred to jax for more efficient and readable code (#487, @jnsbck).
+
 # 0.5.0
 
 ### API changes
