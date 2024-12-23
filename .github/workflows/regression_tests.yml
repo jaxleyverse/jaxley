@@ -98,21 +98,11 @@ jobs:
         script: |
           const fs = require('fs');
           let status = '${{ steps.comparison.outcome }}' === 'success' ? '✅' : '❌';
-          let message = '## Regression Baseline Update\n' + status + ' Process completed\n\n';
+          let message = '## Regression Test Results\n' + status + ' Process completed\n\n';
           
           try {
             const TestReport = fs.readFileSync('tests/regression_test_report.txt', 'utf8');
             message += '```\n' + TestReport + '\n```\n\n';
-            
-            // Add information about where the changes were pushed
-            if ('${{ steps.comparison.outcome }}' === 'success') {
-              if (!${{ fromJson(steps.check-fork.outputs.result) }}) {
-                message += '✨ Changes have been pushed directly to this PR\n';
-              } else {
-                const prNumber = '${{ steps.create-pr.outputs.pull-request-number }}';
-                message += `✨ Changes have been pushed to a new PR #${prNumber} because this PR is from a fork\n`;
-              }
-            }
           } catch (error) {
             message += '⚠️ No test report was generated\n';
           }
