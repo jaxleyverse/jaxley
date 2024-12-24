@@ -23,6 +23,10 @@ net.vis()
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
+### Code Health
+
+- Vectorize recording updates during `integrate()`. (#561, @ntolley)
+
 # 0.5.0
 
 ### API changes
