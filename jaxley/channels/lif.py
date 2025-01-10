@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Dict, Optional
+from warnings import warn
 
 import jax.numpy as jnp
 
@@ -24,6 +25,8 @@ class LIF(Channel):
             f"{self.name}_rem_tref": 0.0,  # time remaining in refractory period
         }
         self.current_name = f"{self.name}_i"
+
+        warn("This channel is not differentiable. Consider using SmoothLIF instead.")
 
     def update_states(self, states, dt, v, params):
         prefix = self._name
