@@ -23,6 +23,8 @@ net.vis()
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
+- add two leaky integrate-and-fire channels: `LIF` and `SmoothLIF` (#564, @jnsbck)
+
 # 0.5.0
 
 ### API changes
