@@ -3,9 +3,9 @@
 
 from typing import Dict, Optional
 
-from jaxley.channels import Channel
 import jax.numpy as jnp
 
+from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp
 
 
