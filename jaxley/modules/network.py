@@ -22,6 +22,7 @@ from jaxley.utils.cell_utils import (
     dtype_aware_concat,
     loc_of_index,
     merge_cells,
+    index_of_a_in_b,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import (
@@ -269,19 +270,27 @@ class Network(Module):
             pre_inds = edges.loc[synapse.indices, "pre_global_comp_index"].to_numpy()
             post_inds = edges.loc[synapse.indices, "post_global_comp_index"].to_numpy()
 
+            global_states = self.jaxglobals["states"]
+            global_params = self.jaxglobals["params"]
+            syn_states = self._mech_filter_globals(states, synapse, global_states)
+            syn_params = self._mech_filter_globals(params, synapse, global_params)
+
             # State updates.
             synapse_states_updated = synapse.update_states(
-                states,
+                syn_states,
                 delta_t,
                 voltages[pre_inds],
                 voltages[post_inds],
-                params,
+                syn_params,
             )
 
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
             for key, val in synapse_states_updated.items():
-                states[key] = states[key].at[:].set(val)
+                param_state_inds = self._inds_of_state_param(key)
+                synapse_inds = synapse.indices.reshape(1, -1)
+                inds = index_of_a_in_b(synapse_inds, param_state_inds).flatten()
+                states[key] = states[key].at[inds].set(val)
 
         return states
 
@@ -313,13 +322,18 @@ class Network(Module):
             pre_v_and_perturbed = jnp.array([v_pre, v_pre + diff])
             post_v_and_perturbed = jnp.array([v_post, v_post + diff])
 
+            global_states = self.jaxglobals["states"]
+            global_params = self.jaxglobals["params"]
+            syn_states = self._mech_filter_globals(states, synapse, global_states)
+            syn_params = self._mech_filter_globals(params, synapse, global_params)
+
             synapse_currents = vmap(
                 synapse.compute_current, in_axes=(None, 0, 0, None)
             )(
-                states,
+                syn_states,
                 pre_v_and_perturbed,
                 post_v_and_perturbed,
-                params,
+                syn_params,
             )
             synapse_currents_dist = compute_current_density(
                 synapse_currents,
