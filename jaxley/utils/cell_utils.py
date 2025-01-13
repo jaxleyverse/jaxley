@@ -777,7 +777,7 @@ def dtype_aware_concat(dfs):
 def index_of_a_in_b(A: jnp.ndarray, B: jnp.ndarray) -> jnp.ndarray:
     """Replace values in A with the indices of the corresponding values in B.
 
-    Mainly used to determine the indices of parameters in jaxnodes based on the global
+    Mainly used to determine the indices of parameters in `jax` based on the global
     indices of the parameters in the cell. All values in A that are not in B are
     replaced with -1.
 
@@ -792,12 +792,35 @@ def index_of_a_in_b(A: jnp.ndarray, B: jnp.ndarray) -> jnp.ndarray:
 
     Returns:
         Array of shape of A with the indices of the values of A in B."""
+    A_is_flat = A.ndim == 1
+    A = A.reshape(1, -1) if A_is_flat else A
     matches = A[:, :, None] == B
-    # Get mask for values that exist in B
-    exists_in_B = matches.any(axis=-1)
-    # Get indices where matches occur
-    indices = jnp.where(matches, jnp.arange(len(B))[None, None, :], 0)
-    # Sum along last axis to get the indices
-    result = jnp.sum(indices, axis=-1)
-    # Replace values not in B with -1
-    return jnp.where(exists_in_B, result, -1)
+    exists_in_B = matches.any(axis=-1)  # mask for vals also in B
+    indices = jnp.where(
+        matches, jnp.arange(len(B))[None, None, :], 0
+    )  # inds of matches
+    result = jnp.sum(indices, axis=-1)  # Sum along last axis to get the indices
+    inds = jnp.where(exists_in_B, result, -1)  # Replace values not in B with -1
+    return inds.flatten() if A_is_flat else inds
+
+
+def iterate_leaves(tree, path=[]):
+    """Iterate over all leafs (arrays) in a pytree while keeping track of their paths.
+
+    Args:
+        tree: The pytree to iterate over
+        path: Current path in the tree (used recursively)
+
+    Yields:
+        tuple: (final_key, array_value, full_path)
+    """
+    if isinstance(tree, dict):
+        for key, value in tree.items():
+            yield from iterate_leaves(value, path + [key])
+    elif isinstance(tree, (list, tuple)):
+        for i, value in enumerate(tree):
+            yield from iterate_leaves(value, path + [str(i)])
+    else:
+        # Assuming any non-dict/list/tuple is a leaf node (Array in this case)
+        if path:  # Only yield if we have a path
+            yield path[-1], tree, path

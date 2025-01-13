@@ -20,9 +20,9 @@ from jaxley.utils.cell_utils import (
     compute_children_and_parents,
     compute_current_density,
     dtype_aware_concat,
+    index_of_a_in_b,
     loc_of_index,
     merge_cells,
-    index_of_a_in_b,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import (
@@ -264,35 +264,7 @@ class Network(Module):
         delta_t: float,
         edges: pd.DataFrame,
     ) -> Dict:
-        voltages = states["v"]
-
-        for synapse in syn_channels:
-            pre_inds = edges.loc[synapse.indices, "pre_global_comp_index"].to_numpy()
-            post_inds = edges.loc[synapse.indices, "post_global_comp_index"].to_numpy()
-
-            global_states = self.jaxglobals["states"]
-            global_params = self.jaxglobals["params"]
-            syn_states = self._mech_filter_globals(states, synapse, global_states)
-            syn_params = self._mech_filter_globals(params, synapse, global_params)
-
-            # State updates.
-            synapse_states_updated = synapse.update_states(
-                syn_states,
-                delta_t,
-                voltages[pre_inds],
-                voltages[post_inds],
-                syn_params,
-            )
-
-            # Rebuild state. This has to be done within the loop over channels to allow
-            # multiple channels which modify the same state.
-            for key, val in synapse_states_updated.items():
-                param_state_inds = self._inds_of_state_param(key)
-                synapse_inds = synapse.indices.reshape(1, -1)
-                inds = index_of_a_in_b(synapse_inds, param_state_inds).flatten()
-                states[key] = states[key].at[inds].set(val)
-
-        return states
+        return self._step_mech_state(states, delta_t, syn_channels, edges, params)
 
     def _synapse_currents(
         self,
@@ -313,19 +285,16 @@ class Network(Module):
 
         num_comp = len(voltages)
         synapse_current_states = {f"i_{s.name}": zeros for s in syn_channels}
-        for i, group in edges.groupby("type_ind"):
-            synapse = syn_channels[i]
-            pre_inds = group["pre_global_comp_index"].to_numpy()
-            post_inds = group["post_global_comp_index"].to_numpy()
+        for synapse in syn_channels:
+            pre_inds = synapse.pre_indices
+            post_inds = synapse.post_indices
 
             v_pre, v_post = voltages[pre_inds], voltages[post_inds]
             pre_v_and_perturbed = jnp.array([v_pre, v_pre + diff])
             post_v_and_perturbed = jnp.array([v_post, v_post + diff])
 
-            global_states = self.jaxglobals["states"]
-            global_params = self.jaxglobals["params"]
-            syn_states = self._mech_filter_globals(states, synapse, global_states)
-            syn_params = self._mech_filter_globals(params, synapse, global_params)
+            syn_states = self._filter_by_mech(states, synapse)
+            syn_params = self._filter_by_mech(params, synapse)
 
             synapse_currents = vmap(
                 synapse.compute_current, in_axes=(None, 0, 0, None)
