@@ -1,4 +1,4 @@
-# .github/workflows/update_regression_tests.yml
+# .github/workflows/regression_tests.yml
 
 # for details on triggering a workflow from a comment, see:
 # https://dev.to/zirkelc/trigger-github-workflow-for-comment-on-pull-request-45l2
@@ -9,8 +9,8 @@ on:
     types: [created]
 
 jobs:
-  update_regression_tests:
-    name: update_regression_tests
+  run_regression_tests:
+    name: run_regression_tests
     runs-on: ubuntu-20.04
     # Trigger from a comment that contains '/test_regression'
     if: github.event.issue.pull_request && contains(github.event.comment.body, '/test_regression')
