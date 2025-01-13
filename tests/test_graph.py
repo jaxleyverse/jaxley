@@ -97,6 +97,8 @@ def test_trace_branches(file):
     edges = pd.DataFrame([{"u": u, "v": v, **d} for u, v, d in graph.edges(data=True)])
     nx_branch_lens = edges.groupby("branch_index")["l"].sum().to_numpy()
     nx_branch_lens = np.sort(nx_branch_lens)
+    if np.isclose(nx_branch_lens[0], 1e-1):
+        nx_branch_lens = nx_branch_lens[1:]
 
     h, _ = import_neuron_morph(fname)
     neuron_branch_lens = np.sort([sec.L for sec in h.allsec()])
@@ -108,23 +110,25 @@ def test_trace_branches(file):
 
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
 def test_from_graph_vs_NEURON(file):
-    nseg = 8
+    ncomp = 8
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
     graph = swc_to_graph(fname)
     cell = from_graph(
-        graph, nseg=nseg, max_branch_len=2000, ignore_swc_trace_errors=False
+        graph, ncomp=ncomp, max_branch_len=2000, ignore_swc_trace_errors=False
     )
     cell.compute_compartment_centers()
-    h, neuron_cell = import_neuron_morph(fname, nseg=nseg)
+    h, neuron_cell = import_neuron_morph(fname, nseg=ncomp)
 
     # remove root branch
     jaxley_comps = cell.nodes[
-        ~np.isclose(cell.nodes["length"], 0.1 / nseg)
+        ~np.isclose(cell.nodes["length"], 0.1 / ncomp)
     ].reset_index(drop=True)
 
-    jx_branch_lens = jaxley_comps.groupby("branch_index")["length"].sum().to_numpy()
+    jx_branch_lens = (
+        jaxley_comps.groupby("global_branch_index")["length"].sum().to_numpy()
+    )
 
     # match by branch lengths
     neuron_xyzd = [np.array(s.psection()["morphology"]["pts3d"]) for s in h.allsec()]
@@ -143,7 +147,7 @@ def test_from_graph_vs_NEURON(file):
         neuron_comp_k = np.array(
             [
                 get_segment_xyzrL(list(h.allsec())[neuron_inds[k]], comp_idx=i)
-                for i in range(nseg)
+                for i in range(ncomp)
             ]
         )
         # make this a dataframe
@@ -151,7 +155,7 @@ def test_from_graph_vs_NEURON(file):
             neuron_comp_k, columns=["x", "y", "z", "radius", "length"]
         )
         neuron_comp_k["idx"] = neuron_inds[k]
-        jx_comp_k = jaxley_comps[jaxley_comps["branch_index"] == jx_inds[k]][
+        jx_comp_k = jaxley_comps[jaxley_comps["global_branch_index"] == jx_inds[k]][
             ["x", "y", "z", "radius", "length"]
         ]
         jx_comp_k["idx"] = jx_inds[k]
@@ -190,7 +194,7 @@ def test_graph_to_jaxley(file):
     graph = swc_to_graph(fname)
     swc_module = from_graph(graph)
     for group in ["soma", "apical", "basal"]:
-        assert group in swc_module.group_nodes
+        assert group in swc_module.groups
 
     # test import after different stages of graph pre-processing
     graph = swc_to_graph(fname)
@@ -216,7 +220,7 @@ def test_swc2graph_voltages(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)  # n120
 
-    nseg = 8
+    ncomp = 8
 
     i_delay = 2.0
     i_dur = 5.0
@@ -225,14 +229,14 @@ def test_swc2graph_voltages(file):
     dt = 0.025
 
     ##################### NEURON ##################
-    h, neuron_cell = import_neuron_morph(fname, nseg=nseg)
+    h, neuron_cell = import_neuron_morph(fname, nseg=ncomp)
 
     ####################### jaxley ##################
     graph = swc_to_graph(fname)
     jx_cell = from_graph(
-        graph, nseg=nseg, max_branch_len=2000, ignore_swc_trace_errors=False
+        graph, ncomp=ncomp, max_branch_len=2000, ignore_swc_trace_errors=False
     )
-    jx_cell._update_nodes_with_xyz()
+    jx_cell.compute_compartment_centers()
     jx_cell.insert(HH())
 
     branch_loc = 0.05
@@ -255,7 +259,7 @@ def test_swc2graph_voltages(file):
     jx_cell.set("HH_h", 0.4889)
     jx_cell.set("HH_n", 0.3644787)
 
-    jx_cell.branch.comp(stim_idx).stimulate(
+    jx_cell.select(stim_idx).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in trunk_inds + tuft_inds + basal_inds:

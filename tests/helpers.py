@@ -55,12 +55,18 @@ def jaxley2neuron_by_coords(jx_cell, neuron_secs, comp_idx=None, loc=None, nseg=
     neuron_coords = np.vstack(
         [np.hstack([k * np.ones((v.shape[0], 1)), v]) for k, v in neuron_coords.items()]
     )
-    neuron_coords = pd.DataFrame(neuron_coords, columns=["branch_index", "x", "y", "z"])
-    neuron_coords["branch_index"] = neuron_coords["branch_index"].astype(int)
+    neuron_coords = pd.DataFrame(
+        neuron_coords, columns=["global_branch_index", "x", "y", "z"]
+    )
+    neuron_coords["global_branch_index"] = neuron_coords["global_branch_index"].astype(
+        int
+    )
 
-    neuron_loc_xyz = neuron_coords.groupby("branch_index").mean()
+    neuron_loc_xyz = neuron_coords.groupby("global_branch_index").mean()
     jaxley_loc_xyz = (
-        jx_cell.branch("all").loc(loc).show().set_index("branch_index")[["x", "y", "z"]]
+        jx_cell.branch("all")
+        .loc(loc)
+        .nodes.set_index("global_branch_index")[["x", "y", "z"]]
     )
 
     jaxley2neuron_inds = {}
@@ -81,11 +87,16 @@ def jaxley2neuron_by_group(
     num_basal=10,
 ):
     y_apical = (
-        jx_cell.apical.show().groupby("branch_index").mean()["y"].abs().sort_values()
+        jx_cell.apical.nodes.groupby("global_branch_index")
+        .mean()["y"]
+        .abs()
+        .sort_values()
     )
     trunk_inds = y_apical.index[:num_apical].tolist()
     tuft_inds = y_apical.index[-num_tuft:].tolist()
-    basal_inds = jx_cell.basal.show()["branch_index"].unique()[:num_basal].tolist()
+    basal_inds = (
+        jx_cell.basal.nodes["global_branch_index"].unique()[:num_basal].tolist()
+    )
 
     jaxley2neuron = jaxley2neuron_by_coords(
         jx_cell, neuron_secs, comp_idx=comp_idx, loc=loc, nseg=nseg

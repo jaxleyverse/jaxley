@@ -176,9 +176,9 @@ def trace_branches(
         graph.add_edge(-1, soma, l=2 * graph.nodes[soma]["r"])
         graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
 
-        # edges connecting nodes to soma are considered part of the soma -> l = 0.
-        for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
-            graph.edges[i, j]["l"] = 0
+        # # edges connecting nodes to soma are considered part of the soma -> l = 0.
+        # for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
+        #     graph.edges[i, j]["l"] = 0
 
     # ensure linear root segment to ensure root branch can be created.
     if graph.out_degree(0) > 1:
