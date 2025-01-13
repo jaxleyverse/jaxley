@@ -27,7 +27,7 @@ def test_set_and_querying_params_one_type(SimpleNet):
             connect(pre, post, IonotropicSynapse())
 
     # Get the synapse parameters to test setting
-    syn_params = list(IonotropicSynapse().synapse_params.keys())
+    syn_params = list(IonotropicSynapse().params.keys())
     for p in syn_params:
         net.set(p, 0.15)
         assert np.all(net.edges[p].to_numpy() == 0.15)

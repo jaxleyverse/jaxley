@@ -18,6 +18,7 @@ from jaxley.utils.cell_utils import (
     compute_levels,
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
+    dtype_aware_concat,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import (
@@ -102,7 +103,7 @@ class Cell(Module):
         self._internal_node_inds = np.arange(self.cumsum_ncomp[-1])
 
         # Build nodes. Has to be changed when `.set_ncomp()` is run.
-        self.nodes = pd.concat([c.nodes for c in branch_list], ignore_index=True)
+        self.nodes = dtype_aware_concat([c.nodes for c in branch_list])
         self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.ncomp_per_branch

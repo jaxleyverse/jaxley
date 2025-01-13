@@ -610,7 +610,7 @@ def params_to_pstate(
     ]
 
 
-def convert_point_process_to_distributed(
+def compute_current_density(
     current: jnp.ndarray, radius: jnp.ndarray, length: jnp.ndarray
 ) -> jnp.ndarray:
     """Convert current point process (nA) to distributed current (uA/cm2).
@@ -686,21 +686,6 @@ def group_and_sum(
     return group_sums
 
 
-def query_channel_states_and_params(d, keys, idcs):
-    """Get dict with subset of keys and values from d.
-
-    This is used to restrict a dict where every item contains __all__ states to only
-    the ones that are relevant for the channel. E.g.
-
-    ```states = {'eCa': Array([ 0.,  0., nan]}```
-
-    will be
-    ```states = {'eCa': Array([ 0.,  0.]}```
-
-    Only loops over necessary keys, as opposed to looping over `d.items()`."""
-    return dict(zip(keys, (v[idcs] for v in map(d.get, keys))))
-
-
 def compute_axial_conductances(
     comp_edges: pd.DataFrame, params: Dict[str, jnp.ndarray]
 ) -> jnp.ndarray:
@@ -774,3 +759,68 @@ def compute_children_and_parents(
     child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
     par_inds = np.unique(par_inds)
     return par_inds, child_inds, child_belongs_to_branchpoint
+
+
+def dtype_aware_concat(dfs):
+    concat_df = pd.concat(dfs, ignore_index=True)
+    # replace nans with Nones
+    # this correctly casts float(None) -> NaN, bool(None) -> NaN, etc.
+    concat_df[concat_df.isna()] = None
+    for col in concat_df.columns[concat_df.dtypes == "object"]:
+        for df in dfs:
+            if col in df.columns:
+                concat_df[col] = concat_df[col].astype(df[col].dtype)
+            break  # first match is sufficient
+    return concat_df
+
+
+def index_of_a_in_b(A: jnp.ndarray, B: jnp.ndarray) -> jnp.ndarray:
+    """Replace values in A with the indices of the corresponding values in B.
+
+    Mainly used to determine the indices of parameters in `jax` based on the global
+    indices of the parameters in the cell. All values in A that are not in B are
+    replaced with -1.
+
+    Example:
+    - indices_of_gNa = [5,6,7,8,9]
+    - indices_to_change = [6,7]
+    - index_of_a_in_b(indices_to_change, indices_of_gNa) -> [1,2]
+
+    Args:
+        A: Array of shape (N, M).
+        B: Array of shape (N, K).
+
+    Returns:
+        Array of shape of A with the indices of the values of A in B."""
+    A_is_flat = A.ndim == 1
+    A = A.reshape(1, -1) if A_is_flat else A
+    matches = A[:, :, None] == B
+    exists_in_B = matches.any(axis=-1)  # mask for vals also in B
+    indices = jnp.where(
+        matches, jnp.arange(len(B))[None, None, :], 0
+    )  # inds of matches
+    result = jnp.sum(indices, axis=-1)  # Sum along last axis to get the indices
+    inds = jnp.where(exists_in_B, result, -1)  # Replace values not in B with -1
+    return inds.flatten() if A_is_flat else inds
+
+
+def iterate_leaves(tree, path=[]):
+    """Iterate over all leafs (arrays) in a pytree while keeping track of their paths.
+
+    Args:
+        tree: The pytree to iterate over
+        path: Current path in the tree (used recursively)
+
+    Yields:
+        tuple: (final_key, array_value, full_path)
+    """
+    if isinstance(tree, dict):
+        for key, value in tree.items():
+            yield from iterate_leaves(value, path + [key])
+    elif isinstance(tree, (list, tuple)):
+        for i, value in enumerate(tree):
+            yield from iterate_leaves(value, path + [str(i)])
+    else:
+        # Assuming any non-dict/list/tuple is a leaf node (Array in this case)
+        if path:  # Only yield if we have a path
+            yield path[-1], tree, path
