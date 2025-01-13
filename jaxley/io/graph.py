@@ -515,6 +515,7 @@ def make_jaxley_compatible(
         comp_graph.nodes[n]["group"] = [group_ids[comp_graph.nodes[n].pop("id")]]
         comp_graph.nodes[n]["radius"] = comp_graph.nodes[n].pop("r")
         comp_graph.nodes[n]["length"] = comp_graph.nodes[n].pop("comp_length")
+        comp_graph.nodes[n].pop("l")
 
     nx.set_node_attributes(comp_graph, 0, "cell_index")
 
