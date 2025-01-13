@@ -1415,7 +1415,7 @@ class Module(ABC):
             The filtered dictionary.
         """
         is_channel = isinstance(mech, Channel)
-        i_mech = mech.current_name if is_channel else f"{mech.name}_i"
+        i_mech = mech.current_name if is_channel else f"i_{mech.name}"
 
         filtered_param_states = param_states.copy()
         if i_mech in param_states:
@@ -1448,7 +1448,7 @@ class Module(ABC):
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
         param_states = self._get_all_states_params([], voltage_solver="jaxley.thomas")
-        voltages = self.nodes["v"].to_numpy()
+        voltages = param_states["v"]
 
         for channel in self.channels:
             channel_param_states = self._filter_by_mech(param_states, channel)
