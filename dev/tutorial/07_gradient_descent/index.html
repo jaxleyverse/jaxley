@@ -1076,9 +1076,9 @@
 <li>write dataloaders and parallelize across data  </li>
 </ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span><span class="p">,</span> <span class="n">value_and_grad</span>
-<span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-<span class="kn">import</span> <span class="nn">jaxley.optimize.transforms</span> <span class="k">as</span> <span class="nn">jt</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span><span class="p">,</span> <span class="n">value_and_grad</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jaxley.optimize.transforms</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jt</span>
 
 <span class="n">net</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># See tutorial on the basics of `Jaxley`.</span>
 
@@ -1096,7 +1096,7 @@
 <span class="n">opt_params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
 
 <span class="c1"># Define simulation and batch it across stimuli.</span>
-<span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">datapoint</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">datapoint</span><span class="p">):</span>
     <span class="n">current</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">datapoint_to_step_currents</span><span class="p">(</span><span class="n">i_delay</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_dur</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_amps</span><span class="o">=</span><span class="n">datapoint</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.025</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">data_stimulate</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="n">data_stimuli</span><span class="p">,</span> <span class="n">checkpoint_inds</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.025</span><span class="p">)</span>
@@ -1104,7 +1104,7 @@
 <span class="n">batch_simulate</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">simulate</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
 <span class="c1"># Define loss function and its gradient.</span>
-<span class="k">def</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">datapoints</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">loss_fn</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">datapoints</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
     <span class="n">params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">opt_params</span><span class="p">)</span>
     <span class="n">voltages</span> <span class="o">=</span> <span class="n">batch_simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">datapoints</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">voltages</span><span class="p">)</span> <span class="o">-</span> <span class="n">label</span><span class="p">)</span>
@@ -1130,20 +1130,20 @@
         <span class="n">updates</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">)</span>
         <span class="n">opt_params</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">apply_updates</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">updates</span><span class="p">)</span>
 </code></pre></div></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">config</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_platform_name&quot;</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">jax</span>
-<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
-<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span><span class="p">,</span> <span class="n">value_and_grad</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span><span class="p">,</span> <span class="n">value_and_grad</span>
 
-<span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-<span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Leak</span>
-<span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">TanhRateSynapse</span>
-<span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">Leak</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">TanhRateSynapse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.connect</span><span class="w"> </span><span class="kn">import</span> <span class="n">fully_connect</span>
 </code></pre></div>
 <p>First, we define a network as you saw in the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html">previous tutorial</a>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># For synaptic locations.</span>
@@ -1229,7 +1229,7 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <h3 id="stimulating-the-network">Stimulating the network<a class="headerlink" href="#stimulating-the-network" title="Permanent link">&para;</a></h3>
 <p>The network above does not yet get any stimuli. We will use the 2D inputs from the dataset to stimulate the two input neurons. The amplitude of the step current corresponds to the input value. Below is the simulator that defines this:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
     <span class="n">currents</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">datapoint_to_step_currents</span><span class="p">(</span><span class="n">i_delay</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_dur</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_amp</span><span class="o">=</span><span class="n">inputs</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.025</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
 
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1249,7 +1249,7 @@ Added 1 recordings. See `.recordings` for details.
 <p><img alt="png" src="../07_gradient_descent_files/07_gradient_descent_32_0.png" /></p>
 <h3 id="defining-a-loss-function">Defining a loss function<a class="headerlink" href="#defining-a-loss-function" title="Permanent link">&para;</a></h3>
 <p>Let us define a loss function to be optimized:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loss</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
     <span class="n">traces</span> <span class="o">=</span> <span class="n">batched_simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span>  <span class="c1"># Shape `(batchsize, num_recordings, timepoints)`.</span>
     <span class="n">prediction</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">traces</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Use the average over time of the output neuron (2) as prediction.</span>
     <span class="n">prediction</span> <span class="o">=</span> <span class="p">(</span><span class="n">prediction</span> <span class="o">+</span> <span class="mf">72.0</span><span class="p">)</span> <span class="o">/</span> <span class="mi">5</span>  <span class="c1"># Such that the prediction is roughly in [0, 1].</span>
@@ -1263,10 +1263,10 @@ Added 1 recordings. See `.recordings` for details.
 </code></pre></div>
 <h3 id="defining-parameter-transformations">Defining parameter transformations<a class="headerlink" href="#defining-parameter-transformations" title="Permanent link">&para;</a></h3>
 <p>Before training, however, we will enforce for all parameters to be within a prespecified range (such that, e.g., conductances can not become negative)</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley.optimize.transforms</span> <span class="k">as</span> <span class="nn">jt</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley.optimize.transforms</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jt</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Define a function to create appropriate transforms for each parameter</span>
-<span class="k">def</span> <span class="nf">create_transform</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_transform</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;axial_resistivity&quot;</span><span class="p">:</span>
         <span class="c1"># Must be positive; apply Softplus and scale to match initialization</span>
         <span class="k">return</span> <span class="n">jt</span><span class="o">.</span><span class="n">ChainTransform</span><span class="p">([</span><span class="n">jt</span><span class="o">.</span><span class="n">SoftplusTransform</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">jt</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">0</span><span class="p">)])</span>
@@ -1286,7 +1286,7 @@ Added 1 recordings. See `.recordings` for details.
                                <span class="p">{</span><span class="s2">&quot;TanhRateSynapse_gS&quot;</span> <span class="p">:</span> <span class="n">jt</span><span class="o">.</span><span class="n">SigmoidTransform</span><span class="p">(</span><span class="mf">1e-5</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">)}])</span>
 </code></pre></div>
 <p>With these  modify the loss function acocrdingly:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loss</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
     <span class="n">transform</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">opt_params</span><span class="p">)</span>
 
     <span class="n">traces</span> <span class="o">=</span> <span class="n">batched_simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span>  <span class="c1"># Shape `(batchsize, num_recordings, timepoints)`.</span>
@@ -1308,7 +1308,7 @@ Added 1 recordings. See `.recordings` for details.
 <div class="highlight"><pre><span></span><code><span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">checkpoint_inds</span><span class="o">=</span><span class="n">checkpoints</span><span class="p">)</span>
 </code></pre></div>
 as done below:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
     <span class="n">currents</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">datapoint_to_step_currents</span><span class="p">(</span><span class="n">i_delay</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_dur</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">i_amp</span><span class="o">=</span><span class="n">inputs</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="n">t_max</span><span class="p">)</span>
 
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1320,7 +1320,7 @@ as done below:</p>
 <span class="n">batched_simulate</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">simulate</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
 
-<span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
     <span class="n">traces</span> <span class="o">=</span> <span class="n">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span>  <span class="c1"># Shape `(batchsize, num_recordings, timepoints)`.</span>
     <span class="n">prediction</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">traces</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>  <span class="c1"># Use the average over time of the output neuron (2) as prediction.</span>
     <span class="k">return</span> <span class="n">prediction</span> <span class="o">+</span> <span class="mf">72.0</span>  <span class="c1"># Such that the prediction is around 0.</span>
@@ -1328,7 +1328,7 @@ as done below:</p>
 <span class="n">batched_predict</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">predict</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
 
-<span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">loss</span><span class="p">(</span><span class="n">opt_params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
     <span class="n">params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">opt_params</span><span class="p">)</span>
 
     <span class="n">predictions</span> <span class="o">=</span> <span class="n">batched_predict</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span>
@@ -1339,7 +1339,7 @@ as done below:</p>
 </code></pre></div>
 <h3 id="training">Training<a class="headerlink" href="#training" title="Permanent link">&para;</a></h3>
 <p>We will use the ADAM optimizer from the <a href="https://optax.readthedocs.io/en/latest/">optax library</a> to optimize the free parameters (you have to install the package with <code>pip install optax</code> first):</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">optax</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">optax</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">opt_params</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
 <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
@@ -1347,8 +1347,8 @@ as done below:</p>
 </code></pre></div>
 <h3 id="writing-a-dataloader">Writing a dataloader<a class="headerlink" href="#writing-a-dataloader" title="Permanent link">&para;</a></h3>
 <p>Below, we just write our own (very simple) dataloader. Alternatively, you could use the dataloader from any deep learning library such as pytorch or tensorflow:</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Simple Dataloader.</span>
 
 <span class="sd">        Args:</span>
@@ -1362,7 +1362,7 @@ as done below:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_rng_state</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="mi">1</span>
 
-    <span class="k">def</span> <span class="nf">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Shuffle the dataset in-place&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_rng_state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">get_state</span><span class="p">()[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">seed</span>
         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rng_state</span><span class="p">)</span>
@@ -1371,12 +1371,12 @@ as done below:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="nf">batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create batches of the data&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_rng_state</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">):</span>
             <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_samples</span><span class="p">)</span>

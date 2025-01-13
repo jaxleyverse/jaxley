@@ -912,9 +912,9 @@
 <li>use the <code>.edges</code> attribute to inspect and change synaptic parameters</li>
 </ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-<span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
-<span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">connect</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.connect</span><span class="w"> </span><span class="kn">import</span> <span class="n">connect</span>
 
 
 <span class="c1"># Define a network. `cell` is defined as in previous tutorial.</span>
@@ -936,19 +936,19 @@
 <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>  <span class="c1"># or `detail=&quot;point&quot;`.</span>
 </code></pre></div></p>
 <p>In the previous tutorial, you learned how to build single cells with morphological detail, how to insert stimuli and recordings, and how to run a first simulation. In this tutorial, we will define networks of multiple cells and connect them with synapses. Let&rsquo;s get started:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">config</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_platform_name&quot;</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
-<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span>
 
-<span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-<span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
-<span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
-<span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span><span class="p">,</span> <span class="n">connect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.connect</span><span class="w"> </span><span class="kn">import</span> <span class="n">fully_connect</span><span class="p">,</span> <span class="n">connect</span>
 </code></pre></div>
 <h3 id="define-the-network">Define the network<a class="headerlink" href="#define-the-network" title="Permanent link">&para;</a></h3>
 <p>First, we define a cell as you saw in the <a href="https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html">previous tutorial</a>.</p>

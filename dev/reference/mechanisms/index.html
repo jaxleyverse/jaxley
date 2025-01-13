@@ -1657,7 +1657,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span>
-<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Channel</span><span class="p">:</span>
+<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Channel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Channel base class. All channels inherit from this class.</span>
 
 <span class="sd">    As in NEURON, a `Channel` is considered a distributed process, which means that its</span>
@@ -1669,7 +1669,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
     <span class="n">channel_states</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">current_name</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="n">contact</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s2">&quot;If you have any questions, please reach out via email to &quot;</span>
             <span class="s2">&quot;michael.deistler@uni-tuebingen.de or create an issue on Github: &quot;</span>
@@ -1691,11 +1691,11 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span> <span class="k">if</span> <span class="n">name</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The name of the channel (by default, this is the class name).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
 
-    <span class="k">def</span> <span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Change the channel name.</span>
 
 <span class="sd">        Args:</span>
@@ -1727,13 +1727,13 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">}</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the updated states.&quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Given channel states and voltage, return the current through the channel.</span>
@@ -1748,7 +1748,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">v</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -1775,7 +1775,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 
 
 <h3 id="jaxley.channels.channel.Channel.name" class="doc doc-heading">
-            <code class=" language-python"><span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></code>
+            <code class=" language-python"><span class="n">name</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
@@ -1891,7 +1891,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">76</span>
 <span class="normal">77</span>
 <span class="normal">78</span>
-<span class="normal">79</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal">79</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Change the channel name.</span>
 
 <span class="sd">    Args:</span>
@@ -2040,7 +2040,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Given channel states and voltage, return the current through the channel.</span>
@@ -2083,7 +2083,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span>
-<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span>
+<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">v</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -2117,7 +2117,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">82</span>
 <span class="normal">83</span>
 <span class="normal">84</span>
-<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the updated states.&quot;&quot;&quot;</span>
@@ -2239,10 +2239,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">92</span>
 <span class="normal">93</span>
 <span class="normal">94</span>
-<span class="normal">95</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">HH</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">95</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HH</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Hodgkin-Huxley channel.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -2262,7 +2262,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_HH&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -2277,7 +2277,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">new_n</span> <span class="o">=</span> <span class="n">solve_gate_exponential</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_m&quot;</span><span class="p">:</span> <span class="n">new_m</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_h&quot;</span><span class="p">:</span> <span class="n">new_h</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_n&quot;</span><span class="p">:</span> <span class="n">new_n</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current through HH channels.&quot;&quot;&quot;</span>
@@ -2294,7 +2294,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
             <span class="o">+</span> <span class="n">gLeak</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_eLeak&quot;</span><span class="p">])</span>
         <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="n">alpha_m</span><span class="p">,</span> <span class="n">beta_m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
@@ -2307,19 +2307,19 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">_vtrap</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mi">40</span><span class="p">),</span> <span class="mi">10</span><span class="p">)</span>
         <span class="n">beta</span> <span class="o">=</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mi">65</span><span class="p">)</span> <span class="o">/</span> <span class="mi">18</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">h_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">h_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.07</span> <span class="o">*</span> <span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mi">65</span><span class="p">)</span> <span class="o">/</span> <span class="mi">20</span><span class="p">)</span>
         <span class="n">beta</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mi">35</span><span class="p">)</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="n">_vtrap</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mi">55</span><span class="p">),</span> <span class="mi">10</span><span class="p">)</span>
         <span class="n">beta</span> <span class="o">=</span> <span class="mf">0.125</span> <span class="o">*</span> <span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mi">65</span><span class="p">)</span> <span class="o">/</span> <span class="mi">80</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span>
@@ -2368,7 +2368,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">62</span>
 <span class="normal">63</span>
 <span class="normal">64</span>
-<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current through HH channels.&quot;&quot;&quot;</span>
@@ -2415,7 +2415,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
-<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
     <span class="n">alpha_m</span><span class="p">,</span> <span class="n">beta_m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
@@ -2460,7 +2460,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">45</span>
 <span class="normal">46</span>
 <span class="normal">47</span>
-<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -2542,10 +2542,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">66</span>
 <span class="normal">67</span>
 <span class="normal">68</span>
-<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Leak</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Leak</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Leak current&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -2557,7 +2557,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -2567,7 +2567,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;No state to update.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -2575,7 +2575,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">gLeak</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_gLeak&quot;</span><span class="p">]</span>  <span class="c1"># S/cm^2</span>
         <span class="k">return</span> <span class="n">gLeak</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_eLeak&quot;</span><span class="p">])</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{}</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2613,7 +2613,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
-<span class="normal">66</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">66</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -2649,7 +2649,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">55</span>
 <span class="normal">56</span>
 <span class="normal">57</span>
-<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -2759,10 +2759,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">137</span>
 <span class="normal">138</span>
 <span class="normal">139</span>
-<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Na</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Na</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Sodium channel&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -2775,7 +2775,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_m&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_h&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_Na&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -2789,7 +2789,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">new_h</span> <span class="o">=</span> <span class="n">solve_gate_exponential</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">h_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;vt&quot;</span><span class="p">]))</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_m&quot;</span><span class="p">:</span> <span class="n">new_m</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_h&quot;</span><span class="p">:</span> <span class="n">new_h</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -2801,7 +2801,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">current</span> <span class="o">=</span> <span class="n">gNa</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;eNa&quot;</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">current</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="n">alpha_m</span><span class="p">,</span> <span class="n">beta_m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;vt&quot;</span><span class="p">])</span>
@@ -2812,7 +2812,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">):</span>
         <span class="n">v_alpha</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="n">vt</span> <span class="o">-</span> <span class="mf">13.0</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.32</span> <span class="o">*</span> <span class="n">efun</span><span class="p">(</span><span class="o">-</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">v_alpha</span><span class="p">)</span> <span class="o">/</span> <span class="mf">0.25</span>
 
@@ -2821,7 +2821,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">h_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">h_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">):</span>
         <span class="n">v_alpha</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="n">vt</span> <span class="o">-</span> <span class="mf">17.0</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.128</span> <span class="o">*</span> <span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="n">v_alpha</span> <span class="o">/</span> <span class="mf">18.0</span><span class="p">)</span>
 
@@ -2868,7 +2868,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">109</span>
 <span class="normal">110</span>
 <span class="normal">111</span>
-<span class="normal">112</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">112</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -2908,7 +2908,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">119</span>
 <span class="normal">120</span>
 <span class="normal">121</span>
-<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
     <span class="n">alpha_m</span><span class="p">,</span> <span class="n">beta_m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;vt&quot;</span><span class="p">])</span>
@@ -2950,7 +2950,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -3049,10 +3049,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">193</span>
 <span class="normal">194</span>
 <span class="normal">195</span>
-<span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">K</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">K</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Potassium channel&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -3065,7 +3065,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_n&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_K&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -3078,7 +3078,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">new_n</span> <span class="o">=</span> <span class="n">solve_gate_exponential</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;vt&quot;</span><span class="p">]))</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_n&quot;</span><span class="p">:</span> <span class="n">new_n</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3089,14 +3089,14 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 
         <span class="k">return</span> <span class="n">gK</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;eK&quot;</span><span class="p">])</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="n">alpha_n</span><span class="p">,</span> <span class="n">beta_n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;vt&quot;</span><span class="p">])</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_n&quot;</span><span class="p">:</span> <span class="n">alpha_n</span> <span class="o">/</span> <span class="p">(</span><span class="n">alpha_n</span> <span class="o">+</span> <span class="n">beta_n</span><span class="p">)}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vt</span><span class="p">):</span>
         <span class="n">v_alpha</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="n">vt</span> <span class="o">-</span> <span class="mf">15.0</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.032</span> <span class="o">*</span> <span class="n">efun</span><span class="p">(</span><span class="o">-</span><span class="mf">0.2</span> <span class="o">*</span> <span class="n">v_alpha</span><span class="p">)</span> <span class="o">/</span> <span class="mf">0.2</span>
 
@@ -3142,7 +3142,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">178</span>
 <span class="normal">179</span>
 <span class="normal">180</span>
-<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3177,7 +3177,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">184</span>
 <span class="normal">185</span>
 <span class="normal">186</span>
-<span class="normal">187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+<span class="normal">187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
     <span class="n">alpha_n</span><span class="p">,</span> <span class="n">beta_n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;vt&quot;</span><span class="p">])</span>
@@ -3214,7 +3214,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">167</span>
 <span class="normal">168</span>
 <span class="normal">169</span>
-<span class="normal">170</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">170</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -3313,10 +3313,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">250</span>
 <span class="normal">251</span>
 <span class="normal">252</span>
-<span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Km</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Km</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Slow M Potassium channel&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -3329,7 +3329,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_p&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_K&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -3344,7 +3344,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_p&quot;</span><span class="p">:</span> <span class="n">new_p</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3354,14 +3354,14 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">gKm</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_gKm&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span>  <span class="c1"># S/cm^2</span>
         <span class="k">return</span> <span class="n">gKm</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;eK&quot;</span><span class="p">])</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="n">alpha_p</span><span class="p">,</span> <span class="n">beta_p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_taumax&quot;</span><span class="p">])</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_p&quot;</span><span class="p">:</span> <span class="n">alpha_p</span> <span class="o">/</span> <span class="p">(</span><span class="n">alpha_p</span> <span class="o">+</span> <span class="n">beta_p</span><span class="p">)}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">p_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">taumax</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">p_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">taumax</span><span class="p">):</span>
         <span class="n">v_p</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="mf">35.0</span>
         <span class="n">p_inf</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">v_p</span><span class="p">))</span>
 
@@ -3406,7 +3406,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">235</span>
 <span class="normal">236</span>
 <span class="normal">237</span>
-<span class="normal">238</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">238</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3440,7 +3440,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">241</span>
 <span class="normal">242</span>
 <span class="normal">243</span>
-<span class="normal">244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+<span class="normal">244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
     <span class="n">alpha_p</span><span class="p">,</span> <span class="n">beta_p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_taumax&quot;</span><span class="p">])</span>
@@ -3479,7 +3479,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">225</span>
 <span class="normal">226</span>
 <span class="normal">227</span>
-<span class="normal">228</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">228</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -3591,10 +3591,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
-<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CaL</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CaL</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;L-type Calcium channel&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -3606,7 +3606,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_q&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_r&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_Ca&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -3620,7 +3620,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="n">new_r</span> <span class="o">=</span> <span class="n">solve_gate_exponential</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">r_gate</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_q&quot;</span><span class="p">:</span> <span class="n">new_q</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_r&quot;</span><span class="p">:</span> <span class="n">new_r</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3630,7 +3630,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 
         <span class="k">return</span> <span class="n">gCaL</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;eCa&quot;</span><span class="p">])</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="n">alpha_q</span><span class="p">,</span> <span class="n">beta_q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_gate</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
@@ -3641,7 +3641,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">q_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">q_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="n">v_alpha</span> <span class="o">=</span> <span class="o">-</span><span class="n">v</span> <span class="o">-</span> <span class="mf">27.0</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.055</span> <span class="o">*</span> <span class="n">efun</span><span class="p">(</span><span class="n">v_alpha</span> <span class="o">/</span> <span class="mf">3.8</span><span class="p">)</span> <span class="o">*</span> <span class="mf">3.8</span>
 
@@ -3650,7 +3650,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">r_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">r_gate</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="n">v_alpha</span> <span class="o">=</span> <span class="o">-</span><span class="n">v</span> <span class="o">-</span> <span class="mf">13.0</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.000457</span> <span class="o">*</span> <span class="n">save_exp</span><span class="p">(</span><span class="n">v_alpha</span> <span class="o">/</span> <span class="mi">50</span><span class="p">)</span>
 
@@ -3695,7 +3695,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">290</span>
 <span class="normal">291</span>
 <span class="normal">292</span>
-<span class="normal">293</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">293</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3733,7 +3733,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">300</span>
 <span class="normal">301</span>
 <span class="normal">302</span>
-<span class="normal">303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+<span class="normal">303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
     <span class="n">alpha_q</span><span class="p">,</span> <span class="n">beta_q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_gate</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
@@ -3775,7 +3775,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">280</span>
 <span class="normal">281</span>
 <span class="normal">282</span>
-<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -3879,10 +3879,10 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">379</span>
 <span class="normal">380</span>
 <span class="normal">381</span>
-<span class="normal">382</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CaT</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
+<span class="normal">382</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CaT</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;T-type Calcium channel&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -3895,7 +3895,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="bp">self</span><span class="o">.</span><span class="n">channel_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_u&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;i_Ca&quot;</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">dt</span><span class="p">,</span>
@@ -3910,7 +3910,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
         <span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_u&quot;</span><span class="p">:</span> <span class="n">new_u</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -3922,14 +3922,14 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 
         <span class="k">return</span> <span class="n">gCaT</span> <span class="o">*</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;eCa&quot;</span><span class="p">])</span>
 
-    <span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="n">alpha_u</span><span class="p">,</span> <span class="n">beta_u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_vx&quot;</span><span class="p">])</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_u&quot;</span><span class="p">:</span> <span class="n">alpha_u</span> <span class="o">/</span> <span class="p">(</span><span class="n">alpha_u</span> <span class="o">+</span> <span class="n">beta_u</span><span class="p">)}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">u_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vx</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">u_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">vx</span><span class="p">):</span>
         <span class="n">v_u1</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">vx</span> <span class="o">+</span> <span class="mf">81.0</span>
         <span class="n">u_inf</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">save_exp</span><span class="p">(</span><span class="n">v_u1</span> <span class="o">/</span> <span class="mi">4</span><span class="p">))</span>
 
@@ -3978,7 +3978,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">362</span>
 <span class="normal">363</span>
 <span class="normal">364</span>
-<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return current.&quot;&quot;&quot;</span>
@@ -4014,7 +4014,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">368</span>
 <span class="normal">369</span>
 <span class="normal">370</span>
-<span class="normal">371</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
+<span class="normal">371</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">init_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the state such at fixed point of gate dynamics.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
     <span class="n">alpha_u</span><span class="p">,</span> <span class="n">beta_u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_gate</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_vx&quot;</span><span class="p">])</span>
@@ -4053,7 +4053,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">350</span>
 <span class="normal">351</span>
 <span class="normal">352</span>
-<span class="normal">353</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">353</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">dt</span><span class="p">,</span>
@@ -4193,7 +4193,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
 <span class="normal">96</span>
 <span class="normal">97</span>
 <span class="normal">98</span>
-<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Synapse</span><span class="p">:</span>
+<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Synapse</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for a synapse.</span>
 
 <span class="sd">    As in NEURON, a `Synapse` is considered a point process, which means that its</span>
@@ -4205,14 +4205,14 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
     <span class="n">synapse_params</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">synapse_states</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span> <span class="k">if</span> <span class="n">name</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
 
-    <span class="k">def</span> <span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Change the synapse name.</span>
 
 <span class="sd">        Args:</span>
@@ -4244,7 +4244,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
         <span class="p">}</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
         <span class="n">pre_voltage</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -4264,7 +4264,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
 <span class="sd">            Updated states.&quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
         <span class="n">pre_voltage</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">post_voltage</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -4397,7 +4397,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
 <span class="normal">55</span>
 <span class="normal">56</span>
 <span class="normal">57</span>
-<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">change_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Change the synapse name.</span>
 
 <span class="sd">    Args:</span>
@@ -4571,7 +4571,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
 <span class="normal">96</span>
 <span class="normal">97</span>
 <span class="normal">98</span>
-<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">pre_voltage</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">post_voltage</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -4748,7 +4748,7 @@ conductances are to be specified in <code>uS</code> and its currents are to be s
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
-<span class="normal">78</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">78</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">pre_voltage</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -4876,7 +4876,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">65</span>
 <span class="normal">66</span>
 <span class="normal">67</span>
-<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">IonotropicSynapse</span><span class="p">(</span><span class="n">Synapse</span><span class="p">):</span>
+<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IonotropicSynapse</span><span class="p">(</span><span class="n">Synapse</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute synaptic current and update synapse state for a generic ionotropic synapse.</span>
 
@@ -4896,7 +4896,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">synapse_params</span> <span class="o">=</span> <span class="p">{</span>
@@ -4906,7 +4906,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
         <span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">synapse_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_s&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
         <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -4927,7 +4927,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
         <span class="n">new_s</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_s&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">exp_term</span> <span class="o">+</span> <span class="n">s_inf</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">exp_term</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_s&quot;</span><span class="p">:</span> <span class="n">new_s</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">pre_voltage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">post_voltage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
@@ -4982,7 +4982,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">58</span>
 <span class="normal">59</span>
 <span class="normal">60</span>
-<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
     <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -5074,12 +5074,12 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">46</span>
 <span class="normal">47</span>
 <span class="normal">48</span>
-<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">TanhRateSynapse</span><span class="p">(</span><span class="n">Synapse</span><span class="p">):</span>
+<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TanhRateSynapse</span><span class="p">(</span><span class="n">Synapse</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute synaptic current for tanh synapse (no state).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">synapse_params</span> <span class="o">=</span> <span class="p">{</span>
@@ -5089,7 +5089,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
         <span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">synapse_states</span> <span class="o">=</span> <span class="p">{}</span>
 
-    <span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
         <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -5100,7 +5100,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return updated synapse state and current.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{}</span>
 
-    <span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">pre_voltage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">post_voltage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return updated synapse state and current.&quot;&quot;&quot;</span>
@@ -5155,7 +5155,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">46</span>
 <span class="normal">47</span>
 <span class="normal">48</span>
-<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_current</span><span class="p">(</span>
+<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">pre_voltage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">post_voltage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return updated synapse state and current.&quot;&quot;&quot;</span>
@@ -5198,7 +5198,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">32</span>
 <span class="normal">33</span>
 <span class="normal">34</span>
-<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
     <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>

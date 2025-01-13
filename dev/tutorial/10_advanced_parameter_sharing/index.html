@@ -861,10 +861,10 @@
 <span class="n">sub_net</span><span class="o">.</span><span class="n">make_trainable</span><span class="p">(</span><span class="s2">&quot;Ionotropic_gS&quot;</span><span class="p">)</span>
 </code></pre></div></p>
 <p>In a <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">previous tutorial</a> about training networks, we briefly touched on parameter sharing. In this tutorial, we will show you how you can flexibly share parameters within a network.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-<span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
-<span class="kn">from</span> <span class="nn">jaxley.connect</span> <span class="kn">import</span> <span class="n">fully_connect</span>
-<span class="kn">from</span> <span class="nn">jaxley.synapses</span> <span class="kn">import</span> <span class="n">IonotropicSynapse</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.connect</span><span class="w"> </span><span class="kn">import</span> <span class="n">fully_connect</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 </code></pre></div>
 <h3 id="preface-building-the-network">Preface: Building the network<a class="headerlink" href="#preface-building-the-network" title="Permanent link">&para;</a></h3>
 <p>We first build a network consisting of six neurons, in the same way as we showed in the previous tutorials:</p>
@@ -1058,7 +1058,7 @@
 <p>It correctly says that we added three parameters (because we have three cells, and we share individual synaptic parameters). We now have 6 trainable parameters in total (because we already added 3 trainable parameters above).</p>
 <h3 id="a-more-involved-example-sharing-by-pre-and-post-synaptic-cell-type">A more involved example: sharing by pre- and post-synaptic cell type<a class="headerlink" href="#a-more-involved-example-sharing-by-pre-and-post-synaptic-cell-type" title="Permanent link">&para;</a></h3>
 <p>As an example, consider the following: We have a fully connected network of six cells. Each cell falls into one of three cell types:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)])</span>
 <span class="n">fully_connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">),</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">),</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>

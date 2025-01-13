@@ -1002,12 +1002,12 @@
 <li>use <code>vmap</code> to parallelize simulations on GPUs  </li>
 </ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
 
 
 <span class="n">cell</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># See tutorial on Basics of Jaxley.</span>
 
-<span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
     <span class="n">param_state</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">param_state</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">data_set</span><span class="p">(</span><span class="s2">&quot;Na_gNa&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">param_state</span><span class="p">)</span>
     <span class="n">param_state</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">data_set</span><span class="p">(</span><span class="s2">&quot;K_gK&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">param_state</span><span class="p">)</span>
@@ -1032,20 +1032,20 @@
 <p>Let&rsquo;s get started!</p>
 <h3 id="using-gpu-or-cpu">Using GPU or CPU<a class="headerlink" href="#using-gpu-or-cpu" title="Permanent link">&para;</a></h3>
 <p>In <code>Jaxley</code> you can set whether you want to use <code>gpu</code> or <code>cpu</code> with the following lines at the beginning of your script:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">config</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
 <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_platform_name&quot;</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><code>JAX</code> (and <code>Jaxley</code>) also allow to choose between <code>float32</code> and <code>float64</code>. Especially on GPUs, <code>float32</code> will be faster, but we have experienced stability issues when simulating morphologically detailed neurons with <code>float32</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>  <span class="c1"># Set to false to use `float32`.</span>
 </code></pre></div>
 <p>Next, we will import relevant libraries:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
-<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
 
-<span class="kn">import</span> <span class="nn">jaxley</span> <span class="k">as</span> <span class="nn">jx</span>
-<span class="kn">from</span> <span class="nn">jaxley.channels</span> <span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">Na</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Leak</span>
 </code></pre></div>
 <h3 id="building-the-cell-or-network">Building the cell or network<a class="headerlink" href="#building-the-cell-or-network" title="Permanent link">&para;</a></h3>
 <p>We first build a cell (or network) in the same way as we showed in the previous tutorials:</p>
@@ -1073,7 +1073,7 @@ Added 1 recordings. See `.recordings` for details.
 
 <h3 id="parameter-sweeps">Parameter sweeps<a class="headerlink" href="#parameter-sweeps" title="Permanent link">&para;</a></h3>
 <p>Assume you want to run the same cell with many different values for the sodium and potassium conductance, for example for genetic algorithms or for parameter sweeps. To do this efficiently in <code>Jaxley</code>, you have to use the <code>data_set()</code> method (in combination with <code>jit</code> and <code>vmap</code>, as shown later):</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
     <span class="n">param_state</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">param_state</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">data_set</span><span class="p">(</span><span class="s2">&quot;Na_gNa&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">param_state</span><span class="p">)</span>
     <span class="n">param_state</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">data_set</span><span class="p">(</span><span class="s2">&quot;K_gK&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">param_state</span><span class="p">)</span>
@@ -1096,7 +1096,7 @@ Added 1 recordings. See `.recordings` for details.
 <p>The resulting voltages have shape <code>(num_simulations, num_recordings, num_timesteps)</code>.</p>
 <h3 id="stimulus-sweeps">Stimulus sweeps<a class="headerlink" href="#stimulus-sweeps" title="Permanent link">&para;</a></h3>
 <p>In addition to running sweeps across multiple parameters, you can also run sweeeps across multiple stimuli (e.g. step current stimuli of different amplitudes. You can achieve this with the <code>data_stimulate()</code> method:
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="n">i_amp</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="n">i_amp</span><span class="p">):</span>
     <span class="n">current</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">step_current</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">i_amp</span><span class="p">,</span> <span class="mf">0.025</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
 
     <span class="n">data_stimuli</span> <span class="o">=</span> <span class="kc">None</span>
