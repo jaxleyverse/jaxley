@@ -171,16 +171,16 @@ def trace_branches(
     # handles special case of a single soma node
     if len(soma_idxs := get_soma_idxs(graph)) == 1:
         soma = soma_idxs[0]
+        # edges connecting nodes to soma are considered part of the soma -> l = 0.
+        for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
+            graph.edges[i, j]["l"] = 0
+
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere
         graph.add_node(-1, **graph.nodes[0])
         graph.add_edge(-1, soma, l=2 * graph.nodes[soma]["r"])
         graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
 
-        # # edges connecting nodes to soma are considered part of the soma -> l = 0.
-        # for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
-        #     graph.edges[i, j]["l"] = 0
-
-    # ensure linear root segment to ensure root branch can be created.
+    # Ensure root segment is linear. Needed to create root branch.
     if graph.out_degree(0) > 1:
         graph.add_node(-1, **graph.nodes[0])
         graph.add_edge(-1, 0, l=0.1)
@@ -833,8 +833,6 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         columns=["group", "index"],
     )
     nodes = pd.concat([nodes, group_inds.groupby("index")["group"].agg(list)], axis=1)
-
-    module_graph = nx.DiGraph()
     module_graph.add_nodes_from(nodes.T.to_dict().items())
 
     inter_branch_edges = module.branch_edges.copy()
@@ -864,4 +862,5 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
         )
 
     module_graph.graph["type"] = module.__class__.__name__.lower()
+
     return module_graph

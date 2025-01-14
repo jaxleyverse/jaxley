@@ -42,12 +42,15 @@ from tests.helpers import (
 
 
 # test exporting and re-importing of different modules
-def test_graph_import_export_cycle(SimpleComp, SimpleBranch, SimpleCell, SimpleNetwork):
+def test_graph_import_export_cycle(
+    SimpleComp, SimpleBranch, SimpleCell, SimpleNetwork, SimpleMorphCell
+):
     # build a network
     np.random.seed(0)
     comp = SimpleComp()
     branch = SimpleBranch(4)
     cell = SimpleCell(5, 4)
+    morph_cell = SimpleMorphCell()
     net = SimpleNetwork(3, 5, 4)
 
     # add synapses
@@ -66,7 +69,7 @@ def test_graph_import_export_cycle(SimpleComp, SimpleBranch, SimpleCell, SimpleN
     net.cell(0).insert(K())
 
     # test consistency of exported and re-imported modules
-    for module in [net, cell, branch, comp]:
+    for module in [net, morph_cell, cell, branch, comp]:
         module.compute_xyz()  # ensure x,y,z in nodes b4 exporting for later comparison
         module_graph = to_graph(module)  # ensure to_graph works
         re_module = from_graph(module_graph)  # ensure prev exported graph can be read
@@ -97,6 +100,8 @@ def test_trace_branches(file):
     edges = pd.DataFrame([{"u": u, "v": v, **d} for u, v, d in graph.edges(data=True)])
     nx_branch_lens = edges.groupby("branch_index")["l"].sum().to_numpy()
     nx_branch_lens = np.sort(nx_branch_lens)
+
+    # exclude artificial root branch
     if np.isclose(nx_branch_lens[0], 1e-1):
         nx_branch_lens = nx_branch_lens[1:]
 
