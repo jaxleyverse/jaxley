@@ -144,3 +144,15 @@ def import_neuron_morph(fname, nseg=8):
     for sec in h.allsec():
         sec.nseg = nseg
     return h, cell
+
+
+def equal_both_nan_or_empty_df(a, b):
+    if a.empty and b.empty:
+        return True
+    a[a.isna()] = -1
+    b[b.isna()] = -1
+    if set(a.columns) != set(b.columns):
+        return False
+    else:
+        a = a[b.columns]
+    return (a == b).all()

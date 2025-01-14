@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 import jax.numpy as jnp
 import networkx as nx
@@ -512,7 +513,7 @@ def make_jaxley_compatible(
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
     group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
     for n in comp_graph.nodes:
-        comp_graph.nodes[n]["group"] = [group_ids[comp_graph.nodes[n].pop("id")]]
+        comp_graph.nodes[n]["groups"] = [group_ids[comp_graph.nodes[n].pop("id")]]
         comp_graph.nodes[n]["radius"] = comp_graph.nodes[n].pop("r")
         comp_graph.nodes[n]["length"] = comp_graph.nodes[n].pop("comp_length")
         comp_graph.nodes[n].pop("l")
@@ -741,6 +742,7 @@ def from_graph(
     # synapses
     synapse_edges = synapse_edges.drop(["l", "type"], axis=1, errors="ignore")
     synapse_edges = synapse_edges.rename({"syn_type": "type"}, axis=1)
+    synapse_edges.rename({"edge_index": "global_edge_index"}, axis=1, inplace=True)
 
     # build module
     acc_parents = []
@@ -760,11 +762,11 @@ def from_graph(
         if k not in ["type"]:
             setattr(module, k, v)
 
-    if assign_groups:
-        groups = node_df.pop("group").explode()
+    if assign_groups and "groups" in node_df.columns:
+        groups = node_df.pop("groups").explode()
         groups = (
             pd.DataFrame(groups)
-            .groupby("group")
+            .groupby("groups")
             .apply(lambda x: x.index.values, include_groups=False)
             .to_dict()
         )
@@ -787,7 +789,9 @@ def from_graph(
     return module
 
 
-def to_graph(module: jx.Module) -> nx.DiGraph:
+def to_graph(
+    module: jx.Module, synapses: bool = False, channels: bool = False
+) -> nx.DiGraph:
     """Export the module as a networkx graph.
 
     Constructs a nx.DiGraph from the module. Each compartment in the module
@@ -813,27 +817,40 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
     module_graph.graph["type"] = module.__class__.__name__.lower()
     for attr in [
         "ncomp",
-        "initialized_morph",
-        "initialized_syns",
-        "synapses",
-        "channels",
-        "allow_make_trainable",
-        "num_trainable_params",
         "xyzr",
     ]:
         module_graph.graph[attr] = getattr(module, attr)
 
     # add nodes
-    nodes = module.nodes
+    nodes = module.nodes.copy()
     nodes = nodes.drop([col for col in nodes.columns if "local" in col], axis=1)
     nodes.columns = [col.replace("global_", "") for col in nodes.columns]
 
-    group_inds = pd.DataFrame(
-        [(k, v) for k, vals in module.groups.items() for v in vals],
-        columns=["group", "index"],
-    )
-    nodes = pd.concat([nodes, group_inds.groupby("index")["group"].agg(list)], axis=1)
-    module_graph.add_nodes_from(nodes.T.to_dict().items())
+    if channels:
+        module_graph.graph["channels"] = module.channels
+        module_graph.graph["membrane_current_names"] = [
+            c.current_name for c in module.channels
+        ]
+    else:
+        for c in module.channels:
+            nodes = nodes.drop(c.current_name, axis=1)
+            nodes = nodes.drop(list(c.channel_params), axis=1)
+            nodes = nodes.drop(list(c.channel_states), axis=1)
+
+    for col in nodes.columns:  # col wise adding preserves dtypes
+        module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
+
+    nx.set_node_attributes(module_graph, [], "groups")
+    if len(module.groups) > 0:
+        groups_dict = {
+            index: {
+                "groups": [
+                    key for key, value in module.groups.items() if index in value
+                ]
+            }
+            for index in range(max(map(max, module.groups.values())) + 1)
+        }
+        module_graph.add_nodes_from(groups_dict.items())
 
     inter_branch_edges = module.branch_edges.copy()
     intra_branch_edges = []
@@ -850,16 +867,29 @@ def to_graph(module: jx.Module) -> nx.DiGraph:
     module_graph.add_edges_from(inter_branch_edges, type="inter_branch")
     module_graph.add_edges_from(intra_branch_edges, type="intra_branch")
 
-    syn_edges = module.edges
-    syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
+    if synapses:
+        syn_edges = module.edges.copy()
+        multiple_syn_per_edge = syn_edges[
+            ["pre_global_comp_index", "post_global_comp_index"]
+        ].duplicated(keep=False)
+        dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
+        if multiple_syn_per_edge.any():
+            warn(
+                f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. Exporting synapses to the graph only works if the same two compartments are connected by at most one synapse."
+            )
+        module_graph.graph["synapses"] = module.synapses
+        module_graph.graph["synapse_param_names"] = module.synapse_param_names
+        module_graph.graph["synapse_state_names"] = module.synapse_state_names
+        module_graph.graph["synapse_names"] = module.synapse_names
+        module_graph.graph["synapse_current_names"] = module.synapse_current_names
 
-    syn_edges["syn_type"] = syn_edges["type"]
-    syn_edges["type"] = "synapse"
-    syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
-    if not syn_edges.empty:
-        module_graph.add_edges_from(
-            [(i, j, d) for (i, j), d in syn_edges.to_dict(orient="index").items()]
-        )
+        syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
+        syn_edges["syn_type"] = syn_edges["type"]
+        syn_edges["type"] = "synapse"
+        syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
+        if not syn_edges.empty:
+            for (i, j), edge_data in syn_edges.iterrows():
+                module_graph.add_edge(i, j, **edge_data.to_dict())
 
     module_graph.graph["type"] = module.__class__.__name__.lower()
 
