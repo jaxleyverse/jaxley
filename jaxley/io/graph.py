@@ -621,9 +621,8 @@ def from_graph(
     edges are considered synapse edges. These are added to the Module.branch_edges and
     Module.edges attributes, respectively. Additionally, the graph can contain
     global attributes, which are added as attrs, i.e. to the module instance and
-    optionally can store recordings, externals, groups, and trainables. These are
-    imported from the node attributes of the graph. See `to_graph` for how they
-    are formatted.
+    optionally can store recordings, externals, and trainables. See `to_graph` for
+    how they are formatted.
 
     All modules that are exported to a graph from jaxley using the `to_graph` method
     can be imported back using this method. If the graph was not exported with jaxley,
@@ -652,9 +651,12 @@ def from_graph(
         - channels
         - synapses
         - xyzr: list[np.ndarray]
+        - recordings: list[str]
+        - externals: list[float]
+        - trainable: dict[str, float]
     - nodes:
         - id: int (used to define groups, according to NEURON's SWC convention)
-        - groups: list[str] (can also be defined direclty)
+        - groups: list[str] (can also be defined directly)
         - cell_index: int
         - branch_index: int
         - comp_index: int
@@ -663,9 +665,6 @@ def from_graph(
         - x: float
         - y: float
         - z: float
-        - recordings: list[str]
-        - externals: list[float]
-        - trainable: dict[str, float]
     - edges:
         - type: str ("synapse" or "inter_branch" / "intra_branch" or None)
         - parameters: list[dict] (stores synapse parameters)
@@ -798,14 +797,17 @@ def to_graph(
     is represented by a node in the graph. The edges between the nodes represent
     the connections between the compartments. These edges can either be connections
     between compartments within the same branch, between different branches or
-    even between different cells. In this case the latter the synapse parameters
-    are stored as edge attributes. Additionally, global attributes of the module,
-    for example `nseg`, are stored as graph attributes.
+    even between different cells. In the latter case the synapse parameters
+    are stored as edge attributes. Only allows one synapse per edge however!
+    Additionally, global attributes of the module, for example `ncomp`, are stored as
+    graph attributes.
 
     Exported graphs can be imported again to `jaxley` using the `from_graph` method.
 
     Args:
         module: A jaxley module or view instance.
+        synapses: Whether to export synapses to the graph.
+        channels: Whether to export ion channels to the graph.
 
     Returns:
         A networkx graph of the module.
@@ -818,6 +820,10 @@ def to_graph(
     for attr in [
         "ncomp",
         "xyzr",
+        "externals",
+        "recordings",
+        "trainable_params",
+        "indices_set_by_trainables",
     ]:
         module_graph.graph[attr] = getattr(module, attr)
 

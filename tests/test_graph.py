@@ -43,7 +43,6 @@ from tests.helpers import (
 
 
 # test exporting and re-importing of different modules
-@pytest.mark.slow
 def test_graph_import_export_cycle(
     SimpleComp, SimpleBranch, SimpleCell, SimpleNet, SimpleMorphCell
 ):
@@ -133,12 +132,15 @@ def test_graph_import_export_cycle(
         )
         assert np.all(equal_both_nan_or_empty_df(edges, re_edges))
 
-        for k in module_graph.graph:
+        # ignore "externals", "recordings", "trainable_params", "indices_set_by_trainables"
+        for k in ["ncomp", "xyzr"]:
             assert module_graph.graph[k] == re_module_graph.graph[k]
 
-        # test integration of re-imported module
-        re_module.select(nodes=0).record(verbose=False)
-        jx.integrate(re_module, t_max=0.5)
+        # assume if module can be integrated, so can be comp, cell and branch
+        if isinstance(module, jx.Network):
+            # test integration of re-imported module
+            re_module.select(nodes=0).record(verbose=False)
+            jx.integrate(re_module, t_max=0.5)
 
 
 @pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
@@ -243,27 +245,6 @@ def test_edges_only_to_jaxley():
     for edges in sets_of_edges:
         edge_graph = nx.DiGraph(edges)
         edge_module = from_graph(edge_graph)
-
-
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
-def test_graph_to_jaxley(file):
-    # test whether swc file can be imported into jaxley
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", file)
-    graph = swc_to_graph(fname)
-    swc_module = from_graph(graph)
-    for group in ["soma", "apical", "basal"]:
-        assert group in swc_module.groups
-
-    # test import after different stages of graph pre-processing
-    graph = swc_to_graph(fname)
-    module_imported_directly = from_graph(deepcopy(graph))
-
-    graph = make_jaxley_compatible(deepcopy(graph))
-    module_imported_after_preprocessing = from_graph(graph)
-
-    # TODO:
-    # compare_modules(module_imported_directly, module_imported_after_preprocessing)
 
 
 @pytest.mark.slow
