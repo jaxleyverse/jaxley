@@ -23,6 +23,18 @@ net.vis()
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
+- Add `jaxley.io.graph` for exporting and importing of jaxley modules to and from `networkx` graph objects.
+  - Adds a new (and improved) SWC reader, which is more flexible and should also be easier to extend in the future.
+  ```python
+  from jaxley.io.graph import swc_to_graph, from_graph
+  graph = swc_to_graph(fname)
+  # do something to the swc graph, i.e. prune it
+  pruned_graph = do_something_to_graph(graph)
+  cell = from_graph(pruned_graph, ncomp=4)
+  ```
+  - Adds a new `to_graph` method for jaxley modules, which exports a module to a `networkX` graph. This allows to seamlessly work with `networkX`'s graph manipulation or visualization functions.
+  - See [the improved SWC reader tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html) for more details.
+
 # 0.5.0
 
 ### API changes
