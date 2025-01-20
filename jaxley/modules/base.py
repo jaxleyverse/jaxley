@@ -392,7 +392,7 @@ class Module(ABC):
             array of indices of shape (N,)"""
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
-    
+
         if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.number):
             np_dtype = idx.dtype.type
         else:
@@ -409,7 +409,12 @@ class Module(ABC):
             dim = shape[np.where(which_idx)[0][0]]
             idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype in [np_dtype, bool], "Invalid dtype, found" + str(idx.dtype) + " instead of " + str([np_dtype, bool])
+        assert idx.dtype in [np_dtype, bool], (
+            "Invalid dtype, found"
+            + str(idx.dtype)
+            + " instead of "
+            + str([np_dtype, bool])
+        )
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):
