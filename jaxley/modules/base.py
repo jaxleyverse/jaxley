@@ -392,8 +392,7 @@ class Module(ABC):
             array of indices of shape (N,)"""
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
-
-        np_dtype = np.int64 if dtype is int else np.float64
+        np_dtype = np.dtype(int).type if dtype is int else np.dtype(float).type
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
