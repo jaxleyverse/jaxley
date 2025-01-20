@@ -409,8 +409,11 @@ class Module(ABC):
             dim = shape[np.where(which_idx)[0][0]]
             idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype in [np_dtype, bool], f"Invalid dtype, found {str(idx.dtype)} instead of {str([np_dtype, bool])}"
-        
+        assert idx.dtype in [
+            np_dtype,
+            bool,
+        ], f"Invalid dtype, found {str(idx.dtype)} instead of {str([np_dtype, bool])}"
+
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):
