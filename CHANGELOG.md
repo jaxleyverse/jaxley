@@ -24,7 +24,7 @@ net.vis()
 - changelog added to CI (#537, #558,  @jnsbck)
 
 ### Bug fixes
-- Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
+- Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows. (#567, @Kartik-Sama)
 
 # 0.5.0
 
