@@ -305,7 +305,10 @@ def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, Simple
             slice(0, 3),
             [0, 1, 2],
             np.array([0, 1, 2]),
+            np.array([0, 1, 2], dtype=np.int32),
+            np.array([0, 1, 2], dtype=np.int64),
             pd.Index([0, 1, 2]),
+            pd.Index([0, 1, 2]).to_numpy(),
             np.array([True, False, True, False] * 100)[: len(module.nodes)],
         ]
 
