@@ -1,5 +1,9 @@
 # 0.6.0
 
+### Pin of JAX version
+
+Installing `Jaxley` will no longer install the newest version of `JAX`. We realized that, on CPU, with version `jax==0.4.32` or newer, simulation time in `Jaxley` is 10x slower and gradient time is 5x slower as compared to older versions of JAX. Newer versions of `JAX` can be made equally fast as older versions by setting `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning of your jupyter notebook (#570, @michaeldeistler).
+
 ### New Features
 
 - Add ability to record synaptic currents (#523, @ntolley). Recordings can be turned on with
