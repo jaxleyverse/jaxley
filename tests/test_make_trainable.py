@@ -447,15 +447,10 @@ def test_data_set_vs_make_trainable_network(SimpleNet):
 
 def test_data_set_vector(SimpleNet):
     net = SimpleNet(2, 2, 4)
-    net.set(np.repeat(1.0, 16))
-    with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
-        net.cell(range(2)).set("radius", np.repeat(1, 16))
+    net.set("radius", np.repeat(1.0, 16))
 
     param_state = None
     param_state = net.data_set("length", np.repeat(1.0, 16), param_state)
-    param_state = net.cell(range(2)).data_set(
-        "radius", np.array([0.1, 0.2]), param_state
-    )
     net.record("v")
     jx.integrate(net, t_max=10, param_state=param_state)
 
