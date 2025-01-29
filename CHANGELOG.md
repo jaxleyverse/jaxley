@@ -30,6 +30,8 @@ net.vis()
 ### Bug fixes
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 
+- Fixed bug where `.data_set()` could not use vectors as input (#574, @ntolley)
+
 # 0.5.0
 
 ### API changes
