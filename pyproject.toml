@@ -26,7 +26,11 @@ requires-python = ">=3.10"
 readme = "README.md"
 keywords = ["neuroscience", "biophysics", "simulator", "jax"]
 dependencies = [
-    "jax",
+    # See #571 for the pin on the JAX version. Jaxley runs with newer versions of JAX
+    # but is much slower on CPU. Newer versions can be made equally fast by setting
+    # `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning
+    # of a jupyter notebook.
+    "jax <= 0.4.31",
     "matplotlib",
     "numpy",
     "pandas>=2.2.0",
