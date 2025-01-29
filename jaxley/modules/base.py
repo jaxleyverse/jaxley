@@ -1316,9 +1316,9 @@ class Module(ABC):
             if key in params:  # Only parameters, not initial states.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
-                # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
-                # `.set()` to work. This is done with `[:, None]`.
-                params[key] = params[key].at[inds].set(set_param[:, None])
+                # We need to unsqueeze `set_param` to make it `(1, num_params)` for the
+                # `.set()` to work. This is done with `.reshape(1, -1)`.
+                params[key] = params[key].at[inds].set(set_param.reshape(1, -1))
 
         # Compute conductance params and add them to the params dictionary.
         params["axial_conductances"] = self.base._compute_axial_conductances(
