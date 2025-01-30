@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from jax import vmap
 
-import jaxley as jx
+from jaxley.modules import Branch, Cell, Compartment, Network
 from jaxley.utils.cell_utils import v_interp
 
 # helper functions
@@ -58,7 +58,7 @@ def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
     return graph
 
 
-def get_nodes_and_parents(graph: nx.DiGraph) -> np.ndarray:
+def _get_nodes_and_parents(graph: nx.DiGraph) -> np.ndarray:
     """List (node, parent) pairs for a graph."""
     edges = []
     for node in graph.nodes():
@@ -98,7 +98,7 @@ def find_swc_trace_errors(graph: nx.DiGraph, ignore: Optional[List] = []) -> np.
     Returns:
         An array of node indices where tracing is discontinous.
     """
-    edges = get_nodes_and_parents(graph)[:, [-1, 0]]
+    edges = _get_nodes_and_parents(graph)[:, [-1, 0]]
     s, t = edges[0].T
     branch_ends = []
 
@@ -357,7 +357,7 @@ def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
     return graph
 
 
-def get_comp_edges_dfs(
+def _get_comp_edges_dfs(
     graph: nx.DiGraph, node: int, parent_comp: int = None, visited: set = None
 ) -> List[Tuple[int]]:
     """List edges between compartment nodes, ignoring non-compartment nodes.
@@ -392,7 +392,7 @@ def get_comp_edges_dfs(
         if child not in visited:
             # Pass current_comp as parent if it exists, otherwise pass through the parent_comp
             prev_node = current_comp if current_comp is not None else parent_comp
-            child_edges = get_comp_edges_dfs(graph, child, prev_node, visited)
+            child_edges = _get_comp_edges_dfs(graph, child, prev_node, visited)
             edges.extend(child_edges)
 
     return edges
@@ -420,7 +420,7 @@ def extract_comp_graph(graph: nx.DiGraph) -> nx.DiGraph:
 
     # find all edges between compartments and connect comp_graph
     root = find_root(graph)
-    comp_edges = get_comp_edges_dfs(graph, root)
+    comp_edges = _get_comp_edges_dfs(graph, root)
     comp_graph.add_edges_from(comp_edges)
     comp_graph = add_edge_lens(comp_graph)
 
@@ -449,6 +449,7 @@ def make_jaxley_compatible(
     graph: nx.DiGraph,
     ncomp: int = 4,
     max_branch_len: float = None,
+    min_radius: Optional[float] = None,
     ignore_swc_trace_errors: bool = True,
 ) -> nx.DiGraph:
     """Make a swc traced graph compatible with jaxley.
@@ -487,6 +488,7 @@ def make_jaxley_compatible(
         nseg: The number of segments per compartment.
         max_branch_len: Maximal length of one branch. If a branch exceeds this length,
             it is split into equal parts.
+        min_radius: If the radius of a reconstruction is below this value it is clipped.
         ignore_swc_trace_errors: Whether to ignore discontinuities in the swc tracing
             order. If False, this will result in split branches at these points.
 
@@ -512,9 +514,11 @@ def make_jaxley_compatible(
     # Description of SWC file format:
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
     group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
+    min_radius = min_radius if min_radius else 0.0
+    clip_radius = lambda r: max(r, min_radius) if min_radius else r
     for n in comp_graph.nodes:
         comp_graph.nodes[n]["groups"] = [group_ids[comp_graph.nodes[n].pop("id")]]
-        comp_graph.nodes[n]["radius"] = comp_graph.nodes[n].pop("r")
+        comp_graph.nodes[n]["radius"] = clip_radius(comp_graph.nodes[n].pop("r"))
         comp_graph.nodes[n]["length"] = comp_graph.nodes[n].pop("comp_length")
         comp_graph.nodes[n].pop("l")
 
@@ -547,7 +551,7 @@ def make_jaxley_compatible(
     return comp_graph
 
 
-def infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
+def _infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
     nuniques = idxs[["cell_index", "branch_index", "comp_index"]].nunique()
     nuniques.index = ["cell", "branch", "compartment"]
     nuniques = pd.concat([pd.Series({"network": 1}), nuniques])
@@ -559,7 +563,7 @@ def build_module_scaffold(
     idxs: pd.DataFrame,
     return_type: Optional[str] = None,
     parent_branches: Optional[List[np.ndarray]] = None,
-) -> Union[jx.Network, jx.Cell, jx.Branch, jx.Compartment]:
+) -> Union[Network, Cell, Branch, Compartment]:
     """Builds a skeleton module from a DataFrame of indices.
 
     This is useful for instantiating a module that can be filled with data later.
@@ -578,14 +582,14 @@ def build_module_scaffold(
     build_cache = {k: [] for k in return_types}
 
     if return_type is None:  # infer return type from idxs
-        return_type = infer_module_type_from_inds(idxs)
+        return_type = _infer_module_type_from_inds(idxs)
 
-    comp = jx.Compartment()
+    comp = Compartment()
     build_cache["compartment"] = [comp]
 
     if return_type in return_types[1:]:
         nsegs = idxs["branch_index"].value_counts().iloc[0]
-        branch = jx.Branch([comp for _ in range(nsegs)])
+        branch = Branch([comp for _ in range(nsegs)])
         build_cache["branch"] = [branch]
 
     if return_type in return_types[2:]:
@@ -595,11 +599,11 @@ def build_module_scaffold(
             parents = (
                 default_parents if parent_branches is None else parent_branches[cell_id]
             )
-            cell = jx.Cell([branch] * num_branches, parents)
+            cell = Cell([branch] * num_branches, parents)
             build_cache["cell"].append(cell)
 
     if return_type in return_types[3:]:
-        build_cache["network"] = [jx.Network(build_cache["cell"])]
+        build_cache["network"] = [Network(build_cache["cell"])]
 
     module = build_cache[return_type][0]
     build_cache.clear()
@@ -610,9 +614,10 @@ def from_graph(
     graph: nx.DiGraph,
     ncomp: int = 4,
     max_branch_len: float = 2000.0,
+    min_radius: Optional[float] = None,
     assign_groups: bool = True,
     ignore_swc_trace_errors: bool = True,
-) -> Union[jx.Network, jx.Cell, jx.Branch, jx.Compartment]:
+) -> Union[Network, Cell, Branch, Compartment]:
     """Build a module from a networkx graph.
 
     All information stored in the nodes of the graph is imported into the Module.nodes
@@ -677,6 +682,7 @@ def from_graph(
             it is split into equal parts such that each subbranch is below
             `max_branch_len`. Will only be used if no branch structure is has been
             assigned yet.
+        min_radius: If the radius of a reconstruction is below this value it is clipped.
         assign_groups: Wether to assign groups to nodes based on the the id or groups
             attribute.
         ignore_swc_trace_errors: Whether to ignore discontinuities in the swc tracing
@@ -696,6 +702,7 @@ def from_graph(
                 graph,
                 ncomp=ncomp,
                 max_branch_len=max_branch_len,
+                min_radius=min_radius,
                 ignore_swc_trace_errors=ignore_swc_trace_errors,
             )
         except:
@@ -789,7 +796,7 @@ def from_graph(
 
 
 def to_graph(
-    module: jx.Module, synapses: bool = False, channels: bool = False
+    module: "jx.Module", synapses: bool = False, channels: bool = False
 ) -> nx.DiGraph:
     """Export the module as a networkx graph.
 
