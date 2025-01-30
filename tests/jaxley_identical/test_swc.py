@@ -15,11 +15,11 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.l5pc import *
 
 import jaxley as jx
+from jaxley.channels import HH, K, Leak, Na
 from jaxley.synapses import IonotropicSynapse
-from jaxley.channels import HH, Na, K, Leak
-from jaxley_mech.channels.l5pc import *
 
 
 @pytest.mark.slow

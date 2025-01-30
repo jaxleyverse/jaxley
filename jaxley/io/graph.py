@@ -14,23 +14,24 @@ from jaxley.modules import Branch, Cell, Compartment, Network
 from jaxley.utils.cell_utils import v_interp
 
 # helper functions
-is_leaf = lambda G, n: G.out_degree(n) == 0 and G.in_degree(n) == 1
-is_root = lambda G, n: G.in_degree(n) == 0
-is_branching = lambda G, n: G.out_degree(n) > 1
-has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
-get_soma_idxs = lambda G: [
+_is_leaf = lambda G, n: G.out_degree(n) == 0 and G.in_degree(n) == 1
+_is_root = lambda G, n: G.in_degree(n) == 0
+_is_branching = lambda G, n: G.out_degree(n) > 1
+_has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
+_get_soma_idxs = lambda G: [
     i for i, n in nx.get_node_attributes(G, "id").items() if n == 1
 ]
-unpack = lambda d, keys: [d[k] for k in keys]
-branch_e2n = lambda b: np.unique(np.concatenate(b)).tolist()
-branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]
-v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
+_unpack = lambda d, keys: [d[k] for k in keys]
+_branch_e2n = lambda b: np.unique(np.concatenate(b)).tolist()
+_branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]
 
-def find_root(G): 
-    roots = [n for n in G.nodes if is_root(G, n)]
+
+def _find_root(G):
+    roots = [n for n in G.nodes if _is_root(G, n)]
     if len(roots) > 1:
         raise ValueError("Multiple roots found in graph.")
     return roots[0]
+
 
 def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
     """Read a swc file and convert it to a networkx graph.
@@ -160,12 +161,13 @@ def trace_branches(
 ) -> List[np.ndarray]:
     """Get all linearly connected paths in a graph aka. branches.
 
-    The graph is traversed depth-first starting from the source node.
+    The graph is traversed depth-first starting from the source node, which is the only
+    node with in_degree 0 (raises in case multiple are found). Note: Traversal order can
+    be changed, by reversing the edge directions, i.e. to start traversal from a leaf node
+    set: [source -> ... -> leaf] to [leaf -> ... -> source].
 
     Args:
         graph: A networkx graph.
-        source_node: node at which to start graph traversal. If "leaf", the traversal
-            starts at the first identified leaf node.
         ignore_swc_trace_errors: Whether to ignore discontinuities in the swc tracing
             order. If False, this will result in split branches at these points.
     Returns:
@@ -173,7 +175,7 @@ def trace_branches(
         edges."""
 
     # handles special case of a single soma node
-    if len(soma_idxs := get_soma_idxs(graph)) == 1:
+    if len(soma_idxs := _get_soma_idxs(graph)) == 1:
         soma = soma_idxs[0]
         # edges connecting nodes to soma are considered part of the soma -> l = 0.
         for i, j in (*graph.in_edges(soma), *graph.out_edges(soma)):
@@ -192,13 +194,13 @@ def trace_branches(
 
     branches, current_branch = [], []
 
-    root = find_root(graph)
+    root = _find_root(graph)
     for i, j in nx.dfs_edges(graph, root):
         current_branch += [(i, j)]
-        if is_leaf(graph, j) or is_branching(graph, j):
+        if _is_leaf(graph, j) or _is_branching(graph, j):
             branches.append(current_branch)
             current_branch = []
-        elif not has_same_id(graph, i, j):  # start new branch if ids differ
+        elif not _has_same_id(graph, i, j):  # start new branch if ids differ
             branches.append(current_branch[:-1])
             current_branch = [current_branch[-1]]
 
@@ -217,16 +219,18 @@ def trace_branches(
     return graph
 
 
-def add_edge_lens(graph: nx.DiGraph) -> nx.DiGraph:
+def _add_edge_lens(graph: nx.DiGraph, min_len: float = 1e-5) -> nx.DiGraph:
     """Add edge lengths to graph.edges based on the xyz coordinates of graph.nodes."""
-    xyz = lambda i: np.array(unpack(graph.nodes[i], "xyz"))
+    xyz = lambda i: np.array(_unpack(graph.nodes[i], "xyz"))
     for i, j in graph.edges:
         d_ij = (
             np.sqrt(((xyz(i) - xyz(j)) ** 2).sum())
             if i != j
             else 2 * graph.nodes[i]["r"]
         )
-        graph.edges[i, j]["l"] = d_ij
+        # min_len ensures that 2 nodes cannot lie on top of each other
+        # this is important for the compartmentalization
+        graph.edges[i, j]["l"] = d_ij if d_ij >= min_len else min_len
     return graph
 
 
@@ -256,7 +260,7 @@ def add_missing_graph_attrs(graph: nx.DiGraph) -> nx.DiGraph:
     for key in set(defaults.keys()).difference(available_keys):
         nx.set_node_attributes(graph, defaults[key], key)
 
-    graph = add_edge_lens(graph)
+    graph = _add_edge_lens(graph)
     edge_lens = nx.get_edge_attributes(graph, "l")
     if np.isnan(list(edge_lens.values())[0]):
         nx.set_edge_attributes(graph, 1, "l")
@@ -313,7 +317,7 @@ def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
     branch_edge_df = pd.DataFrame(branch_inds.items(), columns=["edge", "branch_index"])
     for branch_index, branch_edges in branch_edge_df.groupby("branch_index")["edge"]:
         path_lens = np.cumsum([0] + [graph.edges[u, v]["l"] for u, v in branch_edges])
-        branch_nodes = branch_e2n(branch_edges.to_numpy())
+        branch_nodes = _branch_e2n(branch_edges.to_numpy())
         branch_data = pd.DataFrame([graph.nodes[i] for i in branch_nodes])
         branch_data["node_index"] = branch_nodes
         branch_data["l"] = path_lens
@@ -347,16 +351,16 @@ def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
         graph.add_nodes_from(new_branch_nodes.to_dict(orient="index").items())
 
         graph.remove_edges_from(branch_edges.to_numpy())
-        new_branch_edges = branch_n2e(branch_data["node_index"])
+        new_branch_edges = _branch_n2e(branch_data["node_index"])
         graph.add_edges_from(new_branch_edges, branch_index=branch_index)
 
     # add missing edge lengths
-    graph = add_edge_lens(graph)
+    graph = _add_edge_lens(graph)
 
-    # # re-enumerate in dfs from root
-    # root = find_root(graph)
-    # mapping = {old: new for new, old in enumerate(nx.dfs_preorder_nodes(graph, root))}
-    # graph = nx.relabel_nodes(graph, mapping)
+    # re-enumerate in dfs from root
+    root = _find_root(graph)
+    mapping = {old: new for new, old in enumerate(nx.dfs_preorder_nodes(graph, root))}
+    graph = nx.relabel_nodes(graph, mapping)
     return graph
 
 
@@ -422,10 +426,10 @@ def extract_comp_graph(graph: nx.DiGraph) -> nx.DiGraph:
     comp_graph.remove_edges_from(list(comp_graph.edges))
 
     # find all edges between compartments and connect comp_graph
-    root = find_root(graph)
+    root = _find_root(graph)
     comp_edges = _get_comp_edges_dfs(graph, root)
     comp_graph.add_edges_from(comp_edges)
-    comp_graph = add_edge_lens(comp_graph)
+    comp_graph = _add_edge_lens(comp_graph)
 
     for i, j in comp_graph.edges:
         branch_idx_i = graph.nodes[i]["branch_index"]
@@ -540,10 +544,10 @@ def make_jaxley_compatible(
     edges_in_branches = edge_df.groupby("branch_index")
     nodes_in_branches = edges_in_branches.apply(
         lambda x: [
-            n for n in branch_e2n(x.index.values) if "comp_index" not in graph.nodes[n]
+            n for n in _branch_e2n(x.index.values) if "comp_index" not in graph.nodes[n]
         ]
     )
-    stack_branch_xyzr = lambda x: np.stack([unpack(graph.nodes[n], "xyzr") for n in x])
+    stack_branch_xyzr = lambda x: np.stack([_unpack(graph.nodes[n], "xyzr") for n in x])
     xyzr = nodes_in_branches.apply(stack_branch_xyzr).to_list()
     same_rows = lambda x: np.all(np.nan_to_num(x[0]) == np.nan_to_num(x))
     xyzr = [xyzr_i[[0, -1]] if same_rows(xyzr_i) else xyzr_i for xyzr_i in xyzr]
@@ -872,7 +876,7 @@ def to_graph(
     intra_branch_edges = []
     for i, branch_data in nodes.groupby("branch_index"):
         inds = branch_data.index.values
-        intra_branch_edges += branch_n2e(inds)
+        intra_branch_edges += _branch_n2e(inds)
 
         parents = module.branch_edges["parent_branch_index"]
         children = module.branch_edges["child_branch_index"]
