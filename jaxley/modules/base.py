@@ -393,7 +393,10 @@ class Module(ABC):
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
 
-        np_dtype = np.int64 if dtype is int else np.float64
+        if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.number):
+            np_dtype = idx.dtype.type
+        else:
+            np_dtype = np.dtype(int).type if dtype is int else np.dtype(float).type
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
@@ -406,7 +409,11 @@ class Module(ABC):
             dim = shape[np.where(which_idx)[0][0]]
             idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype in [np_dtype, bool], "Invalid dtype"
+        assert idx.dtype in [
+            np_dtype,
+            bool,
+        ], f"Invalid dtype, found {str(idx.dtype)} instead of {str([np_dtype, bool])}"
+
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):
