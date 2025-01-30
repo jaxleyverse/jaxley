@@ -15,9 +15,10 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.l5pc import *
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.channels import HH, K, Leak, Na
 from jaxley.synapses import IonotropicSynapse
 
 
@@ -150,5 +151,173 @@ def test_swc_net(voltage_solver: str, SimpleMorphCell):
         ]
     )
     max_error = np.max(np.abs(voltages[:, ::20] - voltages_300724))
+    tolerance = 1e-8
+    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("swc_backend", ["custom", "graph"])
+def test_swc_morph(swc_backend, SimpleMorphCell):
+    gt_apical = {}
+    gt_soma = {}
+    gt_axon = {}
+
+    gt_apical["apical_NaTs2T_gNaTs2T"] = 0.026145
+    gt_apical["apical_SKv3_1_gSKv3_1"] = 0.004226
+    gt_apical["apical_M_gM"] = 0.000143
+
+    gt_soma["somatic_NaTs2T_gNaTs2T"] = 0.983955
+    gt_soma["somatic_SKv3_1_gSKv3_1"] = 0.303472
+    gt_soma["somatic_SKE2_gSKE2"] = 0.008407
+    gt_soma["somatic_CaPump_gamma"] = 0.000609
+    gt_soma["somatic_CaPump_decay"] = 210.485291
+    gt_soma["somatic_CaHVA_gCaHVA"] = 0.000994
+    gt_soma["somatic_CaLVA_gCaLVA"] = 0.000333
+
+    gt_axon["axonal_NaTaT_gNaTaT"] = 3.137968
+    gt_axon["axonal_KPst_gKPst"] = 0.973538
+    gt_axon["axonal_KTst_gKTst"] = 0.089259
+    gt_axon["axonal_SKE2_gSKE2"] = 0.007104
+    gt_axon["axonal_SKv3_1_gSKv3_1"] = 1.021945
+    gt_axon["axonal_CaHVA_gCaHVA"] = 0.00099
+    gt_axon["axonal_CaLVA_gCaLVA"] = 0.008752
+    gt_axon["axonal_CaPump_gamma"] = 0.00291
+    gt_axon["axonal_CaPump_decay"] = 287.19873
+
+    cell = SimpleMorphCell(
+        "morphologies/bbp_with_axon.swc", ncomp=2, backend=swc_backend
+    )
+
+    soma_inds = cell.groups["soma"]
+    apical_inds = cell.groups["apical"]
+
+    ########## APICAL ##########
+    cell.apical.set("capacitance", 2.0)
+    cell.apical.insert(NaTs2T().change_name("apical_NaTs2T"))
+    cell.apical.insert(SKv3_1().change_name("apical_SKv3_1"))
+    cell.apical.insert(M().change_name("apical_M"))
+    cell.apical.insert(H().change_name("apical_H"))
+
+    for c in apical_inds:
+        distance = cell.scope("global").comp(c).distance(cell.branch(0).loc(0.0))
+        cond = (-0.8696 + 2.087 * np.exp(distance * 0.0031)) * 8e-5
+        cell.scope("global").comp(c).set("apical_H_gH", cond)
+
+    ########## SOMA ##########
+    cell.soma.insert(NaTs2T().change_name("somatic_NaTs2T"))
+    cell.soma.insert(SKv3_1().change_name("somatic_SKv3_1"))
+    cell.soma.insert(SKE2().change_name("somatic_SKE2"))
+    ca_dynamics = CaNernstReversal()
+    ca_dynamics.channel_constants["T"] = 307.15
+    cell.soma.insert(ca_dynamics)
+    cell.soma.insert(CaPump().change_name("somatic_CaPump"))
+    cell.soma.insert(CaHVA().change_name("somatic_CaHVA"))
+    cell.soma.insert(CaLVA().change_name("somatic_CaLVA"))
+    cell.soma.set("CaCon_i", 5e-05)
+    cell.soma.set("CaCon_e", 2.0)
+
+    ########## BASAL ##########
+    cell.basal.insert(H().change_name("basal_H"))
+    cell.basal.set("basal_H_gH", 8e-5)
+
+    # ########## AXON ##########
+    cell.insert(CaNernstReversal())
+    cell.set("CaCon_i", 5e-05)
+    cell.set("CaCon_e", 2.0)
+    cell.axon.insert(NaTaT().change_name("axonal_NaTaT"))
+    cell.axon.insert(KTst().change_name("axonal_KTst"))
+    cell.axon.insert(CaPump().change_name("axonal_CaPump"))
+    cell.axon.insert(SKE2().change_name("axonal_SKE2"))
+    cell.axon.insert(CaHVA().change_name("axonal_CaHVA"))
+    cell.axon.insert(KPst().change_name("axonal_KPst"))
+    cell.axon.insert(SKv3_1().change_name("axonal_SKv3_1"))
+    cell.axon.insert(CaLVA().change_name("axonal_CaLVA"))
+
+    ########## WHOLE CELL  ##########
+    cell.insert(Leak())
+    cell.set("Leak_gLeak", 3e-05)
+    cell.set("Leak_eLeak", -75.0)
+
+    cell.set("axial_resistivity", 100.0)
+    cell.set("eNa", 50.0)
+    cell.set("eK", -85.0)
+    cell.set("v", -65.0)
+
+    for key in gt_apical.keys():
+        cell.apical.set(key, gt_apical[key])
+
+    for key in gt_soma.keys():
+        cell.soma.set(key, gt_soma[key])
+
+    for key in gt_axon.keys():
+        cell.axon.set(key, gt_axon[key])
+
+    dt = 0.025
+    t_max = 100.0
+    time_vec = np.arange(0, t_max + 2 * dt, dt)
+
+    cell.delete_stimuli()
+    cell.delete_recordings()
+
+    i_delay = 10.0
+    i_dur = 80.0
+    i_amp = 3.0
+    current = jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
+    cell.scope("global").comp(soma_inds[0]).stimulate(current)  # Stimulate soma
+    cell.scope("global").comp(soma_inds[0]).record()
+
+    cell.set("v", -65.0)
+    cell.init_states()
+
+    voltages = jx.integrate(cell)
+
+    voltages_250130 = jnp.asarray(
+        [
+            [
+                -65.0,
+                -66.08005,
+                -67.00305,
+                -67.760574,
+                -68.382576,
+                -35.58711,
+                -55.09969,
+                -45.818882,
+                -43.578323,
+                -50.973206,
+                -43.22617,
+                -42.15972,
+                -49.39115,
+                -42.68945,
+                -39.149513,
+                -48.554005,
+                -42.316135,
+                -37.89285,
+                -48.032528,
+                -41.780766,
+                -38.380123,
+                -47.649944,
+                -41.010834,
+                -39.83822,
+                -47.33895,
+                -39.9175,
+                -41.59567,
+                -47.054302,
+                -38.269688,
+                -43.282665,
+                -46.767357,
+                -35.46547,
+                -44.679893,
+                -46.475937,
+                -29.445751,
+                -45.72432,
+                -46.175476,
+                -64.98646,
+                -69.6083,
+                -71.89556,
+                -73.086105,
+            ]
+        ]
+    )
+    max_error = np.max(np.abs(voltages[:, ::100] - voltages_250130))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
