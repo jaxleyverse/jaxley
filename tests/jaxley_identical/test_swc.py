@@ -184,7 +184,9 @@ def test_swc_morph(swc_backend, SimpleMorphCell):
     gt_axon["axonal_CaPump_gamma"] = 0.00291
     gt_axon["axonal_CaPump_decay"] = 287.19873
 
-    cell = SimpleMorphCell("swc_files/bbp_with_axon.swc", ncomp=2, swc_backend=swc_backend)
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "../swc_files", "bbp_with_axon.swc")  # n120
+    cell = SimpleMorphCell(fname, ncomp=2, swc_backend=swc_backend)
 
     soma_inds = cell.groups["soma"]
     apical_inds = cell.groups["apical"]

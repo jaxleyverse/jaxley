@@ -21,13 +21,16 @@ has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
 get_soma_idxs = lambda G: [
     i for i, n in nx.get_node_attributes(G, "id").items() if n == 1
 ]
-find_root = lambda G: next(n for n in G.nodes if is_root(G, n))
-
 unpack = lambda d, keys: [d[k] for k in keys]
 branch_e2n = lambda b: np.unique(np.concatenate(b)).tolist()
 branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]
 v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
 
+def find_root(G): 
+    roots = [n for n in G.nodes if is_root(G, n)]
+    if len(roots) > 1:
+        raise ValueError("Multiple roots found in graph.")
+    return roots[0]
 
 def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
     """Read a swc file and convert it to a networkx graph.
@@ -336,7 +339,7 @@ def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
         )
         comp_offset += ncomp_per_branch
 
-        # splice comps into morphology graph func could be reused in to_graph
+        # splice comps into morphology
         branch_data = pd.concat([branch_data, new_branch_nodes]).sort_values(
             "l", ignore_index=True
         )
@@ -350,10 +353,10 @@ def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
     # add missing edge lengths
     graph = add_edge_lens(graph)
 
-    # re-enumerate in dfs from root
-    root = find_root(graph)
-    mapping = {old: new for new, old in enumerate(nx.dfs_preorder_nodes(graph, root))}
-    graph = nx.relabel_nodes(graph, mapping)
+    # # re-enumerate in dfs from root
+    # root = find_root(graph)
+    # mapping = {old: new for new, old in enumerate(nx.dfs_preorder_nodes(graph, root))}
+    # graph = nx.relabel_nodes(graph, mapping)
     return graph
 
 
