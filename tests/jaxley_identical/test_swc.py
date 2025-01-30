@@ -15,11 +15,11 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import *
 
 import jaxley as jx
-from jaxley.channels import HH, K, Leak, Na
 from jaxley.synapses import IonotropicSynapse
+from jaxley.channels import HH, Na, K, Leak
+from jaxley_mech.channels.l5pc import *
 
 
 @pytest.mark.slow
@@ -184,9 +184,7 @@ def test_swc_morph(swc_backend, SimpleMorphCell):
     gt_axon["axonal_CaPump_gamma"] = 0.00291
     gt_axon["axonal_CaPump_decay"] = 287.19873
 
-    cell = SimpleMorphCell(
-        "morphologies/bbp_with_axon.swc", ncomp=2, backend=swc_backend
-    )
+    cell = SimpleMorphCell("swc_files/bbp_with_axon.swc", ncomp=2, swc_backend=swc_backend)
 
     soma_inds = cell.groups["soma"]
     apical_inds = cell.groups["apical"]
