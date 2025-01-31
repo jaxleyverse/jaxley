@@ -143,7 +143,9 @@ def test_graph_import_export_cycle(
             jx.integrate(re_module, t_max=0.5)
 
 
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_single_point_soma.swc", "morph.swc", "bbp_with_axon.swc"]
+)
 def test_trace_branches(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
@@ -169,7 +171,9 @@ def test_trace_branches(file):
     assert sum(errors > 1e-3) <= 1
 
 
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_single_point_soma.swc", "morph.swc", "bbp_with_axon.swc"]
+)
 def test_from_graph_vs_NEURON(file):
     ncomp = 8
     dirname = os.path.dirname(__file__)
