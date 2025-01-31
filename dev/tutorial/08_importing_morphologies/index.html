@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
     
     
       
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#working-with-morphologies" class="md-skip">
+        <a href="#working-with-morphologies-or-jaxleyio" class="md-skip">
           Skip to content
         </a>
       
@@ -234,6 +234,7 @@
   
   <span class="md-ellipsis">
     Home
+    
   </span>
   
 
@@ -266,6 +267,7 @@
   
   <span class="md-ellipsis">
     Tutorials
+    
   </span>
   
 
@@ -291,6 +293,7 @@
   
   <span class="md-ellipsis">
     Getting started
+    
   </span>
   
 
@@ -312,6 +315,7 @@
   
   <span class="md-ellipsis">
     Run a network simulation
+    
   </span>
   
 
@@ -333,6 +337,7 @@
   
   <span class="md-ellipsis">
     Set parameters
+    
   </span>
   
 
@@ -354,6 +359,7 @@
   
   <span class="md-ellipsis">
     Accelerate simulations
+    
   </span>
   
 
@@ -375,6 +381,7 @@
   
   <span class="md-ellipsis">
     Define your own channels
+    
   </span>
   
 
@@ -396,6 +403,7 @@
   
   <span class="md-ellipsis">
     Define groups
+    
   </span>
   
 
@@ -421,15 +429,56 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
     Read and handle SWC files
+    
   </span>
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with graphs
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -448,6 +497,7 @@
   
   <span class="md-ellipsis">
     Training models
+    
   </span>
   
 
@@ -476,6 +526,7 @@
   
   <span class="md-ellipsis">
     Installation
+    
   </span>
   
 
@@ -506,6 +557,7 @@
   
   <span class="md-ellipsis">
     Contributing
+    
   </span>
   
 
@@ -531,6 +583,7 @@
   
   <span class="md-ellipsis">
     Guide
+    
   </span>
   
 
@@ -552,6 +605,7 @@
   
   <span class="md-ellipsis">
     Code of Conduct
+    
   </span>
   
 
@@ -590,6 +644,7 @@
   
   <span class="md-ellipsis">
     API Reference
+    
   </span>
   
 
@@ -615,6 +670,7 @@
   
   <span class="md-ellipsis">
     Modules
+    
   </span>
   
 
@@ -636,6 +692,7 @@
   
   <span class="md-ellipsis">
     Simulation
+    
   </span>
   
 
@@ -657,6 +714,7 @@
   
   <span class="md-ellipsis">
     Mechansims
+    
   </span>
   
 
@@ -678,6 +736,7 @@
   
   <span class="md-ellipsis">
     Connecting Cells
+    
   </span>
   
 
@@ -699,6 +758,7 @@
   
   <span class="md-ellipsis">
     Optimization
+    
   </span>
   
 
@@ -720,6 +780,7 @@
   
   <span class="md-ellipsis">
     Utils
+    
   </span>
   
 
@@ -748,6 +809,7 @@
   
   <span class="md-ellipsis">
     FAQ
+    
   </span>
   
 
@@ -768,6 +830,7 @@
   
   <span class="md-ellipsis">
     Credits
+    
   </span>
   
 
@@ -796,6 +859,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with graphs
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -808,28 +888,55 @@
                 
                   
 
+
   
   
 
 
-<h1 id="working-with-morphologies">Working with morphologies<a class="headerlink" href="#working-with-morphologies" title="Permanent link">&para;</a></h1>
+<h1 id="working-with-morphologies-or-jaxleyio">Working with morphologies (or <code>jaxley.io</code>)<a class="headerlink" href="#working-with-morphologies-or-jaxleyio" title="Permanent link">&para;</a></h1>
 <p>In this tutorial, you will learn how to:</p>
 <ul>
 <li>Load morphologies and make them compatible with <code>Jaxley</code>  </li>
 <li>Use the visualization features  </li>
 <li>Assemble a small network of morphologically accurate cells.  </li>
+<li>How to use <code>Jaxley</code>s graph pipeline, which offers interoperability with <code>networkX</code>. We will:<ul>
+<li>define morphologies via <code>networkX</code> graphs.</li>
+<li>export morphologies to <code>networkX</code> graphs.</li>
+<li>import morphologies using <code>Jaxley</code>&rsquo;s graph pipeline.</li>
 </ul>
-<p>Here is a code snippet which you will learn to understand in this tutorial:
+</li>
+</ul>
+<p>Here are two code snippets which you will learn to understand in this tutorial:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
 
 <span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="s2">&quot;my_cell.swc&quot;</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">set_ncomp</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Modify the number of compartments of a branch.</span>
-</code></pre></div></p>
+</code></pre></div>
+<hr />
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">swc_to_graph</span><span class="p">,</span> <span class="n">make_jaxley_compatible</span><span class="p">,</span> <span class="n">from_graph</span><span class="p">,</span> <span class="n">to_graph</span>
+
+<span class="n">graph</span> <span class="o">=</span> <span class="n">swc_to_graph</span><span class="p">(</span><span class="s2">&quot;tests/swc_files/morph.swc&quot;</span><span class="p">)</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">make_jaxley_compatible</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+
+<span class="n">graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+<span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">d</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">)}</span>
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</code></pre></div>
 <p>To work with more complicated morphologies, <code>Jaxley</code> supports importing morphological reconstructions via <code>.swc</code> files.
 <code>.swc</code> is currently the only supported format. Other formats like <code>.asc</code> need to be converted to <code>.swc</code> first, for example using the BlueBrain&rsquo;s <a href="https://github.com/BlueBrain/morph-tool">morph-tool</a>. For more information on the exact specifications of <code>.swc</code> see <a href="http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html">here</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">HH</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">swc_to_graph</span><span class="p">,</span> <span class="n">make_jaxley_compatible</span><span class="p">,</span> <span class="n">from_graph</span><span class="p">,</span> <span class="n">to_graph</span>
 </code></pre></div>
 <p>To work with <code>.swc</code> files, <code>Jaxley</code> implements a custom <code>.swc</code> reader. The reader traces the morphology and identifies all uninterrupted sections. These uninterrupted sections are called <code>branches</code> in <code>Jaxley</code>. Each <code>branch</code> is then further partitioned into <code>compartments</code>.</p>
 <p>To demonstrate this, let&rsquo;s import an example morphology of a Layer 5 pyramidal cell and visualize it.</p>
@@ -1334,7 +1441,89 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_21_0.png" /></p>
-<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a>.</p>
+<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a> or continue to learn about how you can interface with <code>networkX</code>.</p>
+<h2 id="working-with-graphs">Working with graphs<a class="headerlink" href="#working-with-graphs" title="Permanent link">&para;</a></h2>
+<p>While <code>swc</code> is a great way to save, load and specify complex morphologies, often more flexibility is needed. In these cases graphs present a natural way to represent and work with neural morphologies, allowing for easy fixing, pruning, smoothing and traversal of neural morphologies on the fly. For this purpose <code>Jaxley</code> also comes with a seperate <code>networkX</code> toolset, that allows for easy interoperability between <code>networkX</code> graphs and <code>Jaxley</code> Modules.</p>
+<p>To demonstrate this, let&rsquo;s first define a simple morphology via a networkX graph.</p>
+<div class="highlight"><pre><span></span><code><span class="n">nodes</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">0</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+    <span class="mi">4</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+    <span class="mi">5</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+    <span class="mi">6</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="p">}</span> 
+<span class="n">edges</span> <span class="o">=</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Setting any of these attributes is optional. It is sufficient to define the </span>
+<span class="c1"># connectivity and simply do g = nx.DiGraph(edges). In this case, r and l will </span>
+<span class="c1"># be set to default values and x, y, z can be computed using Cell.compute_xyz().</span>
+
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_25_0.png" /></p>
+<p>The above graph can now be treated like a traced morphological reconsruction. This means we can use <code>io.graph</code> to import it into a <code>jx.Module</code> using the <code>from_graph</code> method.</p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_27_0.png" /></p>
+<p>To work with more complex morphologies <code>io.graph</code> also provides a way to import <code>swc</code> reconstructions as graphs. This means we can easily view the entire tracing of the morphology. At this stage the <code>networkX</code> graph could also easily be fixed, pruned or smoothed. To demo this lets remove the apical dendrites (id=4).</p>
+<div class="highlight"><pre><span></span><code><span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">swc_to_graph</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+
+<span class="c1"># manipulate the graph</span>
+<span class="n">ids</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">get_node_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">)</span>
+<span class="n">ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ids</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">}</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">ids</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_29_0.png" /></p>
+<p>To make the traced and possibly edited morphology compatible with <code>Jaxley</code> <code>from_graph</code> segments it into branches and then divides the branches up into compartments. This is done by <code>make_jaxley_compatible</code> (called at the beginning og <code>from_graph</code>), which produces a subgraph of the original morphology and adds additional attributes that <code>Jaxley</code> requires to simulate it (see the documentation of <code>make_jaxley_compatible</code> for details). </p>
+<p>Let&rsquo;s see what this looks like.</p>
+<div class="highlight"><pre><span></span><code><span class="n">graph</span> <span class="o">=</span> <span class="n">make_jaxley_compatible</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;node attributes </span><span class="si">{</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;edge attributes </span><span class="si">{</span><span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">font_size</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>node attributes {&#39;x&#39;: 0.0, &#39;y&#39;: 0.0, &#39;z&#39;: 0.0, &#39;l&#39;: 0.012500000186264515, &#39;branch_index&#39;: 0, &#39;comp_index&#39;: 0, &#39;group&#39;: [&#39;soma&#39;], &#39;radius&#39;: 8.119000434875488, &#39;length&#39;: 0.025, &#39;cell_index&#39;: 0}
+edge attributes {&#39;l&#39;: 0.001, &#39;type&#39;: &#39;intra_branch&#39;}
+</code></pre></div>
+
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_31_1.png" /></p>
+<p>Again we can use the <code>from_graph</code> function to convert the graph into a <code>Cell</code> object, which <code>Jaxley</code> can then simulate or optimize. </p>
+<div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># add mechanism to cell</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">HH</span><span class="p">())</span>
+
+<span class="c1"># change parameters, pretending the cell has been optimized</span>
+<span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">cell</span><span class="p">:</span>
+    <span class="n">y_pos</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">branch</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">y_pos</span><span class="p">)</span>
+</code></pre></div>
+<p>To close the loop <code>Jaxley</code> also offers the option to export any <code>Module</code> to a <code>networkX</code> graph object. This ability offers another way to store or share the current Module state, since <code>to_graph</code> attaches all relevant attributes to the nodes and eges of the graph. It can also be used to make more complex visualizations, using any of these attributes i.e. channel densities very easily.</p>
+<div class="highlight"><pre><span></span><code><span class="n">graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+<span class="c1"># plot of the cell, coloring each node according to the sodium conductance</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">node_color</span><span class="o">=</span><span class="p">[</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Sodium conductance&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_35_0.png" /></p>
+<p>Congrats! You have now learned how to interface with networkX to further customize and manipulate imported morphologies.</p>
 
 
 
@@ -1384,7 +1573,7 @@
     <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.60a45f97.min.js"></script>
+      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
       
     
   </body>
