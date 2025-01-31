@@ -153,6 +153,7 @@ def SimpleMorphCell():
         fname: Optional[str] = None,
         ncomp: int = 1,
         max_branch_len: float = 2_000.0,
+        swc_backend: str = "custom",
         copy: bool = True,
         force_init: bool = False,
     ) -> jx.Cell:
@@ -175,7 +176,11 @@ def SimpleMorphCell():
         fname = default_fname if fname is None else fname
         if key := (fname, ncomp, max_branch_len) not in cells or force_init:
             cells[key] = jx.read_swc(
-                fname, ncomp=ncomp, max_branch_len=max_branch_len, assign_groups=True
+                fname,
+                ncomp=ncomp,
+                max_branch_len=max_branch_len,
+                assign_groups=True,
+                backend=swc_backend,
             )
         return deepcopy(cells[key]) if copy and not force_init else cells[key]
 

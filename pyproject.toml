@@ -35,6 +35,7 @@ dependencies = [
     "numpy",
     "pandas>=2.2.0",
     "tridiax",
+    "networkx",
 ]
 
 [project.optional-dependencies]

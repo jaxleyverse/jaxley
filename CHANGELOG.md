@@ -10,9 +10,6 @@ Installing `Jaxley` will no longer install the newest version of `JAX`. We reali
 ```python
 net.record("i_IonotropicSynapse")
 ```
-- Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
-  - Regression tests can be triggered by commenting "/test_regression" on a PR.
-  - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
 
 - refactor plotting (#539, @jnsbck).
   - rm networkx dependency
@@ -25,7 +22,25 @@ net.vis()
 
 - Allow parameter sharing for groups of different sizes, i.e. due to inhomogenous numbers of compartments or for synapses with the same (pre-)synaptic parameters but different numbers of post-synaptic partners. (#514, @jnsbck)
 
+- Add `jaxley.io.graph` for exporting and importing of jaxley modules to and from `networkx` graph objects (#355, @jnsbck).
+  - Adds a new (and improved) SWC reader, which is more flexible and should also be easier to extend in the future.
+  ```python
+  from jaxley.io.graph import swc_to_graph, from_graph
+  graph = swc_to_graph(fname)
+  # do something to the swc graph, i.e. prune it
+  pruned_graph = do_something_to_graph(graph)
+  cell = from_graph(pruned_graph, ncomp=4)
+  ```
+  - Adds a new `to_graph` method for jaxley modules, which exports a module to a `networkX` graph. This allows to seamlessly work with `networkX`'s graph manipulation or visualization functions.
+  - `"graph"` can now also be selected as a backend in the `read_swc`.
+  - See [the improved SWC reader tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html) for more details.
+
+### Code Health
 - changelog added to CI (#537, #558,  @jnsbck)
+
+- Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
+  - Regression tests can be triggered by commenting "/test_regression" on a PR.
+  - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
 
 ### Bug fixes
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)

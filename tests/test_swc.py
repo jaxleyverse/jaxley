@@ -237,8 +237,7 @@ def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
     initialize()
     integrate()
     voltages_neuron = np.asarray([voltage_recs[key] for key in voltage_recs])
+    errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
     ####################### check ################
-    assert np.mean(
-        np.abs(voltages_jaxley - voltages_neuron) < 1.5
-    ), "voltages do not match."
+    assert all(errors < 2.5), "voltages do not match."
