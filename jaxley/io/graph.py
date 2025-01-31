@@ -853,7 +853,7 @@ def to_graph(
         ]
     else:
         for c in module.channels:
-            nodes = nodes.drop(c.current_name, axis=1)
+            nodes = nodes.drop(c.name, axis=1)
             nodes = nodes.drop(list(c.channel_params), axis=1)
             nodes = nodes.drop(list(c.channel_states), axis=1)
 
