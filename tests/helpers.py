@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def get_segment_xyzrL(section, comp_idx=None, loc=None, nseg=8):
+def get_segment_xyzrL(section, comp_idx=None, loc=None, ncomp=8):
     assert (
         comp_idx is not None or loc is not None
     ), "Either comp_idx or loc must be provided."
@@ -13,7 +13,7 @@ def get_segment_xyzrL(section, comp_idx=None, loc=None, nseg=8):
         comp_idx is not None and loc is not None
     ), "Only one of comp_idx or loc can be provided."
 
-    comp_len = 1 / nseg
+    comp_len = 1 / ncomp
     loc = comp_len / 2 + comp_idx * comp_len if loc is None else loc
 
     n3d = section.n3d()
@@ -42,12 +42,12 @@ def get_segment_xyzrL(section, comp_idx=None, loc=None, nseg=8):
         y = y3d[i - 1] + t * (y3d[i] - y3d[i - 1])
         z = z3d[i - 1] + t * (z3d[i] - z3d[i - 1])
         r = r3d[i - 1] + t * (r3d[i] - r3d[i - 1])
-        return x, y, z, r, L[-1] / nseg
+        return x, y, z, r, L[-1] / ncomp
 
 
-def jaxley2neuron_by_coords(jx_cell, neuron_secs, comp_idx=None, loc=None, nseg=8):
+def jaxley2neuron_by_coords(jx_cell, neuron_secs, comp_idx=None, loc=None, ncomp=8):
     neuron_coords = {
-        i: np.vstack(get_segment_xyzrL(sec, comp_idx=comp_idx, loc=loc, nseg=nseg))[
+        i: np.vstack(get_segment_xyzrL(sec, comp_idx=comp_idx, loc=loc, ncomp=ncomp))[
             :3
         ].T
         for i, sec in enumerate(neuron_secs)
@@ -81,7 +81,7 @@ def jaxley2neuron_by_group(
     neuron_secs,
     comp_idx=None,
     loc=None,
-    nseg=8,
+    ncomp=8,
     num_apical=20,
     num_tuft=20,
     num_basal=10,
@@ -99,7 +99,7 @@ def jaxley2neuron_by_group(
     )
 
     jaxley2neuron = jaxley2neuron_by_coords(
-        jx_cell, neuron_secs, comp_idx=comp_idx, loc=loc, nseg=nseg
+        jx_cell, neuron_secs, comp_idx=comp_idx, loc=loc, ncomp=ncomp
     )
 
     neuron_trunk_inds = [jaxley2neuron[i] for i in trunk_inds]
@@ -115,22 +115,22 @@ def jaxley2neuron_by_group(
     return neuron_inds, jaxley_inds
 
 
-def match_stim_loc(jx_cell, neuron_sec, comp_idx=None, loc=None, nseg=8):
-    stim_coords = get_segment_xyzrL(neuron_sec, comp_idx=comp_idx, loc=loc, nseg=nseg)[
-        :3
-    ]
+def match_stim_loc(jx_cell, neuron_sec, comp_idx=None, loc=None, ncomp=8):
+    stim_coords = get_segment_xyzrL(
+        neuron_sec, comp_idx=comp_idx, loc=loc, ncomp=ncomp
+    )[:3]
     stim_idx = (
         ((jx_cell.nodes[["x", "y", "z"]] - stim_coords) ** 2).sum(axis=1).argmin()
     )
     return stim_idx
 
 
-def import_neuron_morph(fname, nseg=8):
+def import_neuron_morph(fname, ncomp=8):
     from neuron import h
 
     _ = h.load_file("stdlib.hoc")
     _ = h.load_file("import3d.hoc")
-    nseg = 8
+    ncomp = 8
 
     ##################### NEURON ##################
     for sec in h.allsec():
@@ -142,7 +142,7 @@ def import_neuron_morph(fname, nseg=8):
     i3d.instantiate(None)
 
     for sec in h.allsec():
-        sec.nseg = nseg
+        sec.nseg = ncomp
     return h, cell
 
 

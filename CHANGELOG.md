@@ -1,6 +1,7 @@
 # 0.6.1
 
-- Fixup for failing readthedocs build of v0.6.0 (#579, @michaeldeistler).
+- Fixup for failing readthedocs build of v0.6.0 (#579, @michaeldeistler)
+- Deprecate `nseg` in favor of `ncomp`.
 
 
 # 0.6.0

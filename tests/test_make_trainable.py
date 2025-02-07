@@ -535,7 +535,7 @@ def test_write_trainables(SimpleNet):
 
 def test_param_sharing_w_different_group_sizes():
     # test if make_trainable corresponds to set
-    branch1 = jx.Branch(nseg=6)
+    branch1 = jx.Branch(ncomp=6)
     branch1.nodes["controlled_by_param"] = np.array([0, 0, 0, 1, 1, 2])
     branch1.make_trainable("radius")
     assert branch1.num_trainable_params == 3
@@ -548,7 +548,7 @@ def test_param_sharing_w_different_group_sizes():
     params1 = branch1.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
 
     # set
-    branch2 = jx.Branch(nseg=6)
+    branch2 = jx.Branch(ncomp=6)
     branch2.set("radius", np.array([2, 2, 2, 3, 3, 4]))
     params = branch2.get_parameters()
     branch2.to_jax()

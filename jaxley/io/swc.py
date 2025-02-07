@@ -339,11 +339,9 @@ def swc_to_jaxley(
     return parents, pathlengths, radius_fns, types, all_coords_of_branches
 
 
-@deprecated_kwargs("0.6.0", ["nseg"])
 def read_swc_custom(
     fname: str,
     ncomp: Optional[int] = None,
-    nseg: Optional[int] = None,
     max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
@@ -358,7 +356,6 @@ def read_swc_custom(
     Args:
         fname: Path to the swc file.
         ncomp: The number of compartments per branch.
-        nseg: Deprecated. Use `ncomp` instead.
         max_branch_len: If a branch is longer than this value it is split into two
             branches.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
@@ -370,14 +367,6 @@ def read_swc_custom(
     Returns:
         A `Cell` object.
     """
-    # Deak with deprecation of `nseg`.
-    assert ncomp is not None or nseg is not None, "You must pass `ncomp`."
-    assert not (
-        ncomp is not None and nseg is not None
-    ), "Cannot set `ncomp` and `nseg`. Only use `ncomp`."
-    if ncomp is None and nseg is not None:
-        ncomp = nseg
-
     parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
         fname, max_branch_len=max_branch_len, sort=True, num_lines=None
     )
@@ -426,11 +415,9 @@ def read_swc_custom(
     return cell
 
 
-@deprecated_kwargs("0.6.0", ["nseg"])
 def read_swc(
     fname: str,
     ncomp: Optional[int] = None,
-    nseg: Optional[int] = None,
     max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
@@ -446,7 +433,6 @@ def read_swc(
     Args:
         fname: Path to the swc file.
         ncomp: The number of compartments per branch.
-        nseg: Deprecated. Use `ncomp` instead.
         max_branch_len: If a branch is longer than this value it is split into two
             branches.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
@@ -464,7 +450,6 @@ def read_swc(
         return read_swc_custom(
             fname,
             ncomp=ncomp,
-            nseg=nseg,
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
