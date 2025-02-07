@@ -1,0 +1,3500 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/v0.6.0/reference/integration/">
+      
+      
+        <link rel="prev" href="../modules/">
+      
+      
+        <link rel="next" href="../mechanisms/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.3">
+    
+    
+      
+        <title>Simulation - Jaxley</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#jaxley.integrate" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Jaxley" class="md-header__button md-logo" aria-label="Jaxley" data-md-component="logo">
+      
+  <img src="../../logo_white.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Jaxley
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Simulation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="http://github.com/jaxleyverse/jaxley" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaxleyverse/jaxley
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Jaxley" class="md-nav__button md-logo" aria-label="Jaxley" data-md-component="logo">
+      
+  <img src="../../logo_white.png" alt="logo">
+
+    </a>
+    Jaxley
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="http://github.com/jaxleyverse/jaxley" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaxleyverse/jaxley
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/01_morph_neurons/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/02_small_network/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Run a network simulation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/03_setting_parameters.md" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Set parameters
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/04_jit_and_vmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Accelerate simulations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/05_channel_and_synapse_models/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Define your own channels
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/06_groups/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Define groups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/08_importing_morphologies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/07_gradient_descent/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Training models
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contribute/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code_of_conduct/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Code of Conduct
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Modules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Simulation
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Simulation
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      integrate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_clamps" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_clamps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_stimuli" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_stimuli
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.build_init_and_step_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_init_and_step_fn
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.integrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      integrate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      solver_gate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate.exponential_euler" class="md-nav__link">
+    <span class="md-ellipsis">
+      exponential_euler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate.save_exp" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_exp
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate.solve_inf_gate_exponential" class="md-nav__link">
+    <span class="md-ellipsis">
+      solve_inf_gate_exponential
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      solver_voltage
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage._backsub_branched" class="md-nav__link">
+    <span class="md-ellipsis">
+      _backsub_branched
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage._triang_branched" class="md-nav__link">
+    <span class="md-ellipsis">
+      _triang_branched
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage._voltage_vectorfield" class="md-nav__link">
+    <span class="md-ellipsis">
+      _voltage_vectorfield
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage.step_voltage_explicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      step_voltage_explicit
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage.step_voltage_implicit_with_jaxley_spsolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      step_voltage_implicit_with_jaxley_spsolve
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mechanisms/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mechansims
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connect/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Connecting Cells
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimize/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Optimization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utils/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utils
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../credits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Credits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      integrate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_clamps" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_clamps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.add_stimuli" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_stimuli
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.build_init_and_step_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_init_and_step_fn
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.integrate.integrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      integrate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      solver_gate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate.exponential_euler" class="md-nav__link">
+    <span class="md-ellipsis">
+      exponential_euler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate.save_exp" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_exp
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_gate.solve_inf_gate_exponential" class="md-nav__link">
+    <span class="md-ellipsis">
+      solve_inf_gate_exponential
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      solver_voltage
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage._backsub_branched" class="md-nav__link">
+    <span class="md-ellipsis">
+      _backsub_branched
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage._triang_branched" class="md-nav__link">
+    <span class="md-ellipsis">
+      _triang_branched
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage._voltage_vectorfield" class="md-nav__link">
+    <span class="md-ellipsis">
+      _voltage_vectorfield
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage.step_voltage_explicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      step_voltage_explicit
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jaxley.solver_voltage.step_voltage_implicit_with_jaxley_spsolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      step_voltage_implicit_with_jaxley_spsolve
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Simulation</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="jaxley.integrate"></a>
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.add_clamps" class="doc doc-heading">
+            <code class=" language-python"><span class="n">add_clamps</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_clamps</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.add_clamps" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Adds clamps to the external inputs.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>externals</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external inputs.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>external_inds</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external indices.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_clamps</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[str, <span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional data clamps. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[<span title="typing.Dict">Dict</span>, <span title="typing.Dict">Dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tuple[Dict, Dict]: Updated external inputs and indices.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_clamps</span><span class="p">(</span>
+    <span class="n">externals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">external_inds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">data_clamps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adds clamps to the external inputs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        externals (Dict): Current external inputs.</span>
+<span class="sd">        external_inds (Dict): Current external indices.</span>
+<span class="sd">        data_clamps (Optional[Tuple[str, jnp.ndarray, pd.DataFrame]], optional): Additional data clamps. Defaults to None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[Dict, Dict]: Updated external inputs and indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If a clamp is inserted, add it to the external inputs.</span>
+    <span class="k">if</span> <span class="n">data_clamps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">state_name</span><span class="p">,</span> <span class="n">clamps</span><span class="p">,</span> <span class="n">inds</span> <span class="o">=</span> <span class="n">data_clamps</span>
+        <span class="k">if</span> <span class="n">state_name</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">clamps</span><span class="p">])</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">],</span> <span class="n">inds</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">externals</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">clamps</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="n">state_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">inds</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.add_stimuli" class="doc doc-heading">
+            <code class=" language-python"><span class="n">add_stimuli</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.add_stimuli" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Extends the external inputs with the stimuli.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>externals</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external inputs.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>external_inds</code>
+            </td>
+            <td>
+                  <code><span title="typing.Dict">Dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current external indices.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_stimuli</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[<span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional data stimuli. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[<span title="typing.Dict">Dict</span>, <span title="typing.Dict">Dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tuple[Dict, Dict]: Updated external inputs and indices.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_stimuli</span><span class="p">(</span>
+    <span class="n">externals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">external_inds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">data_stimuli</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extends the external inputs with the stimuli.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        externals (Dict): Current external inputs.</span>
+<span class="sd">        external_inds (Dict): Current external indices.</span>
+<span class="sd">        data_stimuli (Optional[Tuple[jnp.ndarray, pd.DataFrame]], optional): Additional data stimuli. Defaults to None.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[Dict, Dict]: Updated external inputs and indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If stimulus is inserted, add it to the external inputs.</span>
+    <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">or</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;i&quot;</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">data_stimuli</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+                <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">external_inds</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_stimuli</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.build_init_and_step_fn" class="doc doc-heading">
+            <code class=" language-python"><span class="n">build_init_and_step_fn</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="s1">&#39;jaxley.stone&#39;</span><span class="p">,</span> <span class="n">solver</span><span class="o">=</span><span class="s1">&#39;bwd_euler&#39;</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.build_init_and_step_fn" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>This function returns the <code>init_fn</code> and <code>step_fn</code> which initialize the
+parameters and states of the neuron model and then step through the model</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>module</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="jaxley.modules.Module" href="../modules/#jaxley.modules.base.Module">Module</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>Module</code> object that e.g. a cell.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>voltage_solver</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Voltage solver used in step. Defaults to &ldquo;jaxley.stone&rdquo;.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;jaxley.stone&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>solver</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ODE solver. Defaults to &ldquo;bwd_euler&rdquo;.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;bwd_euler&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Tuple">Tuple</span>[<span title="typing.Callable">Callable</span>, <span title="typing.Callable">Callable</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>init_fn, step_fn: Functions that initialize the state and parameters, and perform
+a single integration step, respectively.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_init_and_step_fn</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span>
+    <span class="n">voltage_solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;jaxley.stone&quot;</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bwd_euler&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Callable</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;This function returns the `init_fn` and `step_fn` which initialize the</span>
+<span class="sd">    parameters and states of the neuron model and then step through the model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        module (Module): A `Module` object that e.g. a cell.</span>
+<span class="sd">        voltage_solver (str, optional): Voltage solver used in step. Defaults to &quot;jaxley.stone&quot;.</span>
+<span class="sd">        solver (str, optional): ODE solver. Defaults to &quot;bwd_euler&quot;.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        init_fn, step_fn: Functions that initialize the state and parameters, and perform</span>
+<span class="sd">            a single integration step, respectively.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Initialize the external inputs and their indices.</span>
+    <span class="n">external_inds</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">external_inds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_fn</span><span class="p">(</span>
+        <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+        <span class="n">all_states</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">param_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the parameters and states of the neuron model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            params (List[Dict[str, jnp.ndarray]]): List of trainable parameters.</span>
+<span class="sd">            all_states (Optional[Dict], optional): State if alread initialized. Defaults to None.</span>
+<span class="sd">            param_state (Optional[List[Dict]], optional): Parameters returned by `data_set`.. Defaults to None.</span>
+<span class="sd">            delta_t (float, optional): Step size. Defaults to 0.025.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[Dict, Dict]: All states and parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Make the `trainable_params` of the same shape as the `param_state`, such that</span>
+        <span class="c1"># they can be processed together by `get_all_parameters`.</span>
+        <span class="n">pstate</span> <span class="o">=</span> <span class="n">params_to_pstate</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">module</span><span class="o">.</span><span class="n">indices_set_by_trainables</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">param_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pstate</span> <span class="o">+=</span> <span class="n">param_state</span>
+
+        <span class="n">all_params</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">(</span><span class="n">pstate</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">)</span>
+        <span class="n">all_states</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">module</span><span class="o">.</span><span class="n">get_all_states</span><span class="p">(</span><span class="n">pstate</span><span class="p">,</span> <span class="n">all_params</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">all_states</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">all_states</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">all_states</span><span class="p">,</span> <span class="n">all_params</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">step_fn</span><span class="p">(</span>
+        <span class="n">all_states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+        <span class="n">all_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+        <span class="n">externals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+        <span class="n">external_inds</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="n">external_inds</span><span class="p">,</span>
+        <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Performs a single integration step with step size delta_t.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            all_states (Dict): Current state of the neuron model.</span>
+<span class="sd">            all_params (Dict): Current parameters of the neuron model.</span>
+<span class="sd">            externals (Dict): External inputs.</span>
+<span class="sd">            external_inds (Dict, optional): External indices. Defaults to `module.external_inds`.</span>
+<span class="sd">            delta_t (float, optional): Time step. Defaults to 0.025.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: Updated states.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">all_states</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">step</span><span class="p">(</span>
+            <span class="n">state</span><span class="p">,</span>
+            <span class="n">delta_t</span><span class="p">,</span>
+            <span class="n">external_inds</span><span class="p">,</span>
+            <span class="n">externals</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="n">all_params</span><span class="p">,</span>
+            <span class="n">solver</span><span class="o">=</span><span class="n">solver</span><span class="p">,</span>
+            <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">return</span> <span class="n">init_fn</span><span class="p">,</span> <span class="n">step_fn</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.integrate.integrate" class="doc doc-heading">
+            <code class=" language-python"><span class="n">integrate</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[],</span> <span class="o">*</span><span class="p">,</span> <span class="n">param_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_clamps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">t_max</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.025</span><span class="p">,</span> <span class="n">solver</span><span class="o">=</span><span class="s1">&#39;bwd_euler&#39;</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="s1">&#39;jaxley.stone&#39;</span><span class="p">,</span> <span class="n">checkpoint_lengths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">all_states</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_states</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#jaxley.integrate.integrate" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Solves ODE and simulates neuron model.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>params</code>
+            </td>
+            <td>
+                  <code><span title="typing.List">List</span>[<span title="typing.Dict">Dict</span>[str, <span title="jax.numpy.ndarray">ndarray</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Trainable parameters returned by <code>get_parameters()</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>param_state</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="typing.Dict">Dict</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Parameters returned by <code>data_set</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_stimuli</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[<span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Outputs of <code>.data_stimulate()</code>, only needed if stimuli change
+across function calls.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_clamps</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Tuple">Tuple</span>[str, <span title="jax.numpy.ndarray">ndarray</span>, <span title="pandas.DataFrame">DataFrame</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Outputs of <code>.data_clamp()</code>, only needed if clamps change across
+function calls.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>t_max</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[float]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Duration of the simulation in milliseconds. If <code>t_max</code> is greater than
+the length of the stimulus input, the stimulus will be padded at the end
+with zeros. If <code>t_max</code> is smaller, then the stimulus with be truncated.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>delta_t</code>
+            </td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Time step of the solver in milliseconds.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.025</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>solver</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Which ODE solver to use. Either of [&ldquo;fwd_euler&rdquo;, &ldquo;bwd_euler&rdquo;,
+&ldquo;crank_nicolson&rdquo;].</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;bwd_euler&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tridiag_solver</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Algorithm to solve tridiagonal systems. The  different options
+only affect <code>bwd_euler</code> and <code>crank_nicolson</code> solvers. Either of [&ldquo;stone&rdquo;,
+&ldquo;thomas&rdquo;], where <code>stone</code> is much faster on GPU for long branches
+with many compartments and <code>thomas</code> is slightly faster on CPU (<code>thomas</code> is
+used in NEURON).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>checkpoint_lengths</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[int]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of timesteps at every level of checkpointing. The
+<code>prod(checkpoint_lengths)</code> must be larger or equal to the desired number of
+simulated timesteps. Warning: the simulation is run for
+<code>prod(checkpoint_lengths)</code> timesteps, and the result is posthoc truncated
+to the desired simulation length. Therefore, a poor choice of
+<code>checkpoint_lengths</code> can lead to longer simulation time. If <code>None</code>, no
+checkpointing is applied.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>all_states</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An optional initial state that was returned by a previous
+<code>jx.integrate(..., return_states=True)</code> run. Overrides potentially
+trainable initial states.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>return_states</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, it returns all states such that the current state of
+the <code>Module</code> can be set with <code>set_states</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/integrate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">integrate</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">param_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">data_stimuli</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">data_clamps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">t_max</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bwd_euler&quot;</span><span class="p">,</span>
+    <span class="n">voltage_solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;jaxley.stone&quot;</span><span class="p">,</span>
+    <span class="n">checkpoint_lengths</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">all_states</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">return_states</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solves ODE and simulates neuron model.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        params: Trainable parameters returned by `get_parameters()`.</span>
+<span class="sd">        param_state: Parameters returned by `data_set`.</span>
+<span class="sd">        data_stimuli: Outputs of `.data_stimulate()`, only needed if stimuli change</span>
+<span class="sd">            across function calls.</span>
+<span class="sd">        data_clamps: Outputs of `.data_clamp()`, only needed if clamps change across</span>
+<span class="sd">            function calls.</span>
+<span class="sd">        t_max: Duration of the simulation in milliseconds. If `t_max` is greater than</span>
+<span class="sd">            the length of the stimulus input, the stimulus will be padded at the end</span>
+<span class="sd">            with zeros. If `t_max` is smaller, then the stimulus with be truncated.</span>
+<span class="sd">        delta_t: Time step of the solver in milliseconds.</span>
+<span class="sd">        solver: Which ODE solver to use. Either of [&quot;fwd_euler&quot;, &quot;bwd_euler&quot;,</span>
+<span class="sd">            &quot;crank_nicolson&quot;].</span>
+<span class="sd">        tridiag_solver: Algorithm to solve tridiagonal systems. The  different options</span>
+<span class="sd">            only affect `bwd_euler` and `crank_nicolson` solvers. Either of [&quot;stone&quot;,</span>
+<span class="sd">            &quot;thomas&quot;], where `stone` is much faster on GPU for long branches</span>
+<span class="sd">            with many compartments and `thomas` is slightly faster on CPU (`thomas` is</span>
+<span class="sd">            used in NEURON).</span>
+<span class="sd">        checkpoint_lengths: Number of timesteps at every level of checkpointing. The</span>
+<span class="sd">            `prod(checkpoint_lengths)` must be larger or equal to the desired number of</span>
+<span class="sd">            simulated timesteps. Warning: the simulation is run for</span>
+<span class="sd">            `prod(checkpoint_lengths)` timesteps, and the result is posthoc truncated</span>
+<span class="sd">            to the desired simulation length. Therefore, a poor choice of</span>
+<span class="sd">            `checkpoint_lengths` can lead to longer simulation time. If `None`, no</span>
+<span class="sd">            checkpointing is applied.</span>
+<span class="sd">        all_states: An optional initial state that was returned by a previous</span>
+<span class="sd">            `jx.integrate(..., return_states=True)` run. Overrides potentially</span>
+<span class="sd">            trainable initial states.</span>
+<span class="sd">        return_states: If True, it returns all states such that the current state of</span>
+<span class="sd">            the `Module` can be set with `set_states`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">assert</span> <span class="n">module</span><span class="o">.</span><span class="n">initialized</span><span class="p">,</span> <span class="s2">&quot;Module is not initialized, run `._initialize()`.&quot;</span>
+    <span class="n">module</span><span class="o">.</span><span class="n">to_jax</span><span class="p">()</span>  <span class="c1"># Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.</span>
+
+    <span class="c1"># Initialize the external inputs and their indices.</span>
+    <span class="n">externals</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">externals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">external_inds</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">external_inds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># If stimulus is inserted, add it to the external inputs.</span>
+    <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span> <span class="o">=</span> <span class="n">add_stimuli</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_stimuli</span><span class="p">)</span>
+
+    <span class="c1"># If a clamp is inserted, add it to the external inputs.</span>
+    <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span> <span class="o">=</span> <span class="n">add_clamps</span><span class="p">(</span><span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">data_clamps</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="c1"># No stimulus was inserted and no clamp was set.</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">t_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">),</span> <span class="s2">&quot;If no stimulus or clamp are inserted you have to specify the simulation duration at `jx.integrate(..., t_max=)`.&quot;</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># Shape `(time, num_stimuli)`.</span>
+
+    <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="n">recordings</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No recordings are set. Please set them.&quot;</span><span class="p">)</span>
+    <span class="n">rec_inds</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">recordings</span><span class="o">.</span><span class="n">rec_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">rec_states</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">recordings</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+    <span class="c1"># Shorten or pad stimulus depending on `t_max`.</span>
+    <span class="k">if</span> <span class="n">t_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">t_max_steps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">t_max</span> <span class="o">//</span> <span class="n">delta_t</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Pad or truncate the stimulus.</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">t_max_steps</span> <span class="o">&gt;</span> <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;i&quot;</span><span class="p">:</span>
+                    <span class="n">pad</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                        <span class="p">(</span><span class="n">t_max_steps</span> <span class="o">-</span> <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="p">)</span>
+                    <span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">externals</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">],</span> <span class="n">pad</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                        <span class="s2">&quot;clamp must be at least as long as simulation.&quot;</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">][:</span><span class="n">t_max_steps</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">init_fn</span><span class="p">,</span> <span class="n">step_fn</span> <span class="o">=</span> <span class="n">build_init_and_step_fn</span><span class="p">(</span>
+        <span class="n">module</span><span class="p">,</span> <span class="n">voltage_solver</span><span class="o">=</span><span class="n">voltage_solver</span><span class="p">,</span> <span class="n">solver</span><span class="o">=</span><span class="n">solver</span>
+    <span class="p">)</span>
+    <span class="n">all_states</span><span class="p">,</span> <span class="n">all_params</span> <span class="o">=</span> <span class="n">init_fn</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">all_states</span><span class="p">,</span> <span class="n">param_state</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_body_fun</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">externals</span><span class="p">):</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">step_fn</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">all_params</span><span class="p">,</span> <span class="n">externals</span><span class="p">,</span> <span class="n">external_inds</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
+        <span class="n">recs</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">state</span><span class="p">[</span><span class="n">rec_state</span><span class="p">][</span><span class="n">rec_ind</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">rec_state</span><span class="p">,</span> <span class="n">rec_ind</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rec_states</span><span class="p">,</span> <span class="n">rec_inds</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">state</span><span class="p">,</span> <span class="n">recs</span>
+
+    <span class="c1"># If necessary, pad the stimulus with zeros in order to simulate sufficiently long.</span>
+    <span class="c1"># The total simulation length will be `prod(checkpoint_lengths)`. At the end, we</span>
+    <span class="c1"># return only the first `nsteps_to_return` elements (plus the initial state).</span>
+    <span class="k">if</span> <span class="n">externals</span><span class="p">:</span>
+        <span class="n">example_key</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">nsteps_to_return</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">externals</span><span class="p">[</span><span class="n">example_key</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">nsteps_to_return</span> <span class="o">=</span> <span class="n">t_max_steps</span>
+
+    <span class="k">if</span> <span class="n">checkpoint_lengths</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">checkpoint_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">nsteps_to_return</span><span class="p">]</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">nsteps_to_return</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">prod</span><span class="p">(</span><span class="n">checkpoint_lengths</span><span class="p">)</span>
+        <span class="n">size_difference</span> <span class="o">=</span> <span class="n">length</span> <span class="o">-</span> <span class="n">nsteps_to_return</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">nsteps_to_return</span> <span class="o">&lt;=</span> <span class="n">length</span>
+        <span class="p">),</span> <span class="s2">&quot;The desired simulation duration is longer than `prod(nested_length)`.&quot;</span>
+        <span class="k">if</span> <span class="n">externals</span><span class="p">:</span>
+            <span class="n">dummy_external</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">size_difference</span><span class="p">,</span> <span class="n">externals</span><span class="p">[</span><span class="n">example_key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">externals</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">externals</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">dummy_external</span><span class="p">])</span>
+
+    <span class="c1"># Record the initial state.</span>
+    <span class="n">init_recs</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">all_states</span><span class="p">[</span><span class="n">rec_state</span><span class="p">][</span><span class="n">rec_ind</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">rec_state</span><span class="p">,</span> <span class="n">rec_ind</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rec_states</span><span class="p">,</span> <span class="n">rec_inds</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">init_recording</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">init_recs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Run simulation.</span>
+    <span class="n">all_states</span><span class="p">,</span> <span class="n">recordings</span> <span class="o">=</span> <span class="n">nested_checkpoint_scan</span><span class="p">(</span>
+        <span class="n">_body_fun</span><span class="p">,</span>
+        <span class="n">all_states</span><span class="p">,</span>
+        <span class="n">externals</span><span class="p">,</span>
+        <span class="n">length</span><span class="o">=</span><span class="n">length</span><span class="p">,</span>
+        <span class="n">nested_lengths</span><span class="o">=</span><span class="n">checkpoint_lengths</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">recs</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">init_recording</span><span class="p">,</span> <span class="n">recordings</span><span class="p">[:</span><span class="n">nsteps_to_return</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">recs</span><span class="p">,</span> <span class="n">all_states</span><span class="p">)</span> <span class="k">if</span> <span class="n">return_states</span> <span class="k">else</span> <span class="n">recs</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="jaxley.solver_gate"></a>
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_gate.exponential_euler" class="doc doc-heading">
+            <code class=" language-python"><span class="n">exponential_euler</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">x_inf</span><span class="p">,</span> <span class="n">x_tau</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_gate.exponential_euler" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>An exact solver for the linear dynamical system <code>dx = -(x - x_inf) / x_tau</code>.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_gate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">exponential_euler</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">x_inf</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">x_tau</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An exact solver for the linear dynamical system `dx = -(x - x_inf) / x_tau`.&quot;&quot;&quot;</span>
+    <span class="n">exp_term</span> <span class="o">=</span> <span class="n">save_exp</span><span class="p">(</span><span class="o">-</span><span class="n">dt</span> <span class="o">/</span> <span class="n">x_tau</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">exp_term</span> <span class="o">+</span> <span class="n">x_inf</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">exp_term</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_gate.save_exp" class="doc doc-heading">
+            <code class=" language-python"><span class="n">save_exp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">20.0</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_gate.save_exp" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Clip the input to a maximum value and return its exponential.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_gate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">save_exp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">max_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Clip the input to a maximum value and return its exponential.&quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">max_value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_gate.solve_inf_gate_exponential" class="doc doc-heading">
+            <code class=" language-python"><span class="n">solve_inf_gate_exponential</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">s_inf</span><span class="p">,</span> <span class="n">tau_s</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_gate.solve_inf_gate_exponential" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>solves dx/dt = (s_inf - x) / tau_s
+via exponential Euler</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>gate variable</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dt</code>
+            </td>
+            <td>
+                  <code>float</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>time_delta</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>s_inf</code>
+            </td>
+            <td>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><em>description</em></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tau_s</code>
+            </td>
+            <td>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><em>description</em></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>_type_</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>updated gate</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_gate.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">solve_inf_gate_exponential</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">s_inf</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">tau_s</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;solves dx/dt = (s_inf - x) / tau_s</span>
+<span class="sd">    via exponential Euler</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (jnp.ndarray): gate variable</span>
+<span class="sd">        dt (float): time_delta</span>
+<span class="sd">        s_inf (jnp.ndarray): _description_</span>
+<span class="sd">        tau_s (jnp.ndarray): _description_</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        _type_: updated gate</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">slope</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">tau_s</span>
+    <span class="n">exp_term</span> <span class="o">=</span> <span class="n">save_exp</span><span class="p">(</span><span class="n">slope</span> <span class="o">*</span> <span class="n">dt</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">exp_term</span> <span class="o">+</span> <span class="n">s_inf</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">exp_term</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="jaxley.solver_voltage"></a>
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_voltage._backsub_branched" class="doc doc-heading">
+            <code class=" language-python"><span class="n">_backsub_branched</span><span class="p">(</span><span class="n">lowers</span><span class="p">,</span> <span class="n">diags</span><span class="p">,</span> <span class="n">uppers</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">branchpoint_conds_children</span><span class="p">,</span> <span class="n">branchpoint_conds_parents</span><span class="p">,</span> <span class="n">branchpoint_weights_children</span><span class="p">,</span> <span class="n">branchpoint_weights_parents</span><span class="p">,</span> <span class="n">branchpoint_diags</span><span class="p">,</span> <span class="n">branchpoint_solves</span><span class="p">,</span> <span class="n">tridiag_solver</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_voltage._backsub_branched" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Backsubstitution.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_voltage.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_backsub_branched</span><span class="p">(</span>
+    <span class="n">lowers</span><span class="p">,</span>
+    <span class="n">diags</span><span class="p">,</span>
+    <span class="n">uppers</span><span class="p">,</span>
+    <span class="n">solves</span><span class="p">,</span>
+    <span class="n">branchpoint_conds_children</span><span class="p">,</span>
+    <span class="n">branchpoint_conds_parents</span><span class="p">,</span>
+    <span class="n">branchpoint_weights_children</span><span class="p">,</span>
+    <span class="n">branchpoint_weights_parents</span><span class="p">,</span>
+    <span class="n">branchpoint_diags</span><span class="p">,</span>
+    <span class="n">branchpoint_solves</span><span class="p">,</span>
+    <span class="n">tridiag_solver</span><span class="p">,</span>
+    <span class="n">ncomp_per_branch</span><span class="p">,</span>
+    <span class="n">idx</span><span class="p">,</span>
+    <span class="n">debug_states</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Backsubstitution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># At first level, we do not want to eliminate.</span>
+    <span class="n">solves</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">diags</span> <span class="o">=</span> <span class="n">_backsub_level</span><span class="p">(</span>
+        <span class="n">idx</span><span class="o">.</span><span class="n">root_inds</span><span class="p">,</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">tridiag_solver</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">cil</span><span class="p">,</span> <span class="n">pil</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">idx</span><span class="o">.</span><span class="n">children_in_level</span><span class="p">,</span> <span class="n">idx</span><span class="o">.</span><span class="n">parents_in_level</span><span class="p">):</span>
+        <span class="n">branchpoint_weights_parents</span><span class="p">,</span> <span class="n">branchpoint_solves</span> <span class="o">=</span> <span class="n">_eliminate_parents_lower</span><span class="p">(</span>
+            <span class="n">pil</span><span class="p">,</span>
+            <span class="n">diags</span><span class="p">,</span>
+            <span class="n">solves</span><span class="p">,</span>
+            <span class="n">branchpoint_weights_parents</span><span class="p">,</span>
+            <span class="n">branchpoint_solves</span><span class="p">,</span>
+            <span class="n">ncomp_per_branch</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">branchpoint_conds_children</span><span class="p">,</span> <span class="n">solves</span> <span class="o">=</span> <span class="n">_eliminate_children_upper</span><span class="p">(</span>
+            <span class="n">cil</span><span class="p">,</span>
+            <span class="n">solves</span><span class="p">,</span>
+            <span class="n">branchpoint_conds_children</span><span class="p">,</span>
+            <span class="n">branchpoint_diags</span><span class="p">,</span>
+            <span class="n">branchpoint_solves</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">solves</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">diags</span> <span class="o">=</span> <span class="n">_backsub_level</span><span class="p">(</span>
+            <span class="n">cil</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">diags</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">tridiag_solver</span><span class="p">,</span> <span class="n">idx</span>
+        <span class="p">)</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">branchpoint_weights_parents</span><span class="p">,</span>
+        <span class="n">branchpoint_solves</span><span class="p">,</span>
+        <span class="n">branchpoint_conds_children</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_voltage._triang_branched" class="doc doc-heading">
+            <code class=" language-python"><span class="n">_triang_branched</span><span class="p">(</span><span class="n">lowers</span><span class="p">,</span> <span class="n">diags</span><span class="p">,</span> <span class="n">uppers</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">branchpoint_conds_children</span><span class="p">,</span> <span class="n">branchpoint_conds_parents</span><span class="p">,</span> <span class="n">branchpoint_weights_children</span><span class="p">,</span> <span class="n">branchpoint_weights_parents</span><span class="p">,</span> <span class="n">branchpoint_diags</span><span class="p">,</span> <span class="n">branchpoint_solves</span><span class="p">,</span> <span class="n">tridiag_solver</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_voltage._triang_branched" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Triangulation.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_voltage.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_triang_branched</span><span class="p">(</span>
+    <span class="n">lowers</span><span class="p">,</span>
+    <span class="n">diags</span><span class="p">,</span>
+    <span class="n">uppers</span><span class="p">,</span>
+    <span class="n">solves</span><span class="p">,</span>
+    <span class="n">branchpoint_conds_children</span><span class="p">,</span>
+    <span class="n">branchpoint_conds_parents</span><span class="p">,</span>
+    <span class="n">branchpoint_weights_children</span><span class="p">,</span>
+    <span class="n">branchpoint_weights_parents</span><span class="p">,</span>
+    <span class="n">branchpoint_diags</span><span class="p">,</span>
+    <span class="n">branchpoint_solves</span><span class="p">,</span>
+    <span class="n">tridiag_solver</span><span class="p">,</span>
+    <span class="n">ncomp_per_branch</span><span class="p">,</span>
+    <span class="n">idx</span><span class="p">,</span>
+    <span class="n">debug_states</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Triangulation.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">cil</span><span class="p">,</span> <span class="n">pil</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="nb">reversed</span><span class="p">(</span><span class="n">idx</span><span class="o">.</span><span class="n">children_in_level</span><span class="p">),</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">idx</span><span class="o">.</span><span class="n">parents_in_level</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="n">diags</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">uppers</span> <span class="o">=</span> <span class="n">_triang_level</span><span class="p">(</span>
+            <span class="n">cil</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+            <span class="n">lowers</span><span class="p">,</span>
+            <span class="n">diags</span><span class="p">,</span>
+            <span class="n">uppers</span><span class="p">,</span>
+            <span class="n">solves</span><span class="p">,</span>
+            <span class="n">tridiag_solver</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="p">(</span>
+            <span class="n">branchpoint_diags</span><span class="p">,</span>
+            <span class="n">branchpoint_solves</span><span class="p">,</span>
+            <span class="n">branchpoint_weights_children</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">=</span> <span class="n">_eliminate_children_lower</span><span class="p">(</span>
+            <span class="n">cil</span><span class="p">,</span>
+            <span class="n">diags</span><span class="p">,</span>
+            <span class="n">solves</span><span class="p">,</span>
+            <span class="n">branchpoint_conds_children</span><span class="p">,</span>
+            <span class="n">branchpoint_weights_children</span><span class="p">,</span>
+            <span class="n">branchpoint_diags</span><span class="p">,</span>
+            <span class="n">branchpoint_solves</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">diags</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">branchpoint_conds_parents</span> <span class="o">=</span> <span class="n">_eliminate_parents_upper</span><span class="p">(</span>
+            <span class="n">pil</span><span class="p">,</span>
+            <span class="n">diags</span><span class="p">,</span>
+            <span class="n">solves</span><span class="p">,</span>
+            <span class="n">branchpoint_conds_parents</span><span class="p">,</span>
+            <span class="n">branchpoint_weights_parents</span><span class="p">,</span>
+            <span class="n">branchpoint_diags</span><span class="p">,</span>
+            <span class="n">branchpoint_solves</span><span class="p">,</span>
+            <span class="n">ncomp_per_branch</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="c1"># At last level, we do not want to eliminate anymore.</span>
+    <span class="n">diags</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">uppers</span> <span class="o">=</span> <span class="n">_triang_level</span><span class="p">(</span>
+        <span class="n">idx</span><span class="o">.</span><span class="n">root_inds</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">diags</span><span class="p">,</span> <span class="n">uppers</span><span class="p">,</span> <span class="n">solves</span><span class="p">,</span> <span class="n">tridiag_solver</span><span class="p">,</span> <span class="n">idx</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">uppers</span><span class="p">,</span>
+        <span class="n">branchpoint_diags</span><span class="p">,</span>
+        <span class="n">branchpoint_solves</span><span class="p">,</span>
+        <span class="n">branchpoint_weights_children</span><span class="p">,</span>
+        <span class="n">branchpoint_conds_parents</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_voltage._voltage_vectorfield" class="doc doc-heading">
+            <code class=" language-python"><span class="n">_voltage_vectorfield</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_voltage._voltage_vectorfield" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Evaluate the vectorfield of the nerve equation.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_voltage.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_voltage_vectorfield</span><span class="p">(</span>
+    <span class="n">voltages</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">voltage_terms</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">constant_terms</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">types</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sinks</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">axial_conductances</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">par_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">child_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">nbranches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">idx</span><span class="p">:</span> <span class="n">JaxleySolveIndexer</span><span class="p">,</span>
+    <span class="n">debug_states</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Evaluate the vectorfield of the nerve equation.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">types</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Forward Euler is not implemented for branched morphologies.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Membrane current update.</span>
+    <span class="n">vecfield</span> <span class="o">=</span> <span class="o">-</span><span class="n">voltage_terms</span> <span class="o">*</span> <span class="n">voltages</span> <span class="o">+</span> <span class="n">constant_terms</span>
+
+    <span class="c1"># Build upper and lower within the branch.</span>
+    <span class="n">c2c</span> <span class="o">=</span> <span class="n">types</span> <span class="o">==</span> <span class="mi">0</span>  <span class="c1"># c2c = compartment-to-compartment.</span>
+
+    <span class="c1"># Build uppers.</span>
+    <span class="n">upper_inds</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">upper_inds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">uppers</span> <span class="o">=</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">c2c</span><span class="p">][</span><span class="n">upper_inds</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">uppers</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span>
+
+    <span class="c1"># Build lowers.</span>
+    <span class="n">lower_inds</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lower_inds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">lowers</span> <span class="o">=</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">c2c</span><span class="p">][</span><span class="n">lower_inds</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lowers</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([])</span>
+
+    <span class="c1"># For networks consisting of branches.</span>
+    <span class="n">uppers</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">uppers</span><span class="p">,</span> <span class="p">(</span><span class="n">nbranches</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">lowers</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">lowers</span><span class="p">,</span> <span class="p">(</span><span class="n">nbranches</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="c1"># Current through segments within the same branch.</span>
+    <span class="n">vecfield</span> <span class="o">=</span> <span class="n">vecfield</span><span class="o">.</span><span class="n">at</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">voltages</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">voltages</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">uppers</span><span class="p">)</span>
+    <span class="n">vecfield</span> <span class="o">=</span> <span class="n">vecfield</span><span class="o">.</span><span class="n">at</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">voltages</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">voltages</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:])</span> <span class="o">*</span> <span class="n">lowers</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">vecfield</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_voltage.step_voltage_explicit" class="doc doc-heading">
+            <code class=" language-python"><span class="n">step_voltage_explicit</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">internal_node_inds</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_voltage.step_voltage_explicit" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Solve one timestep of branched nerve equations with explicit (forward) Euler.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_voltage.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">step_voltage_explicit</span><span class="p">(</span>
+    <span class="n">voltages</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">voltage_terms</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">constant_terms</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">axial_conductances</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">internal_node_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sinks</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">types</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">ncomp_per_branch</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">par_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">child_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">nbranches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">idx</span><span class="p">:</span> <span class="n">JaxleySolveIndexer</span><span class="p">,</span>
+    <span class="n">debug_states</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve one timestep of branched nerve equations with explicit (forward) Euler.&quot;&quot;&quot;</span>
+    <span class="n">voltages</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="p">(</span><span class="n">nbranches</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">voltage_terms</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">voltage_terms</span><span class="p">,</span> <span class="p">(</span><span class="n">nbranches</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">constant_terms</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">constant_terms</span><span class="p">,</span> <span class="p">(</span><span class="n">nbranches</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="n">update</span> <span class="o">=</span> <span class="n">_voltage_vectorfield</span><span class="p">(</span>
+        <span class="n">voltages</span><span class="p">,</span>
+        <span class="n">voltage_terms</span><span class="p">,</span>
+        <span class="n">constant_terms</span><span class="p">,</span>
+        <span class="n">types</span><span class="p">,</span>
+        <span class="n">sources</span><span class="p">,</span>
+        <span class="n">sinks</span><span class="p">,</span>
+        <span class="n">axial_conductances</span><span class="p">,</span>
+        <span class="n">par_inds</span><span class="p">,</span>
+        <span class="n">child_inds</span><span class="p">,</span>
+        <span class="n">nbranches</span><span class="p">,</span>
+        <span class="n">solver</span><span class="p">,</span>
+        <span class="n">delta_t</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+        <span class="n">debug_states</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">new_voltates</span> <span class="o">=</span> <span class="n">voltages</span> <span class="o">+</span> <span class="n">delta_t</span> <span class="o">*</span> <span class="n">update</span>
+    <span class="k">return</span> <span class="n">new_voltates</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="jaxley.solver_voltage.step_voltage_implicit_with_jaxley_spsolve" class="doc doc-heading">
+            <code class=" language-python"><span class="n">step_voltage_implicit_with_jaxley_spsolve</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">internal_node_inds</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+
+<a href="#jaxley.solver_voltage.step_voltage_implicit_with_jaxley_spsolve" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Solve one timestep of branched nerve equations with implicit (backward) Euler.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>jaxley/solver_voltage.py</code></summary>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">step_voltage_implicit_with_jaxley_spsolve</span><span class="p">(</span>
+    <span class="n">voltages</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">voltage_terms</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">constant_terms</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">axial_conductances</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">internal_node_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sinks</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">types</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">ncomp_per_branch</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">par_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">child_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">nbranches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">idx</span><span class="p">:</span> <span class="n">JaxleySolveIndexer</span><span class="p">,</span>
+    <span class="n">debug_states</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve one timestep of branched nerve equations with implicit (backward) Euler.&quot;&quot;&quot;</span>
+    <span class="c1"># Build diagonals.</span>
+    <span class="n">c2c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">types</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+    <span class="n">total_ncomp</span> <span class="o">=</span> <span class="n">idx</span><span class="o">.</span><span class="n">cumsum_ncomp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">diags</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">total_ncomp</span><span class="p">)</span>
+
+    <span class="c1"># if-case needed because `.at` does not allow empty inputs, but the input is</span>
+    <span class="c1"># empty for compartments.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">diags</span> <span class="o">=</span> <span class="n">diags</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">])]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">delta_t</span> <span class="o">*</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">c2c</span><span class="p">])</span>
+
+    <span class="n">diags</span> <span class="o">=</span> <span class="n">diags</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">internal_node_inds</span><span class="p">)]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">delta_t</span> <span class="o">*</span> <span class="n">voltage_terms</span><span class="p">)</span>
+
+    <span class="c1"># Build solves.</span>
+    <span class="n">solves</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">total_ncomp</span><span class="p">)</span>
+    <span class="n">solves</span> <span class="o">=</span> <span class="n">solves</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">internal_node_inds</span><span class="p">)]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+        <span class="n">voltages</span> <span class="o">+</span> <span class="n">delta_t</span> <span class="o">*</span> <span class="n">constant_terms</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Build upper and lower within the branch.</span>
+    <span class="n">c2c</span> <span class="o">=</span> <span class="n">types</span> <span class="o">==</span> <span class="mi">0</span>  <span class="c1"># c2c = compartment-to-compartment.</span>
+
+    <span class="c1"># Build uppers.</span>
+    <span class="n">uppers</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">total_ncomp</span><span class="p">)</span>
+    <span class="n">upper_inds</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span>
+    <span class="n">sinks_upper</span> <span class="o">=</span> <span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">][</span><span class="n">upper_inds</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sinks_upper</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">uppers</span> <span class="o">=</span> <span class="n">uppers</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">sinks_upper</span><span class="p">)]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="o">-</span><span class="n">delta_t</span> <span class="o">*</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">c2c</span><span class="p">][</span><span class="n">upper_inds</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Build lowers.</span>
+    <span class="n">lowers</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">total_ncomp</span><span class="p">)</span>
+    <span class="n">lower_inds</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">]</span>
+    <span class="n">sinks_lower</span> <span class="o">=</span> <span class="n">sinks</span><span class="p">[</span><span class="n">c2c</span><span class="p">][</span><span class="n">lower_inds</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sinks_lower</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">lowers</span> <span class="o">=</span> <span class="n">lowers</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">sinks_lower</span><span class="p">)]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="o">-</span><span class="n">delta_t</span> <span class="o">*</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">c2c</span><span class="p">][</span><span class="n">lower_inds</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Build branchpoint conductances.</span>
+    <span class="n">branchpoint_conds_parents</span> <span class="o">=</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">types</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">branchpoint_conds_children</span> <span class="o">=</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">types</span> <span class="o">==</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">branchpoint_weights_parents</span> <span class="o">=</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">types</span> <span class="o">==</span> <span class="mi">3</span><span class="p">]</span>
+    <span class="n">branchpoint_weights_children</span> <span class="o">=</span> <span class="n">axial_conductances</span><span class="p">[</span><span class="n">types</span> <span class="o">==</span> <span class="mi">4</span><span class="p">]</span>
+    <span class="n">all_branchpoint_vals</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">branchpoint_weights_parents</span><span class="p">,</span> <span class="n">branchpoint_weights_children</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="c1"># Find unique group identifiers</span>
+    <span class="n">num_branchpoints</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">branchpoint_conds_parents</span><span class="p">)</span>
+    <span class="n">branchpoint_diags</span> <span class="o">=</span> <span class="o">-</span><span class="n">group_and_sum</span><span class="p">(</span>
+        <span class="n">all_branchpoint_vals</span><span class="p">,</span> <span class="n">idx</span><span class="o">.</span><span class="n">branchpoint_group_inds</span><span class="p">,</span> <span class="n">num_branchpoints</span>
+    <span class="p">)</span>
+    <span class="n">branchpoint_solves</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_branchpoints</span><span class="p">,))</span>
+
+    <span class="n">branchpoint_conds_children</span> <span class="o">=</span> <span class="o">-</span><span class="n">delta_t</span> <span class="o">*</span> <span class="n">branchpoint_conds_children</span>
+    <span class="n">branchpoint_conds_parents</span> <span class="o">=</span> <span class="o">-</span><span class="n">delta_t</span> <span class="o">*</span> <span class="n">branchpoint_conds_parents</span>
+
+    <span class="c1"># Here, I move all child and parent indices towards a branchpoint into a larger</span>
+    <span class="c1"># vector. This is wasteful, but it makes indexing much easier. JIT compiling</span>
+    <span class="c1"># makes the speed difference negligible.</span>
+    <span class="c1"># Children.</span>
+    <span class="n">bp_conds_children</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbranches</span><span class="p">)</span>
+    <span class="n">bp_weights_children</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbranches</span><span class="p">)</span>
+    <span class="c1"># Parents.</span>
+    <span class="n">bp_conds_parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbranches</span><span class="p">)</span>
+    <span class="n">bp_weights_parents</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbranches</span><span class="p">)</span>
+
+    <span class="c1"># `.at[inds]` requires that `inds` is not empty, so we need an if-case here.</span>
+    <span class="c1"># `len(inds) == 0` is the case for branches and compartments.</span>
+    <span class="k">if</span> <span class="n">num_branchpoints</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bp_conds_children</span> <span class="o">=</span> <span class="n">bp_conds_children</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">child_inds</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">branchpoint_conds_children</span>
+        <span class="p">)</span>
+        <span class="n">bp_weights_children</span> <span class="o">=</span> <span class="n">bp_weights_children</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">child_inds</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">branchpoint_weights_children</span>
+        <span class="p">)</span>
+        <span class="n">bp_conds_parents</span> <span class="o">=</span> <span class="n">bp_conds_parents</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">par_inds</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">branchpoint_conds_parents</span><span class="p">)</span>
+        <span class="n">bp_weights_parents</span> <span class="o">=</span> <span class="n">bp_weights_parents</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">par_inds</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">branchpoint_weights_parents</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Triangulate the linear system of equations.</span>
+    <span class="p">(</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">uppers</span><span class="p">,</span>
+        <span class="n">branchpoint_diags</span><span class="p">,</span>
+        <span class="n">branchpoint_solves</span><span class="p">,</span>
+        <span class="n">bp_weights_children</span><span class="p">,</span>
+        <span class="n">bp_conds_parents</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">=</span> <span class="n">_triang_branched</span><span class="p">(</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">uppers</span><span class="p">,</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">bp_conds_children</span><span class="p">,</span>
+        <span class="n">bp_conds_parents</span><span class="p">,</span>
+        <span class="n">bp_weights_children</span><span class="p">,</span>
+        <span class="n">bp_weights_parents</span><span class="p">,</span>
+        <span class="n">branchpoint_diags</span><span class="p">,</span>
+        <span class="n">branchpoint_solves</span><span class="p">,</span>
+        <span class="n">solver</span><span class="p">,</span>
+        <span class="n">ncomp_per_branch</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+        <span class="n">debug_states</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Backsubstitute the linear system of equations.</span>
+    <span class="p">(</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">bp_weights_parents</span><span class="p">,</span>
+        <span class="n">branchpoint_solves</span><span class="p">,</span>
+        <span class="n">bp_conds_children</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">=</span> <span class="n">_backsub_branched</span><span class="p">(</span>
+        <span class="n">lowers</span><span class="p">,</span>
+        <span class="n">diags</span><span class="p">,</span>
+        <span class="n">uppers</span><span class="p">,</span>
+        <span class="n">solves</span><span class="p">,</span>
+        <span class="n">bp_conds_children</span><span class="p">,</span>
+        <span class="n">bp_conds_parents</span><span class="p">,</span>
+        <span class="n">bp_weights_children</span><span class="p">,</span>
+        <span class="n">bp_weights_parents</span><span class="p">,</span>
+        <span class="n">branchpoint_diags</span><span class="p">,</span>
+        <span class="n">branchpoint_solves</span><span class="p">,</span>
+        <span class="n">solver</span><span class="p">,</span>
+        <span class="n">ncomp_per_branch</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+        <span class="n">debug_states</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">solves</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">)[</span><span class="n">idx</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">internal_node_inds</span><span class="p">)]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      
+    
+  </body>
+</html>
