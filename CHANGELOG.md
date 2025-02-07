@@ -36,14 +36,19 @@ net.vis()
   - See [the improved SWC reader tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html) for more details.
 
 ### Code Health
+
 - changelog added to CI (#537, #558,  @jnsbck)
 
 - Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
   - Regression tests can be triggered by commenting "/test_regression" on a PR.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
 
+- Allow inspecting the version via `import jaxley as jx; print(jx.__version__)` (#577, @michaeldeistler).
+
 ### Bug fixes
+
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
+
 
 # 0.5.0
 
