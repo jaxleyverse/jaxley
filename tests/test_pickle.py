@@ -16,7 +16,7 @@ branch = jx.Branch(comp, 4)
 cell = jx.Cell([branch] * 3, [-1, 0, 0])
 net = jx.Network([cell] * 2)
 fname = os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc")
-morph_cell = jx.read_swc(fname, nseg=1, max_branch_len=2_000, assign_groups=True)
+morph_cell = jx.read_swc(fname, ncomp=1, max_branch_len=2_000, assign_groups=True)
 
 # insert mechanisms
 net.cell(0).branch("all").insert(HH())

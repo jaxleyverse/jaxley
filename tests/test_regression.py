@@ -178,7 +178,7 @@ def build_net(num_cells, artificial=True, connect=True, connection_prob=0.0):
     else:
         dirname = os.path.dirname(__file__)
         fname = os.path.join(dirname, "swc_files", "morph.swc")
-        cell = jx.read_swc(fname, nseg=4)
+        cell = jx.read_swc(fname, ncomp=4)
     net = jx.Network([cell for _ in range(num_cells)])
 
     # Channels.

@@ -184,7 +184,7 @@ def test_from_graph_vs_NEURON(file):
         graph, ncomp=ncomp, max_branch_len=2000, ignore_swc_trace_errors=False
     )
     cell.compute_compartment_centers()
-    h, neuron_cell = import_neuron_morph(fname, nseg=ncomp)
+    h, neuron_cell = import_neuron_morph(fname, ncomp=ncomp)
 
     # remove root branch
     jaxley_comps = cell.nodes[
@@ -274,7 +274,7 @@ def test_swc2graph_voltages(file):
     dt = 0.025
 
     ##################### NEURON ##################
-    h, neuron_cell = import_neuron_morph(fname, nseg=ncomp)
+    h, neuron_cell = import_neuron_morph(fname, ncomp=ncomp)
 
     ####################### jaxley ##################
     graph = swc_to_graph(fname)

@@ -27,12 +27,10 @@ class Branch(Module):
     branch_params: Dict = {}
     branch_states: Dict = {}
 
-    @deprecated_kwargs("0.6.0", ["nseg"])
     def __init__(
         self,
         compartments: Optional[Union[Compartment, List[Compartment]]] = None,
         ncomp: Optional[int] = None,
-        nseg: Optional[int] = None,
     ):
         """
         Args:
@@ -42,13 +40,6 @@ class Branch(Module):
                 a single compartment, than the compartment is repeated `ncomp` times to
                 create the branch.
         """
-        # Warnings and errors that deal with the change from `nseg` to `ncomp` change
-        # in Jaxley v0.5.0.
-        if ncomp is not None and nseg is not None:
-            raise ValueError("You passed `ncomp` and `nseg`. Please pass only `ncomp`.")
-        if ncomp is None and nseg is not None:
-            ncomp = nseg
-
         super().__init__()
         assert (
             isinstance(compartments, (Compartment, List)) or compartments is None

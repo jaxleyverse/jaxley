@@ -492,7 +492,7 @@ def make_jaxley_compatible(
 
     Args:
         graph: A networkx graph of a traced morphology.
-        nseg: The number of segments per compartment.
+        ncomp: The number of segments per compartment.
         max_branch_len: Maximal length of one branch. If a branch exceeds this length,
             it is split into equal parts.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
@@ -595,8 +595,8 @@ def build_module_scaffold(
     build_cache["compartment"] = [comp]
 
     if return_type in return_types[1:]:
-        nsegs = idxs["branch_index"].value_counts().iloc[0]
-        branch = Branch([comp for _ in range(nsegs)])
+        ncomps = idxs["branch_index"].value_counts().iloc[0]
+        branch = Branch([comp for _ in range(ncomps)])
         build_cache["branch"] = [branch]
 
     if return_type in return_types[2:]:
@@ -683,7 +683,7 @@ def from_graph(
 
     Args:
         graph: A networkx graph representing a module.
-        nseg: The default number of segments per compartment.
+        ncomp: The default number of segments per compartment.
             Will only be selected if the graph has not been compartmentalized yet.
         max_branch_len: Maximal length of one branch. If a branch exceeds this length,
             it is split into equal parts such that each subbranch is below
