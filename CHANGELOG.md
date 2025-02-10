@@ -1,3 +1,8 @@
+# 0.6.1
+
+- Fixup for failing readthedocs build of v0.6.0 (#579, @michaeldeistler).
+
+
 # 0.6.0
 
 ### Pin of JAX version
