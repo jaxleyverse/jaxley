@@ -1,5 +1,7 @@
 # 0.6.3
 
+- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582, @Kartik-Sama, @michaeldeistler).
+
 # 0.6.2
 
 - also remove `nseg` from tutorials (#580, @jnsbck)
