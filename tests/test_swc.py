@@ -241,3 +241,48 @@ def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
 
     ####################### check ################
     assert all(errors < 2.5), "voltages do not match."
+
+
+@pytest.mark.parametrize(
+    "reader_backend",
+    [
+        "graph",
+        "custom",
+    ],
+)
+@pytest.mark.parametrize(
+    "file",
+    [
+        "morph_3_types.swc",
+        "morph_3_types_single_point_soma.swc",
+        "morph.swc",
+        # TODO: `bbp_with_axon` currently fails for `graph` backend because
+        # the root-compartment is considered to be of type soma, not `custom` (as is
+        # the case for the `custom` swc reader).
+        # "bbp_with_axon.swc",
+    ],
+)
+def test_swc_types(reader_backend, file):
+    # Can not use full morphology because of branch sorting.
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", file)
+    cell = jx.read_swc(fname, ncomp=1, backend=reader_backend)
+    desired_numbers_of_comps = {
+        "morph_3_types.swc": {"soma": 1, "axon": 1, "basal": 1, "apical": None},
+        "morph_3_types_single_point_soma.swc": {
+            "soma": 1,
+            "axon": 1,
+            "basal": 1,
+            "apical": None,
+        },
+        "morph.swc": {"soma": 2, "axon": None, "basal": 101, "apical": 53},
+        "bbp_with_axon.swc": {"soma": 1, "axon": 128, "basal": 66, "apical": 129},
+    }
+    # Test soma.
+    for key in ["soma", "axon", "basal", "apical"]:
+        n_desired = desired_numbers_of_comps[file][key]
+        if n_desired is not None:
+            n_comps_in_morph = len(cell.__getattr__(key).nodes)
+            assert (
+                n_comps_in_morph == n_desired
+            ), f"{key} has {n_comps_in_morph} != {n_desired} comps!"

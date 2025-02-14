@@ -1,6 +1,7 @@
 # 0.6.3
 
 - add new release workflow (#588, @jnsbck)
+- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582, @Kartik-Sama, @michaeldeistler).
 
 # 0.6.2
 
