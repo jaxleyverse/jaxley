@@ -15,8 +15,8 @@ class Synapse:
     """
 
     _name = None
-    synapse_params = None
-    synapse_states = None
+    params = None
+    states = None
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
@@ -38,22 +38,22 @@ class Synapse:
         new_prefix = new_name + "_"
 
         self._name = new_name
-        self.synapse_params = {
+        self.params = {
             (
                 new_prefix + key[len(old_prefix) :]
                 if key.startswith(old_prefix)
                 else key
             ): value
-            for key, value in self.synapse_params.items()
+            for key, value in self.params.items()
         }
 
-        self.synapse_states = {
+        self.states = {
             (
                 new_prefix + key[len(old_prefix) :]
                 if key.startswith(old_prefix)
                 else key
             ): value
-            for key, value in self.synapse_states.items()
+            for key, value in self.states.items()
         }
         return self
 

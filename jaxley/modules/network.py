@@ -13,7 +13,7 @@ from jax import vmap
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from jaxley.modules.base import Module
+from jaxley.modules.base import AutoPrefix, Module
 from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
     build_branchpoint_group_inds,
@@ -273,8 +273,8 @@ class Network(Module):
             assert (
                 synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
+            synapse_param_names = list(synapse_type.params.keys())
+            synapse_state_names = list(synapse_type.states.keys())
 
             synapse_params = {}
             for p in synapse_param_names:
@@ -325,8 +325,8 @@ class Network(Module):
             assert (
                 synapse_names[i] == synapse_type._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
+            synapse_param_names = list(synapse_type.params.keys())
+            synapse_state_names = list(synapse_type.states.keys())
 
             synapse_params = {}
             for p in synapse_param_names:
@@ -514,12 +514,13 @@ class Network(Module):
     def _update_synapse_state_names(self, synapse_type):
         # (Potentially) update variables that track meta information about synapses.
         self.base.synapse_names.append(synapse_type._name)
-        self.base.synapse_param_names += list(synapse_type.synapse_params.keys())
-        self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
+        self.base.synapse_param_names += list(synapse_type.params.keys())
+        self.base.synapse_state_names += list(synapse_type.states.keys())
         self.base.synapses.append(synapse_type)
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
+        synapse_type = AutoPrefix(synapse_type)
         synapse_name = synapse_type._name
         synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
@@ -567,9 +568,9 @@ class Network(Module):
 
     def _add_params_to_edges(self, synapse_type, indices):
         # Add parameters and states to the `.edges` table.
-        for key, param_val in synapse_type.synapse_params.items():
+        for key, param_val in synapse_type.params.items():
             self.base.edges.loc[indices, key] = param_val
 
         # Update synaptic state array.
-        for key, state_val in synapse_type.synapse_states.items():
+        for key, state_val in synapse_type.states.items():
             self.base.edges.loc[indices, key] = state_val

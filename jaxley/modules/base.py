@@ -11,6 +11,7 @@ from warnings import warn
 
 import jax.numpy as jnp
 import numpy as np
+from optree import tree_map_with_path
 import pandas as pd
 from jax import jit, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
@@ -753,9 +754,9 @@ class Module(ABC):
         edges = self.base.edges.to_dict(orient="list")
         for i, synapse in enumerate(self.base.synapses):
             condition = np.asarray(edges["type_ind"]) == i
-            for key in synapse.synapse_params:
+            for key in synapse.params:
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
-            for key in synapse.synapse_states:
+            for key in synapse.states:
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
 
     def show(
@@ -789,12 +790,8 @@ class Module(ABC):
         inds = [f"{s}_{i}" for i in inds for s in scopes] if indices else []
         cols += inds
         cols += [ch._name for ch in self.channels] if channel_names else []
-        cols += (
-            sum([list(ch.channel_params) for ch in self.channels], []) if params else []
-        )
-        cols += (
-            sum([list(ch.channel_states) for ch in self.channels], []) if states else []
-        )
+        cols += sum([list(ch.params) for ch in self.channels], []) if params else []
+        cols += sum([list(ch.states) for ch in self.channels], []) if states else []
 
         if not param_names is None:
             cols = (
@@ -923,12 +920,8 @@ class Module(ABC):
         start_idx = self.nodes["global_comp_index"].to_numpy()[0]
         ncomp_per_branch = self.base.ncomp_per_branch
         channel_names = [c._name for c in self.base.channels]
-        channel_param_names = list(
-            chain(*[c.channel_params for c in self.base.channels])
-        )
-        channel_state_names = list(
-            chain(*[c.channel_states for c in self.base.channels])
-        )
+        channel_param_names = list(chain(*[c.params for c in self.base.channels]))
+        channel_state_names = list(chain(*[c.states for c in self.base.channels]))
         radius_generating_fns = self.base._radius_generating_fns
 
         within_branch_radiuses = view["radius"].to_numpy()
@@ -1173,9 +1166,9 @@ class Module(ABC):
         edges = self.base.edges.to_dict(orient="list")
         for i, synapse in enumerate(self.base.synapses):
             condition = np.asarray(edges["type_ind"]) == i
-            for key in list(synapse.synapse_params.keys()):
+            for key in list(synapse.params.keys()):
                 self.base.edges.loc[condition, key] = all_params[key]
-            for key in list(synapse.synapse_states.keys()):
+            for key in list(synapse.states.keys()):
                 self.base.edges.loc[condition, key] = all_states[key]
 
     def distance(self, endpoint: "View") -> float:
@@ -1228,9 +1221,9 @@ class Module(ABC):
         """Collect all recordable / clampable states in the membrane and synapses.
 
         Returns states seperated by comps and edges."""
-        channel_states = [name for c in self.channels for name in c.channel_states]
+        channel_states = [name for c in self.channels for name in c.states]
         synapse_states = [
-            name for s in self.synapses if s is not None for name in s.synapse_states
+            name for s in self.synapses if s is not None for name in s.states
         ]
         membrane_states = ["v", "i"] + self.membrane_current_names
         return (
@@ -1290,7 +1283,7 @@ class Module(ABC):
             params[key] = self.base.jaxnodes[key]
 
         for channel in self.base.channels:
-            for channel_params in channel.channel_params:
+            for channel_params in channel.params:
                 params[channel_params] = self.base.jaxnodes[channel_params]
 
         for synapse_params in self.base.synapse_param_names:
@@ -1334,7 +1327,7 @@ class Module(ABC):
         states = {"v": self.base.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
         for channel in self.base.channels:
-            for channel_states in channel.channel_states:
+            for channel_states in channel.states:
                 states[channel_states] = self.base.jaxnodes[channel_states]
         for synapse_states in self.base.synapse_state_names:
             states[synapse_states] = self.base.jaxedges[synapse_states]
@@ -1417,8 +1410,8 @@ class Module(ABC):
             ].to_numpy()
             voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
+            channel_param_names = list(channel.params.keys())
+            channel_state_names = list(channel.states.keys())
             channel_states = query_channel_states_and_params(
                 states, channel_state_names, channel_indices
             )
@@ -1739,6 +1732,7 @@ class Module(ABC):
 
         Args:
             channel: The channel to insert."""
+        channel = AutoPrefix(channel)
         name = channel._name
 
         # Channel does not yet exist in the `jx.Module` at all.
@@ -1755,12 +1749,12 @@ class Module(ABC):
         self.base.nodes.loc[self._nodes_in_view, name] = True
 
         # Loop over all new parameters, e.g. gNa, eNa.
-        for key in channel.channel_params:
-            self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_params[key]
+        for key in channel.params:
+            self.base.nodes.loc[self._nodes_in_view, key] = channel.params[key]
 
         # Loop over all new parameters, e.g. gNa, eNa.
-        for key in channel.channel_states:
-            self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
+        for key in channel.states:
+            self.base.nodes.loc[self._nodes_in_view, key] = channel.states[key]
 
     def delete_channel(self, channel: Channel):
         """Remove a channel from the module.
@@ -1771,8 +1765,8 @@ class Module(ABC):
         channel_names = [c._name for c in self.channels]
         all_channel_names = [c._name for c in self.base.channels]
         if name in channel_names:
-            channel_cols = list(channel.channel_params.keys())
-            channel_cols += list(channel.channel_states.keys())
+            channel_cols = list(channel.params.keys())
+            channel_cols += list(channel.states.keys())
             self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
             self.base.nodes.loc[self._nodes_in_view, name] = False
 
@@ -1955,14 +1949,14 @@ class Module(ABC):
         # Update states of the channels.
         indices = channel_nodes["global_comp_index"].to_numpy()
         for channel in channels:
-            channel_param_names = list(channel.channel_params)
+            channel_param_names = list(channel.params)
             channel_param_names += [
                 "radius",
                 "length",
                 "axial_resistivity",
                 "capacitance",
             ]
-            channel_state_names = list(channel.channel_states)
+            channel_state_names = list(channel.states)
             channel_state_names += self.membrane_current_names
             channel_indices = indices[channel_nodes[channel._name].astype(bool)]
 
@@ -2010,8 +2004,8 @@ class Module(ABC):
 
         for channel in channels:
             name = channel._name
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
+            channel_param_names = list(channel.params.keys())
+            channel_state_names = list(channel.states.keys())
             indices = channel_nodes.loc[channel_nodes[name]][
                 "global_comp_index"
             ].to_numpy()
@@ -2609,13 +2603,9 @@ class View(Module):
         ):
             pkey, pval = next(iter(params.items()))
             trainable_inds_in_view = None
-            if pkey in sum(
-                [list(c.channel_params.keys()) for c in self.base.channels], []
-            ):
+            if pkey in sum([list(c.params.keys()) for c in self.base.channels], []):
                 trainable_inds_in_view = np.intersect1d(inds, self._nodes_in_view)
-            elif pkey in sum(
-                [list(s.synapse_params.keys()) for s in self.base.synapses], []
-            ):
+            elif pkey in sum([list(s.params.keys()) for s in self.base.synapses], []):
                 trainable_inds_in_view = np.intersect1d(inds, self._edges_in_view)
 
             in_view = is_viewed == np.isin(inds, trainable_inds_in_view)
@@ -2678,8 +2668,8 @@ class View(Module):
                     viewed_synapses += (
                         [syn] if in_view else [None]
                     )  # padded with None to keep indices consistent
-                    viewed_params += list(syn.synapse_params.keys()) if in_view else []
-                    viewed_states += list(syn.synapse_states.keys()) if in_view else []
+                    viewed_params += list(syn.params.keys()) if in_view else []
+                    viewed_states += list(syn.states.keys()) if in_view else []
         self.synapses = viewed_synapses
         self.synapse_param_names = viewed_params
         self.synapse_state_names = viewed_states
@@ -2756,3 +2746,144 @@ class View(Module):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         pass
+
+
+class AutoPrefix:
+    """Wrapper for Channel classes that transparently handles name prefixing using pytrees."""
+
+    def __init__(self, mech: Union[Channel, Synapse]):
+        """Initialize wrapper with a channel instance."""
+        # Store the wrapped channel
+        self._wrapped = mech
+        self.prefix = f"{self._wrapped.name}_"
+        self._name = self._wrapped._name
+        self.current_name = (
+            self._wrapped.current_name
+            if hasattr(self._wrapped, "current_name")
+            else "i_" + self.prefix[:-1]
+        )
+
+        # Make this class pretend to be the wrapped class
+        self.__class__.__name__ = mech.__class__.__name__
+        self.__class__.__qualname__ = mech.__class__.__qualname__
+        self.__class__.__module__ = mech.__class__.__module__
+
+        if isinstance(self._wrapped, Synapse):
+            delattr(self.__class__, "init_state")
+
+    def __getattr__(self, name: str):
+        """Delegate unknown attributes to the wrapped channel."""
+        return getattr(self._wrapped, name)
+
+    def __repr__(self):
+        """Return the same representation as the wrapped channel."""
+        return repr(self._wrapped)
+
+    def __str__(self):
+        """Return the same string representation as the wrapped channel."""
+        return str(self._wrapped)
+
+    def _transform_dict_keys(
+        self, d: Dict[str, Any], add_prefix: bool = True
+    ) -> Dict[str, Any]:
+        """Transform dictionary keys using pytree operations."""
+
+        def transform_key(path, value):
+            key = path[-1]  # Get the leaf key
+            if isinstance(key, str):
+                if add_prefix:
+                    return f"{self.prefix}{key}", value
+                elif key.startswith(self.prefix):
+                    return key[len(self.prefix) :], value
+            return key, value
+
+        transformed = tree_map_with_path(
+            lambda p, v: transform_key(p, v)[1],
+            d,
+            is_leaf=lambda x: isinstance(x, (jnp.ndarray, float, int)),
+        )
+        return transformed
+
+    @property
+    def params(self) -> Dict[str, Any]:
+        """Get prefixed parameters."""
+        return self._transform_dict_keys(self._wrapped.params, add_prefix=True)
+
+    @property
+    def states(self) -> Dict[str, Any]:
+        """Get prefixed states."""
+        return self._transform_dict_keys(self._wrapped.states, add_prefix=True)
+
+    def update_states(
+        self,
+        states: Dict[str, Any],
+        dt: float,
+        v: jnp.ndarray,
+        params: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Update states with automatic prefix handling using pytrees."""
+        states = self._transform_dict_keys(states, add_prefix=False)
+        params = self._transform_dict_keys(params, add_prefix=False)
+
+        states = self._wrapped.update_states(states, dt, v, params)
+
+        return self._transform_dict_keys(states, add_prefix=True)
+
+    def compute_current(
+        self,
+        states: Dict[str, Any],
+        v: jnp.ndarray,
+        params: Dict[str, Any],
+    ) -> jnp.ndarray:
+        """Compute current with automatic prefix handling using pytrees."""
+        states = self._transform_dict_keys(states, add_prefix=False)
+        params = self._transform_dict_keys(params, add_prefix=False)
+
+        return self._wrapped.compute_current(states, v, params)
+
+    def init_state(
+        self,
+        states: Dict[str, Any],
+        v: jnp.ndarray,
+        params: Dict[str, Any],
+        dt: float,
+    ) -> Dict[str, Any]:
+        """Initialize states with automatic prefix handling using pytrees."""
+        states = self._transform_dict_keys(states, add_prefix=False)
+        params = self._transform_dict_keys(params, add_prefix=False)
+
+        init_states = self._wrapped.init_state(states, v, params, dt)
+
+        return self._transform_dict_keys(init_states, add_prefix=True)
+
+
+def infer_global_params_states(mech: Union[Channel, Synapse]) -> List[str]:
+    """Infer the global parameters and states of a channel or synapse.
+
+    Infers global params and states by testing for KeyErrors in the `update_states`,
+    `compute_current`, and `init_state` methods.
+
+    Args:
+        mech: The channel or synapse to infer the global params and states of.
+
+    Returns:
+        A list of the inferred global parameters and states.
+    """
+    global_state_params = {}
+    mech_states = mech.states
+    mech_params = mech.params
+
+    while True:
+        try:
+            states = {**global_state_params, **mech_states}
+            params = {**global_state_params, **mech_params}
+
+            mech.update_states(states, 0.025, -70, params)
+            mech.compute_current(states, -70, params)
+            if isinstance(mech, Channel):
+                mech.init_state(states, -70, params, 0.025)
+            break
+        except KeyError as e:
+            missing_key = e.args[0]
+            global_state_params[missing_key] = 0
+    return list(global_state_params)
