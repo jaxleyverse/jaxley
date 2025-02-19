@@ -1,17 +1,23 @@
-name: Release Workflow
+name: Release
 
 on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - pyproject.toml
+      - jaxley/__version__.py
+    types: [labeled]
   push:
     branches:
       - main
+    paths:
+      - pyproject.toml
+      - jaxley/__version__.py
 
 jobs:
-  check-release:
-    if: contains(github.event.pull_request.labels.*.name, 'release') || contains(github.event.push.labels.*.name, 'release')
+  release-checks:
+    if: contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -33,20 +39,25 @@ jobs:
             exit 1
           fi
           # Check __version__.py
-          if ! git diff origin/main...HEAD jaxley/__version__.py | grep -q '^+__version__'; then
+          if ! git diff origin/main...HEAD jaxley/__version__.py | grep -q '^+VERSION\|^+__version__'; then
             echo "Error: Version in __version__.py must be updated"
             exit 1
           fi
           # Check CHANGELOG.md
-          if ! git diff origin/main...HEAD CHANGELOG.md | grep -q '^+'; then
-            echo "Error: CHANGELOG.md must be updated"
+          VERSION=$(grep -m1 version pyproject.toml | cut -d'"' -f2)
+          if ! awk -v ver="$VERSION" '
+            $0 ~ "^# "ver { found=1; next }
+            found==1 && /^# / { exit }
+            found==1 && NF { content=1 }
+            END { exit !content }
+          ' CHANGELOG.md; then
+            echo "Error: CHANGELOG.md must have content under version $VERSION"
             exit 1
           fi
 
-  release:
-    if: github.event_name == 'push' && contains(github.event.push.labels.*.name, 'release')
+  make-release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: check-release
     steps:
       - uses: actions/checkout@v3
 
@@ -85,7 +96,11 @@ jobs:
         run: |
           VERSION=${{ steps.get_version.outputs.version }}
           # Extract the latest changelog entry
-          awk "/# $VERSION/,/# [0-9]/" CHANGELOG.md | sed '$d' > release_notes.txt
+          awk -v ver="$VERSION" '
+            $0 ~ "^# "ver { found=1; next }
+            found==1 && /^# / { exit }
+            found==1 { print }
+          ' CHANGELOG.md > release_notes.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
