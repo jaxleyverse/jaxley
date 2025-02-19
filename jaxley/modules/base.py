@@ -1253,7 +1253,9 @@ class Module(ABC):
         """Collect all recordable / clampable states in the membrane and synapses.
 
         Returns states seperated by comps and edges."""
-        channel_states = [name for c in self.channels for name in c.channel_states]
+        channel_states = [
+            name for c in self.channels + self.pumps for name in c.channel_states
+        ]
         synapse_states = [
             name for s in self.synapses if s is not None for name in s.synapse_states
         ]
@@ -1315,9 +1317,7 @@ class Module(ABC):
             params[key] = self.base.jaxnodes[key]
 
         for key in self.diffusion_states:
-            params[f"axial_resistivity_{key}"] = self.jaxnodes[
-                f"axial_resistivity_{key}"
-            ]
+            params[f"axial_diffusion_{key}"] = self.jaxnodes[f"axial_diffusion_{key}"]
 
         for channel in self.base.channels + self.base.pumps:
             for channel_params in channel.channel_params:
@@ -1810,15 +1810,16 @@ class Module(ABC):
             state: Name of the state that should be diffused.
         """
         self.base.diffusion_states.append(state)
-        self.base.nodes.loc[self._nodes_in_view, f"axial_resistivity_{state}"] = 1.0
+        self.base.nodes.loc[self._nodes_in_view, f"axial_diffusion_{state}"] = 1.0
 
         # The diffused state might not exist in all compartments that across which
         # we are diffusing (e.g. there are active calcium mechanisms only in the soma,
         # but calcium should still diffuse into the dendrites). Here, we ensure that
         # the state is not `NaN` in every compartment across which we are diffusing.
         state_is_nan = pd.isna(self.base.nodes.loc[self._nodes_in_view, state])
-        average_state_value = self.base.nodes.loc[self._nodes_in_view, state].mean()
-        self.base.nodes.loc[state_is_nan, state] = average_state_value
+        # 0.0 would lead to division by zero in Nernst reversal, but states that have
+        # the NernstReversal should have the state anyways.
+        self.base.nodes.loc[state_is_nan, state] = 0.0
 
     def delete_channel(self, channel: Channel):
         """Remove a channel from the module.
@@ -1904,8 +1905,8 @@ class Module(ABC):
 
         # Arguments used by all solvers.
         state_vals = {
-            "voltages": [u["v"]],
-            "voltage_terms": [(linear_terms["v"] + v_syn_linear_terms) / cm],
+            "states": [u["v"]],
+            "linear_terms": [(linear_terms["v"] + v_syn_linear_terms) / cm],
             "constant_terms": [(const_terms["v"] + i_ext + v_syn_const_terms) / cm],
             # The axial conductances have already been divided by `cm` in the
             # `cell_utils.py` in the `compute_axial_conductances` method.
@@ -1943,8 +1944,8 @@ class Module(ABC):
             # manually specify ion diffusion with `cell.diffuse(ion_state_name)`). Note
             # that these values are _not_ divided by the capacitance `cm`.
             if ion_name in self.diffusion_states:
-                state_vals["voltages"] += [u[ion_name]]
-                state_vals["voltage_terms"] += [ion_linear_term]
+                state_vals["states"] += [u[ion_name]]
+                state_vals["linear_terms"] += [ion_linear_term]
                 state_vals["constant_terms"] += [ion_const_term]
                 state_vals["axial_conductances"] += [
                     params[f"axial_conductances"][ion_name]
@@ -1952,8 +1953,8 @@ class Module(ABC):
 
         # Stack all states such that they can be handled by `vmap` in the solve.
         for state_name in [
-            "voltages",
-            "voltage_terms",
+            "states",
+            "linear_terms",
             "constant_terms",
             "axial_conductances",
         ]:
@@ -2007,13 +2008,13 @@ class Module(ABC):
             if voltage_solver == "jax.sparse":
                 # The `jax.sparse` solver does not allow `vmap` (because it uses) the
                 # scipy sparse solver, so we just loop here.
-                num_ions = state_vals["voltages"].shape[0]
+                num_ions = state_vals["states"].shape[0]
                 updated_states = []
                 for ion_ind in range(num_ions):
                     updated_states.append(
                         step_voltage_implicit(
-                            state_vals["voltages"][ion_ind],
-                            state_vals["voltage_terms"][ion_ind],
+                            state_vals["states"][ion_ind],
+                            state_vals["linear_terms"][ion_ind],
                             state_vals["constant_terms"][ion_ind],
                             state_vals["axial_conductances"][ion_ind],
                             *solver_kwargs.values(),
@@ -2032,7 +2033,7 @@ class Module(ABC):
             if solver == "crank_nicolson":
                 # The forward Euler step in Crank-Nicolson can be performed easily as
                 # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
-                updated_states = 2 * updated_states - state_vals["voltages"]
+                updated_states = 2 * updated_states - state_vals["states"]
         elif solver == "fwd_euler":
             nones = [None] * len(solver_kwargs)
             vmapped = vmap(step_voltage_explicit, in_axes=(0, 0, 0, 0, *nones, None))

@@ -259,21 +259,28 @@ def loc_of_index(global_comp_index, global_branch_index, ncomp_per_branch):
     return (0.5 + index) / ncomp
 
 
-def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
+def compute_coupling_cond(rad1, rad2, g_a1, g_a2, l1, l2):
     """Return the coupling conductance between two compartments.
 
     Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
 
+    Expressed in axial _resistivities_, the equation would be:
+    rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
+
+    But here, we define `g = 1/r_a`, because g can be zero (but not infinity as this
+    would be inherently unstable). In particular, one might want g=0 for ion diffusion.
+
     `radius`: um
-    `r_a`: ohm cm
+    `g_a`: Siemens / cm
+    `r_a`: ohm cm (unused, just for reference)
     `length_single_compartment`: um
-    `coupling_conds`: S * um / cm / um^2 = S / cm / um -> *10**7 -> mS / cm^2
     """
-    # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-    return rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
+    return (
+        rad1 * rad2**2 * g_a1 * g_a2 / (g_a2 * rad2**2 * l1 + g_a1 * rad1**2 * l2) / l1
+    )
 
 
-def compute_coupling_cond_branchpoint(rad, r_a, l):
+def compute_coupling_cond_branchpoint(rad, g_a, l):
     r"""Return the coupling conductance between one compartment and a comp with l=0.
 
     From https://en.wikipedia.org/wiki/Compartmental_neuron_models
@@ -292,11 +299,13 @@ def compute_coupling_cond_branchpoint(rad, r_a, l):
     Then, the effective conductance is g_long / zylinder_area. So:
     g = pi * r**2 * 2 / L / r_a / 2 / pi / r / L
     g = r / r_a / L**2
+
+    Finally, we define `g_a = 1 / r_a` (in order to allow `r_a=inf`, or `g_a=0`).
     """
-    return rad / r_a / l**2 * 10**7  # Convert (S / cm / um) -> (mS / cm^2)
+    return rad * g_a / l**2
 
 
-def compute_impact_on_node(rad, r_a, l):
+def compute_impact_on_node(rad, g_a, l):
     r"""Compute the weight with which a compartment influences its node.
 
     In order to satisfy Kirchhoffs current law, the current at a branch point must be
@@ -307,8 +316,10 @@ def compute_impact_on_node(rad, r_a, l):
     Because R_long = r_a * L/2 / crosssection, we get
     g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a
 
+    Finally, we define `g_a = 1 / r_a` (in order to allow `r_a=inf`, or `g_a=0`).
+
     This equation can be multiplied by any constant."""
-    return rad**2 / r_a / l
+    return rad**2 * g_a / l
 
 
 def remap_to_consecutive(arr):
@@ -463,9 +474,9 @@ def compute_axial_conductances(
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
-    resistivities = jnp.stack(
-        [params["axial_resistivity"]]
-        + [params[f"axial_resistivity_{d}"] for d in diffusion_states]
+    axial_conductances = jnp.stack(
+        [1 / params["axial_resistivity"]]
+        + [params[f"axial_diffusion_{d}"] for d in diffusion_states]
     )
 
     if len(sink_comp_inds) > 0:
@@ -475,14 +486,16 @@ def compute_axial_conductances(
         )(
             params["radius"][sink_comp_inds],
             params["radius"][source_comp_inds],
-            resistivities[:, sink_comp_inds],
-            resistivities[:, source_comp_inds],
+            axial_conductances[:, sink_comp_inds],
+            axial_conductances[:, source_comp_inds],
             params["length"][sink_comp_inds],
             params["length"][source_comp_inds],
         )
         # .at[0] because we only divide the axial voltage conductances by the
         # capacitance, _not_ the axial conductances of the diffusing ions.
         conds_c2c = conds_c2c.at[0].divide(params["capacitance"][sink_comp_inds])
+        # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
+        conds_c2c = conds_c2c.at[0].multiply(10**7)
     else:
         conds_c2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
 
@@ -496,12 +509,14 @@ def compute_axial_conductances(
             in_axes=(None, 0, None),
         )(
             params["radius"][sink_comp_inds],
-            resistivities[:, sink_comp_inds],
+            axial_conductances[:, sink_comp_inds],
             params["length"][sink_comp_inds],
         )
         # .at[0] because we only divide the axial voltage conductances by the
         # capacitance, _not_ the axial conductances of the diffusing ions.
         conds_bp2c = conds_bp2c.at[0].divide(params["capacitance"][sink_comp_inds])
+        # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
+        conds_bp2c = conds_bp2c.at[0].multiply(10**7)
     else:
         conds_bp2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
 
@@ -514,7 +529,7 @@ def compute_axial_conductances(
             vmap(compute_impact_on_node, in_axes=(0, 0, 0)), in_axes=(None, 0, None)
         )(
             params["radius"][source_comp_inds],
-            resistivities[:, source_comp_inds],
+            axial_conductances[:, source_comp_inds],
             params["length"][source_comp_inds],
         )
         # For numerical stability. These values are very small, but their scale
