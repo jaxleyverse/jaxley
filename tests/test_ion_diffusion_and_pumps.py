@@ -226,8 +226,8 @@ def test_that_order_of_insert_does_not_matter():
     cell.diffuse("CaCon_i")
     cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_resistivity_CaCon_i", 1_000.0)
-    cell.set("axial_resistivity_NaCon_i", 2_000.0)
+    cell.set("axial_diffusion_CaCon_i", 1 / 1_000.0)
+    cell.set("axial_diffusion_NaCon_i", 1 / 2_000.0)
     v1 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     ############################ Option 2:
@@ -238,8 +238,8 @@ def test_that_order_of_insert_does_not_matter():
     cell.insert(CaPump2())
     cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_resistivity_CaCon_i", 1_000.0)
-    cell.set("axial_resistivity_NaCon_i", 2_000.0)
+    cell.set("axial_diffusion_CaCon_i", 1 / 1_000.0)
+    cell.set("axial_diffusion_NaCon_i", 1 / 2_000.0)
     v2 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     ############################ Option 3:
@@ -250,8 +250,8 @@ def test_that_order_of_insert_does_not_matter():
     cell.insert(CaPump2())
     cell.diffuse("CaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_resistivity_CaCon_i", 1_000.0)
-    cell.set("axial_resistivity_NaCon_i", 2_000.0)
+    cell.set("axial_diffusion_CaCon_i", 1 / 1_000.0)
+    cell.set("axial_diffusion_NaCon_i", 1 / 2_000.0)
     v3 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     ############################ Option 4:
@@ -262,8 +262,8 @@ def test_that_order_of_insert_does_not_matter():
     cell.diffuse("CaCon_i")
     cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_resistivity_CaCon_i", 1_000.0)
-    cell.set("axial_resistivity_NaCon_i", 2_000.0)
+    cell.set("axial_diffusion_CaCon_i", 1 / 1_000.0)
+    cell.set("axial_diffusion_NaCon_i", 1 / 2_000.0)
     v4 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     for i, v_compare in enumerate([v2, v3, v4]):
@@ -289,7 +289,7 @@ def _build_calcium_cell():
     return cell
 
 
-def test_that_high_axial_resistivity_approaches_no_diffusion():
+def test_that_high_axial_diffusion_approaches_no_diffusion():
     """Test if very high axial ion resisitvity approaches no diffusion at all.
 
     By the side, this test also implicitly tests the `cranck_nicolson` solver in
@@ -299,7 +299,7 @@ def test_that_high_axial_resistivity_approaches_no_diffusion():
     cell1.insert(CaPump())
     cell1.diffuse("CaCon_i")
     # Very high axial resistivity, almost no diffusion.
-    cell1.set("axial_resistivity_CaCon_i", 1_000_000.0)
+    cell1.set("axial_diffusion_CaCon_i", 0.0)
     v1 = jx.integrate(cell1, solver="crank_nicolson", voltage_solver="jax.sparse")
 
     cell2 = _build_calcium_cell()
@@ -372,7 +372,7 @@ def test_ion_is_diffused_but_not_pumped():
     # Initialize the calcium concentration to be different at the beginning.
     cell.branch(0).set("CaCon_i", 0.2)
     cell.branch(1).set("CaCon_i", 0.1)
-    cell.set("axial_resistivity_CaCon_i", 10_000.0)
+    cell.set("axial_diffusion_CaCon_i", 1 / 10_000.0)
     cell.record("CaCon_i")  # Record everywhere.
 
     # Run simulation and assert that calcium becomes the same everywhere.
@@ -396,7 +396,7 @@ def test_ion_diffusion_compartment():
     comp.insert(CaHVA())
     comp.insert(CaNernstReversal())
     comp.diffuse("CaCon_i")
-    comp.set("axial_resistivity_CaCon_i", 10_000.0)
+    comp.set("axial_diffusion_CaCon_i", 1 / 10_000.0)
     comp.record("v")
     comp.record("CaCon_i")
     recs = jx.integrate(comp, t_max=10.0, voltage_solver="jax.sparse")
@@ -413,7 +413,7 @@ def test_ion_diffusion_branch():
     branch.insert(CaHVA())
     branch.insert(CaNernstReversal())
     branch.diffuse("CaCon_i")
-    branch.set("axial_resistivity_CaCon_i", 10_000.0)
+    branch.set("axial_diffusion_CaCon_i", 1 / 10_000.0)
     branch.record("v")
     branch.record("CaCon_i")
     recs = jx.integrate(branch, t_max=10.0, solver="fwd_euler")
@@ -428,7 +428,7 @@ def test_ion_diffusion_cell():
     cell.insert(CaHVA())
     cell.insert(CaNernstReversal())
     cell.diffuse("CaCon_i")
-    cell.set("axial_resistivity_CaCon_i", 10_000.0)
+    cell.set("axial_diffusion_CaCon_i", 1 / 10_000.0)
     cell.record("v")
     cell.record("CaCon_i")
     recs = jx.integrate(cell, t_max=5.0, voltage_solver="jax.sparse")
@@ -444,7 +444,7 @@ def test_ion_diffusion_net():
     net.insert(CaHVA())
     net.insert(CaNernstReversal())
     net.diffuse("CaCon_i")
-    net.set("axial_resistivity_CaCon_i", 10_000.0)
+    net.set("axial_diffusion_CaCon_i", 1 / 10_000.0)
     net.record("v")
     net.record("CaCon_i")
     recs = jx.integrate(net, t_max=5.0, voltage_solver="jax.sparse")
@@ -466,7 +466,7 @@ def test_diffuse_a_channel_state():
     for cell in [cell1, cell2]:
         cell.set("CaCon_i", 0.0001)
         cell.diffuse("CaCon_i")
-        cell.set("axial_resistivity_CaCon_i", 10_000.0)
+        cell.set("axial_diffusion_CaCon_i", 1 / 10_000.0)
         cell.record("v")
         cell.record("CaCon_i")
     v1 = jx.integrate(cell1, t_max=10.0, voltage_solver="jax.sparse")
