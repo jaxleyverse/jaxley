@@ -28,9 +28,9 @@ def step_voltage_explicit(
     child_inds: jnp.ndarray,
     nbranches: int,
     solver: str,
-    delta_t: float,
     idx: JaxleySolveIndexer,
     debug_states,
+    delta_t: float,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
     voltages = jnp.reshape(voltages, (nbranches, -1))
@@ -71,9 +71,9 @@ def step_voltage_implicit_with_jaxley_spsolve(
     child_inds: jnp.ndarray,
     nbranches: int,
     solver: str,
-    delta_t: float,
     idx: JaxleySolveIndexer,
     debug_states,
+    delta_t: float,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
     # Build diagonals.
@@ -216,13 +216,13 @@ def step_voltage_implicit_with_jax_spsolve(
     voltage_terms,
     constant_terms,
     axial_conductances,
+    internal_node_inds,
+    sinks,
     data_inds,
     indices,
     indptr,
-    sinks,
-    delta_t,
     n_nodes,
-    internal_node_inds,
+    delta_t,
 ):
     axial_conductances = delta_t * axial_conductances
 

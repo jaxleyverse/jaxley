@@ -11,3 +11,4 @@ Advanced tutorials
    tutorials/09_advanced_indexing.ipynb
    tutorials/10_advanced_parameter_sharing.ipynb
    tutorials/06_groups.ipynb
+   tutorials/11_ion_dynamics.ipynb

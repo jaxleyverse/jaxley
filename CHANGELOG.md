@@ -1,4 +1,13 @@
-# 0.6.3
+# 0.7.0
+
+### New Features
+
+- Allow ion diffusion with `cell.diffuse()` and add tutorials (#438, @michaeldeistler)
+- Introduce ion pumps (#438, @michaeldeistler)
+
+### Bug fixes
+
+- 
 
 # 0.6.2
 
