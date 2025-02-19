@@ -5,19 +5,50 @@ on:
     branches:
       - main
     paths:
-      - pyproject.toml
       - jaxley/__version__.py
-    types: [labeled]
   push:
     branches:
       - main
     paths:
-      - pyproject.toml
       - jaxley/__version__.py
 
 jobs:
+  user-info:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Label PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "release"
+
+      - name: post-comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions-cool/maintain-one-comment@v3
+        with:
+          body: |
+            This PR makes changes to `jaxley/__version__.py` and has been automatically labeled with "release" 🏷️
+
+            ⚠️ **Important**: 
+            - When this PR is merged, it will automatically make a new release and publish it to PyPI
+            - If you do not intend to create a new release, please:
+              1. Revert the changes to `jaxley/__version__.py`
+              2. Remove the "release" label from this PR
+
+            For a successful release, please ensure:
+            - [ ] Version in `pyproject.toml` is updated
+            - [ ] Version in `jaxley/__version__.py` is updated
+            - [ ] `CHANGELOG.md` includes entries for the new version
+            - [ ] All tests pass
+            - [ ] The tutorials can be run
+
   release-checks:
-    if: contains(github.event.pull_request.labels.*.name, 'release')
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
