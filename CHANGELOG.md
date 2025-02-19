@@ -1,5 +1,7 @@
 # 0.6.3
 
+- add new release workflow (#588, @jnsbck)
+
 # 0.6.2
 
 - also remove `nseg` from tutorials (#580, @jnsbck)
