@@ -50,6 +50,11 @@ jobs:
           exit_code=0
       
           while IFS= read -r file; do
+
+          if [[ "$file" == tests/jaxley_vs_neuron/mechanisms/* || "$file" == tests/jaxley_vs_neuron/arm64/* ]]; then
+              continue
+          fi
+
           # Extract the first two lines of the file
           file_header_1=$(head -n 1 "$file")
           file_header_2=$(head -n 2 "$file" | tail -n 1)

@@ -282,3 +282,27 @@ def print_session_report(request, pytestconfig):
         if NEW_BASELINE:
             request.addfinalizer(update_baseline)
         request.addfinalizer(print_regression_report)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Avoid that functions marked as `additional_neuron_tests` arent tested by detault.
+
+    If we run `pytest tests` then the `additional_neuron_tests` tests are not run. This
+    is useful because some tests based on NEURON (e.g.
+    `jaxley_vs_neuron/test_cell::test_similarity_ion_diffusion`) cause a segmentation
+    error downstream (in later tests). In addition, I have not set up a github action
+    to automatically compile NEURON channel models (which would also cause the tests to
+    fail. For these two reasons, we skip some NEURON tests by default and only run
+    them at release locally.
+
+    Function written by ChatGPT.
+    """
+    if config.getoption("-m") == "additional_neuron_tests":
+        return  # Run normally if explicitly requested
+
+    skip_additional = pytest.mark.skip(
+        reason="Skipped unless explicitly enabled with -m 'additional_neuron_tests'"
+    )
+    for item in items:
+        if "additional_neuron_tests" in item.keywords:
+            item.add_marker(skip_additional)

@@ -74,6 +74,7 @@ dev = [
 markers = [
     "slow: marks tests as slow (T > 10s)",
     "regression: marks regression tests",
+    "additional_neuron_tests: tests marked as such will not be run by default",
 ]
 
 [tool.isort]

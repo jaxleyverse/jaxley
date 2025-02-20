@@ -43,7 +43,7 @@ def convert_current_to_molarity_change(
     # mA / cm^2 * um^2 / um^3 = mA / cm^2 / um = mA / dm^2 * (1e1)^2 / dm * 1e5 =
     # mA / dm^3 * 1e7 = mA / liter * 1e7
     #
-    # Finally, we FARADAY is A * second / mol. However, our time is in units ms (not s),
+    # Finally, FARADAY is A * second / mol. However, our time is in units ms (not s),
     # so we need to divide by 1000 -> 1e7 / 1e3 = 1e4
     return current * surface_per_volume * 1e4 / FARADAY / valence
 

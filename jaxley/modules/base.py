@@ -1350,6 +1350,14 @@ class Module(ABC):
                 # `.set()` to work. This is done with `[:, None]`.
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
+        for ion_name in self.diffusion_states:
+            minimal_diffusion = np.min(params[f"axial_diffusion_{ion_name}"])
+            assert minimal_diffusion > 0, (
+                f"The smallest value of `axial_diffusion_{ion_name}` is "
+                f"{minimal_diffusion}. We only allow strictly positive values for the "
+                f"diffusion. Zero is not allowed either, but you can use very small "
+                f"values (e.g. 1e-8)."
+            )
         # Compute conductance params and add them to the params dictionary.
         params["axial_conductances"] = self.base._compute_axial_conductances(
             params=params
