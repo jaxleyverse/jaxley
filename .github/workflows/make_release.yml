@@ -1,0 +1,143 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - jaxley/__version__.py
+  push:
+    branches:
+      - main
+    paths:
+      - jaxley/__version__.py
+
+jobs:
+  user-info:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Label PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "release"
+
+      - name: post-comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions-cool/maintain-one-comment@v3
+        with:
+          body: |
+            This PR makes changes to `jaxley/__version__.py` and has been automatically labeled with "release" 🏷️
+
+            ⚠️ **Important**: 
+            - When this PR is merged, it will automatically make a new release and publish it to PyPI
+            - If you do not intend to create a new release, please:
+              1. Revert the changes to `jaxley/__version__.py`
+              2. Remove the "release" label from this PR
+
+            For a successful release, please ensure:
+            - [ ] Version in `pyproject.toml` is updated
+            - [ ] Version in `jaxley/__version__.py` is updated
+            - [ ] `CHANGELOG.md` includes entries for the new version
+            - [ ] All tests pass
+            - [ ] The tutorials can be run
+
+            For more information or in case of any issues, see our [release workflow](https://github.com/jaxleyverse/jaxley/wiki/Release-workflow).
+
+  release-checks:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Check version updates
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main
+          # Check pyproject.toml version
+          if ! git diff origin/main...HEAD pyproject.toml | grep -q '^+version'; then
+            echo "Error: Version in pyproject.toml must be updated"
+            exit 1
+          fi
+          # Check __version__.py
+          if ! git diff origin/main...HEAD jaxley/__version__.py | grep -q '^+VERSION\|^+__version__'; then
+            echo "Error: Version in __version__.py must be updated"
+            exit 1
+          fi
+          # Check CHANGELOG.md
+          VERSION=$(grep -m1 version pyproject.toml | cut -d'"' -f2)
+          if ! awk -v ver="$VERSION" '
+            $0 ~ "^# "ver { found=1; next }
+            found==1 && /^# / { exit }
+            found==1 && NF { content=1 }
+            END { exit !content }
+          ' CHANGELOG.md; then
+            echo "Error: CHANGELOG.md must have content under version $VERSION"
+            exit 1
+          fi
+
+  make-release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep -m1 version pyproject.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Git tag
+        run: |
+          git tag v${{ steps.get_version.outputs.version }}
+          git push origin v${{ steps.get_version.outputs.version }}
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          # Extract the latest changelog entry
+          awk -v ver="$VERSION" '
+            $0 ~ "^# "ver { found=1; next }
+            found==1 && /^# / { exit }
+            found==1 { print }
+          ' CHANGELOG.md > release_notes.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          body_path: release_notes.txt
+          token: ${{ secrets.GITHUB_TOKEN }}
