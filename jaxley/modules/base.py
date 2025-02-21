@@ -876,7 +876,7 @@ class Module(ABC):
         self,
         key: str,
         val: Union[float, jnp.ndarray],
-        param_state: Optional[List[Dict]],
+        param_state: Optional[List[Dict]] = None,
     ):
         """Set parameter of module (or its view) to a new value within `jit`.
 
@@ -897,7 +897,7 @@ class Module(ABC):
                 {
                     "indices": jnp.asarray(viewed_inds[not_nan]).reshape(-1, 1),  # shape (n_comp, 1)
                     "key": key,
-                    "val": jnp.atleast_1d(jnp.asarray(val)),  # shape (n_comp,)
+                    "val": jnp.atleast_1d(jnp.asarray(val)),  # broadcastable to shape (n_comp,)
                 }
             ]
             if param_state is not None:
