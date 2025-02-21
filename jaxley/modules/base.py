@@ -895,9 +895,9 @@ class Module(ABC):
             not_nan = ~data[key].isna()
             added_param_state = [
                 {
-                    "indices": np.atleast_2d(viewed_inds[not_nan]),
+                    "indices": jnp.asarray(viewed_inds[not_nan]).reshape(-1, 1),  # shape (n_comp, 1)
                     "key": key,
-                    "val": jnp.atleast_1d(jnp.asarray(val)),
+                    "val": jnp.atleast_1d(jnp.asarray(val)),  # shape (n_comp,)
                 }
             ]
             if param_state is not None:
