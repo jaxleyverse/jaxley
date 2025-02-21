@@ -11,17 +11,25 @@ from jaxley.pumps.pump import Pump
 def convert_current_to_molarity_change(
     current: float, valence: float, radius: float
 ) -> float:
-    """Compute the change in molarity of an ion given current returned by a channel.
+    r"""Compute the change in molarity of an ion given current returned by a channel.
 
-    This function returns the _change_ in molarity M, i.e. dM/dt. Consistent with the
-    units of Jaxley (mM for concentration, ms for time), it returns the unit
-    milli-mole / liter / milli-second.
+    This function returns the _change_ in molarity M, i.e. :math:`\frac{dM}{dt}`.
+    Consistent with the units of Jaxley (mM for concentration, ms for time), it returns
+    the unit milli-mole / liter / milli-second.
 
     This function implements the formula
-    ```dM/dt = I * A / V / F / z```,
-    where I is the current per surface area, A is the surface area of a compartment,
-    V is the volume of a compartment, F is the Faraday constant, and z is the valence
-    of an ion.
+
+    .. math::
+
+        dM/dt = \frac{I \cdot A}{V \cdot F \cdot z},
+
+    where:
+
+    * \( I \) is the current per surface area,
+    * \( A \) is the surface area of a compartment,
+    * \( V \) is the volume of a compartment,
+    * \( F \) is the Faraday constant,
+    * \( z \) is the valence of the ion.
 
     Args:
         current: Current through an ion channel (returned by the `compute_current`
@@ -48,12 +56,44 @@ def convert_current_to_molarity_change(
     return current * surface_per_volume * 1e4 / FARADAY / valence
 
 
-class CaCurrentToConcentrationChange(Pump):
-    """Update the intracellular calcium ion concentration depending on calcium current.
+class CaFaradayConcentrationChange(Pump):
+    r"""Update the intracellular calcium ion concentration depending on calcium current.
+
+    This channel implements Faraday's first law of electrolysis to update the
+    intracellular calcium concentration based on calcium current. Faraday's law relates
+    how a current (e.g., through a channel) impacts the number of ions. Mathematically:
+
+    .. math::
+
+        n = \frac{I \cdot t}{F \cdot z}
+
+    Taking the derivative with respect to time:
+
+    .. math::
+
+        \frac{dn}{dt} = \frac{I}{F \cdot z}
+
+    where:
+
+    * \( n \) is the amount of substance (number of moles),
+    * \( I \) is the current,
+    * \( t \) is time,
+    * \( F \) is the Faraday constant,
+    * \( z \) is the valence of the ion.
+
+    To obtain concentration \( c \) from the amount of substance \( n \), we divide by
+    the volume:
+
+    .. math::
+
+        \frac{dc}{dt} = \frac{1}{V} \cdot \frac{dn}{dt} = \frac{I}{F \cdot z \cdot V}
+
+    In Jaxley, the current is given in mS/cm2, so we first have to multiply the current
+    by the surface area of a compartment.
 
     The update is fully passive (i.e., there is no active pump). As such, it is even
     possible that ion concentration can become negative (because we do not enforce
-    that calcium currents stops when no more ions are available).
+    that calcium currents stop when no more ions are available).
     """
 
     def __init__(self, name: Optional[str] = None):

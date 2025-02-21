@@ -14,12 +14,12 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import CaHVA, CaNernstReversal
+from jaxley_mech.channels.l5pc import CaHVA
 from neuron import h, rxd
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.pumps import CaCurrentToConcentrationChange
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -275,7 +275,7 @@ def _jaxley_ion_diffusion(
 
     # Define calcium dynamics.
     cell.branch([0, 1]).insert(CaHVA())
-    cell.insert(CaCurrentToConcentrationChange())
+    cell.insert(CaFaradayConcentrationChange())
     cell.insert(CaNernstReversal())
     cell.branch(0).set("CaHVA_gCaHVA", 0.00001)
     cell.branch(1).set("CaHVA_gCaHVA", 0.000005)
@@ -384,7 +384,6 @@ def _neuron_ion_diffusion(
     return np.stack([v0, v1, v2, cacon0, cacon1, cacon2])
 
 
-@pytest.mark.additional_neuron_tests
 def test_similarity_ion_diffusion():
     """Test whether ion diffusion behaves as in NEURON.
 
@@ -414,21 +413,154 @@ def test_similarity_ion_diffusion():
     v_and_cacon_jaxley = _jaxley_ion_diffusion(
         dt, t_max, i_delay, i_dur, i_amp, v_init, diams, lengths, r_as
     )
-    v_and_cacon_neuron = _neuron_ion_diffusion(
-        dt, t_max, i_delay, i_dur, i_amp, v_init, diams, lengths, r_as
-    )
+    # We are not running NEURON, and instead just saving its voltages below. This
+    # is because rxd sometimes caused a segmentation fault in our tests.
+    # v_and_cacon_neuron = _neuron_ion_diffusion(
+    #     dt, t_max, i_delay, i_dur, i_amp, v_init, diams, lengths, r_as
+    # )
 
     # Analysis.
     v_jaxley = v_and_cacon_jaxley[:3]
     cacon_jaxley = v_and_cacon_jaxley[3:]
-    v_neuron = v_and_cacon_neuron[:3]
-    cacon_neuron = v_and_cacon_neuron[3:]
+    # v_neuron = v_and_cacon_neuron[:3]
+    # cacon_neuron = v_and_cacon_neuron[3:]
 
-    v_max_error = np.max(np.abs(v_jaxley - v_neuron))
-    cacon_max_error = np.max(np.abs(cacon_jaxley - cacon_neuron))
+    v_neuron = jnp.asarray(
+        [
+            [
+                -64.9740566,
+                -60.88748118,
+                -57.9800073,
+                -54.45089083,
+                21.87809771,
+                -73.1579158,
+                -73.58213181,
+                -70.61212201,
+                -67.2714086,
+                -67.58651223,
+            ],
+            [
+                -64.97405911,
+                -61.7164889,
+                -58.78402151,
+                -55.49142503,
+                13.19733503,
+                -69.01489137,
+                -74.21113676,
+                -71.42037101,
+                -68.0896641,
+                -67.67389774,
+            ],
+            [
+                -64.97405923,
+                -61.73392024,
+                -58.79977817,
+                -55.51516832,
+                12.12792837,
+                -68.73055718,
+                -74.22165672,
+                -71.43820274,
+                -68.10784275,
+                -67.67786202,
+            ],
+        ]
+    )
+    cacon_neuron_spike = (
+        jnp.asarray(
+            [
+                [
+                    5.00000453,
+                    5.00000486,
+                    5.00000626,
+                    5.0000127,
+                    5.1048348,
+                    8.79260654,
+                    9.30190049,
+                    9.30284364,
+                    9.29821517,
+                    9.29349743,
+                ],
+                [
+                    5.00000227,
+                    5.00000243,
+                    5.00000307,
+                    5.00000599,
+                    5.02163309,
+                    6.81641896,
+                    7.16615776,
+                    7.16847423,
+                    7.16688202,
+                    7.16524459,
+                ],
+                [
+                    5.0,
+                    5.0,
+                    5.0,
+                    5.0,
+                    5.0,
+                    5.00000213,
+                    5.00001658,
+                    5.00004703,
+                    5.00009347,
+                    5.00015577,
+                ],
+            ]
+        )
+        * 1e-5
+    )
+    cacon_neuron_end = (
+        jnp.asarray(
+            [
+                [
+                    8.30158656,
+                    8.29842432,
+                    8.29527959,
+                    8.29215224,
+                    8.28904216,
+                    8.28594922,
+                    8.2828733,
+                    8.27981429,
+                    8.27677206,
+                    8.2737465,
+                ],
+                [
+                    7.10557499,
+                    7.10586209,
+                    7.10614861,
+                    7.10643455,
+                    7.10671989,
+                    7.10700463,
+                    7.10728874,
+                    7.10757223,
+                    7.10785509,
+                    7.10813731,
+                ],
+                [
+                    5.46553328,
+                    5.4689818,
+                    5.47242902,
+                    5.47587487,
+                    5.47931927,
+                    5.48276214,
+                    5.48620342,
+                    5.48964301,
+                    5.49308086,
+                    5.49651688,
+                ],
+            ]
+        )
+        * 1e-5
+    )
+
+    v_max_error = np.max(np.abs(v_jaxley[:, 2_000:3_000:100] - v_neuron))
+    cacon_max_error_spike = np.max(
+        np.abs(cacon_jaxley[:, 2_000:3_000:100] - cacon_neuron_spike)
+    )
+    cacon_max_error_end = np.max(np.abs(cacon_jaxley[:, -2000::200] - cacon_neuron_end))
     # Note: for very thin cables (<1um radius), this test can fail by a tiny bit, even
     # if both comps have the same diameter.
-    assert cacon_max_error < 2e-6, f"CaCon_i error {cacon_max_error}"
+    assert cacon_max_error_spike < 2e-6, f"CaCon_i error {cacon_max_error_spike}"
+    assert cacon_max_error_end < 2e-6, f"CaCon_i error {cacon_max_error_end}"
 
     # To be on the safe side, we also check voltages. However, this test is generally
     # about CaCon_i.

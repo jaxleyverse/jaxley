@@ -14,12 +14,12 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import CaHVA, CaNernstReversal
+from jaxley_mech.channels.l5pc import CaHVA
 from neuron import h, rxd
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.pumps import CaCurrentToConcentrationChange
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -307,7 +307,7 @@ def _jaxley_clamped(dt, t_max, diams, v_init, length):
     branch.set("length", length / 2)
     branch.set("v", v_init)
     branch.insert(CaHVA())
-    branch.insert(CaCurrentToConcentrationChange())
+    branch.insert(CaFaradayConcentrationChange())
     branch.insert(CaNernstReversal())
     branch.comp(0).set("CaHVA_gCaHVA", 0.00001)
     branch.comp(1).set("CaHVA_gCaHVA", 0.0)
@@ -392,7 +392,7 @@ def _neuron_clamped(dt, t_max, diams, v_init, length):
     return np.stack([v1, v2, cacon1, cacon2])
 
 
-@pytest.mark.skip
+@pytest.mark.xfail
 def test_similarity_voltage_clamp_cacon_i_behavior():
     """Test whether two compartments were one is clamped gives same results.
 
@@ -405,8 +405,8 @@ def test_similarity_voltage_clamp_cacon_i_behavior():
     This test currently fails. The axial conductance is defined as:
     ```1 / R_long / area_of_sink_compartment```
     However, NEURON computes `area_of_sink_compartment` differently _depending on
-    whether diffusion is activated or not_. This make no sense to me (Michael), so I
-    am not implementing it in Jaxley.
+    whether diffusion is activated or not_. This make no sense to me (@michaeldeistler),
+    so I am not implementing it in Jaxley.
 
     Jaxley simply assumes a cylindrical compartment: `A = 2 * pi * r * l`
     Without diffusion, NEURON does the same. With diffusion, however, NEURON creates
@@ -418,7 +418,7 @@ def test_similarity_voltage_clamp_cacon_i_behavior():
 
     Notably, NEURON even uses this updated area (which can be inspected with
     `branch(0.3).area()` _after having run the simulation with diffusion at least
-    once_) even for the voltage equations.
+    once_) even for the voltage equations. See also #140.
     """
     t_max = 1_000.01
     dt = 0.025

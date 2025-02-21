@@ -12,14 +12,13 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
-from jaxley_mech.channels.l5pc import CaHVA, CaNernstReversal
+from jaxley_mech.channels.l5pc import CaHVA, CaLVA
 from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
 
 import jaxley as jx
 from jaxley.channels import HH, K, Leak, Na
 from jaxley.channels.channel import Channel
-from jaxley.pumps import CaPump
-from jaxley.pumps.pump import Pump
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump, Pump
 
 
 class NaPump(Pump):
@@ -195,7 +194,7 @@ class CaPump2(Pump):
 
 def _build_active_cell():
     """Helper that builds an active cell with Na, K, Leak separately."""
-    current = jx.step_current(0.5, 3.0, 0.1, 0.025, 5.0)
+    current = jx.step_current(0.5, 3.0, 0.1, 0.025, 10.0)
     comp = jx.Compartment()
     branch = jx.Branch(comp, ncomp=2)
     cell = jx.Cell(branch, parents=[-1, 0])
@@ -221,13 +220,18 @@ def test_that_order_of_insert_does_not_matter():
     ############################ Option 1:
     cell = _build_active_cell()
     cell.insert(CaPump())
+    # Also test `delete` for a pump.
+    cell.insert(CaFaradayConcentrationChange())
+    cell.delete(CaFaradayConcentrationChange())
+    # Return to the channel that should really be inserted.
     cell.insert(NaPump())
     cell.insert(CaPump2())
     cell.diffuse("CaCon_i")
     cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_diffusion_CaCon_i", 2.0)
-    cell.set("axial_diffusion_NaCon_i", 4.0)
+    cell.set("axial_diffusion_CaCon_i", 200.0)
+    cell.set("axial_diffusion_NaCon_i", 400.0)
+    cell.init_states()
     v1 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     ############################ Option 2:
@@ -237,9 +241,13 @@ def test_that_order_of_insert_does_not_matter():
     cell.insert(NaPump())
     cell.insert(CaPump2())
     cell.diffuse("NaCon_i")
+    # Delete and diffuse again to test `delete_diffusion` method.
+    cell.delete_diffusion("NaCon_i")
+    cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_diffusion_CaCon_i", 2.0)
-    cell.set("axial_diffusion_NaCon_i", 4.0)
+    cell.set("axial_diffusion_CaCon_i", 200.0)
+    cell.set("axial_diffusion_NaCon_i", 400.0)
+    cell.init_states()
     v2 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     ############################ Option 3:
@@ -250,8 +258,9 @@ def test_that_order_of_insert_does_not_matter():
     cell.insert(CaPump2())
     cell.diffuse("CaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_diffusion_CaCon_i", 2.0)
-    cell.set("axial_diffusion_NaCon_i", 4.0)
+    cell.set("axial_diffusion_CaCon_i", 200.0)
+    cell.set("axial_diffusion_NaCon_i", 400.0)
+    cell.init_states()
     v3 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     ############################ Option 4:
@@ -262,8 +271,9 @@ def test_that_order_of_insert_does_not_matter():
     cell.diffuse("CaCon_i")
     cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
-    cell.set("axial_diffusion_CaCon_i", 2.0)
-    cell.set("axial_diffusion_NaCon_i", 4.0)
+    cell.set("axial_diffusion_CaCon_i", 200.0)
+    cell.set("axial_diffusion_NaCon_i", 400.0)
+    cell.init_states()
     v4 = jx.integrate(cell, voltage_solver="jax.sparse")
 
     for i, v_compare in enumerate([v2, v3, v4]):

@@ -260,11 +260,11 @@ def loc_of_index(global_comp_index, global_branch_index, ncomp_per_branch):
 
 
 def compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2):
-    """Return the longitudinal (axial) conductance between two compartments.
+    """Return the axial conductance between two compartments.
 
     Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
 
-    The longitudinal conductance is:
+    The axial conductance is:
     g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
 
     Here, we define `g_a = 1/r_a`, because g_a can be zero (but not infinity as this
@@ -286,10 +286,10 @@ def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2):
 
     Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
 
-    The longitudinal resistivity is:
+    The axial resistivity is:
     g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
 
-    For voltage, we have to divide the longitudinal conductance by the surface are of
+    For voltage, we have to divide the axial conductance by the surface are of
     the sink, i.e. by A = 2 * pi * rad1 * l1
 
     By that, we get:
@@ -311,10 +311,10 @@ def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2):
 def g_long_by_volume(rad1, rad2, g_a1, g_a2, l1, l2):
     """Return the ion diffusive constant between two compartments.
 
-    The longitudinal resistivity is:
+    The axial resistivity is:
     g_long = 2 * pi * rad1^2 rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
 
-    For ions, we have to divide the longitudinal conductance by the volume of the sink,
+    For ions, we have to divide the axial conductance by the volume of the sink,
     i.e. by V = pi * rad1^2 * l1
 
     This gives:

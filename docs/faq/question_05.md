@@ -27,4 +27,12 @@ cell.diffuse("CaCon_i")
 cell.set("axial_resistivity_CaCon_i", 1_000.0)
 ```
 
-`Jaxley` does not yet provide functionality for diffusing ions extracellularly.
+`Jaxley` does not yet provide functionality for diffusing ions extracellularly. In
+addition, intracellular ion _diffusion_ in `Jaxley` currently has the following
+limitations:
+- we only allow to diffuse ions within the entire cell (not in just a few branches),  
+- if enabled, ion diffusion occurs within every cell of a network.  
+
+Finally, note that, even when ion diffusion is enabled, `Jaxley` uses a cylindrical
+approximation for the compartment area (which is unlike `NEURON`, which uses a conic
+approximation when ion diffusion is enabled).

@@ -354,15 +354,15 @@ def test_delete_channel(SimpleBranch):
     # test complete removal of a channel from a module
     branch1 = SimpleBranch(ncomp=3)
     branch1.comp(0).insert(K())
-    branch1.delete_channel(K())
+    branch1.delete(K())
 
     branch2 = SimpleBranch(ncomp=3)
     branch2.comp(0).insert(K())
-    branch2.comp(0).delete_channel(K())
+    branch2.comp(0).delete(K())
 
     branch3 = SimpleBranch(ncomp=3)
     branch3.insert(K())
-    branch3.delete_channel(K())
+    branch3.delete(K())
 
     def channel_present(view, channel, partial=False):
         states_and_params = list(channel.channel_states.keys()) + list(
@@ -398,13 +398,13 @@ def test_delete_channel(SimpleBranch):
     branch4.comp(0).insert(K())
     branch4.comp([1, 2]).insert(Leak())
 
-    branch4.comp(1).delete_channel(Leak())
+    branch4.comp(1).delete(Leak())
     # assert K in comp 0 and Leak still present in branch
     assert channel_present(branch4.comp(0), K())
     assert channel_present(branch4.comp(2), Leak(), partial=True)
     assert not channel_present(branch4.comp(1), Leak(), partial=True)
     assert channel_present(branch4, Leak())
 
-    branch4.comp(2).delete_channel(Leak())
+    branch4.comp(2).delete(Leak())
     # assert no more Leak
     assert not channel_present(branch4, Leak())

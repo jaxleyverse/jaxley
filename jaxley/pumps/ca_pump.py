@@ -20,7 +20,7 @@ class CaPump(Pump):
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
             f"{self._name}_decay": 80,  # Buffering time constant in ms.
             f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
+            f"{self._name}_minCaCon_i": 1e-4,  # Minimum intracell. concentration in mM.
         }
         self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
@@ -52,13 +52,25 @@ class CaPump(Pump):
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
         depth = params[f"{prefix}_depth"]
-        minCai = params[f"{prefix}_minCai"]
+        minCai = params[f"{prefix}_minCaCon_i"]
 
         FARADAY = 96485  # Coulombs per mole.
 
         # Calculate the contribution of calcium currents to cai change.
+        #
+        # Note the similarity to the update in `CaCurrentToConcentrationChange`. The
+        # main difference (apart from the multiplication with gamma) is that
+        # `CaCurrentToConcentrationChange` multiplies by `surface_area / volume`,
+        # whereas this channel multiplies by `1/depth`. However, If one assumes calcium
+        # to be stored in a ring of width `depth` just inside the membrane, then A/V is:
+        # `2r / (r^2 - (r-depth)^2)`. For any r >> depth, this equation is approximately
+        # `1/depth`. It holds quite well as long as `r > 5*depth`.
         drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
+
+        # Return to steady state ("leak").
         state_decay = (modified_state - minCai) / decay
+
+        # Total calcium update is the sum of the two.
         diff = drive_channel - state_decay
         return -diff
 

@@ -2,7 +2,16 @@
 
 ### New Features
 
-- Allow ion diffusion with `cell.diffuse()` and add tutorials (#438, @michaeldeistler)
+- Allow ion diffusion with `cell.diffuse()` and add tutorials (#438, @michaeldeistler):
+```python
+from jaxley.channels import CaNernstReversal
+from jaxley.pumps import CaFaradayConcentrationChange
+
+cell.insert(CaFaradayConcentrationChange())
+cell.insert(CaNernstReversal())
+cell.diffuse("CaCon_i")
+cell.set("axial_diffusion_CaCon_i", 1.0)
+```
 - Introduce ion pumps (#438, @michaeldeistler)
 
 ### Bug fixes

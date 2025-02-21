@@ -38,7 +38,7 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
-from jaxley.utils.misc_utils import cumsum_leading_zero, is_str_all
+from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
 
@@ -729,9 +729,9 @@ class Module(ABC):
         """
         for module in constituents:
             assert len(module.diffusion_states) == 0, (
-                "Cannot have diffusion in subpartsof a module. As a workaround, set the"
-                "diffusion constant for all parts that should not have ion diffusion to"
-                "zero."
+                "Cannot have diffusion in subparts of a module. As a workaround, set "
+                "the diffusion constant for all parts that should not have ion "
+                "diffusion to a very small value (e.g. 1e-8)."
             )
             for channel in module.channels:
                 if channel._name not in [c._name for c in self.channels]:
@@ -1811,7 +1811,7 @@ class Module(ABC):
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
     @only_allow_module
-    def diffuse(self, state: str):
+    def diffuse(self, state: str) -> None:
         """Diffuse a particular state across compartments with Fickian diffusion.
 
         Args:
@@ -1829,14 +1829,32 @@ class Module(ABC):
         # the NernstReversal should have the state anyways.
         self.base.nodes.loc[state_is_nan, state] = 0.0
 
+    @only_allow_module
+    def delete_diffusion(self, state: str) -> None:
+        """Deletes ion diffusion in the entire module.
+
+        Args:
+            state: Name of the state that should no longer be diffused.
+        """
+        assert (
+            state in self.base.diffusion_states
+        ), f"State {state} is not part of `self.diffusion_states`."
+        self.base.diffusion_states.remove(state)
+        self.base.nodes.drop(columns=[f"axial_diffusion_{state}"], inplace=True)
+
+    @deprecated("0.7.0", "Use `.delete(Channel())` instead.")
     def delete_channel(self, channel: Channel):
-        """Remove a channel from the module.
+        self.delete(channel)
+
+    def delete(self, channel: Union[Channel, Pump]):
+        """Remove a channel or pump from the module.
 
         Args:
             channel: The channel to remove."""
         name = channel._name
-        channel_names = [c._name for c in self.channels]
+        channel_names = [c._name for c in self.channels + self.pumps]
         all_channel_names = [c._name for c in self.base.channels]
+        all_pump_names = [c._name for c in self.base.pumps]
         if name in channel_names:
             channel_cols = list(channel.channel_params.keys())
             channel_cols += list(channel.channel_states.keys())
@@ -1845,7 +1863,17 @@ class Module(ABC):
 
             # only delete cols if no other comps in the module have the same channel
             if np.all(~self.base.nodes[name]):
-                self.base.channels.pop(all_channel_names.index(name))
+                if isinstance(channel, Channel):
+                    self.base.channels.pop(all_channel_names.index(name))
+                elif isinstance(channel, Pump):
+                    self.base.pumps.pop(all_pump_names.index(name))
+                else:
+                    raise ValueError(
+                        "The channel/pump to be deleted is neither a channel nor a "
+                        "pump. Maybe you ran `cell.delete(HH)` instead of "
+                        "`cell.delete(HH())` (ie you forgot to initialize the channel "
+                        "via round brackets: `HH()`."
+                    )
                 self.base.membrane_current_names.remove(channel.current_name)
                 self.base.nodes.drop(columns=channel_cols + [name], inplace=True)
         else:
@@ -2031,13 +2059,31 @@ class Module(ABC):
                     )
                 updated_states = jnp.stack(updated_states)
             else:
-                nones = [None] * len(solver_kwargs)
-                vmapped = vmap(
-                    step_voltage_implicit, in_axes=(0, 0, 0, 0, *nones, None)
-                )
-                updated_states = vmapped(
-                    *state_vals.values(), *solver_kwargs.values(), dt
-                )
+                # The following if-case is a bit ugly and, technically, not needed.
+                # However, running a `vmapped` version of the implicit solver induces
+                # significant computation cost, even if the leading dimension of the
+                # `vmap` is 1 (as is the case if one has no diffusion). To ensure
+                # fast runtime and compile time, the following if-case avoids the `vmap`
+                # if one does not use diffusion.
+                if len(self.diffusion_states) == 0:
+                    updated_states = step_voltage_implicit(
+                        state_vals["states"][0],
+                        state_vals["linear_terms"][0],
+                        state_vals["constant_terms"][0],
+                        state_vals["axial_conductances"][0],
+                        *solver_kwargs.values(),
+                        dt,
+                    )
+                    # Add `vmap` dimension.
+                    updated_states = jnp.expand_dims(updated_states, axis=0)
+                else:
+                    nones = [None] * len(solver_kwargs)
+                    vmapped = vmap(
+                        step_voltage_implicit, in_axes=(0, 0, 0, 0, *nones, None)
+                    )
+                    updated_states = vmapped(
+                        *state_vals.values(), *solver_kwargs.values(), dt
+                    )
             if solver == "crank_nicolson":
                 # The forward Euler step in Crank-Nicolson can be performed easily as
                 # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
@@ -2152,10 +2198,10 @@ class Module(ABC):
         for channel in channels:
             name = channel._name
             if isinstance(channel, Channel):
-                modified_state_name_name = "v"
+                modified_state_name = "v"
             else:
-                modified_state_name_name = channel.ion_name
-            modified_state = states[modified_state_name_name]
+                modified_state_name = channel.ion_name
+            modified_state = states[modified_state_name]
 
             indices = channel_nodes.loc[channel_nodes[name]][
                 "global_comp_index"
@@ -2168,11 +2214,11 @@ class Module(ABC):
                 indices,
                 params,
             )
-            linear_terms[modified_state_name_name] = (
-                linear_terms[modified_state_name_name].at[indices].add(linear_term)
+            linear_terms[modified_state_name] = (
+                linear_terms[modified_state_name].at[indices].add(linear_term)
             )
-            const_terms[modified_state_name_name] = (
-                const_terms[modified_state_name_name].at[indices].add(const_term)
+            const_terms[modified_state_name] = (
+                const_terms[modified_state_name].at[indices].add(const_term)
             )
 
             # Save the current (for the unperturbed voltage) as a state that will
@@ -2854,7 +2900,7 @@ class View(Module):
         return [c for c in pointer.channels if c._name in channel_in_view]
 
     def _pumps_in_view(self, pointer: Union[Module, View]) -> List[Pump]:
-        """Set channels to show only those in view."""
+        """Set pumps to show only those in view."""
         names = [name._name for name in pointer.pumps]
         pump_in_view = self.nodes[names].any(axis=0)
         pump_in_view = pump_in_view[pump_in_view].index

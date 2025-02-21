@@ -11,6 +11,9 @@ import jax.numpy as jnp
 class Channel:
     """Channel base class. All channels inherit from this class.
 
+    A channel in Jaxley is everything that modifies the membrane voltage via its
+    current returned by the `compute_current()` method.
+
     As in NEURON, a `Channel` is considered a distributed process, which means that its
     conductances are to be specified in `S/cm2` and its currents are to be specified in
     `uA/cm2`."""
