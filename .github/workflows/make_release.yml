@@ -47,6 +47,8 @@ jobs:
             - [ ] All tests pass
             - [ ] The tutorials can be run
 
+            For more information or in case of any issues, see our [release workflow](https://github.com/jaxleyverse/jaxley/wiki/Release-workflow).
+
   release-checks:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
