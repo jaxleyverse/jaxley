@@ -127,13 +127,13 @@ def test_sparse_connect(SimpleNet):
 
     _ = np.random.seed(0)
     for i in range(4):
-        sparse_connect(net[i], net[4:8], TestSynapse(), p=0.5)
+        sparse_connect(net[i], net[4:8], TestSynapse(), p=0.5, random_post_comp=True)
 
-    sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5)
+    sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5, random_post_comp=True)
 
     assert all(
         net.edges.post_global_comp_index
-        == [64, 80, 96, 112, 64, 96, 64, 80, 112, 208, 224, 240, 192, 208, 240, 208]
+        == [74, 82, 79, 127, 100, 109, 113, 203, 198, 217, 222, 214, 212, 248, 250]
     )
 
 
@@ -195,7 +195,7 @@ def test_connectivity_matrix_connect(SimpleNet):
 
     # Test with single compartment cells
     comp = jx.Compartment()
-    branch = jx.Branch([comp], nseg=1)
+    branch = jx.Branch([comp], ncomp=1)
     cell = jx.Cell([branch], parents=[-1])
     net = jx.Network([cell for _ in range(4 * 4)])
     connectivity_matrix_connect(

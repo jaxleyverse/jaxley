@@ -18,19 +18,6 @@ def sample_comp(cell_view: "View", num: int = 1, replace=True) -> "CompartmentVi
     return np.random.choice(cell_view._comps_in_view, num, replace=replace)
 
 
-def get_random_post_comps(post_cell_view: "View", num_post: int) -> "CompartmentView":
-    """Sample global compartment indices from all postsynaptic cells."""
-    global_post_comp_indices = (
-        post_cell_view.nodes.groupby("global_cell_index")
-        .sample(num_post, replace=True)
-        .index.to_numpy()
-    )
-    global_post_comp_indices = global_post_comp_indices.reshape(
-        (-1, num_post), order="F"
-    ).ravel()
-    return global_post_comp_indices
-
-
 def connect(
     pre: "View",
     post: "View",
@@ -74,22 +61,31 @@ def fully_connect(
     num_pre = len(pre_cell_view._cells_in_view)
     num_post = len(post_cell_view._cells_in_view)
 
-    # Get a view of the zeroeth compartment of each cell as the pre compartments
-    pre_comps = pre_cell_view.scope("local").branch(0).comp(0).nodes.copy()
-    # Repeat rows `num_post` times
-    pre_rows = pre_comps.loc[pre_comps.index.repeat(num_post)].reset_index(drop=True)
+    # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+    pre_rows = pre_cell_view.scope("local").branch(0).comp(0).nodes.copy()
+    # Repeat rows `num_post` times. See SO 50788508.
+    pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)].reset_index(drop=True)
 
     if random_post_comp:
-        global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
+        global_post_comp_indices = (
+            post_cell_view.nodes.groupby("global_cell_index")
+            .sample(num_pre, replace=True)
+            .index.to_numpy()
+        )
+        # Reorder the post comp inds to tile order (pre indices are repeated so here tile needed)
+        global_post_comp_indices = np.reshape(
+            global_post_comp_indices, (num_pre, num_post)
+        ).T.flatten()
     else:
         # Post-synapse also at the zero-eth branch and zero-eth compartment
-        to_idx = np.tile(range(0, num_post), num_pre)
         global_post_comp_indices = (
             post_cell_view.nodes.groupby("global_cell_index").first()[
                 "global_comp_index"
             ]
         ).to_numpy()
+        to_idx = np.tile(range(0, num_post), num_pre)
         global_post_comp_indices = global_post_comp_indices[to_idx]
+
     post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
@@ -107,6 +103,10 @@ def sparse_connect(
     Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
     location 0 of the post-synaptic cell unless random_post_comp=True.
 
+    NOTE: This function does not generate sparse random connectivity with random graph
+    generation methodology, cells may be connected multiple times and p=1.0 does
+    not fully connect.
+
     Args:
         pre_cell_view: View of the presynaptic cell.
         post_cell_view: View of the postsynaptic cell.
@@ -115,47 +115,46 @@ def sparse_connect(
         random_post_comp: If True, randomly samples the postsynaptic compartments.
     """
     # Get pre- and postsynaptic cell indices.
+    pre_cell_inds = pre_cell_view._cells_in_view
+    post_cell_inds = post_cell_view._cells_in_view
     num_pre = len(pre_cell_view._cells_in_view)
     num_post = len(post_cell_view._cells_in_view)
 
-    # Generate random cxns via Bernoulli trials (no duplicates), done in blocks of the
-    # connectivity matrix to save memory and time (smaller cut size saves memory,
-    # larger saves time)
-    cut_size = 100  # --> (100, 100) dim blocks
-    pre_inds, post_inds = [], []
-    for i in range((num_pre + cut_size - 1) // cut_size):
-        for j in range((num_post + cut_size - 1) // cut_size):
-            block = np.random.binomial(1, p, size=(cut_size, cut_size))
-            block_pre, block_post = np.where(block)
-            block_pre += i * cut_size  # block inds --> full adj mat inds
-            block_post += j * cut_size  # block inds --> full adj mat inds
-            pre_inds.append(block_pre)
-            post_inds.append(block_post)
-    pre_post_inds = np.stack(
-        (np.concatenate(pre_inds), np.concatenate(post_inds)), axis=1
-    )
-    # Filter out connections where either pre or post index is out of range
-    pre_post_inds = pre_post_inds[
-        (pre_post_inds[:, 0] < num_pre) & (pre_post_inds[:, 1] < num_post)
-    ]
-    from_idx, to_idx = pre_post_inds[:, 0], pre_post_inds[:, 1]
+    num_connections = np.random.binomial(num_pre * num_post, p)
+    if num_connections < 1:
+        raise ValueError("Probability too low for any connections")
+    pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
+    post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
 
-    # Pre-synapse at the zero-eth branch and zero-eth compartment
-    global_pre_comp_indices = (
-        pre_cell_view.nodes.groupby("global_cell_index").first()["global_comp_index"]
-    ).to_numpy()
-    pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
+    # Sort the synapses only for convenience of inspecting `.edges`.
+    sorting = np.argsort(pre_syn_neurons)
+    pre_syn_neurons = pre_syn_neurons[sorting]
+    post_syn_neurons = post_syn_neurons[sorting]
 
+    # Pre-synapse is at the zero-eth branch and zero-eth compartment.
+    global_pre_indices = pre_cell_view.base._cumsum_ncomp_per_cell[pre_syn_neurons]
+    pre_rows = pre_cell_view.base.nodes.loc[global_pre_indices]
+
+    # Sample the post-synaptic compartments
     if random_post_comp:
-        global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
+        # Filter the post cell view to include post-synaptic neurons
+        post_syn_view = post_cell_view.nodes[
+            post_cell_view.nodes["global_cell_index"].isin(post_syn_neurons)
+        ]
+        # Determine how many comps to sample for each post-synaptic neuron
+        unique_cells, counts = np.unique(post_syn_neurons, return_counts=True)
+        n_samples_dict = dict(zip(unique_cells, counts))
+        sampled_inds = post_syn_view.groupby("global_cell_index").apply(
+            lambda x: x.sample(n=n_samples_dict[x.name])
+        )
+        global_post_comp_indices = sampled_inds.global_comp_index.to_numpy()
+        post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
     else:
         # Post-synapse also at the zero-eth branch and zero-eth compartment
-        global_post_comp_indices = (
-            post_cell_view.nodes.groupby("global_cell_index").first()[
-                "global_comp_index"
-            ]
-        ).to_numpy()
-    post_rows = post_cell_view.select(nodes=global_post_comp_indices[to_idx]).nodes
+        global_post_indices = post_cell_view.base._cumsum_ncomp_per_cell[
+            post_syn_neurons
+        ]
+        post_rows = post_cell_view.base.nodes.loc[global_post_indices]
 
     if len(pre_rows) > 0:
         pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
@@ -201,7 +200,19 @@ def connectivity_matrix_connect(
     pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
 
     if random_post_comp:
-        global_post_comp_indices = get_random_post_comps(post_cell_view, num_pre)
+        global_to_idx = post_cell_view.nodes.global_cell_index.unique()[to_idx]
+        # Filter the post cell view to include post-synaptic neurons selected
+        post_syn_view = post_cell_view.nodes[
+            post_cell_view.nodes["global_cell_index"].isin(global_to_idx)
+        ]
+        # Determine how many comps to sample for each post-synaptic neuron
+        unique_cells, counts = np.unique(global_to_idx, return_counts=True)
+        # Sample the post-synaptic compartments
+        n_samples_dict = dict(zip(unique_cells, counts))
+        sampled_inds = post_syn_view.groupby("global_cell_index").apply(
+            lambda x: x.sample(n=n_samples_dict[x.name])
+        )
+        global_post_comp_indices = sampled_inds.global_comp_index.to_numpy()
     else:
         # Post-synapse also at the zero-eth branch and zero-eth compartment
         global_post_comp_indices = (
@@ -209,6 +220,7 @@ def connectivity_matrix_connect(
                 "global_comp_index"
             ]
         ).to_numpy()
-    post_rows = post_cell_view.select(nodes=global_post_comp_indices[to_idx]).nodes
+        global_post_comp_indices = global_post_comp_indices[to_idx]
+    post_rows = post_cell_view.select(nodes=global_post_comp_indices).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
