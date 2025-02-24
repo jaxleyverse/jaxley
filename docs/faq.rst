@@ -9,3 +9,4 @@ FAQ
    faq/question_01
    faq/question_02
    faq/question_03
+   faq/question_04

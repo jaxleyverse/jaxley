@@ -75,16 +75,30 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     )
     net.cell(0).branch(0).loc(0.0).stimulate(current)
 
+    # Invoke recording of voltage and synaptic states.
     net.cell(2).branch(0).loc(0.0).record("v")
     net.IonotropicSynapse.edge(1).record("IonotropicSynapse_s")
     net.cell(2).branch(0).loc(0.0).record("HH_m")
     net.cell(1).branch(0).loc(0.0).record("v")
     net.TestSynapse.edge(0).record("TestSynapse_c")
     net.cell(1).branch(0).loc(0.0).record("HH_m")
+    net.cell(1).branch(0).loc(0.0).record("i_HH")
+    net.IonotropicSynapse.edge(1).record("i_IonotropicSynapse")
+
+    # Advanced synapse indexing for recording.
+    net.copy_node_property_to_edges("global_cell_index")
+    # Record currents from specific post synaptic cells.
+    df = net.edges
+    df = df.query("pre_global_cell_index in [0, 1]")
+    net.select(edges=df.index).record("i_IonotropicSynapse")
+    # Record currents from specific synapse types
+    df = net.edges
+    df = df.query("type == 'TestSynapse'")
+    net.select(edges=df.index).record("i_TestSynapse")
 
     recs = jx.integrate(net)
 
-    # Loop over first two recorings and then the second two recordings.
+    # Loop over first two recordings and then the second two recordings.
     for index in [0, 3]:
         # Local maxima of voltage trace.
         y = recs[index]

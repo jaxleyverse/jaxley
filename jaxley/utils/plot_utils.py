@@ -17,10 +17,10 @@ from jaxley.utils.cell_utils import v_interp
 def plot_graph(
     xyzr: ndarray,
     dims: Tuple[int] = (0, 1),
-    col: str = "k",
+    color: str = "k",
     ax: Optional[Axes] = None,
     type: str = "line",
-    morph_plot_kwargs: Dict = {},
+    **kwargs,
 ) -> Axes:
     """Plot morphology.
 
@@ -28,10 +28,10 @@ def plot_graph(
         xyzr: The coordinates of the morphology.
         dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
             two or three of them.
-        col: The color for all branches.
+        color: The color for all branches.
         ax: The matplotlib axis to plot on.
         type: Either `line` or `scatter`.
-        morph_plot_kwargs: The plot kwargs for plt.plot or plt.scatter.
+        kwargs: The plot kwargs for plt.plot or plt.scatter.
     """
 
     if ax is None:
@@ -42,9 +42,9 @@ def plot_graph(
         points = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
-            _ = ax.plot(*points, color=col, **morph_plot_kwargs)
+            _ = ax.plot(*points, color=color, **kwargs)
         elif "scatter" in type.lower():
-            _ = ax.scatter(*points, color=col, **morph_plot_kwargs)
+            _ = ax.scatter(*points, color=color, **kwargs)
         else:
             raise NotImplementedError
 
@@ -307,11 +307,11 @@ def plot_mesh(
 def plot_comps(
     module_or_view: Union["jx.Module", "jx.View"],
     dims: Tuple[int] = (0, 1),
-    col: str = "k",
+    color: str = "k",
     ax: Optional[Axes] = None,
-    comp_plot_kwargs: Dict = {},
     true_comp_length: bool = True,
     resolution: int = 100,
+    **kwargs,
 ) -> Axes:
     """Plot compartmentalized neural morphology.
 
@@ -321,9 +321,8 @@ def plot_comps(
         module_or_view: The module or view to plot.
         dims: The dimensions to plot / to project the cylinder onto,
             i.e. [0,1] xy-plane or [0,1,2] for 3D.
-        col: The color for all compartments
+        color: The color for all compartments
         ax: The matplotlib axis to plot on.
-        comp_plot_kwargs: The plot kwargs for plt.fill.
         true_comp_length: If True, the length of the compartment is used, i.e. the
             length of the traced neurite. This means for zig-zagging neurites the
             cylinders will be longer than the straight-line distance between the
@@ -333,6 +332,7 @@ def plot_comps(
         resolution: defines the resolution of the mesh.
             If too low (typically <10), can result in errors.
             Useful too have a simpler mesh for plotting.
+        kwargs: The plot kwargs for plt.fill.
 
     Returns:
         Plot of the compartmentalized morphology.
@@ -360,11 +360,11 @@ def plot_comps(
                     center,
                     np.array(dims),
                     ax,
-                    color=col,
-                    **comp_plot_kwargs,
+                    color=color,
+                    **kwargs,
                 )
             else:
-                ax.add_artist(plt.Circle(locs[0, dims], radius, color=col))
+                ax.add_artist(plt.Circle(locs[0, dims], radius, color=color))
         else:
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
@@ -388,8 +388,8 @@ def plot_comps(
                     center,
                     np.array(dims),
                     ax,
-                    color=col,
-                    **comp_plot_kwargs,
+                    color=color,
+                    **kwargs,
                 )
     return ax
 
@@ -397,10 +397,10 @@ def plot_comps(
 def plot_morph(
     module_or_view: Union["jx.Module", "jx.View"],
     dims: Tuple[int] = (0, 1),
-    col: str = "k",
+    color: str = "k",
     ax: Optional[Axes] = None,
     resolution: int = 100,
-    morph_plot_kwargs: Dict = {},
+    **kwargs,
 ) -> Axes:
     """Plot the detailed morphology.
 
@@ -414,9 +414,9 @@ def plot_morph(
         module_or_view: The module or view to plot.
         dims: The dimensions to plot / to project the cylinder onto,
             i.e. [0,1] xy-plane or [0,1,2] for 3D.
-        col: The color for all branches
+        color: The color for all branches
         ax: The matplotlib axis to plot on.
-        morph_plot_kwargs: The plot kwargs for plt.fill.
+        kwargs: The plot kwargs for plt.fill.
 
         resolution: defines the resolution of the mesh.
             If too low (typically <10), can result in errors.
@@ -454,9 +454,9 @@ def plot_morph(
                     dxyz,
                     xyzr1[:3],
                     np.array(dims),
-                    color=col,
+                    color=color,
                     ax=ax,
-                    **morph_plot_kwargs,
+                    **kwargs,
                 )
         else:
             points = create_cone_frustum_mesh(
@@ -472,9 +472,9 @@ def plot_morph(
                 np.ones(3),
                 xyzr[0, :3],
                 dims=np.array(dims),
-                color=col,
+                color=color,
                 ax=ax,
-                **morph_plot_kwargs,
+                **kwargs,
             )
 
     return ax

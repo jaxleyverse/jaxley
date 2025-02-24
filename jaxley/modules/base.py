@@ -148,6 +148,7 @@ class Module(ABC):
         self.synapse_param_names = []
         self.synapse_state_names = []
         self.synapse_names = []
+        self.synapse_current_names: List[str] = []
 
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
@@ -392,7 +393,10 @@ class Module(ABC):
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
 
-        np_dtype = np.int64 if dtype is int else np.float64
+        if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.number):
+            np_dtype = idx.dtype.type
+        else:
+            np_dtype = np.dtype(int).type if dtype is int else np.dtype(float).type
         idx = np.array([], dtype=dtype) if idx is None else idx
         idx = np.array([idx]) if isinstance(idx, (dtype, np_dtype)) else idx
         idx = np.array(idx) if isinstance(idx, (list, range, pd.Index)) else idx
@@ -405,7 +409,11 @@ class Module(ABC):
             dim = shape[np.where(which_idx)[0][0]]
             idx = np.arange(dim)[idx]
         assert isinstance(idx, np.ndarray), "Invalid type"
-        assert idx.dtype in [np_dtype, bool], "Invalid dtype"
+        assert idx.dtype in [
+            np_dtype,
+            bool,
+        ], f"Invalid dtype, found {str(idx.dtype)} instead of {str([np_dtype, bool])}"
+
         return idx.reshape(-1)
 
     def _set_controlled_by_param(self, key: str):
@@ -1057,9 +1065,6 @@ class Module(ABC):
         ncomps_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
-        assert np.all(
-            ncomps_per_branch == ncomps_per_branch[0]
-        ), "Parameter sharing is not allowed for modules containing branches with different numbers of compartments."
 
         data = self.nodes if key in self.nodes.columns else None
         data = self.edges if key in self.edges.columns else data
@@ -1074,14 +1079,31 @@ class Module(ABC):
         grouped_view = data.groupby("controlled_by_param")
         # Because of this `x.index.values` we cannot support `make_trainable()` on
         # the module level for synapse parameters (but only for `SynapseView`).
-        inds_of_comps = list(
+        comp_inds = list(
             grouped_view.apply(lambda x: x.index.values, include_groups=False)
         )
-        indices_per_param = jnp.stack(inds_of_comps)
+
+        # check if all shapes in comp_inds are the same. If not the case this means
+        # the groups in controlled_by_param have different sizes, i.e. due to different
+        # number of comps for two different branches. In this case we pad the smaller
+        # groups with -1 to make them the same size.
+        lens = np.array([inds.shape[0] for inds in comp_inds])
+        max_len = np.max(lens)
+        pad = lambda x: np.pad(x, (0, max_len - x.shape[0]), constant_values=-1)
+        if not np.all(lens == max_len):
+            comp_inds = [
+                pad(inds) if inds.shape[0] < max_len else inds for inds in comp_inds
+            ]
+
         # Sorted inds are only used to infer the correct starting values.
-        param_vals = jnp.asarray(
-            [data.loc[inds, key].to_numpy() for inds in inds_of_comps]
-        )
+        indices_per_param = jnp.stack(comp_inds)
+
+        # Assign dummy param (ignored by nanmean later). This adds a new row to the
+        # `data` (which is, e.g., self.nodes). That new row has index `-1`, which does
+        # not clash with any other node index (they are in
+        # `[0, ..., num_total_comps-1]`).
+        data.loc[-1, key] = np.nan
+        param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
@@ -1098,7 +1120,7 @@ class Module(ABC):
                     f"init_val must a float, list, or None, but it is a {type(init_val).__name__}."
                 )
         else:
-            new_params = jnp.mean(param_vals, axis=1)
+            new_params = jnp.nanmean(param_vals, axis=1)
         self.base.trainable_params.append({key: new_params})
         self.base.indices_set_by_trainables.append(indices_per_param)
         self.base.num_trainable_params += num_created_parameters
@@ -1207,9 +1229,14 @@ class Module(ABC):
 
         Returns states seperated by comps and edges."""
         channel_states = [name for c in self.channels for name in c.channel_states]
-        synapse_states = [name for s in self.synapses for name in s.synapse_states]
+        synapse_states = [
+            name for s in self.synapses if s is not None for name in s.synapse_states
+        ]
         membrane_states = ["v", "i"] + self.membrane_current_names
-        return channel_states + membrane_states, synapse_states
+        return (
+            channel_states + membrane_states,
+            synapse_states + self.synapse_current_names,
+        )
 
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
@@ -2080,10 +2107,10 @@ class Module(ABC):
     def vis(
         self,
         ax: Optional[Axes] = None,
-        col: str = "k",
+        color: str = "k",
         dims: Tuple[int] = (0, 1),
         type: str = "line",
-        morph_plot_kwargs: Dict = {},
+        **kwargs,
     ) -> Axes:
         """Visualize the module.
 
@@ -2096,7 +2123,7 @@ class Module(ABC):
         - `scatter`: All traced points, are plotted as scatter points.
         - `comp`: Plots the compartmentalized morphology, including radius
         and shape. (shows the true compartment lengths per default, but this can
-        be changed via the `morph_plot_kwargs`, for details see
+        be changed via the `kwargs`, for details see
         `jaxley.utils.plot_utils.plot_comps`).
         - `morph`: Reconstructs the 3D shape of the traced morphology. For details see
         `jaxley.utils.plot_utils.plot_morph`. Warning: For 3D plots and morphologies
@@ -2104,16 +2131,21 @@ class Module(ABC):
 
         Args:
             ax: An axis into which to plot.
-            col: The color for all branches.
+            color: The color for all branches.
             dims: Which dimensions to plot. 1=x, 2=y, 3=z coordinate. Must be a tuple of
                 two of them.
             type: The type of plot. One of ["line", "scatter", "comp", "morph"].
-            morph_plot_kwargs: Keyword arguments passed to the plotting function.
+            kwargs: Keyword arguments passed to the plotting function.
         """
+        res = 100 if "resolution" not in kwargs else kwargs.pop("resolution")
         if "comp" in type.lower():
-            return plot_comps(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
+            return plot_comps(
+                self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
+            )
         if "morph" in type.lower():
-            return plot_morph(self, dims=dims, ax=ax, col=col, **morph_plot_kwargs)
+            return plot_morph(
+                self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
+            )
 
         assert not np.any(
             [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
@@ -2122,10 +2154,10 @@ class Module(ABC):
         ax = plot_graph(
             self.xyzr,
             dims=dims,
-            col=col,
+            color=color,
             ax=ax,
             type=type,
-            morph_plot_kwargs=morph_plot_kwargs,
+            **kwargs,
         )
 
         return ax
@@ -2444,7 +2476,8 @@ class View(Module):
         )
 
         self.channels = self._channels_in_view(pointer)
-        self.membrane_current_names = [c._name for c in self.channels]
+        self.membrane_current_names = [c.current_name for c in self.channels]
+        self.synapse_current_names = pointer.synapse_current_names
         self._set_trainables_in_view()  # run after synapses and channels
         self.num_trainable_params = (
             np.sum([len(inds) for inds in self.indices_set_by_trainables])
@@ -2488,12 +2521,15 @@ class View(Module):
             incl_comps = pointer.nodes.loc[
                 self._nodes_in_view, "global_comp_index"
             ].unique()
-            pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
-            post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
-            possible_edges_in_view = base_edges.index.to_numpy()[(pre & post).flatten()]
-            self._edges_in_view = np.intersect1d(
-                possible_edges_in_view, self._edges_in_view
-            )
+            if not base_edges.empty:
+                pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
+                post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
+                possible_edges_in_view = base_edges.index.to_numpy()[
+                    (pre & post).flatten()
+                ]
+                self._edges_in_view = np.intersect1d(
+                    possible_edges_in_view, self._edges_in_view
+                )
         elif not has_node_inds and has_edge_inds:
             base_nodes = self.base.nodes
             self._edges_in_view = edges
@@ -2635,7 +2671,7 @@ class View(Module):
         viewed_synapses = []
         viewed_params = []
         viewed_states = []
-        if not pointer.synapses is None:
+        if pointer.synapses is not None:
             for syn in pointer.synapses:
                 if syn is not None:  # needed for recurive viewing
                     in_view = syn._name in self.synapse_names

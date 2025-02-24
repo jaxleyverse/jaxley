@@ -6,7 +6,7 @@
 
 - single-compartment (point neuron) Hodgkin-Huxley models
 - multi-compartment Hodgkin-Huxley models
-- rate-based neuron models
+- rate-based neuron models (tutorial [here](https://jaxley.readthedocs.io/en/latest/faq/question_04.html))
 
 For all of these models, `Jaxley` is flexible and accurate. For example, it can flexibly [add new channel models](https://jaxleyverse.github.io/jaxley/tutorial/05_channel_and_synapse_models/), use [different kinds of synapses (conductance-based, tanh, ...)](https://github.com/jaxleyverse/jaxley/tree/main/jaxley/synapses), and it can [insert different kinds of channels in different branches](https://jaxleyverse.github.io/jaxley/tutorial/01_morph_neurons/) (or compartments) within single cells. Like `NEURON`, `Jaxley` implements a backward-Euler solver for stable numerical solution of multi-compartment neurons.
 
