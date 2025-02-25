@@ -17,13 +17,18 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 ### Bug fixes
 
 - Fix for simulation of morphologies with inhomogenous numbers of compartments (#438, @michaeldeistler)
+- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582, @Kartik-Sama, @michaeldeistler).
+
+### Code health
 
 - add new release workflow (#588, @jnsbck)
-- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582, @Kartik-Sama, @michaeldeistler).
+- update FAQ and tutorials (#593, @michaeldeistler)
+
 
 # 0.6.2
 
 - also remove `nseg` from tutorials (#580, @jnsbck)
+
 
 # 0.6.1
 
