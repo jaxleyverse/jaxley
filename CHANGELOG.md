@@ -1,6 +1,7 @@
 # 0.6.3
 
 - add new release workflow (#588, @jnsbck)
+- make random post compartment selection optional in connectivity functions (#489 @kyralianaka)
 
 # 0.6.2
 
