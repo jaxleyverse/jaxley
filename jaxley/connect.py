@@ -143,7 +143,7 @@ def sparse_connect(
         unique_cells, counts = np.unique(post_syn_neurons, return_counts=True)
         n_samples_dict = dict(zip(unique_cells, counts))
         sampled_inds = post_syn_view.groupby("global_cell_index").apply(
-            lambda x: x.sample(n=n_samples_dict[x.name])
+            lambda x: x.sample(n=n_samples_dict[x.name], replace=True)
         )
         global_post_comp_indices = sampled_inds.global_comp_index.to_numpy()
         post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
@@ -208,7 +208,7 @@ def connectivity_matrix_connect(
         # Sample the post-synaptic compartments
         n_samples_dict = dict(zip(unique_cells, counts))
         sampled_inds = post_syn_view.groupby("global_cell_index").apply(
-            lambda x: x.sample(n=n_samples_dict[x.name])
+            lambda x: x.sample(n=n_samples_dict[x.name], replace=True)
         )
         global_post_comp_indices = sampled_inds.global_comp_index.to_numpy()
     else:

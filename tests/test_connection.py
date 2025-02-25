@@ -188,7 +188,7 @@ def test_sparse_connect(SimpleNet):
 
     assert all(
         net2.edges.post_global_comp_index
-        == [127, 124, 195, 204, 207, 229, 234, 232, 247, 245, 241, 242]
+        == [123, 201, 196, 211, 208, 211, 213, 238, 255, 255]
     )
 
 
@@ -233,7 +233,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == inds_of_connected_cells)
-    assert net.edges.post_global_comp_index.to_numpy().tolist() == [35, 65, 71, 93, 84]
+    assert net.edges.post_global_comp_index.to_numpy().tolist() == [36, 63, 69, 72, 75]
 
     # Test with different cell views
     net = SimpleNet(4 * 4, 3, 8)
