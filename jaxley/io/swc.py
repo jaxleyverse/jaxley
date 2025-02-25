@@ -459,6 +459,7 @@ def read_swc(
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
         backend: The backend to use. Currently `custom` and `graph` are supported.
             For context on these backends see `read_swc_custom` and `from_graph`.
+        backend_kwargs: Additional keyword arguments passed to the swc reader.
 
     Returns:
         A `Cell` object."""

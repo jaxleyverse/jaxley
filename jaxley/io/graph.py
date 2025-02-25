@@ -529,9 +529,8 @@ def make_jaxley_compatible(
     for n in comp_graph.nodes:
         # `dictionary.get(key, "custom")` returns `custom` by default. This is useful
         # because some SWC files might have really strange type identifier.
-        comp_graph.nodes[n]["groups"] = [
-            group_ids.get(comp_graph.nodes[n].pop("id"), "custom")
-        ]
+        type_id = comp_graph.nodes[n].pop("id")
+        comp_graph.nodes[n]["groups"] = [group_ids.get(type_id, f"custom{type_id}")]
         comp_graph.nodes[n]["radius"] = clip_radius(comp_graph.nodes[n].pop("r"))
         comp_graph.nodes[n]["length"] = comp_graph.nodes[n].pop("comp_length")
         comp_graph.nodes[n].pop("l")
