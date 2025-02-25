@@ -188,7 +188,10 @@ def trace_branches(
 
     # Ensure root segment is linear. Needed to create root branch.
     if graph.out_degree(0) > 1:
-        graph.add_node(-1, **graph.nodes[0])
+        # The root segment should be of type `custom` (=5).
+        parent = graph.nodes[0]
+        parent["id"] = 5
+        graph.add_node(-1, **parent)
         graph.add_edge(-1, 0, l=0.1)
         graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
 
@@ -524,7 +527,11 @@ def make_jaxley_compatible(
     min_radius = min_radius if min_radius else 0.0
     clip_radius = lambda r: max(r, min_radius) if min_radius else r
     for n in comp_graph.nodes:
-        comp_graph.nodes[n]["groups"] = [group_ids[comp_graph.nodes[n].pop("id")]]
+        # `dictionary.get(key, "custom")` returns `custom` by default. This is useful
+        # because some SWC files might have really strange type identifier.
+        comp_graph.nodes[n]["groups"] = [
+            group_ids.get(comp_graph.nodes[n].pop("id"), "custom")
+        ]
         comp_graph.nodes[n]["radius"] = clip_radius(comp_graph.nodes[n].pop("r"))
         comp_graph.nodes[n]["length"] = comp_graph.nodes[n].pop("comp_length")
         comp_graph.nodes[n].pop("l")
