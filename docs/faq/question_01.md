@@ -1,6 +1,6 @@
 # What units does Jaxley use?
 
-`Jaxley` uses the same units as the `NEURON` simulator, which are listed below:
+`Jaxley` uses the same [units as the `NEURON` simulator](https://www.neuron.yale.edu/neuron/static/docs/units/unitchart.html). These units are:
 
 Category             | Unit
 --------             | ----
