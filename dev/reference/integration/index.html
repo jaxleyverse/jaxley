@@ -3015,7 +3015,7 @@ via exponential Euler</p>
 
 
 <h3 id="jaxley.solver_voltage.step_voltage_explicit" class="doc doc-heading">
-            <code class=" language-python"><span class="n">step_voltage_explicit</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">internal_node_inds</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">step_voltage_explicit</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">internal_node_inds</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span></code>
 
 <a href="#jaxley.solver_voltage.step_voltage_explicit" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -3080,9 +3080,9 @@ via exponential Euler</p>
     <span class="n">child_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">nbranches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">idx</span><span class="p">:</span> <span class="n">JaxleySolveIndexer</span><span class="p">,</span>
     <span class="n">debug_states</span><span class="p">,</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve one timestep of branched nerve equations with explicit (forward) Euler.&quot;&quot;&quot;</span>
     <span class="n">voltages</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="p">(</span><span class="n">nbranches</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
@@ -3117,7 +3117,7 @@ via exponential Euler</p>
 
 
 <h3 id="jaxley.solver_voltage.step_voltage_implicit_with_jaxley_spsolve" class="doc doc-heading">
-            <code class=" language-python"><span class="n">step_voltage_implicit_with_jaxley_spsolve</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">internal_node_inds</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">)</span></code>
+            <code class=" language-python"><span class="n">step_voltage_implicit_with_jaxley_spsolve</span><span class="p">(</span><span class="n">voltages</span><span class="p">,</span> <span class="n">voltage_terms</span><span class="p">,</span> <span class="n">constant_terms</span><span class="p">,</span> <span class="n">axial_conductances</span><span class="p">,</span> <span class="n">internal_node_inds</span><span class="p">,</span> <span class="n">sinks</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">ncomp_per_branch</span><span class="p">,</span> <span class="n">par_inds</span><span class="p">,</span> <span class="n">child_inds</span><span class="p">,</span> <span class="n">nbranches</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">debug_states</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span></code>
 
 <a href="#jaxley.solver_voltage.step_voltage_implicit_with_jaxley_spsolve" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -3293,9 +3293,9 @@ via exponential Euler</p>
     <span class="n">child_inds</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">nbranches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">idx</span><span class="p">:</span> <span class="n">JaxleySolveIndexer</span><span class="p">,</span>
     <span class="n">debug_states</span><span class="p">,</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve one timestep of branched nerve equations with implicit (backward) Euler.&quot;&quot;&quot;</span>
     <span class="c1"># Build diagonals.</span>

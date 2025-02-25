@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#building-ion-channel-models" class="md-skip">
+        <a href="#building-ion-channels-and-synapses" class="md-skip">
           Skip to content
         </a>
       
@@ -911,10 +911,11 @@
   
 
 
-<h1 id="building-ion-channel-models">Building ion channel models<a class="headerlink" href="#building-ion-channel-models" title="Permanent link">&para;</a></h1>
+<h1 id="building-ion-channels-and-synapses">Building ion channels and synapses<a class="headerlink" href="#building-ion-channels-and-synapses" title="Permanent link">&para;</a></h1>
 <p>In this tutorial, you will learn how to:</p>
 <ul>
 <li>define your own ion channel models beyond the preconfigured channels in <code>Jaxley</code>  </li>
+<li>define your own synapse models  </li>
 </ul>
 <p>This tutorial assumes that you have already learned how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html">build basic simulations</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
@@ -1044,6 +1045,7 @@ Added 1 recordings. See `.recordings` for details.
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Voltage (mV)&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_12_0.png" /></p>
+<p>If you want to set up detailed biophysical models using ion dynamics (e.g., ion pumps and ion diffusion), then we recommend reading <a href="https://jaxley.readthedocs.io/en/latest/tutorials/11_intracellular_dynamics.html">this tutorial</a>.</p>
 <h3 id="your-own-synapse">Your own synapse<a class="headerlink" href="#your-own-synapse" title="Permanent link">&para;</a></h3>
 <p>The parts below assume that you have already learned how to <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">build network simulations in <code>Jaxley</code></a>.</p>
 <p>Note that again, a synapse needs to have the two functions <code>update_states</code> and <code>compute_current</code> with all input arguments shown below. </p>
@@ -1099,9 +1101,9 @@ Added 1 recordings. See `.recordings` for details.
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time (ms)&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Voltage (mV)&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_20_0.png" /></p>
+<p><img alt="png" src="../05_channel_and_synapse_models_files/05_channel_and_synapse_models_21_0.png" /></p>
 <p>That&rsquo;s it! You are now ready to build your own custom simulations and equip them with channel and synapse models!</p>
-<p>This tutorial does not have an immediate follow-up tutorial. If you have not done so already, you can check out our <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
+<p>If you want to set up detailed biophysical models using ion dynamics (e.g., ion pumps and ion diffusion), then we recommend reading <a href="https://jaxley.readthedocs.io/en/latest/tutorials/11_intracellular_dynamics.html">this tutorial</a>. If you have not done so already, you can check out our <a href="https://jaxley.readthedocs.io/en/latest/tutorials/07_gradient_descent.html">tutorial on training biophysical networks</a> which will teach you how you can optimize parameters of biophysical models with gradient descent.</p>
 
 
 
