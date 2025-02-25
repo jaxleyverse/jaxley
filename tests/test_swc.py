@@ -263,7 +263,10 @@ def test_swc_types(reader_backend, file):
     # Can not use full morphology because of branch sorting.
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
-    cell = jx.read_swc(fname, ncomp=1, backend=reader_backend)
+    backend_kwargs = (
+        {"ignore_swc_trace_errors": False} if reader_backend == "graph" else {}
+    )
+    cell = jx.read_swc(fname, ncomp=1, backend=reader_backend, **backend_kwargs)
     desired_numbers_of_comps = {
         "morph_3_types.swc": {"soma": 1, "axon": 1, "basal": 1},
         "morph_3_types_single_point_soma.swc": {
@@ -271,10 +274,7 @@ def test_swc_types(reader_backend, file):
             "axon": 1,
             "basal": 1,
         },
-        # For `morph.swc`, `"basal": 101 ` fails for `graph` backend because it merges
-        # two branches into one. This is neither correct nor wrong (just a matter of
-        # interpretation), so I am not testing for it.
-        "morph.swc": {"soma": 2, "apical": 53},
+        "morph.swc": {"soma": 2, "basal": 101, "apical": 53},
         "bbp_with_axon.swc": {"soma": 1, "axon": 128, "basal": 66, "apical": 129},
     }
     # Test soma.

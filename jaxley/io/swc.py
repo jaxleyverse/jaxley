@@ -438,6 +438,7 @@ def read_swc(
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
     backend: str = "custom",
+    **backend_kwargs,
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
@@ -469,6 +470,7 @@ def read_swc(
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
+            **backend_kwargs,
         )
     elif backend == "graph":
         graph = swc_to_graph(fname)
@@ -478,6 +480,7 @@ def read_swc(
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
+            **backend_kwargs,
         )
     else:
         raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")
