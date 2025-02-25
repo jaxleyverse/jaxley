@@ -183,6 +183,7 @@ class Cell(Module):
         )
         self._solve_indexer = JaxleySolveIndexer(
             cumsum_ncomp=padded_cumsum_ncomp,
+            ncomp_per_branch=self.ncomp_per_branch,
             branchpoint_group_inds=branchpoint_group_inds,
             children_in_level=children_in_level,
             parents_in_level=parents_in_level,

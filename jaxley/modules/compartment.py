@@ -67,6 +67,7 @@ class Compartment(Module):
     def _init_morph_jaxley_spsolve(self):
         self._solve_indexer = JaxleySolveIndexer(
             cumsum_ncomp=self.cumsum_ncomp,
+            ncomp_per_branch=self.ncomp_per_branch,
             branchpoint_group_inds=np.asarray([]).astype(int),
             children_in_level=[],
             parents_in_level=[],

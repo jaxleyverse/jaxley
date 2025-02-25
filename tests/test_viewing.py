@@ -229,7 +229,7 @@ def test_indexing_a_compartment_of_many_branches(SimpleBranch):
 def test_solve_indexer():
     ncomps = [4, 3, 4, 2, 2, 3, 3]
     cumsum_ncomp = cumsum_leading_zero(ncomps)
-    idx = JaxleySolveIndexer(cumsum_ncomp)
+    idx = JaxleySolveIndexer(cumsum_ncomp, ncomps)
     branch_inds = np.asarray([0, 2])
     assert np.all(idx.first(branch_inds) == np.asarray([0, 7]))
     assert np.all(idx.last(branch_inds) == np.asarray([3, 10]))

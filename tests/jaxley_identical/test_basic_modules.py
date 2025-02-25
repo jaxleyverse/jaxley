@@ -197,7 +197,8 @@ def test_cell(voltage_solver, SimpleCell):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_complex_cell(SimpleBranch):
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_complex_cell(voltage_solver, SimpleBranch):
     """Test cell with a variety of channels, pumps, diffusion, and comps per branch."""
     dt = 0.025  # ms
     current = jx.step_current(
@@ -231,7 +232,7 @@ def test_complex_cell(SimpleBranch):
     cell.branch(3).comp(1).record("CaCon_i")
     cell.branch(3).comp(3).record("CaCon_i")
 
-    recordings = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
+    recordings = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
     voltages_240225 = jnp.asarray(
         [
             [-70.0, -53.80615874, 22.05557323, -47.39215035, -75.64505091],
