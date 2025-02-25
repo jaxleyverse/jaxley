@@ -241,3 +241,45 @@ def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
 
     ####################### check ################
     assert all(errors < 2.5), "voltages do not match."
+
+
+@pytest.mark.parametrize(
+    "reader_backend",
+    [
+        "graph",
+        "custom",
+    ],
+)
+@pytest.mark.parametrize(
+    "file",
+    [
+        "morph_3_types.swc",
+        "morph_3_types_single_point_soma.swc",
+        "morph.swc",
+        "bbp_with_axon.swc",
+    ],
+)
+def test_swc_types(reader_backend, file):
+    # Can not use full morphology because of branch sorting.
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", file)
+    backend_kwargs = (
+        {"ignore_swc_trace_errors": False} if reader_backend == "graph" else {}
+    )
+    cell = jx.read_swc(fname, ncomp=1, backend=reader_backend, **backend_kwargs)
+    desired_numbers_of_comps = {
+        "morph_3_types.swc": {"soma": 1, "axon": 1, "basal": 1},
+        "morph_3_types_single_point_soma.swc": {
+            "soma": 1,
+            "axon": 1,
+            "basal": 1,
+        },
+        "morph.swc": {"soma": 2, "basal": 101, "apical": 53},
+        "bbp_with_axon.swc": {"soma": 1, "axon": 128, "basal": 66, "apical": 129},
+    }
+    # Test soma.
+    for key, n_desired in desired_numbers_of_comps[file].items():
+        n_comps_in_morph = len(cell.groups[key])
+        assert (
+            n_comps_in_morph == n_desired
+        ), f"{key} has {n_comps_in_morph} != {n_desired} comps!"
