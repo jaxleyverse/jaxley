@@ -121,8 +121,6 @@ def sparse_connect(
     num_post = len(post_cell_view._cells_in_view)
 
     num_connections = np.random.binomial(num_pre * num_post, p)
-    if num_connections < 1:
-        raise ValueError("Probability too low for any connections")
     pre_syn_neurons = np.random.choice(pre_cell_inds, size=num_connections)
     post_syn_neurons = np.random.choice(post_cell_inds, size=num_connections)
 

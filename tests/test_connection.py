@@ -71,20 +71,15 @@ def test_connect(SimpleBranch, SimpleCell, SimpleNet):
     assert (first_set_edges["type"] == "TestSynapse").all()
 
 
-def test_fully_connect():
-    comp = jx.Compartment()
-    branch = jx.Branch([comp for _ in range(8)])
-    cell = jx.Cell([branch for _ in range(3)], parents=np.array([-1, 0, 0]))
-    net = jx.Network([cell for _ in range(4 * 4)])
-
-    _ = np.random.seed(0)
+def test_fully_connect(SimpleNet):
+    net1 = SimpleNet(16, 3, 8)
     for i in range(4):
-        fully_connect(net[i], net[4:8], TestSynapse())
+        fully_connect(net1[i], net1[4:8], TestSynapse())
 
-    fully_connect(net[8:12], net[12:16], TestSynapse())
+    fully_connect(net1[8:12], net1[12:16], TestSynapse())
 
     assert all(
-        net.edges.post_global_comp_index
+        net1.edges.post_global_comp_index
         == [
             96,
             120,
@@ -121,31 +116,90 @@ def test_fully_connect():
         ]
     )
 
-
-def test_sparse_connect(SimpleNet):
-    net = SimpleNet(4 * 4, 4, 4)
-
+    # Test with random post synaptic compartment selection
+    net2 = SimpleNet(16, 3, 8)
     _ = np.random.seed(0)
     for i in range(4):
-        sparse_connect(net[i], net[4:8], TestSynapse(), p=0.5, random_post_comp=True)
+        fully_connect(net2[i], net2[4:8], TestSynapse(), random_post_comp=True)
 
-    sparse_connect(net[8:12], net[12:], TestSynapse(), p=0.5, random_post_comp=True)
+    fully_connect(net2[8:12], net2[12:16], TestSynapse(), random_post_comp=True)
 
     assert all(
-        net.edges.post_global_comp_index
-        == [74, 82, 79, 127, 100, 109, 113, 203, 198, 217, 222, 214, 212, 248, 250]
+        net2.edges.post_global_comp_index
+        == [
+            108,
+            135,
+            165,
+            168,
+            99,
+            123,
+            151,
+            177,
+            115,
+            141,
+            162,
+            172,
+            119,
+            126,
+            156,
+            169,
+            294,
+            329,
+            345,
+            379,
+            295,
+            317,
+            356,
+            365,
+            311,
+            325,
+            355,
+            375,
+            302,
+            320,
+            352,
+            375,
+        ]
+    )
+
+
+def test_sparse_connect(SimpleNet):
+    net1 = SimpleNet(4 * 4, 4, 4)
+    _ = np.random.seed(0)
+
+    for i in range(4):
+        sparse_connect(net1[i], net1[4:8], TestSynapse(), p=0.1)
+
+    sparse_connect(net1[8:12], net1[12:], TestSynapse(), p=0.5)
+
+    assert all(
+        net1.edges.post_global_comp_index
+        == [112, 112, 240, 192, 208, 208, 208, 224, 208, 192, 240]
+    )
+
+    # Test with random post synaptic compartment selection
+    net2 = SimpleNet(4 * 4, 4, 4)
+    _ = np.random.seed(0)
+
+    for i in range(4):
+        sparse_connect(net2[i], net2[4:8], TestSynapse(), p=0.1, random_post_comp=True)
+
+    sparse_connect(net2[8:12], net2[12:], TestSynapse(), p=0.5, random_post_comp=True)
+
+    assert all(
+        net2.edges.post_global_comp_index
+        == [127, 124, 195, 204, 207, 229, 234, 232, 247, 245, 241, 242]
     )
 
 
 def test_connectivity_matrix_connect(SimpleNet):
     net = SimpleNet(4 * 4, 3, 8)
 
-    _ = np.random.seed(0)
     n_by_n_adjacency_matrix = np.array(
         [[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 0, 0]], dtype=bool
     )
-    incides_of_connected_cells = np.stack(np.where(n_by_n_adjacency_matrix)).T
-    incides_of_connected_cells[:, 1] += 4
+    inds_of_connected_cells = np.stack(np.where(n_by_n_adjacency_matrix)).T
+    inds_of_connected_cells[:, 1] += 4  # post-syn cell inds start a 4 below
 
     connectivity_matrix_connect(
         net[:4], net[4:8], TestSynapse(), n_by_n_adjacency_matrix
@@ -155,12 +209,13 @@ def test_connectivity_matrix_connect(SimpleNet):
     cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
-    assert np.all(cell_inds == incides_of_connected_cells)
+    assert np.all(cell_inds == inds_of_connected_cells)
+    assert net.edges.post_global_comp_index.tolist() == [120, 144, 168, 96]
 
     m_by_n_adjacency_matrix = np.array(
         [[0, 1, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=bool
     )
-    incides_of_connected_cells = np.stack(np.where(m_by_n_adjacency_matrix)).T
+    inds_of_connected_cells = np.stack(np.where(m_by_n_adjacency_matrix)).T
 
     net = SimpleNet(4 * 4, 3, 8)
     with pytest.raises(AssertionError):
@@ -168,15 +223,17 @@ def test_connectivity_matrix_connect(SimpleNet):
             net[:4], net[:4], TestSynapse(), m_by_n_adjacency_matrix
         )  # should raise
 
+    _ = np.random.seed(0)
     connectivity_matrix_connect(
-        net[:3], net[:4], TestSynapse(), m_by_n_adjacency_matrix
+        net[:3], net[:4], TestSynapse(), m_by_n_adjacency_matrix, random_post_comp=True
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
     cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
-    assert np.all(cell_inds == incides_of_connected_cells)
+    assert np.all(cell_inds == inds_of_connected_cells)
+    assert net.edges.post_global_comp_index.to_numpy().tolist() == [35, 65, 71, 93, 84]
 
     # Test with different cell views
     net = SimpleNet(4 * 4, 3, 8)
@@ -189,9 +246,9 @@ def test_connectivity_matrix_connect(SimpleNet):
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     # adjust the cell indices based on the views passed
-    incides_of_connected_cells[:, 0] += 1
-    incides_of_connected_cells[:, 1] += 2
-    assert np.all(cell_inds == incides_of_connected_cells)
+    inds_of_connected_cells[:, 0] += 1
+    inds_of_connected_cells[:, 1] += 2
+    assert np.all(cell_inds == inds_of_connected_cells)
 
     # Test with single compartment cells
     comp = jx.Compartment()
@@ -206,4 +263,4 @@ def test_connectivity_matrix_connect(SimpleNet):
     cols = ["pre_global_comp_index", "post_global_comp_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
-    assert np.all(cell_inds == incides_of_connected_cells)
+    assert np.all(cell_inds == inds_of_connected_cells)
