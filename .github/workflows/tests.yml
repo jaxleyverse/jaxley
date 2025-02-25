@@ -46,10 +46,19 @@ jobs:
       run: |
           expected_header_1="# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is"
           expected_header_2="# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>"
-          
+          exceptions=("tests/nrn_mechanisms")
+
           exit_code=0
-      
+
           while IFS= read -r file; do
+
+          # Skip files in exception directories
+          for exception in "${exceptions[@]}"; do
+              if [[ "$file" == $exception/* ]]; then
+                  continue 2
+              fi
+          done
+
           # Extract the first two lines of the file
           file_header_1=$(head -n 1 "$file")
           file_header_2=$(head -n 2 "$file" | tail -n 1)

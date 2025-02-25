@@ -2,6 +2,7 @@
 /mkdocs/site/*
 /mkdocs/docs/tutorial/*
 **/.DS_Store
+tests/arm64/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

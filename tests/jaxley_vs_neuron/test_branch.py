@@ -14,10 +14,12 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from neuron import h
+from jaxley_mech.channels.l5pc import CaHVA
+from neuron import h, rxd
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -292,3 +294,152 @@ def _neuron_complex(i_delay, i_dur, i_amp, dt, t_max, diams, capacitances, solve
     integrate()
 
     return np.asarray([voltage_recs[key] for key in voltage_recs])
+
+
+def _jaxley_clamped(dt, t_max, diams, v_init, length):
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=2)
+
+    branch.comp(0).set("radius", diams[0] / 2)
+    branch.comp(1).set("radius", diams[1] / 2)
+
+    branch.set("axial_resistivity", 100_000.0)
+    branch.set("length", length / 2)
+    branch.set("v", v_init)
+    branch.insert(CaHVA())
+    branch.insert(CaFaradayConcentrationChange())
+    branch.insert(CaNernstReversal())
+    branch.comp(0).set("CaHVA_gCaHVA", 0.00001)
+    branch.comp(1).set("CaHVA_gCaHVA", 0.0)
+    branch.set("eCa", 0.0)
+    branch.comp(0).clamp("v", jnp.linspace(-65.0, 0.0, 40_001))
+    branch.init_states()
+
+    branch.comp(0).record("v")
+    branch.comp(1).record("v")
+
+    branch.comp(0).record("CaCon_i")
+    branch.comp(1).record("CaCon_i")
+
+    voltages = jx.integrate(branch, t_max=t_max, delta_t=dt)
+    return voltages
+
+
+def _neuron_clamped(dt, t_max, diams, v_init, length):
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "arm64/.libs/libnrnmech.so")
+    h.nrn_load_dll(fname)
+
+    h.secondorder = 0
+    h.dt = dt
+
+    for sec in h.allsec():
+        h.delete_section(sec=sec)
+
+    branch1 = h.Section()
+
+    branch1.nseg = 2
+    branch1.Ra = 100_000.0
+    branch1.L = length
+    branch1.insert("Ca_HVA")
+    for i, seg in enumerate(branch1):
+        if i == 0:
+            seg.gCa_HVAbar_Ca_HVA = 0.00001
+        else:
+            seg.gCa_HVAbar_Ca_HVA = 0.0
+
+    for i, seg in enumerate(branch1):
+        seg.diam = diams[i]
+
+    # Set diffusion to zero. This is causing the different interpretation of `.area()`
+    # of NEURON and therefore causes this test to fail (also for d>0) if the radiuses
+    # of compartments are not the same (as is the case here).
+    r = rxd.Region(h.allsec(), nrn_region="i", geometry=None)
+    ca = rxd.Species(r, d=0, name="ca", charge=2)
+
+    # Voltage clamp.
+    t = h.Vector(np.arange(0, 1000, dt))
+    y = h.Vector(np.linspace(-65.0, 0.0, len(t)))
+    y.play(branch1(0.3)._ref_v, t, True)
+
+    v1 = h.Vector()
+    v1.record(branch1(0.3)._ref_v)
+
+    v2 = h.Vector()
+    v2.record(branch1(0.7)._ref_v)
+
+    cacon1 = h.Vector()
+    cacon1.record(branch1(0.3)._ref_cai)
+
+    cacon2 = h.Vector()
+    cacon2.record(branch1(0.7)._ref_cai)
+
+    def initialize():
+        h.finitialize(v_init)
+        h.fcurrent()
+
+    def integrate():
+        while h.t < t_max:
+            h.fadvance()
+
+    initialize()
+    integrate()
+
+    v1 = np.asarray(list(v1))
+    v2 = np.asarray(list(v2))
+    cacon1 = np.asarray(list(cacon1))
+    cacon2 = np.asarray(list(cacon2))
+    return np.stack([v1, v2, cacon1, cacon2])
+
+
+@pytest.mark.xfail
+def test_similarity_voltage_clamp_cacon_i_behavior():
+    """Test whether two compartments were one is clamped gives same results.
+
+    In this test, we clamp the voltage of one of the compartments. The rational is that
+    this decouples any influence of _voltage_ diffusion on the calcium dynamics (in
+    comp 0). This allowed us to study why the calcium dynamics between NEURON and
+    Jaxley differ for comp(0) of a branch, even when the voltages are the same and
+    diffusion is d=0.
+
+    This test currently fails. The axial conductance is defined as:
+    ```1 / R_long / area_of_sink_compartment```
+    However, NEURON computes `area_of_sink_compartment` differently _depending on
+    whether diffusion is activated or not_. This make no sense to me (@michaeldeistler),
+    so I am not implementing it in Jaxley.
+
+    Jaxley simply assumes a cylindrical compartment: `A = 2 * pi * r * l`
+    Without diffusion, NEURON does the same. With diffusion, however, NEURON creates
+    frustums: `A = 2 * pi * r * (l/2) + frustum_area`.
+    The frustum radiuses are on one side, the radius of the compartment, and on the
+    other side the radius at the connection point (which itself is the weighted
+    average of all neighboring compartments). Because of this, the radius of `comp(1)`
+    influences the `.area()` of `comp(0)`, and thus impacts its dynamics.
+
+    Notably, NEURON even uses this updated area (which can be inspected with
+    `branch(0.3).area()` _after having run the simulation with diffusion at least
+    once_) even for the voltage equations. See also #140.
+    """
+    t_max = 1_000.01
+    dt = 0.025
+
+    diams = [4.0, 8.0]  # The test passes when diams has the same values.
+    length = 100.0
+    v_init = -65.0
+
+    v_and_cacon_jaxley = _jaxley_clamped(dt, t_max, diams, v_init, length)
+    v_and_cacon_neuron = _neuron_clamped(dt, t_max, diams, v_init, length)
+    v_jaxley = v_and_cacon_jaxley[:2]
+    cacon_jaxley = v_and_cacon_jaxley[2:]
+    v_neuron = v_and_cacon_neuron[:2]
+    cacon_neuron = v_and_cacon_neuron[2:]
+
+    v_max_error = np.max(np.abs(v_jaxley - v_neuron))
+    cacon_max_error = np.max(np.abs(cacon_jaxley - cacon_neuron))
+    # Note: for very thin cables (<1um radius), this test can fail by a tiny bit, even
+    # if both comps have the same diameter.
+    assert cacon_max_error < 2e-6, f"CaCon_i error {cacon_max_error}"
+
+    # To be on the safe side, we also check voltages. However, this test is generally
+    # about CaCon_i.
+    assert v_max_error < 1e-2, f"Voltage error {v_max_error}"

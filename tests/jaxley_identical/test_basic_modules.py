@@ -15,10 +15,12 @@ from math import pi
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.l5pc import CaHVA
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import connect, fully_connect
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
@@ -195,8 +197,9 @@ def test_cell(voltage_solver, SimpleCell):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_cell_unequal_compartment_number(SimpleBranch):
-    """Tests a cell where every branch has a different number of compartments."""
+@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+def test_complex_cell(voltage_solver, SimpleBranch):
+    """Test cell with a variety of channels, pumps, diffusion, and comps per branch."""
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
@@ -209,24 +212,52 @@ def test_cell_unequal_compartment_number(SimpleBranch):
     cell = jx.Cell([branch1, branch2, branch3, branch4], parents=[-1, 0, 0, 1])
     cell.set("axial_resistivity", 10_000.0)
     cell.insert(HH())
-    cell.branch(1).comp(1).stimulate(current)
-    cell.branch(0).comp(0).record()
-    cell.branch(2).comp(2).record()
-    cell.branch(3).comp(1).record()
-    cell.branch(3).comp(3).record()
 
-    voltages = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
-    voltages_170924 = jnp.asarray(
+    # Calcium mechanisms.
+    cell.branch(0).insert(CaHVA())
+    cell.branch(0).set("CaHVA_gCaHVA", 0.0001)  # Larger than default to see impact on v
+    cell.insert(CaFaradayConcentrationChange())
+    cell.insert(CaNernstReversal())
+    cell.diffuse("CaCon_i")
+    # Large value to see the diffusion after a few milliseconds already.
+    cell.set("axial_diffusion_CaCon_i", 180.2)
+
+    cell.branch(1).comp(1).stimulate(current)
+    cell.branch(0).comp(0).record("v")
+    cell.branch(2).comp(2).record("v")
+    cell.branch(3).comp(1).record("v")
+    cell.branch(3).comp(3).record("v")
+    cell.branch(0).comp(0).record("CaCon_i")
+    cell.branch(2).comp(2).record("CaCon_i")
+    cell.branch(3).comp(1).record("CaCon_i")
+    cell.branch(3).comp(3).record("CaCon_i")
+
+    recordings = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
+    voltages_240225 = jnp.asarray(
         [
-            [-70.0, -53.80615874, 22.05497283, -47.39519176, -75.64644816],
-            [-70.0, -61.74975007, 34.11362303, -28.88940829, -75.73717223],
-            [-70.0, -52.99972332, 20.97523461, -47.83840746, -75.66974145],
-            [-70.0, -60.86509139, 35.1106244, -33.89684951, -75.76946014],
+            [-70.0, -53.80348826, 22.07746319, -47.29564472, -75.61534365],
+            [-70.0, -61.74865308, 34.1167336, -28.89225642, -75.73529806],
+            [-70.0, -52.99907533, 20.9735932, -47.83940886, -75.66904041],
+            [-70.0, -60.86487129, 35.11018305, -33.89819309, -75.76933684],
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::50] - voltages_170924))
-    tolerance = 1e-8
-    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+    cacon_240225 = (
+        jnp.asarray(
+            [
+                [5.0, 5.04797687, 6.45337663, 12.1139712, 11.86289905],
+                [5.0, 5.0063692, 5.02944485, 5.72251137, 7.49644484],
+                [5.0, 5.00170413, 5.00819813, 5.20138788, 5.87906979],
+                [5.0, 5.00020329, 5.00223143, 5.03325016, 5.27678607],
+            ]
+        )
+        * 1e-5
+    )
+    max_error_ca = np.max(np.abs(recordings[4:, ::50] - cacon_240225))
+    max_error_v = np.max(np.abs(recordings[:4, ::50] - voltages_240225))
+    tolerance_ca = 1e-10
+    tolerance_v = 1e-8
+    assert max_error_ca <= tolerance_ca, f"Ca Error is {max_error_ca} > {tolerance_ca}"
+    assert max_error_v <= tolerance_v, f"Voltage Error is {max_error_v} > {tolerance_v}"
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])

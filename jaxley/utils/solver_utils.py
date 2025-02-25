@@ -115,6 +115,7 @@ class JaxleySolveIndexer:
     def __init__(
         self,
         cumsum_ncomp: np.ndarray,
+        ncomp_per_branch: np.ndarray,
         branchpoint_group_inds: Optional[np.ndarray] = None,
         children_in_level: Optional[np.ndarray] = None,
         parents_in_level: Optional[np.ndarray] = None,
@@ -122,6 +123,7 @@ class JaxleySolveIndexer:
         remapped_node_indices: Optional[np.ndarray] = None,
     ):
         self.cumsum_ncomp = np.asarray(cumsum_ncomp)
+        self.ncomp_per_branch = np.asarray(ncomp_per_branch)
 
         # Save items for easier access.
         self.branchpoint_group_inds = branchpoint_group_inds
@@ -134,14 +136,45 @@ class JaxleySolveIndexer:
         """Return the indices of the first compartment of all `branch_inds`."""
         return self.cumsum_ncomp[branch_inds]
 
-    def last(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return the indices of the last compartment of all `branch_inds`."""
+    def masked_last(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return the indices of the last compartment of all `branch_inds`.
+
+        Notably, this returns the index of the last compartment _with_ taking into
+        account the masking structure which is needed to make all branches in a level
+        have the same number of compartments.
+
+        Example:
+        ```
+        parents = [-1, 0, 0, 1]
+        ncomp_per_branch = [2, 2, 4, 4]
+        masked_last([0, 1, 2, 3]) => [1, 5, 9, 13]
+        # The important one is `masked_last(1) = 5`, because the second level has a
+        # branch with 4 compartments.
+        ```
+        """
         return self.cumsum_ncomp[branch_inds + 1] - 1
+
+    def last(self, branch_inds: np.ndarray) -> np.ndarray:
+        """Return the indices of the last compartment of all `branch_inds`.
+
+        Unlike `masked_last`, this returns the index of the last compartment that
+        acutally has a value.
+
+        Example:
+        ```
+        parents = [-1, 0, 0, 1]
+        ncomp_per_branch = [2, 2, 4, 4]
+        masked_last([0, 1, 2, 3]) => [1, 3, 9, 13]
+        # The important one is `masked_last(1) = 3`, because the branch has only
+        # 2 compartments.
+        ```
+        """
+        return self.cumsum_ncomp[branch_inds] + self.ncomp_per_branch[branch_inds] - 1
 
     def branch(self, branch_inds: np.ndarray) -> np.ndarray:
         """Return indices of all compartments in all `branch_inds`."""
         start_inds = self.first(branch_inds)
-        end_inds = self.last(branch_inds) + 1
+        end_inds = self.masked_last(branch_inds) + 1
         return self._consecutive_indices(start_inds, end_inds)
 
     def lower(self, branch_inds: np.ndarray) -> np.ndarray:
@@ -151,7 +184,7 @@ class JaxleySolveIndexer:
         to have as many elements as the `diagonal`. In this method, we get rid of
         this additional element."""
         start_inds = self.first(branch_inds) + 1
-        end_inds = self.last(branch_inds) + 1
+        end_inds = self.masked_last(branch_inds) + 1
         return self._consecutive_indices(start_inds, end_inds)
 
     def upper(self, branch_inds: np.ndarray) -> np.ndarray:
@@ -161,7 +194,7 @@ class JaxleySolveIndexer:
         to have as many elements as the `diagonal`. In this method, we get rid of
         this additional element."""
         start_inds = self.first(branch_inds)
-        end_inds = self.last(branch_inds)
+        end_inds = self.masked_last(branch_inds)
         return self._consecutive_indices(start_inds, end_inds)
 
     def _consecutive_indices(

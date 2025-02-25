@@ -93,6 +93,7 @@ class Branch(Module):
     def _init_morph_jaxley_spsolve(self):
         self._solve_indexer = JaxleySolveIndexer(
             cumsum_ncomp=self.cumsum_ncomp,
+            ncomp_per_branch=self.ncomp_per_branch,
             branchpoint_group_inds=np.asarray([]).astype(int),
             remapped_node_indices=self._internal_node_inds,
             children_in_level=[],
