@@ -118,12 +118,6 @@ jobs:
       - name: Build package
         run: python -m build
 
-      - name: Upload to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
-
       - name: Extract changelog entry
         id: changelog
         run: |
@@ -141,3 +135,9 @@ jobs:
           tag_name: v${{ steps.get_version.outputs.version }}
           body_path: release_notes.txt
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
