@@ -1,3 +1,10 @@
+# 0.7.1
+
+### Bug fixes:
+
+- Fix bug for `groups` when `.set_ncomp` was run (#587, @michaeldeistler)
+
+
 # 0.7.0
 
 ### New Features
