@@ -183,3 +183,11 @@ def test_simulation_accuracy_swc_init_vs_set_ncomp(SimpleMorphCell, new_ncomp, f
     v2 = jx.integrate(cell2, voltage_solver="jax.sparse")
     max_error = np.max(np.abs(v1 - v2))
     assert max_error < 1e-8, f"Too large voltage deviation, {max_error} > 1e-8"
+
+
+def test_set_ncomp_raises_for_inhomogenous_branches(SimpleCell):
+    """Test whether groups get updated appropriately after `set_ncomp`."""
+    cell = SimpleCell(3, 4)
+    cell.branch(0).comp(0).add_to_group("exc")
+    with pytest.raises(AssertionError):
+        cell.branch(0).set_ncomp(2)

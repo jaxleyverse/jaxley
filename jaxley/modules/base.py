@@ -118,7 +118,7 @@ class Module(ABC):
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
 
-        self.groups = {}
+        self.group_names: List[str] = []
 
         self.nodes: Optional[pd.DataFrame] = None
         self._scope = "local"  # defaults to local scope
@@ -205,12 +205,8 @@ class Module(ABC):
             return super().__getattribute__(key)
 
         # intercepts calls to groups
-        if key in self.base.groups:
-            view = (
-                self.select(self.groups[key])
-                if key in self.groups
-                else self.select(None)
-            )
+        if key in self.base.group_names:
+            view = self.select(self.nodes[key])
             view._set_controlled_by_param(key)
             return view
 
@@ -257,7 +253,7 @@ class Module(ABC):
         """Lazy indexing of the module."""
         supported_parents = ["network", "cell", "branch"]  # cannot index into comp
 
-        not_group_view = self._current_view not in self.groups
+        not_group_view = self._current_view not in self.group_names
         assert (
             self._current_view in supported_parents or not_group_view
         ), "Lazy indexing is only supported for `Network`, `Cell`, `Branch` and Views thereof."
@@ -743,6 +739,9 @@ class Module(ABC):
                     self.base.pumps.append(pump)
                 if pump.current_name not in self.membrane_current_names:
                     self.base.membrane_current_names.append(pump.current_name)
+            for group in module.group_names:
+                if group not in self.base.group_names:
+                    self.base.group_names.append(group)
 
         # Setting columns of channel and pump names to `False` instead of `NaN`.
         for channel in self.base.channels + self.base.pumps:
@@ -929,6 +928,8 @@ class Module(ABC):
             that is modified.
             - When the lengths of the compartments are not the same within the branch
             that is modified.
+            - When the branch that is modified has compartments belonging to different
+            groups.
             - Unless the morphology was read from an SWC file, when the radiuses of the
             compartments are not the same within the branch that is modified.
         """
@@ -997,6 +998,16 @@ class Module(ABC):
                 "`.set_ncomp()` and then insert the channels accordingly."
             )
 
+        for group_name in self.group_names:
+            group_ncomp = view[group_name].sum()
+            assert group_ncomp == 0 or group_ncomp == num_previous_ncomp, (
+                f"{group_ncomp} compartments within the branch are part of the "
+                f"group '{group_name}', but the other "
+                f"{num_previous_ncomp - group_ncomp} compartments are not. This "
+                f"is not allowed: Every compartment must belong to the same group for "
+                f"`.set_ncomp()` to work."
+            )
+
         # Add new rows as the average of all rows. Special case for the length is below.
         average_row = self.nodes.mean(skipna=False)
         average_row = average_row.to_frame().T
@@ -1007,8 +1018,8 @@ class Module(ABC):
         integer_cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
         view[integer_cols] = view[integer_cols].astype(int)
 
-        # Whether or not a channel exists in a compartment is a boolean.
-        boolean_cols = channel_names
+        # Whether or not a channel or group exists in a compartment is a boolean.
+        boolean_cols = channel_names + self.base.group_names
         view[boolean_cols] = view[boolean_cols].astype(bool)
 
         # Special treatment for the lengths and radiuses. These are not being set as
@@ -1242,12 +1253,17 @@ class Module(ABC):
         Args:
             group_name: The name of the group.
         """
-        if group_name not in self.base.groups:
-            self.base.groups[group_name] = self._nodes_in_view
-        else:
-            self.base.groups[group_name] = np.unique(
-                np.concatenate([self.base.groups[group_name], self._nodes_in_view])
+        if group_name not in self.base.group_names:
+            channel_names = [channel._name for channel in self.base.channels]
+            assert group_name not in channel_names, (
+                "Trying to create a group with the same name as one of the channels. "
+                "This is not supported. Choose a different name for the group."
             )
+            self.base.group_names.append(group_name)
+            self.base.nodes[group_name] = False
+            self.base.nodes.loc[self._nodes_in_view, group_name] = True
+        else:
+            self.base.nodes.loc[self._nodes_in_view, group_name] = True
 
     def _get_state_names(self) -> Tuple[List, List]:
         """Collect all recordable / clampable states in the membrane and synapses.
@@ -1778,6 +1794,12 @@ class Module(ABC):
         Args:
             channel: The channel to insert."""
         name = channel._name
+
+        assert name not in self.group_names, (
+            "You are trying to insert a channel whose name is the same as one of the "
+            "group names. This is not supported. Either rename the channel or use a "
+            "different name for the group."
+        )
 
         # Channel does not yet exist in the `jx.Module` at all.
         if isinstance(channel, Channel) and name not in [
@@ -2721,9 +2743,7 @@ class View(Module):
         self.ncomp_per_branch = pointer.base.ncomp_per_branch[self._branches_in_view]
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
-        self.groups = {
-            k: np.intersect1d(v, self._nodes_in_view) for k, v in pointer.groups.items()
-        }
+        self.group_names = self.base.group_names
 
         self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
             pointer
