@@ -1,6 +1,16 @@
 # 0.7.1
 
-### Bug fixes:
+### Minor API changes
+
+- group indices can no longer be accessed via `.groups`. They are now listed as columns in `.nodes` (#587, @michaeldeistler). Update your code as follows:
+```python
+# Before:
+exc_group_inds = cell.groups["exc"]
+# Now:
+exc_group_inds = cell.exc.nodes.index.to_numpy()
+```
+
+### Bug fixes
 
 - Fix bug for `groups` when `.set_ncomp` was run (#587, @michaeldeistler)
 
