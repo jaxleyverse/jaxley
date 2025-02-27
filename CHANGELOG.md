@@ -1,3 +1,7 @@
+# 0.7.1
+
+- make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
+
 # 0.7.0
 
 ### New Features
