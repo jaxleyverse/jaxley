@@ -4909,7 +4909,9 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">65</span>
 <span class="normal">66</span>
 <span class="normal">67</span>
-<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IonotropicSynapse</span><span class="p">(</span><span class="n">Synapse</span><span class="p">):</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IonotropicSynapse</span><span class="p">(</span><span class="n">Synapse</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute synaptic current and update synapse state for a generic ionotropic synapse.</span>
 
@@ -4933,9 +4935,11 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">synapse_params</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_gS&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_e_syn&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_gS&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>  <span class="c1"># uS</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_e_syn&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>  <span class="c1"># mV</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_k_minus&quot;</span><span class="p">:</span> <span class="mf">0.025</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_v_th&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">35.0</span><span class="p">,</span>  <span class="c1"># mV</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_delta&quot;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>  <span class="c1"># mV</span>
         <span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">synapse_states</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_s&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">}</span>
 
@@ -4949,8 +4953,8 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return updated synapse state and current.&quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
-        <span class="n">v_th</span> <span class="o">=</span> <span class="o">-</span><span class="mf">35.0</span>  <span class="c1"># mV</span>
-        <span class="n">delta</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># mV</span>
+        <span class="n">v_th</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_v_th&quot;</span><span class="p">]</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_delta&quot;</span><span class="p">]</span>
 
         <span class="n">s_inf</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">save_exp</span><span class="p">((</span><span class="n">v_th</span> <span class="o">-</span> <span class="n">pre_voltage</span><span class="p">)</span> <span class="o">/</span> <span class="n">delta</span><span class="p">))</span>
         <span class="n">tau_s</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">s_inf</span><span class="p">)</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_k_minus&quot;</span><span class="p">]</span>
@@ -4996,9 +5000,7 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/synapses/ionotropic.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">44</span>
 <span class="normal">45</span>
 <span class="normal">46</span>
 <span class="normal">47</span>
@@ -5015,7 +5017,9 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="normal">58</span>
 <span class="normal">59</span>
 <span class="normal">60</span>
-<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_states</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
     <span class="n">delta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -5025,8 +5029,8 @@ Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.</p>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return updated synapse state and current.&quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
-    <span class="n">v_th</span> <span class="o">=</span> <span class="o">-</span><span class="mf">35.0</span>  <span class="c1"># mV</span>
-    <span class="n">delta</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># mV</span>
+    <span class="n">v_th</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_v_th&quot;</span><span class="p">]</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_delta&quot;</span><span class="p">]</span>
 
     <span class="n">s_inf</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">save_exp</span><span class="p">((</span><span class="n">v_th</span> <span class="o">-</span> <span class="n">pre_voltage</span><span class="p">)</span> <span class="o">/</span> <span class="n">delta</span><span class="p">))</span>
     <span class="n">tau_s</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">s_inf</span><span class="p">)</span> <span class="o">/</span> <span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_k_minus&quot;</span><span class="p">]</span>
