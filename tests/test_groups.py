@@ -54,6 +54,7 @@ def test_subclassing_groups_net_set_equivalence(SimpleNet):
     net2.cell([0, 5]).branch(1).comp("all").set("length", 0.16)
     net2.cell([0, 3, 5]).branch(1).comp(2).set("axial_resistivity", 1100.0)
 
+    net1.nodes.drop(columns=["excitatory"], inplace=True)
     assert all(net1.nodes == net2.nodes)
 
 
@@ -107,3 +108,15 @@ def test_fully_connect_groups_equivalence(SimpleNet):
     fully_connect(pre, post, IonotropicSynapse())
 
     assert all(net1.edges == net2.edges)
+
+
+def test_set_ncomp_changes_groups(SimpleCell):
+    """Test whether groups get updated appropriately after `set_ncomp`."""
+    cell = SimpleCell(3, 4)
+    cell.branch(0).add_to_group("exc")
+    cell.branch(0).set_ncomp(1)
+    assert len(cell.exc.nodes) == 1
+
+    cell.branch(1).add_to_group("exc")
+    cell.branch(0).set_ncomp(2)
+    assert len(cell.exc.nodes) == 6  # 2 from branch(0) and 4 from branch(1).

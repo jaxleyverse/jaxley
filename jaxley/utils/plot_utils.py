@@ -378,7 +378,7 @@ def plot_comps(
                 module_or_view.nodes["global_branch_index"] == idx
             ]
             for l, axis, (i, comp) in zip(cylinder_lens, axes, branch_df.iterrows()):
-                center = comp[["x", "y", "z"]]
+                center = comp[["x", "y", "z"]].astype(float)
                 radius = comp["radius"]
                 length = comp["length"] if true_comp_length else l
                 xyz = create_cylinder_mesh(length, radius, resolution)

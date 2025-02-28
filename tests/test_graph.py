@@ -86,9 +86,8 @@ def test_graph_import_export_cycle(
             equal_both_nan_or_empty_df(re_module.branch_edges, module.branch_edges)
         )
 
-        for k in module.groups:
-            assert k in re_module.groups
-            assert np.all(re_module.groups[k] == module.groups[k])
+        for k in module.group_names:
+            assert k in re_module.group_names
 
         for re_xyzr, xyzr in zip(re_module.xyzr, module.xyzr):
             re_xyzr[np.isnan(re_xyzr)] = -1
