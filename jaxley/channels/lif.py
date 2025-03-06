@@ -4,6 +4,7 @@
 from typing import Dict, Optional
 from warnings import warn
 
+import jax
 import jax.numpy as jnp
 
 from jaxley.channels import Channel
@@ -11,6 +12,7 @@ from jaxley.solver_gate import save_exp
 
 
 class LIF(Channel):
+    """Leaky integrate-and-fire channel."""
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
@@ -33,10 +35,11 @@ class LIF(Channel):
         # Decrease refractory time
         rem_tref = states[f"{prefix}_rem_tref"]
         # Reset refractory timer when spike occurs
-        new_rem_tref = jnp.where(
-            v >= params[f"{prefix}_vth"],
+        spike_occurred = (v >= params[f"{prefix}_vth"])
+        new_rem_tref = jax.lax.select(
+            spike_occurred,
             params[f"{prefix}_Tref"],  # Reset to full refractory period
-            jnp.maximum(0.0, rem_tref - dt),  # Otherwise decrease by dt
+            jnp.maximum(0.0, rem_tref - dt)  # Otherwise decrease by dt
         )
         return {f"{prefix}_rem_tref": new_rem_tref}
 
@@ -44,17 +47,22 @@ class LIF(Channel):
         prefix = self._name
         eLeak = params[f"{prefix}_eLeak"]
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
+        vreset = params[f"{prefix}_vreset"]
+        vth = params[f"{prefix}_vth"]
 
         # Check if in refractory period
         is_refractory = states[f"{prefix}_rem_tref"] > 0
 
-        # If in refractory period, force voltage to reset
-        # If not in refractory and above threshold, reset voltage
-        # Otherwise keep current voltage
-        v_reset = jnp.where(
+        # First check if in refractory period
+        v_reset = jax.lax.select(
             is_refractory,
-            params[f"{prefix}_vreset"],
-            jnp.where(v > params[f"{prefix}_vth"], params[f"{prefix}_vreset"], v),
+            vreset,
+            # If not in refractory, check if above threshold
+            jax.lax.select(
+                v > vth,
+                vreset,
+                v
+            )
         )
 
         return -(v_reset - v) + gLeak * (v_reset - eLeak)
@@ -64,6 +72,8 @@ class LIF(Channel):
 
 
 class SmoothLIF(Channel):
+    """SmoothLIF is a sigmoid-based approximation of the LIF Channel.
+    It is differentiable and can be used for gradient descent."""
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
