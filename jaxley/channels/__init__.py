@@ -3,5 +3,5 @@
 
 from jaxley.channels.channel import Channel  # isort: skip
 from jaxley.channels.hh import HH
-from jaxley.channels.lif import LIF
+from jaxley.jaxley.channels.spike import Fire
 from jaxley.channels.pospischil import CaL, CaT, K, Km, Leak, Na
