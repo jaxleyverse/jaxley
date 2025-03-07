@@ -13,7 +13,8 @@ For all of these models, `Jaxley` is flexible and accurate. For example, it can 
 In addition to these biophysical neuron models, `Jaxley` can also simulate simplified models, see the tutorial [here](https://jaxley.readthedocs.io/en/latest/tutorials/05_channel_and_synapse_models.html). In particular, `Jaxley` supports:
 - Leaky-integrate-and-fire (LIF) neurons,  
 - Izhikevich neurons,  
-- Rate-based neurons,  
-as well as networks of these neurons.
+- Rate-based neurons.  
+
+`Jaxley` also supports networks of these neurons.
 
 Note that, for LIF and Izhikevich neuron models, `Jaxley` does not yet support surrogate gradient descent, which is required for efficient training to due the discontinuity of spikes in these models.
