@@ -1,7 +1,7 @@
 # 0.7.1
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
-- add two leaky integrate-and-fire channels: `LIF` and `SmoothLIF` (#564, @jnsbck)
+- add leaky integrate-and-fire channel: `LIF` (#564, @jnsbck)
 
 # 0.7.0
 
