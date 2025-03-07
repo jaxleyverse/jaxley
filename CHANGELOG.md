@@ -1,6 +1,7 @@
 # 0.7.1
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
+- add leaky integrate-and-fire channel: `LIF` (#564, @jnsbck)
 
 # 0.7.0
 
@@ -81,6 +82,7 @@ net.vis()
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
+<<<<<<< HEAD
 - Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
   - Regression tests can be triggered by commenting "/test_regression" on a PR.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
@@ -91,6 +93,9 @@ net.vis()
 
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 
+=======
+- add two leaky integrate-and-fire channels: `LIF` and `SmoothLIF` (#564, @jnsbck)
+>>>>>>> chore: update changelog
 
 # 0.5.0
 
