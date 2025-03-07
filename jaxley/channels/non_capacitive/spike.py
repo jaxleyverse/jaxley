@@ -12,7 +12,7 @@ from jaxley.channels import Channel
 
 class Fire(Channel):
     """Mechanism to reset the voltage when it crosses a threshold.
-    
+
     When combined with a `Leak` channel, this can be used to implement
     leaky-integrate-and-fire neurons.
 
@@ -23,14 +23,9 @@ class Fire(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
-            f"{self.name}_gLeak": 1e-4,
-            f"{self.name}_eLeak": -70,
-            f"{self.name}_vth": -50,
-            f"{self.name}_vreset": -70,
-        }
+        self.channel_params = {f"{self.name}_vth": -50, f"{self.name}_vreset": -70}
         self.channel_states = {f"{self.name}_spikes": False}
-        self.current_name = f"{self.name}_i"
+        self.current_name = f"{self.name}_fire"
         warn(
             "The `Fire` channel does not support surrogate gradients. Its gradient "
             "will be zero after every spike."

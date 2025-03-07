@@ -3,5 +3,7 @@
 
 from jaxley.channels.channel import Channel  # isort: skip
 from jaxley.channels.hh import HH
-from jaxley.jaxley.channels.spike import Fire
+from jaxley.channels.non_capacitive.izhikevich import Izhikevich
+from jaxley.channels.non_capacitive.rate import Rate
+from jaxley.channels.non_capacitive.spike import Fire
 from jaxley.channels.pospischil import CaL, CaT, K, Km, Leak, Na
