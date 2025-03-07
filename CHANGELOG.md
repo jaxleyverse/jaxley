@@ -1,7 +1,13 @@
-# 0.7.1
+# 0.8.0
+
+### New features
+
+- add leaky integrate-and-fire neurons (#564, @jnsbck), Izhikevich neurons, and rate-based neurons (#601, @michaeldeistler)
+
+### Minor updates
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
-- add leaky integrate-and-fire channel: `LIF` (#564, @jnsbck)
+
 
 # 0.7.0
 
