@@ -7,7 +7,8 @@ Yes, you can (as of version `0.7.0`)! This is explained in [this tutorial](https
 
 Here is a small code snippet that shows this (this snippet requires `pip install jaxley-mech`):
 ```python
-from jaxley_mech.channels.l5pc import CaHVA, CaNernstPotential, CaPump
+from jaxley.channels import CaPump, CaNernstPotential
+from jaxley_mech.channels.l5pc import CaHVA
 
 
 branch = jx.Branch()
