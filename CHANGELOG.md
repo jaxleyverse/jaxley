@@ -34,7 +34,7 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 
 - add new release workflow (#588, @jnsbck)
 - update FAQ and tutorials (#593, @michaeldeistler)
-
+- make random post compartment selection optional in connectivity functions (#489 @kyralianaka)
 
 # 0.6.2
 
