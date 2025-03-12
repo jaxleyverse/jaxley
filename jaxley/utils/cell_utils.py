@@ -259,44 +259,83 @@ def loc_of_index(global_comp_index, global_branch_index, ncomp_per_branch):
     return (0.5 + index) / ncomp
 
 
-def compute_coupling_cond(rad1, rad2, r_a1, r_a2, l1, l2):
-    """Return the coupling conductance between two compartments.
+def compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2):
+    """Return the axial conductance between two compartments.
 
     Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
 
+    The axial conductance is:
+    g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
+
+    Here, we define `g_a = 1/r_a`, because g_a can be zero (but not infinity as this
+    would be inherently unstable).
+    """
+    return (
+        2
+        * pi
+        * rad1**2
+        * rad2**2
+        * g_a1
+        * g_a2
+        / (l1 * g_a2 * rad2**2 + l2 * g_a1 * rad1**2)
+    )
+
+
+def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2):
+    """Return the voltage coupling conductance between two compartments.
+
+    Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
+
+    The axial resistivity is:
+    g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
+
+    For voltage, we have to divide the axial conductance by the surface are of
+    the sink, i.e. by A = 2 * pi * rad1 * l1
+
+    By that, we get:
+    g_axial = rad1 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2) / l1
+
+    Here, we define `g_a = 1/r_a`, because g_a can be zero (but not infinity as this
+    would be inherently unstable).
+
     `radius`: um
-    `r_a`: ohm cm
+    `g_a`: Siemens / cm
+    `r_a`: ohm cm (unused, just for reference)
     `length_single_compartment`: um
-    `coupling_conds`: S * um / cm / um^2 = S / cm / um -> *10**7 -> mS / cm^2
     """
-    # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-    return rad1 * rad2**2 / (r_a1 * rad2**2 * l1 + r_a2 * rad1**2 * l2) / l1 * 10**7
+    g_long = compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2)
+    surface_area = 2 * pi * rad1 * l1
+    return g_long / surface_area
 
 
-def compute_coupling_cond_branchpoint(rad, r_a, l):
-    r"""Return the coupling conductance between one compartment and a comp with l=0.
+def g_long_by_volume(rad1, rad2, g_a1, g_a2, l1, l2):
+    """Return the ion diffusive constant between two compartments.
 
-    From https://en.wikipedia.org/wiki/Compartmental_neuron_models
+    The axial resistivity is:
+    g_long = 2 * pi * rad1^2 rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
 
-    If one compartment has l=0.0 then the equations simplify.
+    For ions, we have to divide the axial conductance by the volume of the sink,
+    i.e. by V = pi * rad1^2 * l1
 
-    R_long = \sum_i r_a * L_i/2 / crosssection_i
+    This gives:
+    g_axial = 2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2) / l1
 
-    with crosssection = pi * r**2
+    Expressed in conductances g_a (not r_a), this gives:
+    g_axial = 2 * rad2^2 * g_a1 * g_a2 / (l1 * g_a2 * rad2^2 + l2 * g_a1 * rad1^2) / l1
 
-    For a single compartment with L>0, this turns into:
-    R_long = r_a * L/2 / crosssection
+    But here, we define `g = 1/r_a`, because g can be zero (but not infinity as this
+    would be inherently unstable). In particular, one might want g=0 for ion diffusion.
 
-    Then, g_long = crosssection * 2 / L / r_a
-
-    Then, the effective conductance is g_long / zylinder_area. So:
-    g = pi * r**2 * 2 / L / r_a / 2 / pi / r / L
-    g = r / r_a / L**2
+    `radius`: um
+    `g_a`: mM / liter / cm
+    `l`: um
     """
-    return rad / r_a / l**2 * 10**7  # Convert (S / cm / um) -> (mS / cm^2)
+    g_long = compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2)
+    volume = pi * rad1**2 * l1
+    return g_long / volume
 
 
-def compute_impact_on_node(rad, r_a, l):
+def compute_impact_on_node(rad, g_a, l):
     r"""Compute the weight with which a compartment influences its node.
 
     In order to satisfy Kirchhoffs current law, the current at a branch point must be
@@ -307,8 +346,10 @@ def compute_impact_on_node(rad, r_a, l):
     Because R_long = r_a * L/2 / crosssection, we get
     g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a
 
+    Finally, we define `g_a = 1 / r_a` (in order to allow `r_a=inf`, or `g_a=0`).
+
     This equation can be multiplied by any constant."""
-    return rad**2 / r_a / l
+    return rad**2 * g_a / l
 
 
 def remap_to_consecutive(arr):
@@ -449,8 +490,10 @@ def query_channel_states_and_params(d, keys, idcs):
 
 
 def compute_axial_conductances(
-    comp_edges: pd.DataFrame, params: Dict[str, jnp.ndarray]
-) -> jnp.ndarray:
+    comp_edges: pd.DataFrame,
+    params: Dict[str, jnp.ndarray],
+    diffusion_states: List[str],
+) -> Dict[str, jnp.ndarray]:
     """Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.
 
     Note that the resulting axial conductances will already by divided by the
@@ -461,55 +504,110 @@ def compute_axial_conductances(
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
+    axial_conductances = jnp.stack(
+        [1 / params["axial_resistivity"]]
+        + [params[f"axial_diffusion_{d}"] for d in diffusion_states]
+    )
+
     if len(sink_comp_inds) > 0:
-        conds_c2c = (
-            vmap(compute_coupling_cond, in_axes=(0, 0, 0, 0, 0, 0))(
-                params["radius"][sink_comp_inds],
-                params["radius"][source_comp_inds],
-                params["axial_resistivity"][sink_comp_inds],
-                params["axial_resistivity"][source_comp_inds],
-                params["length"][sink_comp_inds],
-                params["length"][source_comp_inds],
-            )
-            / params["capacitance"][sink_comp_inds]
+        # For voltages, divide by the surface area.
+        conds_c2c = vmap(
+            vmap(g_long_by_surface_area, in_axes=(0, 0, 0, 0, 0, 0)),
+            in_axes=(None, None, 0, 0, None, None),
+        )(
+            params["radius"][sink_comp_inds],
+            params["radius"][source_comp_inds],
+            axial_conductances[:1, sink_comp_inds],
+            axial_conductances[:1, source_comp_inds],
+            params["length"][sink_comp_inds],
+            params["length"][source_comp_inds],
         )
+        # .at[0] because we only divide the axial voltage conductances by the
+        # capacitance, _not_ the axial conductances of the diffusing ions.
+        conds_c2c = conds_c2c.at[0].divide(params["capacitance"][sink_comp_inds])
+        # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
+        conds_c2c = conds_c2c.at[0].multiply(10**7)
+
+        # For ion diffusion, we have to divide by the volume, not the surface area.
+        conds_diffusion = vmap(
+            vmap(g_long_by_volume, in_axes=(0, 0, 0, 0, 0, 0)),
+            in_axes=(None, None, 0, 0, None, None),
+        )(
+            params["radius"][sink_comp_inds],
+            params["radius"][source_comp_inds],
+            axial_conductances[1:, sink_comp_inds],
+            axial_conductances[1:, source_comp_inds],
+            params["length"][sink_comp_inds],
+            params["length"][source_comp_inds],
+        )
+        conds_c2c = jnp.concatenate([conds_c2c, conds_diffusion])
     else:
-        conds_c2c = jnp.asarray([])
+        conds_c2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
 
     # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
     condition = comp_edges["type"].isin([1, 2])
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list())
 
     if len(sink_comp_inds) > 0:
-        conds_bp2c = (
-            vmap(compute_coupling_cond_branchpoint, in_axes=(0, 0, 0))(
-                params["radius"][sink_comp_inds],
-                params["axial_resistivity"][sink_comp_inds],
-                params["length"][sink_comp_inds],
-            )
-            / params["capacitance"][sink_comp_inds]
+        # For voltages, divide by the surface area.
+        conds_bp2c = vmap(
+            vmap(g_long_by_surface_area, in_axes=(0, 0, 0, 0, 0, 0)),
+            in_axes=(None, None, 0, 0, None, None),
+        )(
+            params["radius"][sink_comp_inds],
+            params["radius"][sink_comp_inds],
+            axial_conductances[:1, sink_comp_inds],
+            axial_conductances[:1, sink_comp_inds],
+            params["length"][sink_comp_inds],
+            jnp.zeros_like(params["length"][sink_comp_inds]),  # l=0 for branchpoint.
         )
+        # .at[0] because we only divide the axial voltage conductances by the
+        # capacitance, _not_ the axial conductances of the diffusing ions.
+        conds_bp2c = conds_bp2c.at[0].divide(params["capacitance"][sink_comp_inds])
+        # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
+        conds_bp2c = conds_bp2c.at[0].multiply(10**7)
+
+        # For ion diffusion, we have to divide by the volume, not the surface area.
+        conds_bp2c_diffusion = vmap(
+            vmap(g_long_by_volume, in_axes=(0, 0, 0, 0, 0, 0)),
+            in_axes=(None, None, 0, 0, None, None),
+        )(
+            params["radius"][sink_comp_inds],
+            params["radius"][sink_comp_inds],
+            axial_conductances[1:, sink_comp_inds],
+            axial_conductances[1:, sink_comp_inds],
+            params["length"][sink_comp_inds],
+            jnp.zeros_like(params["length"][sink_comp_inds]),  # l=0 for branchpoint.
+        )
+        conds_bp2c = jnp.concatenate([conds_bp2c, conds_bp2c_diffusion])
     else:
-        conds_bp2c = jnp.asarray([])
+        conds_bp2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
 
     # `compartment-to-branchpoint` (c2bp) axial coupling conductances.
     condition = comp_edges["type"].isin([3, 4])
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list())
 
     if len(source_comp_inds) > 0:
-        conds_c2bp = vmap(compute_impact_on_node, in_axes=(0, 0, 0))(
+        conds_c2bp = vmap(
+            vmap(compute_impact_on_node, in_axes=(0, 0, 0)), in_axes=(None, 0, None)
+        )(
             params["radius"][source_comp_inds],
-            params["axial_resistivity"][source_comp_inds],
+            axial_conductances[:, source_comp_inds],
             params["length"][source_comp_inds],
         )
         # For numerical stability. These values are very small, but their scale
         # does not matter.
         conds_c2bp *= 1_000
     else:
-        conds_c2bp = jnp.asarray([])
+        conds_c2bp = jnp.asarray([[]] * (len(diffusion_states) + 1))
 
     # All axial coupling conductances.
-    return jnp.concatenate([conds_c2c, conds_bp2c, conds_c2bp])
+    all_coupling_conds = jnp.concatenate([conds_c2c, conds_bp2c, conds_c2bp], axis=1)
+
+    conds_as_dict = {}
+    for i, key in enumerate(["v"] + diffusion_states):
+        conds_as_dict[key] = all_coupling_conds[i]
+    return conds_as_dict
 
 
 def compute_children_and_parents(

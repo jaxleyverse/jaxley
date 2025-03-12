@@ -1,11 +1,45 @@
-# 0.6.3
+# 0.8.0
+
+### New features
+
+- add leaky integrate-and-fire neurons (#564, @jnsbck), Izhikevich neurons, and rate-based neurons (#601, @michaeldeistler)
+
+### Minor updates
+
+- make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
+
+
+# 0.7.0
+
+### New Features
+
+- Allow ion diffusion with `cell.diffuse()` and add tutorials (#438, @michaeldeistler):
+```python
+from jaxley.channels import CaNernstReversal
+from jaxley.pumps import CaFaradayConcentrationChange
+
+cell.insert(CaFaradayConcentrationChange())
+cell.insert(CaNernstReversal())
+cell.diffuse("CaCon_i")
+cell.set("axial_diffusion_CaCon_i", 1.0)
+```
+- Introduce ion pumps (#438, @michaeldeistler)
+
+### Bug fixes
+
+- Fix for simulation of morphologies with inhomogenous numbers of compartments (#438, @michaeldeistler)
+- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582, @Kartik-Sama, @michaeldeistler).
+
+### Code health
 
 - add new release workflow (#588, @jnsbck)
+- update FAQ and tutorials (#593, @michaeldeistler)
 - make random post compartment selection optional in connectivity functions (#489 @kyralianaka)
 
 # 0.6.2
 
 - also remove `nseg` from tutorials (#580, @jnsbck)
+
 
 # 0.6.1
 
@@ -54,6 +88,7 @@ net.vis()
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
+<<<<<<< HEAD
 - Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
   - Regression tests can be triggered by commenting "/test_regression" on a PR.
   - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
@@ -64,6 +99,9 @@ net.vis()
 
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 
+=======
+- add two leaky integrate-and-fire channels: `LIF` and `SmoothLIF` (#564, @jnsbck)
+>>>>>>> chore: update changelog
 
 # 0.5.0
 

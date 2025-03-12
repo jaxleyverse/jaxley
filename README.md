@@ -6,7 +6,7 @@
 
 [![PyPI version](https://badge.fury.io/py/jaxley.svg)](https://badge.fury.io/py/jaxley)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/jaxleyverse/jaxley/blob/main/CONTRIBUTING.md)
-[![Tests](https://github.com/jaxleyverse/jaxley/workflows/Tests/badge.svg?branch=main)](https://github.com/jaxleyverse/jaxley/actions)
+[![Tests](https://github.com/jaxleyverse/jaxley/actions/workflows/tests.yml/badge.svg)](https://github.com/jaxleyverse/jaxley/actions/workflows/tests.yml)
 [![GitHub license](https://img.shields.io/github/license/jaxleyverse/jaxley)](https://github.com/jaxleyverse/jaxley/blob/main/LICENSE)
 
 [**Documentation**](https://jaxley.readthedocs.io/en/latest/)

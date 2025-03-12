@@ -5,6 +5,7 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
+from math import pi
 from typing import Dict, Optional
 
 import jax.numpy as jnp
@@ -12,7 +13,19 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
+from jaxley.channels import (
+    HH,
+    CaL,
+    CaT,
+    Channel,
+    Fire,
+    Izhikevich,
+    K,
+    Km,
+    Leak,
+    Na,
+    Rate,
+)
 from jaxley.solver_gate import exponential_euler, save_exp, solve_inf_gate_exponential
 
 
@@ -354,15 +367,15 @@ def test_delete_channel(SimpleBranch):
     # test complete removal of a channel from a module
     branch1 = SimpleBranch(ncomp=3)
     branch1.comp(0).insert(K())
-    branch1.delete_channel(K())
+    branch1.delete(K())
 
     branch2 = SimpleBranch(ncomp=3)
     branch2.comp(0).insert(K())
-    branch2.comp(0).delete_channel(K())
+    branch2.comp(0).delete(K())
 
     branch3 = SimpleBranch(ncomp=3)
     branch3.insert(K())
-    branch3.delete_channel(K())
+    branch3.delete(K())
 
     def channel_present(view, channel, partial=False):
         states_and_params = list(channel.channel_states.keys()) + list(
@@ -398,13 +411,131 @@ def test_delete_channel(SimpleBranch):
     branch4.comp(0).insert(K())
     branch4.comp([1, 2]).insert(Leak())
 
-    branch4.comp(1).delete_channel(Leak())
+    branch4.comp(1).delete(Leak())
     # assert K in comp 0 and Leak still present in branch
     assert channel_present(branch4.comp(0), K())
     assert channel_present(branch4.comp(2), Leak(), partial=True)
     assert not channel_present(branch4.comp(1), Leak(), partial=True)
     assert channel_present(branch4, Leak())
 
-    branch4.comp(2).delete_channel(Leak())
+    branch4.comp(2).delete(Leak())
     # assert no more Leak
     assert not channel_present(branch4, Leak())
+
+
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+def test_lif(solver):
+    cell = jx.Cell()
+    cell.insert(Leak())
+    cell.insert(Fire())
+    cell.record("v")
+    cell.record("Fire_spikes")
+
+    dt = 0.1
+    t_max = 40.0
+
+    cell.stimulate(jx.step_current(5.0, 20.0, 0.005, dt, t_max))
+    v = jx.integrate(cell, delta_t=dt, solver=solver)
+    assert np.all(v[0] > -71.0)
+    assert np.all(v[0] < -40.0)
+    assert np.sum(v[1]) == 6.0
+
+
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+def test_izhikevich(solver):
+    cell = jx.Cell()
+    cell.insert(Izhikevich())
+    cell.record("v")
+
+    dt = 0.1
+    t_max = 200.0
+
+    cell.stimulate(jx.step_current(10.0, 180.0, 0.012, dt, t_max))
+    v = jx.integrate(cell, delta_t=dt, solver=solver)
+
+    v_250307 = jnp.asarray(
+        [
+            -70.0,
+            -65.0123028,
+            -69.20009282,
+            -71.46372414,
+            -70.71902502,
+            -53.02998553,
+            -63.15451445,
+            -67.04028155,
+            -69.77691688,
+            -71.87443646,
+            -82.1561912,
+        ]
+    )
+    max_error = np.max(np.abs(v[0, ::200] - v_250307))
+    assert max_error < 1e-8, f"Error {max_error} to large."
+
+
+def test_rate_channel():
+    cell = jx.Cell()
+    cell.set("length", 1.0 / (2 * pi * 1e-5))
+    cell.set("radius", 1.0)  # 1.0 is also the default.
+    cell.insert(Rate())
+    cell.record("v")
+
+    cell.stimulate(2.0 * jnp.ones((5,)))
+    cell.set("v", 2.0)
+    cell.record("v")
+
+    dt = 1.0
+    t_max = 10.0
+    v = jx.integrate(cell, t_max=t_max, delta_t=dt)
+
+    v_250307 = jnp.asarray(
+        [
+            2.0,
+            2.73575888,
+            3.00642945,
+            3.10600359,
+            3.14263486,
+            3.15611076,
+            1.16106826,
+            0.42713314,
+            0.1571335,
+            0.05780618,
+            0.02126571,
+            0.00782322,
+        ]
+    )
+    max_error = np.max(np.abs(v[0] - v_250307))
+    assert max_error < 1e-8, f"Error {max_error} to large."
+
+
+def test_multicompartment_lif(SimpleCell):
+    """Test that LIF can be run in multicompartment simulation."""
+    cell = SimpleCell(2, 4)
+    # Leak everywhere, fire only in "soma".
+    cell.insert(Leak())
+    cell.branch(0).comp(0).insert(Fire())
+    cell.record("v")
+    cell.branch(0).comp(0).record("Fire_spikes")
+
+    dt = 0.1
+    t_max = 40.0
+
+    cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 0.01, dt, t_max))
+    recordings = jx.integrate(cell, delta_t=dt)
+    assert np.invert(np.any(np.isnan(recordings)))
+
+
+def test_multicompartment_izhikevich(SimpleCell):
+    """Test that Izhikevich can be run in multicompartment simulation."""
+    cell = SimpleCell(2, 4)
+    # Leak everywhere, fire only in "soma".
+    cell.insert(Leak())
+    cell.branch(0).comp(0).insert(Fire())
+    cell.record("v")
+    cell.branch(0).comp(0).record("Fire_spikes")
+
+    dt = 0.1
+    t_max = 40.0
+
+    cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 0.02, dt, t_max))
+    recordings = jx.integrate(cell, delta_t=dt)
+    assert np.invert(np.any(np.isnan(recordings)))

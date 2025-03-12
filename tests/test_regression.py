@@ -10,11 +10,13 @@ from functools import wraps
 import numpy as np
 import pytest
 from jax import jit
+from jaxley_mech.channels.l5pc import CaHVA
 from scipy.stats import t as t_dist
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import sparse_connect
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 from jaxley.synapses import IonotropicSynapse
 
 pytestmark = pytest.mark.regression  # mark all tests as regression tests in this file
@@ -166,7 +168,13 @@ class compare_to_baseline:
         return test_wrapper
 
 
-def build_net(num_cells, artificial=True, connect=True, connection_prob=0.0):
+def build_net(
+    num_cells,
+    artificial=True,
+    connect=True,
+    connection_prob=0.0,
+    calcium_dynamics=False,
+):
     _ = np.random.seed(1)  # For sparse connectivity matrix.
 
     if artificial:
@@ -183,6 +191,12 @@ def build_net(num_cells, artificial=True, connect=True, connection_prob=0.0):
 
     # Channels.
     net.insert(HH())
+
+    if calcium_dynamics:
+        net.insert(CaHVA())
+        net.insert(CaFaradayConcentrationChange())
+        net.insert(CaNernstReversal())
+        net.diffuse("CaCon_i")
 
     # Synapses.
     if connect:
@@ -202,17 +216,19 @@ def build_net(num_cells, artificial=True, connect=True, connection_prob=0.0):
 
 
 @pytest.mark.parametrize(
-    "num_cells, artificial, connect, connection_prob, voltage_solver",
+    "num_cells, artificial, connect, connection_prob, voltage_solver, calcium_dynamics",
     (
         # Test a single SWC cell with both solvers.
-        pytest.param(1, False, False, 0.0, "jaxley.stone"),
-        pytest.param(1, False, False, 0.0, "jax.sparse"),
+        pytest.param(1, False, False, 0.0, "jaxley.stone", False),
+        pytest.param(1, False, False, 0.0, "jax.sparse", False),
+        # Test a single SWC cell, but add detailed calcium mechanisms.
+        pytest.param(1, False, False, 0.0, "jax.stone", True),
         # Test a network of SWC cells with both solvers.
-        pytest.param(10, False, True, 0.1, "jaxley.stone"),
-        pytest.param(10, False, True, 0.1, "jax.sparse"),
+        pytest.param(10, False, True, 0.1, "jaxley.stone", False),
+        pytest.param(10, False, True, 0.1, "jax.sparse", False),
         # Test a larger network of smaller neurons with both solvers.
-        pytest.param(1000, True, True, 0.001, "jaxley.stone"),
-        pytest.param(1000, True, True, 0.001, "jax.sparse"),
+        pytest.param(1000, True, True, 0.001, "jaxley.stone", False),
+        pytest.param(1000, True, True, 0.001, "jax.sparse", False),
     ),
 )
 @compare_to_baseline(baseline_iters=3)
@@ -222,6 +238,7 @@ def test_runtime(
     connect: bool,
     connection_prob: float,
     voltage_solver: str,
+    calcium_dynamics: bool,
 ):
     delta_t = 0.025
     t_max = 100.0
@@ -243,6 +260,7 @@ def test_runtime(
         artificial=artificial,
         connect=connect,
         connection_prob=connection_prob,
+        calcium_dynamics=calcium_dynamics,
     )
     runtimes["build_time"] = time.time() - start_time
 

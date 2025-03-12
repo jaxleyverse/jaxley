@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Jaxley"
-version = "0.6.2"
+version = "0.7.0"
 description = "Differentiable neuron simulations."
 authors = [
     { name = "jaxleyverse", email = "jaxleyverse@gmail.com"},
@@ -74,6 +74,7 @@ dev = [
 markers = [
     "slow: marks tests as slow (T > 10s)",
     "regression: marks regression tests",
+    "additional_neuron_tests: tests marked as such will not be run by default",
 ]
 
 [tool.isort]

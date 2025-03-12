@@ -67,6 +67,14 @@ def _split_branch_equally(branch: np.ndarray, num_subbranches: int) -> List[np.n
 def _split_into_branches(
     content: np.ndarray, is_single_point_soma: bool
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Separates the list of parents from SWC into a list of branch-lists.
+
+    Each branch list contains the index of the first until last SWC node within the
+    branch. E.g., the returned `all_branches` might look like:
+    ```python
+    [[0, 1, 2], [2, 3], [2, 4]]
+    ```
+    """
     prev_ind = None
     prev_type = None
     n_branches = 0
@@ -88,32 +96,40 @@ def _split_into_branches(
     current_branch = []
     all_types = []
 
-    # Loop over every line in the SWC file.
-    for c in content:
-        current_ind = c[0]  # First col is row_identifier
-        current_parent = c[-1]  # Last col is parent in SWC specification.
-        if current_parent == -1:
-            all_types.append(c[1])
-        else:
-            current_type = c[1]
+    # `previous_type` tracks the type (soma, axon...) of the previous SWC node.
+    previous_type = 0
+    for c in content:  # Loop over every line in the SWC file.
+        current_ind = int(c[0])  # First col is row_identifier
+        current_parent = int(c[-1])  # Last col is parent in SWC specification.
+        current_type = int(c[1])  # Second col is the type (soma, axon, basal,...).
 
+        # Single point somas will be ignore below (`if len(current_branch) > 1`), so
+        # we specifically have to add them here.
         if current_parent == -1 and is_single_point_soma and current_ind == 1:
-            all_branches.append([int(current_ind)])
-            all_types.append(int(current_type))
+            all_branches.append([current_ind])
+            all_types.append(current_type)
 
         # Either append the current point to the branch, or add the branch to
         # `all_branches`.
         if current_parent in branch_inds[1:]:
             if len(current_branch) > 1:
+                # Note that the `current_ind` is not part of `current_branch`! This is
+                # because it already belongs to the next branch. This is also the
+                # reason why we have to append the `previous_type` as type here: the
+                # `current_type` will already be the type of the next branch, which can
+                # be of a different type.
                 all_branches.append(current_branch)
-                all_types.append(current_type)
+                all_types.append(previous_type)
             current_branch = [int(current_parent), int(current_ind)]
         else:
             current_branch.append(int(current_ind))
 
+        previous_type = current_type
+
     # Append the final branch (intermediate branches are already appended five lines
     # above.)
     all_branches.append(current_branch)
+    all_types.append(current_type)
     return all_branches, all_types
 
 
@@ -422,6 +438,7 @@ def read_swc(
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
     backend: str = "custom",
+    **backend_kwargs,
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
@@ -442,6 +459,7 @@ def read_swc(
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
         backend: The backend to use. Currently `custom` and `graph` are supported.
             For context on these backends see `read_swc_custom` and `from_graph`.
+        backend_kwargs: Additional keyword arguments passed to the swc reader.
 
     Returns:
         A `Cell` object."""
@@ -453,6 +471,7 @@ def read_swc(
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
+            **backend_kwargs,
         )
     elif backend == "graph":
         graph = swc_to_graph(fname)
@@ -462,6 +481,7 @@ def read_swc(
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
+            **backend_kwargs,
         )
     else:
         raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")

@@ -33,9 +33,11 @@ class IonotropicSynapse(Synapse):
         super().__init__(name)
         prefix = self._name
         self.synapse_params = {
-            f"{prefix}_gS": 1e-4,
-            f"{prefix}_e_syn": 0.0,
+            f"{prefix}_gS": 1e-4,  # uS
+            f"{prefix}_e_syn": 0.0,  # mV
             f"{prefix}_k_minus": 0.025,
+            f"{prefix}_v_th": -35.0,  # mV
+            f"{prefix}_delta": 10.0,  # mV
         }
         self.synapse_states = {f"{prefix}_s": 0.2}
 
@@ -49,8 +51,8 @@ class IonotropicSynapse(Synapse):
     ) -> Dict:
         """Return updated synapse state and current."""
         prefix = self._name
-        v_th = -35.0  # mV
-        delta = 10.0  # mV
+        v_th = params[f"{prefix}_v_th"]
+        delta = params[f"{prefix}_delta"]
 
         s_inf = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
         tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
