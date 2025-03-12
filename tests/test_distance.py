@@ -6,7 +6,13 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
+import jax
+import jax.numpy as jnp
+import numpy as np
+from jax import jit
+
 import jaxley as jx
+from jaxley.channels import Leak
 
 
 def test_direct_distance(SimpleCell):
@@ -46,3 +52,28 @@ def test_direct_distance(SimpleCell):
 
     dist = net.cell(1).branch(0).loc(0.0).distance(net.cell(1).branch(2).loc(1.0))
     assert dist == (3 * ncomp - 1) * length
+
+
+def test_distance_within_jit(SimpleCell):
+    cell = SimpleCell(2, 3)
+    cell.insert(Leak())
+    cell.compute_xyz()
+
+    cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
+    cell[0, 0].record()
+
+    def simulate(sigmoid_offset, global_scaling):
+        pstate = None
+        for branch in cell:
+            for comp in branch:
+                distance = cell[0, 0].distance(comp)
+                conductance = global_scaling / (jnp.exp(-(distance + sigmoid_offset)))
+                pstate = comp.data_set("Leak_gLeak", conductance * 1e-4, pstate)
+        return jx.integrate(cell, param_state=pstate)
+
+    sigmoid_offset = jnp.ones((1,))
+    global_scaling = jnp.ones((1,))
+
+    jitted_simulate = jit(simulate)
+    v = jitted_simulate(sigmoid_offset, global_scaling)
+    assert np.invert(np.any(np.isnan(v)))

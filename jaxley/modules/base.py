@@ -1211,9 +1211,9 @@ class Module(ABC):
             endpoint: The compartment to which to compute the distance to.
         """
         assert len(self.xyzr) == 1 and len(endpoint.xyzr) == 1
-        start_xyz = np.mean(self.xyzr[0][:, :3], axis=0)
-        end_xyz = np.mean(endpoint.xyzr[0][:, :3], axis=0)
-        return np.sqrt(np.sum((start_xyz - end_xyz) ** 2))
+        start_xyz = jnp.mean(self.xyzr[0][:, :3], axis=0)
+        end_xyz = jnp.mean(endpoint.xyzr[0][:, :3], axis=0)
+        return jnp.sqrt(jnp.sum((start_xyz - end_xyz) ** 2))
 
     def delete_trainables(self):
         """Removes all trainable parameters from the module."""

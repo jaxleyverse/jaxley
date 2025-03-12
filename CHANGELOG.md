@@ -8,6 +8,10 @@
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
 
+### Bug fixes
+
+- allow `.distance` to be jitted (#603, @michaeldeistler)
+
 
 # 0.7.0
 
