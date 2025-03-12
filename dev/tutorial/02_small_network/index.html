@@ -1006,7 +1006,7 @@
 <span class="n">_</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="png" src="../02_small_network_files/02_small_network_14_0.png" /></p>
-<p>As you can see, the <code>full_connect</code> method inserted one synapse (in blue) from every neuron in the first layer to the output neuron. The <code>fully_connect</code> method builds this synapse from the zero-eth compartment and zero-eth branch of the presynaptic neuron onto a random branch of the postsynaptic neuron. If you want more control over the pre- and post-synaptic branches, you can use the <code>connect</code> method:</p>
+<p>As you can see, the <code>fully_connect</code> method inserted one synapse (in blue) from every neuron in the first layer to the output neuron. The <code>fully_connect</code> method builds this synapse from the zero-eth compartment and zero-eth branch of the presynaptic neuron onto the zero-eth compartment and zero-eth branch of the postsynaptic neuron by default. Allowing the post-synaptic compartment to be randomly chosen is also possible by setting <code>random_post_comp=True</code> in the <code>fully_connect</code> call. If you want more control over the pre- and post-synaptic branches, you can use the <code>connect</code> method:</p>
 <div class="highlight"><pre><span></span><code><span class="n">pre</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
 <span class="n">post</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
 <span class="n">connect</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
@@ -1056,12 +1056,12 @@
       <th>0</th>
       <td>0</td>
       <td>0</td>
-      <td>287</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.875</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0004</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1071,12 +1071,12 @@
       <th>1</th>
       <td>1</td>
       <td>28</td>
-      <td>289</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.375</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0004</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1086,12 +1086,12 @@
       <th>2</th>
       <td>2</td>
       <td>56</td>
-      <td>289</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.375</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1101,12 +1101,12 @@
       <th>3</th>
       <td>3</td>
       <td>84</td>
-      <td>301</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.375</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1116,12 +1116,12 @@
       <th>4</th>
       <td>4</td>
       <td>112</td>
-      <td>281</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.375</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1131,12 +1131,12 @@
       <th>5</th>
       <td>5</td>
       <td>140</td>
-      <td>295</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.875</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1146,12 +1146,12 @@
       <th>6</th>
       <td>6</td>
       <td>168</td>
-      <td>289</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.375</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1161,12 +1161,12 @@
       <th>7</th>
       <td>7</td>
       <td>196</td>
-      <td>290</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.625</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1176,12 +1176,12 @@
       <th>8</th>
       <td>8</td>
       <td>224</td>
-      <td>303</td>
+      <td>280</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.125</td>
-      <td>0.875</td>
-      <td>0.0001</td>
+      <td>0.125</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1196,7 +1196,7 @@
       <td>0</td>
       <td>0.125</td>
       <td>0.125</td>
-      <td>0.0001</td>
+      <td>0.0003</td>
       <td>0.0</td>
       <td>0.025</td>
       <td>0.2</td>
@@ -1205,6 +1205,21 @@
     <tr>
       <th>10</th>
       <td>10</td>
+      <td>23</td>
+      <td>280</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.875</td>
+      <td>0.125</td>
+      <td>0.0003</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>11</td>
       <td>23</td>
       <td>280</td>
       <td>IonotropicSynapse</td>

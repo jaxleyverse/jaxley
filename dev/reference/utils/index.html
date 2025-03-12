@@ -1569,6 +1569,7 @@
 
 
 
+
   <div class="doc doc-children">
 
 
@@ -1595,6 +1596,7 @@
 <div class="highlight"><pre><span></span><code>parents = [-1, 0, 0, 1, 1, 1]
 _compute_index_of_child(parents) -&gt; [-1, 0, 1, 0, 1, 2]
 </code></pre></div></p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -1728,6 +1730,7 @@ _compute_index_of_child(parents) -&gt; [-1, 0, 1, 0, 1, 2]
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
@@ -1811,6 +1814,7 @@ _compute_index_of_child(parents) -&gt; [-1, 0, 1, 0, 1, 2]
         <p>Given <code>comp_edges</code>, radius, length, r_a, cm, compute the axial conductances.</p>
 <p>Note that the resulting axial conductances will already by divided by the
 capacitance <code>cm</code>.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2070,6 +2074,7 @@ capacitance <code>cm</code>.</p>
 
         <p>Build indices used during `._init_morph_custom_spsolve().</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">613</span>
@@ -2111,6 +2116,7 @@ capacitance <code>cm</code>.</p>
 <div class="highlight"><pre><span></span><code>parents = [-1, 0, 0]
 compute_children_indices(parents) -&gt; [[1, 2], [], []]
 </code></pre></div></p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2164,6 +2170,7 @@ compute_children_indices(parents) -&gt; [[1, 2], [], []]
 g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)</p>
 <p>Here, we define <code>g_a = 1/r_a</code>, because g_a can be zero (but not infinity as this
 would be inherently unstable).</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2233,6 +2240,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 <p>Finally, we define <code>g_a = 1 / r_a</code> (in order to allow <code>r_a=inf</code>, or <code>g_a=0</code>).</p>
 <p>This equation can be multiplied by any constant.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">338</span>
@@ -2283,6 +2291,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
 
         <p>Return (row, col) to build the sparse matrix defining the voltage eqs.</p>
 <p>This is run at <code>init</code>, not during runtime.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2411,6 +2420,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
   <summary>Return</summary>
   <p>Current in <code>uA/cm2</code>.</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">401</span>
@@ -2499,6 +2509,7 @@ g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">48</span>
@@ -2549,6 +2560,7 @@ would be inherently unstable).</p>
 <code>g_a</code>: Siemens / cm
 <code>r_a</code>: ohm cm (unused, just for reference)
 <code>length_single_compartment</code>: um</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2633,6 +2645,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
 <code>g_a</code>: mM / liter / cm
 <code>l</code>: um</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">311</span>
@@ -2703,6 +2716,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
 
         <p>Number of neighbours of each compartment.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">216</span>
@@ -2752,6 +2766,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
         <p>Group values by whether they have the same integer and sum values within group.</p>
 <p>This is used to construct the last diagonals at the branch points.</p>
 <p>Written by ChatGPT.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -2861,6 +2876,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
   <summary>Return</summary>
   <p>Interpolated xyz coordinate at <code>loc</code>, shape `(3,).</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">367</span>
@@ -2958,6 +2974,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
@@ -3025,6 +3042,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
     <div class="doc doc-contents ">
 
         <p>Return location corresponding to global compartment index.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -3144,6 +3162,7 @@ would be inherently unstable). In particular, one might want g=0 for ion diffusi
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
@@ -3307,6 +3326,7 @@ be changed.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 85</span>
@@ -3430,6 +3450,7 @@ the <code>params</code> are passed to <code>def simulate(params)</code>. Therefo
 we run the function to add indices to the dict. The outputs of <code>params_to_pstate</code>
 are of the same shape as the outputs of <code>.data_set()</code>.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">384</span>
@@ -3486,6 +3507,7 @@ the ones that are relevant for the channel. E.g.</p>
 <code>states = {'eCa': Array([ 0.,  0.]}</code></p>
 <p>Only loops over necessary keys, as opposed to looping over <code>d.items()</code>.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">477</span>
@@ -3533,6 +3555,7 @@ the ones that are relevant for the channel. E.g.</p>
         <p>Maps an array of integers to an array of consecutive integers.</p>
 <p>E.g. <code>[0, 0, 1, 4, 4, 6, 6] -&gt; [0, 0, 1, 2, 2, 3, 3]</code></p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">355</span>
@@ -3568,6 +3591,7 @@ the ones that are relevant for the channel. E.g.</p>
 
 <a id="jaxley.utils.plot_utils"></a>
     <div class="doc doc-contents first">
+
 
 
 
@@ -3671,6 +3695,7 @@ matrix.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
@@ -3888,6 +3913,7 @@ Useful too have a simpler mesh for plotting.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
@@ -4157,6 +4183,7 @@ Useful too have a simpler mesh for plotting.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">181</span>
@@ -4303,6 +4330,7 @@ Useful too have a simpler mesh for plotting.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">209</span>
@@ -4432,6 +4460,7 @@ the input points.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
@@ -4640,6 +4669,7 @@ Useful too have a simpler mesh for plotting.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
@@ -4948,6 +4978,7 @@ two or three of them.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
@@ -5162,6 +5193,7 @@ two or three of them.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
@@ -5458,6 +5490,7 @@ Useful too have a simpler mesh for plotting.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/plot_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">397</span>
@@ -5655,6 +5688,7 @@ Useful too have a simpler mesh for plotting.</p>
 
 
 
+
   <div class="doc doc-children">
 
 
@@ -5677,6 +5711,7 @@ Useful too have a simpler mesh for plotting.</p>
     <div class="doc doc-contents ">
 
         <p>Recursively applied scan function.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/jax_utils.py</code></summary>
@@ -5859,6 +5894,7 @@ provided) and the size of the leading axis for all arrays in <code>xs</code>.</p
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/jax_utils.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
@@ -5980,6 +6016,7 @@ provided) and the size of the leading axis for all arrays in <code>xs</code>.</p
 
 
 
+
   <div class="doc doc-children">
 
 
@@ -6004,6 +6041,7 @@ provided) and the size of the leading axis for all arrays in <code>xs</code>.</p
         <p>Compute current at the post synapse.</p>
 <p>All this does it that it sums the synaptic currents that come into a particular
 compartment. It returns an array of as many elements as there are compartments.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/utils/syn_utils.py</code></summary>

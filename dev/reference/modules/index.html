@@ -2813,6 +2813,7 @@ def change_attr_in_view(self):
 
 
 
+
               <details class="quote">
                 <summary>Source code in <code>jaxley/modules/base.py</code></summary>
                 <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">  63</span>
@@ -7934,6 +7935,7 @@ def change_attr_in_view(self):
     <div class="doc doc-contents ">
 
         <p>Lists the global branch indices which are currently part of the view.</p>
+
     </div>
 
 </div>
@@ -7955,6 +7957,7 @@ def change_attr_in_view(self):
     <div class="doc doc-contents ">
 
         <p>Lists the global cell indices which are currently part of the view.</p>
+
     </div>
 
 </div>
@@ -7976,6 +7979,7 @@ def change_attr_in_view(self):
     <div class="doc doc-contents ">
 
         <p>Lists the global compartment indices which are currently part of the view.</p>
+
     </div>
 
 </div>
@@ -7999,6 +8003,7 @@ def change_attr_in_view(self):
         <p>Return type of the module (compartment, branch, cell, network) as string.</p>
 <p>This is used to perform asserts for some modules (e.g. network cannot use
 <code>set_ncomp</code>) without having to import the module in <code>base.py</code>.</p>
+
     </div>
 
 </div>
@@ -8021,6 +8026,7 @@ def change_attr_in_view(self):
 
         <p>Iterate over all branches in the module.</p>
 <p>Returns a generator that yields a View of each branch.</p>
+
     </div>
 
 </div>
@@ -8043,6 +8049,7 @@ def change_attr_in_view(self):
 
         <p>Iterate over all cells in the module.</p>
 <p>Returns a generator that yields a View of each cell.</p>
+
     </div>
 
 </div>
@@ -8067,6 +8074,7 @@ def change_attr_in_view(self):
 Can be called on any module, i.e. <code>net.comps</code>, <code>cell.comps</code> or
 <code>branch.comps</code>. <code>__iter__</code> does not allow for this.</p>
 <p>Returns a generator that yields a View of each compartment.</p>
+
     </div>
 
 </div>
@@ -8088,6 +8096,7 @@ Can be called on any module, i.e. <code>net.comps</code>, <code>cell.comps</code
     <div class="doc doc-contents ">
 
         <p>Whether the <code>Module</code> is ready to be solved or not.</p>
+
     </div>
 
 </div>
@@ -8114,6 +8123,7 @@ Can be called on any module, i.e. <code>net.comps</code>, <code>cell.comps</code
 cell.shape = (num_branches, num_compartments)
 branch.shape = (num_compartments,)
 </code></pre></div>
+
     </div>
 
 </div>
@@ -8135,6 +8145,7 @@ branch.shape = (num_compartments,)
     <div class="doc doc-contents ">
 
         <p>Return view of the module.</p>
+
     </div>
 
 </div>
@@ -8153,6 +8164,7 @@ branch.shape = (num_compartments,)
     <div class="doc doc-contents ">
 
         <p>Lazy indexing of the module.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8214,6 +8226,7 @@ branch.shape = (num_compartments,)
             print(comp.nodes.shape)
 </code></pre></div>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">641</span>
@@ -8267,6 +8280,7 @@ branch.shape = (num_compartments,)
         <p>Insert the default params of the module (e.g. radius, length).</p>
 <p>This is run at <code>__init__()</code>. It does not deal with channels.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">713</span>
@@ -8305,6 +8319,7 @@ branch.shape = (num_compartments,)
 
         <p>Return a View of the module filtering <code>edges</code> by specified key and index.</p>
 <p>Keys can be <code>pre</code>, <code>post</code>, <code>edge</code> and determine which index is used to filter.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8352,6 +8367,7 @@ branch.shape = (num_compartments,)
 
         <p>Return a View of the module filtering <code>nodes</code> by specified key and index.</p>
 <p>Keys can be <code>cell</code>, <code>branch</code>, <code>comp</code> and determine which index is used to filter.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8404,6 +8420,7 @@ branch.shape = (num_compartments,)
         <p>Computes current through a channel and its linear and const components.</p>
 <p>The linear and constant components are inferred by running the <code>compute_current</code>
 twice. They are later used for implicit Euler.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8507,6 +8524,7 @@ twice. They are later used for implicit Euler.</p>
 
         <p>Return the current through each channel.</p>
 <p>This is also updates <code>state</code> because the <code>state</code> also contains the current.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8659,6 +8677,7 @@ twice. They are later used for implicit Euler.</p>
         <p>Returns levels that module can be viewed at.</p>
 <p>I.e. for net -&gt; [cell, branch, comp]. For branch -&gt; [comp]</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">242</span>
@@ -8698,6 +8717,7 @@ twice. They are later used for implicit Euler.</p>
         <p>Given radius, length, r_a, compute the axial coupling conductances.</p>
 <p>If ion diffusion was activated by the user (with <code>cell.diffuse()</code>) then this
 function also compute the axial conductances for every ion.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8747,6 +8767,7 @@ To avoid do this in one go we set comp_ends = [0,0.5,1,2,2.25,2.5,2.75,3], and
 norm_cum_branch_len = [0,1,2,3] incrememting and also padding them by 1 to
 avoid overlapping branch_lens i.e. norm_cum_branch_len = [0,1,1,2] for only
 incrementing.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -8856,6 +8877,7 @@ incrementing.</p>
 <p>This is run at <code>__init__()</code>. It takes all branches of constituents (e.g.
 of all branches when the are assembled into a cell) and adds columns to
 <code>.nodes</code> for the relevant channels.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9016,6 +9038,7 @@ of all branches when the are assembled into a cell) and adds columns to
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2303</span>
@@ -9095,6 +9118,7 @@ of all branches when the are assembled into a cell) and adds columns to
         <p>Collect all recordable / clampable states in the membrane and synapses.</p>
 <p>Returns states seperated by comps and edges.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1252</span>
@@ -9145,6 +9169,7 @@ of all branches when the are assembled into a cell) and adds columns to
 
         <p>Return states as they are set in the <code>.nodes</code> and <code>.edges</code> tables.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1367</span>
@@ -9190,6 +9215,7 @@ of all branches when the are assembled into a cell) and adds columns to
     <div class="doc doc-contents ">
 
         <p>Initialize the morphology such that it can be processed by the solvers.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9257,6 +9283,7 @@ voltage equations. By default, this function is never run.</p>
 <span class="n">solves</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="p">(</span><span class="n">debug_states</span><span class="p">[</span><span class="s2">&quot;ncomp&quot;</span><span class="p">],</span> <span class="n">nbranches</span><span class="p">))</span>
 <span class="k">return</span> <span class="n">solves</span>
 </code></pre></div></p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9416,6 +9443,7 @@ voltage equations. By default, this function is never run.</p>
 
         <p>Initialize the morphology for the JAX sparse solver.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">834</span>
@@ -9448,6 +9476,7 @@ voltage equations. By default, this function is never run.</p>
 
         <p>Initialize the morphology for the custom Jaxley solver.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">839</span>
@@ -9476,6 +9505,7 @@ voltage equations. By default, this function is never run.</p>
 
         <p>Init attributes critical for View.</p>
 <p>Needs to be called at init of a Module.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9515,6 +9545,7 @@ voltage equations. By default, this function is never run.</p>
 
         <p>Initialize the module.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1426</span>
@@ -9543,6 +9574,7 @@ voltage equations. By default, this function is never run.</p>
 
         <p>Iterate over submoduleslevel.</p>
 <p>Used for <code>cells</code>, <code>branches</code>, <code>comps</code>.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9652,6 +9684,7 @@ to be handled downstream.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9781,6 +9814,7 @@ to be handled downstream.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">427</span>
@@ -9839,6 +9873,7 @@ to be handled downstream.</p>
 
         <p>One step of integration of the channels and of computing their current.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2115</span>
@@ -9890,6 +9925,7 @@ to be handled downstream.</p>
     <div class="doc doc-contents ">
 
         <p>One integration step of the channels.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -9995,6 +10031,7 @@ to be handled downstream.</p>
 <p><code>Network</code> overrides this method (because it actually has synapses), whereas
 <code>Compartment</code>, <code>Branch</code>, and <code>Cell</code> do not override this.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2282</span>
@@ -10045,6 +10082,7 @@ to be handled downstream.</p>
 
         <p>Compute local indices from the global indices that are in view.
 This is recomputed everytime a View is created.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -10176,6 +10214,7 @@ This is recomputed everytime a View is created.</p>
 
         <p>Update the attrs of the view after changes in the base module.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1563</span>
@@ -10259,6 +10298,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -10372,6 +10412,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">537</span>
@@ -10463,6 +10504,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -10565,6 +10607,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
     </table>
         <p>This function sets external states for the compartments.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1605</span>
@@ -10661,6 +10704,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">547</span>
@@ -10699,6 +10743,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
 
         <p>Add compartment centers to nodes dataframe</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">383</span>
@@ -10730,6 +10775,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
 file. However, for morphologies that were constructed from scratch, this
 function <strong>must</strong> be called before <code>.vis()</code>. The computed <code>xyz</code> coordinates
 are only used for plotting.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -10944,6 +10990,7 @@ are only used for plotting.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">678</span>
@@ -11089,6 +11136,7 @@ the post-synaptic property (&lsquo;post&rsquo;), or both ([&lsquo;pre&rsquo;, &l
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -11292,6 +11340,7 @@ by default because this method is meant to be jitted.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1674</span>
@@ -11424,6 +11473,7 @@ function does not modify global state.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -11563,6 +11613,7 @@ by default because this method is meant to be jitted.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1657</span>
@@ -11645,6 +11696,7 @@ by default because this method is meant to be jitted.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -11729,6 +11781,7 @@ by default because this method is meant to be jitted.</p>
     <div class="doc doc-contents ">
 
         <p>Removes all clamps of the given state from the module.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -11825,6 +11878,7 @@ by default because this method is meant to be jitted.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1832</span>
@@ -11869,6 +11923,7 @@ by default because this method is meant to be jitted.</p>
 
         <p>Removes all recordings from the module.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1578</span>
@@ -11909,6 +11964,7 @@ by default because this method is meant to be jitted.</p>
 
         <p>Removes all stimuli from the module.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1748</span>
@@ -11934,6 +11990,7 @@ by default because this method is meant to be jitted.</p>
     <div class="doc doc-contents ">
 
         <p>Removes all trainable parameters from the module.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -12012,6 +12069,7 @@ by default because this method is meant to be jitted.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1813</span>
@@ -12071,6 +12129,7 @@ This does not compute the pathwise distance (which is currently not
 implemented).
 Args:
     endpoint: The compartment to which to compute the distance to.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -12167,6 +12226,7 @@ Args:
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -12293,6 +12353,7 @@ function will default to different building methods.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -12573,6 +12634,7 @@ function will default to different building methods.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1381</span>
@@ -12696,6 +12758,7 @@ function will default to different building methods.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1268</span>
@@ -12767,6 +12830,7 @@ function will default to different building methods.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -12912,6 +12976,7 @@ function will default to different building methods.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -13061,6 +13126,7 @@ function will default to different building methods.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">567</span>
@@ -13196,6 +13262,7 @@ total number of parameters.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -13479,6 +13546,7 @@ total number of parameters.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2453</span>
@@ -13576,6 +13644,7 @@ cell is moved to the specified location.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -13737,6 +13806,7 @@ cell is moved to the specified location.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2520</span>
@@ -13870,6 +13940,7 @@ will return the 1<sup>st</sup> compartment of branch 2.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -14005,6 +14076,7 @@ will return the 1<sup>st</sup> compartment of branch 2.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">447</span>
@@ -14125,6 +14197,7 @@ must be of shape <code>(len(num_compartments))</code>.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">854</span>
@@ -14235,6 +14308,7 @@ the radius is capped to be at least this value.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -14594,6 +14668,7 @@ the radius is capped to be at least this value.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">472</span>
@@ -14751,6 +14826,7 @@ shown.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -15019,6 +15095,7 @@ coefficient matrix of the ODE system. Either of [&ldquo;jaxley.thomas&rdquo;,
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -15541,6 +15618,7 @@ on the data and that should not be learned). For stimuli that depend on data
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1589</span>
@@ -15595,6 +15673,7 @@ the <code>jx.Module</code> are stored in <code>.nodes</code> (a <code>pd.DataFra
 simulation, these parameters have to be moved to be <code>jnp.ndarrays</code> such that
 they can be processed on GPU/TPU and such that the simulation can be
 differentiated. <code>.to_jax()</code> copies the <code>.nodes</code> to <code>.jaxnodes</code>.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
@@ -15778,6 +15857,7 @@ two of them.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2333</span>
@@ -15944,6 +16024,7 @@ two of them.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1157</span>
@@ -16069,6 +16150,7 @@ two of them.</p>
         <p>Compartment class.</p>
 <p>This class defines a single compartment that can be simulated by itself or
 connected up into branches. It is the basic building block of a neuron model.</p>
+
 
 
 
@@ -16268,6 +16350,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
 <code>type == 3</code>: parent-compartment &rarr; branchpoint
 <code>type == 4</code>: child-compartment &rarr; branchpoint</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/compartment.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">78</span>
@@ -16335,6 +16418,7 @@ connected up into branches. It is the basic building block of a neuron model.</p
 connected to build a cell. A branch is linear segment of several compartments
 and can be connected to no, one or more other branches at each end to build more
 intricate cell morphologies.</p>
+
 
 
 
@@ -16641,6 +16725,7 @@ create the branch.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/branch.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
@@ -16791,6 +16876,7 @@ create the branch.</p>
 <code>type == 3</code>: parent-compartment &rarr; branchpoint
 <code>type == 4</code>: child-compartment &rarr; branchpoint</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/branch.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
@@ -16865,6 +16951,7 @@ create the branch.</p>
 <p>This class defines a single cell that can be simulated by itself or
 connected with synapses to build a network. A cell is made up of several branches
 and supports intricate cell morphologies.</p>
+
 
 
 
@@ -17456,6 +17543,7 @@ the stick representation coordinates.</p>
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 41</span>
@@ -17670,6 +17758,7 @@ the stick representation coordinates.</p>
 <p>Running this function is only required for generic sparse solvers, i.e., for
 <code>voltage_solver='jax.sparse'</code>.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">194</span>
@@ -17854,6 +17943,7 @@ the stick representation coordinates.</p>
 <code>.__init__()</code> (when the function is run), we do not yet know which solver the
 user will use. Therefore, we always run this function at <code>.__init__()</code>.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/cell.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">135</span>
@@ -17998,6 +18088,7 @@ user will use. Therefore, we always run this function at <code>.__init__()</code
 
         <p>Network class.</p>
 <p>This class defines a network of cells that can be connected with synapses.</p>
+
 
 
 
@@ -19150,6 +19241,7 @@ user will use. Therefore, we always run this function at <code>.__init__()</code
       </tbody>
     </table>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 43</span>
@@ -19322,6 +19414,7 @@ from the <code>comp_edges</code> is identical to <code>jx.Cell</code>.</p>
 <code>type == 2</code>: branchpoint &rarr; child-compartment
 <code>type == 3</code>: parent-compartment &rarr; branchpoint
 <code>type == 4</code>: child-compartment &rarr; branchpoint</p>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
@@ -19509,6 +19602,7 @@ from the <code>comp_edges</code> is identical to <code>jx.Cell</code>.</p>
 
         <p>Perform one step of the synapses and obtain their currents.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
               <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">243</span>
@@ -19636,6 +19730,7 @@ from the <code>comp_edges</code> is identical to <code>jx.Cell</code>.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
@@ -19862,6 +19957,7 @@ syanpse terminals.</p>
           </tr>
       </tbody>
     </table>
+
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/network.py</code></summary>
