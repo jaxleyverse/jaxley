@@ -1,3 +1,9 @@
+# 0.8.1
+
+- fixups to tutorial notebooks (#604, @michaeldeistler)
+- remove `delete_channel()` (#604, @michaeldeistler)
+
+
 # 0.8.0
 
 ### New features
@@ -30,6 +36,10 @@ cell.diffuse("CaCon_i")
 cell.set("axial_diffusion_CaCon_i", 1.0)
 ```
 - Introduce ion pumps (#438, @michaeldeistler)
+
+### Minor changes
+
+- rename `delete_channel()` to `delete()` (#438, @michaeldeistler)  
 
 ### Bug fixes
 

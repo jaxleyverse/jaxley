@@ -1864,10 +1864,6 @@ class Module(ABC):
         self.base.diffusion_states.remove(state)
         self.base.nodes.drop(columns=[f"axial_diffusion_{state}"], inplace=True)
 
-    @deprecated("0.8.0", "Use `.delete(Channel())` instead.")
-    def delete_channel(self, channel: Channel):
-        self.delete(channel)
-
     def delete(self, channel: Union[Channel, Pump]):
         """Remove a channel or pump from the module.
 
