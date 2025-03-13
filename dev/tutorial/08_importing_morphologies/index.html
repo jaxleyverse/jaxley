@@ -1257,6 +1257,10 @@
       <th>axial_resistivity</th>
       <th>capacitance</th>
       <th>v</th>
+      <th>soma</th>
+      <th>basal</th>
+      <th>apical</th>
+      <th>custom</th>
       <th>global_cell_index</th>
       <th>global_branch_index</th>
       <th>global_comp_index</th>
@@ -1274,6 +1278,10 @@
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -1289,6 +1297,10 @@
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
       <td>0</td>
       <td>0</td>
       <td>1</td>
@@ -1304,6 +1316,10 @@
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
       <td>0</td>
       <td>1</td>
       <td>2</td>
@@ -1319,6 +1335,10 @@
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
       <td>0</td>
       <td>1</td>
       <td>3</td>
@@ -1334,6 +1354,10 @@
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
       <td>0</td>
       <td>1</td>
       <td>4</td>
@@ -1349,6 +1373,10 @@
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
       <td>0</td>
       <td>1</td>
       <td>5</td>
@@ -1407,7 +1435,7 @@
 </code></pre></div>
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_17_0.png" /></p>
 <p>Since <code>Jaxley</code> supports grouping different branches or compartments together, we can also use the <code>id</code> labels provided by the <code>.swc</code> file to assign group labels to the <code>jx.Cell</code> object.</p>
-<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">group_names</span><span class="p">)</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">colors</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">tab10</span><span class="o">.</span><span class="n">colors</span>
@@ -1517,7 +1545,7 @@
 <span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 <span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">font_size</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>node attributes {&#39;x&#39;: 0.0, &#39;y&#39;: 0.0, &#39;z&#39;: 0.0, &#39;branch_index&#39;: 0, &#39;comp_index&#39;: 0, &#39;groups&#39;: [&#39;soma&#39;], &#39;radius&#39;: 8.119000434875488, &#39;length&#39;: 0.025, &#39;cell_index&#39;: 0}
+<div class="codehilite"><pre><span></span><code>node attributes {&#39;x&#39;: 0.0, &#39;y&#39;: 0.0, &#39;z&#39;: 0.0, &#39;branch_index&#39;: 0, &#39;comp_index&#39;: 0, &#39;groups&#39;: [&#39;custom5&#39;], &#39;radius&#39;: 8.119000434875488, &#39;length&#39;: 0.025, &#39;cell_index&#39;: 0}
 edge attributes {&#39;l&#39;: 0.001, &#39;type&#39;: &#39;intra_branch&#39;}
 </code></pre></div>
 
