@@ -789,7 +789,8 @@ def from_graph(
             .apply(lambda x: x.index.values, include_groups=False)
             .to_dict()
         )
-        module.groups = groups
+        for group_name, group_inds in groups.items():
+            module.select(nodes=group_inds).add_to_group(group_name)
 
     node_df.columns = [
         "global_" + col if "local" not in col and "index" in col else col
@@ -866,17 +867,7 @@ def to_graph(
     for col in nodes.columns:  # col wise adding preserves dtypes
         module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
 
-    nx.set_node_attributes(module_graph, [], "groups")
-    if len(module.groups) > 0:
-        groups_dict = {
-            index: {
-                "groups": [
-                    key for key, value in module.groups.items() if index in value
-                ]
-            }
-            for index in range(max(map(max, module.groups.values())) + 1)
-        }
-        module_graph.add_nodes_from(groups_dict.items())
+    module_graph.graph["group_names"] = module.group_names
 
     inter_branch_edges = module.branch_edges.copy()
     intra_branch_edges = []
