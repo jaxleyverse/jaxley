@@ -893,11 +893,13 @@ class Module(ABC):
         viewed_inds = self._nodes_in_view if is_node_param else self._edges_in_view
         if key in data.columns:
             not_nan = ~data[key].isna()
+            indices = jnp.asarray(viewed_inds[not_nan]).reshape(-1, 1)  # shape (n_comp, 1)
+            val = jnp.broadcast_to(jnp.asarray(val), (indices.shape[0],))  # shape (n_comp,)
             added_param_state = [
                 {
-                    "indices": jnp.asarray(viewed_inds[not_nan]).reshape(-1, 1),  # shape (n_comp, 1)
+                    "indices": indices,
                     "key": key,
-                    "val": jnp.atleast_1d(jnp.asarray(val)),  # broadcastable to shape (n_comp,)
+                    "val": val,
                 }
             ]
             if param_state is not None:
