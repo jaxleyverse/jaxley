@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from functools import partial
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
@@ -286,6 +286,7 @@ def swc_to_jaxley(
     max_branch_len: Optional[float] = None,
     sort: bool = True,
     num_lines: Optional[int] = None,
+    scales: List[float] = [1.0, 1.0, 1.0, 1.0],
 ) -> Tuple[List[int], List[float], List[Callable], List[float], List[np.ndarray]]:
     """Read an SWC file and bring morphology into `jaxley` compatible formats.
 
@@ -297,6 +298,8 @@ def swc_to_jaxley(
         num_lines: Number of lines of the SWC file to read.
     """
     content = np.loadtxt(fname)[:num_lines]
+    print("scales", scales)
+    content[:, 2:6] = content[:, 2:6] * scales
     types = content[:, 1]
     is_single_point_soma = types[0] == 1 and types[1] != 1
 
@@ -361,6 +364,7 @@ def read_swc_custom(
     max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
+    scales: List[float] = [1.0, 1.0, 1.0, 1.0],
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
@@ -384,7 +388,7 @@ def read_swc_custom(
         A `Cell` object.
     """
     parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
-        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
+        fname, max_branch_len=max_branch_len, sort=True, num_lines=None, scales=scales
     )
     nbranches = len(parents)
 
@@ -436,6 +440,7 @@ def read_swc(
     ncomp: Optional[int] = None,
     max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
+    unit: Union[str, List[str]] = "1um",
     assign_groups: bool = True,
     backend: str = "custom",
     **backend_kwargs,
@@ -453,6 +458,10 @@ def read_swc(
         max_branch_len: If a branch is longer than this value it is split into two
             branches.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
+        unit: Allows to specify the units of the SWC file. The format for each entry
+            must be `1um` (i.e., a number followed by two letters). The letter must be
+            either `um` or `nm`. If a list of four values is passed then these are
+            interpreted as the units for {x, y, z, radius}, respectively.
         assign_groups: If True, then the identity of reconstructed points in the SWC
             file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
             `apical`, `custom`. See here:
@@ -463,6 +472,20 @@ def read_swc(
 
     Returns:
         A `Cell` object."""
+    if isinstance(unit, str):
+        unit = [unit for _ in range(4)]
+
+    scales = []
+    for dim in unit:
+        assert len(unit) == 4, ("`unit` must contain four values.")
+        assert isinstance(dim, str), ("Every entry of `unit` must be a string.")
+        assert dim.endswith("um") or dim.endswith("nm"), (
+            "Every entry of `unit` must end with `um` or `nm`."
+        )
+        scale = 1 / 1000 if dim[-2:] == "nm" else 1.0
+        scale *= int(dim[:-2])
+        scales.append(scale)
+    scales = np.asarray(scales)
 
     if backend == "custom":
         return read_swc_custom(
@@ -471,6 +494,7 @@ def read_swc(
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
+            scales=scales,
             **backend_kwargs,
         )
     elif backend == "graph":
