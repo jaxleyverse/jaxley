@@ -1,6 +1,7 @@
 # 0.8.2
 
 - enable intersections of groups, e.g. `net.exc.soma` (#608, @michaeldeistler)
+- allow ion diffusion to be jitted (#609, @michaeldeistler)
 
 
 # 0.8.1
