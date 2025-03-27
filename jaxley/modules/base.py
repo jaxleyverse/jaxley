@@ -23,6 +23,7 @@ from jaxley.solver_voltage import (
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_jaxley_spsolve,
 )
+from jaxley.utils.cell_utils import group_and_sum
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
@@ -1391,6 +1392,105 @@ class Module(ABC):
         params["axial_conductances"] = self.base._compute_axial_conductances(
             params=params
         )
+
+        ##############################################################################
+        ##############################################################################
+        ##############################################################################
+        ############################## PRECOMPUTE ####################################
+        types = np.asarray(self._comp_edges["type"].to_list())
+        idx = self._solve_indexer
+        sinks = np.asarray(self._comp_edges["sink"].to_list())
+        sources = np.asarray(self._comp_edges["source"].to_list())
+        delta_t = 0.025  # TODO.
+        axial_conductances = jnp.asarray(params["axial_conductances"]["v"])
+        nbranches = self.total_nbranches
+        par_inds = self._par_inds
+        child_inds = self._child_inds
+    
+        # Build diagonals.
+        c2c = np.isin(types, [0, 1, 2])
+        total_ncomp = idx.cumsum_ncomp[-1]
+
+        diags = jnp.ones(total_ncomp)
+
+        # if-case needed because `.at` does not allow empty inputs, but the input is
+        # empty for compartments.
+        if len(sinks[c2c]) > 0:
+            diags = diags.at[idx.mask(sinks[c2c])].add(delta_t * axial_conductances[c2c])
+
+        # Build upper and lower within the branch.
+        c2c = types == 0  # c2c = compartment-to-compartment.
+
+        # Build uppers.
+        uppers = jnp.zeros(total_ncomp)
+        upper_inds = sources[c2c] > sinks[c2c]
+        sinks_upper = sinks[c2c][upper_inds]
+        if len(sinks_upper) > 0:
+            uppers = uppers.at[idx.mask(sinks_upper)].add(
+                -delta_t * axial_conductances[c2c][upper_inds]
+            )
+
+        # Build lowers.
+        lowers = jnp.zeros(total_ncomp)
+        lower_inds = sources[c2c] < sinks[c2c]
+        sinks_lower = sinks[c2c][lower_inds]
+        if len(sinks_lower) > 0:
+            lowers = lowers.at[idx.mask(sinks_lower)].add(
+                -delta_t * axial_conductances[c2c][lower_inds]
+            )
+
+        # Build branchpoint conductances.
+        branchpoint_conds_parents = axial_conductances[types == 1]
+        branchpoint_conds_children = axial_conductances[types == 2]
+        branchpoint_weights_parents = axial_conductances[types == 3]
+        branchpoint_weights_children = axial_conductances[types == 4]
+        all_branchpoint_vals = jnp.concatenate(
+            [branchpoint_weights_parents, branchpoint_weights_children]
+        )
+        # Find unique group identifiers
+        num_branchpoints = len(branchpoint_conds_parents)
+        branchpoint_diags = -group_and_sum(
+            all_branchpoint_vals, idx.branchpoint_group_inds, num_branchpoints
+        )
+        branchpoint_solves = jnp.zeros((num_branchpoints,))
+
+        branchpoint_conds_children = -delta_t * branchpoint_conds_children
+        branchpoint_conds_parents = -delta_t * branchpoint_conds_parents
+
+        # Here, I move all child and parent indices towards a branchpoint into a larger
+        # vector. This is wasteful, but it makes indexing much easier. JIT compiling
+        # makes the speed difference negligible.
+        # Children.
+        bp_conds_children = jnp.zeros(nbranches)
+        bp_weights_children = jnp.zeros(nbranches)
+        # Parents.
+        bp_conds_parents = jnp.zeros(nbranches)
+        bp_weights_parents = jnp.zeros(nbranches)
+
+        # `.at[inds]` requires that `inds` is not empty, so we need an if-case here.
+        # `len(inds) == 0` is the case for branches and compartments.
+        if num_branchpoints > 0:
+            bp_conds_children = bp_conds_children.at[child_inds].set(
+                branchpoint_conds_children
+            )
+            bp_weights_children = bp_weights_children.at[child_inds].set(
+                branchpoint_weights_children
+            )
+            bp_conds_parents = bp_conds_parents.at[par_inds].set(branchpoint_conds_parents)
+            bp_weights_parents = bp_weights_parents.at[par_inds].set(
+                branchpoint_weights_parents
+            )
+
+        params["diags"] = diags
+        params["uppers"] = uppers
+        params["lowers"] = lowers
+        params["bp_conds_children"] = bp_conds_children
+        params["bp_conds_parents"] = bp_conds_parents
+        params["bp_weights_children"] = bp_weights_children
+        params["bp_weights_parents"] = bp_weights_parents
+        params["branchpoint_diags"] = branchpoint_diags
+        params["branchpoint_solves"] = branchpoint_solves
+
         return params
 
     @only_allow_module
@@ -2064,6 +2164,17 @@ class Module(ABC):
                 "idx": self._solve_indexer,
                 "debug_states": self.debug_states,
             }
+            constants = {
+                "diags": params["diags"],
+                "uppers": params["uppers"],
+                "lowers": params["lowers"],
+                "bp_conds_children": params["bp_conds_children"],
+                "bp_conds_parents": params["bp_conds_parents"],
+                "bp_weights_children": params["bp_weights_children"],
+                "bp_weights_parents": params["bp_weights_parents"],
+                "branchpoint_diags": params["branchpoint_diags"],
+                "branchpoint_solves": params["branchpoint_solves"],
+            }
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jaxley_spsolve
 
@@ -2102,6 +2213,7 @@ class Module(ABC):
                         state_vals["linear_terms"][0],
                         state_vals["constant_terms"][0],
                         state_vals["axial_conductances"][0],
+                        *constants.values(),
                         *solver_kwargs.values(),
                         dt,
                     )

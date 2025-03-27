@@ -185,7 +185,7 @@ class ParamTransform:
 
     """
 
-    def __init__(self, tf_dict: List[Dict[str, Transform]] | Transform) -> None:
+    def __init__(self, tf_dict) -> None:
         """Creates a new ParamTransform object.
 
         Args:
@@ -195,7 +195,7 @@ class ParamTransform:
         self.tf_dict = tf_dict
 
     def forward(
-        self, params: List[Dict[str, ArrayLike]] | ArrayLike
+        self, params
     ) -> Dict[str, Array]:
         """Pushes unconstrained parameters through a tf such that they fit the interval.
 
@@ -210,7 +210,7 @@ class ParamTransform:
         return jax.tree_util.tree_map(lambda x, tf: tf.forward(x), params, self.tf_dict)
 
     def inverse(
-        self, params: List[Dict[str, ArrayLike]] | ArrayLike
+        self, params
     ) -> Dict[str, Array]:
         """Takes parameters from within the interval and makes them unconstrained.
 

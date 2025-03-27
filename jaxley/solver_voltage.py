@@ -62,6 +62,15 @@ def step_voltage_implicit_with_jaxley_spsolve(
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
     axial_conductances: jnp.ndarray,
+    diags,
+    uppers,
+    lowers,
+    bp_conds_children,
+    bp_conds_parents,
+    bp_weights_children,
+    bp_weights_parents,
+    branchpoint_diags,
+    branchpoint_solves,
     internal_node_inds: jnp.ndarray,
     sinks: jnp.ndarray,
     sources: jnp.ndarray,
@@ -76,87 +85,23 @@ def step_voltage_implicit_with_jaxley_spsolve(
     delta_t: float,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
-    # Build diagonals.
-    c2c = np.isin(types, [0, 1, 2])
+
     total_ncomp = idx.cumsum_ncomp[-1]
-    diags = jnp.ones(total_ncomp)
 
-    # if-case needed because `.at` does not allow empty inputs, but the input is
-    # empty for compartments.
-    if len(sinks[c2c]) > 0:
-        diags = diags.at[idx.mask(sinks[c2c])].add(delta_t * axial_conductances[c2c])
-
+    ##############################################################################
+    ##############################################################################
+    ##############################################################################
+    ############################# ACTUAL STUFF ###################################
     diags = diags.at[idx.mask(internal_node_inds)].add(delta_t * voltage_terms)
-
-    # Build solves.
     solves = jnp.zeros(total_ncomp)
     solves = solves.at[idx.mask(internal_node_inds)].add(
         voltages + delta_t * constant_terms
     )
 
-    # Build upper and lower within the branch.
-    c2c = types == 0  # c2c = compartment-to-compartment.
-
-    # Build uppers.
-    uppers = jnp.zeros(total_ncomp)
-    upper_inds = sources[c2c] > sinks[c2c]
-    sinks_upper = sinks[c2c][upper_inds]
-    if len(sinks_upper) > 0:
-        uppers = uppers.at[idx.mask(sinks_upper)].add(
-            -delta_t * axial_conductances[c2c][upper_inds]
-        )
-
-    # Build lowers.
-    lowers = jnp.zeros(total_ncomp)
-    lower_inds = sources[c2c] < sinks[c2c]
-    sinks_lower = sinks[c2c][lower_inds]
-    if len(sinks_lower) > 0:
-        lowers = lowers.at[idx.mask(sinks_lower)].add(
-            -delta_t * axial_conductances[c2c][lower_inds]
-        )
-
-    # Build branchpoint conductances.
-    branchpoint_conds_parents = axial_conductances[types == 1]
-    branchpoint_conds_children = axial_conductances[types == 2]
-    branchpoint_weights_parents = axial_conductances[types == 3]
-    branchpoint_weights_children = axial_conductances[types == 4]
-    all_branchpoint_vals = jnp.concatenate(
-        [branchpoint_weights_parents, branchpoint_weights_children]
-    )
-    # Find unique group identifiers
-    num_branchpoints = len(branchpoint_conds_parents)
-    branchpoint_diags = -group_and_sum(
-        all_branchpoint_vals, idx.branchpoint_group_inds, num_branchpoints
-    )
-    branchpoint_solves = jnp.zeros((num_branchpoints,))
-
-    branchpoint_conds_children = -delta_t * branchpoint_conds_children
-    branchpoint_conds_parents = -delta_t * branchpoint_conds_parents
-
-    # Here, I move all child and parent indices towards a branchpoint into a larger
-    # vector. This is wasteful, but it makes indexing much easier. JIT compiling
-    # makes the speed difference negligible.
-    # Children.
-    bp_conds_children = jnp.zeros(nbranches)
-    bp_weights_children = jnp.zeros(nbranches)
-    # Parents.
-    bp_conds_parents = jnp.zeros(nbranches)
-    bp_weights_parents = jnp.zeros(nbranches)
-
-    # `.at[inds]` requires that `inds` is not empty, so we need an if-case here.
-    # `len(inds) == 0` is the case for branches and compartments.
-    if num_branchpoints > 0:
-        bp_conds_children = bp_conds_children.at[child_inds].set(
-            branchpoint_conds_children
-        )
-        bp_weights_children = bp_weights_children.at[child_inds].set(
-            branchpoint_weights_children
-        )
-        bp_conds_parents = bp_conds_parents.at[par_inds].set(branchpoint_conds_parents)
-        bp_weights_parents = bp_weights_parents.at[par_inds].set(
-            branchpoint_weights_parents
-        )
-
+    ##############################################################################
+    ##############################################################################
+    ##############################################################################
+    ############################## SIMULATION ####################################
     # Triangulate the linear system of equations.
     (
         diags,
