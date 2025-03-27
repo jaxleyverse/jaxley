@@ -19,6 +19,7 @@ from jaxley.synapses import IonotropicSynapse
 
 
 def test_subclassing_groups_cell_api(SimpleCell):
+    """Test whether `cell.group.branch(0)` works."""
     cell = SimpleCell(5, 4)
 
     cell.branch([0, 3, 4]).add_to_group("subtree")
@@ -26,6 +27,21 @@ def test_subclassing_groups_cell_api(SimpleCell):
     # The following lines are made possible by PR #324.
     cell.subtree.branch(0).set("radius", 0.1)
     cell.subtree.branch(0).comp("all").make_trainable("length")
+
+
+def test_stacking_groups_api(SimpleNet):
+    """Test whether groups can be intersected (e.g., `net.exc.soma`)."""
+    net = SimpleNet(5, 2, 4)
+
+    net.cell([0, 1, 2]).add_to_group("exc")
+    net.cell("all").branch(0).comp(0).add_to_group("soma")
+
+    assert len(net.exc.soma.nodes) == 3
+    assert len(net.exc.soma.cell(1).nodes) == 1
+
+    net.exc.soma.make_trainable("length")
+    params = net.get_parameters()
+    assert params[0]["length"] == jnp.asarray([10.0])
 
 
 def test_subclassing_groups_net_api(SimpleNet):

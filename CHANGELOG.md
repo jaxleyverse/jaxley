@@ -1,3 +1,8 @@
+# 0.8.2
+
+- enable intersections of groups, e.g. `net.exc.soma` (#608, @michaeldeistler)
+
+
 # 0.8.1
 
 - fixups to tutorial notebooks (#604, @michaeldeistler)
