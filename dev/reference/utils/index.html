@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.8">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.9">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.8608ea7d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -778,15 +778,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils._compute_index_of_child" class="md-nav__link">
-    <span class="md-ellipsis">
-      _compute_index_of_child
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#jaxley.utils.cell_utils.build_radiuses_from_xyzr" class="md-nav__link">
     <span class="md-ellipsis">
       build_radiuses_from_xyzr
@@ -1069,15 +1060,6 @@
   <a href="#jaxley.utils.jax_utils" class="md-nav__link">
     <span class="md-ellipsis">
       jax_utils
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jaxley.utils.jax_utils._inner_nested_scan" class="md-nav__link">
-    <span class="md-ellipsis">
-      _inner_nested_scan
     </span>
   </a>
   
@@ -1202,15 +1184,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.cell_utils._compute_index_of_child" class="md-nav__link">
-    <span class="md-ellipsis">
-      _compute_index_of_child
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#jaxley.utils.cell_utils.build_radiuses_from_xyzr" class="md-nav__link">
     <span class="md-ellipsis">
       build_radiuses_from_xyzr
@@ -1499,15 +1472,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#jaxley.utils.jax_utils._inner_nested_scan" class="md-nav__link">
-    <span class="md-ellipsis">
-      _inner_nested_scan
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#jaxley.utils.jax_utils.nested_checkpoint_scan" class="md-nav__link">
     <span class="md-ellipsis">
       nested_checkpoint_scan
@@ -1579,63 +1543,6 @@
 
 
 
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="jaxley.utils.cell_utils._compute_index_of_child" class="doc doc-heading">
-            <code class=" language-python"><span class="n">_compute_index_of_child</span><span class="p">(</span><span class="n">parents</span><span class="p">)</span></code>
-
-<a href="#jaxley.utils.cell_utils._compute_index_of_child" class="headerlink" title="Permanent link">&para;</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>For every branch, it returns the how many-eth child of its parent it is.</p>
-<p>Example:
-<div class="highlight"><pre><span></span><code>parents = [-1, 0, 0, 1, 1, 1]
-_compute_index_of_child(parents) -&gt; [-1, 0, 1, 0, 1, 2]
-</code></pre></div></p>
-
-
-            <details class="quote">
-              <summary>Source code in <code>jaxley/utils/cell_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_compute_index_of_child</span><span class="p">(</span><span class="n">parents</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;For every branch, it returns the how many-eth child of its parent it is.</span>
-
-<span class="sd">    Example:</span>
-<span class="sd">    ```</span>
-<span class="sd">    parents = [-1, 0, 0, 1, 1, 1]</span>
-<span class="sd">    _compute_index_of_child(parents) -&gt; [-1, 0, 1, 0, 1, 2]</span>
-<span class="sd">    ```</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">num_branches</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parents</span><span class="p">)</span>
-    <span class="n">current_num_children_for_each_branch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_branches</span><span class="p">,),</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
-    <span class="n">index_of_child</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_branches</span><span class="p">):</span>
-        <span class="n">index_of_child</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_num_children_for_each_branch</span><span class="p">[</span><span class="n">parents</span><span class="p">[</span><span class="n">b</span><span class="p">]])</span>
-        <span class="n">current_num_children_for_each_branch</span><span class="p">[</span><span class="n">parents</span><span class="p">[</span><span class="n">b</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="k">return</span> <span class="n">index_of_child</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
 
 <div class="doc doc-object doc-function">
 
@@ -5698,51 +5605,6 @@ Useful too have a simpler mesh for plotting.</p>
 
 
 
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="jaxley.utils.jax_utils._inner_nested_scan" class="doc doc-heading">
-            <code class=" language-python"><span class="n">_inner_nested_scan</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">lengths</span><span class="p">,</span> <span class="n">scan_fn</span><span class="p">,</span> <span class="n">checkpoint_fn</span><span class="p">)</span></code>
-
-<a href="#jaxley.utils.jax_utils._inner_nested_scan" class="headerlink" title="Permanent link">&para;</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Recursively applied scan function.</p>
-
-
-            <details class="quote">
-              <summary>Source code in <code>jaxley/utils/jax_utils.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_inner_nested_scan</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">lengths</span><span class="p">,</span> <span class="n">scan_fn</span><span class="p">,</span> <span class="n">checkpoint_fn</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recursively applied scan function.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">scan_fn</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">lengths</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-    <span class="nd">@checkpoint_fn</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">sub_scans</span><span class="p">(</span><span class="n">carry</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">_inner_nested_scan</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">carry</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">lengths</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">scan_fn</span><span class="p">,</span> <span class="n">checkpoint_fn</span><span class="p">)</span>
-
-    <span class="n">carry</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="n">scan_fn</span><span class="p">(</span><span class="n">sub_scans</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">lengths</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">stacked_out</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_util</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">carry</span><span class="p">,</span> <span class="n">stacked_out</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
 
 <div class="doc doc-object doc-function">
 
