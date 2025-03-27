@@ -5559,6 +5559,14 @@ def change_attr_in_view(self):
 <span class="sd">            val: The value to set the parameter to. If it is `jnp.ndarray` then it</span>
 <span class="sd">                must be of shape `(len(num_compartments))`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;axial_diffusion_</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_states</span><span class="p">]:</span>
+            <span class="k">assert</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;You are trying to set `</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">` to `</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">`. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;We only allow strictly positive values for the &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;diffusion. Zero is not allowed either, but you can use very small &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;values (e.g. 1e-8).&quot;</span>
+            <span class="p">)</span>
+
         <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="n">not_nan</span> <span class="o">=</span> <span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">[</span><span class="n">not_nan</span><span class="p">],</span> <span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
@@ -6062,14 +6070,6 @@ def change_attr_in_view(self):
                 <span class="c1"># `.set()` to work. This is done with `[:, None]`.</span>
                 <span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">inds</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">set_param</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span>
 
-        <span class="k">for</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_states</span><span class="p">:</span>
-            <span class="n">minimal_diffusion</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;axial_diffusion_</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
-            <span class="k">assert</span> <span class="n">minimal_diffusion</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;The smallest value of `axial_diffusion_</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2">` is &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">minimal_diffusion</span><span class="si">}</span><span class="s2">. We only allow strictly positive values for the &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;diffusion. Zero is not allowed either, but you can use very small &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;values (e.g. 1e-8).&quot;</span>
-            <span class="p">)</span>
         <span class="c1"># Compute conductance params and add them to the params dictionary.</span>
         <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_conductances&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_compute_axial_conductances</span><span class="p">(</span>
             <span class="n">params</span><span class="o">=</span><span class="n">params</span>
@@ -7642,15 +7642,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1256</span>
-<span class="normal">1257</span>
-<span class="normal">1258</span>
-<span class="normal">1259</span>
-<span class="normal">1260</span>
-<span class="normal">1261</span>
-<span class="normal">1262</span>
-<span class="normal">1263</span>
-<span class="normal">1264</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1264</span>
 <span class="normal">1265</span>
 <span class="normal">1266</span>
 <span class="normal">1267</span>
@@ -7665,7 +7657,15 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
 <span class="normal">1276</span>
 <span class="normal">1277</span>
 <span class="normal">1278</span>
-<span class="normal">1279</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_to_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal">1279</span>
+<span class="normal">1280</span>
+<span class="normal">1281</span>
+<span class="normal">1282</span>
+<span class="normal">1283</span>
+<span class="normal">1284</span>
+<span class="normal">1285</span>
+<span class="normal">1286</span>
+<span class="normal">1287</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_to_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a view of the module to a group.</span>
 
 <span class="sd">    Groups can then be indexed. For example:</span>
@@ -8827,15 +8827,7 @@ function does not modify global state.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">888</span>
-<span class="normal">889</span>
-<span class="normal">890</span>
-<span class="normal">891</span>
-<span class="normal">892</span>
-<span class="normal">893</span>
-<span class="normal">894</span>
-<span class="normal">895</span>
-<span class="normal">896</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">896</span>
 <span class="normal">897</span>
 <span class="normal">898</span>
 <span class="normal">899</span>
@@ -8861,7 +8853,15 @@ function does not modify global state.</p>
 <span class="normal">919</span>
 <span class="normal">920</span>
 <span class="normal">921</span>
-<span class="normal">922</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">data_set</span><span class="p">(</span>
+<span class="normal">922</span>
+<span class="normal">923</span>
+<span class="normal">924</span>
+<span class="normal">925</span>
+<span class="normal">926</span>
+<span class="normal">927</span>
+<span class="normal">928</span>
+<span class="normal">929</span>
+<span class="normal">930</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">data_set</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">val</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
@@ -9344,19 +9344,19 @@ by default because this method is meant to be jitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1242</span>
-<span class="normal">1243</span>
-<span class="normal">1244</span>
-<span class="normal">1245</span>
-<span class="normal">1246</span>
-<span class="normal">1247</span>
-<span class="normal">1248</span>
-<span class="normal">1249</span>
-<span class="normal">1250</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1250</span>
 <span class="normal">1251</span>
 <span class="normal">1252</span>
 <span class="normal">1253</span>
-<span class="normal">1254</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">delete_trainables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">1254</span>
+<span class="normal">1255</span>
+<span class="normal">1256</span>
+<span class="normal">1257</span>
+<span class="normal">1258</span>
+<span class="normal">1259</span>
+<span class="normal">1260</span>
+<span class="normal">1261</span>
+<span class="normal">1262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">delete_trainables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Removes all trainable parameters from the module.&quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">View</span><span class="p">):</span>
@@ -9483,17 +9483,17 @@ Args:
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1230</span>
-<span class="normal">1231</span>
-<span class="normal">1232</span>
-<span class="normal">1233</span>
-<span class="normal">1234</span>
-<span class="normal">1235</span>
-<span class="normal">1236</span>
-<span class="normal">1237</span>
-<span class="normal">1238</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1238</span>
 <span class="normal">1239</span>
-<span class="normal">1240</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="normal">1240</span>
+<span class="normal">1241</span>
+<span class="normal">1242</span>
+<span class="normal">1243</span>
+<span class="normal">1244</span>
+<span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the direct distance between two compartments.</span>
 <span class="sd">    This does not compute the pathwise distance (which is currently not</span>
 <span class="sd">    implemented).</span>
@@ -9707,15 +9707,7 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1308</span>
-<span class="normal">1309</span>
-<span class="normal">1310</span>
-<span class="normal">1311</span>
-<span class="normal">1312</span>
-<span class="normal">1313</span>
-<span class="normal">1314</span>
-<span class="normal">1315</span>
-<span class="normal">1316</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1316</span>
 <span class="normal">1317</span>
 <span class="normal">1318</span>
 <span class="normal">1319</span>
@@ -9867,14 +9859,6 @@ function will default to different building methods.</p>
             <span class="c1"># `.set()` to work. This is done with `[:, None]`.</span>
             <span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">inds</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">set_param</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span>
 
-    <span class="k">for</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_states</span><span class="p">:</span>
-        <span class="n">minimal_diffusion</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;axial_diffusion_</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
-        <span class="k">assert</span> <span class="n">minimal_diffusion</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;The smallest value of `axial_diffusion_</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2">` is &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">minimal_diffusion</span><span class="si">}</span><span class="s2">. We only allow strictly positive values for the &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;diffusion. Zero is not allowed either, but you can use very small &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;values (e.g. 1e-8).&quot;</span>
-        <span class="p">)</span>
     <span class="c1"># Compute conductance params and add them to the params dictionary.</span>
     <span class="n">params</span><span class="p">[</span><span class="s2">&quot;axial_conductances&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_compute_axial_conductances</span><span class="p">(</span>
         <span class="n">params</span><span class="o">=</span><span class="n">params</span>
@@ -10111,16 +10095,16 @@ function will default to different building methods.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1297</span>
-<span class="normal">1298</span>
-<span class="normal">1299</span>
-<span class="normal">1300</span>
-<span class="normal">1301</span>
-<span class="normal">1302</span>
-<span class="normal">1303</span>
-<span class="normal">1304</span>
-<span class="normal">1305</span>
-<span class="normal">1306</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1305</span>
+<span class="normal">1306</span>
+<span class="normal">1307</span>
+<span class="normal">1308</span>
+<span class="normal">1309</span>
+<span class="normal">1310</span>
+<span class="normal">1311</span>
+<span class="normal">1312</span>
+<span class="normal">1313</span>
+<span class="normal">1314</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all trainable parameters.</span>
 
 <span class="sd">    The returned parameters should be passed to `jx.integrate(..., params=params).</span>
@@ -10628,15 +10612,7 @@ total number of parameters.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1090</span>
-<span class="normal">1091</span>
-<span class="normal">1092</span>
-<span class="normal">1093</span>
-<span class="normal">1094</span>
-<span class="normal">1095</span>
-<span class="normal">1096</span>
-<span class="normal">1097</span>
-<span class="normal">1098</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1098</span>
 <span class="normal">1099</span>
 <span class="normal">1100</span>
 <span class="normal">1101</span>
@@ -10717,7 +10693,15 @@ total number of parameters.</p>
 <span class="normal">1176</span>
 <span class="normal">1177</span>
 <span class="normal">1178</span>
-<span class="normal">1179</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_trainable</span><span class="p">(</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_trainable</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">init_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -11591,7 +11575,15 @@ must be of shape <code>(len(num_compartments))</code>.</p>
 <span class="normal">883</span>
 <span class="normal">884</span>
 <span class="normal">885</span>
-<span class="normal">886</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
+<span class="normal">886</span>
+<span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span>
+<span class="normal">890</span>
+<span class="normal">891</span>
+<span class="normal">892</span>
+<span class="normal">893</span>
+<span class="normal">894</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set parameter of module (or its view) to a new value.</span>
 
 <span class="sd">    Note that this function can not be called within `jax.jit` or `jax.grad`.</span>
@@ -11604,6 +11596,14 @@ must be of shape <code>(len(num_compartments))</code>.</p>
 <span class="sd">        val: The value to set the parameter to. If it is `jnp.ndarray` then it</span>
 <span class="sd">            must be of shape `(len(num_compartments))`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;axial_diffusion_</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_states</span><span class="p">]:</span>
+        <span class="k">assert</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;You are trying to set `</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">` to `</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">`. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;We only allow strictly positive values for the &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;diffusion. Zero is not allowed either, but you can use very small &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;values (e.g. 1e-8).&quot;</span>
+        <span class="p">)</span>
+
     <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">not_nan</span> <span class="o">=</span> <span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes_in_view</span><span class="p">[</span><span class="n">not_nan</span><span class="p">],</span> <span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
@@ -11683,15 +11683,7 @@ the radius is capped to be at least this value.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 924</span>
-<span class="normal"> 925</span>
-<span class="normal"> 926</span>
-<span class="normal"> 927</span>
-<span class="normal"> 928</span>
-<span class="normal"> 929</span>
-<span class="normal"> 930</span>
-<span class="normal"> 931</span>
-<span class="normal"> 932</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 932</span>
 <span class="normal"> 933</span>
 <span class="normal"> 934</span>
 <span class="normal"> 935</span>
@@ -11847,7 +11839,15 @@ the radius is capped to be at least this value.</p>
 <span class="normal">1085</span>
 <span class="normal">1086</span>
 <span class="normal">1087</span>
-<span class="normal">1088</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ncomp</span><span class="p">(</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ncomp</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">ncomp</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">min_radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -13422,15 +13422,7 @@ two of them.</p>
 
             <details class="quote">
               <summary>Source code in <code>jaxley/modules/base.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1181</span>
-<span class="normal">1182</span>
-<span class="normal">1183</span>
-<span class="normal">1184</span>
-<span class="normal">1185</span>
-<span class="normal">1186</span>
-<span class="normal">1187</span>
-<span class="normal">1188</span>
-<span class="normal">1189</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1189</span>
 <span class="normal">1190</span>
 <span class="normal">1191</span>
 <span class="normal">1192</span>
@@ -13469,7 +13461,15 @@ two of them.</p>
 <span class="normal">1225</span>
 <span class="normal">1226</span>
 <span class="normal">1227</span>
-<span class="normal">1228</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_trainables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
+<span class="normal">1228</span>
+<span class="normal">1229</span>
+<span class="normal">1230</span>
+<span class="normal">1231</span>
+<span class="normal">1232</span>
+<span class="normal">1233</span>
+<span class="normal">1234</span>
+<span class="normal">1235</span>
+<span class="normal">1236</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_trainables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the trainables into `.nodes` and `.edges`.</span>
 
 <span class="sd">    This allows to, e.g., visualize trained networks with `.vis()`.</span>

@@ -882,7 +882,7 @@
 </ul>
 <p>Here is a code snippet which you will learn to understand in this tutorial:
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaPump</span><span class="p">,</span> <span class="n">CaNernstPotential</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.pumps</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaPump</span><span class="p">,</span> <span class="n">CaNernstReversal</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jaxley_mech.channels.l5pc</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaHVA</span>
 
 
@@ -896,7 +896,7 @@
 <span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">CaPump</span><span class="p">())</span>
 
 <span class="c1"># Insert a mechanism that updates the calcium reversal potential based on the intracellular calcium level.</span>
-<span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">CaNernstPotential</span><span class="p">())</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">CaNernstReversal</span><span class="p">())</span>
 
 <span class="c1"># Let the intracellular calcium diffuse within the cell.</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">diffuse</span><span class="p">(</span><span class="s2">&quot;CaCon_i&quot;</span><span class="p">)</span>
@@ -1114,6 +1114,10 @@ As we had hinted at before, the current that modifies the intracellular calcium 
 <p>We can define how strongly calcium diffuses by setting its axial resistivity:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;axial_diffusion_CaCon_i&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># Higher values -&gt; More diffusion.</span>
 </code></pre></div>
+<blockquote>
+<p><strong>⚠️ IMPORTANT!</strong><br />
+<code>axial_diffusion_CaCon_i</code> must be strictly positive in the entire cell. We do not allow <code>0.0</code>, but you can use small values like <code>1e-8</code>.</p>
+</blockquote>
 <h3 id="running-the-simulation">Running the simulation<a class="headerlink" href="#running-the-simulation" title="Permanent link">&para;</a></h3>
 <p>We can now record voltage or intracellular calcium concentration from our cell, stimulate it with a step current, and simulate:</p>
 <div class="highlight"><pre><span></span><code><span class="n">t_max</span> <span class="o">=</span> <span class="mf">20.0</span>
@@ -1139,7 +1143,7 @@ Added 1 external_states. See `.externals` for details.
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Voltage&quot;</span><span class="p">)</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Intracellular Ca&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p><img alt="png" src="../11_ion_dynamics_files/11_ion_dynamics_27_0.png" /></p>
+<p><img alt="png" src="../11_ion_dynamics_files/11_ion_dynamics_28_0.png" /></p>
 <p>That&rsquo;s it! In this tutorial, you should have learned how to model detailed intracellular ion (in particular calcium) dynamics.</p>
 
 
