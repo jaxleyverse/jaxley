@@ -412,6 +412,16 @@ class Module(ABC):
             assert np.any(which_idx), "Index not matching num of cells/branches/comps."
             dim = shape[np.where(which_idx)[0][0]]
             idx = np.arange(dim)[idx]
+
+            # Typically, `select` is run on `Module`, not on `View`. In these cases,
+            # `nodes` will exactly the index of the `index` of the `self.nodes`
+            # dataframe, and the line below is not needed. But if one wants to call
+            # select multiple times in a chained way (e.g. when having multiple groups
+            # and wanting to get their intersection, e.g., `net.exc.fast_spiking` or
+            # `net.exc.soma`), the global index traced in `self.nodes.index` does no
+            # longer match `nodes`. The line below translates the local index of
+            # `nodes` to the global `self.nodes.index`.
+            idx = self.nodes.index[idx].to_numpy()
         assert isinstance(idx, np.ndarray), "Invalid type"
         assert idx.dtype in [
             np_dtype,
@@ -445,6 +455,10 @@ class Module(ABC):
     ) -> View:
         """Return View of the module filtered by specific node or edges indices.
 
+        The selection is made based on the `index` of the `self.nodes` or `self.edges`,
+        i.e., not on a local compartment index or a local row number (`loc`, not
+        `iloc`).
+
         Args:
             nodes: indices of nodes to view. If None, all nodes are viewed.
             edges: indices of edges to view. If None, all edges are viewed.
@@ -452,7 +466,6 @@ class Module(ABC):
 
         Returns:
             View for subset of selected nodes and/or edges."""
-
         nodes = self._reformat_index(nodes) if nodes is not None else None
         nodes = self._nodes_in_view if is_str_all(nodes) else nodes
         nodes = np.sort(nodes) if sorted else nodes
