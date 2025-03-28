@@ -41,6 +41,8 @@ from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import convert_to_csc
+from jaxley.io.graph import swc_to_graph, to_graph, from_graph
+import networkx as nx
 
 
 def only_allow_module(func):
@@ -2577,6 +2579,64 @@ class Module(ABC):
             self.base.xyzr[i][:, dims] = rot
         if update_nodes:
             self.compute_compartment_centers()
+
+    def attach(self, module_to_be_attached: "View"):
+        assert len(self.nodes == 1)
+        assert len(module_to_be_attached.nodes == 1)
+
+        compartment_to_connect_the_stub_to = int(self.nodes.index[0])
+        branch_to_connect_the_stub_to = int(self.nodes.global_branch_index.iloc[0])
+        pre_loc = float(self.nodes.local_comp_index.iloc[0]) / 4
+
+        compartment_of_stub = int(module_to_be_attached.nodes.index[0])
+        branch_of_stub = int(module_to_be_attached.nodes.global_branch_index.iloc[0])
+        post_loc = float(module_to_be_attached.nodes.local_comp_index.iloc[0]) / 4
+
+        graph = to_graph(self.base)
+
+        module_to_be_attached.base.compute_xyz()
+        stub_as_graph = to_graph(module_to_be_attached.base)
+
+        # Make the stub's index higher than the original cell.
+        stub_offset = len(graph.nodes)
+        stub_as_graph.nodes[0]["branch_index"] += stub_offset
+        stub_as_graph.nodes[0]["comp_index"] += stub_offset
+
+        # Create a combined graph.
+        combined_graph = nx.disjoint_union(graph, stub_as_graph)
+
+        # Connect the swc morphology to the stub.
+        stub_compartment = stub_offset + compartment_of_stub
+        combined_graph.add_edge(compartment_to_connect_the_stub_to, stub_compartment)
+
+        # Add some more meta-data which is needed for our graph -> jaxley conversion.
+        combined_graph.edges[(compartment_to_connect_the_stub_to, stub_compartment)][
+            "type"
+        ] = "inter_branch"
+
+        xyz_offset = interpolate_xyzr(
+            pre_loc,
+            graph.graph["xyzr"][branch_to_connect_the_stub_to],
+        )[:3]
+        stub_xyz = interpolate_xyzr(
+            post_loc,
+            stub_as_graph.graph["xyzr"][branch_of_stub],
+        )[:3]
+
+        # Modify stub xyz to look good in visualizations.
+        all_new_xyzr = []
+        for xyz in stub_as_graph.graph["xyzr"]:
+            new_xyzr = xyz
+            new_xyzr[:, :3] = new_xyzr[:, :3] - stub_xyz + xyz_offset
+            all_new_xyzr.append(new_xyzr)
+        stub_as_graph.graph["xyzr"] = all_new_xyzr
+
+        # Concatenate the two xyz coordinates.
+        combined_graph.graph["xyzr"] = graph.graph["xyzr"] + stub_as_graph.graph["xyzr"]
+
+        # Read into Jaxley.
+        cell = from_graph(combined_graph)
+        return cell
 
     def copy_node_property_to_edges(
         self,

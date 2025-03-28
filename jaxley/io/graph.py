@@ -14,16 +14,17 @@ from jaxley.modules import Branch, Cell, Compartment, Network
 from jaxley.utils.cell_utils import v_interp
 
 # helper functions
-_is_leaf = lambda G, n: G.out_degree(n) == 0 and G.in_degree(n) == 1
-_is_root = lambda G, n: G.in_degree(n) == 0
-_is_branching = lambda G, n: G.out_degree(n) > 1
+_is_leaf = lambda G, n: G.degree(n) == 1 #  and G.in_degree(n) == 1
+# _is_root = lambda G, n: G.in_degree(n) == 0
+_is_branching = lambda G, n: G.degree(n) > 2
 _has_same_id = lambda G, i, j: G.nodes[i]["id"] == G.nodes[j]["id"]
 _get_soma_idxs = lambda G: [
     i for i, n in nx.get_node_attributes(G, "id").items() if n == 1
 ]
 _unpack = lambda d, keys: [d[k] for k in keys]
-_branch_e2n = lambda b: np.unique(np.concatenate(b)).tolist()
-_branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]
+_branch_e2n = lambda b: np.unique(np.concatenate(b)).tolist()  # edge to node?
+_branch_n2e = lambda b: [e for e in zip(b[:-1], b[1:])]  # node to edge?
+        
 
 
 def _find_root(G):
@@ -159,12 +160,12 @@ def simulate_swc_trace_errors(
 def trace_branches(
     graph: nx.DiGraph, max_len=None, ignore_swc_trace_errors=True
 ) -> List[np.ndarray]:
-    """Get all linearly connected paths in a graph aka. branches.
+    """Get all uninterrupted paths in a graph (i.e. branches).
 
     The graph is traversed depth-first starting from the source node, which is the only
-    node with in_degree 0 (raises in case multiple are found). Note: Traversal order can
-    be changed, by reversing the edge directions, i.e. to start traversal from a leaf node
-    set: [source -> ... -> leaf] to [leaf -> ... -> source].
+    node with in_degree 0 (raises in case multiple are found). Note: Traversal order
+    can be changed, by reversing the edge directions, i.e. to start traversal from a
+    leaf node set: [source -> ... -> leaf] to [leaf -> ... -> source].
 
     Args:
         graph: A networkx graph.
@@ -186,18 +187,19 @@ def trace_branches(
         graph.add_edge(-1, soma, l=2 * graph.nodes[soma]["r"])
         graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
 
-    # Ensure root segment is linear. Needed to create root branch.
-    if graph.out_degree(0) > 1:
-        # The root segment should be of type `custom` (=5).
-        parent = graph.nodes[0]
-        parent["id"] = 5
-        graph.add_node(-1, **parent)
-        graph.add_edge(-1, 0, l=0.1)
-        graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
+    # # Ensure root segment is linear. Needed to create root branch.
+    # if graph.out_degree(0) > 1:
+    #     # The root segment should be of type `custom` (=5).
+    #     parent = graph.nodes[0]
+    #     parent["id"] = 5
+    #     graph.add_node(-1, **parent)
+    #     graph.add_edge(-1, 0, l=0.1)
+    #     graph = nx.relabel_nodes(graph, {i: i + 1 for i in graph.nodes})
 
     branches, current_branch = [], []
 
-    root = _find_root(graph)
+    # root = _find_root(graph)
+    root = 8
     for i, j in nx.dfs_edges(graph, root):
         current_branch += [(i, j)]
         if _is_leaf(graph, j) or _is_branching(graph, j):
@@ -207,19 +209,18 @@ def trace_branches(
             branches.append(current_branch[:-1])
             current_branch = [current_branch[-1]]
 
+    print("branches", branches)
     branch_edges = [np.array(p) for p in branches if len(p) > 0]
 
-    if max_len:
-        edge_lens = nx.get_edge_attributes(graph, "l")
-        branch_edges = split_branches(branch_edges, edge_lens, max_len)
+    # if max_len:
+    #     edge_lens = nx.get_edge_attributes(graph, "l")
+    #     branch_edges = split_branches(branch_edges, edge_lens, max_len)
 
-    if not ignore_swc_trace_errors:
-        # ignore added index by default; only relevant in case it was added
-        branch_edges = simulate_swc_trace_errors(graph, branch_edges, ignore=[root])
+    # if not ignore_swc_trace_errors:
+    #     # ignore added index by default; only relevant in case it was added
+    #     branch_edges = simulate_swc_trace_errors(graph, branch_edges, ignore=[root])
 
-    for br_idx, br_edges in enumerate(branch_edges):
-        graph.add_edges_from(br_edges, branch_index=br_idx)
-    return graph
+    return graph, branch_edges
 
 
 def _add_edge_lens(graph: nx.DiGraph, min_len: float = 1e-5) -> nx.DiGraph:
@@ -299,17 +300,17 @@ def split_branches(
 def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
     """Insert compartment nodes into the graph.
 
-    Inserts new nodes in every branch (edges with "branch_index" attribute) at equidistant
-    points along it. Node attributes, like radius are linearly interpolated along its
-    length.
+    Inserts new nodes in every branch (edges with "branch_index" attribute) at
+    equidistant points along it. Node attributes, like radius are linearly interpolated
+    along its length.
 
     Example: 4 compartments | edges = - | nodes = o | comp_nodes = x
     o-----------o----------o---o---o---o--------o
     o-------x---o----x-----o--xo---o---ox-------o
 
     Args:
-        graph: Mmorphology where edges are already labelled with "branch_index"
-        ncomp_per_branch: How many compartments per branch to insert
+        graph: Morphology where edges are already labelled with "branch_index".
+        ncomp_per_branch: How many compartments per branch to insert.
 
     Returns:
         Graph with additional nodes that are labelled with "comp_index"
@@ -361,7 +362,8 @@ def insert_compartments(graph: nx.DiGraph, ncomp_per_branch: int) -> nx.DiGraph:
     graph = _add_edge_lens(graph)
 
     # re-enumerate in dfs from root
-    root = _find_root(graph)
+    # root = _find_root(graph)
+    root = 10
     mapping = {old: new for new, old in enumerate(nx.dfs_preorder_nodes(graph, root))}
     graph = nx.relabel_nodes(graph, mapping)
     return graph
@@ -455,7 +457,7 @@ def extract_comp_graph(graph: nx.DiGraph) -> nx.DiGraph:
     return comp_graph
 
 
-def make_jaxley_compatible(
+def compartmentalize(
     graph: nx.DiGraph,
     ncomp: int = 4,
     max_branch_len: float = None,
@@ -623,6 +625,46 @@ def build_module_scaffold(
     return module
 
 
+def make_node_indices_consecutive(graph):
+    """Return a graph whose indices (comp, branch, cell) are consecutive.
+
+    In cases where a networkX graph was originally based on an SWC morphology but was
+    modified (e.g. axon removed) within the graph backend, the nodes and compartment
+    indices may have become non-consecutive (e.g. only nodes [0, 2, 3, 5] remain).
+    Below, we make these indices consecutive.
+    """
+
+    # We could make this possible, but it is quite a hassle because all of these
+    # attributes have a different datatype, so I opted to just raise here.
+    for key in ["recordings", "external_inds", "indices_set_by_trainables"]:
+        if len(graph.graph[key]) > 0:
+            raise NotImplementedError(
+                f"Found {key}. This is not allowed. First modify the morphology "
+                "and then insert recordings, stimuli, and trainables."
+            )
+
+    # `xyzr` is a `.graph` attribute.
+    branches_within_graph = np.unique(
+        list(nx.get_node_attributes(graph, "branch_index").values())
+    )
+    graph.graph["xyzr"] = [
+        graph.graph["xyzr"][i] for i in sorted(branches_within_graph)
+    ]
+
+    # Relabel nodes to consecutive integers.
+    node_map = {old: new for new, old in enumerate(sorted(graph.nodes()))}
+    graph = nx.relabel_nodes(graph, node_map)
+
+    # Make the indices consecutive.
+    for key in ["comp_index", "branch_index", "cell_index"]:
+        current_branch_inds = sorted({data[key] for _, data in graph.nodes(data=True)})
+        mapping = {old: new for new, old in enumerate(current_branch_inds)}
+        for node in graph.nodes():
+            graph.nodes[node][key] = mapping[graph.nodes[node][key]]
+
+    return graph
+
+
 def from_graph(
     graph: nx.DiGraph,
     ncomp: int = 4,
@@ -671,6 +713,7 @@ def from_graph(
         - xyzr: list[np.ndarray]
         - recordings: list[str]
         - externals: list[float]
+        - external_inds: list[int]
         - trainable: dict[str, float]
     - nodes:
         - id: int (used to define groups, according to NEURON's SWC convention)
@@ -690,13 +733,13 @@ def from_graph(
     Args:
         graph: A networkx graph representing a module.
         ncomp: The default number of segments per compartment.
-            Will only be selected if the graph has not been compartmentalized yet.
+            Will only be used if the graph has not been compartmentalized yet.
         max_branch_len: Maximal length of one branch. If a branch exceeds this length,
             it is split into equal parts such that each subbranch is below
             `max_branch_len`. Will only be used if no branch structure is has been
             assigned yet.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
-        assign_groups: Wether to assign groups to nodes based on the the id or groups
+        assign_groups: Whether to assign groups to nodes based on the the id or groups
             attribute.
         ignore_swc_trace_errors: Whether to ignore discontinuities in the swc tracing
             order. If False, this will result in split branches at these points.
@@ -711,7 +754,7 @@ def from_graph(
 
     if "type" not in graph.graph:
         try:
-            graph = make_jaxley_compatible(
+            graph = compartmentalize(
                 graph,
                 ncomp=ncomp,
                 max_branch_len=max_branch_len,
@@ -720,6 +763,10 @@ def from_graph(
             )
         except:
             raise Exception("Graph appears to be incompatible with jaxley.")
+    else:
+        # If the graph is already compartmentalized, then we ensure that its
+        # compartment indices are consecutive numbers.
+        graph = make_node_indices_consecutive(graph)
 
     #################################
     ### Import graph as jx.Module ###
@@ -755,7 +802,15 @@ def from_graph(
 
     # drop special attrs from nodes and ignore error if col does not exist
     # x,y,z can be re-computed from xyzr if needed
-    optional_attrs = ["recordings", "externals", "trainable", "x", "y", "z"]
+    optional_attrs = [
+        "recordings",
+        "externals",
+        "external_inds",
+        "trainable",
+        "x",
+        "y",
+        "z",
+    ]
     node_df = node_df.drop(columns=optional_attrs, errors="ignore")
 
     # synapses
@@ -842,6 +897,7 @@ def to_graph(
         "ncomp",
         "xyzr",
         "externals",
+        "external_inds",
         "recordings",
         "trainable_params",
         "indices_set_by_trainables",
