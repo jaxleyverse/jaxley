@@ -146,8 +146,6 @@ class Module(ABC):
 
         # List of all types of `jx.Synapse`s.
         self.synapses: List = []
-        self.synapse_param_names = []
-        self.synapse_state_names = []
         self.synapse_names = []
         self.synapse_current_names: List[str] = []
 
@@ -1368,7 +1366,7 @@ class Module(ABC):
             # param sharing).
             synapse_inds = self.base.edges.groupby("type").rank()["global_edge_index"]
             synapse_inds = (synapse_inds.astype(int) - 1).to_numpy()
-            if key in self.base.synapse_param_names:
+            if key in self.base.edges.columns:
                 inds = synapse_inds[inds]
 
             if key in params:  # Only parameters, not initial states.
@@ -2933,8 +2931,6 @@ class View(Module):
                     viewed_params += list(syn.params.keys()) if in_view else []
                     viewed_states += list(syn.states.keys()) if in_view else []
         self.synapses = viewed_synapses
-        self.synapse_param_names = viewed_params
-        self.synapse_state_names = viewed_states
 
     def _nbranches_per_cell_in_view(self) -> np.ndarray:
         cell_nodes = self.nodes.groupby("global_cell_index")

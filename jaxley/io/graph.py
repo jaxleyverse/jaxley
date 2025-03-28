@@ -895,8 +895,6 @@ def to_graph(
                 f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. Exporting synapses to the graph only works if the same two compartments are connected by at most one synapse."
             )
         module_graph.graph["synapses"] = module.synapses
-        module_graph.graph["synapse_param_names"] = module.synapse_param_names
-        module_graph.graph["synapse_state_names"] = module.synapse_state_names
         module_graph.graph["synapse_names"] = module.synapse_names
         module_graph.graph["synapse_current_names"] = module.synapse_current_names
 

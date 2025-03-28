@@ -511,8 +511,6 @@ class Network(Module):
     def _update_synapse_state_names(self, synapse):
         # (Potentially) update variables that track meta information about synapses.
         self.base.synapse_names.append(synapse._name)
-        self.base.synapse_param_names += list(synapse.params.keys())
-        self.base.synapse_state_names += list(synapse.states.keys())
         self.base.synapses.append(synapse)
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse):
