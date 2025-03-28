@@ -2586,9 +2586,11 @@ class Module(ABC):
 
         compartment_to_connect_the_stub_to = int(self.nodes.index[0])
         branch_to_connect_the_stub_to = int(self.nodes.global_branch_index.iloc[0])
+        pre_loc = float(self.nodes.local_comp_index.iloc[0]) / 4
 
         compartment_of_stub = int(module_to_be_attached.nodes.index[0])
         branch_of_stub = int(module_to_be_attached.nodes.global_branch_index.iloc[0])
+        post_loc = float(module_to_be_attached.nodes.local_comp_index.iloc[0]) / 4
 
         graph = to_graph(self.base)
 
@@ -2612,8 +2614,14 @@ class Module(ABC):
             "type"
         ] = "inter_branch"
 
-        xyz_offset = graph.graph["xyzr"][branch_to_connect_the_stub_to][-1, :3]
-        stub_xyz = stub_as_graph.graph["xyzr"][branch_of_stub][0, :3]
+        xyz_offset = interpolate_xyzr(
+            pre_loc,
+            graph.graph["xyzr"][branch_to_connect_the_stub_to],
+        )[:3]
+        stub_xyz = interpolate_xyzr(
+            post_loc,
+            stub_as_graph.graph["xyzr"][branch_of_stub],
+        )[:3]
 
         # Modify stub xyz to look good in visualizations.
         all_new_xyzr = []
