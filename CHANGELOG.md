@@ -1,3 +1,16 @@
+# 0.9.0
+
+### New features
+
+### Documentation
+
+### Internal updates
+
+- improvements to graph-backend for more flexibility in modifying morphologies (#613, @michaeldeistler)
+- remove root compartment for SWC files (#613, @michaeldeistler)
+- enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
+
+
 # 0.8.2
 
 - enable intersections of groups, e.g. `net.exc.soma` (#608, @michaeldeistler)
