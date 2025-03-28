@@ -804,7 +804,7 @@ def from_graph(
 
     # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
-    module.synapse_names = [s._name for s in module.synapses]
+    module.synapse_names = [s.name for s in module.synapses]
 
     return module
 

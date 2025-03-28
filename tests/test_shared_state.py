@@ -69,11 +69,11 @@ class CaHVA(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.params = {
-            f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
+            f"{self.name}_gCaHVA": 0.00001,  # S/cm^2
         }
         self.states = {
-            f"{self._name}_m": 0.1,  # Initial value for m gating variable
-            f"{self._name}_h": 0.1,  # Initial value for h gating variable
+            f"{self.name}_m": 0.1,  # Initial value for m gating variable
+            f"{self.name}_h": 0.1,  # Initial value for h gating variable
             "eCa": 0.0,  # mV, assuming eca for demonstration
         }
         self.current_name = f"i_Ca"
@@ -90,7 +90,7 @@ class CaHVA(Channel):
         params: Dict[str, jnp.ndarray],
     ):
         """Update state of gating variables."""
-        prefix = self._name
+        prefix = self.name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
         h_new = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
@@ -100,7 +100,7 @@ class CaHVA(Channel):
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
         """Compute the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCaHVA"] * (ms**2) * hs * 1000
         current = ca_cond * (voltages - u["eCa"])
@@ -108,7 +108,7 @@ class CaHVA(Channel):
 
     def init_state(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_m, beta_m = self.m_gate(voltages)
         alpha_h, beta_h = self.h_gate(voltages)
         return {
@@ -141,10 +141,10 @@ class CaPump(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
-            f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
-            f"{self._name}_depth": 0.1,  # Depth of shell in um
-            f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
+            f"{self.name}_decay": 80,  # Rate of removal of calcium in ms
+            f"{self.name}_depth": 0.1,  # Depth of shell in um
+            f"{self.name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
         }
         self.states = {
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
@@ -157,7 +157,7 @@ class CaPump(Channel):
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = u["i_Ca"] / 1_000.0
         cai = u["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]

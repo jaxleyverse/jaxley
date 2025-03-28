@@ -107,7 +107,7 @@ class CaFaradayConcentrationChange(Pump):
     def update_states(
         self,
         states: Dict[str, jnp.ndarray],
-        dt,
+        delta_t,
         v,
         params: Dict[str, jnp.ndarray],
     ):

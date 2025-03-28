@@ -39,10 +39,10 @@ class CaPump(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
-            f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
-            f"{self._name}_depth": 0.1,  # Depth of shell in um
-            f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
+            f"{self.name}_decay": 80,  # Rate of removal of calcium in ms
+            f"{self.name}_depth": 0.1,  # Depth of shell in um
+            f"{self.name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
         }
         self.states = {
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
@@ -55,7 +55,7 @@ class CaPump(Channel):
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = u["i_Ca"] / 1_000.0
         cai = u["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
@@ -139,8 +139,6 @@ def test_channel_set_name():
 
     # channel name can not be changed directly
     k = K()
-    with pytest.raises(AttributeError):
-        k.name = "KPospischil"
     assert "KPospischil_gNa" not in k.params.keys()
     assert "eNa" not in k.params.keys()
     assert "KPospischil_h" not in k.states.keys()
@@ -212,7 +210,7 @@ class KCA11(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_q10_ch": 3,
             f"{prefix}_q10_ch0": 22,
@@ -229,7 +227,7 @@ class KCA11(Channel):
         params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
-        prefix = self._name
+        prefix = self.name
         m = states[f"{prefix}_m"]
         q10 = params[f"{prefix}_q10_ch"] ** (
             (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
@@ -242,14 +240,14 @@ class KCA11(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        prefix = self._name
+        prefix = self.name
         m = states[f"{prefix}_m"]
         g = 0.03 * m * 1000  # mS/cm^2
         return g * (v + 80.0)
 
     def init_state(self, states, v, params, dt):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         q10 = params[f"{prefix}_q10_ch"] ** (
             (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
         )
@@ -382,19 +380,17 @@ def test_delete_channel(SimpleBranch):
         # none of the states or params should be in nodes
         cols = view.nodes.columns.to_list()
         channel_cols = [
-            col
-            for col in cols
-            if col.startswith(channel._name) and col != channel._name
+            col for col in cols if col.startswith(channel.name) and col != channel.name
         ]
         diff = set(channel_cols).difference(set(states_and_params))
         has_params_or_states = len(diff) > 0
-        has_channel_col = channel._name in view.nodes.columns
-        has_channel = channel._name in [c._name for c in view.channels]
+        has_channel_col = channel.name in view.nodes.columns
+        has_channel = channel.name in [c.name for c in view.channels]
         has_mem_current = channel.current_name in view.membrane_current_names
         if partial:
             all_nans = (
                 not view.nodes[channel_cols].isna().all().all()
-                & ~view.nodes[channel._name].all()
+                & ~view.nodes[channel.name].all()
             )
             return has_channel or has_mem_current or all_nans
         return has_params_or_states or has_channel_col or has_channel or has_mem_current

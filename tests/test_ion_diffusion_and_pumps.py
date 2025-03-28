@@ -35,10 +35,10 @@ class NaPump(Pump):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         self.params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minNai": 1e-4,  # Minimum intracell. ca concentration in mM.
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
+            f"{self.name}_decay": 80,  # Buffering time constant in ms.
+            f"{self.name}_depth": 0.1,  # Depth of shell in um.
+            f"{self.name}_minNai": 1e-4,  # Minimum intracell. ca concentration in mM.
         }
         self.states = {"i_Na": 1e-8, "NaCon_i": 5e-05}
         self.ion_name = "NaCon_i"
@@ -65,7 +65,7 @@ class NaPump(Pump):
         params: Dict[str, jnp.ndarray],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = states["i_Na"] / 1_000.0
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
@@ -141,10 +141,10 @@ class CaPump2(Pump):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         self.params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
+            f"{self.name}_decay": 80,  # Buffering time constant in ms.
+            f"{self.name}_depth": 0.1,  # Depth of shell in um.
+            f"{self.name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
         }
         self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
@@ -171,7 +171,7 @@ class CaPump2(Pump):
         params: Dict[str, jnp.ndarray],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = states["i_Ca"] / 1_000.0
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]

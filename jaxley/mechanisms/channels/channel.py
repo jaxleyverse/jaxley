@@ -7,8 +7,10 @@ from warnings import warn
 
 import jax.numpy as jnp
 
+from jaxley.mechanisms.base import Mechanism
 
-class Channel:
+
+class Channel(Mechanism):
     """Channel base class. All channels inherit from this class.
 
     A channel in Jaxley is everything that modifies the membrane voltage via its
@@ -18,7 +20,7 @@ class Channel:
     conductances are to be specified in `S/cm2` and its currents are to be specified in
     `uA/cm2`."""
 
-    _name = None
+    name = None
     params = None
     states = None
     current_name = None
@@ -41,73 +43,4 @@ class Channel:
                 "and set `self.current_is_in_mA_per_cm2=True` as the first line "
                 f"in the `__init__()` method of your channel. {contact}"
             )
-
-        self._name = name if name else self.__class__.__name__
-
-    @property
-    def name(self) -> Optional[str]:
-        """The name of the channel (by default, this is the class name)."""
-        return self._name
-
-    def change_name(self, new_name: str):
-        """Change the channel name.
-
-        Args:
-            new_name: The new name of the channel.
-
-        Returns:
-            Renamed channel, such that this function is chainable.
-        """
-        old_prefix = self._name + "_"
-        new_prefix = new_name + "_"
-
-        self._name = new_name
-        self.params = {
-            (
-                new_prefix + key[len(old_prefix) :]
-                if key.startswith(old_prefix)
-                else key
-            ): value
-            for key, value in self.params.items()
-        }
-
-        self.states = {
-            (
-                new_prefix + key[len(old_prefix) :]
-                if key.startswith(old_prefix)
-                else key
-            ): value
-            for key, value in self.states.items()
-        }
-        return self
-
-    def update_states(
-        self, states, dt, v, params
-    ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
-        """Return the updated states."""
-        raise NotImplementedError
-
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
-        """Given channel states and voltage, return the current through the channel.
-
-        Args:
-            states: All states of the compartment.
-            v: Voltage of the compartment in mV.
-            params: Parameters of the channel (conductances in `S/cm2`).
-
-        Returns:
-            Current in `uA/cm2`.
-        """
-        raise NotImplementedError
-
-    def init_state(
-        self,
-        states: Dict[str, jnp.ndarray],
-        v: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
-        delta_t: float,
-    ):
-        """Initialize states of channel."""
-        return {}
+        super().__init__(name)

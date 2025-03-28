@@ -5,8 +5,10 @@ from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
+from jaxley.mechanisms.base import Mechanism
 
-class Synapse:
+
+class Synapse(Mechanism):
     """Base class for a synapse.
 
     As in NEURON, a `Synapse` is considered a point process, which means that its
@@ -14,48 +16,8 @@ class Synapse:
     `nA`.
     """
 
-    _name = None
-    params = None
-    states = None
-
     def __init__(self, name: Optional[str] = None):
-        self._name = name if name else self.__class__.__name__
-
-    @property
-    def name(self) -> Optional[str]:
-        return self._name
-
-    def change_name(self, new_name: str):
-        """Change the synapse name.
-
-        Args:
-            new_name: The new name of the channel.
-
-        Returns:
-            Renamed channel, such that this function is chainable.
-        """
-        old_prefix = self._name + "_"
-        new_prefix = new_name + "_"
-
-        self._name = new_name
-        self.params = {
-            (
-                new_prefix + key[len(old_prefix) :]
-                if key.startswith(old_prefix)
-                else key
-            ): value
-            for key, value in self.params.items()
-        }
-
-        self.states = {
-            (
-                new_prefix + key[len(old_prefix) :]
-                if key.startswith(old_prefix)
-                else key
-            ): value
-            for key, value in self.states.items()
-        }
-        return self
+        super().__init__(name)
 
     def update_states(
         states: Dict[str, jnp.ndarray],

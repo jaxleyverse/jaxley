@@ -31,7 +31,7 @@ class IonotropicSynapse(Synapse):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gS": 1e-4,  # uS
             f"{prefix}_e_syn": 0.0,  # mV
@@ -50,7 +50,7 @@ class IonotropicSynapse(Synapse):
         params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
-        prefix = self._name
+        prefix = self.name
         v_th = params[f"{prefix}_v_th"]
         delta = params[f"{prefix}_delta"]
 
@@ -65,6 +65,6 @@ class IonotropicSynapse(Synapse):
     def compute_current(
         self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
     ) -> float:
-        prefix = self._name
+        prefix = self.name
         g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
         return g_syn * (post_voltage - params[f"{prefix}_e_syn"])

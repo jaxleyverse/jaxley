@@ -272,7 +272,7 @@ class Network(Module):
 
         for i, synapse in enumerate(syn_channels):
             assert (
-                synapse_names[i] == synapse._name
+                synapse_names[i] == synapse.name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
 
             synapse_params = {}
@@ -322,7 +322,7 @@ class Network(Module):
         diff = 1e-3
         for i, synapse in enumerate(syn_channels):
             assert (
-                synapse_names[i] == synapse._name
+                synapse_names[i] == synapse.name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
 
             synapse_params = {}
@@ -377,7 +377,7 @@ class Network(Module):
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
-            states[f"i_{synapse._name}"] = synapse_currents[0]
+            states[f"i_{synapse.name}"] = synapse_currents[0]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 
@@ -510,12 +510,12 @@ class Network(Module):
 
     def _update_synapse_state_names(self, synapse):
         # (Potentially) update variables that track meta information about synapses.
-        self.base.synapse_names.append(synapse._name)
+        self.base.synapse_names.append(synapse.name)
         self.base.synapses.append(synapse)
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse):
         # Add synapse types to the module and infer their unique identifier.
-        synapse_name = synapse._name
+        synapse_name = synapse.name
         synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
         if is_new:  # synapse is not known

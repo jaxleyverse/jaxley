@@ -19,10 +19,10 @@ class Rate(Channel):
         self.states = {}
         self.current_name = f"{self.name}_rate"
 
-    def update_states(self, states, dt, v, params):
+    def update_states(self, states, delta_t, v, params):
         """Voltages get pulled towards zero."""
         tau = params[f"{self.name}_tau"]
-        return {"v": exponential_euler(v, dt, 0.0, tau)}
+        return {"v": exponential_euler(v, delta_t, 0.0, tau)}
 
     def compute_current(self, states, v, params):
         return jnp.zeros((1,))

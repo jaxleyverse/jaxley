@@ -31,7 +31,7 @@ class CaNernstReversal(Pump):
         self.current_name = f"i_Ca"
         self.META = {"ion": "Ca"}
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(self, u, delta_t, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
         R, T, F = (
             self.channel_constants["R"],

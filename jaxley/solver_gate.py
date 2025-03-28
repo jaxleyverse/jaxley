@@ -12,50 +12,50 @@ def save_exp(x, max_value: float = 20.0):
 
 def solve_gate_implicit(
     gating_state: jnp.ndarray,
-    dt: float,
+    delta_t: float,
     alpha: jnp.ndarray,
     beta: jnp.ndarray,
 ):
-    a_m = gating_state + dt * alpha
-    b_m = 1.0 + dt * alpha + dt * beta
+    a_m = gating_state + delta_t * alpha
+    b_m = 1.0 + delta_t * alpha + delta_t * beta
 
     return a_m / b_m
 
 
 def solve_gate_exponential(
     x: jnp.ndarray,
-    dt: float,
+    delta_t: float,
     alpha: jnp.ndarray,
     beta: jnp.ndarray,
 ):
     tau = 1 / (alpha + beta)
     xinf = alpha * tau
-    return exponential_euler(x, dt, xinf, tau)
+    return exponential_euler(x, delta_t, xinf, tau)
 
 
 def exponential_euler(
     x: jnp.ndarray,
-    dt: float,
+    delta_t: float,
     x_inf: jnp.ndarray,
     x_tau: jnp.ndarray,
 ):
     """An exact solver for the linear dynamical system `dx = -(x - x_inf) / x_tau`."""
-    exp_term = save_exp(-dt / x_tau)
+    exp_term = save_exp(-delta_t / x_tau)
     return x * exp_term + x_inf * (1.0 - exp_term)
 
 
 def solve_inf_gate_exponential(
     x: jnp.ndarray,
-    dt: float,
+    delta_t: float,
     s_inf: jnp.ndarray,
     tau_s: jnp.ndarray,
 ):
-    """solves dx/dt = (s_inf - x) / tau_s
+    """solves dx/delta_t = (s_inf - x) / tau_s
     via exponential Euler
 
     Args:
         x (jnp.ndarray): gate variable
-        dt (float): time_delta
+        delta_t (float): time_delta
         s_inf (jnp.ndarray): _description_
         tau_s (jnp.ndarray): _description_
 
@@ -63,5 +63,5 @@ def solve_inf_gate_exponential(
         _type_: updated gate
     """
     slope = -1.0 / tau_s
-    exp_term = save_exp(slope * dt)
+    exp_term = save_exp(slope * delta_t)
     return x * exp_term + s_inf * (1.0 - exp_term)

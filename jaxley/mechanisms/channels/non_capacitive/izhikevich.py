@@ -30,7 +30,7 @@ class Izhikevich(Channel):
             "gradient will be zero after every spike."
         )
 
-    def update_states(self, states, dt, v, params):
+    def update_states(self, states, delta_t, v, params):
         """Reset the voltage when a spike occurs and log the spike"""
         a = params[f"{self.name}_a"]
         b = params[f"{self.name}_b"]
@@ -39,11 +39,11 @@ class Izhikevich(Channel):
         u = states[f"{self.name}_u"]
 
         # Update the recovery variable u with exponential Euler.
-        u = exponential_euler(u, dt, b * v, 1 / a)
+        u = exponential_euler(u, delta_t, b * v, 1 / a)
 
         # Update voltages with Forward Euler because the vectorfield is nonlinear in v.
         dv = (0.04 * v**2) + (5 * v) + 140 - u
-        v = v + dt * dv
+        v = v + delta_t * dv
 
         condition = v >= 30.0
         v = jax.lax.select(condition, c, v)

@@ -18,7 +18,7 @@ class TestSynapse(Synapse):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {f"{prefix}_gC": 1e-4}
         self.states = {f"{prefix}_c": 0.2}
 
@@ -31,7 +31,7 @@ class TestSynapse(Synapse):
         params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
-        prefix = self._name
+        prefix = self.name
         v_th = -35.0
         delta = 10.0
         k_minus = 1.0 / 40.0
@@ -48,7 +48,7 @@ class TestSynapse(Synapse):
     def compute_current(
         self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
     ) -> float:
-        prefix = self._name
+        prefix = self.name
         e_syn = 0.0
         g_syn = params[f"{prefix}_gC"] * states[f"{prefix}_c"]
         return g_syn * (post_voltage - e_syn)

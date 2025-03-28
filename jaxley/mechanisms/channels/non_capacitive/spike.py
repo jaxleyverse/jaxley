@@ -31,9 +31,9 @@ class Fire(Channel):
             "will be zero after every spike."
         )
 
-    def update_states(self, states, dt, v, params):
+    def update_states(self, states, delta_t, v, params):
         """Reset the voltage when a spike occurs and log the spike"""
-        prefix = self._name
+        prefix = self.name
         vreset = params[f"{prefix}_vreset"]
         vth = params[f"{prefix}_vth"]
 
