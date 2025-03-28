@@ -15,8 +15,8 @@ class Rate(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {f"{self.name}_tau": 1.0}
-        self.channel_states = {}
+        self.params = {f"{self.name}_tau": 1.0}
+        self.states = {}
         self.current_name = f"{self.name}_rate"
 
     def update_states(self, states, dt, v, params):

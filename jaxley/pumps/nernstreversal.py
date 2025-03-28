@@ -22,8 +22,8 @@ class CaNernstReversal(Pump):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.params = {}
+        self.states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         # Note that the `self.ion_name` does not matter here, because `compute_current`
         # returns 0.0 (and `self.ion_name` only sets which ion concentration the
         # current should be added to).

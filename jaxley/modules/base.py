@@ -34,7 +34,7 @@ from jaxley.utils.cell_utils import (
     interpolate_xyzr,
     loc_of_index,
     params_to_pstate,
-    query_channel_states_and_params,
+    query_states_and_params,
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
@@ -784,9 +784,9 @@ class Module(ABC):
         edges = self.base.edges.to_dict(orient="list")
         for i, synapse in enumerate(self.base.synapses):
             condition = np.asarray(edges["type_ind"]) == i
-            for key in synapse.synapse_params:
+            for key in synapse.params:
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
-            for key in synapse.synapse_states:
+            for key in synapse.states:
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
 
     def show(
@@ -820,12 +820,8 @@ class Module(ABC):
         inds = [f"{s}_{i}" for i in inds for s in scopes] if indices else []
         cols += inds
         cols += [ch._name for ch in self.channels] if channel_names else []
-        cols += (
-            sum([list(ch.channel_params) for ch in self.channels], []) if params else []
-        )
-        cols += (
-            sum([list(ch.channel_states) for ch in self.channels], []) if states else []
-        )
+        cols += sum([list(ch.params) for ch in self.channels], []) if params else []
+        cols += sum([list(ch.states) for ch in self.channels], []) if states else []
 
         if not param_names is None:
             cols = (
@@ -970,12 +966,8 @@ class Module(ABC):
         start_idx = self.nodes["global_comp_index"].to_numpy()[0]
         ncomp_per_branch = self.base.ncomp_per_branch
         channel_names = [c._name for c in self.base.channels]
-        channel_param_names = list(
-            chain(*[c.channel_params for c in self.base.channels])
-        )
-        channel_state_names = list(
-            chain(*[c.channel_states for c in self.base.channels])
-        )
+        channel_param_names = list(chain(*[c.params for c in self.base.channels]))
+        channel_state_names = list(chain(*[c.states for c in self.base.channels]))
         radius_generating_fns = self.base._radius_generating_fns
 
         within_branch_radiuses = view["radius"].to_numpy()
@@ -1230,9 +1222,9 @@ class Module(ABC):
         edges = self.base.edges.to_dict(orient="list")
         for i, synapse in enumerate(self.base.synapses):
             condition = np.asarray(edges["type_ind"]) == i
-            for key in list(synapse.synapse_params.keys()):
+            for key in list(synapse.params.keys()):
                 self.base.edges.loc[condition, key] = all_params[key]
-            for key in list(synapse.synapse_states.keys()):
+            for key in list(synapse.states.keys()):
                 self.base.edges.loc[condition, key] = all_states[key]
 
     def distance(self, endpoint: "View") -> float:
@@ -1290,11 +1282,9 @@ class Module(ABC):
         """Collect all recordable / clampable states in the membrane and synapses.
 
         Returns states seperated by comps and edges."""
-        channel_states = [
-            name for c in self.channels + self.pumps for name in c.channel_states
-        ]
+        channel_states = [name for c in self.channels + self.pumps for name in c.states]
         synapse_states = [
-            name for s in self.synapses if s is not None for name in s.synapse_states
+            name for s in self.synapses if s is not None for name in s.states
         ]
         membrane_states = ["v", "i"] + self.membrane_current_names
         return (
@@ -1357,11 +1347,12 @@ class Module(ABC):
             params[f"axial_diffusion_{key}"] = self.jaxnodes[f"axial_diffusion_{key}"]
 
         for channel in self.base.channels + self.base.pumps:
-            for channel_params in channel.channel_params:
-                params[channel_params] = self.base.jaxnodes[channel_params]
+            for p in channel.params:
+                params[p] = self.base.jaxnodes[p]
 
-        for synapse_params in self.base.synapse_param_names:
-            params[synapse_params] = self.base.jaxedges[synapse_params]
+        for synapse in self.base.synapses:
+            for p in synapse.params:
+                params[p] = self.base.jaxedges[p]
 
         # Override with those parameters set by `.make_trainable()`.
         for parameter in pstate:
@@ -1401,10 +1392,11 @@ class Module(ABC):
         states = {"v": self.base.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
         for channel in self.base.channels + self.base.pumps:
-            for channel_states in channel.channel_states:
-                states[channel_states] = self.base.jaxnodes[channel_states]
-        for synapse_states in self.base.synapse_state_names:
-            states[synapse_states] = self.base.jaxedges[synapse_states]
+            for s in channel.states:
+                states[s] = self.base.jaxnodes[s]
+        for synapse in self.base.synapses:
+            for s in synapse.states:
+                states[s] = self.base.jaxedges[s]
         return states
 
     @only_allow_module
@@ -1484,18 +1476,16 @@ class Module(ABC):
             ].to_numpy()
             voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
-            channel_param_names = list(channel.channel_params.keys())
-            channel_state_names = list(channel.channel_states.keys())
-            channel_states = query_channel_states_and_params(
+            channel_param_names = list(channel.params.keys())
+            channel_state_names = list(channel.states.keys())
+            states = query_states_and_params(
                 states, channel_state_names, channel_indices
             )
-            channel_params = query_channel_states_and_params(
+            params = query_states_and_params(
                 params, channel_param_names, channel_indices
             )
 
-            init_state = channel.init_state(
-                channel_states, voltages, channel_params, delta_t
-            )
+            init_state = channel.init_state(states, voltages, params, delta_t)
 
             # `init_state` might not return all channel states. Only the ones that are
             # returned are updated here.
@@ -1838,12 +1828,12 @@ class Module(ABC):
         self.base.nodes.loc[self._nodes_in_view, name] = True
 
         # Loop over all new parameters, e.g. gNa, eNa.
-        for key in channel.channel_params:
-            self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_params[key]
+        for key in channel.params:
+            self.base.nodes.loc[self._nodes_in_view, key] = channel.params[key]
 
         # Loop over all new parameters, e.g. gNa, eNa.
-        for key in channel.channel_states:
-            self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
+        for key in channel.states:
+            self.base.nodes.loc[self._nodes_in_view, key] = channel.states[key]
 
     @only_allow_module
     def diffuse(self, state: str) -> None:
@@ -1887,8 +1877,8 @@ class Module(ABC):
         all_channel_names = [c._name for c in self.base.channels]
         all_pump_names = [c._name for c in self.base.pumps]
         if name in channel_names:
-            channel_cols = list(channel.channel_params.keys())
-            channel_cols += list(channel.channel_states.keys())
+            channel_cols = list(channel.params.keys())
+            channel_cols += list(channel.states.keys())
             self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
             self.base.nodes.loc[self._nodes_in_view, name] = False
 
@@ -2174,21 +2164,21 @@ class Module(ABC):
         # Update states of the channels.
         indices = channel_nodes["global_comp_index"].to_numpy()
         for channel in channels:
-            channel_param_names = list(channel.channel_params)
+            channel_param_names = list(channel.params)
             channel_param_names += [
                 "radius",
                 "length",
                 "axial_resistivity",
                 "capacitance",
             ]
-            channel_state_names = list(channel.channel_states)
+            channel_state_names = list(channel.states)
             channel_state_names += self.membrane_current_names
             channel_indices = indices[channel_nodes[channel._name].astype(bool)]
 
-            channel_params = query_channel_states_and_params(
+            channel_params = query_states_and_params(
                 params, channel_param_names, channel_indices
             )
-            channel_states = query_channel_states_and_params(
+            channel_states = query_states_and_params(
                 states, channel_state_names, channel_indices
             )
 
@@ -2286,18 +2276,15 @@ class Module(ABC):
         # offset.
         diff = 1e-3
 
-        channel_param_names = list(channel.channel_params.keys())
-        channel_state_names = list(channel.channel_states.keys())
-
         channel_params = {}
-        for p in channel_param_names:
+        for p in channel.params:
             channel_params[p] = params[p][indices]
         channel_params["radius"] = params["radius"][indices]
         channel_params["length"] = params["length"][indices]
         channel_params["axial_resistivity"] = params["axial_resistivity"][indices]
 
         channel_states = {}
-        for s in channel_state_names:
+        for s in channel.states:
             channel_states[s] = states[s][indices]
 
         v_and_perturbed = jnp.stack(
@@ -2871,13 +2858,9 @@ class View(Module):
         ):
             pkey, pval = next(iter(params.items()))
             trainable_inds_in_view = None
-            if pkey in sum(
-                [list(c.channel_params.keys()) for c in self.base.channels], []
-            ):
+            if pkey in sum([list(c.params.keys()) for c in self.base.channels], []):
                 trainable_inds_in_view = np.intersect1d(inds, self._nodes_in_view)
-            elif pkey in sum(
-                [list(s.synapse_params.keys()) for s in self.base.synapses], []
-            ):
+            elif pkey in sum([list(s.params.keys()) for s in self.base.synapses], []):
                 trainable_inds_in_view = np.intersect1d(inds, self._edges_in_view)
 
             in_view = is_viewed == np.isin(inds, trainable_inds_in_view)
@@ -2947,8 +2930,8 @@ class View(Module):
                     viewed_synapses += (
                         [syn] if in_view else [None]
                     )  # padded with None to keep indices consistent
-                    viewed_params += list(syn.synapse_params.keys()) if in_view else []
-                    viewed_states += list(syn.synapse_states.keys()) if in_view else []
+                    viewed_params += list(syn.params.keys()) if in_view else []
+                    viewed_states += list(syn.states.keys()) if in_view else []
         self.synapses = viewed_synapses
         self.synapse_param_names = viewed_params
         self.synapse_state_names = viewed_states

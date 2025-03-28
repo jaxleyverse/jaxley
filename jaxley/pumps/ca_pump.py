@@ -16,13 +16,13 @@ class CaPump(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
             f"{self._name}_decay": 80,  # Buffering time constant in ms.
             f"{self._name}_depth": 0.1,  # Depth of shell in um.
             f"{self._name}_minCaCon_i": 1e-4,  # Minimum intracell. concentration in mM.
         }
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
+        self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
         self.current_name = "i_CaPump"
         self.META = {

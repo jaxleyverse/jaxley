@@ -270,25 +270,23 @@ class Network(Module):
         post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
-        for i, synapse_type in enumerate(syn_channels):
+        for i, synapse in enumerate(syn_channels):
             assert (
-                synapse_names[i] == synapse_type._name
+                synapse_names[i] == synapse._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
 
             synapse_params = {}
-            for p in synapse_param_names:
+            for p in synapse.params:
                 synapse_params[p] = params[p]
             synapse_states = {}
-            for s in synapse_state_names:
+            for s in synapse.states:
                 synapse_states[s] = states[s]
 
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
             # State updates.
-            states_updated = synapse_type.update_states(
+            states_updated = synapse.update_states(
                 synapse_states,
                 delta_t,
                 voltages[pre_inds],
@@ -322,18 +320,16 @@ class Network(Module):
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
         diff = 1e-3
-        for i, synapse_type in enumerate(syn_channels):
+        for i, synapse in enumerate(syn_channels):
             assert (
-                synapse_names[i] == synapse_type._name
+                synapse_names[i] == synapse._name
             ), "Mixup in the ordering of synapses. Please create an issue on Github."
-            synapse_param_names = list(synapse_type.synapse_params.keys())
-            synapse_state_names = list(synapse_type.synapse_states.keys())
 
             synapse_params = {}
-            for p in synapse_param_names:
+            for p in synapse.params:
                 synapse_params[p] = params[p]
             synapse_states = {}
-            for s in synapse_state_names:
+            for s in synapse.states:
                 synapse_states[s] = states[s]
 
             # Get pre and post indexes of the current synapse type.
@@ -348,7 +344,7 @@ class Network(Module):
                 [voltages[post_inds], voltages[post_inds] + diff]
             )
             synapse_currents = vmap(
-                synapse_type.compute_current, in_axes=(None, 0, 0, None)
+                synapse.compute_current, in_axes=(None, 0, 0, None)
             )(
                 synapse_states,
                 pre_v_and_perturbed,
@@ -381,7 +377,7 @@ class Network(Module):
             # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
-            states[f"i_{synapse_type._name}"] = synapse_currents[0]
+            states[f"i_{synapse._name}"] = synapse_currents[0]
 
         return states, (syn_voltage_terms, syn_constant_terms)
 
@@ -512,20 +508,20 @@ class Network(Module):
         type_ind = len(syn_names) if is_new_type else syn_names.index(synapse_name)
         return type_ind, is_new_type
 
-    def _update_synapse_state_names(self, synapse_type):
+    def _update_synapse_state_names(self, synapse):
         # (Potentially) update variables that track meta information about synapses.
-        self.base.synapse_names.append(synapse_type._name)
-        self.base.synapse_param_names += list(synapse_type.synapse_params.keys())
-        self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
-        self.base.synapses.append(synapse_type)
+        self.base.synapse_names.append(synapse._name)
+        self.base.synapse_param_names += list(synapse.params.keys())
+        self.base.synapse_state_names += list(synapse.states.keys())
+        self.base.synapses.append(synapse)
 
-    def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
+    def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse):
         # Add synapse types to the module and infer their unique identifier.
-        synapse_name = synapse_type._name
+        synapse_name = synapse._name
         synapse_current_name = f"i_{synapse_name}"
         type_ind, is_new = self._infer_synapse_type_ind(synapse_name)
         if is_new:  # synapse is not known
-            self._update_synapse_state_names(synapse_type)
+            self._update_synapse_state_names(synapse)
             self.base.synapse_current_names.append(synapse_current_name)
 
         index = len(self.base.edges)
@@ -562,15 +558,15 @@ class Network(Module):
         self.base.edges = concat_and_ignore_empty(
             [self.base.edges, new_rows], ignore_index=True, axis=0
         )
-        self._add_params_to_edges(synapse_type, indices)
+        self._add_params_to_edges(synapse, indices)
         self.base.edges["controlled_by_param"] = 0
         self._edges_in_view = self.edges.index.to_numpy()
 
-    def _add_params_to_edges(self, synapse_type, indices):
+    def _add_params_to_edges(self, synapse, indices):
         # Add parameters and states to the `.edges` table.
-        for key, param_val in synapse_type.synapse_params.items():
+        for key, param_val in synapse.params.items():
             self.base.edges.loc[indices, key] = param_val
 
         # Update synaptic state array.
-        for key, state_val in synapse_type.synapse_states.items():
+        for key, state_val in synapse.states.items():
             self.base.edges.loc[indices, key] = state_val

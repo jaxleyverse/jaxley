@@ -29,13 +29,13 @@ class NaPump(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
             f"{self._name}_decay": 80,  # Buffering time constant in ms.
             f"{self._name}_depth": 0.1,  # Depth of shell in um.
             f"{self._name}_minNai": 1e-4,  # Minimum intracell. ca concentration in mM.
         }
-        self.channel_states = {"i_Na": 1e-8, "NaCon_i": 5e-05}
+        self.states = {"i_Na": 1e-8, "NaCon_i": 5e-05}
         self.ion_name = "NaCon_i"
         self.current_name = "i_NaPump"
         self.META = {
@@ -100,8 +100,8 @@ class NaNernstReversal(Channel):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eNa": 0.0, "NaCon_i": 5e-05, "NaCon_e": 3.0}
+        self.params = {}
+        self.states = {"eNa": 0.0, "NaCon_i": 5e-05, "NaCon_e": 3.0}
         self.current_name = f"i_Na"
         self.META = {"ion": "Na"}
 
@@ -135,13 +135,13 @@ class CaPump2(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
             f"{self._name}_decay": 80,  # Buffering time constant in ms.
             f"{self._name}_depth": 0.1,  # Depth of shell in um.
             f"{self._name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
         }
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
+        self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
         self.current_name = "i_CaPump"
         self.META = {

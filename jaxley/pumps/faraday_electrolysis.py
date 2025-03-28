@@ -98,8 +98,8 @@ class CaFaradayConcentrationChange(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {}
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
+        self.params = {}
+        self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
         self.current_name = "i_CaCurrent"
         self.META = {"mechanism": "Calcium change"}

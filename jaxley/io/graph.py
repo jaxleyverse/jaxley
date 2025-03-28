@@ -861,8 +861,8 @@ def to_graph(
     else:
         for c in module.channels:
             nodes = nodes.drop(c.name, axis=1)
-            nodes = nodes.drop(list(c.channel_params), axis=1)
-            nodes = nodes.drop(list(c.channel_states), axis=1)
+            nodes = nodes.drop(list(c.params), axis=1)
+            nodes = nodes.drop(list(c.states), axis=1)
 
     for col in nodes.columns:  # col wise adding preserves dtypes
         module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())

@@ -17,13 +17,13 @@ class Izhikevich(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self.name}_a": 0.02,
             f"{self.name}_b": 0.2,
             f"{self.name}_c": -65.0,
             f"{self.name}_d": 8,
         }
-        self.channel_states = {f"{self.name}_u": 0.0}
+        self.states = {f"{self.name}_u": 0.0}
         self.current_name = f"{self.name}_izhikevich"
         warn(
             "The `Izhikevich` channel does not support surrogate gradients. Its "

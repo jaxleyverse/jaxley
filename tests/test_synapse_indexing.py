@@ -68,7 +68,7 @@ def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
             connect(pre, post, synapse_type)
 
     # Get the synapse parameters to test setting
-    syn_params = list(synapse_type.synapse_params.keys())
+    syn_params = list(synapse_type.params.keys())
     for p in syn_params:
         net.set(p, 0.15)
         assert np.all(net.edges[p].to_numpy() == 0.15)
@@ -78,7 +78,7 @@ def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
         net, synapse_name
     )
 
-    # There shouldn't be too many synapse_params otherwise this will take a long time
+    # There shouldn't be too many params otherwise this will take a long time
     for p in syn_params:
         full_syn_view.set(p, 0.32)
         assert np.all(net.edges[p].to_numpy() == 0.32)
@@ -105,8 +105,8 @@ def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
             post = net.cell(post_ind).branch(0).loc(0.0)
             connect(pre, post, synapse)
 
-    type1_params = list(IonotropicSynapse().synapse_params.keys())
-    synapse_type_params = list(synapse_type.synapse_params.keys())
+    type1_params = list(IonotropicSynapse().params.keys())
+    synapse_type_params = list(synapse_type.params.keys())
 
     default_synapse_type = net.edges[synapse_type_params[0]].to_numpy()[[1, 3]]
 
