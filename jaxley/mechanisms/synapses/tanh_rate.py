@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
-from jaxley.synapses.synapse import Synapse
+from jaxley.mechanisms.synapses.synapse import Synapse
 
 
 class TanhRateSynapse(Synapse):

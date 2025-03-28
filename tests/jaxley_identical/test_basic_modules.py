@@ -18,10 +18,10 @@ import pytest
 from jaxley_mech.channels.l5pc import CaHVA
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect, fully_connect
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
+from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])

@@ -14,10 +14,10 @@ from jaxley_mech.channels.l5pc import CaHVA
 from scipy.stats import t as t_dist
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import sparse_connect
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
-from jaxley.synapses import IonotropicSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
+from jaxley.mechanisms.synapses import IonotropicSynapse
 
 pytestmark = pytest.mark.regression  # mark all tests as regression tests in this file
 

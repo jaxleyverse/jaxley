@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 
-from jaxley.pumps.pump import Pump
+from jaxley.mechanisms.pumps.pump import Pump
 
 
 class CaPump(Pump):

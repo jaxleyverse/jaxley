@@ -7,7 +7,7 @@ from warnings import warn
 import jax
 import jax.numpy as jnp
 
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 
 
 class Fire(Channel):

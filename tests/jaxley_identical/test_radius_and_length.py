@@ -18,8 +18,8 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
-from jaxley.synapses import IonotropicSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.synapses import IonotropicSynapse
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])

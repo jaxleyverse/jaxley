@@ -12,9 +12,14 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect
-from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.synapses import (
+    IonotropicSynapse,
+    Synapse,
+    TanhRateSynapse,
+    TestSynapse,
+)
 
 
 def test_multiparameter_setting(SimpleNet):

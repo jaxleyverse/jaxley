@@ -18,8 +18,8 @@ from jaxley_mech.channels.l5pc import CaHVA
 from neuron import h, rxd
 
 import jaxley as jx
-from jaxley.channels import HH
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")

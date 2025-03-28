@@ -16,9 +16,14 @@ from jaxley_mech.channels.l5pc import CaHVA, CaLVA
 from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
 
 import jaxley as jx
-from jaxley.channels import HH, K, Leak, Na
-from jaxley.channels.channel import Channel
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump, Pump
+from jaxley.mechanisms.channels import HH, K, Leak, Na
+from jaxley.mechanisms.channels.channel import Channel
+from jaxley.mechanisms.pumps import (
+    CaFaradayConcentrationChange,
+    CaNernstReversal,
+    CaPump,
+    Pump,
+)
 
 
 class NaPump(Pump):

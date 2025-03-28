@@ -16,14 +16,14 @@ from jax import jit, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
-from jaxley.channels import Channel
-from jaxley.pumps import Pump
+from jaxley.mechanisms.channels import Channel
+from jaxley.mechanisms.pumps import Pump
+from jaxley.mechanisms.synapses import Synapse
 from jaxley.solver_voltage import (
     step_voltage_explicit,
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_jaxley_spsolve,
 )
-from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -1476,14 +1476,16 @@ class Module(ABC):
 
             channel_param_names = list(channel.params.keys())
             channel_state_names = list(channel.states.keys())
-            states = query_states_and_params(
+            channel_states = query_states_and_params(
                 states, channel_state_names, channel_indices
             )
-            params = query_states_and_params(
+            channel_params = query_states_and_params(
                 params, channel_param_names, channel_indices
             )
 
-            init_state = channel.init_state(states, voltages, params, delta_t)
+            init_state = channel.init_state(
+                channel_states, voltages, channel_params, delta_t
+            )
 
             # `init_state` might not return all channel states. Only the ones that are
             # returned are updated here.

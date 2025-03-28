@@ -12,7 +12,7 @@ import numpy as np
 from jax import jit
 
 import jaxley as jx
-from jaxley.channels import Leak
+from jaxley.mechanisms.channels import Leak
 
 
 def test_direct_distance(SimpleCell):

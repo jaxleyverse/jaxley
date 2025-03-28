@@ -11,10 +11,10 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect
 from jaxley.integrate import build_init_and_step_fn
-from jaxley.synapses import IonotropicSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.synapses import IonotropicSynapse
 
 
 def test_api_equivalence_morphology(SimpleComp):

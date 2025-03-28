@@ -9,7 +9,7 @@ from typing import Optional
 import pytest
 
 import jaxley as jx
-from jaxley.synapses import IonotropicSynapse
+from jaxley.mechanisms.synapses import IonotropicSynapse
 from tests.test_regression import generate_regression_report, load_json
 
 

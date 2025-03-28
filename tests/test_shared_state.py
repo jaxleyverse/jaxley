@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 

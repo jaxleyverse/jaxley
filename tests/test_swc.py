@@ -14,7 +14,7 @@ import pytest
 from neuron import h
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")

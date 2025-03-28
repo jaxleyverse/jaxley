@@ -18,9 +18,9 @@ import pytest
 from jax import value_and_grad
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import fully_connect
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
 
 
 @pytest.mark.slow

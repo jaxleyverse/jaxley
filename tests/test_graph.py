@@ -20,8 +20,6 @@ import pytest
 
 import jaxley as jx
 from jaxley import connect
-from jaxley.channels import HH
-from jaxley.channels.pospischil import K, Leak, Na
 from jaxley.io.graph import (
     add_missing_graph_attrs,
     from_graph,
@@ -30,7 +28,9 @@ from jaxley.io.graph import (
     to_graph,
     trace_branches,
 )
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.channels.pospischil import K, Leak, Na
+from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare
 from tests.helpers import (

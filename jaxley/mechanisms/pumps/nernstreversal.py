@@ -5,7 +5,7 @@ from typing import Optional
 
 import jax.numpy as jnp
 
-from jaxley.pumps import Pump
+from jaxley.mechanisms.pumps import Pump
 
 
 class CaNernstReversal(Pump):

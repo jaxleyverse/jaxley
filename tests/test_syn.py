@@ -11,9 +11,9 @@ from typing import List
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect
-from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.synapses import IonotropicSynapse, Synapse, TestSynapse
 
 
 def test_set_and_querying_params_one_type(SimpleNet):

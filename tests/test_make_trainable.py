@@ -12,9 +12,9 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH, K, Na
 from jaxley.connect import connect, fully_connect
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.mechanisms.channels import HH, K, Na
+from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
 
 

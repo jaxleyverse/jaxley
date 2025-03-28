@@ -14,10 +14,10 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.synapses import TestSynapse
 from jaxley.modules.base import View
-from jaxley.synapses import TestSynapse
 from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
 from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import JaxleySolveIndexer
