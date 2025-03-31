@@ -1455,7 +1455,7 @@ class Module(ABC):
         This considers the voltages and parameters of each compartment.
 
         Args:
-            delta_t: Passed on to `channel.init_state()`.
+            delta_t: Passed on to `channel.init_states()`.
         """
         # Update states of the channels.
         channel_nodes = self.base.nodes
@@ -1483,7 +1483,7 @@ class Module(ABC):
                 params, channel_param_names, channel_indices
             )
 
-            init_state = channel.init_state(
+            init_state = channel.init_states(
                 channel_states, voltages, channel_params, delta_t
             )
 

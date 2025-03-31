@@ -26,7 +26,11 @@ from jaxley.mechanisms.channels import (
     Na,
     Rate,
 )
-from jaxley.solver_gate import exponential_euler, save_exp, solve_inf_gate_exponential
+from jaxley.mechanisms.solvers import (
+    exponential_euler,
+    save_exp,
+    solve_inf_gate_exponential,
+)
 
 
 class CaPump(Channel):
@@ -78,7 +82,7 @@ class CaPump(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -118,7 +122,7 @@ class CaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -245,7 +249,7 @@ class KCA11(Channel):
         g = 0.03 * m * 1000  # mS/cm^2
         return g * (v + 80.0)
 
-    def init_state(self, states, v, params, dt):
+    def init_states(self, states, v, params, dt):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         q10 = params[f"{prefix}_q10_ch"] ** (

@@ -15,5 +15,7 @@ class Pump(Mechanism):
     A pump in Jaxley is everything that modifies the intracellular ion concentrations.
     """
 
+    ion_name: str = None
+
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)

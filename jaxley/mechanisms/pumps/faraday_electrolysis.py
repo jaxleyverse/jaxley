@@ -124,7 +124,7 @@ class CaFaradayConcentrationChange(Pump):
         # 2.0 is valence of calcium.
         return convert_current_to_molarity_change(states["i_Ca"], 2.0, params["radius"])
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,

@@ -80,7 +80,7 @@ class NaPump(Pump):
         diff = drive_channel - state_decay
         return -diff
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,
@@ -127,7 +127,7 @@ class NaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -186,7 +186,7 @@ class CaPump2(Pump):
         diff = drive_channel - state_decay
         return -diff
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,

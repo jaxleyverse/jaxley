@@ -10,6 +10,19 @@ import jax.numpy as jnp
 
 
 class Mechanism(ABC):
+    """A Mechanism is everything that can be inserted into the membrane.
+
+    In Jaxley, a `Mechanism` is everything that modifies the membrane voltage via its
+    current returned by the `compute_current()` method.
+
+    A `Mechanism` must implement the the following:
+    - `compute_current()` method.
+    - `update_states()` method.
+    - `init_states()` method.
+
+    Mechamisms can be distributed or point processes.
+    """
+
     name: str = None
     params: dict = None
     states: dict = None
@@ -17,7 +30,7 @@ class Mechanism(ABC):
     META: dict = None
 
     def __init__(self, name=None):
-        self.name = self.__class__.__name__  # TODO:.lower()
+        self.name = self.__class__.__name__  # TODO:should we use .lower() ?
         self.params = {}
         self.states = {}
         self.current_name = f"i_{self.name}"
@@ -27,6 +40,16 @@ class Mechanism(ABC):
             self.change_name(name)
 
     def change_name(self, new_name: str) -> Mechanism:
+        """Change the name of the mechanism.
+
+        Renames `.name` as well as params / states prefixed with `name_`.
+
+        Args:
+            new_name: The new name of the mechanism.
+
+        Returns:
+            self
+        """
         old_prefix = self.name + "_"
         new_prefix = new_name + "_"
         self.name = new_name
@@ -42,17 +65,26 @@ class Mechanism(ABC):
         }
         return self
 
-    def update_states(self, states, delta_t, v, params) -> Dict[str, jnp.ndarray]:
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        delta_t: float,
+        v: jnp.ndarray,
+        params: Dict[str, jnp.ndarray],
+    ) -> Dict[str, jnp.ndarray]:
         """Return the updated states."""
         raise NotImplementedError
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: Dict[str, jnp.ndarray],
+        v: jnp.ndarray,
+        params: Dict[str, jnp.ndarray],
     ) -> jnp.ndarray:
         """Return the current through the mechanism."""
         raise NotImplementedError
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,
@@ -63,5 +95,8 @@ class Mechanism(ABC):
         return NotImplementedError
 
     def _derivative(self, states, v, params) -> Dict[str, jnp.ndarray]:
-        """Return the derivative of the states."""
+        """Return the derivative of the states.
+
+        This method is optional and can be used within `update_states` with a solver of
+        choice."""
         raise NotImplementedError

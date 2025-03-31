@@ -5,8 +5,8 @@ from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
+from jaxley.mechanisms.solvers import save_exp
 from jaxley.mechanisms.synapses.synapse import Synapse
-from jaxley.solver_gate import save_exp
 
 
 class TestSynapse(Synapse):

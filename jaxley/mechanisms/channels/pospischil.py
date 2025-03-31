@@ -6,7 +6,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import (
+from jaxley.mechanisms.solvers import (
     save_exp,
     solve_gate_exponential,
     solve_inf_gate_exponential,
@@ -36,8 +36,6 @@ class Leak(Channel):
     """Leak current"""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -65,7 +63,7 @@ class Leak(Channel):
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         return {}
 
 
@@ -73,8 +71,6 @@ class Na(Channel):
     """Sodium channel"""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -111,7 +107,7 @@ class Na(Channel):
         current = gNa * (v - params["eNa"])
         return current
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v, params["vt"])
@@ -144,8 +140,6 @@ class K(Channel):
     """Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -180,7 +174,7 @@ class K(Channel):
 
         return gK * (v - params["eK"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_n, beta_n = self.n_gate(v, params["vt"])
@@ -200,8 +194,6 @@ class Km(Channel):
     """Slow M Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -237,7 +229,7 @@ class Km(Channel):
         gKm = params[f"{prefix}_gKm"] * p  # S/cm^2
         return gKm * (v - params["eK"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_p, beta_p = self.p_gate(v, params[f"{prefix}_taumax"])
@@ -257,8 +249,6 @@ class CaL(Channel):
     """L-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -292,7 +282,7 @@ class CaL(Channel):
 
         return gCaL * (v - params["eCa"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_q, beta_q = self.q_gate(v)
@@ -325,8 +315,6 @@ class CaT(Channel):
     """T-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -364,7 +352,7 @@ class CaT(Channel):
 
         return gCaT * (v - params["eCa"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_u, beta_u = self.u_gate(v, params[f"{prefix}_vx"])

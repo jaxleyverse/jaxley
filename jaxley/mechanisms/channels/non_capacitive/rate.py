@@ -6,7 +6,7 @@ from typing import Optional
 import jax.numpy as jnp
 
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import exponential_euler
+from jaxley.mechanisms.solvers import exponential_euler
 
 
 class Rate(Channel):
@@ -27,5 +27,5 @@ class Rate(Channel):
     def compute_current(self, states, v, params):
         return jnp.zeros((1,))
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         return {}

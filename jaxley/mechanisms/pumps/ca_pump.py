@@ -74,7 +74,7 @@ class CaPump(Pump):
         diff = drive_channel - state_decay
         return -diff
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,

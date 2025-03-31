@@ -6,15 +6,13 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import save_exp, solve_gate_exponential
+from jaxley.mechanisms.solvers import save_exp, solve_gate_exponential
 
 
 class HH(Channel):
     """Hodgkin-Huxley channel."""
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
-
         super().__init__(name)
         prefix = self.name
         self.params = {
@@ -64,7 +62,7 @@ class HH(Channel):
             + gLeak * (v - params[f"{prefix}_eLeak"])
         )
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v)

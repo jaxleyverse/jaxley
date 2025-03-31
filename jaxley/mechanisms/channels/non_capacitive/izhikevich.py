@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import exponential_euler
+from jaxley.mechanisms.solvers import exponential_euler
 
 
 class Izhikevich(Channel):
@@ -53,6 +53,6 @@ class Izhikevich(Channel):
     def compute_current(self, states, v, params):
         return jnp.zeros((1,))
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         prefix = self.name
         return {f"{self.name}_u": params[f"{prefix}_b"] * v}

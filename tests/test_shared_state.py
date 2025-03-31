@@ -13,7 +13,11 @@ import numpy as np
 
 import jaxley as jx
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
+from jaxley.mechanisms.solvers import (
+    exponential_euler,
+    save_exp,
+    solve_gate_exponential,
+)
 
 
 class Dummy1(Channel):
@@ -106,7 +110,7 @@ class CaHVA(Channel):
         current = ca_cond * (voltages - u["eCa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_states(self, voltages, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(voltages)
@@ -180,7 +184,7 @@ class CaPump(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_states(self, voltages, params):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 

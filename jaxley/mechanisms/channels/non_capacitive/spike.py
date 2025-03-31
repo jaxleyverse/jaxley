@@ -44,5 +44,5 @@ class Fire(Channel):
     def compute_current(self, states, v, params):
         return jnp.zeros((1,))
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         return {}

@@ -20,17 +20,13 @@ class Channel(Mechanism):
     conductances are to be specified in `S/cm2` and its currents are to be specified in
     `uA/cm2`."""
 
-    name = None
-    params = None
-    states = None
-    current_name = None
-
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         contact = (
             "If you have any questions, please reach out via email to "
             "michael.deistler@uni-tuebingen.de or create an issue on Github: "
             "https://github.com/jaxleyverse/jaxley/issues. Thank you!"
-        )
+        )  # TODO: get rid of this?
         if (
             not hasattr(self, "current_is_in_mA_per_cm2")
             or not self.current_is_in_mA_per_cm2
@@ -42,5 +38,5 @@ class Channel(Mechanism):
                 "update your channel model (by dividing the resulting current by 1000) "
                 "and set `self.current_is_in_mA_per_cm2=True` as the first line "
                 f"in the `__init__()` method of your channel. {contact}"
-            )
+            )  # TODO: get rid of this?
         super().__init__(name)
