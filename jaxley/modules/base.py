@@ -18,7 +18,7 @@ from matplotlib.axes import Axes
 
 from jaxley.mechanisms.channels import Channel
 from jaxley.mechanisms.pumps import Pump
-from jaxley.mechanisms.synapses import Synapse
+from jaxley.synapses import Synapse
 from jaxley.solver_voltage import (
     step_voltage_explicit,
     step_voltage_implicit_with_jax_spsolve,

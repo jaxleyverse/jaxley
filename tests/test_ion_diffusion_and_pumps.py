@@ -12,8 +12,8 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
-from jaxley_mech.channels.l5pc import CaHVA, CaLVA
-from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
+from jaxley_mech.mechanisms.channels.l5pc import CaHVA, CaLVA
+from jaxley_mech.mechanisms.channels.l5pc import CaPump as CaPumpAsChannel
 
 import jaxley as jx
 from jaxley.mechanisms.channels import HH, K, Leak, Na

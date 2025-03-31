@@ -13,7 +13,7 @@ import numpy as np
 import jaxley as jx
 from jaxley.connect import fully_connect
 from jaxley.mechanisms.channels import HH
-from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
 def test_record_and_stimulate_api(SimpleCell):

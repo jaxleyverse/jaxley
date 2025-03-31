@@ -14,7 +14,7 @@ import jaxley as jx
 from jaxley.connect import connect
 from jaxley.integrate import build_init_and_step_fn
 from jaxley.mechanisms.channels import HH
-from jaxley.mechanisms.synapses import IonotropicSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 def test_api_equivalence_morphology(SimpleComp):

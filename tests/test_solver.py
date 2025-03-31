@@ -7,7 +7,7 @@ import pytest
 import jaxley as jx
 from jaxley.connect import connect
 from jaxley.mechanisms.channels import HH
-from jaxley.mechanisms.synapses import IonotropicSynapse
+from jaxley.synapses import IonotropicSynapse
 from jaxley.mechanisms.solvers import exponential_euler
 
 

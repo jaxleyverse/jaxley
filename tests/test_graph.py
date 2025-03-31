@@ -30,7 +30,7 @@ from jaxley.io.graph import (
 )
 from jaxley.mechanisms.channels import HH
 from jaxley.mechanisms.channels.pospischil import K, Leak, Na
-from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare
 from tests.helpers import (

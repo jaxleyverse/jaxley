@@ -15,7 +15,7 @@ from jax import jit, value_and_grad
 import jaxley as jx
 from jaxley.connect import fully_connect
 from jaxley.mechanisms.channels import HH
-from jaxley.mechanisms.synapses import IonotropicSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 def test_subclassing_groups_cell_api(SimpleCell):

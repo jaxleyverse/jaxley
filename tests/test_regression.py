@@ -10,14 +10,14 @@ from functools import wraps
 import numpy as np
 import pytest
 from jax import jit
-from jaxley_mech.channels.l5pc import CaHVA
+from jaxley_mech.mechanisms.channels.l5pc import CaHVA
 from scipy.stats import t as t_dist
 
 import jaxley as jx
 from jaxley.connect import sparse_connect
 from jaxley.mechanisms.channels import HH
 from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
-from jaxley.mechanisms.synapses import IonotropicSynapse
+from jaxley.synapses import IonotropicSynapse
 
 pytestmark = pytest.mark.regression  # mark all tests as regression tests in this file
 

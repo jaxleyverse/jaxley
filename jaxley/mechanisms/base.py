@@ -13,7 +13,8 @@ class Mechanism(ABC):
     """A Mechanism is everything that can be inserted into the membrane.
 
     In Jaxley, a `Mechanism` is everything that modifies the membrane voltage via its
-    current returned by the `compute_current()` method.
+    current returned by the `compute_current()` method and can be inserted into the
+    membrane with `Module.insert()`.
 
     A `Mechanism` must implement the the following:
     - `compute_current()` method.

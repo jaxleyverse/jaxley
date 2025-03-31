@@ -15,13 +15,13 @@ from math import pi
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import CaHVA
+from jaxley_mech.mechanisms.channels.l5pc import CaHVA
 
 import jaxley as jx
 from jaxley.connect import connect, fully_connect
 from jaxley.mechanisms.channels import HH
 from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
-from jaxley.mechanisms.synapses import IonotropicSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])

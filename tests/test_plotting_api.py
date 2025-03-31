@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.mechanisms.synapses import IonotropicSynapse
+from jaxley.synapses import IonotropicSynapse
 
 
 def test_cell(SimpleMorphCell):

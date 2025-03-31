@@ -14,7 +14,7 @@ import pytest
 import jaxley as jx
 from jaxley.connect import connect
 from jaxley.mechanisms.channels import HH
-from jaxley.mechanisms.synapses import (
+from jaxley.synapses import (
     IonotropicSynapse,
     Synapse,
     TanhRateSynapse,

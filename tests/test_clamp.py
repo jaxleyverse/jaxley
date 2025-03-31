@@ -4,7 +4,7 @@
 import jax
 
 from jaxley.connect import connect
-from jaxley.mechanisms.synapses.ionotropic import IonotropicSynapse
+from jaxley.synapses.ionotropic import IonotropicSynapse
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
