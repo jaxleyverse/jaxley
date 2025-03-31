@@ -804,7 +804,7 @@ def from_graph(
 
     # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
-    module.synapse_names = [s._name for s in module.synapses]
+    module.synapse_names = [s.name for s in module.synapses]
 
     return module
 
@@ -861,8 +861,8 @@ def to_graph(
     else:
         for c in module.channels:
             nodes = nodes.drop(c.name, axis=1)
-            nodes = nodes.drop(list(c.channel_params), axis=1)
-            nodes = nodes.drop(list(c.channel_states), axis=1)
+            nodes = nodes.drop(list(c.params), axis=1)
+            nodes = nodes.drop(list(c.states), axis=1)
 
     for col in nodes.columns:  # col wise adding preserves dtypes
         module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
@@ -895,8 +895,6 @@ def to_graph(
                 f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. Exporting synapses to the graph only works if the same two compartments are connected by at most one synapse."
             )
         module_graph.graph["synapses"] = module.synapses
-        module_graph.graph["synapse_param_names"] = module.synapse_param_names
-        module_graph.graph["synapse_state_names"] = module.synapse_state_names
         module_graph.graph["synapse_names"] = module.synapse_names
         module_graph.graph["synapse_current_names"] = module.synapse_current_names
 

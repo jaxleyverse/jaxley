@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 
-from jaxley.solver_gate import save_exp
+from jaxley.mechanisms.solvers import save_exp
 from jaxley.synapses.synapse import Synapse
 
 
@@ -31,15 +31,15 @@ class IonotropicSynapse(Synapse):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        prefix = self._name
-        self.synapse_params = {
+        prefix = self.name
+        self.params = {
             f"{prefix}_gS": 1e-4,  # uS
             f"{prefix}_e_syn": 0.0,  # mV
             f"{prefix}_k_minus": 0.025,
             f"{prefix}_v_th": -35.0,  # mV
             f"{prefix}_delta": 10.0,  # mV
         }
-        self.synapse_states = {f"{prefix}_s": 0.2}
+        self.states = {f"{prefix}_s": 0.2}
 
     def update_states(
         self,
@@ -50,7 +50,7 @@ class IonotropicSynapse(Synapse):
         params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
-        prefix = self._name
+        prefix = self.name
         v_th = params[f"{prefix}_v_th"]
         delta = params[f"{prefix}_delta"]
 
@@ -65,6 +65,6 @@ class IonotropicSynapse(Synapse):
     def compute_current(
         self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
     ) -> float:
-        prefix = self._name
+        prefix = self.name
         g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
         return g_syn * (post_voltage - params[f"{prefix}_e_syn"])

@@ -12,13 +12,18 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
-from jaxley_mech.channels.l5pc import CaHVA, CaLVA
-from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
+from jaxley_mech.mechanisms.channels.l5pc import CaHVA, CaLVA
+from jaxley_mech.mechanisms.channels.l5pc import CaPump as CaPumpAsChannel
 
 import jaxley as jx
-from jaxley.channels import HH, K, Leak, Na
-from jaxley.channels.channel import Channel
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump, Pump
+from jaxley.mechanisms.channels import HH, K, Leak, Na
+from jaxley.mechanisms.channels.channel import Channel
+from jaxley.mechanisms.pumps import (
+    CaFaradayConcentrationChange,
+    CaNernstReversal,
+    CaPump,
+    Pump,
+)
 
 
 class NaPump(Pump):
@@ -29,13 +34,13 @@ class NaPump(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minNai": 1e-4,  # Minimum intracell. ca concentration in mM.
+        self.params = {
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
+            f"{self.name}_decay": 80,  # Buffering time constant in ms.
+            f"{self.name}_depth": 0.1,  # Depth of shell in um.
+            f"{self.name}_minNai": 1e-4,  # Minimum intracell. ca concentration in mM.
         }
-        self.channel_states = {"i_Na": 1e-8, "NaCon_i": 5e-05}
+        self.states = {"i_Na": 1e-8, "NaCon_i": 5e-05}
         self.ion_name = "NaCon_i"
         self.current_name = "i_NaPump"
         self.META = {
@@ -60,7 +65,7 @@ class NaPump(Pump):
         params: Dict[str, jnp.ndarray],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = states["i_Na"] / 1_000.0
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
@@ -75,7 +80,7 @@ class NaPump(Pump):
         diff = drive_channel - state_decay
         return -diff
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,
@@ -100,8 +105,8 @@ class NaNernstReversal(Channel):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eNa": 0.0, "NaCon_i": 5e-05, "NaCon_e": 3.0}
+        self.params = {}
+        self.states = {"eNa": 0.0, "NaCon_i": 5e-05, "NaCon_e": 3.0}
         self.current_name = f"i_Na"
         self.META = {"ion": "Na"}
 
@@ -122,7 +127,7 @@ class NaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -135,13 +140,13 @@ class CaPump2(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
+        self.params = {
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
+            f"{self.name}_decay": 80,  # Buffering time constant in ms.
+            f"{self.name}_depth": 0.1,  # Depth of shell in um.
+            f"{self.name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
         }
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
+        self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
         self.current_name = "i_CaPump"
         self.META = {
@@ -166,7 +171,7 @@ class CaPump2(Pump):
         params: Dict[str, jnp.ndarray],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = states["i_Ca"] / 1_000.0
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
@@ -181,7 +186,7 @@ class CaPump2(Pump):
         diff = drive_channel - state_decay
         return -diff
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,

@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import (
+from jaxley.mechanisms.channels import (
     HH,
     CaL,
     CaT,
@@ -26,7 +26,11 @@ from jaxley.channels import (
     Na,
     Rate,
 )
-from jaxley.solver_gate import exponential_euler, save_exp, solve_inf_gate_exponential
+from jaxley.mechanisms.solvers import (
+    exponential_euler,
+    save_exp,
+    solve_inf_gate_exponential,
+)
 
 
 class CaPump(Channel):
@@ -38,13 +42,13 @@ class CaPump(Channel):
     ):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
-            f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
-            f"{self._name}_depth": 0.1,  # Depth of shell in um
-            f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
+        self.params = {
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
+            f"{self.name}_decay": 80,  # Rate of removal of calcium in ms
+            f"{self.name}_depth": 0.1,  # Depth of shell in um
+            f"{self.name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
         }
-        self.channel_states = {
+        self.states = {
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
         self.current_name = f"i_Ca"
@@ -55,7 +59,7 @@ class CaPump(Channel):
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = u["i_Ca"] / 1_000.0
         cai = u["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
@@ -78,7 +82,7 @@ class CaPump(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -97,8 +101,8 @@ class CaNernstReversal(Channel):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.params = {}
+        self.states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
 
     def update_states(self, u, dt, voltages, params):
@@ -118,7 +122,7 @@ class CaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -130,21 +134,19 @@ def test_channel_set_name():
     # channel name can be set in the constructor
     na = Na(name="NaPospischil")
     assert na.name == "NaPospischil"
-    assert "NaPospischil_gNa" in na.channel_params.keys()
-    assert "eNa" in na.channel_params.keys()
-    assert "NaPospischil_h" in na.channel_states.keys()
-    assert "NaPospischil_m" in na.channel_states.keys()
-    assert "NaPospischil_vt" not in na.channel_params.keys()
-    assert "vt" in na.channel_params.keys()
+    assert "NaPospischil_gNa" in na.params.keys()
+    assert "eNa" in na.params.keys()
+    assert "NaPospischil_h" in na.states.keys()
+    assert "NaPospischil_m" in na.states.keys()
+    assert "NaPospischil_vt" not in na.params.keys()
+    assert "vt" in na.params.keys()
 
     # channel name can not be changed directly
     k = K()
-    with pytest.raises(AttributeError):
-        k.name = "KPospischil"
-    assert "KPospischil_gNa" not in k.channel_params.keys()
-    assert "eNa" not in k.channel_params.keys()
-    assert "KPospischil_h" not in k.channel_states.keys()
-    assert "KPospischil_m" not in k.channel_states.keys()
+    assert "KPospischil_gNa" not in k.params.keys()
+    assert "eNa" not in k.params.keys()
+    assert "KPospischil_h" not in k.states.keys()
+    assert "KPospischil_m" not in k.states.keys()
 
 
 def test_channel_change_name():
@@ -152,12 +154,12 @@ def test_channel_change_name():
     # (and only this way after initialization)
     na = Na().change_name("NaPospischil")
     assert na.name == "NaPospischil"
-    assert "NaPospischil_gNa" in na.channel_params.keys()
-    assert "eNa" in na.channel_params.keys()
-    assert "NaPospischil_h" in na.channel_states.keys()
-    assert "NaPospischil_m" in na.channel_states.keys()
-    assert "NaPospischil_vt" not in na.channel_params.keys()
-    assert "vt" in na.channel_params.keys()
+    assert "NaPospischil_gNa" in na.params.keys()
+    assert "eNa" in na.params.keys()
+    assert "NaPospischil_h" in na.states.keys()
+    assert "NaPospischil_m" in na.states.keys()
+    assert "NaPospischil_vt" not in na.params.keys()
+    assert "vt" in na.params.keys()
 
 
 def test_integration_with_renamed_channels():
@@ -212,13 +214,13 @@ class KCA11(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
-        self.channel_params = {
+        prefix = self.name
+        self.params = {
             f"{prefix}_q10_ch": 3,
             f"{prefix}_q10_ch0": 22,
             "celsius": 22,
         }
-        self.channel_states = {f"{prefix}_m": 0.02, "CaCon_i": 1e-4}
+        self.states = {f"{prefix}_m": 0.02, "CaCon_i": 1e-4}
         self.current_name = f"i_K"
 
     def update_states(
@@ -229,7 +231,7 @@ class KCA11(Channel):
         params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
-        prefix = self._name
+        prefix = self.name
         m = states[f"{prefix}_m"]
         q10 = params[f"{prefix}_q10_ch"] ** (
             (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
@@ -242,14 +244,14 @@ class KCA11(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        prefix = self._name
+        prefix = self.name
         m = states[f"{prefix}_m"]
         g = 0.03 * m * 1000  # mS/cm^2
         return g * (v + 80.0)
 
-    def init_state(self, states, v, params, dt):
+    def init_states(self, states, v, params, dt):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         q10 = params[f"{prefix}_q10_ch"] ** (
             (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
         )
@@ -304,8 +306,8 @@ def test_multiple_channel_currents(SimpleCell):
         def __init__(self, name: Optional[str] = None):
             self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
-            self.channel_params = {}
-            self.channel_states = {"cumulative": 0.0}
+            self.params = {}
+            self.states = {"cumulative": 0.0}
             self.current_name = f"i_User"
 
         def update_states(self, states, dt, v, params):
@@ -320,8 +322,8 @@ def test_multiple_channel_currents(SimpleCell):
         def __init__(self, name: Optional[str] = None):
             self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
-            self.channel_params = {}
-            self.channel_states = {}
+            self.params = {}
+            self.states = {}
             self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
@@ -334,8 +336,8 @@ def test_multiple_channel_currents(SimpleCell):
         def __init__(self, name: Optional[str] = None):
             self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
-            self.channel_params = {}
-            self.channel_states = {}
+            self.params = {}
+            self.states = {}
             self.current_name = f"i_Dummy"
 
         def update_states(self, states, dt, v, params):
@@ -378,25 +380,21 @@ def test_delete_channel(SimpleBranch):
     branch3.delete(K())
 
     def channel_present(view, channel, partial=False):
-        states_and_params = list(channel.channel_states.keys()) + list(
-            channel.channel_params.keys()
-        )
+        states_and_params = list(channel.states.keys()) + list(channel.params.keys())
         # none of the states or params should be in nodes
         cols = view.nodes.columns.to_list()
         channel_cols = [
-            col
-            for col in cols
-            if col.startswith(channel._name) and col != channel._name
+            col for col in cols if col.startswith(channel.name) and col != channel.name
         ]
         diff = set(channel_cols).difference(set(states_and_params))
         has_params_or_states = len(diff) > 0
-        has_channel_col = channel._name in view.nodes.columns
-        has_channel = channel._name in [c._name for c in view.channels]
+        has_channel_col = channel.name in view.nodes.columns
+        has_channel = channel.name in [c.name for c in view.channels]
         has_mem_current = channel.current_name in view.membrane_current_names
         if partial:
             all_nans = (
                 not view.nodes[channel_cols].isna().all().all()
-                & ~view.nodes[channel._name].all()
+                & ~view.nodes[channel.name].all()
             )
             return has_channel or has_mem_current or all_nans
         return has_params_or_states or has_channel_col or has_channel or has_mem_current

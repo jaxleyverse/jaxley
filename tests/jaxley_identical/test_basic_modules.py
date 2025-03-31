@@ -15,12 +15,12 @@ from math import pi
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import CaHVA
+from jaxley_mech.mechanisms.channels.l5pc import CaHVA
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect, fully_connect
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 

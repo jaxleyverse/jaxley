@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 
 
 @pytest.mark.parametrize(

@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 
-from jaxley.pumps.pump import Pump
+from jaxley.mechanisms.pumps.pump import Pump
 
 
 def convert_current_to_molarity_change(
@@ -98,8 +98,8 @@ class CaFaradayConcentrationChange(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {}
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
+        self.params = {}
+        self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
         self.current_name = "i_CaCurrent"
         self.META = {"mechanism": "Calcium change"}
@@ -107,7 +107,7 @@ class CaFaradayConcentrationChange(Pump):
     def update_states(
         self,
         states: Dict[str, jnp.ndarray],
-        dt,
+        delta_t,
         v,
         params: Dict[str, jnp.ndarray],
     ):
@@ -124,7 +124,7 @@ class CaFaradayConcentrationChange(Pump):
         # 2.0 is valence of calcium.
         return convert_current_to_molarity_change(states["i_Ca"], 2.0, params["radius"])
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,

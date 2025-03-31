@@ -9,7 +9,7 @@ jax.config.update("jax_platform_name", "cpu")
 import jax.numpy as jnp
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 
 
 def test_compose_branch():

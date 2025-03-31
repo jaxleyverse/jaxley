@@ -12,7 +12,7 @@ import optax
 from jax import jit, value_and_grad
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 from jaxley.optimize import TypeOptimizer
 from jaxley.optimize.utils import l2_norm
 

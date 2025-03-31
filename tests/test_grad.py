@@ -11,7 +11,7 @@ import pytest
 from jax import value_and_grad
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])

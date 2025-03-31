@@ -14,12 +14,12 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".4"
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxley_mech.channels.l5pc import CaHVA
+from jaxley_mech.mechanisms.channels.l5pc import CaHVA
 from neuron import h, rxd
 
 import jaxley as jx
-from jaxley.channels import HH
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
+from jaxley.mechanisms.channels import HH
+from jaxley.mechanisms.pumps import CaFaradayConcentrationChange, CaNernstReversal
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")

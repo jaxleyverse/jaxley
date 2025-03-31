@@ -13,7 +13,7 @@ import pytest
 from jax import jit, value_and_grad
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 
 
 def _run_long_branch(dt, t_max, current, branch):

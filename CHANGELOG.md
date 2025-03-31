@@ -3,6 +3,7 @@
 - enable intersections of groups, e.g. `net.exc.soma` (#608, @michaeldeistler)
 - allow ion diffusion to be jitted (#609, @michaeldeistler)
 
+- refactor of `Channels`, `Pumps`, and `Synapses`
 
 # 0.8.1
 

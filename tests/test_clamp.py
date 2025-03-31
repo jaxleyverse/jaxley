@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
+from jaxley.mechanisms.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
 
 
 def test_clamp_pointneuron(SimpleComp):

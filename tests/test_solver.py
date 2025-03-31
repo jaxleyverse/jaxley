@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import connect
-from jaxley.solver_gate import exponential_euler
+from jaxley.mechanisms.channels import HH
 from jaxley.synapses import IonotropicSynapse
+from jaxley.mechanisms.solvers import exponential_euler
 
 
 @pytest.mark.parametrize("x_inf", [3.0, 30.0])

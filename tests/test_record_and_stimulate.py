@@ -11,8 +11,8 @@ import jax.numpy as jnp
 import numpy as np
 
 import jaxley as jx
-from jaxley.channels import HH
 from jaxley.connect import fully_connect
+from jaxley.mechanisms.channels import HH
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 

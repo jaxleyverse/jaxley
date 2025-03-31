@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-from jaxley.solver_gate import save_exp
+from jaxley.mechanisms.solvers import save_exp
 
 
 class Transform(ABC):

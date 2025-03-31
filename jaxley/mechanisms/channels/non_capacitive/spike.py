@@ -7,7 +7,7 @@ from warnings import warn
 import jax
 import jax.numpy as jnp
 
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 
 
 class Fire(Channel):
@@ -23,17 +23,17 @@ class Fire(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {f"{self.name}_vth": -50, f"{self.name}_vreset": -70}
-        self.channel_states = {f"{self.name}_spikes": False}
+        self.params = {f"{self.name}_vth": -50, f"{self.name}_vreset": -70}
+        self.states = {f"{self.name}_spikes": False}
         self.current_name = f"{self.name}_fire"
         warn(
             "The `Fire` channel does not support surrogate gradients. Its gradient "
             "will be zero after every spike."
         )
 
-    def update_states(self, states, dt, v, params):
+    def update_states(self, states, delta_t, v, params):
         """Reset the voltage when a spike occurs and log the spike"""
-        prefix = self._name
+        prefix = self.name
         vreset = params[f"{prefix}_vreset"]
         vth = params[f"{prefix}_vth"]
 
@@ -44,5 +44,5 @@ class Fire(Channel):
     def compute_current(self, states, v, params):
         return jnp.zeros((1,))
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         return {}

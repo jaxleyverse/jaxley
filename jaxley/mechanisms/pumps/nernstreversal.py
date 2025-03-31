@@ -5,7 +5,7 @@ from typing import Optional
 
 import jax.numpy as jnp
 
-from jaxley.pumps import Pump
+from jaxley.mechanisms.pumps import Pump
 
 
 class CaNernstReversal(Pump):
@@ -22,8 +22,8 @@ class CaNernstReversal(Pump):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.params = {}
+        self.states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         # Note that the `self.ion_name` does not matter here, because `compute_current`
         # returns 0.0 (and `self.ion_name` only sets which ion concentration the
         # current should be added to).
@@ -31,7 +31,7 @@ class CaNernstReversal(Pump):
         self.current_name = f"i_Ca"
         self.META = {"ion": "Ca"}
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(self, u, delta_t, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
         R, T, F = (
             self.channel_constants["R"],
@@ -48,6 +48,6 @@ class CaNernstReversal(Pump):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_states(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}

@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 
-from jaxley.pumps.pump import Pump
+from jaxley.mechanisms.pumps.pump import Pump
 
 
 class CaPump(Pump):
@@ -16,13 +16,13 @@ class CaPump(Pump):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minCaCon_i": 1e-4,  # Minimum intracell. concentration in mM.
+        self.params = {
+            f"{self.name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
+            f"{self.name}_decay": 80,  # Buffering time constant in ms.
+            f"{self.name}_depth": 0.1,  # Depth of shell in um.
+            f"{self.name}_minCaCon_i": 1e-4,  # Minimum intracell. concentration in mM.
         }
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
+        self.states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
         self.ion_name = "CaCon_i"
         self.current_name = "i_CaPump"
         self.META = {
@@ -33,7 +33,7 @@ class CaPump(Pump):
     def update_states(
         self,
         states: Dict[str, jnp.ndarray],
-        dt,
+        delta_t,
         v,
         params: Dict[str, jnp.ndarray],
     ):
@@ -47,7 +47,7 @@ class CaPump(Pump):
         params: Dict[str, jnp.ndarray],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
+        prefix = self.name
         ica = states["i_Ca"]
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
@@ -62,7 +62,7 @@ class CaPump(Pump):
         # main difference (apart from the multiplication with gamma) is that
         # `CaCurrentToConcentrationChange` multiplies by `surface_area / volume`,
         # whereas this channel multiplies by `1/depth`. However, If one assumes calcium
-        # to be stored in a ring of width `depth` just inside the membrane, then A/V is:
+        # to be stored in a ring of widelta_th `depth` just inside the membrane, then A/V is:
         # `2r / (r^2 - (r-depth)^2)`. For any r >> depth, this equation is approximately
         # `1/depth`. It holds quite well as long as `r > 5*depth`.
         drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
@@ -74,7 +74,7 @@ class CaPump(Pump):
         diff = drive_channel - state_decay
         return -diff
 
-    def init_state(
+    def init_states(
         self,
         states: Dict[str, jnp.ndarray],
         v: jnp.ndarray,
