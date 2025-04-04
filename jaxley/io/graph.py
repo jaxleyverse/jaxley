@@ -426,9 +426,6 @@ def _trace_branches(
                 undir_swc_graph.edges[i, j]["l"] = 0
 
     branches, current_branch, all_type_ids = [], [], []
-    # TODO: if a new type_id starts at the very end of a traced branch, we currently
-    # miss it because the `all_type_ids` are not inferred correctly in that case.
-    # This could be problematic for single-point somata traced not at the beginning.
 
     root = root if root else _find_root(undir_swc_graph)
     undir_swc_graph.nodes[root]["type"] = "spurious"
@@ -619,7 +616,7 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
 ########################################################################################
 
 
-def build_solve_graph(
+def _build_solve_graph(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
     traverse_for_solve_order: bool = True,
@@ -694,7 +691,8 @@ def build_solve_graph(
         # Branchpoint nodes do not have the xyzr property.
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
-    return _remove_branch_points(solve_graph)
+    solve_graph = _remove_branch_points(solve_graph)
+    return _add_meta_data(solve_graph)
 
 
 def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
@@ -726,12 +724,7 @@ def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
     return solve_graph
 
 
-########################################################################################
-################################ BUILD JAXLEY GRAPH ####################################
-########################################################################################
-
-
-def build_jaxley_graph(solve_graph: nx.DiGraph) -> nx.DiGraph:
+def _add_meta_data(solve_graph: nx.DiGraph) -> nx.DiGraph:
     """Return a graph with some attributes renamed for Jaxley compatibility.
 
     The returned graph is what we call the `Jaxley` graph as it is the exact graph
@@ -807,23 +800,25 @@ def from_graph(
     Return:
         A `jx.Module` representing the graph.
     """
-    solve_graph = build_solve_graph(
+    solve_graph = _build_solve_graph(
         comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
     )
-    jaxley_graph = build_jaxley_graph(solve_graph)
+    return _build_module(solve_graph, assign_groups=assign_groups)
 
+
+def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     # nodes and edges
     node_df = pd.DataFrame(
-        [d for i, d in jaxley_graph.nodes(data=True)], index=jaxley_graph.nodes
+        [d for i, d in solve_graph.nodes(data=True)], index=solve_graph.nodes
     ).sort_index()
     node_df = node_df.drop(columns=["xyzr", "type"])
-    edge_type = nx.get_edge_attributes(jaxley_graph, "type")
+    edge_type = nx.get_edge_attributes(solve_graph, "type")
     synapse_edges = pd.DataFrame(
         [
             {
                 "pre_global_comp_index": i,
                 "post_global_comp_index": j,
-                **jaxley_graph.edges[i, j],
+                **solve_graph.edges[i, j],
             }
             for (i, j), t in edge_type.items()
             if t == "synapse"
@@ -831,7 +826,7 @@ def from_graph(
     )
 
     # branches
-    branch_of_node = lambda i: jaxley_graph.nodes[i]["branch_index"]
+    branch_of_node = lambda i: solve_graph.nodes[i]["branch_index"]
     branch_edges_df = pd.DataFrame(
         [
             (branch_of_node(i), branch_of_node(j))
@@ -867,10 +862,10 @@ def from_graph(
         acc_parents.append([-1] + parents.tolist())
 
     # TODO: support inhom ncomps
-    module = _build_module_scaffold(node_df, jaxley_graph.graph["type"], acc_parents)
+    module = _build_module_scaffold(node_df, solve_graph.graph["type"], acc_parents)
 
     # set global attributes of module
-    for k, v in jaxley_graph.graph.items():
+    for k, v in solve_graph.graph.items():
         if k not in ["type"]:
             setattr(module, k, v)
 
@@ -898,7 +893,6 @@ def from_graph(
     # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
-
     return module
 
 
