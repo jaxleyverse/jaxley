@@ -71,6 +71,7 @@ def test_graph_import_export_cycle(
     # test consistency of exported and re-imported modules
     for module in [comp, branch, cell, net, morph_cell]:
         module.compute_xyz()  # ensure x,y,z in nodes b4 exporting for later comparison
+        module.compute_compartment_centers()
 
         # ensure to_graph works
         module_graph = to_graph(module, channels=True, synapses=True)

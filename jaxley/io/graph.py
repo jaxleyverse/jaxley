@@ -692,7 +692,7 @@ def _build_solve_graph(
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
     solve_graph = _remove_branch_points(solve_graph)
-    return _add_meta_data(solve_graph)
+    return solve_graph
 
 
 def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
@@ -803,6 +803,7 @@ def from_graph(
     solve_graph = _build_solve_graph(
         comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
     )
+    solve_graph = _add_meta_data(solve_graph)
     return _build_module(solve_graph, assign_groups=assign_groups)
 
 
@@ -884,10 +885,8 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
         "global_" + col if "local" not in col and "index" in col else col
         for col in node_df.columns
     ]
-    module.nodes[node_df.columns] = (
-        node_df  # set column-wise. preserves cols not in df.
-    )
-
+    # set column-wise. preserves cols not in df.
+    module.nodes[node_df.columns] = node_df
     module.edges = synapse_edges if not synapse_edges.empty else module.edges
 
     # add all the extra attrs
@@ -985,7 +984,6 @@ def to_graph(
         A networkx graph of the module.
     """
     module_graph = nx.DiGraph()
-    module.compute_compartment_centers()  # make xyz coords attr of nodes
 
     # add global attrs
     module_graph.graph["type"] = module.__class__.__name__.lower()
@@ -1049,7 +1047,6 @@ def to_graph(
     module_comp_graph = _jaxley_graph_to_comp_graph(module_graph)
 
     if synapses:
-        print("yes!")
         syn_edges = module.edges.copy()
         multiple_syn_per_edge = syn_edges[
             ["pre_global_comp_index", "post_global_comp_index"]
@@ -1072,7 +1069,6 @@ def to_graph(
         syn_edges["type"] = "synapse"
         syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
 
-        # print("syn_edges", syn_edges)
         if not syn_edges.empty:
             for (i, j), edge_data in syn_edges.iterrows():
                 module_comp_graph.add_edge(i, j, **edge_data.to_dict())

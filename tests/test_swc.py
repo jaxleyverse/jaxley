@@ -20,9 +20,11 @@ _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
 
 
-# Test is failing for "morph.swc". This is because NEURON and Jaxley handle interrupted
+# Test is failing for "morph_ca1_n120.swc". This is because NEURON and Jaxley handle interrupted
 # soma differently, see issue #140.
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph_minimal.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_single_point_soma.swc", "morph_minimal.swc"]
+)
 def test_swc_reader_lengths(file, swc2jaxley):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
@@ -62,7 +64,9 @@ def test_dummy_compartment_length(swc2jaxley):
     assert pathlengths == [0.1, 1.0, 2.6, 2.2]
 
 
-@pytest.mark.parametrize("file", ["morph_250_single_point_soma.swc", "morph_250.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_250_single_point_soma.swc", "morph_ca1_n120_250.swc"]
+)
 def test_swc_radius(file, swc2jaxley):
     """We expect them to match for sufficiently large ncomp. See #140."""
     ncomp = 64
@@ -100,7 +104,9 @@ def test_swc_radius(file, swc2jaxley):
         assert max_error < 0.5, f"radiuses do not match, error {max_error}."
 
 
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
+)
 def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
     """Check if voltages of SWC recording match.
 
@@ -255,8 +261,8 @@ def test_swc_voltages(file, SimpleMorphCell, swc2jaxley):
     [
         "morph_3_types.swc",
         "morph_3_types_single_point_soma.swc",
-        "morph.swc",
-        "bbp_with_axon.swc",
+        "morph_ca1_n120.swc",
+        "morph_l5pc_with_axon.swc",
     ],
 )
 def test_swc_types(reader_backend, file):
@@ -264,7 +270,7 @@ def test_swc_types(reader_backend, file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
     backend_kwargs = (
-        {"ignore_swc_trace_errors": False} if reader_backend == "graph" else {}
+        {"ignore_swc_tracing_interruptions": False} if reader_backend == "graph" else {}
     )
     cell = jx.read_swc(fname, ncomp=1, backend=reader_backend, **backend_kwargs)
 
@@ -278,8 +284,13 @@ def test_swc_types(reader_backend, file):
                 "axon": 1,
                 "basal": 1,
             },
-            "morph.swc": {"soma": 2, "basal": 101, "apical": 53},
-            "bbp_with_axon.swc": {"soma": 1, "axon": 128, "basal": 66, "apical": 129},
+            "morph_ca1_n120.swc": {"soma": 2, "basal": 101, "apical": 53},
+            "morph_l5pc_with_axon.swc": {
+                "soma": 1,
+                "axon": 128,
+                "basal": 66,
+                "apical": 129,
+            },
         }
         # Test soma.
         for key, n_desired in desired_numbers_of_comps[file].items():
