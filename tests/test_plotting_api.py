@@ -21,7 +21,7 @@ from jaxley.synapses import IonotropicSynapse
 
 def test_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
     cell = SimpleMorphCell(fname, ncomp=1)
     cell.branch(0).set_ncomp(2)  # test inhomogeneous ncomp
 
@@ -39,7 +39,7 @@ def test_cell(SimpleMorphCell):
 
 def test_network(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
     cell1 = SimpleMorphCell(fname, ncomp=1)
     cell2 = SimpleMorphCell(fname, ncomp=1)
     cell3 = SimpleMorphCell(fname, ncomp=1)
@@ -125,7 +125,7 @@ def test_vis_networks_built_from_scratch(SimpleComp, SimpleBranch, SimpleCell):
 
 def test_mixed_network(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
     cell1 = SimpleMorphCell(fname, ncomp=1)
 
     comp = jx.Compartment()
@@ -172,7 +172,7 @@ def test_volume_plotting(
     for module in [comp, branch, cell, net]:
         module.compute_xyz()
 
-    fname = os.path.join(os.path.dirname(__file__), "swc_files", "morph.swc")
+    fname = os.path.join(os.path.dirname(__file__), "swc_files", "morph_ca1_n120.swc")
     morph_cell = SimpleMorphCell(fname, ncomp=1)
 
     fig, ax = plt.subplots()

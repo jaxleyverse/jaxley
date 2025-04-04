@@ -146,7 +146,12 @@ def import_neuron_morph(fname, ncomp=8):
     return h, cell
 
 
-def equal_both_nan_or_empty_df(a, b):
+def equal_both_nan_or_empty_df(a: pd.DataFrame, b: pd.DataFrame) -> bool:
+    """Return whether all elements of two dataframes are identical."""
+    if "xyzr" in a.columns:
+        a = a.drop(columns="xyzr")
+    if "xyzr" in b.columns:
+        b = b.drop(columns="xyzr")
     if a.empty and b.empty:
         return True
     a[a.isna()] = -1

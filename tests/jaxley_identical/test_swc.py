@@ -24,7 +24,9 @@ from jaxley.synapses import IonotropicSynapse
 
 @pytest.mark.slow
 @pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
+)
 def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
     dt = 0.025  # ms
     current = jx.step_current(
@@ -41,7 +43,7 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 
     voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
 
-    if file == "morph_single_point_soma.swc":
+    if file == "morph_ca1_n120_single_point_soma.swc":
         voltages_300724 = jnp.asarray(
             [
                 [
@@ -59,7 +61,7 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
                 ]
             ]
         )
-    elif file == "morph.swc":
+    elif file == "morph_ca1_n120.swc":
         voltages_300724 = jnp.asarray(
             [
                 [
@@ -93,7 +95,7 @@ def test_swc_net(voltage_solver: str, SimpleMorphCell):
     )
 
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "../swc_files/morph.swc")
+    fname = os.path.join(dirname, "../swc_files/morph_ca1_n120.swc")
     cell1 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
     cell2 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
 

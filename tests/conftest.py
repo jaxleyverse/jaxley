@@ -172,7 +172,7 @@ def SimpleMorphCell():
         Returns:
             jx.Cell()."""
         dirname = os.path.dirname(__file__)
-        default_fname = os.path.join(dirname, "swc_files", "morph.swc")
+        default_fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
         fname = default_fname if fname is None else fname
         if key := (fname, ncomp, max_branch_len) not in cells or force_init:
             cells[key] = jx.read_swc(
@@ -201,7 +201,7 @@ def swc2jaxley():
         force_init: bool = False,
     ):
         dirname = os.path.dirname(__file__)
-        default_fname = os.path.join(dirname, "swc_files", "morph.swc")
+        default_fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
         fname = default_fname if fname is None else fname
         if key := (fname, max_branch_len, sort) not in params or force_init:
             params[key] = jx.io.swc.swc_to_jaxley(fname, max_branch_len, sort)

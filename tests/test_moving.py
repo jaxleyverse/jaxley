@@ -141,7 +141,7 @@ def test_move_to_cellview(SimpleNet):
 
 def test_move_to_swc_cell(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
     cell1 = SimpleMorphCell(fname, ncomp=1)
     cell2 = SimpleMorphCell(fname, ncomp=1)
     cell3 = SimpleMorphCell(fname, ncomp=1)
