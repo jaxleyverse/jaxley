@@ -71,6 +71,7 @@ def test_graph_import_export_cycle(
     # test consistency of exported and re-imported modules
     for module in [comp, branch, cell, net, morph_cell]:
         module.compute_xyz()  # ensure x,y,z in nodes b4 exporting for later comparison
+        module.compute_compartment_centers()
 
         # ensure to_graph works
         module_graph = to_graph(module, channels=True, synapses=True)
@@ -149,7 +150,8 @@ def test_graph_import_export_cycle(
 
 
 @pytest.mark.parametrize(
-    "file", [
+    "file",
+    [
         "morph_3_types_single_point_soma.swc",
         "morph_3_types.swc",
         "morph_interrupted_soma.swc",
@@ -161,7 +163,7 @@ def test_graph_import_export_cycle(
         "morph_allen_485574832.swc",
         "morph_flywire_t4_720575940626407426.swc",
         "morph_retina_20161028_1.swc",
-    ]
+    ],
 )
 def test_trace_branches(file):
     """Test whether all branch lengths match NEURON."""
@@ -190,7 +192,12 @@ def test_trace_branches(file):
 
 
 @pytest.mark.parametrize(
-    "file", ["morph_single_point_soma.swc", "morph.swc", "bbp_with_axon.swc"]
+    "file",
+    [
+        "morph_ca1_n120_single_point_soma.swc",
+        "morph_ca1_n120.swc",
+        "morph_l5pc_with_axon.swc",
+    ],
 )
 def test_from_graph_vs_NEURON(file):
     """Check whether comp xyzr match neuron."""
@@ -277,7 +284,9 @@ def test_edges_only_to_jaxley():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
+)
 def test_swc2graph_voltages(file):
     """Check if voltages of SWC recording match.
 

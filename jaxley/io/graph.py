@@ -102,7 +102,8 @@ def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
 
     Returns:
         A networkx graph of the traced morphology in the swc file. It has attributes:
-        {'id': 2, 'x': 5.0, 'y': 0.0, 'z': 0.0, 'r': 1.0}.
+        nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0, 'p': -1}
+        edges: {'l': 1.0}
     """
     i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
 
@@ -114,7 +115,6 @@ def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
         )
     )
     graph.add_edges_from([(p, i) for p, i in i_id_xyzr_p[:, [-1, 0]] if p != -1])
-    graph = nx.relabel_nodes(graph, {i: i - 1 for i in graph.nodes})
     return _add_missing_graph_attrs(graph)
 
 
@@ -133,7 +133,7 @@ def _add_missing_graph_attrs(graph: nx.Graph) -> nx.Graph:
 
     Returns:
         The graph with the added attributes."""
-    available_keys = graph.nodes[0].keys()
+    available_keys = graph.nodes[1].keys()
     defaults = {
         "id": 0,
         "x": float("nan"),
@@ -210,19 +210,32 @@ def build_compartment_graph(
 
     Returns:
         Directed graph made up of compartments.
+
         Compartment nodes have attributes (example):
-        ```{'id': 1,
-        'x': 2.75,
+        {'x': 2.0,
         'y': 0.0,
         'z': 0.0,
-        'r': 1.0,
-        'comp_length': 1.25,
         'branch_index': 2,
-        'comp_index': 4,
+        'comp_index': 2,
         'type': 'comp',
-        'xyzr': array([[1., 0., 0., 1.], [2., 0., 0., 1.], [3., 0., 0., 1.]])}```
+        'xyzr': array([[0., 0., 0., 1.], [1., 0., 0., 1.]]), 
+        'groups': ['soma'],
+        'radius': 1.0,
+        'length': 4.0,
+        'cell_index': 0}
+
         Between-compartment nodes have attributes:
-        ```{'id': 2, 'x': 0.0, 'y': 1.0, 'z': 0.0, 'r': 1.0, 'type': 'branchpoint'}```
+        {'x': 0.0,
+        'y': 0.0,
+        'z': 0.0,
+        'p': -1,
+        'type': 'branchpoint',
+        'groups': ['soma'],
+        'radius': 1.0,
+        'length': 0.0, 
+        'cell_index': 0}
+
+        Edges have attributes: {}
     """
     swc_graph, branch_edge_indices, all_type_ids = _trace_branches(
         swc_graph,
@@ -394,12 +407,12 @@ def _trace_branches(
         # l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         # Here, we add another compartment such that there exists an `edge` between
         # that new compartment and the single-point-soma of appropriate length.
-        swc_graph.nodes[0]["p"] = 0
+        swc_graph.nodes[1]["p"] = 0
         for n in swc_graph.nodes:
             swc_graph.nodes[n]["p"] += 1
-        swc_graph.add_node(-1, **swc_graph.nodes[0])
-        swc_graph.nodes[-1]["p"] = -1
-        swc_graph.add_edge(-1, soma, l=2 * swc_graph.nodes[soma]["r"])
+        swc_graph.add_node(0, **swc_graph.nodes[1])
+        swc_graph.nodes[0]["p"] = -1
+        swc_graph.add_edge(0, soma, l=2 * swc_graph.nodes[soma]["r"])
         swc_graph = nx.relabel_nodes(swc_graph, {i: i + 1 for i in swc_graph.nodes})
 
     undir_swc_graph = swc_graph.to_undirected()
@@ -426,10 +439,10 @@ def _trace_branches(
                 undir_swc_graph.edges[i, j]["l"] = 0
 
     branches, current_branch, all_type_ids = [], [], []
-    # TODO: if a new type_id starts at the very end of a traced branch, we currently
-    # miss it because the `all_type_ids` are not inferred correctly in that case.
-    # This could be problematic for single-point somata traced not at the beginning.
 
+    # Traverse the SWC graph and identify which nodes belong to one branch. This builds
+    # a list `branches: List` where each elements is a `np.array` of shape (N, 3).
+    # The `3` are `swc_parent, swc_node, length` of all SWC edges within a branch.
     root = root if root else _find_root(undir_swc_graph)
     undir_swc_graph.nodes[root]["type"] = "spurious"
     for i, j in nx.dfs_edges(undir_swc_graph, root):
@@ -463,6 +476,8 @@ def _trace_branches(
 
         # Start new branch if ids differ.
         elif not _has_same_id(undir_swc_graph, i, j, relevant_type_ids):
+            # Consider the SWC graph:
+            # 1  1  1  2  2  2 (number indicates type_id)
             if not swc_graph.has_edge(i, j) and swc_graph.has_edge(j, i):
                 branches.append(current_branch)
                 all_type_ids.append(current_type_id)
@@ -551,7 +566,9 @@ def _split_branches_if_swc_nodes_were_traced_with_interruption(
     node_idxs = _find_swc_tracing_interruptions(graph)
     for node_idx in node_idxs:
         # Get index of the first branch in which `node_idx` appears.
-        branch_idx = next(i for i, p in enumerate(branches) if node_idx in p)
+        # [:, :2] to get rid of the length. `p` is of shape `(num_nodes_in_branch, 3)`,
+        # where the 3 are `parent, node, length`.
+        branch_idx = next(i for i, p in enumerate(branches) if node_idx in p[:, :2])
         b4, branch, after = (
             branches[:branch_idx],
             branches[branch_idx],
@@ -562,7 +579,9 @@ def _split_branches_if_swc_nodes_were_traced_with_interruption(
             type_inds[branch_idx],
             type_inds[branch_idx + 1 :],
         )
-        break_idx = np.where(branch == node_idx)[0][1]
+        # [:, :2] to get rid of the length. `p` is of shape `(num_nodes_in_branch, 3)`,
+        # where the 3 are `parent, node, length`.
+        break_idx = np.where(branch[:, :2] == node_idx)[0][1]
         # insert artifical break into branch
         branches = b4 + [branch[:break_idx], branch[break_idx:]] + after
         type_inds = type_b4 + [type_val, type_val] + type_after
@@ -602,14 +621,12 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
     interrupted_nodes = []
     for n in graph.nodes:
         parent = graph.nodes[n]["p"]
-        # Parent should be previous node. Additional +1 because nodes count from 0,
-        # whereas SWC counts from 1.
-        if parent > -1 and parent != n - 1 + 1:
-            # parent - 1 because, again, nodes count from 0 whereas SWC counts from 1.
+        # Parent should be previous node.
+        if parent > -1 and parent != n - 1:
             node_is_no_branchpoint = graph.nodes[n]["type"] != "branchpoint"
-            parent_is_no_branchpoint = graph.nodes[parent - 1]["type"] != "branchpoint"
+            parent_is_no_branchpoint = graph.nodes[parent]["type"] != "branchpoint"
             if node_is_no_branchpoint and parent_is_no_branchpoint:
-                interrupted_nodes.append(parent - 1)
+                interrupted_nodes.append(parent)
 
     return interrupted_nodes
 
@@ -619,7 +636,7 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
 ########################################################################################
 
 
-def build_solve_graph(
+def _build_solve_graph(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
     traverse_for_solve_order: bool = True,
@@ -633,16 +650,16 @@ def build_solve_graph(
     Returns:
         A directed graph indicating the solve order. The graph does no longer contain
         branchpoints. Nodes contain the following attributes (example):
-        ```{'id': 2,
-        'x': 1.16,
-        'y': 5.16,
-        'z': 1.0,
-        'r': 1.0,
-        'comp_length': 1.18,
-        'type': 'comp',
-        'xyzr': array([[2., 6., 1., 1.], [1., 5., 1., 1.]]),
-        'comp_index': 0,
+        ```{'x': 0.0,
+        'y': 3.0,
+        'z': 0.0,
         'branch_index': 0,
+        'comp_index': 0,
+        'type': 'comp',
+        'xyzr': array([[0., 4., 0., 1.], [0., 3., 0., 1.]]),
+        'groups': ['axon'],
+        'radius': 1.0,
+        'length': 2.0,
         'cell_index': 0}```
     """
     undirected_comp_graph = comp_graph.to_undirected()
@@ -669,6 +686,7 @@ def build_solve_graph(
     branch_index = 0
     node_inds_in_which_to_flip_xyzr = []
 
+    # Traverse the graph for the solve order.
     for i, j in nx.dfs_edges(undirected_comp_graph, root):
         solve_graph.add_edge(i, j)
         solve_graph.nodes[j]["branch_index"] = branch_index
@@ -677,14 +695,19 @@ def build_solve_graph(
         if _is_leaf(undirected_comp_graph, j):
             branch_index += 1
 
-        if (
-            undirected_comp_graph.nodes[j]["type"] == "branchpoint"
-        ):  # start new branch if ids differ
+        # Increase the branch counter in a branchpoint is encountered.
+        elif undirected_comp_graph.nodes[j]["type"] == "branchpoint":
             branch_index += 1
 
+        # Increase the counter for the compartment index only if the node was a
+        # compartment (branchpoints are skipped).
         if solve_graph.nodes[j]["type"] == "comp":
             comp_index += 1
 
+        # The `xyzr` attribute of all compartment nodes is ordered in the order in
+        # which the SWC file was traversed. If we now traverse a compartment from
+        # another direction (because the solve order is not the same as the SWC trace
+        # order), then we have to flip the `xyzr` coordinates.
         if not comp_graph.has_edge(i, j) and comp_graph.has_edge(j, i):
             node_inds_in_which_to_flip_xyzr.append(i)
             node_inds_in_which_to_flip_xyzr.append(j)
@@ -694,7 +717,8 @@ def build_solve_graph(
         # Branchpoint nodes do not have the xyzr property.
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
-    return _remove_branch_points(solve_graph)
+    solve_graph = _remove_branch_points(solve_graph)
+    return solve_graph
 
 
 def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
@@ -726,12 +750,7 @@ def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
     return solve_graph
 
 
-########################################################################################
-################################ BUILD JAXLEY GRAPH ####################################
-########################################################################################
-
-
-def build_jaxley_graph(solve_graph: nx.DiGraph) -> nx.DiGraph:
+def _add_meta_data(solve_graph: nx.DiGraph) -> nx.DiGraph:
     """Return a graph with some attributes renamed for Jaxley compatibility.
 
     The returned graph is what we call the `Jaxley` graph as it is the exact graph
@@ -807,23 +826,26 @@ def from_graph(
     Return:
         A `jx.Module` representing the graph.
     """
-    solve_graph = build_solve_graph(
+    solve_graph = _build_solve_graph(
         comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
     )
-    jaxley_graph = build_jaxley_graph(solve_graph)
+    solve_graph = _add_meta_data(solve_graph)
+    return _build_module(solve_graph, assign_groups=assign_groups)
 
+
+def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     # nodes and edges
     node_df = pd.DataFrame(
-        [d for i, d in jaxley_graph.nodes(data=True)], index=jaxley_graph.nodes
+        [d for i, d in solve_graph.nodes(data=True)], index=solve_graph.nodes
     ).sort_index()
     node_df = node_df.drop(columns=["xyzr", "type"])
-    edge_type = nx.get_edge_attributes(jaxley_graph, "type")
+    edge_type = nx.get_edge_attributes(solve_graph, "type")
     synapse_edges = pd.DataFrame(
         [
             {
                 "pre_global_comp_index": i,
                 "post_global_comp_index": j,
-                **jaxley_graph.edges[i, j],
+                **solve_graph.edges[i, j],
             }
             for (i, j), t in edge_type.items()
             if t == "synapse"
@@ -831,7 +853,7 @@ def from_graph(
     )
 
     # branches
-    branch_of_node = lambda i: jaxley_graph.nodes[i]["branch_index"]
+    branch_of_node = lambda i: solve_graph.nodes[i]["branch_index"]
     branch_edges_df = pd.DataFrame(
         [
             (branch_of_node(i), branch_of_node(j))
@@ -867,10 +889,10 @@ def from_graph(
         acc_parents.append([-1] + parents.tolist())
 
     # TODO: support inhom ncomps
-    module = _build_module_scaffold(node_df, jaxley_graph.graph["type"], acc_parents)
+    module = _build_module_scaffold(node_df, solve_graph.graph["type"], acc_parents)
 
     # set global attributes of module
-    for k, v in jaxley_graph.graph.items():
+    for k, v in solve_graph.graph.items():
         if k not in ["type"]:
             setattr(module, k, v)
 
@@ -889,16 +911,13 @@ def from_graph(
         "global_" + col if "local" not in col and "index" in col else col
         for col in node_df.columns
     ]
-    module.nodes[node_df.columns] = (
-        node_df  # set column-wise. preserves cols not in df.
-    )
-
+    # set column-wise. preserves cols not in df.
+    module.nodes[node_df.columns] = node_df
     module.edges = synapse_edges if not synapse_edges.empty else module.edges
 
     # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
-
     return module
 
 
@@ -954,6 +973,7 @@ def _build_module_scaffold(
 
 
 def _infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
+    """Return type (comp, branch, cell, ...) given dataframe of indices."""
     nuniques = idxs[["cell_index", "branch_index", "comp_index"]].nunique()
     nuniques.index = ["cell", "branch", "compartment"]
     nuniques = pd.concat([pd.Series({"network": 1}), nuniques])
@@ -991,7 +1011,6 @@ def to_graph(
         A networkx graph of the module.
     """
     module_graph = nx.DiGraph()
-    module.compute_compartment_centers()  # make xyz coords attr of nodes
 
     # add global attrs
     module_graph.graph["type"] = module.__class__.__name__.lower()
@@ -1055,7 +1074,6 @@ def to_graph(
     module_comp_graph = _jaxley_graph_to_comp_graph(module_graph)
 
     if synapses:
-        print("yes!")
         syn_edges = module.edges.copy()
         multiple_syn_per_edge = syn_edges[
             ["pre_global_comp_index", "post_global_comp_index"]
@@ -1078,7 +1096,6 @@ def to_graph(
         syn_edges["type"] = "synapse"
         syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
 
-        # print("syn_edges", syn_edges)
         if not syn_edges.empty:
             for (i, j), edge_data in syn_edges.iterrows():
                 module_comp_graph.add_edge(i, j, **edge_data.to_dict())
@@ -1121,9 +1138,9 @@ def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
                 jaxley_graph.add_node(node_name)
                 for key in ["x", "y", "z"]:
                     # 0.5 * (...): the spurious node is inserted halfway between its
-                    # connecting compartments. The location only matters for plotting the
-                    # graph. If a comp has multiple successors (i.e., branchpoint), then
-                    # we simply use the first successor for simplicity.
+                    # connecting compartments. The location only matters for plotting
+                    # the graph. If a comp has multiple successors (i.e., branchpoint),
+                    # then we simply use the first successor for simplicity.
                     jaxley_graph.nodes[node_name][key] = 0.5 * (
                         jaxley_graph.nodes[n][key]
                         + jaxley_graph.nodes[successors[0]][key]
