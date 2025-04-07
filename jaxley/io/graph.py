@@ -4,6 +4,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -218,7 +219,7 @@ def build_compartment_graph(
         'branch_index': 2,
         'comp_index': 2,
         'type': 'comp',
-        'xyzr': array([[0., 0., 0., 1.], [1., 0., 0., 1.]]), 
+        'xyzr': array([[0., 0., 0., 1.], [1., 0., 0., 1.]]),
         'groups': ['soma'],
         'radius': 1.0,
         'length': 4.0,
@@ -232,7 +233,7 @@ def build_compartment_graph(
         'type': 'branchpoint',
         'groups': ['soma'],
         'radius': 1.0,
-        'length': 0.0, 
+        'length': 0.0,
         'cell_index': 0}
 
         Edges have attributes: {}
@@ -662,6 +663,7 @@ def _build_solve_graph(
         'length': 2.0,
         'cell_index': 0}```
     """
+    comp_graph = _remove_branch_points_at_tips(comp_graph)
     undirected_comp_graph = comp_graph.to_undirected()
 
     # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
@@ -719,6 +721,18 @@ def _build_solve_graph(
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
     solve_graph = _remove_branch_points(solve_graph)
     return solve_graph
+
+
+def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:
+    """Delete branch points at tips.
+
+    These only occur if the user was editing the morphology."""
+    nodes_to_keep = []
+    for node in comp_graph.nodes:
+        degree = comp_graph.in_degree(node) + comp_graph.out_degree(node)
+        if degree > 1 or comp_graph.nodes[node]["type"] == "comp":
+            nodes_to_keep.append(node)
+    return comp_graph.subgraph(nodes_to_keep).copy()
 
 
 def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
@@ -1156,3 +1170,162 @@ def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
                 new_node_id += 1
 
     return jaxley_graph  # This is now a valid `comp_graph`.
+
+
+########################################################################################
+#################################### VISUALIZATION #####################################
+########################################################################################
+
+
+def vis_comp_graph(
+    comp_graph: nx.DiGraph,
+    ax=None,
+    font_size: float = 7.0,
+    node_size: float = 150.0,
+    comp_color: str = "r",
+    branchpoint_color: str = "orange",
+):
+    """Visualize a compartment graph."""
+    color_map = []
+    for n in comp_graph.nodes:
+        if comp_graph.nodes[n].get("type") == "comp":
+            new_col = comp_color
+        elif comp_graph.nodes[n].get("type") == "branchpoint":
+            new_col = branchpoint_color
+        color_map.append(new_col)
+
+    pos = {k: (v["x"], v["y"]) for k, v in comp_graph.nodes.items()}
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(4, 4))
+
+    nx.draw(
+        comp_graph,
+        pos=pos,
+        with_labels=True,
+        font_size=font_size,
+        node_size=node_size,
+        ax=ax,
+        node_color=color_map,
+    )
+
+
+########################################################################################
+########################### UTILITIES FOR MODIFYING GRAPHS #############################
+########################################################################################
+
+
+def connect_graphs(
+    graph1: nx.DiGraph,
+    graph2: nx.DiGraph,
+    node1: Union[str, int],
+    node2: Union[str, int],
+) -> nx.DiGraph:
+    """Return a new graph that connects two comp_graphs at particular nodes."""
+    # For each `group`` in `graph1`, ensure that it is `False` in `graph2` (if it does
+    # not exist).
+    graph2 = _assign_false_for_group(graph1, graph2)
+    graph1 = _assign_false_for_group(graph2, graph1)
+
+    # Move graph2 such that it smoothly connects to graph1.
+    for i, key in enumerate(["x", "y", "z"]):
+        coord1 = _infer_coord(graph1, node1, key)
+        coord2 = _infer_coord(graph2, node2, key)
+        offset = coord1 - coord2
+        for node in graph2.nodes:
+            graph2.nodes[node][key] += offset
+            if graph2.nodes[node]["type"] == "comp":
+                graph2.nodes[node]["xyzr"][:, i] += offset
+
+    # Rename the nodes of graph2.
+    offset_comps = max([n for n in graph1.nodes if graph1.nodes[n]["type"] == "comp"])
+    offset_branchpoints = max(
+        [int(n[1:]) for n in graph1.nodes if graph1.nodes[n]["type"] == "branchpoint"]
+    )
+    mapping = {}
+    for n in graph2.nodes:
+        if graph2.nodes[n]["type"] == "branchpoint":
+            current_index = int(n[1:])
+            new_index = current_index + offset_branchpoints + 1
+            mapping[n] = f"n{new_index}"
+        else:
+            current_index = n
+            new_index = current_index + offset_comps + 1
+            mapping[n] = new_index
+
+    graph2 = nx.relabel_nodes(graph2, mapping)
+    node2 = mapping[node2]
+
+    # Combine the graph1 and grpah2 into one graph.
+    combined_graph = nx.compose(graph1, graph2)
+
+    # Add edges between graph1 and graph2 to connect them. The code below differentiates
+    # three cases: comp->comp, branchpoint->comp (or comp->branchpoint) and
+    # branchpoint->branchpoint.
+    type1 = combined_graph.nodes[node1]["type"]
+    type2 = combined_graph.nodes[node2]["type"]
+    offset_branchpoints = max(
+        [
+            int(n[1:])
+            for n in combined_graph.nodes
+            if combined_graph.nodes[n]["type"] == "branchpoint"
+        ]
+    )
+    if type1 == "comp" and type2 == "comp":
+        # If both nodes are compartments, then we insert a new branchpoint.
+        new_attrs = combined_graph.nodes(data=True)[f"n{offset_branchpoints}"].copy()
+        for key in ["x", "y", "z"]:
+            comp1_xyz = combined_graph.nodes[node1][key]
+            comp2_xyz = combined_graph.nodes[node2][key]
+            new_attrs[key] = 0.5 * (comp1_xyz + comp2_xyz)
+        new_node_index = f"n{offset_branchpoints + 1}"
+        combined_graph.add_node(new_node_index, **new_attrs)
+        combined_graph.add_edge(node1, new_node_index)
+        combined_graph.add_edge(new_node_index, node2)
+    elif type1 == "comp" or type2 == "comp":
+        # If one of the nodes is a compartment and the other one is not, then
+        # we just connect.
+        combined_graph.add_edge(node1, node2)
+    else:
+        # Delete branchpoint in second graph. Connect all nodes that it connected to
+        # to the first branchpoint.
+        for i in combined_graph.predecessors(node2):
+            combined_graph.add_edge(i, node1)
+        for i in combined_graph.successors(node2):
+            combined_graph.add_edge(node1, i)
+        combined_graph.remove_node(node2)
+
+    # Add the graph attributes (which are not carried over when doing `compose`)
+    group_names = set()
+    if "group_names" in graph1.graph.keys():
+        group_names = group_names | set(graph1.graph["group_names"])
+    if "group_names" in graph2.graph.keys():
+        group_names = group_names | set(graph2.graph["group_names"])
+    combined_graph.graph["group_names"] = list(group_names)
+    return combined_graph
+
+
+def _assign_false_for_group(graph1: nx.DiGraph, graph2: nx.DiGraph) -> nx.DiGraph:
+    """For any value in `graph1.graph["group_names"], sets the value to False in graph2."""
+    if "group_names" in graph1.graph.keys():
+        for group in graph1.graph["group_names"]:
+            for node in graph2.nodes:
+                if group not in graph2.nodes[node].keys():
+                    graph2.nodes[node][group] = False
+    return graph2
+
+
+def _infer_coord(comp_graph: nx.DiGraph, node: Union[str, int], key: str) -> float:
+    """Return the coordinate of a node in a comp_graph.
+
+    Args:
+        key: Either of x, y, z.
+    """
+    i = {"x": 0, "y": 1, "z": 2}[key]
+    if comp_graph.nodes[node]["type"] == "branchpoint":
+        coordinate = comp_graph.nodes[node][key]
+    else:
+        if comp_graph.in_degree(node) == 1:
+            coordinate = comp_graph.nodes[node]["xyzr"][-1, i]
+        else:
+            coordinate = comp_graph.nodes[node]["xyzr"][0, i]
+    return coordinate
