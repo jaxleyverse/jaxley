@@ -641,6 +641,7 @@ def _build_solve_graph(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
     traverse_for_solve_order: bool = True,
+    remove_branch_points: bool = True,
 ) -> nx.DiGraph:
     """Given a compartment graph, return a directed graph indicating the solve order.
 
@@ -664,13 +665,29 @@ def _build_solve_graph(
         'cell_index': 0}```
     """
     comp_graph = _remove_branch_points_at_tips(comp_graph)
+
+    # Rename branchpoints.
+    mapping = {}
+    for node in comp_graph.nodes:
+        if comp_graph.nodes[node]["type"] == "comp":
+            mapping[node] = node
+    max_value = max(list(mapping.values()))
+    counter = 1
+    for node in comp_graph.nodes:
+        if comp_graph.nodes[node]["type"] == "branchpoint":
+            mapping[node] = max_value + counter
+            counter += 1
+    comp_graph = nx.relabel_nodes(comp_graph, mapping)
+
     undirected_comp_graph = comp_graph.to_undirected()
 
     # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
     # and we did not modify the exported graph, then we might do not want to traverse
     # the graph again because this would change the ordering of the branches.
     if not traverse_for_solve_order:
-        return _remove_branch_points(comp_graph)
+        if remove_branch_points:
+            comp_graph = _remove_branch_points(comp_graph)
+        return comp_graph
 
     root = root if root else _find_root(undirected_comp_graph)
 
@@ -689,7 +706,8 @@ def _build_solve_graph(
     node_inds_in_which_to_flip_xyzr = []
 
     # Traverse the graph for the solve order.
-    for i, j in nx.dfs_edges(undirected_comp_graph, root):
+    node_and_parent = [(root, -1)]
+    for i, j in nx.bfs_edges(undirected_comp_graph, root):
         solve_graph.add_edge(i, j)
         solve_graph.nodes[j]["branch_index"] = branch_index
         solve_graph.nodes[j]["comp_index"] = comp_index
@@ -719,8 +737,9 @@ def _build_solve_graph(
         # Branchpoint nodes do not have the xyzr property.
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
-    solve_graph = _remove_branch_points(solve_graph)
-    return solve_graph
+    if remove_branch_points:
+        solve_graph = _remove_branch_points(solve_graph)
+    return solve_graph, node_and_parent
 
 
 def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:

@@ -77,6 +77,7 @@ class Cell(Module):
         else:
             branch_list = branches
 
+        # TODO: should be sorted by compartments.
         if xyzr is not None:
             assert len(xyzr) == len(parents)
             self.xyzr = xyzr
