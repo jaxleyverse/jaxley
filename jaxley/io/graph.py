@@ -666,18 +666,18 @@ def _build_solve_graph(
     """
     comp_graph = _remove_branch_points_at_tips(comp_graph)
 
-    # Rename branchpoints.
-    mapping = {}
-    for node in comp_graph.nodes:
-        if comp_graph.nodes[node]["type"] == "comp":
-            mapping[node] = node
-    max_value = max(list(mapping.values()))
-    counter = 1
-    for node in comp_graph.nodes:
-        if comp_graph.nodes[node]["type"] == "branchpoint":
-            mapping[node] = max_value + counter
-            counter += 1
-    comp_graph = nx.relabel_nodes(comp_graph, mapping)
+    # # Rename branchpoints.
+    # mapping = {}
+    # for node in comp_graph.nodes:
+    #     if comp_graph.nodes[node]["type"] == "comp":
+    #         mapping[node] = node
+    # max_value = max(list(mapping.values()))
+    # counter = 1
+    # for node in comp_graph.nodes:
+    #     if comp_graph.nodes[node]["type"] == "branchpoint":
+    #         mapping[node] = max_value + counter
+    #         counter += 1
+    # comp_graph = nx.relabel_nodes(comp_graph, mapping)
 
     undirected_comp_graph = comp_graph.to_undirected()
 
@@ -712,6 +712,8 @@ def _build_solve_graph(
         solve_graph.nodes[j]["branch_index"] = branch_index
         solve_graph.nodes[j]["comp_index"] = comp_index
 
+        node_and_parent.append((solve_graph.nodes[j]["comp_index"], solve_graph.nodes[i]["comp_index"]))
+
         if _is_leaf(undirected_comp_graph, j):
             branch_index += 1
 
@@ -721,8 +723,8 @@ def _build_solve_graph(
 
         # Increase the counter for the compartment index only if the node was a
         # compartment (branchpoints are skipped).
-        if solve_graph.nodes[j]["type"] == "comp":
-            comp_index += 1
+        # if solve_graph.nodes[j]["type"] == "comp":
+        comp_index += 1
 
         # The `xyzr` attribute of all compartment nodes is ordered in the order in
         # which the SWC file was traversed. If we now traverse a compartment from
