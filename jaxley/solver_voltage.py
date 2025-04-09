@@ -2,11 +2,13 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import List
+from copy import deepcopy
 
 import jax.numpy as jnp
 import numpy as np
 from jax import vmap
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
+from jax.lax import fori_loop
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
@@ -250,6 +252,220 @@ def step_voltage_implicit_with_jax_spsolve(
         internal_node_inds
     ]
     return solution
+
+
+def step_voltage_implicit_with_dhs_solve(
+    voltages,
+    voltage_terms,
+    constant_terms,
+    axial_conductances,
+    internal_node_inds,
+    sinks,
+    offdiag_inds,
+    node_order,
+    map_dict,
+    map_to_solve_order,
+    inv_map_to_solve_order,
+    n_nodes,
+    delta_t,
+):
+    """Return voltage update by compartment-based inverse.
+
+    Combined with an approriate `solve_order`, this results in `dendritic hierarchical
+    scheduling` (DHS, Zhang et al., 2023)."""
+    axial_conductances = delta_t * axial_conductances
+
+    # Build diagonals.
+    diags = jnp.zeros(n_nodes)
+
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sinks) > 0:
+        diags = diags.at[sinks].add(axial_conductances)
+
+    diags = diags.at[internal_node_inds].add(
+        1.0 + delta_t * voltage_terms
+    )
+
+    # Build lower and upper matrix.
+    lowers_and_uppers = -axial_conductances
+    lowers = lowers_and_uppers[jnp.asarray([2, 1])]  # lowers_and_uppers[2:]
+    uppers = lowers_and_uppers[jnp.asarray([0, 3])]  # lowers_and_uppers[:2]
+
+    # uppers[0] = lowers_and_uppers[0]
+    # uppers[1] = lowers_and_uppers[1]
+    # lowers[0]
+
+    # Build solve.
+    solves = jnp.zeros(n_nodes)
+    solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
+
+    # # Reorder terms.
+    # print("b4 diags", diags)
+    # print("b4 solves", solves)
+    # print("b4 lowers", lowers)
+    # print("b4 uppers", uppers)
+    # Was jnp.asarray([[2, 0], [1, 2]])
+    # node_order = jnp.asarray([[2, 0], [1, 2]])
+
+    # EVALUATION
+    tridiag_matrix = build_generic_matrix(
+        lowers, diags, uppers, node_order
+    )
+    solution = np.linalg.solve(tridiag_matrix, solves)
+    # print("tm1", tridiag_matrix)
+    # print("desired1", solution)
+
+    # node_order = jnp.asarray([[2, 0], [1, 2]])
+    diags, solves, lowers, uppers, comp_edges = _reorder_dhs(
+        diags, solves, lowers, uppers, node_order, map_dict, inv_map_to_solve_order
+    )
+    # print("node_order new", comp_edges)
+    # lowers = lowers_and_uppers[jnp.asarray([0, 2])]
+    # uppers = lowers_and_uppers[jnp.asarray([1, 3])]
+    # # print("after diags", diags)
+    # # print("after solves", solves)
+    # # print("after lowers", lowers)
+    # # print("after uppers", uppers)
+    # # print("after comp_edges", comp_edges)
+
+    # # EVALUATION
+    # print("comp_edges", comp_edges)
+    tridiag_matrix = build_generic_matrix(
+        lowers, diags, uppers, comp_edges
+    )
+    # print("tm2", tridiag_matrix)
+    solution = np.linalg.solve(tridiag_matrix, solves)
+    # print("desired2", solution)
+    # print("tm", tridiag_matrix)
+    # print("uppers", uppers)
+    # print("lowers", lowers)
+    flipped_comp_edges = jnp.flip(comp_edges, axis=0)
+
+    # Solve the voltage equations.
+    #
+    # Triangulate.
+    init = (diags, solves, lowers, uppers, flipped_comp_edges)
+    diags, solves, _, _, _ = fori_loop(0, n_nodes - 1, _comp_based_triang, init)
+
+    # Backsubstitute.
+    init = (diags, solves, lowers, comp_edges)
+    diags, solves, _, _ = fori_loop(0, n_nodes - 1, _comp_based_backsub, init)
+
+    # Get inverse of the diagonalized matrix.
+    solution = solves / diags
+    solution = solution[map_to_solve_order]
+
+    return solution[internal_node_inds]
+
+
+def build_tridiag_matrix(lower, diag, upper):
+    dim = len(diag)
+    tridiag_matrix = np.zeros((dim, dim))
+    for row in range(dim):
+        for col in range(dim):
+            if row == col:
+                tridiag_matrix[row, col] = deepcopy(diag[row])
+            if row + 1 == col:
+                tridiag_matrix[row, col] = deepcopy(upper[row])
+            if row - 1 == col:
+                tridiag_matrix[row, col] = deepcopy(lower[col])
+    return tridiag_matrix
+
+
+def build_generic_matrix(lower, diag, upper, comp_edges):
+    dim = len(diag)
+    tridiag_matrix = np.zeros((dim, dim))
+    for row in range(dim):
+        tridiag_matrix[row, row] = deepcopy(diag[row])
+
+    for n, offdiag in enumerate(comp_edges):
+        i = offdiag[0]
+        j = offdiag[1]
+        tridiag_matrix[i, j] = lower[n]
+        tridiag_matrix[j, i] = upper[n]
+    return tridiag_matrix
+
+
+def _reorder_dhs(diags, solves, lowers, uppers, comp_edges, mapping_dict, inv_map_to_solve_order):
+    # Reorder.
+    # print("previous uppers", uppers)
+    # print("previous lowers", lowers)
+    diags = diags[inv_map_to_solve_order]
+    solves = solves[inv_map_to_solve_order]
+
+    flipped_comp_edges = jnp.flip(comp_edges, axis=1)
+    all_comp_edges = jnp.concatenate([comp_edges, flipped_comp_edges])
+
+    uppers_and_lowers = jnp.concatenate([uppers, lowers])
+    edge_data = {}
+    for edge, v in zip(all_comp_edges, uppers_and_lowers):
+        edge_data[tuple(edge.tolist())] = v
+
+    ordered_comp_edges = {}
+    for ij in edge_data.keys():
+        i = ij[0]
+        j = ij[1]
+        new_i = mapping_dict[i]
+        new_j = mapping_dict[j]
+        ordered_comp_edges[(new_i, new_j)] = edge_data[(i, j)]
+
+    lowers = {}
+    uppers = {}
+    for ij in ordered_comp_edges.keys():
+        if ij[0] < ij[1]:
+            lowers[ij] = ordered_comp_edges[ij]
+        else:
+            uppers[ij] = ordered_comp_edges[ij]
+
+    lowers = jnp.asarray(list(lowers.values()))
+    uppers = jnp.asarray(list(uppers.values()))
+    ordered_comp_edges = jnp.asarray(list(ordered_comp_edges.keys())[:2]) # TODO!
+
+    # print("after uppers", uppers)
+    # print("after lowers", lowers)
+    return diags, solves, lowers, uppers, ordered_comp_edges
+
+
+def _comp_based_triang(index, carry):
+    diags, solves, lowers, uppers, flipped_comp_edges = carry
+    comp_edge = flipped_comp_edges[index]
+    child = comp_edge[0]
+    parent = comp_edge[1]
+
+    lower_val = lowers[child - 1]
+    upper_val = uppers[child - 1]
+    child_diag = diags[child]
+    child_solve = solves[child]
+
+    # Factor that the child row has to be multiplied by.
+    multiplier = upper_val / child_diag
+
+    # Updates to diagonal and solve
+    diags = diags.at[parent].add(-lower_val * multiplier)
+    solves = solves.at[parent].add(-child_solve * multiplier)
+
+    return (diags, solves, lowers, uppers, flipped_comp_edges)
+
+
+def _comp_based_backsub(index, carry):
+    diags, solves, lowers, comp_edges = carry
+
+    comp_edge = comp_edges[index]
+    child = comp_edge[0]
+    parent = comp_edge[1]
+
+    lower_val = lowers[child - 1]
+    parent_solve = solves[parent]
+    parent_diag = diags[parent]
+
+    # Factor that the child row has to be multiplied by.
+    multiplier = lower_val / parent_diag
+
+    # Updates to diagonal and solve
+    solves = solves.at[child].add(-parent_solve * multiplier)
+
+    return (diags, solves, lowers, comp_edges)
 
 
 def _voltage_vectorfield(

@@ -118,11 +118,14 @@ class Branch(Module):
             }
         )
         self._comp_edges["type"] = 0
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
+            self._comp_edges
+        )
         self._n_nodes = n_nodes
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
+        self._off_diagonal_inds = off_diagonal_inds
 
     def __len__(self) -> int:
         return self.ncomp

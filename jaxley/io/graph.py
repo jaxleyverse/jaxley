@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
+import jax.numpy as jnp
 
 from jaxley.modules import Branch, Cell, Compartment, Network
 from jaxley.utils.cell_utils import v_interp
@@ -744,9 +745,18 @@ def _build_solve_graph(
         # Branchpoint nodes do not have the xyzr property.
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
+
+    # Create a dictionary which maps every node to its solve index. Two notes:
+    # - The node name corresponds to the compartment index (and branchpoints continue
+    # numerically from where the compartments have ended)
+    # - The solve index specifies the order in which the node is processed durin the
+    # DHS solve.
+    inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
+    node_to_solve_index_mapping = dict(sorted(inds.items()))
+
     if remove_branch_points:
         solve_graph = _remove_branch_points(solve_graph)
-    return solve_graph, node_and_parent
+    return solve_graph, node_and_parent, node_to_solve_index_mapping
 
 
 def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:
@@ -866,14 +876,25 @@ def from_graph(
     Return:
         A `jx.Module` representing the graph.
     """
-    solve_graph = _build_solve_graph(
+    solve_graph, node_order, node_to_solve_index_mapping = _build_solve_graph(
         comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
     )
     solve_graph = _add_meta_data(solve_graph)
-    return _build_module(solve_graph, assign_groups=assign_groups)
+    return _build_module(
+        solve_graph,
+        node_order,
+        node_to_solve_index_mapping,
+        assign_groups=assign_groups,
+    )
 
 
-def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
+def _build_module(
+    solve_graph: nx.DiGraph,
+    node_order: List[Tuple],
+    node_to_solve_index_mapping: Dict[int, int],
+    assign_groups: bool = True,
+):
+    """Return module based on solve graph."""
     # nodes and edges
     node_df = pd.DataFrame(
         [d for i, d in solve_graph.nodes(data=True)], index=solve_graph.nodes
@@ -958,6 +979,28 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
+
+    # Additional indexing for Dendritic Hierachical Scheduling (DHS).
+    #
+    # Set the order in which compartments are processed during Dendritic Hierachical
+    # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
+    # the values correspond to compartment indices.
+    module._dhs_node_order = jnp.asarray(node_order[1:])
+    #
+    # We have to change the order of compartments at every time step of the solve.
+    # Because of this, we make it as efficient as pssible to perform this ordering with
+    # the arrays below. Example:
+    # ```
+    # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
+    # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
+    # ```
+    map_dict = node_to_solve_index_mapping  # Abbreviation.
+    mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
+    inv_mapping_array = np.argsort(mapping_array)
+    #
+    module._dhs_map_dict = map_dict
+    module._dhs_map_to_node_order = mapping_array
+    module._dhs_inv_map_to_node_order = inv_mapping_array
     return module
 
 
