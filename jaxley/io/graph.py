@@ -712,7 +712,7 @@ def _build_solve_graph(
     node_and_parent = [(root, -1)]
     for i, j in nx.bfs_edges(undirected_comp_graph, root):
         solve_graph.add_edge(i, j)
-        solve_graph.nodes[j]["branch_index"] = branch_index
+        # solve_graph.nodes[j]["branch_index"] = branch_index
         solve_graph.nodes[j]["comp_index"] = comp_index
         solve_graph.nodes[j]["solve_index"] = solve_index
 
@@ -1044,6 +1044,8 @@ def _build_module_scaffold(
             parents = (
                 default_parents if parent_branches is None else parent_branches[cell_id]
             )
+            print("parents", parents)
+            print("num_branches", num_branches)
             cell = Cell([branch] * num_branches, parents)
             build_cache["cell"].append(cell)
 

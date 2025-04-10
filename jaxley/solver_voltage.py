@@ -289,8 +289,8 @@ def step_voltage_implicit_with_dhs_solve(
 
     # Build lower and upper matrix.
     lowers_and_uppers = -axial_conductances
-    lowers = lowers_and_uppers[jnp.asarray([2, 1])]  # lowers_and_uppers[2:]
-    uppers = lowers_and_uppers[jnp.asarray([0, 3])]  # lowers_and_uppers[:2]
+    # lowers = lowers_and_uppers[jnp.asarray([2, 1])]
+    # uppers = lowers_and_uppers[jnp.asarray([0, 3])]
 
     # uppers[0] = lowers_and_uppers[0]
     # uppers[1] = lowers_and_uppers[1]
@@ -309,33 +309,34 @@ def step_voltage_implicit_with_dhs_solve(
     # node_order = jnp.asarray([[2, 0], [1, 2]])
 
     # EVALUATION
-    tridiag_matrix = build_generic_matrix(
-        lowers, diags, uppers, node_order
-    )
-    solution = np.linalg.solve(tridiag_matrix, solves)
+    # tridiag_matrix = build_generic_matrix(
+    #     lowers, diags, uppers, node_order
+    # )
+    # solution = np.linalg.solve(tridiag_matrix, solves)
     # print("tm1", tridiag_matrix)
     # print("desired1", solution)
+    # print("node_order", node_order)
 
     # node_order = jnp.asarray([[2, 0], [1, 2]])
     diags, solves, lowers, uppers, comp_edges = _reorder_dhs(
-        diags, solves, lowers, uppers, node_order, map_dict, inv_map_to_solve_order
+        diags, solves, lowers_and_uppers, offdiag_inds, node_order, map_dict, inv_map_to_solve_order
     )
     # print("node_order new", comp_edges)
     # lowers = lowers_and_uppers[jnp.asarray([0, 2])]
     # uppers = lowers_and_uppers[jnp.asarray([1, 3])]
     # # print("after diags", diags)
     # # print("after solves", solves)
-    # # print("after lowers", lowers)
-    # # print("after uppers", uppers)
+    # print("after lowers", lowers)
+    # print("after uppers", uppers)
     # # print("after comp_edges", comp_edges)
 
     # # EVALUATION
     # print("comp_edges", comp_edges)
-    tridiag_matrix = build_generic_matrix(
-        lowers, diags, uppers, comp_edges
-    )
+    # tridiag_matrix = build_generic_matrix(
+    #     lowers, diags, uppers, comp_edges
+    # )
     # print("tm2", tridiag_matrix)
-    solution = np.linalg.solve(tridiag_matrix, solves)
+    # solution = np.linalg.solve(tridiag_matrix, solves)
     # print("desired2", solution)
     # print("tm", tridiag_matrix)
     # print("uppers", uppers)
@@ -355,6 +356,8 @@ def step_voltage_implicit_with_dhs_solve(
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
     solution = solution[map_to_solve_order]
+
+    print("solution3", solution)
 
     return solution[internal_node_inds]
 
@@ -387,19 +390,16 @@ def build_generic_matrix(lower, diag, upper, comp_edges):
     return tridiag_matrix
 
 
-def _reorder_dhs(diags, solves, lowers, uppers, comp_edges, mapping_dict, inv_map_to_solve_order):
+def _reorder_dhs(diags, solves, lowers_and_uppers, offdiag_inds, node_order, mapping_dict, inv_map_to_solve_order):
     # Reorder.
     # print("previous uppers", uppers)
     # print("previous lowers", lowers)
     diags = diags[inv_map_to_solve_order]
     solves = solves[inv_map_to_solve_order]
 
-    flipped_comp_edges = jnp.flip(comp_edges, axis=1)
-    all_comp_edges = jnp.concatenate([comp_edges, flipped_comp_edges])
-
-    uppers_and_lowers = jnp.concatenate([uppers, lowers])
+    # uppers_and_lowers = jnp.concatenate([uppers, lowers])
     edge_data = {}
-    for edge, v in zip(all_comp_edges, uppers_and_lowers):
+    for edge, v in zip(offdiag_inds.T, lowers_and_uppers):
         edge_data[tuple(edge.tolist())] = v
 
     ordered_comp_edges = {}
@@ -418,13 +418,27 @@ def _reorder_dhs(diags, solves, lowers, uppers, comp_edges, mapping_dict, inv_ma
         else:
             uppers[ij] = ordered_comp_edges[ij]
 
-    lowers = jnp.asarray(list(lowers.values()))
-    uppers = jnp.asarray(list(uppers.values()))
-    ordered_comp_edges = jnp.asarray(list(ordered_comp_edges.keys())[:2]) # TODO!
+    # We have to sort lowers and uppers to be in the solve order.
+    children = []
+    for key in lowers.keys():
+        children.append(key[1])
+    lower_sorting = np.argsort(children)
 
-    # print("after uppers", uppers)
-    # print("after lowers", lowers)
-    return diags, solves, lowers, uppers, ordered_comp_edges
+    parents = []
+    for key in uppers.keys():
+        parents.append(key[0])
+    upper_sorting = np.argsort(parents)
+
+    lowers = jnp.asarray(list(lowers.values()))[lower_sorting]
+    uppers = jnp.asarray(list(uppers.values()))[upper_sorting]
+
+    # Adapt node order.
+    new_node_order = []
+    for n in node_order:
+        new_node_order.append([mapping_dict[int(n[0])], mapping_dict[int(n[1])]])
+    new_node_order = jnp.asarray(new_node_order)
+
+    return diags, solves, lowers, uppers, new_node_order
 
 
 def _comp_based_triang(index, carry):
