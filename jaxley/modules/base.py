@@ -20,6 +20,7 @@ from jaxley.channels import Channel
 from jaxley.pumps import Pump
 from jaxley.solver_voltage import (
     step_voltage_explicit,
+    step_voltage_implicit_with_dhs_solve,
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_jaxley_spsolve,
 )
@@ -2044,6 +2045,18 @@ class Module(ABC):
             }
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
+        elif voltage_solver == "jaxley.dhs":
+            solver_kwargs = {
+                "internal_node_inds": self._internal_node_inds,
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "offdiag_inds": self._off_diagonal_inds,
+                "node_order": self._dhs_node_order,
+                "map_dict": self._dhs_map_dict,
+                "map_to_solve_order": self._dhs_map_to_node_order,
+                "inv_map_to_solve_order": self._dhs_inv_map_to_node_order,
+                "n_nodes": self._n_nodes,
+            }
+            step_voltage_implicit = step_voltage_implicit_with_dhs_solve
         else:
             # Our custom sparse solver requires a different format of all conductance
             # values to perform triangulation and backsubstution optimally.

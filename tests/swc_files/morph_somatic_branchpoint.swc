@@ -1,0 +1,20 @@
+# SWC dummy file written by @michaeldeistler.
+#
+# This SWC file contains a "somatic branchpoint". This is a point
+# which is connected to at least two other somatic nodes (type_id=1),
+# but it is also connected to at least one node of other types. In
+# such cases, the NEURON simulator does not consider the branchpoint
+# to be a part of the additional branch of another type.
+#
+# For good measure, this file also contains a branch (of type-id 3)
+# which is connected to a soma, but not to a somatic branchpoint. This
+# branch, therefore, starts at the final somatic node.
+#
+1 1 0 0 0 1 -1
+2 1 1 0 0 1 1
+3 2 0 -2 0 1 1
+4 2 0 -3 0 1 3
+5 1 -1 0 0 1 1
+6 1 -2 0 0 1 5
+7 3 5 0 0 1 2
+8 3 6 0 0 1 7

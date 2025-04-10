@@ -185,7 +185,7 @@ def build_net(
         cell = jx.Cell(branch, parents=parents)
     else:
         dirname = os.path.dirname(__file__)
-        fname = os.path.join(dirname, "swc_files", "morph.swc")
+        fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
         cell = jx.read_swc(fname, ncomp=4)
     net = jx.Network([cell for _ in range(num_cells)])
 

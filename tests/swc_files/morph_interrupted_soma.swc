@@ -1,0 +1,12 @@
+# SWC dummy file written by @michaeldeistler.
+#
+# This SWC file contains an interrupted soma. When read
+# by Jaxley, these somatic nodes should be clustered into one
+# branch.
+#
+1 1 0 0 0 1 -1
+2 1 1 0 0 1 1
+3 3 5 0 0 1 2
+4 3 6 0 0 1 3
+5 1 -1 0 0 1 1
+6 1 -2 0 0 1 5

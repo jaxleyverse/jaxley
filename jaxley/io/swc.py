@@ -8,7 +8,7 @@ from warnings import warn
 import jax.numpy as jnp
 import numpy as np
 
-from jaxley.io.graph import from_graph, swc_to_graph
+from jaxley.io.graph import build_compartment_graph, from_graph, swc_to_graph
 from jaxley.modules import Branch, Cell, Compartment
 from jaxley.utils.cell_utils import build_radiuses_from_xyzr
 from jaxley.utils.misc_utils import deprecated_kwargs
@@ -438,7 +438,8 @@ def read_swc(
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
     backend: str = "custom",
-    **backend_kwargs,
+    ignore_swc_tracing_interruptions: bool = True,
+    relevant_type_ids: Optional[List[int]] = None,
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
@@ -459,7 +460,12 @@ def read_swc(
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
         backend: The backend to use. Currently `custom` and `graph` are supported.
             For context on these backends see `read_swc_custom` and `from_graph`.
-        backend_kwargs: Additional keyword arguments passed to the swc reader.
+        ignore_swc_tracing_interruptions: Whether to ignore discontinuities in the swc
+            tracing order. If False, this will result in split branches at these points.
+        relevant_type_ids: All type ids that are not in this list will be ignored for
+            tracing the morphology. This means that branches which have multiple type
+            ids (which are not in `relevant_type_ids`) will be considered as one branch.
+            If `None`, we default to `[1, 2, 3, 4]`.
 
     Returns:
         A `Cell` object."""
@@ -471,17 +477,19 @@ def read_swc(
             max_branch_len=max_branch_len,
             min_radius=min_radius,
             assign_groups=assign_groups,
-            **backend_kwargs,
         )
     elif backend == "graph":
-        graph = swc_to_graph(fname)
-        return from_graph(
-            graph,
+        swc_graph = swc_to_graph(fname)
+        comp_graph = build_compartment_graph(
+            swc_graph,
             ncomp=ncomp,
-            max_branch_len=max_branch_len,
+            root=None,
             min_radius=min_radius,
-            assign_groups=assign_groups,
-            **backend_kwargs,
+            max_len=max_branch_len,
+            ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
+            relevant_type_ids=relevant_type_ids,
         )
+        module = from_graph(comp_graph, assign_groups=assign_groups, solve_root=None)
+        return module
     else:
         raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")

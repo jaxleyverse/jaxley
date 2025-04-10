@@ -77,6 +77,7 @@ class Cell(Module):
         else:
             branch_list = branches
 
+        # TODO: should be sorted by compartments.
         if xyzr is not None:
             assert len(xyzr) == len(parents)
             self.xyzr = xyzr
@@ -266,8 +267,11 @@ class Cell(Module):
             ignore_index=True,
         )
 
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
+            self._comp_edges
+        )
         self._n_nodes = n_nodes
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
+        self._off_diagonal_inds = off_diagonal_inds
