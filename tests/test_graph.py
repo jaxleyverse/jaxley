@@ -22,13 +22,12 @@ import jaxley as jx
 from jaxley import connect
 from jaxley.channels import HH
 from jaxley.channels.pospischil import K, Leak, Na
-from jaxley.io.graph import (
-    add_missing_graph_attrs,
+from jaxley.io.graph import (  # make_jaxley_compatible,; trace_branches,
+    _add_missing_graph_attrs,
+    build_compartment_graph,
     from_graph,
-    make_jaxley_compatible,
-    swc_to_graph,
     to_graph,
-    trace_branches,
+    to_swc_graph,
 )
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
@@ -46,6 +45,7 @@ from tests.helpers import (
 def test_graph_import_export_cycle(
     SimpleComp, SimpleBranch, SimpleCell, SimpleNet, SimpleMorphCell
 ):
+    """Export and import a module and check whether .nodes and .edges remain same."""
     np.random.seed(0)
     comp = SimpleComp()
     branch = SimpleBranch(4)
@@ -71,13 +71,16 @@ def test_graph_import_export_cycle(
     # test consistency of exported and re-imported modules
     for module in [comp, branch, cell, net, morph_cell]:
         module.compute_xyz()  # ensure x,y,z in nodes b4 exporting for later comparison
-        module_graph = to_graph(
-            module, channels=True, synapses=True
-        )  # ensure to_graph works
-        re_module = from_graph(module_graph)  # ensure prev exported graph can be read
-        re_module_graph = to_graph(
-            re_module, channels=True, synapses=True
-        )  # ensure to_graph works for re-imported modules
+        module.compute_compartment_centers()
+
+        # ensure to_graph works
+        module_graph = to_graph(module, channels=True, synapses=True)
+
+        # ensure prev exported graph can be read
+        re_module = from_graph(module_graph, traverse_for_solve_order=False)
+
+        # ensure to_graph works for re-imported modules
+        re_module_graph = to_graph(re_module, channels=True, synapses=True)
 
         # ensure original module and re-imported module are equal
         assert np.all(equal_both_nan_or_empty_df(re_module.nodes, module.nodes))
@@ -101,12 +104,16 @@ def test_graph_import_export_cycle(
 
         # ensure exported graph and re-exported graph are equal
         node_df = pd.DataFrame(
-            [d for i, d in module_graph.nodes(data=True)], index=module_graph.nodes
-        ).sort_index()
+            [d for i, d in module_graph.nodes(data=True)],
+            index=module_graph.nodes,
+        )
+        node_df = node_df.loc[node_df["type"] != "branchpoint"].sort_index()
+
         re_node_df = pd.DataFrame(
             [d for i, d in re_module_graph.nodes(data=True)],
             index=re_module_graph.nodes,
-        ).sort_index()
+        )
+        re_node_df = re_node_df.loc[re_node_df["type"] != "branchpoint"].sort_index()
         assert np.all(equal_both_nan_or_empty_df(node_df, re_node_df))
 
         edges = pd.DataFrame(
@@ -132,7 +139,7 @@ def test_graph_import_export_cycle(
         assert np.all(equal_both_nan_or_empty_df(edges, re_edges))
 
         # ignore "externals", "recordings", "trainable_params", "indices_set_by_trainables"
-        for k in ["ncomp", "xyzr"]:
+        for k in ["ncomp"]:
             assert module_graph.graph[k] == re_module_graph.graph[k]
 
         # assume if module can be integrated, so can be comp, cell and branch
@@ -143,45 +150,71 @@ def test_graph_import_export_cycle(
 
 
 @pytest.mark.parametrize(
-    "file", ["morph_single_point_soma.swc", "morph.swc", "bbp_with_axon.swc"]
+    "file",
+    [
+        "morph_3_types_single_point_soma.swc",
+        "morph_3_types.swc",
+        "morph_interrupted_soma.swc",
+        "morph_soma_both_ends.swc",
+        "morph_somatic_branchpoint.swc",
+        "morph_non_somatic_branchpoint.swc",
+        "morph_ca1_n120_single_point_soma.swc",
+        "morph_ca1_n120.swc",
+        "morph_l5pc_with_axon.swc",
+        "morph_allen_485574832.swc",
+        pytest.param(
+            "morph_flywire_t4_720575940626407426.swc",
+            marks=pytest.mark.xfail(reason="NEURON throws .hoc error."),
+        ),
+        "morph_retina_20161028_1.swc",
+    ],
 )
 def test_trace_branches(file):
+    """Test whether all branch lengths match NEURON."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
-    graph = swc_to_graph(fname)
+    swc_graph = to_swc_graph(fname)
 
     # pre-processing
-    graph = add_missing_graph_attrs(graph)
-    graph = trace_branches(graph, None, ignore_swc_trace_errors=False)
+    comp_graph = build_compartment_graph(
+        swc_graph, ncomp=1, ignore_swc_tracing_interruptions=False
+    )
 
-    edges = pd.DataFrame([{"u": u, "v": v, **d} for u, v, d in graph.edges(data=True)])
-    nx_branch_lens = edges.groupby("branch_index")["l"].sum().to_numpy()
+    nx_branch_lens = []
+    for n in comp_graph.nodes:
+        if comp_graph.nodes[n]["type"] == "comp":
+            nx_branch_lens.append(comp_graph.nodes[n]["length"])
     nx_branch_lens = np.sort(nx_branch_lens)
-
-    # exclude artificial root branch
-    if np.isclose(nx_branch_lens[0], 1e-1):
-        nx_branch_lens = nx_branch_lens[1:]
 
     h, _ = import_neuron_morph(fname)
     neuron_branch_lens = np.sort([sec.L for sec in h.allsec()])
 
     errors = np.abs(neuron_branch_lens - nx_branch_lens)
-    # one error is expected, see https://github.com/jaxleyverse/jaxley/issues/140
-    assert sum(errors > 1e-3) <= 1
+    assert sum(errors > 1e-3) == 0
 
 
 @pytest.mark.parametrize(
-    "file", ["morph_single_point_soma.swc", "morph.swc", "bbp_with_axon.swc"]
+    "file",
+    [
+        "morph_ca1_n120_single_point_soma.swc",
+        "morph_ca1_n120.swc",
+        "morph_l5pc_with_axon.swc",
+    ],
 )
 def test_from_graph_vs_NEURON(file):
+    """Check whether comp xyzr match neuron."""
     ncomp = 8
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    graph = swc_to_graph(fname)
-    cell = from_graph(
-        graph, ncomp=ncomp, max_branch_len=2000, ignore_swc_trace_errors=False
+    swc_graph = to_swc_graph(fname)
+    comp_graph = build_compartment_graph(
+        swc_graph,
+        ncomp=ncomp,
+        max_len=2000,
+        ignore_swc_tracing_interruptions=False,
     )
+    cell = from_graph(comp_graph)
     cell.compute_compartment_centers()
     h, neuron_cell = import_neuron_morph(fname, ncomp=ncomp)
 
@@ -233,25 +266,28 @@ def test_from_graph_vs_NEURON(file):
     errors["radius"] = neuron_df["radius"] - jx_df["radius"]
     errors["length"] = neuron_df["length"] - jx_df["length"]
 
-    # one error is expected, see https://github.com/jaxleyverse/jaxley/issues/140
-    assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) <= 1
-    assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) <= 1
-    assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) <= 1
+    assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) == 0
+    assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) == 0
+    assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) == 0
 
 
 def test_edges_only_to_jaxley():
-    # test if edge graph can pe imported into to jaxley
+    """Test if edge graph can pe imported into to jaxley."""
     sets_of_edges = [
         [(0, 1), (1, 2), (2, 3)],
         [(0, 1), (1, 2), (1, 3), (2, 4), (2, 5), (3, 6), (3, 7)],
     ]
     for edges in sets_of_edges:
-        edge_graph = nx.DiGraph(edges)
-        edge_module = from_graph(edge_graph)
+        graph = nx.Graph(edges)
+        swc_graph = _add_missing_graph_attrs(graph)
+        comp_graph = build_compartment_graph(swc_graph, ncomp=1)
+        edge_module = from_graph(comp_graph)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("file", ["morph_single_point_soma.swc", "morph.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
+)
 def test_swc2graph_voltages(file):
     """Check if voltages of SWC recording match.
 
@@ -276,9 +312,8 @@ def test_swc2graph_voltages(file):
     h, neuron_cell = import_neuron_morph(fname, ncomp=ncomp)
 
     ####################### jaxley ##################
-    graph = swc_to_graph(fname)
-    jx_cell = from_graph(
-        graph, ncomp=ncomp, max_branch_len=2000, ignore_swc_trace_errors=False
+    jx_cell = jx.read_swc(
+        fname, ncomp=ncomp, max_branch_len=2000, ignore_swc_tracing_interruptions=True
     )
     jx_cell.compute_compartment_centers()
     jx_cell.insert(HH())
@@ -309,7 +344,7 @@ def test_swc2graph_voltages(file):
     for i in trunk_inds + tuft_inds + basal_inds:
         jx_cell.branch(i).loc(branch_loc).record()
 
-    voltages_jaxley = jx.integrate(jx_cell, delta_t=dt)
+    voltages_jaxley = jx.integrate(jx_cell, delta_t=dt, voltage_solver="jax.sparse")
 
     ################### NEURON #################
     stim = h.IClamp(h.soma[0](stim_loc))

@@ -185,7 +185,7 @@ def build_net(
         cell = jx.Cell(branch, parents=parents)
     else:
         dirname = os.path.dirname(__file__)
-        fname = os.path.join(dirname, "swc_files", "morph.swc")
+        fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
         cell = jx.read_swc(fname, ncomp=4)
     net = jx.Network([cell for _ in range(num_cells)])
 
@@ -221,8 +221,8 @@ def build_net(
         # Test a single SWC cell with both solvers.
         pytest.param(1, False, False, 0.0, "jaxley.stone", False),
         pytest.param(1, False, False, 0.0, "jax.sparse", False),
-        # Test a single SWC cell, but add detailed calcium mechanisms.
-        pytest.param(1, False, False, 0.0, "jax.stone", True),
+        # Test a single SWC cell, and add detailed calcium mechanisms.
+        pytest.param(1, False, False, 0.0, "jaxley.stone", True),
         # Test a network of SWC cells with both solvers.
         pytest.param(10, False, True, 0.1, "jaxley.stone", False),
         pytest.param(10, False, True, 0.1, "jax.sparse", False),
