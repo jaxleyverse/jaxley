@@ -147,7 +147,7 @@ def _add_missing_graph_attrs(graph: nx.Graph) -> nx.Graph:
     for key in set(defaults.keys()).difference(available_keys):
         nx.set_node_attributes(graph, defaults[key], key)
 
-    graph = _add_edge_lenghts(graph)
+    graph = _add_edge_lengths(graph)
     edge_lens = nx.get_edge_attributes(graph, "l")
     if np.isnan(list(edge_lens.values())[0]):
         nx.set_edge_attributes(graph, 1, "l")
@@ -155,7 +155,7 @@ def _add_missing_graph_attrs(graph: nx.Graph) -> nx.Graph:
     return graph
 
 
-def _add_edge_lenghts(graph: nx.Graph, min_len: float = 1e-5) -> nx.DiGraph:
+def _add_edge_lengths(graph: nx.Graph, min_len: float = 1e-5) -> nx.DiGraph:
     """Add edge lengths to graph.edges based on the xyz coordinates of graph.nodes."""
     xyz = lambda i: np.array(_unpack(graph.nodes[i], "xyz"))
     for i, j in graph.edges:
@@ -265,17 +265,17 @@ def build_compartment_graph(
         branch_data = pd.DataFrame([swc_graph.nodes[i] for i in branch_nodes])
         branch_data["node_index"] = branch_nodes
         branch_data["l"] = path_lens
-        branch_data = branch_data.drop(columns="type")
-        branch_data = branch_data.drop(columns="p")
+        branch_data = branch_data.drop(columns=["type", "p"])
 
         # fix id and r bleed over from neighboring neurites of a different type
         if branch_data.loc[0, "id"] != branch_data.loc[1, "id"]:
             branch_data.loc[0, ["r", "id"]] = branch_data.loc[1, ["r", "id"]]
 
-        # Here, we split xyzr into compartments. We do this by simply splitting by the
-        # array length. Splitting simply by the length of the array is not optimal, but
-        # it is easy and will only matter if the user modifies morphologies _within_ a
-        # branch, which I think is a very narrow usecase.
+        # Here, we split xyzr into compartments. We do this by simply splitting the
+        # xyzr into ncomp arrays of equal shape (via `np.array_split`). Splitting
+        # simply by the shape of the array is not optimal, but it is easy. The error
+        # introduced by splitting by the shape will only matter if the user modifies
+        # morphologies _within_ a branch, which I think is a very narrow usecase.
         xyzr = branch_data[["x", "y", "z", "r"]].to_numpy()
         xyzr_per_comp = np.array_split(xyzr, ncomp)
 
@@ -321,14 +321,11 @@ def build_compartment_graph(
         ):
             comp_graph.add_edge(new_branch_nodes.index[-1], post_branch_node)
 
-    for node in comp_graph.nodes:
+    for node, attrs in comp_graph.nodes(data=True):
         if comp_graph.nodes[node]["type"] == "branchpoint":
-            if "comp_index" in comp_graph.nodes[node].keys():
-                del comp_graph.nodes[node]["comp_index"]
-            if "branch_index" in comp_graph.nodes[node].keys():
-                del comp_graph.nodes[node]["branch_index"]
-            if "xyzr" in comp_graph.nodes[node].keys():
-                del comp_graph.nodes[node]["xyzr"]
+            for key in ["comp_index", "branch_index", "xyzr"]:
+                if key in attrs:
+                    del comp_graph.nodes[node][key]
 
     mapping = {}
     branchpoint_index = 0
@@ -398,8 +395,7 @@ def _trace_branches(
     # Handle special case of a single soma node.
     soma_idxs = _get_soma_idxs(swc_graph)
     if len(soma_idxs) == 1:
-        somatic_branchpoints = soma_idxs
-        soma = somatic_branchpoints[0]
+        soma = soma_idxs[0]
 
         for i, j in (*swc_graph.in_edges(soma), *swc_graph.out_edges(soma)):
             swc_graph.edges[i, j]["l"] = 0
@@ -422,22 +418,16 @@ def _trace_branches(
     # least two connecting branches are somatic. In that case (and in the case of a
     # single-point soma), non-somatic branches are assumed to start from their first
     # traced point, not from the soma.
-    somatic_branchpoints = []
     for node in soma_idxs:
-        # Somatic branchpoints are branchpoints (`.degree(node) > 2`)
-        if undir_swc_graph.degree(node) > 2:
-            num_somatic_neighbors = 0
-            # Somatic branchpoints must have at least 2 somatic neighbors.
-            for neighbor in undir_swc_graph.neighbors(node):
-                if undir_swc_graph.nodes[neighbor]["id"] == 1:
-                    num_somatic_neighbors += 1
-            if num_somatic_neighbors > 1:
-                somatic_branchpoints.append(node)
-    for soma in somatic_branchpoints:
-        # edges connecting nodes to soma are considered part of the soma -> l = 0.
-        for i, j in undir_swc_graph.edges(soma):
-            if undir_swc_graph.nodes[j]["id"] != 1:
-                undir_swc_graph.edges[i, j]["l"] = 0
+        somatic_neighbors = [
+            n
+            for n in undir_swc_graph.neighbors(node)
+            if undir_swc_graph.nodes[n]["id"] == 1
+        ]
+        if len(somatic_neighbors) > 1:
+            for i, j in undir_swc_graph.edges(node):
+                if undir_swc_graph.nodes[j]["id"] != 1:
+                    undir_swc_graph.edges[i, j]["l"] = 0
 
     branches, current_branch, all_type_ids = [], [], []
 
@@ -445,9 +435,11 @@ def _trace_branches(
     # a list `branches: List` where each elements is a `np.array` of shape (N, 3).
     # The `3` are `swc_parent, swc_node, length` of all SWC edges within a branch.
     root = root if root else _find_root(undir_swc_graph)
-    undir_swc_graph.nodes[root]["type"] = "spurious"
+
+    # We first set the type of all SWC nodes to be "spurious". Later on, we change the
+    # type of branchpoints to `branchpoint`.
+    nx.set_node_attributes(undir_swc_graph, "spurious", "type")
     for i, j in nx.dfs_edges(undir_swc_graph, root):
-        undir_swc_graph.nodes[j]["type"] = "spurious"
         current_edge = (i, j)
         current_len = undir_swc_graph.edges[current_edge]["l"]
         current_type_id = undir_swc_graph.nodes[i]["id"]
@@ -458,21 +450,16 @@ def _trace_branches(
             if not _has_same_id(undir_swc_graph, i, j, relevant_type_ids):
                 # Add the branch that goes up until the last edge.
                 branches.append(current_branch[:-1])
-                all_type_ids.append(current_type_id)
 
                 # Add the branch made up of just the last edge.
                 branches.append(current_branch[-1:])
                 all_type_ids.append(undir_swc_graph.nodes[j]["id"])
-
-                current_branch = []
             else:
                 branches.append(current_branch)
-                all_type_ids.append(current_type_id)
-                current_branch = []
+            current_branch = []
 
         elif _is_branching(undir_swc_graph, j):
             branches.append(current_branch)
-            all_type_ids.append(current_type_id)
             current_branch = []
 
         # Start new branch if ids differ.
@@ -481,12 +468,12 @@ def _trace_branches(
             # 1  1  1  2  2  2 (number indicates type_id)
             if not swc_graph.has_edge(i, j) and swc_graph.has_edge(j, i):
                 branches.append(current_branch)
-                all_type_ids.append(current_type_id)
                 current_branch = []
             else:
                 branches.append(current_branch[:-1])
-                all_type_ids.append(current_type_id)
                 current_branch = [current_branch[-1]]
+
+        all_type_ids.append(current_type_id)
 
     branch_edges = []
     type_inds = []
@@ -494,7 +481,6 @@ def _trace_branches(
         if len(p) > 0:
             branch_edges.append(np.array(p))
             type_inds.append(all_type_ids[i])
-    branch_edges = [np.array(p) for p in branches if len(p) > 0]
 
     if max_len:
         edge_lens = nx.get_edge_attributes(undir_swc_graph, "l")
@@ -532,7 +518,8 @@ def _split_branches(
             it is split into equal parts.
 
     Returns:
-        A list of branches, where each branch is split into sections of length <= max_len.
+        A list of branches, where each branch is split into sections of
+        length <= max_len.
     """
     # TODO: split branches into exactly equally long sections
     edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})
@@ -554,7 +541,7 @@ def _split_branches_if_swc_nodes_were_traced_with_interruption(
     if the same neurite was traced in disconnected pieces. Since `swc_to_graph` is
     agnostic to the order of the tracing, it does not suffer from this issue. Hence,
     to artifically force this behaviour (to compare to the other parsers), this
-    function can be used to simulates these errors. See
+    function can be used to simulate these errors. See
     `_find_swc_tracing_interruptions` for how to identify these points in the graph.
 
     Args:
@@ -697,7 +684,7 @@ def _build_solve_graph(
         if _is_leaf(undirected_comp_graph, j):
             branch_index += 1
 
-        # Increase the branch counter in a branchpoint is encountered.
+        # Increase the branch counter if a branchpoint is encountered.
         elif undirected_comp_graph.nodes[j]["type"] == "branchpoint":
             branch_index += 1
 
@@ -1305,7 +1292,12 @@ def connect_graphs(
 
 
 def _assign_false_for_group(graph1: nx.DiGraph, graph2: nx.DiGraph) -> nx.DiGraph:
-    """For any value in `graph1.graph["group_names"], sets the value to False in graph2."""
+    """For any value in `graph1.graph["group_names"], sets the value to False in graph2.
+
+    Args:
+        graph1: The graph in which to check for `group_names`.
+        graph2: The graph whose `group_names` to update.
+    """
     if "group_names" in graph1.graph.keys():
         for group in graph1.graph["group_names"]:
             for node in graph2.nodes:

@@ -157,11 +157,15 @@ def test_graph_import_export_cycle(
         "morph_interrupted_soma.swc",
         "morph_soma_both_ends.swc",
         "morph_somatic_branchpoint.swc",
+        "morph_non_somatic_branchpoint.swc",
         "morph_ca1_n120_single_point_soma.swc",
         "morph_ca1_n120.swc",
         "morph_l5pc_with_axon.swc",
         "morph_allen_485574832.swc",
-        "morph_flywire_t4_720575940626407426.swc",
+        pytest.param(
+            "morph_flywire_t4_720575940626407426.swc",
+            marks=pytest.mark.xfail(reason="NEURON throws .hoc error."),
+        ),
         "morph_retina_20161028_1.swc",
     ],
 )
@@ -182,13 +186,11 @@ def test_trace_branches(file):
             nx_branch_lens.append(comp_graph.nodes[n]["length"])
     nx_branch_lens = np.sort(nx_branch_lens)
 
-    # NEURON throws a .hoc error for this morphology.
-    if file != "morph_flywire_t4_720575940626407426.swc":
-        h, _ = import_neuron_morph(fname)
-        neuron_branch_lens = np.sort([sec.L for sec in h.allsec()])
+    h, _ = import_neuron_morph(fname)
+    neuron_branch_lens = np.sort([sec.L for sec in h.allsec()])
 
-        errors = np.abs(neuron_branch_lens - nx_branch_lens)
-        assert sum(errors > 1e-3) == 0
+    errors = np.abs(neuron_branch_lens - nx_branch_lens)
+    assert sum(errors > 1e-3) == 0
 
 
 @pytest.mark.parametrize(
