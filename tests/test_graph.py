@@ -26,8 +26,8 @@ from jaxley.io.graph import (  # make_jaxley_compatible,; trace_branches,
     _add_missing_graph_attrs,
     build_compartment_graph,
     from_graph,
-    swc_to_graph,
     to_graph,
+    to_swc_graph,
 )
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
@@ -173,7 +173,7 @@ def test_trace_branches(file):
     """Test whether all branch lengths match NEURON."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
-    swc_graph = swc_to_graph(fname)
+    swc_graph = to_swc_graph(fname)
 
     # pre-processing
     comp_graph = build_compartment_graph(
@@ -207,7 +207,7 @@ def test_from_graph_vs_NEURON(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    swc_graph = swc_to_graph(fname)
+    swc_graph = to_swc_graph(fname)
     comp_graph = build_compartment_graph(
         swc_graph,
         ncomp=ncomp,
@@ -266,10 +266,9 @@ def test_from_graph_vs_NEURON(file):
     errors["radius"] = neuron_df["radius"] - jx_df["radius"]
     errors["length"] = neuron_df["length"] - jx_df["length"]
 
-    # one error is expected, see https://github.com/jaxleyverse/jaxley/issues/140
-    assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) <= 1
-    assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) <= 1
-    assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) <= 1
+    assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) == 0
+    assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) == 0
+    assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) == 0
 
 
 def test_edges_only_to_jaxley():

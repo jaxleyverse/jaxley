@@ -89,7 +89,7 @@ def _find_root(G: nx.Graph):
 ########################################################################################
 
 
-def swc_to_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
+def to_swc_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
     """Read a swc file and convert it to a networkx graph.
 
     The graph is read such that each entry in the swc file becomes a graph node
@@ -262,10 +262,15 @@ def build_compartment_graph(
 
         # [:, :2] because `branch_edge_inds` contains `(start_node, end_note, length)`.
         branch_nodes = _branch_e2n(branch_edge_inds[:, :2])
+
+        # `branch_data` is a pd.DataFrame which contains all SWC nodes of the current
+        # branch.
         branch_data = pd.DataFrame([swc_graph.nodes[i] for i in branch_nodes])
         branch_data["node_index"] = branch_nodes
         branch_data["l"] = path_lens
-        branch_data = branch_data.drop(columns=["type", "p"])
+
+        # errors="ignore" because user-defined graphs might not have the `p` attribute.
+        branch_data = branch_data.drop(columns=["type", "p"], errors="ignore")
 
         # fix id and r bleed over from neighboring neurites of a different type
         if branch_data.loc[0, "id"] != branch_data.loc[1, "id"]:
@@ -283,6 +288,8 @@ def build_compartment_graph(
         comp_len = branch_len / ncomp
         locs = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
 
+        # New branch_nodes is a pd.DataFrame which contains all ncomp compartments that
+        # make up the branch.
         new_branch_nodes = v_interp(locs, branch_data["l"].values, branch_data.values)
         new_branch_nodes = pd.DataFrame(
             np.array(new_branch_nodes.T), columns=branch_data.columns
@@ -321,12 +328,15 @@ def build_compartment_graph(
         ):
             comp_graph.add_edge(new_branch_nodes.index[-1], post_branch_node)
 
+    # Delete `comp_index`,... from branchpoint nodes.
     for node, attrs in comp_graph.nodes(data=True):
         if comp_graph.nodes[node]["type"] == "branchpoint":
             for key in ["comp_index", "branch_index", "xyzr"]:
                 if key in attrs:
                     del comp_graph.nodes[node][key]
 
+    # Rename all nodes to have the compartment index as node name _if they are
+    # compartments_ and otherwise to have a node name such as "n5" (for branchpoints).
     mapping = {}
     branchpoint_index = 0
     for n, attrs in comp_graph.nodes(data=True):
@@ -450,16 +460,21 @@ def _trace_branches(
             if not _has_same_id(undir_swc_graph, i, j, relevant_type_ids):
                 # Add the branch that goes up until the last edge.
                 branches.append(current_branch[:-1])
+                all_type_ids.append(current_type_id)
 
                 # Add the branch made up of just the last edge.
                 branches.append(current_branch[-1:])
                 all_type_ids.append(undir_swc_graph.nodes[j]["id"])
+
+                current_branch = []
             else:
                 branches.append(current_branch)
-            current_branch = []
+                all_type_ids.append(current_type_id)
+                current_branch = []
 
         elif _is_branching(undir_swc_graph, j):
             branches.append(current_branch)
+            all_type_ids.append(current_type_id)
             current_branch = []
 
         # Start new branch if ids differ.
@@ -468,12 +483,12 @@ def _trace_branches(
             # 1  1  1  2  2  2 (number indicates type_id)
             if not swc_graph.has_edge(i, j) and swc_graph.has_edge(j, i):
                 branches.append(current_branch)
+                all_type_ids.append(current_type_id)
                 current_branch = []
             else:
                 branches.append(current_branch[:-1])
+                all_type_ids.append(current_type_id)
                 current_branch = [current_branch[-1]]
-
-        all_type_ids.append(current_type_id)
 
     branch_edges = []
     type_inds = []
@@ -1164,7 +1179,7 @@ def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
 ########################################################################################
 
 
-def vis_comp_graph(
+def vis_compartment_graph(
     comp_graph: nx.DiGraph,
     ax=None,
     font_size: float = 7.0,
