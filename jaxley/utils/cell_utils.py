@@ -619,3 +619,54 @@ def compute_children_and_parents(
     child_belongs_to_branchpoint = remap_to_consecutive(par_inds)
     par_inds = np.unique(par_inds)
     return par_inds, child_inds, child_belongs_to_branchpoint
+
+
+def _get_comp_edges_in_view(
+    comp_edges: pd.DataFrame, incl_comps, comp_edge_condition: str
+):
+    """Return the `_comp_edges` within a current `View`.
+
+    Args:
+        base_comp_edges: `comp_edges` to be filtered.
+        incl_comps: Sequence of compartments that are within the current `View`.
+        comp_edge_condition: Either of
+            {`source_and_sink`, `source_or_sink`, `endpoint`, `startpoint`}. Sets
+            how the `comp_edges` are built. If `source_and_sink`, an edge between
+            compartments is kept only if source and sink compartments are within
+            the view. If `source_or_sink`, an edge is kept if either the source
+            or the sink are within the view. If `endpoint`, then the edge is kept
+            if the compartment is in source or sink and if it is an edge between
+            parent compartment and branchpoint. If `startpoint`, then the edge is
+            kept if the compartment is in source or sink and if it is an edge
+            between child compartment and branchpoint. This is used because we
+            want different treatment of the `comp_edges` depending on whether we
+            index with `.branch()` (`source_or_sink`), `.comp()`
+            (`source_and_sink`), `.loc(0.0)` (`startpoint`), or `.loc(1.0)`
+            (`endpoint`).
+
+    Returns:
+        A Sequence of indices of the `comp_edges` that are within the `View`.
+    """
+    pre = comp_edges["source"].isin(incl_comps).to_numpy()
+    post = comp_edges["sink"].isin(incl_comps).to_numpy()
+    comp_edge_inds = comp_edges.index.to_numpy()
+    if comp_edge_condition == "source_and_sink":
+        possible_edges_in_view = comp_edge_inds[(pre & post).flatten()]
+    elif comp_edge_condition == "source_or_sink":
+        possible_edges_in_view = comp_edge_inds[(pre | post).flatten()]
+    elif comp_edge_condition == "startpoint":
+        # Type 2 and 4 are comp_edges between branchpoints and the
+        # child compartments.
+        is_child = comp_edges["type"].isin([2, 4]).to_numpy()
+        possible_edges_in_view = comp_edge_inds[((pre | post) & is_child).flatten()]
+    elif comp_edge_condition == "endpoint":
+        # Type 2 and 4 are comp_edges between branchpoints and the
+        # parent compartments.
+        is_parent = comp_edges["type"].isin([1, 3]).to_numpy()
+        possible_edges_in_view = comp_edge_inds[((pre | post) & is_parent).flatten()]
+    else:
+        raise ValueError(
+            f"comp_edge_condition is {comp_edge_condition}, but must be in "
+            "{source_and_sink, source_or_sink, startpoint, endpoint}."
+        )
+    return possible_edges_in_view

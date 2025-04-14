@@ -108,6 +108,7 @@ class Cell(Module):
             np.arange(self.total_nbranches), self.ncomp_per_branch
         ).tolist()
         self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
+
         self._update_local_indices()
         self._init_view()
 
@@ -271,3 +272,6 @@ class Cell(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
+
+        # To enable updating `self._comp_edges` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()

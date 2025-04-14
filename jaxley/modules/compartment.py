@@ -93,3 +93,6 @@ class Compartment(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
+
+        # To enable updating `self._comp_edges` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
