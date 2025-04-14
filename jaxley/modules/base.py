@@ -27,6 +27,7 @@ from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
+    _get_comp_edges_in_view,
     build_radiuses_from_xyzr,
     compute_axial_conductances,
     compute_levels,
@@ -124,6 +125,8 @@ class Module(ABC):
         self._scope = "local"  # defaults to local scope
         self._nodes_in_view: np.ndarray = None
         self._edges_in_view: np.ndarray = None
+
+        self._comp_edges: pd.DataFrame = pd.DataFrame()
 
         self.edges = pd.DataFrame(
             columns=[
@@ -503,10 +506,29 @@ class Module(ABC):
         view.set_scope(scope)
         return view
 
-    def _at_nodes(self, key: str, idx: Any) -> View:
+    def _at_nodes(
+        self, key: str, idx: Any, comp_edge_condition: str = "source_or_sink"
+    ) -> View:
         """Return a View of the module filtering `nodes` by specified key and index.
 
-        Keys can be `cell`, `branch`, `comp` and determine which index is used to filter.
+        Args:
+            key: Must be in {`cell`, `branch`, `comp`}. Determines which index is
+                used to filter.
+            idx: The indices to filter for.
+            comp_edge_condition: Either of
+                {`source_and_sink`, `source_or_sink`, `endpoint`, `startpoint`}. Sets
+                how the `comp_edges` are built. If `source_and_sink`, an edge between
+                compartments is kept only if source and sink compartments are within
+                the view. If `source_or_sink`, an edge is kept if either the source
+                or the sink are within the view. If `endpoint`, then the edge is kept
+                if the compartment is in source or sink and if it is an edge between
+                parent compartment and branchpoint. If `startpoint`, then the edge is
+                kept if the compartment is in source or sink and if it is an edge
+                between child compartment and branchpoint. This is used because we
+                want different treatment of the `comp_edges` depending on whether we
+                index with `.branch()` (`source_or_sink`), `.comp()`
+                (`source_and_sink`), `.loc(0.0)` (`startpoint`), or `.loc(1.0)`
+                (`endpoint`).
         """
         base_name = self.base.__class__.__name__
         assert self.base._has_childview(key), f"{base_name} does not support {key}."
@@ -515,7 +537,7 @@ class Module(ABC):
         where = self.nodes[self._scope + f"_{key}_index"].isin(idx)
         inds = self.nodes.index[where].to_numpy()
 
-        view = View(self, nodes=inds)
+        view = View(self, nodes=inds, comp_edge_condition=comp_edge_condition)
         view._set_controlled_by_param(key)
         return view
 
@@ -551,7 +573,7 @@ class Module(ABC):
 
         Returns:
             View of the module at the specified branch index."""
-        return self._at_nodes("branch", idx)
+        return self._at_nodes("branch", idx, comp_edge_condition="source_or_sink")
 
     def comp(self, idx: Any) -> View:
         """Return a View of the module at the selected compartments(s).
@@ -561,7 +583,7 @@ class Module(ABC):
 
         Returns:
             View of the module at the specified compartment index."""
-        return self._at_nodes("comp", idx)
+        return self._at_nodes("comp", idx, comp_edge_condition="source_and_sink")
 
     def edge(self, idx: Any) -> View:
         """Return a View of the module at the selected synapse edges(s).
@@ -593,7 +615,29 @@ class Module(ABC):
         orig_scope = self._scope
         # global scope needed to select correct comps, for i.e. branches w. ncomp=[1,2]
         # loc(0.9)  will correspond to different local branches (0 vs 1).
-        view = self.scope("global").comp(global_comp_idxs).scope(orig_scope)
+
+        if len(at) > 1:
+            # If multiple locations are requested, then we interpret it just like
+            # `.comp()`.
+            comp_edge_condition = "source_and_sink"
+        elif np.isclose(at, 0.0):
+            comp_edge_condition = "startpoint"
+        elif np.isclose(at, 1.0):
+            comp_edge_condition = "endpoint"
+        else:
+            # For any `0 < at < 1`, we do not add any edges to branchpoints.
+            comp_edge_condition = "source_and_sink"
+        # This could also use `.comp(global_comp_idxs)` instead of
+        # `._at_nodes("comp", global_comp_idxs)`, but this would force us to add
+        # `comp_edge_condition` as an attribute to `.comp()`, which @michaeldeistler
+        # found ugly (because it is user-facing).
+        view = (
+            self.scope("global")
+            ._at_nodes(
+                "comp", global_comp_idxs, comp_edge_condition=comp_edge_condition
+            )
+            .scope(orig_scope)
+        )
         view._current_view = "loc"
         return view
 
@@ -2692,6 +2736,7 @@ class View(Module):
         pointer: Union[Module, View],
         nodes: Optional[np.ndarray] = None,
         edges: Optional[np.ndarray] = None,
+        comp_edge_condition: str = "source_or_sink",
     ):
         self.base = pointer.base  # forard base module
         self._scope = pointer._scope  # forward view
@@ -2703,13 +2748,19 @@ class View(Module):
 
         # attrs affected by view
         # indices need to be update first, since they are used in the following
-        self._set_inds_in_view(pointer, nodes, edges)
+        self._set_inds_in_view(
+            pointer, nodes, edges, comp_edge_condition=comp_edge_condition
+        )
         self.ncomp = pointer.ncomp
 
         self.nodes = pointer.nodes.loc[self._nodes_in_view]
         ptr_edges = pointer.edges
         self.edges = (
             ptr_edges if ptr_edges.empty else ptr_edges.loc[self._edges_in_view]
+        )
+        ptr_edges = pointer._comp_edges
+        self._comp_edges = (
+            ptr_edges if ptr_edges.empty else ptr_edges.loc[self._comp_edges_in_view]
         )
 
         self.xyzr = self._xyzr_in_view()
@@ -2768,13 +2819,35 @@ class View(Module):
             raise ValueError("Nothing in view. Check your indices.")
 
     def _set_inds_in_view(
-        self, pointer: Union[Module, View], nodes: np.ndarray, edges: np.ndarray
+        self,
+        pointer: Union[Module, View],
+        nodes: np.ndarray,
+        edges: np.ndarray,
+        comp_edge_condition="source_or_sink",
     ):
-        """Update node and edge indices to list only those currently in view."""
+        """Update node and edge indices to list only those currently in view.
+
+        Args:
+            comp_edge_condition: Either of
+                {`source_and_sink`, `source_or_sink`, `endpoint`, `startpoint`}. Sets
+                how the `comp_edges` are built. If `source_and_sink`, an edge between
+                compartments is kept only if source and sink compartments are within
+                the view. If `source_or_sink`, an edge is kept if either the source
+                or the sink are within the view. If `endpoint`, then the edge is kept
+                if the compartment is in source or sink and if it is an edge between
+                parent compartment and branchpoint. If `startpoint`, then the edge is
+                kept if the compartment is in source or sink and if it is an edge
+                between child compartment and branchpoint. This is used because we
+                want different treatment of the `comp_edges` depending on whether we
+                index with `.branch()` (`source_or_sink`), `.comp()`
+                (`source_and_sink`), `.loc(0)` (`startpoint`), or `.loc(1)`
+                (`endpoint`).
+        """
         # set nodes and edge indices in view
         has_node_inds = nodes is not None
         has_edge_inds = edges is not None
         self._edges_in_view = pointer._edges_in_view
+        self._comp_edges_in_view = pointer._comp_edges_in_view
         self._nodes_in_view = pointer._nodes_in_view
 
         if not has_edge_inds and has_node_inds:
@@ -2791,6 +2864,14 @@ class View(Module):
                 ]
                 self._edges_in_view = np.intersect1d(
                     possible_edges_in_view, self._edges_in_view
+                )
+            base_comp_edges = self.base._comp_edges
+            if not base_comp_edges.empty:
+                possible_edges_in_view = _get_comp_edges_in_view(
+                    base_comp_edges, incl_comps, comp_edge_condition
+                )
+                self._comp_edges_in_view = np.intersect1d(
+                    possible_edges_in_view, self._comp_edges_in_view
                 )
         elif not has_node_inds and has_edge_inds:
             base_nodes = self.base.nodes

@@ -9,6 +9,7 @@
 - improvements to graph-backend for more flexibility in modifying morphologies (#613, @michaeldeistler)
 - remove root compartment for SWC files (#613, @michaeldeistler)
 - enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
+- `.comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
 
 
 # 0.8.2
