@@ -80,7 +80,7 @@ Installation
 
    pip install jaxley
 
-This will install ``Jaxley`` with CPU support. If you want GPU support, follow the instructions on the `JAX github repository <https://github.com/google/jax>`_ to install `JAX` with GPU support (in addition to installing ``Jaxley``). For example, for NVIDIA GPUs, run
+This will install ``Jaxley`` with CPU support. If you want GPU support, follow the instructions on the `JAX github repository <https://github.com/google/jax>`_ to install ``JAX`` with GPU support (in addition to installing ``Jaxley``). For example, for NVIDIA GPUs, run
 
 .. code-block:: console
 

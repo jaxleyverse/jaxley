@@ -9,6 +9,11 @@ from jaxley.io.graph import connect_graphs, from_graph, to_graph
 
 def morph_delete(module_view) -> "Cell":
     """Deletes part of a morphology."""
+    if np.isnan(module_view.base.xyzr[0][0, 0]):
+        module_view.base.compute_xyz()
+    if "x" not in module_view.base.nodes.columns:
+        module_view.base.compute_compartment_centers()
+
     comps_to_delete = module_view.nodes.index
     comp_graph = to_graph(module_view.base)
 
@@ -41,6 +46,12 @@ def morph_attach(module_view1, module_view2) -> "Cell":
     Returns:
         A combined cell.
     """
+    for view in [module_view1, module_view2]:
+        if np.isnan(view.base.xyzr[0][0, 0]):
+            view.base.compute_xyz()
+        if "x" not in view.base.nodes.columns:
+            view.base.compute_compartment_centers()
+
     graph1 = to_graph(module_view1.base)
     graph2 = to_graph(module_view2.base)
 

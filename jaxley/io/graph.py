@@ -80,7 +80,7 @@ def _find_root(G: nx.Graph):
     """Return a possible root for tracing the graph.
 
     Roots are nodes which have degree = 0."""
-    roots = [n for n in G.nodes if _is_leaf(G, n)]
+    roots = [n for n in sorted(G.nodes) if _is_leaf(G, n)]
     return roots[0]
 
 
@@ -451,7 +451,8 @@ def _trace_branches(
     # We first set the type of all SWC nodes to be "spurious". Later on, we change the
     # type of branchpoints to `branchpoint`.
     nx.set_node_attributes(undir_swc_graph, "spurious", "type")
-    for i, j in nx.dfs_edges(undir_swc_graph, root):
+    # `sort_neighbors=lambda x: sorted(x)` to first handle edges with a low node index.
+    for i, j in nx.dfs_edges(undir_swc_graph, root, sort_neighbors=lambda x: sorted(x)):
         current_edge = (i, j)
         current_len = undir_swc_graph.edges[current_edge]["l"]
         current_type_id = undir_swc_graph.nodes[i]["id"]
@@ -651,6 +652,13 @@ def _build_solve_graph(
     Args:
         comp_graph: Compartment graph returned by `build_compartment_graph`.
         root: The root node to traverse the graph for the solve order.
+        traverse_for_solve_order: Whether to traverse the graph for identifying the
+            solve order. Should only be set to `False` if you are confident that the
+            `comp_graph` is in a form in which it can be solved (i.e. its branch
+            indices, compartment indices, and node names are correct). Typically, this
+            is the case only if you exported a module to a `comp_graph` via `to_graph`,
+            did not modify the graph, and now re-import it as a module with
+            `from_graph`.
 
     Returns:
         A directed graph indicating the solve order. The graph does no longer contain
@@ -693,7 +701,8 @@ def _build_solve_graph(
     node_inds_in_which_to_flip_xyzr = []
 
     # Traverse the graph for the solve order.
-    for i, j in nx.dfs_edges(undirected_comp_graph, root):
+    # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
+    for i, j in nx.dfs_edges(undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)):
         solve_graph.add_edge(i, j)
         solve_graph.nodes[j]["branch_index"] = branch_index
         solve_graph.nodes[j]["comp_index"] = comp_index
@@ -824,7 +833,7 @@ def from_graph(
     comp_graph: nx.DiGraph,
     assign_groups: bool = True,
     solve_root: Optional[int] = None,
-    traverse_for_solve_order: bool = True,
+    traverse_for_solve_order: Union[bool, str] = True,
 ):
     """Return a Jaxley module from the networkX graph.
 
@@ -1090,6 +1099,11 @@ def to_graph(
     module_graph.graph["type"] = module.__class__.__name__.lower()
 
     module_comp_graph = _jaxley_graph_to_comp_graph(module_graph)
+    for branchpoint in module._branchpoints.iterrows():
+        node = branchpoint[0]
+        xyz = branchpoint[1]
+        for key in ["x", "y", "z"]:
+            module_comp_graph.nodes[node][key] = xyz[key]
 
     if synapses:
         syn_edges = module.edges.copy()
@@ -1178,11 +1192,11 @@ def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
 
 def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
     """Return a graph whose branchpoint indices match those of a `jx.Module`.
-    
+
     Here, we ensure that the branchpoints are enumerated in the same way in the
     module as they are in the graph. The ordering is by the branch_index of the
     parent branch of a branchpoint.
-    
+
     As an example, this could remap branchpoints as follows, if there are ten
     compartments: ["n0", "n1", "n2"] -> [10, 12, 11]
     """
@@ -1192,14 +1206,18 @@ def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
     for node in jaxley_graph.nodes:
         if jaxley_graph.nodes[node]["type"] == "branchpoint":
             predecessor = list(jaxley_graph.predecessors(node))[0]
-            predecessor_branch_inds.append(jaxley_graph.nodes[predecessor]["branch_index"])
+            predecessor_branch_inds.append(
+                jaxley_graph.nodes[predecessor]["branch_index"]
+            )
             branchpoints.append(node)
         else:
             if jaxley_graph.nodes[node]["comp_index"] > max_comp_index:
                 max_comp_index = jaxley_graph.nodes[node]["comp_index"]
     sorting = np.argsort(predecessor_branch_inds)
     branchpoints_in_corrected_order = np.asarray(branchpoints)[sorting]
-    mapping = {k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)}
+    mapping = {
+        k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)
+    }
     return nx.relabel_nodes(jaxley_graph, mapping)
 
 
@@ -1270,7 +1288,7 @@ def connect_graphs(
     # Rename the nodes of graph2.
     offset_comps = max([n for n in graph1.nodes])
     mapping = {}
-    for n in graph2.nodes:
+    for n in sorted(graph2.nodes):
         current_index = n
         new_index = current_index + offset_comps + 1
         mapping[n] = new_index
@@ -1286,16 +1304,13 @@ def connect_graphs(
     # branchpoint->branchpoint.
     type1 = combined_graph.nodes[node1]["type"]
     type2 = combined_graph.nodes[node2]["type"]
-    offset_branchpoints = max(
-        [
-            n
-            for n in combined_graph.nodes
-            if combined_graph.nodes[n]["type"] == "branchpoint"
-        ]
-    )
+    offset_branchpoints = max([n for n in combined_graph.nodes])
     if type1 == "comp" and type2 == "comp":
         # If both nodes are compartments, then we insert a new branchpoint.
-        new_attrs = combined_graph.nodes(data=True)[offset_branchpoints].copy()
+        for node in combined_graph.nodes:
+            if combined_graph.nodes[node]["type"] == "branchpoint":
+                new_attrs = combined_graph.nodes(data=True)[node].copy()
+                break
         for key in ["x", "y", "z"]:
             comp1_xyz = combined_graph.nodes[node1][key]
             comp2_xyz = combined_graph.nodes[node2][key]
@@ -1324,7 +1339,21 @@ def connect_graphs(
     if "group_names" in graph2.graph.keys():
         group_names = group_names | set(graph2.graph["group_names"])
     combined_graph.graph["group_names"] = list(group_names)
-    return combined_graph
+
+    # Relabel the compartments. Before the code below, compartments induced by `graph2`
+    # have a higher node index than branchpoints of `graph1`. Below, we fix this.
+    mapping = {}
+    counter = 0
+    for n in sorted(combined_graph.nodes):
+        if combined_graph.nodes[n]["type"] == "comp":
+            mapping[n] = counter
+            counter += 1
+    for n in sorted(combined_graph.nodes):
+        if combined_graph.nodes[n]["type"] == "branchpoint":
+            mapping[n] = counter
+            counter += 1
+    # TODO: need to set indices appropriately to have comps first and then branchpoints.
+    return nx.relabel_nodes(combined_graph, mapping)
 
 
 def _assign_false_for_group(graph1: nx.DiGraph, graph2: nx.DiGraph) -> nx.DiGraph:

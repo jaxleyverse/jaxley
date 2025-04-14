@@ -126,6 +126,7 @@ class Module(ABC):
         self._nodes_in_view: np.ndarray = None
         self._edges_in_view: np.ndarray = None
 
+        self._branchpoints: pd.DataFrame = pd.DataFrame(columns=["x", "y", "z"])
         self._comp_edges: pd.DataFrame = pd.DataFrame()
 
         self.edges = pd.DataFrame(
@@ -2762,6 +2763,10 @@ class View(Module):
         self._comp_edges = (
             ptr_edges if ptr_edges.empty else ptr_edges.loc[self._comp_edges_in_view]
         )
+        ptr_nodes = pointer._branchpoints
+        self._branchpoints = (
+            ptr_nodes if ptr_nodes.empty else ptr_nodes.loc[self._branchpoints_in_view]
+        )
 
         self.xyzr = self._xyzr_in_view()
         self.ncomp = 1 if len(self.nodes) == 1 else pointer.ncomp
@@ -2847,8 +2852,9 @@ class View(Module):
         has_node_inds = nodes is not None
         has_edge_inds = edges is not None
         self._edges_in_view = pointer._edges_in_view
-        self._comp_edges_in_view = pointer._comp_edges_in_view
         self._nodes_in_view = pointer._nodes_in_view
+        self._comp_edges_in_view = pointer._comp_edges_in_view
+        self._branchpoints_in_view = pointer._branchpoints_in_view
 
         if not has_edge_inds and has_node_inds:
             base_edges = self.base.edges
@@ -2866,6 +2872,7 @@ class View(Module):
                     possible_edges_in_view, self._edges_in_view
                 )
             base_comp_edges = self.base._comp_edges
+            base_branchpoints = self.base._branchpoints
             if not base_comp_edges.empty:
                 possible_edges_in_view = _get_comp_edges_in_view(
                     base_comp_edges, incl_comps, comp_edge_condition
@@ -2873,6 +2880,13 @@ class View(Module):
                 self._comp_edges_in_view = np.intersect1d(
                     possible_edges_in_view, self._comp_edges_in_view
                 )
+                all_comps = base_comp_edges.loc[self._comp_edges_in_view][
+                    "sink"
+                ].to_numpy()
+                condition = base_branchpoints.index.isin(all_comps)
+                self._branchpoints_in_view = base_branchpoints.loc[
+                    condition
+                ].index.to_numpy()
         elif not has_node_inds and has_edge_inds:
             base_nodes = self.base.nodes
             self._edges_in_view = edges

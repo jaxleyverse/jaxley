@@ -489,7 +489,12 @@ def read_swc(
             ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
             relevant_type_ids=relevant_type_ids,
         )
-        module = from_graph(comp_graph, assign_groups=assign_groups, solve_root=None)
+        module = from_graph(
+            comp_graph,
+            assign_groups=assign_groups,
+            solve_root=None,
+            traverse_for_solve_order=True,  # Traverse to fix potential tracing errors.
+        )
         return module
     else:
         raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")

@@ -29,6 +29,7 @@ from jaxley.io.graph import (  # make_jaxley_compatible,; trace_branches,
     to_graph,
     to_swc_graph,
 )
+from jaxley.io.morph_utils import morph_attach, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare
@@ -410,3 +411,90 @@ def test_swc2graph_voltages(file):
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
     assert all(errors < 2.5), "voltages do not match."
+
+
+@pytest.mark.parametrize("ncomp", [1, 3])
+def test_morph_delete(ncomp: int):
+    """Test correctness of `nodes` and voltages after `morph_delete`."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=ncomp)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+    cell.branch(0).set("length", 50.0)
+    cell = morph_delete(cell.branch(2))
+    cell.insert(HH())
+
+    cell2 = jx.Cell(branch, parents=[-1, 0])
+    cell2.branch(0).set("length", 50.0)
+    cell2.insert(HH())
+
+    cell[0, 0].record()
+    cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
+    cell2[0, 0].record()
+    cell2[0, 0].stimulate(0.1 * jnp.ones((100,)))
+
+    v1 = jx.integrate(cell)
+    v2 = jx.integrate(cell2)
+    assert np.max(np.abs(v1 - v2)) < 1e-8, "voltages do not match."
+
+    # Drop xyz because the first cell had branches that form a "star", so even
+    # after deleting a branch we do not expect xyz to be a straight line.
+    assert np.all(
+        equal_both_nan_or_empty_df(
+            cell.nodes.drop(columns=["x", "y", "z"]),
+            cell2.nodes,
+        )
+    )
+
+
+@pytest.mark.parametrize("ncomp", [1, 3])
+def test_morph_attach(ncomp: int):
+    """Test correctness of `nodes` and voltages after `morph_attach`."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=ncomp)
+    cell = jx.Cell(branch, parents=[-1, 0])
+    stub = jx.Cell(branch, parents=[-1])
+    stub.set("length", 80.0)
+    cell = morph_attach(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
+    cell.insert(HH())
+
+    cell2 = jx.Cell(branch, parents=[-1, 0, 0])
+    cell2.branch(2).set("length", 80.0)
+    cell2.insert(HH())
+
+    cell[0, 0].record()
+    cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
+    cell2[0, 0].record()
+    cell2[0, 0].stimulate(0.1 * jnp.ones((100,)))
+
+    v1 = jx.integrate(cell)
+    v2 = jx.integrate(cell2)
+    assert np.max(np.abs(v1 - v2)) < 1e-8, "voltages do not match."
+
+    # Drop xyz because the first cell had branches that form a "star", so even
+    # after deleting a branch we do not expect xyz to be a straight line.
+    assert np.all(
+        equal_both_nan_or_empty_df(
+            cell.nodes.drop(columns=["x", "y", "z"]),
+            cell2.nodes,
+        )
+    )
+
+
+@pytest.mark.parametrize("ncomp", [1, 2])
+def test_morph_edit_swc(ncomp: int):
+    """Check whether we get NaN after having deleted and added things to SWC."""
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", "morph_l5pc_with_axon.swc")
+    cell = jx.read_swc(fname, ncomp=ncomp)
+    cell = morph_delete(cell.axon)
+    cell = morph_delete(cell.apical)
+
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=ncomp)
+    stub = jx.Cell(branch, parents=[-1])
+
+    cell = morph_attach(cell.branch(0).loc(0.0), stub.branch(0).loc(1.0))
+    cell[0, 0].record("v")
+    cell.soma.branch(0).comp(0).stimulate(0.1 * jnp.ones((10)))
+    v = jx.integrate(cell)
+    assert np.invert(np.any(np.isnan(v))), "Found NaN"
