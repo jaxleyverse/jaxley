@@ -1268,20 +1268,12 @@ def connect_graphs(
                 graph2.nodes[node]["xyzr"][:, i] += offset
 
     # Rename the nodes of graph2.
-    offset_comps = max([n for n in graph1.nodes if graph1.nodes[n]["type"] == "comp"])
-    offset_branchpoints = max(
-        [int(n[1:]) for n in graph1.nodes if graph1.nodes[n]["type"] == "branchpoint"]
-    )
+    offset_comps = max([n for n in graph1.nodes])
     mapping = {}
     for n in graph2.nodes:
-        if graph2.nodes[n]["type"] == "branchpoint":
-            current_index = int(n[1:])
-            new_index = current_index + offset_branchpoints + 1
-            mapping[n] = f"n{new_index}"
-        else:
-            current_index = n
-            new_index = current_index + offset_comps + 1
-            mapping[n] = new_index
+        current_index = n
+        new_index = current_index + offset_comps + 1
+        mapping[n] = new_index
 
     graph2 = nx.relabel_nodes(graph2, mapping)
     node2 = mapping[node2]
@@ -1296,19 +1288,19 @@ def connect_graphs(
     type2 = combined_graph.nodes[node2]["type"]
     offset_branchpoints = max(
         [
-            int(n[1:])
+            n
             for n in combined_graph.nodes
             if combined_graph.nodes[n]["type"] == "branchpoint"
         ]
     )
     if type1 == "comp" and type2 == "comp":
         # If both nodes are compartments, then we insert a new branchpoint.
-        new_attrs = combined_graph.nodes(data=True)[f"n{offset_branchpoints}"].copy()
+        new_attrs = combined_graph.nodes(data=True)[offset_branchpoints].copy()
         for key in ["x", "y", "z"]:
             comp1_xyz = combined_graph.nodes[node1][key]
             comp2_xyz = combined_graph.nodes[node2][key]
             new_attrs[key] = 0.5 * (comp1_xyz + comp2_xyz)
-        new_node_index = f"n{offset_branchpoints + 1}"
+        new_node_index = offset_branchpoints + 1
         combined_graph.add_node(new_node_index, **new_attrs)
         combined_graph.add_edge(node1, new_node_index)
         combined_graph.add_edge(new_node_index, node2)
