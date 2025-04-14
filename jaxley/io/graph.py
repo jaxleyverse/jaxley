@@ -336,7 +336,8 @@ def build_compartment_graph(
                     del comp_graph.nodes[node][key]
 
     # Rename all nodes to have the compartment index as node name _if they are
-    # compartments_ and otherwise to have a node name such as "n5" (for branchpoints).
+    # compartments_ and otherwise to have a larger indices as node names
+    # (for branchpoints).
     mapping = {}
     branchpoint_index = 0
     for n, attrs in comp_graph.nodes(data=True):
@@ -346,6 +347,7 @@ def build_compartment_graph(
             mapping[n] = f"n{branchpoint_index}"
             branchpoint_index += 1
     comp_graph = nx.relabel_nodes(comp_graph, mapping, copy=True)
+    comp_graph = _set_branchpoint_indices(comp_graph)
 
     min_radius = min_radius if min_radius else 0.0
 
@@ -1139,7 +1141,7 @@ def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
     nx.set_node_attributes(jaxley_graph, "comp", "type")
     new_node_id = 0
 
-    # First transformation: Replace every edge (i, j) with (i, n), (n, j)
+    # Add branchpoints to the graph: replace every edge (i, j) with (i, n), (n, j).
     nodes = list(jaxley_graph.nodes())
     for n in nodes:
         successors = list(jaxley_graph.successors(n))
@@ -1171,7 +1173,34 @@ def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
                     jaxley_graph.add_edge(node_name, j)
                 new_node_id += 1
 
-    return jaxley_graph  # This is now a valid `comp_graph`.
+    return _set_branchpoint_indices(jaxley_graph)  # This is now a valid `comp_graph`.
+
+
+def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
+    """Return a graph whose branchpoint indices match those of a `jx.Module`.
+    
+    Here, we ensure that the branchpoints are enumerated in the same way in the
+    module as they are in the graph. The ordering is by the branch_index of the
+    parent branch of a branchpoint.
+    
+    As an example, this could remap branchpoints as follows, if there are ten
+    compartments: ["n0", "n1", "n2"] -> [10, 12, 11]
+    """
+    predecessor_branch_inds = []
+    branchpoints = []
+    max_comp_index = 0
+    for node in jaxley_graph.nodes:
+        if jaxley_graph.nodes[node]["type"] == "branchpoint":
+            predecessor = list(jaxley_graph.predecessors(node))[0]
+            predecessor_branch_inds.append(jaxley_graph.nodes[predecessor]["branch_index"])
+            branchpoints.append(node)
+        else:
+            if jaxley_graph.nodes[node]["comp_index"] > max_comp_index:
+                max_comp_index = jaxley_graph.nodes[node]["comp_index"]
+    sorting = np.argsort(predecessor_branch_inds)
+    branchpoints_in_corrected_order = np.asarray(branchpoints)[sorting]
+    mapping = {k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)}
+    return nx.relabel_nodes(jaxley_graph, mapping)
 
 
 ########################################################################################
