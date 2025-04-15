@@ -808,8 +808,12 @@ def _add_meta_data(solve_graph: nx.DiGraph) -> nx.DiGraph:
     branch_inds = nx.get_node_attributes(solve_graph, "branch_index")
     branch_edge_df = pd.DataFrame(branch_inds.items(), columns=["node", "branch_index"])
     all_xyzr = []
-    for branch_index, nodes_in_branch in branch_edge_df.groupby("branch_index")["node"]:
-        nodes_in_branch = nodes_in_branch.to_numpy().tolist()
+    # The `.apply(list).sort_index().items()` ensures that the `branch_index` is sorted.
+    # This is important because we expect all_xyzr[n] to correspond to the n-th
+    # branch.
+    for branch_index, nodes_in_branch in (
+        branch_edge_df.groupby("branch_index")["node"].apply(list).sort_index().items()
+    ):
         nodes_in_branch = sorted(nodes_in_branch)
         xyzr = [solve_graph.nodes[n]["xyzr"] for n in nodes_in_branch]
         xyzr = np.concatenate(xyzr)
@@ -918,9 +922,13 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
         acc_parents.append([-1] + parents.tolist())
 
     # TODO: support inhom ncomps
-    module = _build_module_scaffold(node_df, solve_graph.graph["type"], acc_parents)
+    module = _build_module_scaffold(
+        node_df, solve_graph.graph["type"], acc_parents, solve_graph.graph["xyzr"]
+    )
 
-    # set global attributes of module
+    # set global attributes of module. `xyzr` is passed here again, although it has
+    # already been passed to `_build_module_scaffold`. `jx.Cell` requires xyzr at
+    # __init__()`, all other modules do not.
     for k, v in solve_graph.graph.items():
         if k not in ["type"]:
             setattr(module, k, v)
@@ -954,6 +962,7 @@ def _build_module_scaffold(
     idxs: pd.DataFrame,
     return_type: Optional[str] = None,
     parent_branches: Optional[List[np.ndarray]] = None,
+    xyzr: List[np.ndarray] = [],
 ) -> Union[Network, Cell, Branch, Compartment]:
     """Builds a skeleton module from a DataFrame of indices.
 
@@ -984,14 +993,20 @@ def _build_module_scaffold(
         build_cache["branch"] = [branch]
 
     if return_type in return_types[2:]:
+        branch_counter = 0
         for cell_id, cell_groups in idxs.groupby("cell_index"):
             num_branches = cell_groups["branch_index"].nunique()
             default_parents = np.arange(num_branches) - 1  # ignores morphology
             parents = (
                 default_parents if parent_branches is None else parent_branches[cell_id]
             )
-            cell = Cell([branch] * num_branches, parents)
+            cell = Cell(
+                [branch] * num_branches,
+                parents,
+                xyzr=xyzr[branch_counter : branch_counter + num_branches],
+            )
             build_cache["cell"].append(cell)
+            branch_counter += num_branches
 
     if return_type in return_types[3:]:
         build_cache["network"] = [Network(build_cache["cell"])]

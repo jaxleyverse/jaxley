@@ -22,7 +22,7 @@ import jaxley as jx
 from jaxley import connect
 from jaxley.channels import HH
 from jaxley.channels.pospischil import K, Leak, Na
-from jaxley.io.graph import (  # make_jaxley_compatible,; trace_branches,
+from jaxley.io.graph import (
     _add_missing_graph_attrs,
     build_compartment_graph,
     from_graph,
@@ -485,16 +485,35 @@ def test_morph_edit_swc(ncomp: int):
     """Check whether we get NaN after having deleted and added things to SWC."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_l5pc_with_axon.swc")
-    cell = jx.read_swc(fname, ncomp=ncomp)
+    cell = jx.read_swc(fname, ncomp=ncomp, backend="graph")
     cell = morph_delete(cell.axon)
     cell = morph_delete(cell.apical)
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, ncomp=ncomp)
     stub = jx.Cell(branch, parents=[-1])
+    stub.set("length", 100.0)
+    stub.add_to_group("stub")  # To more easily find the stub later.
 
-    cell = morph_connect(cell.branch(0).loc(0.0), stub.branch(0).loc(1.0))
+    # Implicitly also tests whether it can be combined with groups (`.soma`), and
+    # whether branchpoint nodes _and_ tip nodes work (branchpoint node for `cell`, tip
+    # for `stub`).
+    cell = morph_connect(cell.soma.branch(0).loc(1.0), stub.branch(0).loc(0.0))
+
+    # Modify a bit and run a simulation.
+    cell.stub.set_ncomp(4)
+    cell.branch(3).set_ncomp(2)
+
+    # Channels and initialization.
+    cell.soma.insert(HH())
+    cell.insert(Leak())
+    cell.set("v", -65.0)
+    cell.init_states()
+
+    # Simulation.
     cell[0, 0].record("v")
-    cell.soma.branch(0).comp(0).stimulate(0.1 * jnp.ones((10)))
+    cell.stub.branch(0).comp(3).record("v")
+    cell.soma.branch(0).comp(0).stimulate(jx.step_current(10.0, 5.0, 0.2, 0.025, 100.0))
     v = jx.integrate(cell)
+
     assert np.invert(np.any(np.isnan(v))), "Found NaN"

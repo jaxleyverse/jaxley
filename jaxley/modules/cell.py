@@ -275,7 +275,7 @@ class Cell(Module):
 
         # Get last xyz of parent.
         branchpoint_xyz = []
-        for i in range(len(self._par_inds)):
+        for i in self._par_inds:
             branchpoint_xyz.append(self.xyzr[i][-1, :3])
         if len(branchpoint_xyz) > 0:
             # It is initialized as empty pd.DataFrame in `base.py`.
