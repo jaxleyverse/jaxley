@@ -839,7 +839,7 @@ def from_graph(
     comp_graph: nx.DiGraph,
     assign_groups: bool = True,
     solve_root: Optional[int] = None,
-    traverse_for_solve_order: Union[bool, str] = True,
+    traverse_for_solve_order: bool = True,
 ):
     """Return a Jaxley module from the networkX graph.
 
@@ -1306,8 +1306,7 @@ def connect_graphs(
     offset_comps = max([n for n in graph1.nodes])
     mapping = {}
     for n in sorted(graph2.nodes):
-        current_index = n
-        new_index = current_index + offset_comps + 1
+        new_index = n + offset_comps + 1
         mapping[n] = new_index
 
     graph2 = nx.relabel_nodes(graph2, mapping)
@@ -1324,10 +1323,14 @@ def connect_graphs(
     offset_branchpoints = max([n for n in combined_graph.nodes])
     if type1 == "comp" and type2 == "comp":
         # If both nodes are compartments, then we insert a new branchpoint.
+        #
+        # Search for the first node labelled as `type=branchpoint`. Once we have found
+        # such a node, we `break`.
         for node in combined_graph.nodes:
             if combined_graph.nodes[node]["type"] == "branchpoint":
                 new_attrs = combined_graph.nodes(data=True)[node].copy()
                 break
+        # Set the xyz coordinates of the new node.
         for key in ["x", "y", "z"]:
             comp1_xyz = combined_graph.nodes[node1][key]
             comp2_xyz = combined_graph.nodes[node2][key]
@@ -1369,7 +1372,6 @@ def connect_graphs(
         if combined_graph.nodes[n]["type"] == "branchpoint":
             mapping[n] = counter
             counter += 1
-    # TODO: need to set indices appropriately to have comps first and then branchpoints.
     return nx.relabel_nodes(combined_graph, mapping)
 
 

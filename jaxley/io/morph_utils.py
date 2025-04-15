@@ -24,6 +24,8 @@ def morph_delete(module_view) -> "Cell":
         cell = jx.read_swc("path_to_swc_file.swc", ncomp=1)
         cell = morph_delete(cell.axon)
     """
+    # If the user did not run `compute_xyz` or `compute_compartment_centers`, we run
+    # it automatically.
     if np.isnan(module_view.base.xyzr[0][0, 0]):
         module_view.base.compute_xyz()
     if "x" not in module_view.base.nodes.columns:
@@ -34,6 +36,9 @@ def morph_delete(module_view) -> "Cell":
 
     nodes_to_keep = []
     for node in comp_graph.nodes:
+        # We keep all `branchpoints`. The ones that have degree <2 will automatically
+        # be trimmed away `_remove_branch_points_at_tips`, which is run during
+        # `from_graph()`.
         if (
             comp_graph.nodes[node]["type"] == "branchpoint"
             or comp_graph.nodes[node]["comp_index"] not in comps_to_delete
@@ -72,6 +77,8 @@ def morph_connect(module_view1, module_view2) -> "Cell":
         stub = jx.Cell()
         cell = morph_connect(cell.branch(0).loc(0.0), stub.branch(0).loc(0.0))
     """
+    # If the user did not run `compute_xyz` or `compute_compartment_centers`, we run
+    # it automatically.
     for view in [module_view1, module_view2]:
         if np.isnan(view.base.xyzr[0][0, 0]):
             view.base.compute_xyz()
