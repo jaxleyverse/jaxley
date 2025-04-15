@@ -12,7 +12,10 @@
 
 ## Important dependencies and prior art
 
-* We greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [NEURON](https://github.com/neuronsimulator/nrn).
+- `Jaxley` greatly benefited from previous toolboxes for simulating multicompartment neurons, in particular [`NEURON`](https://github.com/neuronsimulator/nrn).
+- `Jaxley` is built upon the [`JAX`](https://docs.jax.dev/en/latest/) machine learning framework, developed by Google.
+- `Jaxley` makes heavy use of [`pandas`](https://pandas.pydata.org) for tracking parameters.
+- `Jaxley` uses [`networkX`](https://networkx.org) for handling morphologies.
 
 
 ## Funding

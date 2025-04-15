@@ -10,7 +10,7 @@ from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 
 class HH(Channel):
-    """Hodgkin-Huxley channel."""
+    """Hodgkin-Huxley channel based on Sterratt, Graham, Gillies & Einevoll."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True

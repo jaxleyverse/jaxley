@@ -2,7 +2,22 @@
 
 ### New features
 
+- utility to delete parts of a morphology (#612, @michaeldeistler):
+```python
+from jaxley.io.morph_utils import morph_delete
+cell = morph_delete(cell.branch([1, 2]))
+```
+- utility to connect two cells into a single cell (#612, @michaeldeistler):
+```python
+from jaxley.io.morph_utils import morph_connect
+cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
+```
+
 ### Documentation
+
+- Introduce the `how-to guide` on the website (#612, @michaeldeistler)
+- reorganize the advanced tutorials into subgroups (#612, @michaeldeistler)
+- split the morphology handling tutorials into two notebooks (#612, @michaeldeistler)
 
 ### Internal updates
 

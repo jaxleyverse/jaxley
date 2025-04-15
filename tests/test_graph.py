@@ -29,7 +29,7 @@ from jaxley.io.graph import (  # make_jaxley_compatible,; trace_branches,
     to_graph,
     to_swc_graph,
 )
-from jaxley.io.morph_utils import morph_attach, morph_delete
+from jaxley.io.morph_utils import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare
@@ -454,7 +454,7 @@ def test_morph_attach(ncomp: int):
     cell = jx.Cell(branch, parents=[-1, 0])
     stub = jx.Cell(branch, parents=[-1])
     stub.set("length", 80.0)
-    cell = morph_attach(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
+    cell = morph_connect(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
     cell.insert(HH())
 
     cell2 = jx.Cell(branch, parents=[-1, 0, 0])
@@ -493,7 +493,7 @@ def test_morph_edit_swc(ncomp: int):
     branch = jx.Branch(comp, ncomp=ncomp)
     stub = jx.Cell(branch, parents=[-1])
 
-    cell = morph_attach(cell.branch(0).loc(0.0), stub.branch(0).loc(1.0))
+    cell = morph_connect(cell.branch(0).loc(0.0), stub.branch(0).loc(1.0))
     cell[0, 0].record("v")
     cell.soma.branch(0).comp(0).stimulate(0.1 * jnp.ones((10)))
     v = jx.integrate(cell)

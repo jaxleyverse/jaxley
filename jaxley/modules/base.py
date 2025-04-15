@@ -62,7 +62,7 @@ def only_allow_module(func):
 
 
 class Module(ABC):
-    """Module base class.
+    """Module base class which implements features shared by all modules.
 
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.

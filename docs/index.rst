@@ -58,17 +58,17 @@ If you want to learn more, check out our material:
 
       In-depth guides for power-users.
 
-   .. grid-item-card:: 📚 API Reference
-      :link: jaxley
-      :link-type: doc
-
-      Full documentation of modules and functions.
-
    .. grid-item-card:: 🧩 How-to guides
       :link: how_to_guide
       :link-type: doc
 
       Practical recipes for common tasks.
+
+   .. grid-item-card:: 📚 API Reference
+      :link: jaxley
+      :link-type: doc
+
+      Full documentation of modules and functions.
 
 
 Installation
@@ -129,8 +129,8 @@ If you use `Jaxley`, consider citing the `corresponding paper <https://www.biorx
    :caption: More guides
 
    advanced_tutorials
-   jaxley
    how_to_guide
+   jaxley
 
 .. toctree::
    :hidden:

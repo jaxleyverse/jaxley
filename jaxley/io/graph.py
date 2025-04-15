@@ -702,7 +702,9 @@ def _build_solve_graph(
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
-    for i, j in nx.dfs_edges(undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)):
+    for i, j in nx.dfs_edges(
+        undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)
+    ):
         solve_graph.add_edge(i, j)
         solve_graph.nodes[j]["branch_index"] = branch_index
         solve_graph.nodes[j]["comp_index"] = comp_index

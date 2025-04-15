@@ -20,3 +20,5 @@ After having read these tutorials, you can check out the
 for additional information. If you are looking for brief answers to specific questions,
 check our
 `how-to guide <https://jaxley.readthedocs.io/en/latest/how_to_guide.html>`_.
+For exhaustive documentation of all modules and functions, see the
+`API reference <https://jaxley.readthedocs.io/en/latest/jaxley.html>`_.

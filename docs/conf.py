@@ -102,3 +102,9 @@ autosummary_generate = True
 autodoc_typehints = "description"
 add_module_names = False
 autodoc_member_order = "bysource"
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "inherited-members": True,
+    "show-inheritance": True
+}
