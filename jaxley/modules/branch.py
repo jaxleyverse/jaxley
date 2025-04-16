@@ -16,12 +16,12 @@ from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Branch(Module):
-    """Branch class.
+    """A branch made up of one or multiple compartments (without branchpoints).
 
     This class defines a single branch that can be simulated by itself or
-    connected to build a cell. A branch is linear segment of several compartments
-    and can be connected to no, one or more other branches at each end to build more
-    intricate cell morphologies.
+    connected to build a cell. A branch is an unbranched neurite of several
+    compartments and can be connected to no, one or more other branches at each end to
+    build more intricate cell morphologies (via ``jx.Cell``).
     """
 
     branch_params: Dict = {}

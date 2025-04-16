@@ -32,9 +32,10 @@ from jaxley.utils.syn_utils import gather_synapes
 
 
 class Network(Module):
-    """Network class.
+    """A network made up of multiple cells, connected by synapses.
 
-    This class defines a network of cells that can be connected with synapses.
+    This class defines a network of cells. These cells can later on be connected with
+    synapses via `jx.connect`.
     """
 
     network_params: Dict = {}

@@ -15,7 +15,7 @@ from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Compartment(Module):
-    """Compartment class.
+    """A single compartment.
 
     This class defines a single compartment that can be simulated by itself or
     connected up into branches. It is the basic building block of a neuron model.

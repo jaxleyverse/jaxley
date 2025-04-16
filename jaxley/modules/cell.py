@@ -28,7 +28,7 @@ from jaxley.utils.solver_utils import (
 
 
 class Cell(Module):
-    """Cell class.
+    """A cell made up of one or multiple branches (with branchpoints).
 
     This class defines a single cell that can be simulated by itself or
     connected with synapses to build a network. A cell is made up of several branches
