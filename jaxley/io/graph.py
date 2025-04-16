@@ -916,6 +916,10 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     parent_branch_inds = branch_edges_df.set_index("child_branch_index").sort_index()[
         "parent_branch_index"
     ]
+    assert np.std(node_df.groupby("branch_index").size().to_numpy()) < 1e-8, (
+        "`from_graph()` does not support a varying number of compartments in each "
+        "branch."
+    )
     for branch_inds in node_df.groupby("cell_index")["branch_index"].unique():
         root_branch_idx = branch_inds[0]
         parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
@@ -1081,8 +1085,10 @@ def to_graph(
     else:
         for c in module.channels:
             nodes = nodes.drop(c.name, axis=1)
-            nodes = nodes.drop(list(c.channel_params), axis=1)
-            nodes = nodes.drop(list(c.channel_states), axis=1)
+            # errors="ignore" because some channels might have the same parameter or
+            # state name (if the channels share parameters).
+            nodes = nodes.drop(list(c.channel_params), axis=1, errors="ignore")
+            nodes = nodes.drop(list(c.channel_states), axis=1, errors="ignore")
 
     for col in nodes.columns:  # col wise adding preserves dtypes
         module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
@@ -1248,6 +1254,7 @@ def vis_compartment_graph(
     ax=None,
     font_size: float = 7.0,
     node_size: float = 150.0,
+    arrowsize: float = 10.0,
     comp_color: str = "r",
     branchpoint_color: str = "orange",
 ):
@@ -1272,6 +1279,7 @@ def vis_compartment_graph(
         node_size=node_size,
         ax=ax,
         node_color=color_map,
+        arrowsize=arrowsize,
     )
 
 
