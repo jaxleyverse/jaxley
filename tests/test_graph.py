@@ -29,7 +29,7 @@ from jaxley.io.graph import (
     to_graph,
     to_swc_graph,
 )
-from jaxley.io.morph_utils import morph_connect, morph_delete
+from jaxley.jaxley.io.morph_utils import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare

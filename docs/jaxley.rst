@@ -8,7 +8,6 @@ Modules
    :toctree: reference/_autosummary
    :nosignatures:
 
-   jaxley.Module
    jaxley.Compartment
    jaxley.Branch
    jaxley.Cell
@@ -23,6 +22,18 @@ Simulation
    :nosignatures:
 
    jaxley.integrate
+
+
+Morphologies
+------------
+
+.. autosummary::
+   :toctree: reference/_autosummary
+   :nosignatures:
+
+   jaxley.read_swc
+   jaxley.morph_delete
+   jaxley.morph_connect
 
 
 Channels
@@ -100,13 +111,15 @@ Optimization
    jaxley.optimize.optimizer.TypeOptimizer
 
 
-Morphologies
-------------
+Graph backend
+-------------
 
 .. autosummary::
    :toctree: reference/_autosummary
    :nosignatures:
 
-   jaxley.io.swc.read_swc
-   jaxley.io.morph_utils.morph_delete
-   jaxley.io.morph_utils.morph_connect
+   jaxley.io.graph.to_swc_graph
+   jaxley.io.graph.build_compartment_graph
+   jaxley.io.graph.vis_compartment_graph
+   jaxley.io.graph.from_graph
+   jaxley.io.graph.to_graph
