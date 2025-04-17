@@ -1021,7 +1021,6 @@ class Module(ABC):
         channel_state_names = list(
             chain(*[c.channel_states for c in self.base.channels])
         )
-        radius_generating_fns = self.base._radius_generating_fns
 
         within_branch_radiuses = view["radius"].to_numpy()
         compartment_lengths = view["length"].to_numpy()
@@ -1106,9 +1105,11 @@ class Module(ABC):
         if xyzr_is_available:
             # If all xyzr-radiuses of the branch are available, then use them to
             # compute the new compartment radiuses.
-            view["radius"] = build_radiuses_from_xyzr(
+            rads = build_radiuses_from_xyzr(
                 xyzr=xyzr, min_radius=min_radius, ncomp=ncomp
             )
+            print("xyzr", xyzr)
+            view["radius"] = rads
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
 

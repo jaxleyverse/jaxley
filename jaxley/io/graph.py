@@ -263,7 +263,7 @@ def build_compartment_graph(
         swc_graph = to_swc_graph("path_to_swc.swc")
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
     """
-    swc_graph, branch_edge_indices, all_type_ids = _trace_branches(
+    swc_graph, branch_edge_indices, all_type_ids, soma_ignore_inds = _trace_branches(
         swc_graph,
         root=root,
         max_len=max_len,
@@ -301,15 +301,33 @@ def build_compartment_graph(
         if branch_data.loc[0, "id"] != branch_data.loc[1, "id"]:
             branch_data.loc[0, ["r", "id"]] = branch_data.loc[1, ["r", "id"]]
 
+        xyzr = branch_data[["x", "y", "z", "r"]].to_numpy()
+
+        # `soma_ignore_inds` tracks all node indices which are part of a single-point-
+        # soma or of a somatic branchpoint. In these cases, the somatic SWC node
+        # is _not_ considered to be part of the dendrite. Here, we delete somatic
+        # SWC node from the xyzr of the dendrite.
+        if branch_edge_inds[0, 0] in soma_ignore_inds:
+            xyzr = xyzr[1:]
+
         # Here, we split xyzr into compartments. We do this by simply splitting the
         # xyzr into ncomp arrays of equal shape (via `np.array_split`). Splitting
         # simply by the shape of the array is not optimal, but it is easy. The error
         # introduced by splitting by the shape will only matter if the user modifies
         # morphologies _within_ a branch, which I think is a very narrow usecase.
-        xyzr = branch_data[["x", "y", "z", "r"]].to_numpy()
         xyzr_per_comp = np.array_split(xyzr, ncomp)
 
         branch_len = branch_data["l"].max()
+        if branch_len < 1e-8:
+            warn(
+                "Found a branch with length 0. To avoid NaN while integrating the "
+                "ODE, we capped this length to 0.1 um. The underlying cause for the "
+                "branch with length 0 is likely a strange SWC file. The "
+                "most common reason for this is that the SWC contains a soma "
+                "traced by a single point, and a dendrite that connects to the soma "
+                "has no further child nodes."
+            )
+            branch_len = 0.1
         comp_len = branch_len / ncomp
         locs = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
 
@@ -429,6 +447,10 @@ def _trace_branches(
     if relevant_type_ids is None:
         relevant_type_ids = [1, 2, 3, 4]
 
+    # `soma_ignore_inds` tracks the node indices of single-point-somata or of
+    # somatic branchpoints.
+    soma_ignore_inds = []
+
     # Handle special case of a single soma node.
     soma_idxs = _get_soma_idxs(swc_graph)
     if len(soma_idxs) == 1:
@@ -448,6 +470,8 @@ def _trace_branches(
         swc_graph.nodes[0]["p"] = -1
         swc_graph.add_edge(0, soma, l=2 * swc_graph.nodes[soma]["r"])
         swc_graph = nx.relabel_nodes(swc_graph, {i: i + 1 for i in swc_graph.nodes})
+        soma_ignore_inds.append(1)
+        soma_ignore_inds.append(soma + 1)
 
     undir_swc_graph = swc_graph.to_undirected()
 
@@ -464,6 +488,7 @@ def _trace_branches(
         if len(somatic_neighbors) > 1:
             for i, j in undir_swc_graph.edges(node):
                 if undir_swc_graph.nodes[j]["id"] != 1:
+                    soma_ignore_inds.append(i)
                     undir_swc_graph.edges[i, j]["l"] = 0
 
     branches, current_branch, all_type_ids = [], [], []
@@ -553,7 +578,7 @@ def _trace_branches(
         for b in additional_branchpoints:
             undir_swc_graph.nodes[b]["type"] = "branchpoint"
 
-    return undir_swc_graph, branch_edges, type_inds
+    return undir_swc_graph, branch_edges, type_inds, soma_ignore_inds
 
 
 def _split_branches(

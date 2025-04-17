@@ -140,7 +140,9 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
 
 
 @pytest.mark.parametrize("new_ncomp", [1, 4, 5])
-@pytest.mark.parametrize("file", ["morph_ca1_n120_250.swc"])
+@pytest.mark.parametrize(
+    "file", ["morph_ca1_n120_250.swc", "morph_3_types_single_point_soma.swc"]
+)
 def test_api_equivalence_swc_lengths_and_radiuses(SimpleMorphCell, new_ncomp, file):
     """Test if the radiuses and lenghts of an SWC morph are reconstructed correctly."""
     dirname = os.path.dirname(__file__)

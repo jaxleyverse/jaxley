@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
+from matplotlib.patches import Circle
 from numpy import ndarray
 from scipy.spatial import ConvexHull
 
@@ -42,7 +43,17 @@ def plot_graph(
         points = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
-            _ = ax.plot(*points, color=color, **kwargs)
+            if points.shape[1] > 1:
+                _ = ax.plot(*points, color=color, **kwargs)
+            else:
+                # Single point somata are drawn as circles with appropriate radius.
+                circle = Circle(
+                    (points[0], points[1]),
+                    radius=coords_of_branch[0, -1] * 0.1,
+                    facecolor=color,
+                    **kwargs,
+                )
+                _ = ax.add_patch(circle)
         elif "scatter" in type.lower():
             _ = ax.scatter(*points, color=color, **kwargs)
         else:

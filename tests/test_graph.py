@@ -167,7 +167,10 @@ def test_graph_import_export_cycle(
             "morph_flywire_t4_720575940626407426.swc",
             marks=pytest.mark.xfail(reason="NEURON throws .hoc error."),
         ),
-        "morph_retina_20161028_1.swc",
+        pytest.param(
+            "morph_retina_20161028_1.swc",
+            marks=pytest.mark.xfail(reason="Branch with l=0. Jaxley: 0.1, NEURON: 0.0"),
+        ),
     ],
 )
 def test_trace_branches(file):
