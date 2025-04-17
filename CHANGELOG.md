@@ -12,6 +12,10 @@ cell = morph_delete(cell.branch([1, 2]))
 from jaxley.io.morph_utils import morph_connect
 cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
 ```
+- the default SWC reader has changed. To use the previous SWC reader, run
+`jx.read_swc(..., backend="custom")`. However, note that we will remove this reader
+in the future. If the new SWC reader is causing issues for you, please open an issue
+(#612, @michaeldeistler)
 
 ### Documentation
 

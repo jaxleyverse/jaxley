@@ -32,8 +32,8 @@ Morphologies
    :nosignatures:
 
    jaxley.read_swc
-   jaxley.morph_delete
-   jaxley.morph_connect
+   jaxley.morphology.morph_delete
+   jaxley.morphology.morph_connect
 
 
 Channels

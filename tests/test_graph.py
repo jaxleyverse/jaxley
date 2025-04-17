@@ -29,6 +29,7 @@ from jaxley.io.graph import (
     to_graph,
     to_swc_graph,
 )
+from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare
@@ -419,7 +420,7 @@ def test_morph_delete(ncomp: int):
     branch = jx.Branch(comp, ncomp=ncomp)
     cell = jx.Cell(branch, parents=[-1, 0, 0])
     cell.branch(0).set("length", 50.0)
-    cell = jx.morph_delete(cell.branch(2))
+    cell = morph_delete(cell.branch(2))
     cell.insert(HH())
 
     cell2 = jx.Cell(branch, parents=[-1, 0])
@@ -453,7 +454,7 @@ def test_morph_attach(ncomp: int):
     cell = jx.Cell(branch, parents=[-1, 0])
     stub = jx.Cell(branch, parents=[-1])
     stub.set("length", 80.0)
-    cell = jx.morph_connect(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
+    cell = morph_connect(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
     cell.insert(HH())
 
     cell2 = jx.Cell(branch, parents=[-1, 0, 0])
@@ -485,8 +486,8 @@ def test_morph_edit_swc(ncomp: int):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_l5pc_with_axon.swc")
     cell = jx.read_swc(fname, ncomp=ncomp, backend="graph")
-    cell = jx.morph_delete(cell.axon)
-    cell = jx.morph_delete(cell.apical)
+    cell = morph_delete(cell.axon)
+    cell = morph_delete(cell.apical)
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, ncomp=ncomp)
@@ -497,7 +498,7 @@ def test_morph_edit_swc(ncomp: int):
     # Implicitly also tests whether it can be combined with groups (`.soma`), and
     # whether branchpoint nodes _and_ tip nodes work (branchpoint node for `cell`, tip
     # for `stub`).
-    cell = jx.morph_connect(cell.soma.branch(0).loc(1.0), stub.branch(0).loc(0.0))
+    cell = morph_connect(cell.soma.branch(0).loc(1.0), stub.branch(0).loc(0.0))
 
     # Modify a bit and run a simulation.
     cell.stub.set_ncomp(4)
