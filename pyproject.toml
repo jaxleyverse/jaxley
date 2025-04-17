@@ -30,7 +30,7 @@ dependencies = [
     # but is much slower on CPU. Newer versions can be made equally fast by setting
     # `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning
     # of a jupyter notebook.
-    "jax <= 0.4.31",
+    "jax",
     "matplotlib",
     "numpy",
     "pandas>=2.2.0",
