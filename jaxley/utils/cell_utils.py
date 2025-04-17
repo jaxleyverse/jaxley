@@ -13,14 +13,13 @@ from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
 def build_radiuses_from_xyzr(
-    radius_fns: List[Callable],
-    branch_indices: List[int],
+    xyzr: np.ndarray,
     min_radius: Optional[float],
     ncomp: int,
 ) -> jnp.ndarray:
     """Return the radiuses of branches given SWC file xyzr.
 
-    Returns an array of shape `(num_branches, ncomp)`.
+    Returns an array of shape `(ncomp)`.
 
     Args:
         radius_fns: Functions which, given compartment locations return the radius.
@@ -28,21 +27,17 @@ def build_radiuses_from_xyzr(
         min_radius: If passed, the radiuses are clipped to be at least as large.
         ncomp: The number of compartments that every branch is discretized into.
     """
-    # Compartment locations are at the center of the internal nodes.
-    non_split = 1 / ncomp
-    range_ = np.linspace(non_split / 2, 1 - non_split / 2, ncomp)
+    locs = np.linspace(0.5 / ncomp, 1.0 - 0.5 / ncomp, ncomp)
+    radiuses = interpolate_xyzr(locs, xyzr)[3]
 
-    # Build radiuses.
-    radiuses = np.asarray([radius_fns[b](range_) for b in branch_indices])
-    radiuses_each = radiuses.ravel(order="C")
     if min_radius is None:
         assert np.all(
-            radiuses_each > 0.0
+            radiuses > 0.0
         ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
     else:
-        radiuses_each[radiuses_each < min_radius] = min_radius
+        radiuses[radiuses < min_radius] = min_radius
 
-    return radiuses_each
+    return radiuses
 
 
 def equal_segments(branch_property: list, ncomp_per_branch: int):

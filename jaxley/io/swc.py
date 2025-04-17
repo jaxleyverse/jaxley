@@ -437,7 +437,7 @@ def read_swc(
     max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
-    backend: str = "custom",
+    backend: str = "graph",
     ignore_swc_tracing_interruptions: bool = True,
     relevant_type_ids: Optional[List[int]] = None,
 ) -> Cell:
@@ -455,8 +455,8 @@ def read_swc(
             branches.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
         assign_groups: If True, then the identity of reconstructed points in the SWC
-            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
-            `apical`, `custom`. See here:
+            file will be used to generate groups `soma`, `axon`, `basal`, `apical`. See
+            here:
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
         backend: The backend to use. Currently `custom` and `graph` are supported.
             For context on these backends see `read_swc_custom` and `from_graph`.

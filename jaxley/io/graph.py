@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
@@ -998,6 +999,8 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     # add all the extra attrs
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
+
+    module._radius_generating_fns = True
     return module
 
 

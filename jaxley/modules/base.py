@@ -1028,6 +1028,8 @@ class Module(ABC):
         num_previous_ncomp = len(within_branch_radiuses)
         branch_indices = pd.unique(view["global_branch_index"])
 
+        assert len(branch_indices) <= 1, "You can only modify ncomp of a single branch."
+
         error_msg = lambda name: (
             f"You previously modified the {name} of individual compartments, but "
             f"now you are modifying the number of compartments in this branch. "
@@ -1100,8 +1102,7 @@ class Module(ABC):
         # Compute new compartment radiuses.
         if radius_generating_fns is not None:
             view["radius"] = build_radiuses_from_xyzr(
-                radius_fns=radius_generating_fns,
-                branch_indices=branch_indices,
+                xyzr=self.base.xyzr[branch_indices[0]],
                 min_radius=min_radius,
                 ncomp=ncomp,
             )
