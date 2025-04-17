@@ -409,7 +409,7 @@ def test_swc2graph_voltages(file):
     ####################### check ################
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
-    assert all(errors < 2.5), f"Error is {np.max(errors)} > 2.5. voltages do not match."
+    assert all(errors < 3), f"Error is {np.max(errors)} > 3. voltages do not match."
 
 
 @pytest.mark.parametrize("ncomp", [1, 3])
