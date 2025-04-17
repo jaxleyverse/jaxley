@@ -33,7 +33,7 @@ def efun(x):
 
 
 class Leak(Channel):
-    """Leak current"""
+    """Leak current based on Pospischil et al., 2008."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
@@ -70,7 +70,7 @@ class Leak(Channel):
 
 
 class Na(Channel):
-    """Sodium channel"""
+    """Sodium channel based on Pospischil et al., 2008."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
@@ -141,7 +141,7 @@ class Na(Channel):
 
 
 class K(Channel):
-    """Potassium channel"""
+    """Potassium channel based on Pospischil et al., 2008."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
@@ -197,7 +197,7 @@ class K(Channel):
 
 
 class Km(Channel):
-    """Slow M Potassium channel"""
+    """Slow M Potassium channel based on Pospischil et al., 2008."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
@@ -254,7 +254,7 @@ class Km(Channel):
 
 
 class CaL(Channel):
-    """L-type Calcium channel"""
+    """L-type Calcium channel based on Pospischil et al., 2008."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
@@ -322,7 +322,7 @@ class CaL(Channel):
 
 
 class CaT(Channel):
-    """T-type Calcium channel"""
+    """T-type Calcium channel based on Pospischil et al., 2008."""
 
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True

@@ -32,9 +32,10 @@ from jaxley.utils.syn_utils import gather_synapes
 
 
 class Network(Module):
-    """Network class.
+    """A network made up of multiple cells, connected by synapses.
 
-    This class defines a network of cells that can be connected with synapses.
+    This class defines a network of cells. These cells can later on be connected with
+    synapses via `jx.connect`.
     """
 
     network_params: Dict = {}
@@ -240,8 +241,9 @@ class Network(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-        # To enable updating `self._comp_edges` during `View`.
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
     def _step_synapse(
         self,
@@ -456,10 +458,16 @@ class Network(Module):
                 syanpse terminals.
         """
         xyz0 = self.cell(0).xyzr[0][:, :3]
-        same_xyz = np.all([np.all(xyz0 == cell.xyzr[0][:, :3]) for cell in self.cells])
-        if same_xyz:
+        same_xyz = []
+        for cell in self.cells:
+            cell_coords = cell.xyzr[0][:, :3]
+            same_xyz.append(
+                xyz0.shape == cell_coords.shape and np.all(xyz0 == cell_coords)
+            )
+        if np.all(same_xyz):
             warn(
-                "Same coordinates for all cells. Consider using `move`, `move_to` or `arrange_in_layers` to move them."
+                "Same coordinates for all cells. Consider using `net.cell(i).move()`, "
+                "`net.cell(i).move_to()` or `net.arrange_in_layers()` to move them."
             )
 
         if ax is None:

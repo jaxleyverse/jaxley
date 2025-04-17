@@ -42,7 +42,33 @@ Getting started
    plt.plot(v.T)  # Plot voltage trace.
 
 
-If you want to learn more, check out our `Tutorial on the basics of Jaxley <https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html>`_. For more resources, see the `FAQ <https://jaxley.readthedocs.io/en/latest/faq.html>`_ or `Advanced tutorials <https://jaxley.readthedocs.io/en/latest/advanced_tutorials.html>`_.
+If you want to learn more, check out our material:
+
+.. grid:: 4
+
+   .. grid-item-card:: 🧠 Tutorials
+      :link: tutorials
+      :link-type: doc
+
+      Step-by-step introductions.
+
+   .. grid-item-card:: ⚙️ Advanced tutorials
+      :link: advanced_tutorials
+      :link-type: doc
+
+      In-depth guides for power-users.
+
+   .. grid-item-card:: 🧩 How-to guides
+      :link: how_to_guide
+      :link-type: doc
+
+      Practical recipes for common tasks.
+
+   .. grid-item-card:: 📚 API Reference
+      :link: jaxley
+      :link-type: doc
+
+      Full documentation of modules and functions.
 
 
 Installation
@@ -54,7 +80,7 @@ Installation
 
    pip install jaxley
 
-This will install ``Jaxley`` with CPU support. If you want GPU support, follow the instructions on the `JAX github repository <https://github.com/google/jax>`_ to install `JAX` with GPU support (in addition to installing ``Jaxley``). For example, for NVIDIA GPUs, run
+This will install ``Jaxley`` with CPU support. If you want GPU support, follow the instructions on the `JAX github repository <https://github.com/google/jax>`_ to install ``JAX`` with GPU support (in addition to installing ``Jaxley``). For example, for NVIDIA GPUs, run
 
 .. code-block:: console
 
@@ -100,10 +126,17 @@ If you use `Jaxley`, consider citing the `corresponding paper <https://www.biorx
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: More guides/resources
+   :caption: More guides
 
    advanced_tutorials
+   how_to_guide
    jaxley
+
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+   :caption: About the Project
+
    contributor_guide
    changelog
    credits

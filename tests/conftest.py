@@ -153,7 +153,7 @@ def SimpleMorphCell():
         fname: Optional[str] = None,
         ncomp: int = 1,
         max_branch_len: float = 2_000.0,
-        swc_backend: str = "custom",
+        swc_backend: str = "graph",
         copy: bool = True,
         force_init: bool = False,
     ) -> jx.Cell:

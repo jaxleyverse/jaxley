@@ -23,15 +23,51 @@ def connect(
     post: "View",
     synapse_type: "Synapse",
 ):
-    """Connect two compartments with a chemical synapse.
+    """Connect specific compartments of a network with a synapse.
 
-    The pre- and postsynaptic compartments must be different compartments of the
-    same network.
+    The pre- and postsynaptic compartments must be compartments of the
+    same network. If `pre` and `post` are both just a single compartment, then this
+    function instantiates a single synapse. If `pre` and `post` are both `N`
+    compartments, then this function instatiates `N` synapses (first-to-first,
+    second-to-second,...).
 
     Args:
         pre: View of the presynaptic compartment.
         post: View of the postsynaptic compartment.
-        synapse_type: The synapse to append
+        synapse_type: The type of synapse to use.
+
+    Examples:
+    ---------
+
+    Example 1: Connect one compartment to another compartment with a single synapse:
+
+    ::
+
+        from jaxley.connect import connect
+        from jaxley.synapses import IonotropicSynapse
+
+        net = jx.Network([cell for _ in range(10)])
+        connect(
+            net.cell(0).branch(0).comp(0),
+            net.cell(1).branch(0).comp(0),
+            IonotropicSynapse(),
+        )
+        print(net.edges)
+
+    Example 2: Connect `N` compartments to `N` other compartments with `N` synapses:
+
+    ::
+
+        from jaxley.connect import connect
+        from jaxley.synapses import IonotropicSynapse
+
+        net = jx.Network([cell for _ in range(10)])
+        connect(
+            net.cell(0).branch([0, 1]).comp(0),
+            net.cell(1).branch([2, 3]).comp(0),
+            IonotropicSynapse(),
+        )
+        print(net.edges)
     """
     assert is_same_network(
         pre, post
@@ -46,7 +82,7 @@ def fully_connect(
     synapse_type: "Synapse",
     random_post_comp: bool = False,
 ):
-    """Appends multiple connections which build a fully connected layer.
+    """Fully (densely) connect cells of a network with synapses.
 
     Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
     location 0 of the post-synaptic cell unless random_post_comp=True.
@@ -56,6 +92,23 @@ def fully_connect(
         post_cell_view: View of the postsynaptic cell.
         synapse_type: The synapse to append.
         random_post_comp: If True, randomly samples the postsynaptic compartments.
+
+    Examples:
+    ---------
+
+    The following example insert 12 synapses (3 x 4).
+
+    ::
+
+        from jaxley.connect import fully_connect
+
+        net = jx.Network([cell for _ in range(10)])
+        fully_connect(
+            net.cell([0, 1, 2]),
+            net.cell([3, 4, 5, 6]),
+            IonotropicSynapse(),
+        )
+        print(net.edges)
     """
     # Get pre- and postsynaptic cell indices.
     num_pre = len(pre_cell_view._cells_in_view)
@@ -98,7 +151,7 @@ def sparse_connect(
     p: float,
     random_post_comp: bool = False,
 ):
-    """Appends multiple connections which build a sparse, randomly connected layer.
+    """Sparsely (densely) connect cells of a network with synapses.
 
     Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
     location 0 of the post-synaptic cell unless random_post_comp=True.
@@ -113,6 +166,26 @@ def sparse_connect(
         synapse_type: The synapse to append.
         p: Probability of connection.
         random_post_comp: If True, randomly samples the postsynaptic compartments.
+
+    Examples:
+    ---------
+
+    The following example insert approximately 6 synapses (3 x 4 = 12 possible
+    synapses, with connection probability 0.5).
+
+    ::
+
+        from jaxley.connect import sparse_connect
+        from jaxley.synapses import IonotropicSynapse
+
+        net = jx.Network([cell for _ in range(10)])
+        sparse_connect(
+            net.cell([0, 1, 2]),
+            net.cell([3, 4, 5, 6]),
+            IonotropicSynapse(),
+            p=0.5,
+        )
+        print(net.edges)
     """
     # Get pre- and postsynaptic cell indices.
     pre_cell_inds = pre_cell_view._cells_in_view
@@ -165,7 +238,7 @@ def connectivity_matrix_connect(
     connectivity_matrix: np.ndarray[bool],
     random_post_comp: bool = False,
 ):
-    """Appends multiple connections according to a custom connectivity matrix.
+    """Connect cells of a network with synapses via a boolean connectivity matrix.
 
     Entries > 0 in the matrix indicate a connection between the corresponding cells.
     Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
@@ -176,7 +249,31 @@ def connectivity_matrix_connect(
         post_cell_view: View of the postsynaptic cell.
         synapse_type: The synapse to append.
         connectivity_matrix: A boolean matrix indicating the connections between cells.
+            If floating point values are passed, they are _not_ interpreted as
+            synaptic weights, but we only check if they are zero (no connection) or
+            not (connection).
         random_post_comp: If True, randomly samples the postsynaptic compartments.
+
+    Examples:
+    ---------
+
+    The following generates a random 10 x 10 boolean matrix and uses it to connect the
+    neurons in a network.
+
+    ::
+
+        from jaxley.connect import connectivity_matrix_connect
+        from jaxley.synapses import IonotropicSynapse
+
+        net = jx.Network([cell for _ in range(10)])
+        connectivity_matrix = np.random.choice([False, True], size=(10, 10))
+        connectivity_matrix_connect(
+            net.cell("all"),
+            net.cell("all"),
+            IonotropicSynapse(),
+            connectivity_matrix,
+        )
+        print(net.edges)
     """
     # Get pre- and postsynaptic cell indices
     num_pre = len(pre_cell_view._cells_in_view)

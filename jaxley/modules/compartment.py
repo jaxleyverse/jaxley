@@ -15,7 +15,7 @@ from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Compartment(Module):
-    """Compartment class.
+    """A single compartment.
 
     This class defines a single compartment that can be simulated by itself or
     connected up into branches. It is the basic building block of a neuron model.
@@ -94,5 +94,6 @@ class Compartment(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-        # To enable updating `self._comp_edges` during `View`.
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()

@@ -152,7 +152,7 @@ class MaskedTransform(Transform):
 
 
 class CustomTransform(Transform):
-    """Custom transformation"""
+    """Custom transformation."""
 
     def __init__(self, forward_fn: Callable, inverse_fn: Callable) -> None:
         """A custom transformation using a user-defined froward and
@@ -176,13 +176,12 @@ class CustomTransform(Transform):
 class ParamTransform:
     """Parameter transformation utility.
 
-    This class is used to transform parameters usually from an unconstrained space to a constrained space
-    and back (bacause most biophysical parameter are bounded). The user can specify a PyTree of transforms
-    that are applied to the parameters.
+    This class is used to transform parameters usually from an unconstrained space to
+    a constrained space and back (bacause most biophysical parameter are bounded).
+    The user can specify a PyTree of transforms that are applied to the parameters.
 
     Attributes:
         tf_dict: A PyTree of transforms for each parameter.
-
     """
 
     def __init__(self, tf_dict: List[Dict[str, Transform]] | Transform) -> None:

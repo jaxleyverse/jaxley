@@ -28,7 +28,7 @@ from jaxley.utils.solver_utils import (
 
 
 class Cell(Module):
-    """Cell class.
+    """A cell made up of one or multiple branches (with branchpoints).
 
     This class defines a single cell that can be simulated by itself or
     connected with synapses to build a network. A cell is made up of several branches
@@ -273,5 +273,20 @@ class Cell(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-        # To enable updating `self._comp_edges` during `View`.
+        # Get last xyz of parent.
+        branchpoint_xyz = []
+        for i in self._par_inds:
+            branchpoint_xyz.append(self.xyzr[i][-1, :3])
+        if len(branchpoint_xyz) > 0:
+            # It is initialized as empty pd.DataFrame in `base.py`.
+            self._branchpoints = pd.DataFrame(
+                np.asarray(branchpoint_xyz), columns=["x", "y", "z"]
+            )
+            # Create offset for the branchpoints.
+            self._branchpoints.index = (
+                np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
+            )
+
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()

@@ -10,7 +10,7 @@ import numpy as np
 
 from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
 from jaxley.modules import Branch, Cell, Compartment
-from jaxley.utils.cell_utils import build_radiuses_from_xyzr
+from jaxley.utils.cell_utils import radius_from_xyzr
 from jaxley.utils.misc_utils import deprecated_kwargs
 
 
@@ -400,12 +400,9 @@ def read_swc_custom(
     lengths_each = np.repeat(pathlengths, ncomp) / ncomp
     cell.set("length", lengths_each)
 
-    radiuses_each = build_radiuses_from_xyzr(
-        radius_fns,
-        range(len(parents)),
-        min_radius,
-        ncomp,
-    )
+    radiuses_each = np.asarray(
+        [radius_from_xyzr(coords, min_radius, ncomp) for coords in coords_of_branches]
+    ).flatten()
     cell.set("radius", radiuses_each)
 
     # Description of SWC file format:
@@ -431,13 +428,21 @@ def read_swc_custom(
     return cell
 
 
+@deprecated_kwargs(
+    "v0.10.0",
+    ["backend"], 
+    (
+        "If you are experiencing issues with the default SWC reader, please open "
+        "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
+    )
+)
 def read_swc(
     fname: str,
     ncomp: Optional[int] = None,
     max_branch_len: Optional[float] = None,
     min_radius: Optional[float] = None,
     assign_groups: bool = True,
-    backend: str = "custom",
+    backend: str = "graph",
     ignore_swc_tracing_interruptions: bool = True,
     relevant_type_ids: Optional[List[int]] = None,
 ) -> Cell:
@@ -455,8 +460,8 @@ def read_swc(
             branches.
         min_radius: If the radius of a reconstruction is below this value it is clipped.
         assign_groups: If True, then the identity of reconstructed points in the SWC
-            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
-            `apical`, `custom`. See here:
+            file will be used to generate groups `soma`, `axon`, `basal`, `apical`. See
+            here:
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
         backend: The backend to use. Currently `custom` and `graph` are supported.
             For context on these backends see `read_swc_custom` and `from_graph`.
@@ -489,7 +494,12 @@ def read_swc(
             ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
             relevant_type_ids=relevant_type_ids,
         )
-        module = from_graph(comp_graph, assign_groups=assign_groups, solve_root=None)
+        module = from_graph(
+            comp_graph,
+            assign_groups=assign_groups,
+            solve_root=None,
+            traverse_for_solve_order=True,  # Traverse to fix potential tracing errors.
+        )
         return module
     else:
         raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")

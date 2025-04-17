@@ -38,50 +38,50 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
     cell = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
     _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
-    cell.branch(1).loc(0.0).record()
-    cell.branch(1).loc(0.0).stimulate(current)
+    cell.soma.branch(0).loc(1.0).record()
+    cell.soma.branch(0).loc(1.0).stimulate(current)
 
     voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
 
     if file == "morph_ca1_n120_single_point_soma.swc":
-        voltages_300724 = jnp.asarray(
+        voltages_170425 = jnp.asarray(
             [
                 [
                     -70.0,
-                    -66.53085703217431,
-                    -57.86539099487056,
-                    -50.68402476185379,
-                    -47.116280145195034,
-                    -26.54674397910345,
-                    25.86902654237883,
-                    2.7545847203679648,
-                    -23.49507300176727,
-                    -46.176932023665,
-                    -68.13277872699207,
+                    -66.53085703,
+                    -59.28552632,
+                    -53.51942186,
+                    -52.39292999,
+                    -47.43114648,
+                    -27.24127618,
+                    26.23109186,
+                    3.00436754,
+                    -24.83816897,
+                    -48.20101222,
                 ]
             ]
         )
     elif file == "morph_ca1_n120.swc":
-        voltages_300724 = jnp.asarray(
+        voltages_170425 = jnp.asarray(
             [
                 [
                     -70.0,
-                    -66.53085703215352,
-                    -57.02081109294148,
-                    -49.74061944051031,
-                    -46.887867347343146,
-                    -27.613724386581872,
-                    25.092386748387153,
-                    4.367651506995822,
-                    -23.53096242684505,
-                    -46.43371990417977,
-                    -68.37487528619394,
+                    -66.53085703,
+                    -56.99046963,
+                    -49.68852902,
+                    -46.79408471,
+                    -27.152845,
+                    25.1350291,
+                    4.06104758,
+                    -23.78218211,
+                    -46.6685371,
+                    -68.49918767,
                 ]
             ]
         )
     else:
         raise NameError
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_300724))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_170425))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
@@ -101,58 +101,58 @@ def test_swc_net(voltage_solver: str, SimpleMorphCell):
 
     network = jx.Network([cell1, cell2])
     connect(
-        network.cell(0).branch(0).loc(0.0),
-        network.cell(1).branch(0).loc(0.0),
+        network.cell(0).soma.branch(0).loc(1.0),
+        network.cell(1).soma.branch(0).loc(1.0),
         IonotropicSynapse(),
     )
     network.insert(HH())
 
     # first cell, 0-eth branch, 1-st compartment because loc=0.0 -> comp = ncomp-1 = 1
-    radius_post = network[1, 0, 1].nodes["radius"].item()
-    lenght_post = network[1, 0, 1].nodes["length"].item()
+    radius_post = network.cell(1).soma.branch(0).comp(1).nodes["radius"].item()
+    lenght_post = network.cell(1).soma.branch(0).comp(1).nodes["length"].item()
     area = 2 * pi * lenght_post * radius_post
     point_process_to_dist_factor = 100_000.0 / area
     network.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
 
     for cell_ind in range(2):
-        network.cell(cell_ind).branch(1).loc(0.0).record()
+        network.cell(cell_ind).soma.branch(0).loc(1.0).record()
 
     for stim_ind in range(2):
-        network.cell(stim_ind).branch(1).loc(0.0).stimulate(current)
+        network.cell(stim_ind).soma.branch(0).loc(1.0).stimulate(current)
 
     voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
 
-    voltages_300724 = jnp.asarray(
+    voltages_170425 = np.asarray(
         [
             [
                 -70.0,
-                -66.53085703215763,
-                -57.020811092945316,
-                -49.74061944051095,
-                -46.88786734735504,
-                -27.613724386645945,
-                25.092386748379845,
-                4.3676515070377,
-                -23.530962426808408,
-                -46.433719904148994,
-                -68.37487528619184,
+                -66.53085703,
+                -56.99046963,
+                -49.68852902,
+                -46.79408471,
+                -27.152845,
+                25.1350291,
+                4.06104758,
+                -23.78218211,
+                -46.6685371,
+                -68.49918767,
             ],
             [
                 -70.0,
-                -66.52401203413784,
-                -57.01048571919544,
-                -49.723881897201146,
-                -46.83983197382557,
-                -27.35802551334217,
-                25.122266645646633,
-                4.1962717936840805,
-                -23.669714625969657,
-                -46.560355102122436,
-                -68.4360112878163,
+                -65.73633432,
+                -55.79766063,
+                -47.67397096,
+                -40.09913694,
+                7.88946301,
+                17.06461777,
+                -11.11452601,
+                -35.36903161,
+                -57.71738774,
+                -71.08392323,
             ],
         ]
     )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_300724))
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_170425))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
