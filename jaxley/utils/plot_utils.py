@@ -43,13 +43,14 @@ def plot_graph(
         points = coords_of_branch[:, dims].T
 
         if "line" in type.lower():
-            if points.shape[1] > 1:
+            std_dev = np.std(coords_of_branch[:, :3], axis=0)
+            if points.shape[1] > 1 and np.any(std_dev > 0.0):
                 _ = ax.plot(*points, color=color, **kwargs)
             else:
                 # Single point somata are drawn as circles with appropriate radius.
                 circle = Circle(
-                    (points[0], points[1]),
-                    radius=coords_of_branch[0, -1] * 0.1,
+                    (points[0, 0], points[1, 0]),
+                    radius=coords_of_branch[0, -1],
                     facecolor=color,
                     **kwargs,
                 )

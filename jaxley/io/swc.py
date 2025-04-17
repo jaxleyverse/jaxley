@@ -428,6 +428,14 @@ def read_swc_custom(
     return cell
 
 
+@deprecated_kwargs(
+    "v0.10.0",
+    ["backend"], 
+    (
+        "If you are experiencing issues with the default SWC reader, please open "
+        "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
+    )
+)
 def read_swc(
     fname: str,
     ncomp: Optional[int] = None,
@@ -468,11 +476,6 @@ def read_swc(
         A `Cell` object."""
 
     if backend == "custom":
-        warn(
-            "You set `backend='custom'. This option will be removed in the future. "
-            "If you are experiencing issues with the default SWC reader, please open "
-            "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
-        )
         return read_swc_custom(
             fname,
             ncomp=ncomp,

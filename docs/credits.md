@@ -16,6 +16,7 @@
 - `Jaxley` is built upon the [`JAX`](https://docs.jax.dev/en/latest/) machine learning framework, developed by Google.
 - `Jaxley` makes heavy use of [`pandas`](https://pandas.pydata.org) for tracking parameters.
 - `Jaxley` uses [`networkX`](https://networkx.org) for handling morphologies.
+- `Jaxley` uses [`Sphinx`](https://www.sphinx-doc.org/en/master/) and [`Read the Docs`](https://www.google.com/search?client=safari&rls=en&q=readthedocs&ie=UTF-8&oe=UTF-8) for building and hosting the documentation.
 
 
 ## Funding
