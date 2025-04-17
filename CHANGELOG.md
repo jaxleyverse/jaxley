@@ -18,6 +18,8 @@ in the future. If the new SWC reader is causing issues for you, please open an i
 (#612, @michaeldeistler)
 - radiuses are now integrated across SWC coordinates, not interpolated
 (#612, @michaeldeistler)
+- remove pin of `JAX` version. New `JAX` versions (`JAX>=0.6.0`) resolve slow CPU
+runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeldeistler).
 
 ### Documentation
 
