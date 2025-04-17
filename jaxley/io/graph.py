@@ -527,11 +527,18 @@ def _trace_branches(
 
     if max_len:
         edge_lens = nx.get_edge_attributes(undir_swc_graph, "l")
-        branch_edges = _split_branches(branch_edges, edge_lens, max_len)
+        additional_branchpoints, branch_edges, type_inds = _split_branches(
+            branch_edges, type_inds, edge_lens, max_len
+        )
+        for b in additional_branchpoints:
+            undir_swc_graph.nodes[b]["type"] = "branchpoint"
 
-    # The very first branch will start at a tip. All other branches start at a branch-
-    # point. To get all branchpoints, we loop over all branches but the first one and
-    # get their first traced node.
+    # Label nodes in the swc_graph as `branchpoint`.
+    #
+    # The very first branch will start at a tip, not a branchpoint (therefore:
+    # `branch_edges[1:]`). All other branches start at a branch-point. To get all
+    # branchpoints, we loop over all branches but the first one and get their first
+    # traced node.
     for b in branch_edges[1:]:
         tip = b[0, 0]
         undir_swc_graph.nodes[tip]["type"] = "branchpoint"
@@ -550,7 +557,7 @@ def _trace_branches(
 
 
 def _split_branches(
-    branches: List[np.ndarray], edge_lens: Dict, max_len: int = 1000
+    branches: List[np.ndarray], type_inds, edge_lens: Dict, max_len: int = 1000
 ) -> List[np.ndarray]:
     """Split branches into approximately equally long sections <= max_len.
 
@@ -566,13 +573,22 @@ def _split_branches(
     """
     # TODO: split branches into exactly equally long sections
     edge_lens.update({(j, i): l for (i, j), l in edge_lens.items()})
-    new_branches = []
-    for branch in branches:
+    additional_branchpoints, new_branches, new_type_inds = [], [], []
+    for branch, type_ind in zip(branches, type_inds):
         cum_branch_len = np.cumsum([edge_lens[i, j] for i, j, _ in branch])
+
         k = cum_branch_len // max_len
         split_branch = [branch[np.where(np.array(k) == kk)[0]] for kk in np.unique(k)]
         new_branches += split_branch
-    return new_branches
+        new_type_inds += [type_ind] * len(split_branch)
+
+        # Introduce additional branchpoints.
+        #
+        # Ignore the first one (via [1:]) because that node is anyways labeled as a
+        # branchpoint.
+        additional_branchpoints += [int(branch[0, 0]) for branch in split_branch[1:]]
+
+    return additional_branchpoints, new_branches, new_type_inds
 
 
 def _split_branches_if_swc_nodes_were_traced_with_interruption(
@@ -1000,7 +1016,6 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
 
-    module._radius_generating_fns = True
     return module
 
 

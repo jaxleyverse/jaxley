@@ -1100,11 +1100,12 @@ class Module(ABC):
         view["length"] = comp_lengths
 
         # Compute new compartment radiuses.
-        if radius_generating_fns is not None:
+        xyzr = self.base.xyzr[branch_indices[0]]
+        if np.invert(np.any(np.isnan(xyzr[:, 3]))):
+            # If all xyzr-radiuses of the branch are available, then use them to
+            # compute the new compartment radiuses.
             view["radius"] = build_radiuses_from_xyzr(
-                xyzr=self.base.xyzr[branch_indices[0]],
-                min_radius=min_radius,
-                ncomp=ncomp,
+                xyzr=xyzr, min_radius=min_radius, ncomp=ncomp
             )
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
