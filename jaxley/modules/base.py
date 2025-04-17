@@ -1028,6 +1028,9 @@ class Module(ABC):
         num_previous_ncomp = len(within_branch_radiuses)
         branch_indices = pd.unique(view["global_branch_index"])
 
+        xyzr = self.base.xyzr[branch_indices[0]]
+        xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
+
         assert len(branch_indices) <= 1, "You can only modify ncomp of a single branch."
 
         error_msg = lambda name: (
@@ -1039,7 +1042,7 @@ class Module(ABC):
 
         if (
             ~np.all(within_branch_radiuses == within_branch_radiuses[0])
-            and radius_generating_fns is None
+            and not xyzr_is_available
         ):
             raise ValueError(error_msg("radius"))
 
@@ -1100,8 +1103,7 @@ class Module(ABC):
         view["length"] = comp_lengths
 
         # Compute new compartment radiuses.
-        xyzr = self.base.xyzr[branch_indices[0]]
-        if np.invert(np.any(np.isnan(xyzr[:, 3]))):
+        if xyzr_is_available:
             # If all xyzr-radiuses of the branch are available, then use them to
             # compute the new compartment radiuses.
             view["radius"] = build_radiuses_from_xyzr(

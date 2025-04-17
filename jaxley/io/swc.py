@@ -400,12 +400,12 @@ def read_swc_custom(
     lengths_each = np.repeat(pathlengths, ncomp) / ncomp
     cell.set("length", lengths_each)
 
-    radiuses_each = build_radiuses_from_xyzr(
-        radius_fns,
-        range(len(parents)),
-        min_radius,
-        ncomp,
-    )
+    radiuses_each = np.asarray(
+        [
+            build_radiuses_from_xyzr(coords, min_radius, ncomp)
+            for coords in coords_of_branches
+        ]
+    ).flatten()
     cell.set("radius", radiuses_each)
 
     # Description of SWC file format:

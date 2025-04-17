@@ -458,10 +458,16 @@ class Network(Module):
                 syanpse terminals.
         """
         xyz0 = self.cell(0).xyzr[0][:, :3]
-        same_xyz = np.all([np.all(xyz0 == cell.xyzr[0][:, :3]) for cell in self.cells])
-        if same_xyz:
+        same_xyz = []
+        for cell in self.cells:
+            cell_coords = cell.xyzr[0][:, :3]
+            same_xyz.append(
+                xyz0.shape == cell_coords.shape and np.all(xyz0 == cell_coords)
+            )
+        if np.all(same_xyz):
             warn(
-                "Same coordinates for all cells. Consider using `move`, `move_to` or `arrange_in_layers` to move them."
+                "Same coordinates for all cells. Consider using `net.cell(i).move()`, "
+                "`net.cell(i).move_to()` or `net.arrange_in_layers()` to move them."
             )
 
         if ax is None:
