@@ -12,9 +12,9 @@ import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
 from jaxley.utils.cell_utils import (
-    v_interp,
-    split_xyzr_into_equal_length_segments,
     radius_from_xyzr,
+    split_xyzr_into_equal_length_segments,
+    v_interp,
 )
 
 ########################################################################################

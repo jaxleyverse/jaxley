@@ -4,12 +4,12 @@
 
 - utility to delete parts of a morphology (#612, @michaeldeistler):
 ```python
-from jaxley.io.morph_utils import morph_delete
+from jaxley.morphology import morph_delete
 cell = morph_delete(cell.branch([1, 2]))
 ```
 - utility to connect two cells into a single cell (#612, @michaeldeistler):
 ```python
-from jaxley.io.morph_utils import morph_connect
+from jaxley.morphology import morph_connect
 cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
 ```
 - the default SWC reader has changed. To use the previous SWC reader, run

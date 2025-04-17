@@ -28,7 +28,6 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     _get_comp_edges_in_view,
-    radius_from_xyzr,
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
@@ -36,8 +35,9 @@ from jaxley.utils.cell_utils import (
     loc_of_index,
     params_to_pstate,
     query_channel_states_and_params,
-    v_interp,
+    radius_from_xyzr,
     split_xyzr_into_equal_length_segments,
+    v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all

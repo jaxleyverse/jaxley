@@ -196,7 +196,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
 
     ################### NEURON #################
-    stim = h.IClamp(h.soma[0](0.1))
+    stim = h.IClamp(h.soma[0](0.05))
     stim.delay = i_delay
     stim.dur = i_dur
     stim.amp = i_amp
@@ -257,7 +257,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
     ####################### check ################
-    assert all(errors < 0.5), f"Error {np.max(errors)} > 0.5. Voltages do not match."
+    assert all(errors < 0.4), f"Error {np.max(errors)} > 0.5. Voltages do not match."
 
 
 @pytest.mark.parametrize(
