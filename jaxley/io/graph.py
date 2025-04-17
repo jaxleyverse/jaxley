@@ -11,7 +11,11 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
-from jaxley.utils.cell_utils import v_interp
+from jaxley.utils.cell_utils import (
+    v_interp,
+    split_xyzr_into_equal_length_segments,
+    radius_from_xyzr,
+)
 
 ########################################################################################
 ###################################### HELPERS #########################################
@@ -310,12 +314,9 @@ def build_compartment_graph(
         if branch_edge_inds[0, 0] in soma_ignore_inds:
             xyzr = xyzr[1:]
 
-        # Here, we split xyzr into compartments. We do this by simply splitting the
-        # xyzr into ncomp arrays of equal shape (via `np.array_split`). Splitting
-        # simply by the shape of the array is not optimal, but it is easy. The error
-        # introduced by splitting by the shape will only matter if the user modifies
-        # morphologies _within_ a branch, which I think is a very narrow usecase.
-        xyzr_per_comp = np.array_split(xyzr, ncomp)
+        # Here, we split xyzr into compartments.
+        xyzr_per_comp = split_xyzr_into_equal_length_segments(xyzr, ncomp)
+        radiuses = [radius_from_xyzr(xyzr, min_radius) for xyzr in xyzr_per_comp]
 
         branch_len = branch_data["l"].max()
         if branch_len < 1e-8:
@@ -348,6 +349,7 @@ def build_compartment_graph(
         new_branch_nodes["type"] = "comp"
         comp_offset += ncomp
         new_branch_nodes["xyzr"] = xyzr_per_comp
+        new_branch_nodes["r"] = radiuses
 
         # Add the compartments as nodes to the new `comp_graph`.
         new_branch_nodes = new_branch_nodes.set_index("node_index")

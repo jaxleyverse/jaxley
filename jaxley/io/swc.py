@@ -10,7 +10,7 @@ import numpy as np
 
 from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
 from jaxley.modules import Branch, Cell, Compartment
-from jaxley.utils.cell_utils import build_radiuses_from_xyzr
+from jaxley.utils.cell_utils import radius_from_xyzr
 from jaxley.utils.misc_utils import deprecated_kwargs
 
 
@@ -401,10 +401,7 @@ def read_swc_custom(
     cell.set("length", lengths_each)
 
     radiuses_each = np.asarray(
-        [
-            build_radiuses_from_xyzr(coords, min_radius, ncomp)
-            for coords in coords_of_branches
-        ]
+        [radius_from_xyzr(coords, min_radius, ncomp) for coords in coords_of_branches]
     ).flatten()
     cell.set("radius", radiuses_each)
 

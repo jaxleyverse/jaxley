@@ -187,7 +187,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     cell.set("HH_h", 0.4889)
     cell.set("HH_n", 0.3644787)
 
-    cell.branch(1).loc(0.05).stimulate(
+    cell.soma.branch(0).loc(0.05).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in trunk_inds + tuft_inds + basal_inds:
@@ -257,7 +257,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
     ####################### check ################
-    assert all(errors < 3.0), f"Error {np.max(errors)} > 3.0. Voltages do not match."
+    assert all(errors < 0.5), f"Error {np.max(errors)} > 0.5. Voltages do not match."
 
 
 @pytest.mark.parametrize(

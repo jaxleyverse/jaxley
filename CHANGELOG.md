@@ -16,6 +16,8 @@ cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
 `jx.read_swc(..., backend="custom")`. However, note that we will remove this reader
 in the future. If the new SWC reader is causing issues for you, please open an issue
 (#612, @michaeldeistler)
+- radiuses are now integrated across SWC coordinates, not interpolated
+(#612, @michaeldeistler)
 
 ### Documentation
 

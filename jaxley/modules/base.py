@@ -28,7 +28,7 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     _get_comp_edges_in_view,
-    build_radiuses_from_xyzr,
+    radius_from_xyzr,
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
@@ -37,6 +37,7 @@ from jaxley.utils.cell_utils import (
     params_to_pstate,
     query_channel_states_and_params,
     v_interp,
+    split_xyzr_into_equal_length_segments,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
@@ -1105,10 +1106,8 @@ class Module(ABC):
         if xyzr_is_available:
             # If all xyzr-radiuses of the branch are available, then use them to
             # compute the new compartment radiuses.
-            rads = build_radiuses_from_xyzr(
-                xyzr=xyzr, min_radius=min_radius, ncomp=ncomp
-            )
-            print("xyzr", xyzr)
+            comp_xyzrs = split_xyzr_into_equal_length_segments(xyzr, ncomp)
+            rads = [radius_from_xyzr(xyzr, min_radius) for xyzr in comp_xyzrs]
             view["radius"] = rads
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
