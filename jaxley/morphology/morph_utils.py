@@ -10,20 +10,35 @@ from jaxley.io.graph import connect_graphs, from_graph, to_graph
 def morph_delete(module_view) -> "Cell":
     """Deletes part of a morphology.
 
+    This function can only delete entire branches. It does not support deleting
+    compartments of a branch.
+
     Args:
-        module_view: View of a `jx.Module`. Defines the compartments to be deleted.
+        module_view: View of a `jx.Cell`. Defines the branches to be deleted.
 
     Returns:
-        A cell in which specified compartments are deleted.
+        A cell in which specified branches are deleted.
 
-    Example:
-    --------
+    Examples:
+    ---------
 
     ::
 
         cell = jx.read_swc("path_to_swc_file.swc", ncomp=1)
         cell = morph_delete(cell.axon)
+
+    ::
+
+        cell = jx.Cell(branch, parents=[-1, 0, 0, 1, 1])
+        cell = morph_delete(cell.branch([3, 4]))
     """
+    # The `connect_graph` method cannot yet handle networks and branches.
+    assert module_view.base.__class__.__name__ == "Cell", (
+        f"You are trying to delete parts of a "
+        "`jx.{module_view.base.__class__.__name__}`. "
+        "Only `jx.Cell` is allowed in `morph_delete()`."
+    )
+
     # If the user did not run `compute_xyz` or `compute_compartment_centers`, we run
     # it automatically.
     if np.isnan(module_view.base.xyzr[0][0, 0]):
@@ -53,6 +68,9 @@ def morph_delete(module_view) -> "Cell":
 def morph_connect(module_view1, module_view2) -> "Cell":
     """Combine two morphologies into a single cell.
 
+    Both morphologies must have the same number of compartments per branch in all
+    branches.
+
     Args:
         module_view1: The view of a ``jx.Cell()``. Must have been created with a
             command ending on ``loc(0.0)`` or ``loc(1.0)``. For example, the following
@@ -77,6 +95,13 @@ def morph_connect(module_view1, module_view2) -> "Cell":
         stub = jx.Cell()
         cell = morph_connect(cell.branch(0).loc(0.0), stub.branch(0).loc(0.0))
     """
+    # The `connect_graph` method cannot yet handle networks and branches.
+    for view in [module_view1, module_view2]:
+        assert view.base.__class__.__name__ == "Cell", (
+            f"You are trying to connect to a `jx.{view.base.__class__.__name__}`. "
+            "Only `jx.Cell` is allowed in `morph_connect()`."
+        )
+
     # If the user did not run `compute_xyz` or `compute_compartment_centers`, we run
     # it automatically.
     for view in [module_view1, module_view2]:
@@ -85,8 +110,8 @@ def morph_connect(module_view1, module_view2) -> "Cell":
         if "x" not in view.base.nodes.columns:
             view.base.compute_compartment_centers()
 
-    graph1 = to_graph(module_view1.base)
-    graph2 = to_graph(module_view2.base)
+    graph1 = to_graph(module_view1.base, channels=True)
+    graph2 = to_graph(module_view2.base, channels=True)
 
     comps = []
     for view in [module_view1, module_view2]:

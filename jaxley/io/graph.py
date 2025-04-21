@@ -1409,10 +1409,10 @@ def connect_graphs(
     node2: Union[str, int],
 ) -> nx.DiGraph:
     """Return a new graph that connects two comp_graphs at particular nodes."""
-    # For each `group`` in `graph1`, ensure that it is `False` in `graph2` (if it does
-    # not exist).
-    graph2 = _assign_false_for_group(graph1, graph2)
-    graph1 = _assign_false_for_group(graph2, graph1)
+    # For each `group` and `channel` in `graph1`, ensure that it is `False` in `graph2`
+    # (if it does not exist).
+    graph2 = _assign_false_for_group_and_channel(graph1, graph2)
+    graph1 = _assign_false_for_group_and_channel(graph2, graph1)
 
     # Move graph2 such that it smoothly connects to graph1.
     for i, key in enumerate(["x", "y", "z"]):
@@ -1436,6 +1436,21 @@ def connect_graphs(
 
     # Combine the graph1 and grpah2 into one graph.
     combined_graph = nx.compose(graph1, graph2)
+
+    # By default, nx.compose uses the graph-level attributes from graph2. We want that
+    # if a graph level attribute is a list, then the graph level attribute of the
+    # combined_graph should be a concatenation. This is done below. It ensures that,
+    # e.g., channels from both modules are concatenated.
+    for key in set(graph1.graph) | set(graph2.graph):
+        val1 = graph1.graph.get(key)
+        val2 = graph2.graph.get(key)
+
+        if isinstance(val1, list) and isinstance(val2, list):
+            combined_graph.graph[key] = val1 + val2
+        elif key in graph2.graph:
+            combined_graph.graph[key] = val2
+        else:
+            combined_graph.graph[key] = val1
 
     # Add edges between graph1 and graph2 to connect them. The code below differentiates
     # three cases: comp->comp, branchpoint->comp (or comp->branchpoint) and
@@ -1497,15 +1512,18 @@ def connect_graphs(
     return nx.relabel_nodes(combined_graph, mapping)
 
 
-def _assign_false_for_group(graph1: nx.DiGraph, graph2: nx.DiGraph) -> nx.DiGraph:
-    """For any value in `graph1.graph["group_names"], sets the value to False in graph2.
+def _assign_false_for_group_and_channel(
+    graph1: nx.DiGraph, graph2: nx.DiGraph
+) -> nx.DiGraph:
+    """For any group and channel in graph1.graph, set False in nodes of graph2.
 
     Args:
         graph1: The graph in which to check for `group_names`.
         graph2: The graph whose `group_names` to update.
     """
+    channel_names = [channel.__class__.__name__ for channel in graph1.graph["channels"]]
     if "group_names" in graph1.graph.keys():
-        for group in graph1.graph["group_names"]:
+        for group in graph1.graph["group_names"] + channel_names:
             for node in graph2.nodes:
                 if group not in graph2.nodes[node].keys():
                     graph2.nodes[node][group] = False

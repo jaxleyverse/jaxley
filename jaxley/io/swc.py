@@ -430,11 +430,11 @@ def read_swc_custom(
 
 @deprecated_kwargs(
     "v0.10.0",
-    ["backend"], 
+    ["backend"],
     (
         "If you are experiencing issues with the default SWC reader, please open "
         "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
-    )
+    ),
 )
 def read_swc(
     fname: str,

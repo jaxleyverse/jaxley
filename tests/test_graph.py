@@ -455,14 +455,16 @@ def test_morph_attach(ncomp: int):
     comp = jx.Compartment()
     branch = jx.Branch(comp, ncomp=ncomp)
     cell = jx.Cell(branch, parents=[-1, 0])
+    cell.insert(Leak())
     stub = jx.Cell(branch, parents=[-1])
     stub.set("length", 80.0)
+    stub.insert(HH())
     cell = morph_connect(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
-    cell.insert(HH())
 
     cell2 = jx.Cell(branch, parents=[-1, 0, 0])
     cell2.branch(2).set("length", 80.0)
-    cell2.insert(HH())
+    cell2.branch(2).insert(HH())
+    cell2.branch([0, 1]).insert(Leak())
 
     cell[0, 0].record()
     cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
