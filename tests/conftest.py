@@ -153,6 +153,7 @@ def SimpleMorphCell():
         fname: Optional[str] = None,
         ncomp: int = 1,
         max_branch_len: float = 2_000.0,
+        ignore_swc_tracing_interruptions: bool = True,
         swc_backend: str = "graph",
         copy: bool = True,
         force_init: bool = False,
@@ -181,6 +182,7 @@ def SimpleMorphCell():
                 max_branch_len=max_branch_len,
                 assign_groups=True,
                 backend=swc_backend,
+                ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
             )
         return deepcopy(cells[key]) if copy and not force_init else cells[key]
 

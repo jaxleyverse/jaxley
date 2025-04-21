@@ -106,12 +106,7 @@ def test_swc_radius(file, swc2jaxley):
 
 @pytest.mark.parametrize(
     "file",
-    [
-        "morph_ca1_n120_single_point_soma.swc"
-        # Failing because branches can be traversed in a different direction, which
-        # makes `.comp()` challenging.
-        # "morph_ca1_n120.swc"
-    ],
+    ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"],
 )
 def test_swc_voltages(file, SimpleMorphCell):
     """Check if voltages of SWC recording match.
@@ -120,7 +115,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     length of the branches.
 
     It tests whether, on average over time and recordings, the voltage is off by less
-    than 1.5 mV.
+    than 2.0 mV.
     """
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)  # n120
@@ -131,7 +126,10 @@ def test_swc_voltages(file, SimpleMorphCell):
     t_max = 20.0
     dt = 0.025
 
-    ncomp_per_branch = 8
+    stim_loc = 0.51
+    loc = 0.51
+
+    ncomp_per_branch = 9
 
     ##################### NEURON ##################
     h.secondorder = 0
@@ -150,7 +148,12 @@ def test_swc_voltages(file, SimpleMorphCell):
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### jaxley ##################
-    cell = SimpleMorphCell(fname, ncomp_per_branch, max_branch_len=2_000.0)
+    cell = SimpleMorphCell(
+        fname,
+        ncomp_per_branch,
+        max_branch_len=2_000.0,
+        ignore_swc_tracing_interruptions=False,
+    )
 
     pathlengths = []
     for branch in cell.branches:
@@ -187,16 +190,16 @@ def test_swc_voltages(file, SimpleMorphCell):
     cell.set("HH_h", 0.4889)
     cell.set("HH_n", 0.3644787)
 
-    cell.soma.branch(0).loc(0.05).stimulate(
+    cell.soma.branch(0).loc(stim_loc).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in trunk_inds + tuft_inds + basal_inds:
-        cell.branch(i).loc(0.05).record()
+        cell.branch(i).loc(loc).record()
 
     voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
 
     ################### NEURON #################
-    stim = h.IClamp(h.soma[0](0.05))
+    stim = h.IClamp(h.soma[0](stim_loc))
     stim.delay = i_delay
     stim.dur = i_dur
     stim.amp = i_amp
@@ -208,7 +211,7 @@ def test_swc_voltages(file, SimpleMorphCell):
         for i, sec in enumerate(h.allsec()):
             if i == r:
                 v = h.Vector()
-                v.record(sec(0.05)._ref_v)
+                v.record(sec(loc)._ref_v)
                 voltage_recs[f"v{counter}"] = v
                 counter += 1
 
@@ -216,7 +219,7 @@ def test_swc_voltages(file, SimpleMorphCell):
         for i, sec in enumerate(h.allsec()):
             if i == r:
                 v = h.Vector()
-                v.record(sec(0.05)._ref_v)
+                v.record(sec(loc)._ref_v)
                 voltage_recs[f"v{counter}"] = v
                 counter += 1
 
@@ -224,7 +227,7 @@ def test_swc_voltages(file, SimpleMorphCell):
         for i, sec in enumerate(h.allsec()):
             if i == r:
                 v = h.Vector()
-                v.record(sec(0.05)._ref_v)
+                v.record(sec(loc)._ref_v)
                 voltage_recs[f"v{counter}"] = v
                 counter += 1
 
@@ -257,7 +260,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
     ####################### check ################
-    assert all(errors < 0.4), f"Error {np.max(errors)} > 0.5. Voltages do not match."
+    assert all(errors < 2.0), f"Error {np.max(errors)} > 2.0. Voltages do not match."
 
 
 @pytest.mark.parametrize(

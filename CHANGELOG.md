@@ -30,7 +30,8 @@ in the future. If the new SWC reader is causing issues for you, please open an i
 - improvements to graph-backend for more flexibility in modifying morphologies (#613, @michaeldeistler)
 - remove root compartment for SWC files (#613, @michaeldeistler)
 - enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
-- `.comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
+- `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
+- introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
 
 
 # 0.8.2

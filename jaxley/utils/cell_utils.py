@@ -15,8 +15,8 @@ from jaxley.utils.misc_utils import cumsum_leading_zero
 def radius_from_xyzr(
     xyzr: np.ndarray,
     min_radius: Optional[float],
-) -> jnp.ndarray:
-    """Return the radiuses of branches given SWC file xyzr.
+) -> float:
+    """Return the radius of a compartment given its SWC file xyzr.
 
     Args:
         radius_fns: Functions which, given compartment locations return the radius.
@@ -38,11 +38,15 @@ def radius_from_xyzr(
         avg_radius = radius.mean()
 
     if min_radius is None:
-        assert np.all(
+        assert (
             avg_radius > 0.0
         ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
     else:
-        avg_radius[avg_radius < min_radius] = min_radius
+        avg_radius = (
+            min_radius
+            if (avg_radius > min_radius or np.isnan(avg_radius))
+            else avg_radius
+        )
 
     return avg_radius
 
