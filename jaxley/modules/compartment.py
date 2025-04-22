@@ -88,7 +88,7 @@ class Compartment(Module):
         self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}
         )
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(self._comp_edges)
         self._n_nodes = n_nodes
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
@@ -97,3 +97,5 @@ class Compartment(Module):
         # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+
+        self._off_diagonal_inds = off_diagonal_inds

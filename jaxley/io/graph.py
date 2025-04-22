@@ -5,6 +5,7 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -714,6 +715,7 @@ def _build_solve_graph(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
     traverse_for_solve_order: bool = True,
+    remove_branch_points: bool = True,
 ) -> nx.DiGraph:
     """Given a compartment graph, return a directed graph indicating the solve order.
 
@@ -763,19 +765,22 @@ def _build_solve_graph(
     solve_graph.add_nodes_from(undirected_comp_graph.nodes(data=True))
     solve_graph.nodes[root]["comp_index"] = 0
     solve_graph.nodes[root]["branch_index"] = 0
+    solve_graph.nodes[root]["solve_index"] = 0
 
     comp_index = 1
+    solve_index = 1
     branch_index = 0
     node_inds_in_which_to_flip_xyzr = []
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
-    for i, j in nx.dfs_edges(
-        undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)
-    ):
+    node_and_parent = [(root, -1)]
+    for i, j in nx.bfs_edges(undirected_comp_graph, root):
         solve_graph.add_edge(i, j)
-        solve_graph.nodes[j]["branch_index"] = branch_index
+        # solve_graph.nodes[j]["branch_index"] = branch_index
         solve_graph.nodes[j]["comp_index"] = comp_index
+        solve_graph.nodes[j]["solve_index"] = solve_index
+        node_and_parent.append((j, i))
 
         if _is_leaf(undirected_comp_graph, j):
             branch_index += 1
@@ -788,6 +793,8 @@ def _build_solve_graph(
         # compartment (branchpoints are skipped).
         if solve_graph.nodes[j]["type"] == "comp":
             comp_index += 1
+
+        solve_index += 1
 
         # The `xyzr` attribute of all compartment nodes is ordered in the order in
         # which the SWC file was traversed. If we now traverse a compartment from
@@ -802,8 +809,18 @@ def _build_solve_graph(
         # Branchpoint nodes do not have the xyzr property.
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
-    solve_graph = _remove_branch_points(solve_graph)
-    return solve_graph
+
+    # Create a dictionary which maps every node to its solve index. Two notes:
+    # - The node name corresponds to the compartment index (and branchpoints continue
+    # numerically from where the compartments have ended)
+    # - The solve index specifies the order in which the node is processed durin the
+    # DHS solve.
+    inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
+    node_to_solve_index_mapping = dict(sorted(inds.items()))
+
+    if remove_branch_points:
+        solve_graph = _remove_branch_points(solve_graph)
+    return solve_graph, node_and_parent, node_to_solve_index_mapping
 
 
 def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:
@@ -816,6 +833,35 @@ def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:
         if degree > 1 or comp_graph.nodes[node]["type"] == "comp":
             nodes_to_keep.append(node)
     return comp_graph.subgraph(nodes_to_keep).copy()
+
+
+def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
+    """Remove branch points and label edges as `inter_branch` or `intra_branch`."""
+
+    # Copy the graph because, otherwise, its input gets modified.
+    solve_graph = solve_graph.copy()
+
+    # All connections which either have no `type` label or which are not labelled as
+    # synapses are labelled as `intra_branch` for. `inter_branch` connections are
+    # handled in the loop below.
+    for edge_ind in solve_graph.edges:
+        edge = solve_graph.edges[edge_ind]
+        if "type" not in edge or edge["type"] != "synapse":
+            edge["type"] = "intra_branch"
+
+    # Replace branch points with direct connections between the compartments.
+    for node in list(solve_graph.nodes):
+        if solve_graph.nodes[node].get("type") == "branchpoint":
+            parents = list(solve_graph.predecessors(node))
+            children = list(solve_graph.successors(node))
+            for v in children:
+                for u in parents:
+                    solve_graph.add_edge(u, v, type="inter_branch")
+            solve_graph.remove_node(node)
+
+    mapping = {n: attrs["comp_index"] for n, attrs in solve_graph.nodes(data=True)}
+    solve_graph = nx.relabel_nodes(solve_graph, mapping, copy=True)
+    return solve_graph
 
 
 def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
@@ -949,7 +995,12 @@ def from_graph(
     return _build_module(solve_graph, assign_groups=assign_groups)
 
 
-def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
+def _build_module(
+    solve_graph: nx.DiGraph,
+    node_order: List[Tuple],
+    node_to_solve_index_mapping: Dict[int, int],
+    assign_groups: bool = True,
+):
     # nodes and edges
     node_df = pd.DataFrame(
         [d for i, d in solve_graph.nodes(data=True)], index=solve_graph.nodes
@@ -1043,6 +1094,27 @@ def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
 
+    # Additional indexing for Dendritic Hierachical Scheduling (DHS).
+    #
+    # Set the order in which compartments are processed during Dendritic Hierachical
+    # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
+    # the values correspond to compartment indices.
+    module._dhs_node_order = jnp.asarray(node_order[1:])
+    #
+    # We have to change the order of compartments at every time step of the solve.
+    # Because of this, we make it as efficient as pssible to perform this ordering with
+    # the arrays below. Example:
+    # ```
+    # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
+    # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
+    # ```
+    map_dict = node_to_solve_index_mapping  # Abbreviation.
+    mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
+    inv_mapping_array = np.argsort(mapping_array)
+    #
+    module._dhs_map_dict = map_dict
+    module._dhs_map_to_node_order = mapping_array
+    module._dhs_inv_map_to_node_order = inv_mapping_array
     return module
 
 
