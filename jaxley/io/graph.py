@@ -767,9 +767,7 @@ def _build_solve_graph(
     solve_graph.nodes[root]["branch_index"] = 0
     solve_graph.nodes[root]["solve_index"] = 0
 
-    comp_index = 1
     solve_index = 1
-    branch_index = 0
     node_inds_in_which_to_flip_xyzr = []
 
     # Traverse the graph for the solve order.
@@ -778,21 +776,11 @@ def _build_solve_graph(
     for i, j in nx.bfs_edges(undirected_comp_graph, root):
         solve_graph.add_edge(i, j)
         # solve_graph.nodes[j]["branch_index"] = branch_index
-        solve_graph.nodes[j]["comp_index"] = comp_index
+        if "comp_index" in undirected_comp_graph.nodes[j].keys():
+            solve_graph.nodes[j]["comp_index"] = undirected_comp_graph.nodes[j]["comp_index"]
+            solve_graph.nodes[j]["branch_index"] = undirected_comp_graph.nodes[j]["branch_index"]
         solve_graph.nodes[j]["solve_index"] = solve_index
         node_and_parent.append((j, i))
-
-        if _is_leaf(undirected_comp_graph, j):
-            branch_index += 1
-
-        # Increase the branch counter if a branchpoint is encountered.
-        elif undirected_comp_graph.nodes[j]["type"] == "branchpoint":
-            branch_index += 1
-
-        # Increase the counter for the compartment index only if the node was a
-        # compartment (branchpoints are skipped).
-        if solve_graph.nodes[j]["type"] == "comp":
-            comp_index += 1
 
         solve_index += 1
 
