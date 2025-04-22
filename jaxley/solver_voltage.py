@@ -320,34 +320,6 @@ def step_voltage_implicit_with_dhs_solve(
     return solution[internal_node_inds]
 
 
-def build_tridiag_matrix(lower, diag, upper):
-    dim = len(diag)
-    tridiag_matrix = np.zeros((dim, dim))
-    for row in range(dim):
-        for col in range(dim):
-            if row == col:
-                tridiag_matrix[row, col] = deepcopy(diag[row])
-            if row + 1 == col:
-                tridiag_matrix[row, col] = deepcopy(upper[row])
-            if row - 1 == col:
-                tridiag_matrix[row, col] = deepcopy(lower[col])
-    return tridiag_matrix
-
-
-def build_generic_matrix(lower, diag, upper, comp_edges):
-    dim = len(diag)
-    tridiag_matrix = np.zeros((dim, dim))
-    for row in range(dim):
-        tridiag_matrix[row, row] = deepcopy(diag[row])
-
-    for n, offdiag in enumerate(comp_edges):
-        i = offdiag[0]
-        j = offdiag[1]
-        tridiag_matrix[i, j] = lower[n]
-        tridiag_matrix[j, i] = upper[n]
-    return tridiag_matrix
-
-
 def _comp_based_triang(index, carry):
     diags, solves, lowers, uppers, flipped_comp_edges = carry
     comp_edge = flipped_comp_edges[index]

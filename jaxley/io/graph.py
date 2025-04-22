@@ -1088,7 +1088,7 @@ def _build_module(
     # Set the order in which compartments are processed during Dendritic Hierachical
     # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
     # the values correspond to compartment indices.
-    module._dhs_node_order = jnp.asarray(node_order[1:])
+    dhs_node_order = jnp.asarray(node_order[1:])
     #
     # We have to change the order of compartments at every time step of the solve.
     # Because of this, we make it as efficient as pssible to perform this ordering with
@@ -1110,11 +1110,11 @@ def _build_module(
     lowers_and_uppers, new_node_order = reorder_dhs(
         lower_and_upper_inds,
         module._off_diagonal_inds,
-        module._dhs_node_order,
+        dhs_node_order,
         module._dhs_map_dict,
     )
     module._dhs_inv_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
-    module._dhs_new_node_order = new_node_order
+    module._dhs_node_order = new_node_order
 
     return module
 
