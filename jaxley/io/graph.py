@@ -17,6 +17,7 @@ from jaxley.utils.cell_utils import (
     split_xyzr_into_equal_length_segments,
     v_interp,
 )
+from jaxley.utils.solver_utils import reorder_dhs
 
 ########################################################################################
 ###################################### HELPERS #########################################
@@ -1103,6 +1104,18 @@ def _build_module(
     module._dhs_map_dict = map_dict
     module._dhs_map_to_node_order = mapping_array
     module._dhs_inv_map_to_node_order = inv_mapping_array
+    #
+    # Define the matrix permutation for DHS.
+    lower_and_upper_inds = np.arange((module._n_nodes - 1) * 2)
+    lowers_and_uppers, new_node_order = reorder_dhs(
+        lower_and_upper_inds,
+        module._off_diagonal_inds,
+        module._dhs_node_order,
+        module._dhs_map_dict,
+    )
+    module._dhs_inv_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
+    module._dhs_new_node_order = new_node_order
+
     return module
 
 

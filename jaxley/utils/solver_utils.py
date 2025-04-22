@@ -232,3 +232,54 @@ class JaxleySolveIndexer:
         must have the same number of compartments for the solve.
         """
         return self.remapped_node_indices[indices]
+
+
+def reorder_dhs(
+    lowers_and_uppers,
+    offdiag_inds,
+    node_order,
+    mapping_dict,
+):
+    """Reorder the quasi-tridiagonal elements to match the DHS solve order."""
+    edge_data = {}
+    for edge, v in zip(offdiag_inds.T, lowers_and_uppers):
+        edge_data[tuple(edge.tolist())] = v
+
+    ordered_comp_edges = {}
+    for ij in edge_data.keys():
+        i = ij[0]
+        j = ij[1]
+        new_i = mapping_dict[i]
+        new_j = mapping_dict[j]
+        ordered_comp_edges[(new_i, new_j)] = edge_data[(i, j)]
+
+    lowers = {}
+    uppers = {}
+    for ij in ordered_comp_edges.keys():
+        if ij[0] < ij[1]:
+            lowers[ij] = ordered_comp_edges[ij]
+        else:
+            uppers[ij] = ordered_comp_edges[ij]
+
+    # We have to sort lowers and uppers to be in the solve order.
+    children = []
+    for key in lowers.keys():
+        children.append(key[1])
+    lower_sorting = np.argsort(children)
+
+    parents = []
+    for key in uppers.keys():
+        parents.append(key[0])
+    upper_sorting = np.argsort(parents)
+
+    lowers = jnp.asarray(list(lowers.values()))[lower_sorting]
+    uppers = jnp.asarray(list(uppers.values()))[upper_sorting]
+
+    # Adapt node order.
+    new_node_order = []
+    for n in node_order:
+        new_node_order.append([mapping_dict[int(n[0])], mapping_dict[int(n[1])]])
+    new_node_order = jnp.asarray(new_node_order)
+
+    lowers_and_uppers = jnp.concatenate([lowers, uppers])
+    return lowers_and_uppers, new_node_order
