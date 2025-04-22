@@ -13,6 +13,8 @@ def morph_delete(module_view) -> "Cell":
     This function can only delete entire branches. It does not support deleting
     compartments of a branch.
 
+    This function deletes all existing recordings, stimuli, and trainable parameters.
+
     Args:
         module_view: View of a `jx.Cell`. Defines the branches to be deleted.
 
@@ -37,6 +39,21 @@ def morph_delete(module_view) -> "Cell":
         f"You are trying to delete parts of a "
         "`jx.{module_view.base.__class__.__name__}`. "
         "Only `jx.Cell` is allowed in `morph_delete()`."
+    )
+
+    # Assert that there are no recordings, stimuli, and trainables.
+    assert len(module_view.base.recordings) == 0, (
+        f"Found {len(module_view.base.recordings)} recordings. This is not "
+        f"supported. Please run `cell.delete_recordings()`."
+    )
+    assert len(module_view.base.externals) == 0, (
+        f"Found {len(module_view.base.externals)} external states (stimuli or "
+        f"clamps). This is not supported. Please run `cell.delete_stimuli()` or "
+        f"`cell.delete_clamps()`."
+    )
+    assert len(module_view.base.trainable_params) == 0, (
+        f"Found {len(module_view.base.trainable_params)} trainable parameters. "
+        f"This is not supported. Please run `cell.delete_trainables()`."
     )
 
     # If the user did not run `compute_xyz` or `compute_compartment_centers`, we run
@@ -71,8 +88,10 @@ def morph_connect(module_view1, module_view2) -> "Cell":
     Both morphologies must have the same number of compartments per branch in all
     branches.
 
+    This function deletes all existing recordings, stimuli, and trainable parameters.
+
     Args:
-        module_view1: The view of a ``jx.Cell()``. Must have been created with a
+        module_view1: View of a ``jx.Cell()``. Must have been created with a
             command ending on ``loc(0.0)`` or ``loc(1.0)``. For example, the following
             are valid:
             ``cell.branch(0).loc(0.0)``, ``cell.branch(5).loc(0.0)``,
@@ -100,6 +119,22 @@ def morph_connect(module_view1, module_view2) -> "Cell":
         assert view.base.__class__.__name__ == "Cell", (
             f"You are trying to connect to a `jx.{view.base.__class__.__name__}`. "
             "Only `jx.Cell` is allowed in `morph_connect()`."
+        )
+
+    # Assert that there are no recordings, stimuli, and trainables.
+    for view in [module_view1, module_view2]:
+        assert len(view.base.recordings) == 0, (
+            f"Found {len(view.base.recordings)} recordings. This is not "
+            f"supported. Please run `cell.delete_recordings()`."
+        )
+        assert len(view.base.externals) == 0, (
+            f"Found {len(view.base.externals)} external states (stimuli or "
+            f"clamps). This is not supported. Please run `cell.delete_stimuli()` or "
+            f"`cell.delete_clamps()`."
+        )
+        assert len(view.base.trainable_params) == 0, (
+            f"Found {len(view.base.trainable_params)} trainable parameters. "
+            f"This is not supported. Please run `cell.delete_trainables()`."
         )
 
     # If the user did not run `compute_xyz` or `compute_compartment_centers`, we run
