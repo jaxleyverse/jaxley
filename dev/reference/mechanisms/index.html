@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -2216,7 +2216,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>Hodgkin-Huxley channel.</p>
+        <p>Hodgkin-Huxley channel based on Sterratt, Graham, Gillies &amp; Einevoll.</p>
 
 
 
@@ -2310,7 +2310,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">93</span>
 <span class="normal">94</span>
 <span class="normal">95</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HH</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hodgkin-Huxley channel.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hodgkin-Huxley channel based on Sterratt, Graham, Gillies &amp; Einevoll.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
@@ -2572,7 +2572,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>Leak current</p>
+        <p>Leak current based on Pospischil et al., 2008.</p>
 
 
 
@@ -2617,7 +2617,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">67</span>
 <span class="normal">68</span>
 <span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Leak</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Leak current&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Leak current based on Pospischil et al., 2008.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
@@ -2758,7 +2758,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>Sodium channel</p>
+        <p>Sodium channel based on Pospischil et al., 2008.</p>
 
 
 
@@ -2837,7 +2837,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">138</span>
 <span class="normal">139</span>
 <span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Na</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sodium channel&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sodium channel based on Pospischil et al., 2008.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
@@ -3067,7 +3067,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>Potassium channel</p>
+        <p>Potassium channel based on Pospischil et al., 2008.</p>
 
 
 
@@ -3131,7 +3131,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">194</span>
 <span class="normal">195</span>
 <span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">K</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Potassium channel&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Potassium channel based on Pospischil et al., 2008.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
@@ -3334,7 +3334,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>Slow M Potassium channel</p>
+        <p>Slow M Potassium channel based on Pospischil et al., 2008.</p>
 
 
 
@@ -3399,7 +3399,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">251</span>
 <span class="normal">252</span>
 <span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Km</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Slow M Potassium channel&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Slow M Potassium channel based on Pospischil et al., 2008.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
@@ -3605,7 +3605,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>L-type Calcium channel</p>
+        <p>L-type Calcium channel based on Pospischil et al., 2008.</p>
 
 
 
@@ -3681,7 +3681,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">319</span>
 <span class="normal">320</span>
 <span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CaL</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;L-type Calcium channel&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;L-type Calcium channel based on Pospischil et al., 2008.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>
@@ -3904,7 +3904,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
               Bases: <code><a class="autorefs autorefs-internal" title="jaxley.channels.Channel" href="#jaxley.channels.channel.Channel">Channel</a></code></p>
 
 
-        <p>T-type Calcium channel</p>
+        <p>T-type Calcium channel based on Pospischil et al., 2008.</p>
 
 
 
@@ -3973,7 +3973,7 @@ conductances are to be specified in <code>S/cm2</code> and its currents are to b
 <span class="normal">380</span>
 <span class="normal">381</span>
 <span class="normal">382</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CaT</span><span class="p">(</span><span class="n">Channel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;T-type Calcium channel&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;T-type Calcium channel based on Pospischil et al., 2008.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_is_in_mA_per_cm2</span> <span class="o">=</span> <span class="kc">True</span>

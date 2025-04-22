@@ -1,0 +1,1141 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://jaxleyverse.github.io/jaxley/dev/tutorial/13_graph_backend/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+    
+    
+      
+        <title>The graph backend - Jaxley</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-graph-backend" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Jaxley" class="md-header__button md-logo" aria-label="Jaxley" data-md-component="logo">
+      
+  <img src="../../logo_white.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Jaxley
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              The graph backend
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="http://github.com/jaxleyverse/jaxley" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaxleyverse/jaxley
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Jaxley" class="md-nav__button md-logo" aria-label="Jaxley" data-md-component="logo">
+      
+  <img src="../../logo_white.png" alt="logo">
+
+    </a>
+    Jaxley
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="http://github.com/jaxleyverse/jaxley" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaxleyverse/jaxley
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_morph_neurons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_small_network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Run a network simulation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_setting_parameters.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Set parameters
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_jit_and_vmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Accelerate simulations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_channel_and_synapse_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Define your own channels
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Define groups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_importing_morphologies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Read and handle SWC files
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_gradient_descent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Training models
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contribute/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code_of_conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Code of Conduct
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/modules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Modules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Simulation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/mechanisms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Mechansims
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/connect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Connecting Cells
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/optimize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Optimization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Utils
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../credits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Credits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#editing-morphologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Editing morphologies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-graphs-from-scratch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Building graphs from scratch
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="the-graph-backend">The graph backend<a class="headerlink" href="#the-graph-backend" title="Permanent link">&para;</a></h1>
+<p>In this tutorial, you will learn how to use <code>Jaxley</code>s graph pipeline, which offers interoperability with <code>networkX</code>. We will:
+- define morphologies via <code>networkX</code> graphs.
+- export morphologies to <code>networkX</code> graphs.
+- import morphologies using <code>Jaxley</code>&rsquo;s graph pipeline.</p>
+<p>Here is a code snippet which you will learn to understand in this tutorial:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">to_swc_graph</span><span class="p">,</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">vis_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span><span class="p">,</span> <span class="n">to_graph</span>
+<span class="p">)</span>
+
+<span class="c1"># Import cell from SWC via the graph-backend.</span>
+<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">to_swc_graph</span><span class="p">(</span><span class="s2">&quot;tests/swc_files/morph.swc&quot;</span><span class="p">)</span>
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
+
+<span class="c1"># Export cell to the graph-backend.</span>
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+<span class="n">vis_compartment_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
+</code></pre></div>
+<p>While <code>swc</code> is a great way to save, load and specify complex morphologies, often more flexibility is needed. In these cases, graphs present a natural way to represent and work with neural morphologies, allowing for easy fixing, pruning, smoothing and traversal of neural morphologies. For this purpose, <code>Jaxley</code>  comes with a <a href="https://networkx.org/documentation/stable/index.html"><code>networkX</code></a> toolset that allows for easy interoperability between <code>networkX</code> graphs and <code>Jaxley</code> Modules.</p>
+<p>To work with complex morphologies, <code>jaxley.io.graph</code> provides a way to import <code>swc</code> reconstructions as graphs:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_swc_graph</span>
+
+<span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
+<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">to_swc_graph</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+</code></pre></div>
+<p>A major advantage of this is that having imported an <code>swc</code> file as a graph allows to fix, prune, or smooth the morphology. As an example, we remove the apical dendrites of a morphology that we read from <code>swc</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+
+<span class="c1"># manipulate the graph</span>
+<span class="n">ids</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">get_node_attributes</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">)</span>
+<span class="n">ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ids</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">}</span>  <span class="c1"># Apical dendrite has `id=4`: http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html </span>
+<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ids</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</code></pre></div>
+<p>We can then visualize the remaining morphology:</p>
+<div class="highlight"><pre><span></span><code><span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">swc_graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">swc_graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_7_0.png" /></p>
+<p>Next, we compartmentalize this graph. To this end, <code>build_compartment_graph()</code> segments the SWC graph into branches and divides the branches up into compartments.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_compartment_graph</span>
+
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+<p>You can view the compartment structure as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">vis_compartment_graph</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;node attributes </span><span class="si">{</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;edge attributes </span><span class="si">{</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">edges</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">vis_compartment_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>node attributes {&#39;x&#39;: 2.311556339263916, &#39;y&#39;: -8.913771629333496, &#39;z&#39;: 0.0, &#39;branch_index&#39;: 0, &#39;comp_index&#39;: 0, &#39;type&#39;: &#39;comp&#39;, &#39;xyzr&#39;: array([[  4.06      , -11.45      ,   0.        ,   2.6       ],
+       [  3.        , -10.35      ,   0.        ,   3.86      ],
+       [  2.74      ,  -9.85      ,   0.        ,   4.019     ],
+       [  2.2       ,  -8.67      ,   0.        ,   4.34      ],
+       [  2.17      ,  -8.49      ,   0.        ,   4.34      ],
+       [  1.99      ,  -7.26      ,   0.        ,   5.81      ],
+       [  1.98      ,  -6.        ,   0.        ,   6.28      ],
+       [  1.96899895,  -5.83329182,   0.        ,   6.36039227]]), &#39;groups&#39;: [&#39;soma&#39;], &#39;radius&#39;: 4.542392560157545, &#39;length&#39;: 6.241557163671718, &#39;cell_index&#39;: 0}
+edge attributes {}
+</code></pre></div>
+
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_11_1.png" /></p>
+<p>In the graph above, red points indicate compartments and orange points indicate branchpoints.</p>
+<p>Now, let&rsquo;s import this graph into <code>Jaxley</code>. We use the <code>from_graph()</code> function to convert the graph into a <code>Cell</code> object, which <code>Jaxley</code> can then simulate or optimize.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">HH</span>
+
+<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
+
+<span class="c1"># The resulting cell can be treated like any Jaxley cell.</span>
+<span class="c1"># As an example, we add HH and change parameters for visualization.</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">HH</span><span class="p">())</span>
+<span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">cell</span><span class="p">:</span>
+    <span class="n">y_pos</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">branch</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">y_pos</span><span class="p">)</span>
+</code></pre></div>
+<p><code>Jaxley</code> also offers the option to export any <code>Module</code> to a <code>networkX</code> graph object:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_graph</span>
+
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>Exporting a <code>Jaxley</code> cell to a graph provides another way to store or share the current Module state, since <code>to_graph</code> attaches all relevant attributes to the nodes and eges of the graph. It can also be used to make more complex visualizations: for example, we can visualize the channel density of each compartment as below:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># plot of the cell, coloring each node according to the sodium conductance</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">&quot;HH_gNa&quot;</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">]:</span>
+        <span class="c1"># Color of compartments should scale with HH_gNa.</span>
+        <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Branchpoints have no channels.</span>
+        <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">node_color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Sodium conductance&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_18_0.png" /></p>
+<h2 id="editing-morphologies">Editing morphologies<a class="headerlink" href="#editing-morphologies" title="Permanent link">&para;</a></h2>
+<p>To edit morphologies, <code>Jaxley</code> provides <code>delete_morph</code> and <code>attach_morph</code>. If these do not provide enough flexibility, you can use the graph-backend to modify morphologies. As an example, we will trim all tip dendrites that are shorter than 250 <span class="arithmatex">\(\mu\)</span>m.</p>
+<p>First, we import the SWC file as a compartment graph:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_swc_graph</span><span class="p">,</span> <span class="n">build_compartment_graph</span>
+
+<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">to_swc_graph</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p>Let&rsquo;s visualize it:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">vis_compartment_graph</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">vis_compartment_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_24_0.png" /></p>
+<p>Next, we loop over all nodes. We want to keep nodes only if they made any of the following conditions:<br />
+- if a node has more than one neighbor (<code>degree &gt; 1</code>),<br />
+- if its compartment length is &gt; 250 <span class="arithmatex">\(\mu\)</span>m, or<br />
+- if it is a soma.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+
+<span class="n">nodes_to_keep</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
+    <span class="n">degree</span> <span class="o">=</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">in_degree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="o">+</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">out_degree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="n">condition1</span> <span class="o">=</span> <span class="n">degree</span> <span class="o">&gt;</span> <span class="mi">1</span>
+    <span class="n">condition2</span> <span class="o">=</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s2">&quot;length&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">250.0</span>
+    <span class="n">condition3</span> <span class="o">=</span> <span class="s2">&quot;soma&quot;</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s2">&quot;groups&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">condition1</span> <span class="ow">or</span> <span class="n">condition2</span> <span class="ow">or</span> <span class="n">condition3</span><span class="p">:</span>
+        <span class="n">nodes_to_keep</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">,</span> <span class="n">nodes_to_keep</span><span class="p">)</span>
+</code></pre></div>
+<p>We can again visualize the trimmed graph:</p>
+<div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">vis_compartment_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_28_0.png" /></p>
+<p>After we are done, we can import the graph as a <code>jx.Cell</code> with the <code>from_graph</code> method:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_graph</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
+</code></pre></div>
+<p>&hellip;and we can also visualize the remaining morphology:</p>
+<div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_32_0.png" /></p>
+<p>&hellip;and we can run simulations as always:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+
+<span class="n">cell</span><span class="o">.</span><span class="n">delete_recordings</span><span class="p">()</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">delete_stimuli</span><span class="p">()</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">record</span><span class="p">()</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">stimulate</span><span class="p">(</span><span class="n">jx</span><span class="o">.</span><span class="n">step_current</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.025</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">))</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>Added 1 recordings. See `.recordings` for details.
+Added 1 external_states. See `.externals` for details.
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="n">v</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_36_0.png" /></p>
+<h2 id="building-graphs-from-scratch">Building graphs from scratch<a class="headerlink" href="#building-graphs-from-scratch" title="Permanent link">&para;</a></h2>
+<p>Finally, you can even build graphs completely from scratch in <code>networkX</code> and then import them as a <code>Jaxley</code> module:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+
+<span class="n">nodes</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">0</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">},</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">},</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">},</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
+    <span class="mi">4</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
+    <span class="mi">5</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
+    <span class="mi">6</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
+<span class="p">}</span> 
+<span class="n">edges</span> <span class="o">=</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Setting any of these attributes is optional. It is sufficient to define the </span>
+<span class="c1"># connectivity and simply do g = nx.DiGraph(edges). In this case, r and l will </span>
+<span class="c1"># be set to default values and x, y, z can be computed using Cell.compute_xyz().</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_39_0.png" /></p>
+<p>We can then use <code>io.graph</code> to import such a graph into a <code>jx.Module</code> using the <code>from_graph</code> method:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span>
+
+<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
+
+<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="png" src="../13_graph_backend_files/13_graph_backend_41_0.png" /></p>
+<p>Congrats! You have now learned how to interface with <code>networkX</code> to further customize and manipulate imported morphologies.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>

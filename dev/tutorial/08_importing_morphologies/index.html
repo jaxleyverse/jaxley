@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -482,9 +482,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#working-with-graphs" class="md-nav__link">
+  <a href="#importing-swc-files" class="md-nav__link">
     <span class="md-ellipsis">
-      Working with graphs
+      Importing SWC files
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-morphologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Editing morphologies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assembling-cells-into-a-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      Assembling cells into a network
     </span>
   </a>
   
@@ -896,9 +923,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#working-with-graphs" class="md-nav__link">
+  <a href="#importing-swc-files" class="md-nav__link">
     <span class="md-ellipsis">
-      Working with graphs
+      Importing SWC files
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-morphologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Editing morphologies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assembling-cells-into-a-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      Assembling cells into a network
     </span>
   </a>
   
@@ -929,37 +983,26 @@
 <li>Load morphologies and make them compatible with <code>Jaxley</code>  </li>
 <li>Use the visualization features  </li>
 <li>Assemble a small network of morphologically accurate cells.  </li>
-<li>How to use <code>Jaxley</code>s graph pipeline, which offers interoperability with <code>networkX</code>. We will:<ul>
-<li>define morphologies via <code>networkX</code> graphs.</li>
-<li>export morphologies to <code>networkX</code> graphs.</li>
-<li>import morphologies using <code>Jaxley</code>&rsquo;s graph pipeline.</li>
+<li>Delete parts of a morphology.</li>
+<li>Connect two morphologies into one.</li>
 </ul>
-</li>
-</ul>
-<p>Here are two code snippets which you will learn to understand in this tutorial:</p>
+<p>Here is a code snippet which you will learn to understand in this tutorial:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.morphology</span><span class="w"> </span><span class="kn">import</span> <span class="n">morph_delete</span><span class="p">,</span> <span class="n">morph_connect</span>
 
-<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="s2">&quot;my_cell.swc&quot;</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-<span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">set_ncomp</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Modify the number of compartments of a branch.</span>
+<span class="c1"># Read cell from SWC.</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="s2">&quot;my_cell.swc&quot;</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Delete the apical dendrite.</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">morph_delete</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">apical</span><span class="p">)</span>
+
+<span class="c1"># Attach a &quot;stub&quot; to the cell.</span>
+<span class="n">stub</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">()</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">morph_connect</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">stub</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">))</span>
+
+<span class="c1"># Modify the number of compartments of a branch.</span>
+<span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">set_ncomp</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
 </code></pre></div>
-<hr />
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">to_swc_graph</span><span class="p">,</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">vis_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span><span class="p">,</span> <span class="n">to_graph</span>
-<span class="p">)</span>
-
-<span class="c1"># Import cell from SWC via the graph-backend.</span>
-<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">to_swc_graph</span><span class="p">(</span><span class="s2">&quot;tests/swc_files/morph.swc&quot;</span><span class="p">)</span>
-<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
-
-<span class="c1"># Export cell to the graph-backend.</span>
-<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
-<span class="n">vis_compartment_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
-</code></pre></div>
-<p>To work with more complicated morphologies, <code>Jaxley</code> supports importing morphological reconstructions via <code>.swc</code> files.
-<code>.swc</code> is currently the only supported format. Other formats like <code>.asc</code> need to be converted to <code>.swc</code> first, for example using the BlueBrain&rsquo;s <a href="https://github.com/BlueBrain/morph-tool">morph-tool</a>. For more information on the exact specifications of <code>.swc</code> see <a href="http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html">here</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -968,18 +1011,19 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">HH</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 </code></pre></div>
+<h3 id="importing-swc-files">Importing SWC files<a class="headerlink" href="#importing-swc-files" title="Permanent link">&para;</a></h3>
 <p>To work with <code>.swc</code> files, <code>Jaxley</code> implements a custom <code>.swc</code> reader. The reader traces the morphology and identifies all uninterrupted sections. These uninterrupted sections are called <code>branches</code> in <code>Jaxley</code>. Each <code>branch</code> is then further partitioned into <code>compartments</code>.</p>
 <p>To demonstrate this, let&rsquo;s import an example morphology of a Layer 5 pyramidal cell and visualize it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># import swc file into jx.Cell object</span>
 <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
-<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>  <span class="c1"># Use eight compartments per branch.</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Use one compartment per branch. We modify this below.</span>
 
 <span class="c1"># print shape (num_branches, num_comps)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
 <span class="n">cell</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>(157, 1256)
+<div class="codehilite"><pre><span></span><code>(155, 155)
 </code></pre></div>
 
 <div>
@@ -1020,37 +1064,37 @@
     </tr>
     <tr>
       <th>1</th>
+      <td>0</td>
       <td>1</td>
       <td>1</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>2</th>
+      <td>0</td>
       <td>2</td>
       <td>2</td>
-      <td>0</td>
-      <td>0</td>
+      <td>2</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>3</th>
+      <td>0</td>
       <td>3</td>
       <td>3</td>
-      <td>0</td>
-      <td>0</td>
+      <td>3</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>4</th>
+      <td>0</td>
       <td>4</td>
       <td>4</td>
-      <td>0</td>
-      <td>0</td>
+      <td>4</td>
       <td>0</td>
       <td>0</td>
     </tr>
@@ -1064,198 +1108,56 @@
       <td>...</td>
     </tr>
     <tr>
-      <th>1251</th>
-      <td>3</td>
-      <td>1251</td>
-      <td>156</td>
-      <td>156</td>
+      <th>150</th>
+      <td>0</td>
+      <td>150</td>
+      <td>150</td>
+      <td>150</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
-      <th>1252</th>
-      <td>4</td>
-      <td>1252</td>
-      <td>156</td>
-      <td>156</td>
+      <th>151</th>
+      <td>0</td>
+      <td>151</td>
+      <td>151</td>
+      <td>151</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
-      <th>1253</th>
-      <td>5</td>
-      <td>1253</td>
-      <td>156</td>
-      <td>156</td>
+      <th>152</th>
+      <td>0</td>
+      <td>152</td>
+      <td>152</td>
+      <td>152</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
-      <th>1254</th>
-      <td>6</td>
-      <td>1254</td>
-      <td>156</td>
-      <td>156</td>
+      <th>153</th>
+      <td>0</td>
+      <td>153</td>
+      <td>153</td>
+      <td>153</td>
       <td>0</td>
       <td>0</td>
     </tr>
     <tr>
-      <th>1255</th>
-      <td>7</td>
-      <td>1255</td>
-      <td>156</td>
-      <td>156</td>
+      <th>154</th>
       <td>0</td>
-      <td>0</td>
-    </tr>
-  </tbody>
-</table>
-<p>1256 rows × 6 columns</p>
-</div>
-
-<p>As we can see, this yields a morphology that is approximated by 1256 compartments. Depending on the amount of detail that you need, you can also change the number of compartments in each branch:</p>
-<div class="highlight"><pre><span></span><code><span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-<span class="c1"># print shape (num_branches, num_comps)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-
-<span class="n">cell</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</code></pre></div>
-<div class="codehilite"><pre><span></span><code>(157, 314)
-</code></pre></div>
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>local_comp_index</th>
-      <th>global_comp_index</th>
-      <th>local_branch_index</th>
-      <th>global_branch_index</th>
-      <th>local_cell_index</th>
-      <th>global_cell_index</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>0</td>
-      <td>2</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>1</td>
-      <td>3</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>0</td>
-      <td>4</td>
-      <td>2</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>309</th>
-      <td>1</td>
-      <td>309</td>
+      <td>154</td>
       <td>154</td>
       <td>154</td>
       <td>0</td>
       <td>0</td>
     </tr>
-    <tr>
-      <th>310</th>
-      <td>0</td>
-      <td>310</td>
-      <td>155</td>
-      <td>155</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>311</th>
-      <td>1</td>
-      <td>311</td>
-      <td>155</td>
-      <td>155</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>312</th>
-      <td>0</td>
-      <td>312</td>
-      <td>156</td>
-      <td>156</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>313</th>
-      <td>1</td>
-      <td>313</td>
-      <td>156</td>
-      <td>156</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
   </tbody>
 </table>
-<p>314 rows × 6 columns</p>
+<p>155 rows × 6 columns</p>
 </div>
 
-<p>The above assigns the same number of compartments to every branch. To use a different number of compartments in individual branches, you can use <code>.set_ncomp()</code>:</p>
+<p>As we can see, this yields a morphology that is approximated by 157 compartments. The above assigns one compartment to every branch (<code>ncomp=1</code>). To use a different number of compartments in individual branches, you can use <code>.set_ncomp()</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">set_ncomp</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
 </code></pre></div>
 <p>As you can see below, branch <code>0</code> has two compartments (because this is what was passed to <code>jx.read_swc(..., ncomp=2)</code>), but branch <code>1</code> has four compartments:</p>
@@ -1287,10 +1189,12 @@
       <th>axial_resistivity</th>
       <th>capacitance</th>
       <th>v</th>
-      <th>soma</th>
-      <th>basal</th>
       <th>apical</th>
-      <th>custom</th>
+      <th>basal</th>
+      <th>soma</th>
+      <th>x</th>
+      <th>y</th>
+      <th>z</th>
       <th>global_cell_index</th>
       <th>global_branch_index</th>
       <th>global_comp_index</th>
@@ -1303,15 +1207,17 @@
       <td>0</td>
       <td>0</td>
       <td>0</td>
-      <td>0.050000</td>
-      <td>8.119000</td>
+      <td>244.227045</td>
+      <td>0.24</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>False</td>
-      <td>False</td>
-      <td>False</td>
       <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>-38.81406</td>
+      <td>-467.221741</td>
+      <td>61.146923</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -1320,36 +1226,40 @@
     <tr>
       <th>1</th>
       <td>0</td>
-      <td>0</td>
       <td>1</td>
-      <td>0.050000</td>
-      <td>8.119000</td>
+      <td>0</td>
+      <td>1.068485</td>
+      <td>0.40</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
-      <td>False</td>
-      <td>False</td>
-      <td>False</td>
       <td>True</td>
-      <td>0</td>
+      <td>False</td>
+      <td>False</td>
+      <td>-34.76659</td>
+      <td>-399.802795</td>
+      <td>12.197484</td>
       <td>0</td>
       <td>1</td>
-      <td>0</td>
+      <td>1</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>2</th>
       <td>0</td>
       <td>1</td>
-      <td>0</td>
-      <td>3.120779</td>
-      <td>7.806172</td>
+      <td>1</td>
+      <td>1.068485</td>
+      <td>0.40</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>True</td>
       <td>False</td>
       <td>False</td>
-      <td>False</td>
+      <td>-34.76659</td>
+      <td>-399.802795</td>
+      <td>12.197484</td>
       <td>0</td>
       <td>1</td>
       <td>2</td>
@@ -1359,16 +1269,18 @@
       <th>3</th>
       <td>0</td>
       <td>1</td>
-      <td>1</td>
-      <td>3.120779</td>
-      <td>7.111231</td>
+      <td>2</td>
+      <td>1.068485</td>
+      <td>0.40</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>True</td>
       <td>False</td>
       <td>False</td>
-      <td>False</td>
+      <td>-34.76659</td>
+      <td>-399.802795</td>
+      <td>12.197484</td>
       <td>0</td>
       <td>1</td>
       <td>3</td>
@@ -1378,44 +1290,29 @@
       <th>4</th>
       <td>0</td>
       <td>1</td>
-      <td>2</td>
-      <td>3.120779</td>
-      <td>5.652394</td>
+      <td>3</td>
+      <td>1.068485</td>
+      <td>0.40</td>
       <td>5000.0</td>
       <td>1.0</td>
       <td>-70.0</td>
       <td>True</td>
       <td>False</td>
       <td>False</td>
-      <td>False</td>
+      <td>-34.76659</td>
+      <td>-399.802795</td>
+      <td>12.197484</td>
       <td>0</td>
       <td>1</td>
       <td>4</td>
-      <td>1</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>0</td>
-      <td>1</td>
-      <td>3</td>
-      <td>3.120779</td>
-      <td>3.869247</td>
-      <td>5000.0</td>
-      <td>1.0</td>
-      <td>-70.0</td>
-      <td>True</td>
-      <td>False</td>
-      <td>False</td>
-      <td>False</td>
-      <td>0</td>
-      <td>1</td>
-      <td>5</td>
       <td>1</td>
     </tr>
   </tbody>
 </table>
 </div>
 
+<p>To automatically choose the number of compartments, see <a href="https://jaxley.readthedocs.io/en/latest/how_to_guide/set_ncomp.html">the how-to guide on the d_lambda rule</a>.</p>
+<h2 id="visualization">Visualization<a class="headerlink" href="#visualization" title="Permanent link">&para;</a></h2>
 <p>Once imported the compartmentalized morphology can be viewed using <code>vis</code>.  </p>
 <div class="highlight"><pre><span></span><code><span class="c1"># visualize the cell</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">()</span>
@@ -1424,7 +1321,7 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;square&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_11_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_12_0.png" /></p>
 <p><code>vis</code> can be called on any <code>jx.Module</code> and every <code>View</code> of the module. This means we can also for example use <code>vis</code> to highlight each branch. This can be done by iterating over each branch index and calling <code>cell.branch(i).vis()</code>. Within the loop.</p>
 <div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="c1"># define colorwheel with 10 colors</span>
@@ -1436,7 +1333,7 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;square&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_13_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_14_0.png" /></p>
 <p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. The morphology lives seperately in the <code>cell.xyzr</code> attribute in a per branch fashion. </p>
 <p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. Note that <code>"comp"</code> plots the lengths of each compartment which is equal to the length of the traced neurite. While neurites can be zigzaggy, the compartments that approximate them are straight lines. This can lead to miss-aligment of the compartment ends. For details see the documentation of <code>vis</code>. </p>
 <p>The morphologies can either be projected onto 2D or also rendered in 3D. </p>
@@ -1451,7 +1348,7 @@
     <span class="n">ax</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;box&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_15_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_16_0.png" /></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># plot in 3D</span>
 <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
 <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s1">&#39;3d&#39;</span><span class="p">)</span>
@@ -1460,7 +1357,7 @@
 <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;box&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_16_0.png" /></p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_17_0.png" /></p>
 <p>Since <code>Jaxley</code> supports grouping different branches or compartments together, we can also use the <code>id</code> labels provided by the <code>.swc</code> file to assign group labels to the <code>jx.Cell</code> object.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">group_names</span><span class="p">)</span>
 
@@ -1474,19 +1371,77 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;square&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>[&#39;soma&#39;, &#39;basal&#39;, &#39;apical&#39;, &#39;custom&#39;]
+<div class="codehilite"><pre><span></span><code>[&#39;apical&#39;, &#39;basal&#39;, &#39;soma&#39;]
 </code></pre></div>
 
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_18_1.png" /></p>
-<p>To build a network of morphologically detailed cells, we can now connect several reconstructed cells together and also visualize the network. However, since all cells are going to have the same center, <code>Jaxley</code> will naively plot all of them on top of each other. To seperate out the cells, we therefore have to move them to a new location first.</p>
-<div class="highlight"><pre><span></span><code><span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span><span class="p">]</span><span class="o">*</span><span class="mi">5</span><span class="p">)</span>
-<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
-<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
-<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_19_1.png" /></p>
+<h2 id="editing-morphologies">Editing morphologies<a class="headerlink" href="#editing-morphologies" title="Permanent link">&para;</a></h2>
+<p><code>Jaxley</code> provides functionality to edit morphologies. In particular, it provides functions to delete parts of a morphology or to connect two cell morphologies into a single cell.</p>
+<blockquote>
+<p><strong>⚠️ IMPORTANT!</strong><br />
+If you edit morphologies, please do so <em>before</em> you change the number of compartments per branch (via, e.g., <code>cell.branch(0).set_ncomp(4)</code>). In addition, you must delete all recordings, stimuli, and trainable parameters before running <code>morph_delete()</code> or <code>morph_connect()</code>.</p>
+</blockquote>
+<p>Below, we will show how you can delete all apical branches of a morphology. To do so, we first import the morphology:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
 
-<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
-<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
-<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+<span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p>We then use the <code>morph_delete</code> method to delete parts of the morphology:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.morphology</span><span class="w"> </span><span class="kn">import</span> <span class="n">morph_delete</span>
+
+<span class="c1"># Creates a new cell which has the apical dendrite deleted.</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">morph_delete</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">apical</span><span class="p">)</span>
+</code></pre></div>
+<p>To check if everything worked, we visualize the resulting morphology (soma highlighted in red):</p>
+<div class="highlight"><pre><span></span><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;square&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_28_0.png" /></p>
+<p><code>Jaxley</code> also provides functionality to attach two morphologies. This is useful to, for example, replace the axon with a &ldquo;stub&rdquo;. Below, we show how one can attach two morphologies. To this end, we first create a small &ldquo;stub&rdquo; consisting of just a single compartment, which we will attach to the morphology above.</p>
+<blockquote>
+<p><strong>⚠️ IMPORTANT!</strong><br />
+You must use the same <code>ncomp</code> for both morphologies! You can always modify the number of compartments per branch with <code>cell.branch(0).set_ncomp(n)</code> afterwards.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create a &quot;stub&quot; of 50um length from scratch.</span>
+<span class="n">stub</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Cell</span><span class="p">()</span>
+<span class="n">stub</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;length&quot;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span>
+<span class="n">stub</span><span class="o">.</span><span class="n">add_to_group</span><span class="p">(</span><span class="s2">&quot;stub&quot;</span><span class="p">)</span>  <span class="c1"># Such that we can do `cell.stub` after `morph_connect`.</span>
+
+<span class="c1"># Rotate the stub. This is only used for visualization.</span>
+<span class="n">stub</span><span class="o">.</span><span class="n">compute_xyz</span><span class="p">()</span>
+<span class="n">stub</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="mi">90</span><span class="p">)</span>
+</code></pre></div>
+<p>Once the two morphologies are defined, we can use <code>morph_attach</code> to combine two cells into one:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.morphology</span><span class="w"> </span><span class="kn">import</span> <span class="n">morph_connect</span>
+
+<span class="n">new_cell</span> <span class="o">=</span> <span class="n">morph_connect</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">stub</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">(</span><span class="mf">0.0</span><span class="p">))</span>
+</code></pre></div>
+<p>Let&rsquo;s visualize the cell before and after having added the stub:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">new_cell</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">new_cell</span><span class="o">.</span><span class="n">stub</span><span class="o">.</span><span class="n">vis</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>  <span class="c1"># .stub only works because we did `add_to_group(&quot;stub&quot;)` above.</span>
+</code></pre></div>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_34_0.png" /></p>
+<p>Indeed, the new morphology has an additional stub, which we highlighted in red.</p>
+<h2 id="assembling-cells-into-a-network">Assembling cells into a network<a class="headerlink" href="#assembling-cells-into-a-network" title="Permanent link">&para;</a></h2>
+<p>To build a network of morphologically detailed cells, we can now connect several reconstructed cells together and also visualize the network. However, since all cells are going to have the same center, <code>Jaxley</code> will naively plot all of them on top of each other. To seperate out the cells, we therefore have to move them to a new location first.</p>
+<div class="highlight"><pre><span></span><code><span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
+<span class="n">cell</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">read_swc</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">net</span> <span class="o">=</span> <span class="n">jx</span><span class="o">.</span><span class="n">Network</span><span class="p">([</span><span class="n">cell</span><span class="p">]</span><span class="o">*</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+
+<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
+<span class="n">jx</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">soma</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">net</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">IonotropicSynapse</span><span class="p">())</span>
 
 <span class="n">net</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="o">-</span><span class="mi">90</span><span class="p">)</span>
 
@@ -1502,115 +1457,8 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;square&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_20_0.png" /></p>
-<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a> or continue to learn about how you can interface with <code>networkX</code>.</p>
-<h2 id="working-with-graphs">Working with graphs<a class="headerlink" href="#working-with-graphs" title="Permanent link">&para;</a></h2>
-<p>While <code>swc</code> is a great way to save, load and specify complex morphologies, often more flexibility is needed. In these cases, graphs present a natural way to represent and work with neural morphologies, allowing for easy fixing, pruning, smoothing and traversal of neural morphologies. For this purpose, <code>Jaxley</code>  comes with a <a href="https://networkx.org/documentation/stable/index.html"><code>networkX</code></a> toolset that allows for easy interoperability between <code>networkX</code> graphs and <code>Jaxley</code> Modules.</p>
-<p>To demonstrate this, let&rsquo;s first define a simple morphology via a <code>networkX</code> graph.</p>
-<div class="highlight"><pre><span></span><code><span class="n">nodes</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="mi">0</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
-    <span class="mi">1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
-    <span class="mi">2</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
-    <span class="mi">3</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
-    <span class="mi">4</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
-    <span class="mi">5</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
-    <span class="mi">6</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
-<span class="p">}</span> 
-<span class="n">edges</span> <span class="o">=</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-
-<span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-<span class="c1"># Setting any of these attributes is optional. It is sufficient to define the </span>
-<span class="c1"># connectivity and simply do g = nx.DiGraph(edges). In this case, r and l will </span>
-<span class="c1"># be set to default values and x, y, z can be computed using Cell.compute_xyz().</span>
-
-<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_24_0.png" /></p>
-<p>We can then use <code>io.graph</code> to import such a graph into a <code>jx.Module</code> using the <code>from_graph</code> method:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span>
-
-<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
-
-<span class="n">cell</span><span class="o">.</span><span class="n">vis</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_26_0.png" /></p>
-<p>To work with more complex morphologies <code>io.graph</code> also provides a way to import <code>swc</code> reconstructions as graphs:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_swc_graph</span>
-
-<span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
-<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">to_swc_graph</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-</code></pre></div>
-<p>A major advantage of this is that having imported an <code>swc</code> file as a graph allows to fix, prune, or smooth the morphology. As an example, we remove the apical dendrites of a morphology that we read from <code>swc</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># manipulate the graph</span>
-<span class="n">ids</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">get_node_attributes</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">)</span>
-<span class="n">ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ids</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">}</span>  <span class="c1"># Apical dendrite has `id=4`: http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html </span>
-<span class="n">swc_graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ids</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-</code></pre></div>
-<p>We can then visualize the remaining morphology:</p>
-<div class="highlight"><pre><span></span><code><span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">swc_graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">swc_graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-</code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_32_0.png" /></p>
-<p>Now, let&rsquo;s import this graph into <code>Jaxley</code>. Again, we use the <code>from_graph</code> function to convert the graph into a <code>Cell</code> object, which <code>Jaxley</code> can then simulate or optimize.</p>
-<div class="highlight"><pre><span></span><code><span class="n">comp_graph</span> <span class="o">=</span> <span class="n">build_compartment_graph</span><span class="p">(</span><span class="n">swc_graph</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">cell</span> <span class="o">=</span> <span class="n">from_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">)</span>
-
-<span class="c1"># The resulting cell can be treated like any Jaxley cell.</span>
-<span class="c1"># As an example, we add HH and change parameters for visualization.</span>
-<span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">HH</span><span class="p">())</span>
-<span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">cell</span><span class="p">:</span>
-    <span class="n">y_pos</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">branch</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">y_pos</span><span class="p">)</span>
-</code></pre></div>
-<blockquote>
-<p><strong><em>NOTE:</em></strong> Internally, <code>from_graph</code> segments the graph into branches and divides the branches up into compartments. This is done by <code>make_jaxley_compatible</code> (called at the beginning of <code>from_graph</code>), which produces a subgraph of the original morphology and adds additional attributes that <code>Jaxley</code> requires to simulate it. You can view the compartment structure as follows:</p>
-</blockquote>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">vis_compartment_graph</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;node attributes </span><span class="si">{</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;edge attributes </span><span class="si">{</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">edges</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-<span class="n">vis_compartment_graph</span><span class="p">(</span><span class="n">comp_graph</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
-</code></pre></div>
-<div class="codehilite"><pre><span></span><code>node attributes {&#39;x&#39;: 2.311556339263916, &#39;y&#39;: -8.913771629333496, &#39;z&#39;: 0.0, &#39;branch_index&#39;: 0, &#39;comp_index&#39;: 0, &#39;type&#39;: &#39;comp&#39;, &#39;xyzr&#39;: array([[  4.06 , -11.45 ,   0.   ,   2.6  ],
-       [  3.   , -10.35 ,   0.   ,   3.86 ],
-       [  2.74 ,  -9.85 ,   0.   ,   4.019],
-       [  2.2  ,  -8.67 ,   0.   ,   4.34 ],
-       [  2.17 ,  -8.49 ,   0.   ,   4.34 ]]), &#39;groups&#39;: [&#39;soma&#39;], &#39;radius&#39;: 4.273685932159424, &#39;length&#39;: 6.241557163671718, &#39;cell_index&#39;: 0}
-edge attributes {}
-</code></pre></div>
-
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_36_1.png" /></p>
-<p>In the graph above, red points indicate compartments and orange points indicate branchpoints.</p>
-<p><code>Jaxley</code> also offers the option to export any <code>Module</code> to a <code>networkX</code> graph object:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_graph</span>
-
-<span class="n">comp_graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div>
-<p>Exporting a <code>Jaxley</code> cell to a graph provides another way to store or share the current Module state, since <code>to_graph</code> attaches all relevant attributes to the nodes and eges of the graph. It can also be used to make more complex visualizations: for example, we can visualize the channel density of each compartment as below:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># plot of the cell, coloring each node according to the sodium conductance</span>
-<span class="n">pos</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-<span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
-    <span class="k">if</span> <span class="s2">&quot;HH_gNa&quot;</span> <span class="ow">in</span> <span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">]:</span>
-        <span class="c1"># Color of compartments should scale with HH_gNa.</span>
-        <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">])</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Branchpoints have no channels.</span>
-        <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
-
-<span class="n">nx</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">comp_graph</span><span class="o">.</span><span class="n">to_undirected</span><span class="p">(),</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">node_color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Sodium conductance&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</code></pre></div>
-<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_41_0.png" /></p>
-<p>Congrats! You have now learned how to interface with networkX to further customize and manipulate imported morphologies.</p>
+<p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_38_0.png" /></p>
+<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a>. If you are a power-user and need more flexibility for editing or inspecting cell morphologies (e.g., trim dendrites), check out the <a href="https://jaxley.readthedocs.io/en/latest/advanced_tutorials/13_graph_backend.html">tutorial on Jaxley&rsquo;s graph backend</a>.</p>
 
 
 
