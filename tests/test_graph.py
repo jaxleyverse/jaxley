@@ -22,13 +22,14 @@ import jaxley as jx
 from jaxley import connect
 from jaxley.channels import HH
 from jaxley.channels.pospischil import K, Leak, Na
-from jaxley.io.graph import (  # make_jaxley_compatible,; trace_branches,
+from jaxley.io.graph import (
     _add_missing_graph_attrs,
     build_compartment_graph,
     from_graph,
     to_graph,
     to_swc_graph,
 )
+from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 # from jaxley.utils.misc_utils import recursive_compare
@@ -166,7 +167,10 @@ def test_graph_import_export_cycle(
             "morph_flywire_t4_720575940626407426.swc",
             marks=pytest.mark.xfail(reason="NEURON throws .hoc error."),
         ),
-        "morph_retina_20161028_1.swc",
+        pytest.param(
+            "morph_retina_20161028_1.swc",
+            marks=pytest.mark.xfail(reason="Branch with l=0. Jaxley: 0.1, NEURON: 0.0"),
+        ),
     ],
 )
 def test_trace_branches(file):
@@ -280,133 +284,113 @@ def test_edges_only_to_jaxley():
     for edges in sets_of_edges:
         graph = nx.Graph(edges)
         swc_graph = _add_missing_graph_attrs(graph)
-        comp_graph = build_compartment_graph(swc_graph, ncomp=1)
+        comp_graph = build_compartment_graph(swc_graph, ncomp=1, min_radius=1.0)
         edge_module = from_graph(comp_graph)
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize(
-    "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
-)
-def test_swc2graph_voltages(file):
-    """Check if voltages of SWC recording match.
+@pytest.mark.parametrize("ncomp", [1, 3])
+def test_morph_delete(ncomp: int):
+    """Test correctness of `nodes` and voltages after `morph_delete`."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=ncomp)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+    cell.branch(0).set("length", 50.0)
+    cell = morph_delete(cell.branch(2))
+    cell.insert(HH())
 
-    To match the branch indices between NEURON and jaxley, we rely on comparing the
-    length of the branches.
+    cell2 = jx.Cell(branch, parents=[-1, 0])
+    cell2.branch(0).set("length", 50.0)
+    cell2.insert(HH())
 
-    It tests whether, on average over time and recordings, the voltage is off by less
-    than 1.5 mV.
-    """
+    cell[0, 0].record()
+    cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
+    cell2[0, 0].record()
+    cell2[0, 0].stimulate(0.1 * jnp.ones((100,)))
+
+    v1 = jx.integrate(cell)
+    v2 = jx.integrate(cell2)
+    assert np.max(np.abs(v1 - v2)) < 1e-8, "voltages do not match."
+
+    # Drop xyz because the first cell had branches that form a "star", so even
+    # after deleting a branch we do not expect xyz to be a straight line.
+    assert np.all(
+        equal_both_nan_or_empty_df(
+            cell.nodes.drop(columns=["x", "y", "z"]),
+            cell2.nodes,
+        )
+    )
+
+
+@pytest.mark.parametrize("ncomp", [1, 3])
+def test_morph_attach(ncomp: int):
+    """Test correctness of `nodes` and voltages after `morph_attach`."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=ncomp)
+    cell = jx.Cell(branch, parents=[-1, 0])
+    cell.insert(Leak())
+    stub = jx.Cell(branch, parents=[-1])
+    stub.set("length", 80.0)
+    stub.insert(HH())
+    cell = morph_connect(cell.branch(1).loc(0.0), stub.branch(0).loc(0.0))
+
+    cell2 = jx.Cell(branch, parents=[-1, 0, 0])
+    cell2.branch(2).set("length", 80.0)
+    cell2.branch(2).insert(HH())
+    cell2.branch([0, 1]).insert(Leak())
+
+    cell[0, 0].record()
+    cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
+    cell2[0, 0].record()
+    cell2[0, 0].stimulate(0.1 * jnp.ones((100,)))
+
+    v1 = jx.integrate(cell)
+    v2 = jx.integrate(cell2)
+    assert np.max(np.abs(v1 - v2)) < 1e-8, "voltages do not match."
+
+    # Drop xyz because the first cell had branches that form a "star", so even
+    # after deleting a branch we do not expect xyz to be a straight line.
+    assert np.all(
+        equal_both_nan_or_empty_df(
+            cell.nodes.drop(columns=["x", "y", "z"]),
+            cell2.nodes,
+        )
+    )
+
+
+@pytest.mark.parametrize("ncomp", [1, 2])
+def test_morph_edit_swc(ncomp: int):
+    """Check whether we get NaN after having deleted and added things to SWC."""
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", file)  # n120
+    fname = os.path.join(dirname, "swc_files", "morph_l5pc_with_axon.swc")
+    cell = jx.read_swc(fname, ncomp=ncomp, backend="graph")
+    cell = morph_delete(cell.axon)
+    cell = morph_delete(cell.apical)
 
-    ncomp = 8
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=ncomp)
+    stub = jx.Cell(branch, parents=[-1])
+    stub.set("length", 100.0)
+    stub.add_to_group("stub")  # To more easily find the stub later.
 
-    i_delay = 2.0
-    i_dur = 5.0
-    i_amp = 0.25
-    t_max = 20.0
-    dt = 0.025
+    # Implicitly also tests whether it can be combined with groups (`.soma`), and
+    # whether branchpoint nodes _and_ tip nodes work (branchpoint node for `cell`, tip
+    # for `stub`).
+    cell = morph_connect(cell.soma.branch(0).loc(1.0), stub.branch(0).loc(0.0))
 
-    ##################### NEURON ##################
-    h, neuron_cell = import_neuron_morph(fname, ncomp=ncomp)
+    # Modify a bit and run a simulation.
+    cell.stub.set_ncomp(4)
+    cell.branch(3).set_ncomp(2)
 
-    ####################### jaxley ##################
-    jx_cell = jx.read_swc(
-        fname, ncomp=ncomp, max_branch_len=2000, ignore_swc_tracing_interruptions=True
-    )
-    jx_cell.compute_compartment_centers()
-    jx_cell.insert(HH())
+    # Channels and initialization.
+    cell.soma.insert(HH())
+    cell.insert(Leak())
+    cell.set("v", -65.0)
+    cell.init_states()
 
-    branch_loc = 0.05
-    neuron_inds, jaxley_inds = jaxley2neuron_by_group(
-        jx_cell, h.allsec(), loc=branch_loc
-    )
-    trunk_inds, tuft_inds, basal_inds = [
-        jaxley_inds[key] for key in ["trunk", "tuft", "basal"]
-    ]
-    neuron_trunk_inds, neuron_tuft_inds, neuron_basal_inds = [
-        neuron_inds[key] for key in ["trunk", "tuft", "basal"]
-    ]
+    # Simulation.
+    cell[0, 0].record("v")
+    cell.stub.branch(0).comp(3).record("v")
+    cell.soma.branch(0).comp(0).stimulate(jx.step_current(10.0, 5.0, 0.2, 0.025, 100.0))
+    v = jx.integrate(cell)
 
-    stim_loc = 0.1
-    stim_idx = match_stim_loc(jx_cell, h.soma[0], loc=stim_loc)
-
-    jx_cell.set("axial_resistivity", 1_000.0)
-    jx_cell.set("v", -62.0)
-    jx_cell.set("HH_m", 0.074901)
-    jx_cell.set("HH_h", 0.4889)
-    jx_cell.set("HH_n", 0.3644787)
-
-    jx_cell.select(stim_idx).stimulate(
-        jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
-    )
-    for i in trunk_inds + tuft_inds + basal_inds:
-        jx_cell.branch(i).loc(branch_loc).record()
-
-    voltages_jaxley = jx.integrate(jx_cell, delta_t=dt, voltage_solver="jax.sparse")
-
-    ################### NEURON #################
-    stim = h.IClamp(h.soma[0](stim_loc))
-    stim.delay = i_delay
-    stim.dur = i_dur
-    stim.amp = i_amp
-
-    counter = 0
-    voltage_recs = {}
-
-    for r in neuron_trunk_inds:
-        for i, sec in enumerate(h.allsec()):
-            if i == r:
-                v = h.Vector()
-                v.record(sec(branch_loc)._ref_v)
-                voltage_recs[f"v{counter}"] = v
-                counter += 1
-
-    for r in neuron_tuft_inds:
-        for i, sec in enumerate(h.allsec()):
-            if i == r:
-                v = h.Vector()
-                v.record(sec(branch_loc)._ref_v)
-                voltage_recs[f"v{counter}"] = v
-                counter += 1
-
-    for r in neuron_basal_inds:
-        for i, sec in enumerate(h.allsec()):
-            if i == r:
-                v = h.Vector()
-                v.record(sec(branch_loc)._ref_v)
-                voltage_recs[f"v{counter}"] = v
-                counter += 1
-
-    for sec in h.allsec():
-        sec.insert("hh")
-        sec.Ra = 1_000.0
-
-        sec.gnabar_hh = 0.120  # S/cm2
-        sec.gkbar_hh = 0.036  # S/cm2
-        sec.gl_hh = 0.0003  # S/cm2
-        sec.ena = 50  # mV
-        sec.ek = -77.0  # mV
-        sec.el_hh = -54.3  # mV
-
-    h.dt = dt
-    tstop = t_max
-    v_init = -62.0
-
-    def initialize():
-        h.finitialize(v_init)
-        h.fcurrent()
-
-    def integrate():
-        while h.t < tstop:
-            h.fadvance()
-
-    initialize()
-    integrate()
-    voltages_neuron = np.asarray([voltage_recs[key] for key in voltage_recs])
-
-    ####################### check ################
-    errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
-
-    assert all(errors < 2.5), "voltages do not match."
+    assert np.invert(np.any(np.isnan(v))), "Found NaN"

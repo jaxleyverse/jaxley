@@ -2,14 +2,36 @@
 
 ### New features
 
+- utility to delete parts of a morphology (#612, @michaeldeistler):
+```python
+from jaxley.morphology import morph_delete
+cell = morph_delete(cell.branch([1, 2]))
+```
+- utility to connect two cells into a single cell (#612, @michaeldeistler):
+```python
+from jaxley.morphology import morph_connect
+cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
+```
+- the default SWC reader has changed. To use the previous SWC reader, run
+`jx.read_swc(..., backend="custom")`. However, note that we will remove this reader
+in the future. If the new SWC reader is causing issues for you, please open an issue
+(#612, @michaeldeistler)
+- radiuses are now integrated across SWC coordinates, not interpolated
+(#612, @michaeldeistler)
+
 ### Documentation
+
+- Introduce the `how-to guide` on the website (#612, @michaeldeistler)
+- reorganize the advanced tutorials into subgroups (#612, @michaeldeistler)
+- split the morphology handling tutorials into two notebooks (#612, @michaeldeistler)
 
 ### Internal updates
 
 - improvements to graph-backend for more flexibility in modifying morphologies (#613, @michaeldeistler)
 - remove root compartment for SWC files (#613, @michaeldeistler)
 - enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
-- `.comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
+- `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
+- introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
 
 
 # 0.8.2

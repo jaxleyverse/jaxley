@@ -28,7 +28,6 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     _get_comp_edges_in_view,
-    build_radiuses_from_xyzr,
     compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
@@ -36,6 +35,8 @@ from jaxley.utils.cell_utils import (
     loc_of_index,
     params_to_pstate,
     query_channel_states_and_params,
+    radius_from_xyzr,
+    split_xyzr_into_equal_length_segments,
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
@@ -62,7 +63,7 @@ def only_allow_module(func):
 
 
 class Module(ABC):
-    """Module base class.
+    """Module base class which implements features shared by all modules.
 
     Modules are everything that can be passed to `jx.integrate`, i.e. compartments,
     branches, cells, and networks.
@@ -126,6 +127,7 @@ class Module(ABC):
         self._nodes_in_view: np.ndarray = None
         self._edges_in_view: np.ndarray = None
 
+        self._branchpoints: pd.DataFrame = pd.DataFrame(columns=["x", "y", "z"])
         self._comp_edges: pd.DataFrame = pd.DataFrame()
 
         self.edges = pd.DataFrame(
@@ -1020,12 +1022,16 @@ class Module(ABC):
         channel_state_names = list(
             chain(*[c.channel_states for c in self.base.channels])
         )
-        radius_generating_fns = self.base._radius_generating_fns
 
         within_branch_radiuses = view["radius"].to_numpy()
         compartment_lengths = view["length"].to_numpy()
         num_previous_ncomp = len(within_branch_radiuses)
         branch_indices = pd.unique(view["global_branch_index"])
+
+        xyzr = self.base.xyzr[branch_indices[0]]
+        xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
+
+        assert len(branch_indices) <= 1, "You can only modify ncomp of a single branch."
 
         error_msg = lambda name: (
             f"You previously modified the {name} of individual compartments, but "
@@ -1036,7 +1042,7 @@ class Module(ABC):
 
         if (
             ~np.all(within_branch_radiuses == within_branch_radiuses[0])
-            and radius_generating_fns is None
+            and not xyzr_is_available
         ):
             raise ValueError(error_msg("radius"))
 
@@ -1097,13 +1103,12 @@ class Module(ABC):
         view["length"] = comp_lengths
 
         # Compute new compartment radiuses.
-        if radius_generating_fns is not None:
-            view["radius"] = build_radiuses_from_xyzr(
-                radius_fns=radius_generating_fns,
-                branch_indices=branch_indices,
-                min_radius=min_radius,
-                ncomp=ncomp,
-            )
+        if xyzr_is_available:
+            # If all xyzr-radiuses of the branch are available, then use them to
+            # compute the new compartment radiuses.
+            comp_xyzrs = split_xyzr_into_equal_length_segments(xyzr, ncomp)
+            rads = [radius_from_xyzr(xyzr, min_radius) for xyzr in comp_xyzrs]
+            view["radius"] = rads
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
 
@@ -2762,6 +2767,10 @@ class View(Module):
         self._comp_edges = (
             ptr_edges if ptr_edges.empty else ptr_edges.loc[self._comp_edges_in_view]
         )
+        ptr_nodes = pointer._branchpoints
+        self._branchpoints = (
+            ptr_nodes if ptr_nodes.empty else ptr_nodes.loc[self._branchpoints_in_view]
+        )
 
         self.xyzr = self._xyzr_in_view()
         self.ncomp = 1 if len(self.nodes) == 1 else pointer.ncomp
@@ -2847,8 +2856,9 @@ class View(Module):
         has_node_inds = nodes is not None
         has_edge_inds = edges is not None
         self._edges_in_view = pointer._edges_in_view
-        self._comp_edges_in_view = pointer._comp_edges_in_view
         self._nodes_in_view = pointer._nodes_in_view
+        self._comp_edges_in_view = pointer._comp_edges_in_view
+        self._branchpoints_in_view = pointer._branchpoints_in_view
 
         if not has_edge_inds and has_node_inds:
             base_edges = self.base.edges
@@ -2866,6 +2876,7 @@ class View(Module):
                     possible_edges_in_view, self._edges_in_view
                 )
             base_comp_edges = self.base._comp_edges
+            base_branchpoints = self.base._branchpoints
             if not base_comp_edges.empty:
                 possible_edges_in_view = _get_comp_edges_in_view(
                     base_comp_edges, incl_comps, comp_edge_condition
@@ -2873,6 +2884,13 @@ class View(Module):
                 self._comp_edges_in_view = np.intersect1d(
                     possible_edges_in_view, self._comp_edges_in_view
                 )
+                all_comps = base_comp_edges.loc[self._comp_edges_in_view][
+                    "sink"
+                ].to_numpy()
+                condition = base_branchpoints.index.isin(all_comps)
+                self._branchpoints_in_view = base_branchpoints.loc[
+                    condition
+                ].index.to_numpy()
         elif not has_node_inds and has_edge_inds:
             base_nodes = self.base.nodes
             self._edges_in_view = edges

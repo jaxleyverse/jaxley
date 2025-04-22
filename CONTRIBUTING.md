@@ -1,7 +1,9 @@
 ## User experiences, bugs, and feature requests
 
 To report bugs and suggest features (including better documentation), please
-head over to [issues on GitHub](https://github.com/jaxleyverse/jaxley/issues).
+head over to [issues on GitHub](https://github.com/jaxleyverse/jaxley/issues). If you
+have a question, please open
+[a discussion on GitHub](https://github.com/jaxleyverse/jaxley/discussions).
 
 ## Code contributions
 
@@ -11,8 +13,9 @@ your feature branch to the upstream `Jaxley` ([details](https://docs.github.com/
 
 ### Development environment
 
-Clone [the repo](https://github.com/jaxleyverse/jaxley) and install via `setup.py` using `pip install -e ".[dev]"` (the dev
-flag installs development and testing dependencies).
+Clone [the repo](https://github.com/jaxleyverse/jaxley) and install via `setup.py`
+using `pip install -e ".[dev, doc]"` (the dev flag installs development and testing
+dependencies, the doc flag install documentation dependencies).
 
 ### Style conventions
 
@@ -35,9 +38,11 @@ and run them locally.
 
 ## Online documentation
 
-Most of [the documentation](https://jaxleyverse.github.io/jaxley/) is written in markdown ([basic
-markdown guide](https://guides.github.com/features/mastering-markdown/)).
+Most of [the documentation](https://jaxley.readthedocs.io/en/latest/) is written in
+markdown ([basic markdown guide](https://guides.github.com/features/mastering-markdown/))
+or [Sphinx](https://www.sphinx-doc.org/en/master/).
 
 You can directly fix mistakes and suggest clearer formulations in markdown files simply
 by initiating a PR on through GitHub. Click on [documentation
-file](https://github.com/jaxleyverse/jaxley/tree/master/docs/docs) and look for the little pencil at top right.
+file](https://github.com/jaxleyverse/jaxley/tree/main/docs) and look for the little
+pencil at top right.

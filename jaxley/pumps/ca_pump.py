@@ -9,10 +9,7 @@ from jaxley.pumps.pump import Pump
 
 
 class CaPump(Pump):
-    """Calcium dynamics tracking inside calcium concentration
-
-    Modeled after Destexhe et al. 1994.
-    """
+    """Calcium dynamics based on Destexhe et al. 1994."""
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)

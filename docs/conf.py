@@ -35,6 +35,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_math_dollar",
     "sphinx.ext.mathjax",
+    "sphinx_design",
     "myst_nb",
 ]
 
@@ -66,7 +67,7 @@ myst_enable_extensions = [
     "colon_fence",
 ]
 nb_execution_timeout = 600
-nb_execution_mode = "cache"
+nb_execution_mode = "off"
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -101,3 +102,9 @@ autosummary_generate = True
 autodoc_typehints = "description"
 add_module_names = False
 autodoc_member_order = "bysource"
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "inherited-members": True,
+    "show-inheritance": True
+}

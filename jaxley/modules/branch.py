@@ -16,12 +16,12 @@ from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Branch(Module):
-    """Branch class.
+    """A branch made up of one or multiple compartments (without branchpoints).
 
     This class defines a single branch that can be simulated by itself or
-    connected to build a cell. A branch is linear segment of several compartments
-    and can be connected to no, one or more other branches at each end to build more
-    intricate cell morphologies.
+    connected to build a cell. A branch is an unbranched neurite of several
+    compartments and can be connected to no, one or more other branches at each end to
+    build more intricate cell morphologies (via ``jx.Cell``).
     """
 
     branch_params: Dict = {}
@@ -124,8 +124,9 @@ class Branch(Module):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-        # To enable updating `self._comp_edges` during `View`.
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
     def __len__(self) -> int:
         return self.ncomp
