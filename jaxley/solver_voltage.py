@@ -4,12 +4,11 @@
 from copy import deepcopy
 from typing import List
 
-from jax.lax import fori_loop
-
 import jax.numpy as jnp
 import numpy as np
 from jax import vmap
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
+from jax.lax import fori_loop
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
@@ -262,10 +261,10 @@ def step_voltage_implicit_with_dhs_solve(
     axial_conductances,
     internal_node_inds,
     sinks,
-    node_order,
+    ordered_comp_edges,
     map_to_solve_order,
     inv_map_to_solve_order,
-    inv_map_to_node_order_lower_and_upper,
+    map_to_solve_order_lower_and_upper,
     n_nodes,
     delta_t,
 ):
@@ -274,6 +273,18 @@ def step_voltage_implicit_with_dhs_solve(
     Combined with an approriate solve order, this results in `dendritic hierarchical
     scheduling` (DHS, Zhang et al., 2023). The solve order is defined in the graph
     backend of `Jaxley`.
+
+    Args:
+        ordered_comp_edges: A list which edges between compartments, each being a
+            tuple (child_compartment, parent_compartment). The order of the list
+            indicates the solve order.
+        map_to_solve_order: An array of indices that permutes diagonal elements into
+            the order of the solve. E.g.: `voltages = voltages[mapping_array]`.
+        inv_map_to_solve_order: An array of indices that permutes diagonal elements back
+            into compartment order. E.g.: `voltages = voltages[inv_mapping_array]`.
+        map_to_solve_order_lower_and_upper: An array of indices that permutes
+            the concatenation of lowers and uppers into the order of the solve:
+            `lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]`.
     """
     axial_conductances = delta_t * axial_conductances
 
@@ -295,32 +306,33 @@ def step_voltage_implicit_with_dhs_solve(
     solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
 
     # Reorder diagonals and solves.
-    diags = diags[inv_map_to_solve_order]
-    solves = solves[inv_map_to_solve_order]
+    diags = diags[map_to_solve_order]
+    solves = solves[map_to_solve_order]
 
     # Reorder the lower and upper values.
-    lowers_and_uppers = lowers_and_uppers[inv_map_to_node_order_lower_and_upper]
-    lowers = lowers_and_uppers[:n_nodes - 1]
-    uppers = lowers_and_uppers[n_nodes - 1:]
-    flipped_node_order = jnp.flip(node_order, axis=0)
+    lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]
+    lowers = lowers_and_uppers[: n_nodes - 1]
+    uppers = lowers_and_uppers[n_nodes - 1 :]
+    flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
 
     # Solve the voltage equations.
     #
     # Triangulate.
-    init = (diags, solves, lowers, uppers, flipped_node_order)
+    init = (diags, solves, lowers, uppers, flipped_comp_edges)
     diags, solves, _, _, _ = fori_loop(0, n_nodes - 1, _comp_based_triang, init)
 
     # Backsubstitute.
-    init = (diags, solves, lowers, node_order)
+    init = (diags, solves, lowers, ordered_comp_edges)
     diags, solves, _, _ = fori_loop(0, n_nodes - 1, _comp_based_backsub, init)
 
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
-    solution = solution[map_to_solve_order]
+    solution = solution[inv_map_to_solve_order]
     return solution[internal_node_inds]
 
 
 def _comp_based_triang(index, carry):
+    """Triangulate the quasi-tridiagonal system compartment by compartment."""
     diags, solves, lowers, uppers, flipped_comp_edges = carry
     comp_edge = flipped_comp_edges[index]
     child = comp_edge[0]
@@ -342,6 +354,7 @@ def _comp_based_triang(index, carry):
 
 
 def _comp_based_backsub(index, carry):
+    """Backsubstitute the quasi-tridiagonal system compartment by compartment."""
     diags, solves, lowers, comp_edges = carry
 
     comp_edge = comp_edges[index]

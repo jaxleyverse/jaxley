@@ -778,8 +778,12 @@ def _build_solve_graph(
         solve_graph.add_edge(i, j)
         # solve_graph.nodes[j]["branch_index"] = branch_index
         if "comp_index" in undirected_comp_graph.nodes[j].keys():
-            solve_graph.nodes[j]["comp_index"] = undirected_comp_graph.nodes[j]["comp_index"]
-            solve_graph.nodes[j]["branch_index"] = undirected_comp_graph.nodes[j]["branch_index"]
+            solve_graph.nodes[j]["comp_index"] = undirected_comp_graph.nodes[j][
+                "comp_index"
+            ]
+            solve_graph.nodes[j]["branch_index"] = undirected_comp_graph.nodes[j][
+                "branch_index"
+            ]
         solve_graph.nodes[j]["solve_index"] = solve_index
         node_and_parent.append((j, i))
 
@@ -1098,12 +1102,12 @@ def _build_module(
     # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
     # ```
     map_dict = node_to_solve_index_mapping  # Abbreviation.
-    mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
-    inv_mapping_array = np.argsort(mapping_array)
+    inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
+    mapping_array = np.argsort(inv_mapping_array)
     #
     module._dhs_map_dict = map_dict
-    module._dhs_map_to_node_order = mapping_array
     module._dhs_inv_map_to_node_order = inv_mapping_array
+    module._dhs_map_to_node_order = mapping_array
     #
     # Define the matrix permutation for DHS.
     lower_and_upper_inds = np.arange((module._n_nodes - 1) * 2)
@@ -1113,7 +1117,7 @@ def _build_module(
         dhs_node_order,
         module._dhs_map_dict,
     )
-    module._dhs_inv_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
+    module._dhs_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
     module._dhs_node_order = new_node_order
 
     return module

@@ -2101,7 +2101,7 @@ class Module(ABC):
                 "node_order": self._dhs_node_order,
                 "map_to_solve_order": self._dhs_map_to_node_order,
                 "inv_map_to_solve_order": self._dhs_inv_map_to_node_order,
-                "inv_map_to_node_order_lower_and_upper": self._dhs_inv_map_to_node_order_lower_and_upper,
+                "map_to_node_order_lower_and_upper": self._dhs_map_to_node_order_lower_and_upper,
                 "n_nodes": self._n_nodes,
             }
             step_voltage_implicit = step_voltage_implicit_with_dhs_solve
