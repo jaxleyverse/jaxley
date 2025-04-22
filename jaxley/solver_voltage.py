@@ -361,7 +361,7 @@ def step_voltage_implicit_with_dhs_solve(
     solution = solves / diags
     solution = solution[map_to_solve_order]
 
-    print("solution3", solution)
+    # print("solution3", solution)
 
     return solution[internal_node_inds]
 
