@@ -8,8 +8,7 @@ from warnings import warn
 import jax.numpy as jnp
 import numpy as np
 
-from jaxley.io.graph import build_compartment_graph, to_swc_graph
-from jaxley.io.graph_to_module import from_graph
+from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
 from jaxley.modules import Branch, Cell, Compartment
 from jaxley.utils.cell_utils import (
     radius_from_xyzr,

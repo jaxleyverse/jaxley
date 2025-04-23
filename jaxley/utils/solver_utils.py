@@ -3,8 +3,8 @@
 
 from typing import Dict, List, Optional, Tuple, Union
 
-import networkx as nx
 import jax.numpy as jnp
+import networkx as nx
 import numpy as np
 import pandas as pd
 
@@ -235,7 +235,7 @@ class JaxleySolveIndexer:
         return self.remapped_node_indices[indices]
 
 
-def reorder_dhs(
+def dhs_permutation_indices(
     lowers_and_uppers,
     offdiag_inds,
     node_order,
