@@ -34,6 +34,13 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 - enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
 - `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
 - introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
+- first draft for compartment-based voltage solvers. The new solver is still limited and
+thus not yet exposed. To run it for `jx.Cell` (other modules not supported yet):
+```python
+cell.compute_compartment_centers()
+cell._init_morph_jaxley_dhs_solve(to_graph(cell))
+v = jx.integrate(cell, voltage_solver="jaxley.dhs")
+```
 
 ### Bug fixes
 

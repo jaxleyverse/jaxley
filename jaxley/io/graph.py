@@ -712,7 +712,6 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
 def _set_comp_and_branch_index(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
-    traverse_for_solve_order: bool = True,
 ) -> nx.DiGraph:
     """Given a compartment graph, return a comp_graph with new comp and branch index.
 
@@ -722,13 +721,6 @@ def _set_comp_and_branch_index(
     Args:
         comp_graph: Compartment graph returned by `build_compartment_graph`.
         root: The root node to traverse the graph for the solve order.
-        traverse_for_solve_order: Whether to traverse the graph for identifying the
-            solve order. Should only be set to `False` if you are confident that the
-            `comp_graph` is in a form in which it can be solved (i.e. its branch
-            indices, compartment indices, and node names are correct). Typically, this
-            is the case only if you exported a module to a `comp_graph` via `to_graph`,
-            did not modify the graph, and now re-import it as a module with
-            `from_graph`.
 
     Returns:
         A directed graph indicating the solve order. The graph does no longer contain
@@ -745,15 +737,7 @@ def _set_comp_and_branch_index(
         'length': 2.0,
         'cell_index': 0}```
     """
-    comp_graph = _remove_branch_points_at_tips(comp_graph)
     undirected_comp_graph = comp_graph.to_undirected()
-
-    # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
-    # and we did not modify the exported graph, then we might do not want to traverse
-    # the graph again because this would change the ordering of the branches.
-    if not traverse_for_solve_order:
-        return _remove_branch_points(comp_graph)
-
     root = root if root else _find_root(undirected_comp_graph)
 
     # Directed graph to store the traversal
@@ -949,9 +933,14 @@ def from_graph(
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
         cell = from_graph(comp_graph)
     """
-    comp_graph = _set_comp_and_branch_index(
-        comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
-    )
+    comp_graph = _remove_branch_points_at_tips(comp_graph)
+
+    # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
+    # and we did not modify the exported graph, then we might do not want to traverse
+    # the graph again because this would change the ordering of the branches.
+    if traverse_for_solve_order:
+        comp_graph = _set_comp_and_branch_index(comp_graph, root=solve_root)
+
     solve_graph = _remove_branch_points(comp_graph)
     solve_graph = _add_meta_data(solve_graph)
     return _build_module(solve_graph, comp_graph, assign_groups=assign_groups)
