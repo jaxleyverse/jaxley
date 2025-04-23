@@ -19,11 +19,13 @@ from jaxley.utils.cell_utils import (
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
 )
+from jaxley.io.graph import to_graph, _build_solve_graph
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
     remap_index_to_masked,
+    reorder_dhs,
 )
 
 
@@ -130,10 +132,9 @@ class Cell(Module):
         self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-
         self._initialize()
 
-    def _init_morph_jaxley_spsolve(self):
+    def _init_morph_jaxley_spsolve(self) -> None:
         """Initialize morphology for the custom sparse solver.
 
         Running this function is only required for custom Jaxley solvers, i.e., for
@@ -294,3 +295,51 @@ class Cell(Module):
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         self._off_diagonal_inds = off_diagonal_inds
+
+    def _init_morph_jaxley_dhs_solve(self) -> None:
+        """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
+
+        This function generates the indexing for Dendritic Hierachical Scheduling (DHS).
+
+        This function first generates the networkX `comp_graph`, then traverses it
+        to identify the solve order, and then pre-computes the relevant attributes used
+        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+        """
+        self.compute_compartment_centers()
+        comp_graph = to_graph(self)
+
+        # Export to graph and traverse it to identify the solve order.
+        _, node_order, node_to_solve_index_mapping = _build_solve_graph(
+            comp_graph, root=0, remove_branch_points=True
+        )
+
+        # Set the order in which compartments are processed during Dendritic Hierachical
+        # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
+        # the values correspond to compartment indices.
+        dhs_node_order = jnp.asarray(node_order[1:])
+
+        # We have to change the order of compartments at every time step of the solve.
+        # Because of this, we make it as efficient as pssible to perform this ordering with
+        # the arrays below. Example:
+        # ```
+        # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
+        # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
+        # ```
+        map_dict = node_to_solve_index_mapping  # Abbreviation.
+        inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
+        mapping_array = np.argsort(inv_mapping_array)
+        #
+        self._dhs_map_dict = map_dict
+        self._dhs_inv_map_to_node_order = inv_mapping_array
+        self._dhs_map_to_node_order = mapping_array
+
+        # Define the matrix permutation for DHS.
+        lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
+        lowers_and_uppers, new_node_order = reorder_dhs(
+            lower_and_upper_inds,
+            self._off_diagonal_inds,
+            dhs_node_order,
+            self._dhs_map_dict,
+        )
+        self._dhs_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
+        self._dhs_node_order = new_node_order

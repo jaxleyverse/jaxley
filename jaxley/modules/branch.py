@@ -132,5 +132,14 @@ class Branch(Module):
 
         self._off_diagonal_inds = off_diagonal_inds
 
+    def _init_morph_jaxley_dhs_solve(self) -> None:
+        """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
+
+        This function first generates the networkX `comp_graph`, then traverses it
+        to identify the solve order, and then pre-computes the relevant attributes used
+        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+        """
+        pass
+
     def __len__(self) -> int:
         return self.ncomp
