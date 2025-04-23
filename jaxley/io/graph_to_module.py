@@ -1,19 +1,14 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Union
-from warnings import warn
 
-import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
-from jaxley.io.graph import _build_solve_graph, _add_meta_data
-from jaxley.utils.solver_utils import reorder_dhs
+from jaxley.io.graph import _set_comp_and_branch_index, _add_meta_data, _remove_branch_points
 
 
 ########################################################################################
@@ -60,9 +55,10 @@ def from_graph(
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
         cell = from_graph(comp_graph)
     """
-    solve_graph, _, _ = _build_solve_graph(
+    comp_graph = _set_comp_and_branch_index(
         comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
     )
+    solve_graph = _remove_branch_points(comp_graph)
     solve_graph = _add_meta_data(solve_graph)
     return _build_module(solve_graph, comp_graph, assign_groups=assign_groups)
 

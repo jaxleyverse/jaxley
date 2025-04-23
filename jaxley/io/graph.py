@@ -708,13 +708,15 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
 ########################################################################################
 
 
-def _build_solve_graph(
+def _set_comp_and_branch_index(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
     traverse_for_solve_order: bool = True,
-    remove_branch_points: bool = True,
 ) -> nx.DiGraph:
-    """Given a compartment graph, return a directed graph indicating the solve order.
+    """Given a compartment graph, return a comp_graph with new comp and branch index.
+
+    The returned comp and branch index are the ones used also in the resulting
+    jx.Cell, and they define the solve order for `jaxley.stone` solvers.
 
     Args:
         comp_graph: Compartment graph returned by `build_compartment_graph`.
@@ -762,31 +764,34 @@ def _build_solve_graph(
     solve_graph.add_nodes_from(undirected_comp_graph.nodes(data=True))
     solve_graph.nodes[root]["comp_index"] = 0
     solve_graph.nodes[root]["branch_index"] = 0
-    solve_graph.nodes[root]["solve_index"] = 0
 
-    solve_index = 1
+    comp_index = 1
+    branch_index = 0
     node_inds_in_which_to_flip_xyzr = []
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
-    node_and_parent = [(root, -1, 0)]
-    for edge, level in _bfs_edge_hops(undirected_comp_graph, root):
-        i = edge[0]
-        j = edge[1]
+    node_mapping = {}
+    for i, j in nx.dfs_edges(
+        undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)
+    ):
         solve_graph.add_edge(i, j)
-        # Copy comp_index and branch_index from compartment graph. We only update the
-        # solve_index.
-        if "comp_index" in undirected_comp_graph.nodes[j].keys():
-            solve_graph.nodes[j]["comp_index"] = undirected_comp_graph.nodes[j][
-                "comp_index"
-            ]
-            solve_graph.nodes[j]["branch_index"] = undirected_comp_graph.nodes[j][
-                "branch_index"
-            ]
-        solve_graph.nodes[j]["solve_index"] = solve_index
-        node_and_parent.append((j, i, level))
+        solve_graph.nodes[j]["branch_index"] = branch_index
+        if solve_graph.nodes[j]["type"] == "comp":
+            solve_graph.nodes[j]["comp_index"] = comp_index
+            node_mapping[j] = comp_index
 
-        solve_index += 1
+        if _is_leaf(undirected_comp_graph, j):
+            branch_index += 1
+
+        # Increase the branch counter if a branchpoint is encountered.
+        elif undirected_comp_graph.nodes[j]["type"] == "branchpoint":
+            branch_index += 1
+
+        # Increase the counter for the compartment index only if the node was a
+        # compartment (branchpoints are skipped).
+        if solve_graph.nodes[j]["type"] == "comp":
+            comp_index += 1
 
         # The `xyzr` attribute of all compartment nodes is ordered in the order in
         # which the SWC file was traversed. If we now traverse a compartment from
@@ -802,17 +807,9 @@ def _build_solve_graph(
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
 
-    # Create a dictionary which maps every node to its solve index. Two notes:
-    # - The node name corresponds to the compartment index (and branchpoints continue
-    # numerically from where the compartments have ended)
-    # - The solve index specifies the order in which the node is processed durin the
-    # DHS solve.
-    inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
-    node_to_solve_index_mapping = dict(sorted(inds.items()))
-
-    if remove_branch_points:
-        solve_graph = _remove_branch_points(solve_graph)
-    return solve_graph, node_and_parent, node_to_solve_index_mapping
+    solve_graph = nx.relabel_nodes(solve_graph, node_mapping)
+    solve_graph = _set_branchpoint_indices(solve_graph)
+    return solve_graph
 
 
 def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:
@@ -825,35 +822,6 @@ def _remove_branch_points_at_tips(comp_graph: nx.DiGraph) -> nx.DiGraph:
         if degree > 1 or comp_graph.nodes[node]["type"] == "comp":
             nodes_to_keep.append(node)
     return comp_graph.subgraph(nodes_to_keep).copy()
-
-
-def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
-    """Remove branch points and label edges as `inter_branch` or `intra_branch`."""
-
-    # Copy the graph because, otherwise, its input gets modified.
-    solve_graph = solve_graph.copy()
-
-    # All connections which either have no `type` label or which are not labelled as
-    # synapses are labelled as `intra_branch` for. `inter_branch` connections are
-    # handled in the loop below.
-    for edge_ind in solve_graph.edges:
-        edge = solve_graph.edges[edge_ind]
-        if "type" not in edge or edge["type"] != "synapse":
-            edge["type"] = "intra_branch"
-
-    # Replace branch points with direct connections between the compartments.
-    for node in list(solve_graph.nodes):
-        if solve_graph.nodes[node].get("type") == "branchpoint":
-            parents = list(solve_graph.predecessors(node))
-            children = list(solve_graph.successors(node))
-            for v in children:
-                for u in parents:
-                    solve_graph.add_edge(u, v, type="inter_branch")
-            solve_graph.remove_node(node)
-
-    mapping = {n: attrs["comp_index"] for n, attrs in solve_graph.nodes(data=True)}
-    solve_graph = nx.relabel_nodes(solve_graph, mapping, copy=True)
-    return solve_graph
 
 
 def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
@@ -934,29 +902,6 @@ def _add_meta_data(solve_graph: nx.DiGraph) -> nx.DiGraph:
         solve_graph.graph["type"] = "cell"
 
     return solve_graph  # This is now a `jaxley_graph`.
-
-
-def _bfs_edge_hops(graph: nx.DiGraph, root):
-    """Yields BFS tree edges along with hop count from root.
-
-    This function uses NetworkX's `bfs_edges` to traverse the graph in
-    breadth-first order starting from the root node. For each edge in the
-    resulting BFS tree, it yields the edge and the number of hops (distance)
-    from the root to the child node.
-
-    Args:
-        graph: The graph to traverse.
-        root: The starting node for BFS.
-
-    Yields:
-        Tuple[Tuple[Any, Any], int]: A tuple where the first element is an
-        edge (parent, child) and the second is the number of hops from the
-        root to the child node.
-    """
-    depth = {root: 0}
-    for u, v in nx.bfs_edges(graph, root):
-        depth[v] = depth[u] + 1
-        yield (u, v), depth[v]
 
 
 ########################################################################################

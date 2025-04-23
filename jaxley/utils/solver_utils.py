@@ -3,6 +3,7 @@
 
 from typing import Dict, List, Optional, Tuple, Union
 
+import networkx as nx
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -240,7 +241,7 @@ def reorder_dhs(
     node_order,
     mapping_dict,
 ):
-    """Reorder the quasi-tridiagonal elements to match the DHS solve order."""
+    """Return mapping to the DHS solve order, also for lower and upper diagonal vals."""
     edge_data = {}
     for edge, v in zip(offdiag_inds.T, lowers_and_uppers):
         edge_data[tuple(edge.tolist())] = v
@@ -283,3 +284,75 @@ def reorder_dhs(
 
     lowers_and_uppers = jnp.concatenate([lowers, uppers])
     return lowers_and_uppers, new_node_order
+
+
+def dhs_solve_index(
+    solve_graph: nx.DiGraph,
+    root: Optional[int] = None,
+) -> nx.DiGraph:
+    """Given a compartment graph, return a directed graph indicating the solve order.
+
+    Args:
+        comp_graph: Compartment graph. Must have the compartment indices such that
+            they match the ones in the `jx.Module` (i.e., the compartment graph must
+            have been generated with `to_graph()` or it must have run
+            `_set_comp_and_branch_index()` after having run
+            `build_compartment_graph()`).
+        root: The root node to traverse the graph for the DHS solve order.
+
+    Returns:
+        - node_and_parent: A list of tuples (node, parent, level), where the node and
+        parent indicate the (child and parent) node index, and the level indicates the
+        number of hops it took from the root to get there. The number of hops is
+        currently unused, but it will be important in the future to parallelization.
+        - node_to_solve_index_mapping: An dictionary mapping from the compartment
+        indices to the solve indices.
+    """
+    undirected_solve_graph = solve_graph.to_undirected()
+
+    # Traverse the graph for the solve order.
+    # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
+    node_and_parent = [(root, -1, 0)]
+    solve_graph.nodes[root]["solve_index"] = 0
+    solve_index = 1
+    for edge, level in _bfs_edge_hops(undirected_solve_graph, root):
+        i = edge[0]
+        j = edge[1]
+        solve_graph.add_edge(i, j)
+        # Copy comp_index and branch_index from compartment graph. We only update the
+        # solve_index.
+        solve_graph.nodes[j]["solve_index"] = solve_index
+        node_and_parent.append((j, i, level))
+        solve_index += 1
+
+    # Create a dictionary which maps every node to its solve index. Two notes:
+    # - The node name corresponds to the compartment index (and branchpoints continue
+    # numerically from where the compartments have ended)
+    # - The solve index specifies the order in which the node is processed durin the
+    # DHS solve.
+    inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
+    node_to_solve_index_mapping = dict(sorted(inds.items()))
+    return node_and_parent, node_to_solve_index_mapping
+
+
+def _bfs_edge_hops(graph: nx.DiGraph, root):
+    """Yields BFS tree edges along with hop count from root.
+
+    This function uses NetworkX's `bfs_edges` to traverse the graph in
+    breadth-first order starting from the root node. For each edge in the
+    resulting BFS tree, it yields the edge and the number of hops (distance)
+    from the root to the child node.
+
+    Args:
+        graph: The graph to traverse.
+        root: The starting node for BFS.
+
+    Yields:
+        Tuple[Tuple[Any, Any], int]: A tuple where the first element is an
+        edge (parent, child) and the second is the number of hops from the
+        root to the child node.
+    """
+    depth = {root: 0}
+    for u, v in nx.bfs_edges(graph, root):
+        depth[v] = depth[u] + 1
+        yield (u, v), depth[v]

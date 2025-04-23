@@ -19,13 +19,14 @@ from jaxley.utils.cell_utils import (
     compute_morphology_indices_in_levels,
     compute_parents_in_level,
 )
-from jaxley.io.graph import to_graph, _build_solve_graph
+from jaxley.io.graph import to_graph
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
     remap_index_to_masked,
-    reorder_dhs,
+    dhs_permutation_indices,
+    dhs_solve_index,
 )
 
 
@@ -309,8 +310,8 @@ class Cell(Module):
         comp_graph = to_graph(self)
 
         # Export to graph and traverse it to identify the solve order.
-        _, node_order, node_to_solve_index_mapping = _build_solve_graph(
-            comp_graph, root=0, remove_branch_points=True
+        node_order, node_to_solve_index_mapping = dhs_solve_index(
+            comp_graph, root=0
         )
 
         # Set the order in which compartments are processed during Dendritic Hierachical
@@ -335,7 +336,7 @@ class Cell(Module):
 
         # Define the matrix permutation for DHS.
         lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
-        lowers_and_uppers, new_node_order = reorder_dhs(
+        lowers_and_uppers, new_node_order = dhs_permutation_indices(
             lower_and_upper_inds,
             self._off_diagonal_inds,
             dhs_node_order,

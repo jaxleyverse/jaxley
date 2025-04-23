@@ -16,7 +16,6 @@ from jax import jit, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 from matplotlib.axes import Axes
 
-from jaxley.io.graph import to_graph, _build_solve_graph
 from jaxley.channels import Channel
 from jaxley.pumps import Pump
 from jaxley.solver_voltage import (
