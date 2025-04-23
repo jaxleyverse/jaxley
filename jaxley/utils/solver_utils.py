@@ -312,17 +312,15 @@ def dhs_solve_index(
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
-    node_and_parent = [(root, -1, 0)]
+    node_and_parent = [(root, -1)]
     solve_graph.nodes[root]["solve_index"] = 0
     solve_index = 1
-    for edge, level in _bfs_edge_hops(undirected_solve_graph, root):
-        i = edge[0]
-        j = edge[1]
+    for i, j in nx.bfs_edges(undirected_solve_graph, root):
         solve_graph.add_edge(i, j)
         # Copy comp_index and branch_index from compartment graph. We only update the
         # solve_index.
         solve_graph.nodes[j]["solve_index"] = solve_index
-        node_and_parent.append((j, i, level))
+        node_and_parent.append((j, i))
         solve_index += 1
 
     # Create a dictionary which maps every node to its solve index. Two notes:
@@ -333,26 +331,3 @@ def dhs_solve_index(
     inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
     node_to_solve_index_mapping = dict(sorted(inds.items()))
     return node_and_parent, node_to_solve_index_mapping
-
-
-def _bfs_edge_hops(graph: nx.DiGraph, root):
-    """Yields BFS tree edges along with hop count from root.
-
-    This function uses NetworkX's `bfs_edges` to traverse the graph in
-    breadth-first order starting from the root node. For each edge in the
-    resulting BFS tree, it yields the edge and the number of hops (distance)
-    from the root to the child node.
-
-    Args:
-        graph: The graph to traverse.
-        root: The starting node for BFS.
-
-    Yields:
-        Tuple[Tuple[Any, Any], int]: A tuple where the first element is an
-        edge (parent, child) and the second is the number of hops from the
-        root to the child node.
-    """
-    depth = {root: 0}
-    for u, v in nx.bfs_edges(graph, root):
-        depth[v] = depth[u] + 1
-        yield (u, v), depth[v]
