@@ -3493,7 +3493,7 @@ the ones that are relevant for the channel. E.g.</p>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">avg_radius</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">min_radius</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">avg_radius</span> <span class="o">&gt;</span> <span class="n">min_radius</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">avg_radius</span><span class="p">))</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">avg_radius</span> <span class="o">&lt;</span> <span class="n">min_radius</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">avg_radius</span><span class="p">))</span>
             <span class="k">else</span> <span class="n">avg_radius</span>
         <span class="p">)</span>
 
