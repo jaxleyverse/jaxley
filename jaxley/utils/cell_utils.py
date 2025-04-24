@@ -44,7 +44,7 @@ def radius_from_xyzr(
     else:
         avg_radius = (
             min_radius
-            if (avg_radius > min_radius or np.isnan(avg_radius))
+            if (avg_radius < min_radius or np.isnan(avg_radius))
             else avg_radius
         )
 

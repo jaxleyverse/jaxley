@@ -11,7 +11,7 @@ Welcome to Jaxley!
 
 - automatic differentiation, allowing gradient-based optimization of thousands of parameters  
 - support for CPU, GPU, or TPU without any changes to the code  
-- ``jit``-compilation, making it as fast as other packages while being fully written in python  
+- ``jit``-compilation, making it as fast as other packages while being fully written in `Python`  
 - backward-Euler solver for stable numerical solution of multicompartment neurons  
 - elegant mechanisms for parameter sharing
 
