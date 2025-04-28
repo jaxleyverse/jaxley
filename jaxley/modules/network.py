@@ -271,6 +271,7 @@ class Network(Module):
         self._dhs_map_to_node_order_upper = []
         self._dhs_node_order = []
         self._comp_edges = []
+        self._branchpoints = []
         self._internal_node_inds = []
         for cell in self._cells_list:
             self._dhs_map_dict.update(
@@ -293,6 +294,10 @@ class Network(Module):
             edges[["source", "sink"]] += offset
             self._comp_edges.append(edges)
 
+            branchpoints = cell._branchpoints
+            branchpoints.index = branchpoints.index + offset
+            self._branchpoints.append(branchpoints)
+
             self._internal_node_inds.append(cell._internal_node_inds + offset)
 
             offset += cell._n_nodes  # Compartment-offset.
@@ -310,6 +315,7 @@ class Network(Module):
         )
         self._dhs_node_order = np.concatenate(self._dhs_node_order)
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
+        self._branchpoints = pd.concat(self._branchpoints)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)
 
         n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
@@ -319,6 +325,9 @@ class Network(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
+
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
         self._off_diagonal_inds = off_diagonal_inds
 
     def _step_synapse(

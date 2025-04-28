@@ -2949,6 +2949,7 @@ class View(Module):
         has_edge_inds = edges is not None
         self._edges_in_view = pointer._edges_in_view
         self._nodes_in_view = pointer._nodes_in_view
+
         self._comp_edges_in_view = pointer._comp_edges_in_view
         self._branchpoints_in_view = pointer._branchpoints_in_view
 
