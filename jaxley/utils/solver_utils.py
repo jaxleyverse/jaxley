@@ -1,7 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import networkx as nx
@@ -288,7 +288,8 @@ def dhs_permutation_indices(
 
 def dhs_solve_index(
     solve_graph: nx.DiGraph,
-    root: Optional[int] = None,
+    allowed_nodes_per_level: int = 1,
+    root: Optional[int] = 0,
 ) -> nx.DiGraph:
     """Given a compartment graph, return a directed graph indicating the solve order.
 
@@ -299,6 +300,8 @@ def dhs_solve_index(
             `_set_comp_and_branch_index()` after having run
             `build_compartment_graph()`).
         root: The root node to traverse the graph for the DHS solve order.
+        allowed_nodes_per_level: How many nodes are visited before the level is
+            increased, even if the number of hops did not change.
 
     Returns:
         - node_and_parent: A list of tuples (node, parent, level), where the node and
@@ -312,17 +315,20 @@ def dhs_solve_index(
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
-    node_and_parent = [(root, -1)]
+    node_and_parent = [(root, -1, 0)]
     solve_graph.nodes[root]["solve_index"] = 0
     solve_index = 1
-    for i, j in nx.bfs_edges(undirected_solve_graph, root):
+    for i, j, level in bfs_edge_hops(
+        undirected_solve_graph, root, allowed_nodes_per_level
+    ):
         solve_graph.add_edge(i, j)
         # Copy comp_index and branch_index from compartment graph. We only update the
         # solve_index.
         solve_graph.nodes[j]["solve_index"] = solve_index
-        node_and_parent.append((j, i))
+        node_and_parent.append((j, i, level))
         solve_index += 1
 
+    print("node_and_parent", node_and_parent)
     # Create a dictionary which maps every node to its solve index. Two notes:
     # - The node name corresponds to the compartment index (and branchpoints continue
     # numerically from where the compartments have ended)
@@ -331,3 +337,42 @@ def dhs_solve_index(
     inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
     node_to_solve_index_mapping = dict(sorted(inds.items()))
     return node_and_parent, node_to_solve_index_mapping
+
+
+def bfs_edge_hops(graph: nx.DiGraph, root: Any, allowed_nodes_per_level: int):
+    """Yields BFS tree edges along with hop count from root.
+
+    Hop count increases when:
+    - A real hop (child is at parent + 1 distance).
+    - Or after `allowed_nodes_per_level` nodes have been discovered without hop
+      increase.
+
+    Function written by ChatGPT.
+
+    Args:
+        graph: The graph to traverse.
+        root: The starting node for BFS.
+        allowed_nodes_per_level: How many nodes are visited before the level is
+            increased, even if the number of hops did not change.
+
+    Yields:
+        Tuple[Tuple[Any, Any], int]: Edge u, v and current hop count.
+    """
+    true_distance = nx.single_source_shortest_path_length(graph, root)
+
+    current_depth = 0
+    nodes_since_last_depth_increase = 0
+    last_true_depth = true_distance[root]
+
+    for u, v in nx.bfs_edges(graph, root):
+        # Detect real hop
+        if true_distance[v] > last_true_depth:
+            current_depth += 1
+            nodes_since_last_depth_increase = 0
+            last_true_depth = true_distance[v]
+        elif nodes_since_last_depth_increase >= allowed_nodes_per_level:
+            current_depth += 1
+            nodes_since_last_depth_increase = 0
+
+        nodes_since_last_depth_increase += 1
+        yield u, v, current_depth

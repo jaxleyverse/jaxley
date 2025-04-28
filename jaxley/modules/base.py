@@ -913,7 +913,9 @@ class Module(ABC):
         """Initialize the morphology for the custom Jaxley solver."""
         raise NotImplementedError
 
-    def _init_morph_jaxley_dhs_solve(self, comp_graph) -> None:
+    def _init_morph_jaxley_dhs_solve(
+        self, comp_graph, allowed_nodes_per_level: int = 1, root: int = 0
+    ) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
         This function first generates the networkX `comp_graph`, then traverses it
@@ -922,9 +924,16 @@ class Module(ABC):
 
         This base-method is used by `jx.Compartment`, `jx.Branch`, and `jx.Cell`.
         The `jx.Network` implements its own method.
+
+        Args:
+            allowed_nodes_per_level: How many nodes are visited before the level is
+                increased, even if the number of hops did not change. This sets the
+                amount of parallelism of the simulation.
         """
         # Export to graph and traverse it to identify the solve order.
-        node_order, node_to_solve_index_mapping = dhs_solve_index(comp_graph, root=0)
+        node_order, node_to_solve_index_mapping = dhs_solve_index(
+            comp_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
+        )
 
         # Set the order in which compartments are processed during Dendritic Hierachical
         # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
