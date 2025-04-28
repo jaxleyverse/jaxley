@@ -298,32 +298,35 @@ def step_voltage_implicit_with_dhs_solve(
 
     diags = diags.at[internal_node_inds].add(1.0 + delta_t * voltage_terms)
 
-    # Build lower and upper matrix.
-    lowers_and_uppers = -axial_conductances
-
     # Build solve.
     solves = jnp.zeros(n_nodes)
     solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
 
-    # Reorder diagonals and solves.
-    diags = diags[map_to_solve_order]
-    solves = solves[map_to_solve_order]
+    # Why `n_nodes > 1`? For compartments (or point neurons), we save computation and
+    # compile time by skipping the entire solve procedure.
+    if n_nodes > 1:
+        # Build lower and upper matrix.
+        lowers_and_uppers = -axial_conductances
 
-    # Reorder the lower and upper values.
-    lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]
-    lowers = lowers_and_uppers[: n_nodes - 1]
-    uppers = lowers_and_uppers[n_nodes - 1 :]
-    flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
+        # Reorder diagonals and solves.
+        diags = diags[map_to_solve_order]
+        solves = solves[map_to_solve_order]
 
-    # Solve the voltage equations.
-    #
-    # Triangulate.
-    init = (diags, solves, lowers, uppers, flipped_comp_edges)
-    diags, solves, _, _, _ = fori_loop(0, n_nodes - 1, _comp_based_triang, init)
+        # Reorder the lower and upper values.
+        lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]
+        lowers = lowers_and_uppers[: n_nodes - 1]
+        uppers = lowers_and_uppers[n_nodes - 1 :]
+        flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
 
-    # Backsubstitute.
-    init = (diags, solves, lowers, ordered_comp_edges)
-    diags, solves, _, _ = fori_loop(0, n_nodes - 1, _comp_based_backsub, init)
+        # Solve the voltage equations.
+        #
+        # Triangulate.
+        init = (diags, solves, lowers, uppers, flipped_comp_edges)
+        diags, solves, _, _, _ = fori_loop(0, n_nodes - 1, _comp_based_triang, init)
+
+        # Backsubstitute.
+        init = (diags, solves, lowers, ordered_comp_edges)
+        diags, solves, _, _ = fori_loop(0, n_nodes - 1, _comp_based_backsub, init)
 
     # Get inverse of the diagonalized matrix.
     solution = solves / diags

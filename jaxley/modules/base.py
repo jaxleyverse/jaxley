@@ -43,7 +43,9 @@ from jaxley.utils.cell_utils import (
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
-from jaxley.utils.solver_utils import convert_to_csc
+from jaxley.utils.solver_utils import (
+    convert_to_csc, dhs_permutation_indices, dhs_solve_index
+)
 
 
 def only_allow_module(func):
@@ -899,6 +901,47 @@ class Module(ABC):
     def _init_morph_jaxley_spsolve(self):
         """Initialize the morphology for the custom Jaxley solver."""
         raise NotImplementedError
+
+    def _init_morph_jaxley_dhs_solve(self, comp_graph) -> None:
+        """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
+
+        This function first generates the networkX `comp_graph`, then traverses it
+        to identify the solve order, and then pre-computes the relevant attributes used
+        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+        """
+        # Export to graph and traverse it to identify the solve order.
+        node_order, node_to_solve_index_mapping = dhs_solve_index(comp_graph, root=0)
+
+        # Set the order in which compartments are processed during Dendritic Hierachical
+        # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
+        # the values correspond to compartment indices.
+        dhs_node_order = jnp.asarray(node_order[1:])
+
+        # We have to change the order of compartments at every time step of the solve.
+        # Because of this, we make it as efficient as pssible to perform this ordering with
+        # the arrays below. Example:
+        # ```
+        # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
+        # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
+        # ```
+        map_dict = node_to_solve_index_mapping  # Abbreviation.
+        inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
+        mapping_array = np.argsort(inv_mapping_array)
+        #
+        self._dhs_map_dict = map_dict
+        self._dhs_inv_map_to_node_order = inv_mapping_array
+        self._dhs_map_to_node_order = mapping_array
+
+        # Define the matrix permutation for DHS.
+        lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
+        lowers_and_uppers, new_node_order = dhs_permutation_indices(
+            lower_and_upper_inds,
+            self._off_diagonal_inds,
+            dhs_node_order,
+            self._dhs_map_dict,
+        )
+        self._dhs_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
+        self._dhs_node_order = new_node_order
 
     def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
         """Given radius, length, r_a, compute the axial coupling conductances.

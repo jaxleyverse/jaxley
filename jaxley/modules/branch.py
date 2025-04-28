@@ -12,8 +12,10 @@ from jaxley.modules.base import Module
 from jaxley.modules.compartment import Compartment
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
-from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
-
+from jaxley.utils.solver_utils import (
+    JaxleySolveIndexer,
+    comp_edges_to_indices
+)
 
 class Branch(Module):
     """A branch made up of one or multiple compartments (without branchpoints).
@@ -131,15 +133,6 @@ class Branch(Module):
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         self._off_diagonal_inds = off_diagonal_inds
-
-    def _init_morph_jaxley_dhs_solve(self) -> None:
-        """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
-
-        This function first generates the networkX `comp_graph`, then traverses it
-        to identify the solve order, and then pre-computes the relevant attributes used
-        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
-        """
-        pass
 
     def __len__(self) -> int:
         return self.ncomp
