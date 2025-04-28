@@ -13,6 +13,7 @@ from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
 from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
+
 class Compartment(Module):
     """A single compartment.
 
@@ -100,4 +101,3 @@ class Compartment(Module):
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         self._off_diagonal_inds = off_diagonal_inds
-

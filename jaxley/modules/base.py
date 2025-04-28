@@ -44,7 +44,9 @@ from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
-    convert_to_csc, dhs_permutation_indices, dhs_solve_index
+    convert_to_csc,
+    dhs_permutation_indices,
+    dhs_solve_index,
 )
 
 
@@ -826,6 +828,15 @@ class Module(ABC):
             inds = jnp.arange(len(value))
             self.base.jaxnodes[key] = jnp.asarray(value)[inds]
 
+        self.base.jaxnodes["node_to_comp_index_mapping"] = -1 * jnp.ones(
+            self.nodes.index.max() + 1
+        ).astype(int)
+        self.base.jaxnodes["node_to_comp_index_mapping"] = (
+            self.base.jaxnodes["node_to_comp_index_mapping"]
+            .at[self.nodes.index.to_numpy()]
+            .set(self.nodes["global_comp_index"])
+        )
+
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.
@@ -908,6 +919,9 @@ class Module(ABC):
         This function first generates the networkX `comp_graph`, then traverses it
         to identify the solve order, and then pre-computes the relevant attributes used
         for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+
+        This base-method is used by `jx.Compartment`, `jx.Branch`, and `jx.Cell`.
+        The `jx.Network` implements its own method.
         """
         # Export to graph and traverse it to identify the solve order.
         node_order, node_to_solve_index_mapping = dhs_solve_index(comp_graph, root=0)
@@ -934,13 +948,32 @@ class Module(ABC):
 
         # Define the matrix permutation for DHS.
         lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
-        lowers_and_uppers, new_node_order = dhs_permutation_indices(
+        lower_and_upper_inds, new_node_order = dhs_permutation_indices(
             lower_and_upper_inds,
             self._off_diagonal_inds,
             dhs_node_order,
             self._dhs_map_dict,
         )
-        self._dhs_map_to_node_order_lower_and_upper = lowers_and_uppers.astype(int)
+
+        # Concatenate a `0` such that the `lower` and `upper` will have the same
+        # shape as the `diag` and `solve`. The 0-eth element will never actually be
+        # accessed, but it makes indexing easier in the voltage solver.
+        #
+        # Here, we assume that `comp_edges` has lowers first and uppers only after that
+        # (by using `[:self._n_nodes-1]`). TODO we should make this more robust in the
+        # future as we move towards simulating _any_ graph.
+        self._dhs_map_to_node_order_lower = jnp.concatenate(
+            [
+                jnp.asarray([0]).astype(int),
+                lower_and_upper_inds.astype(int)[: self._n_nodes - 1],
+            ]
+        )
+        self._dhs_map_to_node_order_upper = jnp.concatenate(
+            [
+                jnp.asarray([0]).astype(int),
+                lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
+            ]
+        )
         self._dhs_node_order = new_node_order
 
     def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
@@ -950,7 +983,10 @@ class Module(ABC):
         function also compute the axial conductances for every ion.
         """
         return compute_axial_conductances(
-            self._comp_edges, params, self.diffusion_states
+            self._comp_edges,
+            self.jaxnodes["node_to_comp_index_mapping"],
+            params,
+            self.diffusion_states,
         )
 
     def set(self, key: str, val: Union[float, jnp.ndarray]):
@@ -1481,9 +1517,9 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and add them to the params dictionary.
-        params["axial_conductances"] = self.base._compute_axial_conductances(
-            params=params
-        )
+        conds, all_coupling_conds = self.base._compute_axial_conductances(params=params)
+        params["axial_conductances"] = conds
+        params["axial_conductances_ordered"] = all_coupling_conds
         return params
 
     @only_allow_module
@@ -2070,7 +2106,7 @@ class Module(ABC):
             "constant_terms": [(const_terms["v"] + i_ext + v_syn_const_terms) / cm],
             # The axial conductances have already been divided by `cm` in the
             # `cell_utils.py` in the `compute_axial_conductances` method.
-            "axial_conductances": [params["axial_conductances"]["v"]],
+            "axial_conductances": [params["axial_conductances_ordered"]],
         }
 
         for ion_name in self.pumped_ions:
@@ -2144,7 +2180,8 @@ class Module(ABC):
                 "node_order": self._dhs_node_order,
                 "map_to_solve_order": self._dhs_map_to_node_order,
                 "inv_map_to_solve_order": self._dhs_inv_map_to_node_order,
-                "map_to_node_order_lower_and_upper": self._dhs_map_to_node_order_lower_and_upper,
+                "map_to_node_order_lower": self._dhs_map_to_node_order_lower,
+                "map_to_node_order_upper": self._dhs_map_to_node_order_upper,
                 "n_nodes": self._n_nodes,
             }
             step_voltage_implicit = step_voltage_implicit_with_dhs_solve

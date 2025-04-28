@@ -23,7 +23,7 @@ from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
-    remap_index_to_masked
+    remap_index_to_masked,
 )
 
 

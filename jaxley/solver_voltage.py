@@ -264,7 +264,8 @@ def step_voltage_implicit_with_dhs_solve(
     ordered_comp_edges,
     map_to_solve_order,
     inv_map_to_solve_order,
-    map_to_solve_order_lower_and_upper,
+    map_to_solve_order_lower,
+    map_to_solve_order_upper,
     n_nodes,
     delta_t,
 ):
@@ -313,20 +314,22 @@ def step_voltage_implicit_with_dhs_solve(
         solves = solves[map_to_solve_order]
 
         # Reorder the lower and upper values.
-        lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]
-        lowers = lowers_and_uppers[: n_nodes - 1]
-        uppers = lowers_and_uppers[n_nodes - 1 :]
+        lowers = lowers_and_uppers[map_to_solve_order_lower]
+        uppers = lowers_and_uppers[map_to_solve_order_upper]
+        # lowers = lowers_and_uppers[: n_nodes - 1]
+        # uppers = lowers_and_uppers[n_nodes - 1 :]
         flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
 
         # Solve the voltage equations.
         #
         # Triangulate.
+        steps = len(flipped_comp_edges)
         init = (diags, solves, lowers, uppers, flipped_comp_edges)
-        diags, solves, _, _, _ = fori_loop(0, n_nodes - 1, _comp_based_triang, init)
+        diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
 
         # Backsubstitute.
         init = (diags, solves, lowers, ordered_comp_edges)
-        diags, solves, _, _ = fori_loop(0, n_nodes - 1, _comp_based_backsub, init)
+        diags, solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
 
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
@@ -341,8 +344,8 @@ def _comp_based_triang(index, carry):
     child = comp_edge[0]
     parent = comp_edge[1]
 
-    lower_val = lowers[child - 1]
-    upper_val = uppers[child - 1]
+    lower_val = lowers[child]
+    upper_val = uppers[child]
     child_diag = diags[child]
     child_solve = solves[child]
 
@@ -364,7 +367,7 @@ def _comp_based_backsub(index, carry):
     child = comp_edge[0]
     parent = comp_edge[1]
 
-    lower_val = lowers[child - 1]
+    lower_val = lowers[child]
     parent_solve = solves[parent]
     parent_diag = diags[parent]
 
