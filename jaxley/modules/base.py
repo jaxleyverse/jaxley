@@ -983,7 +983,24 @@ class Module(ABC):
                 lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
             ]
         )
-        self._dhs_node_order = new_node_order
+
+        # Group the edges by their level. Each level is processed in parallel.
+        nodes = pd.DataFrame(new_node_order, columns=["node", "parent", "level"])
+        grouping = nodes.groupby("level")
+        nodes = grouping["node"].apply(list).to_numpy()
+        parents = grouping["parent"].apply(list).to_numpy()
+        nodes_and_parents = [np.stack([n, p]).T for n, p in zip(nodes, parents)]
+
+        # Pad levels with different number of compartments with [-1, -1] entries. In
+        # the voltage solver (`solver_voltage.py`), we add a spurious compartment at
+        # the very end. This compartment is modified by all of these spurious edges,
+        # but it gets ignored afterwards.
+        padded_stack = np.full((len(nodes_and_parents), allowed_nodes_per_level, 2), -1)
+        for idx, arr in enumerate(nodes_and_parents):
+            padded_stack[idx, :arr.shape[0], :] = arr
+
+        # `self._dhs_node_order` has shape `(num_levels, num_comps_per_level, 2)`.
+        self._dhs_node_order = np.asarray(padded_stack)
 
     def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
         """Given radius, length, r_a, compute the axial coupling conductances.

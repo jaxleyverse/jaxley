@@ -320,6 +320,12 @@ def step_voltage_implicit_with_dhs_solve(
         # uppers = lowers_and_uppers[n_nodes - 1 :]
         flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
 
+        # Add a spurious compartment that is modified by the masking.
+        diags = jnp.concatenate([diags, jnp.asarray([1.0])])
+        solves = jnp.concatenate([solves, jnp.asarray([0.0])])
+        uppers = jnp.concatenate([uppers, jnp.asarray([0.0])])
+        lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
+
         # Solve the voltage equations.
         #
         # Triangulate.
@@ -333,6 +339,7 @@ def step_voltage_implicit_with_dhs_solve(
 
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
+    solution = solution[:-1]  # Remove the spurious compartment modified by masking.
     solution = solution[inv_map_to_solve_order]
     return solution[internal_node_inds]
 
@@ -340,9 +347,13 @@ def step_voltage_implicit_with_dhs_solve(
 def _comp_based_triang(index, carry):
     """Triangulate the quasi-tridiagonal system compartment by compartment."""
     diags, solves, lowers, uppers, flipped_comp_edges = carry
+
+    # `flipped_comp_edges` has shape `(num_levels, num_comps_per_level, 2)`. We first
+    # get the relevant level with `[index]` and then we get all children and parents
+    # in the level.
     comp_edge = flipped_comp_edges[index]
-    child = comp_edge[0]
-    parent = comp_edge[1]
+    child = comp_edge[:, 0]
+    parent = comp_edge[:, 1]
 
     lower_val = lowers[child]
     upper_val = uppers[child]
@@ -363,9 +374,12 @@ def _comp_based_backsub(index, carry):
     """Backsubstitute the quasi-tridiagonal system compartment by compartment."""
     diags, solves, lowers, comp_edges = carry
 
+    # `comp_edges` has shape `(num_levels, num_comps_per_level, 2)`. We first get the
+    # relevant level with `[index]` and then we get all children and parents in the
+    # level.
     comp_edge = comp_edges[index]
-    child = comp_edge[0]
-    parent = comp_edge[1]
+    child = comp_edge[:, 0]
+    parent = comp_edge[:, 1]
 
     lower_val = lowers[child]
     parent_solve = solves[parent]

@@ -279,7 +279,9 @@ def dhs_permutation_indices(
     # Adapt node order.
     new_node_order = []
     for n in node_order:
-        new_node_order.append([mapping_dict[int(n[0])], mapping_dict[int(n[1])]])
+        new_node_order.append(
+            [mapping_dict[int(n[0])], mapping_dict[int(n[1])], int(n[2])]
+        )
     new_node_order = jnp.asarray(new_node_order)
 
     lowers_and_uppers = jnp.concatenate([lowers, uppers])
@@ -328,7 +330,6 @@ def dhs_solve_index(
         node_and_parent.append((j, i, level))
         solve_index += 1
 
-    print("node_and_parent", node_and_parent)
     # Create a dictionary which maps every node to its solve index. Two notes:
     # - The node name corresponds to the compartment index (and branchpoints continue
     # numerically from where the compartments have ended)
