@@ -569,7 +569,7 @@ def compute_axial_conductances(
     Note that the resulting axial conductances will already by divided by the
     capacitance `cm`.
     """
-    ordered_conds = jnp.zeros((1+len(diffusion_states), len(comp_edges)))
+    ordered_conds = jnp.zeros((1 + len(diffusion_states), len(comp_edges)))
 
     # `Compartment-to-compartment` (c2c) axial coupling conductances.
     condition = comp_edges["type"].to_numpy() == 0

@@ -990,7 +990,9 @@ class Module(ABC):
             new_node_order, allowed_nodes_per_level
         )
 
-    def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray], voltage_solver: str):
+    def _compute_axial_conductances(
+        self, params: Dict[str, jnp.ndarray], voltage_solver: str
+    ):
         """Given radius, length, r_a, compute the axial coupling conductances.
 
         If ion diffusion was activated by the user (with `cell.diffuse()`) then this

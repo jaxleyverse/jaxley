@@ -379,9 +379,11 @@ def bfs_edge_hops(graph: nx.DiGraph, root: Any, allowed_nodes_per_level: int):
         yield u, v, current_depth
 
 
-def dhs_group_comps_into_levels(new_node_order: np.ndarray, allowed_nodes_per_level: int) -> np.ndarray:
+def dhs_group_comps_into_levels(
+    new_node_order: np.ndarray, allowed_nodes_per_level: int
+) -> np.ndarray:
     """Group nodes into levels, such that nodes get processed in parallel when possible.
-    
+
     Args:
         new_node_order: Array of shape (N, 3). The `3` are (node, parent, level).
             `N` is the number of compartment edges to be processed.

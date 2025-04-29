@@ -68,11 +68,7 @@ class Network(Module):
         self.total_nbranches = sum(self.nbranches_per_cell)
         self._cumsum_nbranches = cumsum_leading_zero(self.nbranches_per_cell)
 
-        offset = 0
-        for cell in cells:
-            cell.nodes.index += offset
-            offset += cell._n_nodes  # Compartment-offset.
-        self.nodes = pd.concat([c.nodes for c in cells])
+        self.nodes = pd.concat([c.nodes for c in cells], ignore_index=True)
         self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.ncomp_per_branch
@@ -272,7 +268,9 @@ class Network(Module):
         self._comp_edges = []
         self._branchpoints = []
         self._internal_node_inds = []
+
         for cell in self._cells_list:
+            cell.nodes.index += offset
             self._dhs_map_dict.update(
                 {k + offset: v + offset for k, v in cell._dhs_map_dict.items()}
             )
@@ -332,6 +330,8 @@ class Network(Module):
         self._dhs_node_order_grouped = dhs_group_comps_into_levels(
             self._dhs_node_order, allowed_nodes_per_level=allowed_nodes_per_level
         )
+
+        self.nodes.index = pd.concat([c.nodes for c in self._cells_list]).index
 
     def _step_synapse(
         self,
