@@ -337,9 +337,13 @@ def step_voltage_implicit_with_dhs_solve(
         init = (diags, solves, lowers, ordered_comp_edges)
         diags, solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
 
+        # Remove the spurious compartment. This compartment got modified by masking of
+        # compartments in certain levels.
+        diags = diags[:-1]
+        solves = solves[:-1]
+
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
-    solution = solution[:-1]  # Remove the spurious compartment modified by masking.
     solution = solution[inv_map_to_solve_order]
     return solution[internal_node_inds]
 

@@ -621,7 +621,7 @@ def compute_axial_conductances(
 
     if len(sink_comp_inds) > 0:
         inds = jnp.asarray(comp_edges[condition].index)
-        resulting_conds = resulting_conds.at[inds].set(conds_c2c)
+        resulting_conds = resulting_conds.at[inds].set(conds_c2c[0])
 
     # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
     condition = comp_edges["type"].isin([1, 2])

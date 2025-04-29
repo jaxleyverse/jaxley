@@ -26,8 +26,8 @@ from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
-    remap_index_to_masked,
     dhs_group_comps_into_levels,
+    remap_index_to_masked,
 )
 from jaxley.utils.syn_utils import gather_synapes
 

@@ -393,7 +393,7 @@ def dhs_group_comps_into_levels(new_node_order, allowed_nodes_per_level):
     # but it gets ignored afterwards.
     padded_stack = np.full((len(nodes_and_parents), allowed_nodes_per_level, 2), -1)
     for idx, arr in enumerate(nodes_and_parents):
-        padded_stack[idx, :arr.shape[0], :] = arr
+        padded_stack[idx, : arr.shape[0], :] = arr
 
     # `self._dhs_node_order` has shape `(num_levels, num_comps_per_level, 2)`.
-    return np.asarray(padded_stack) 
+    return np.asarray(padded_stack)

@@ -45,9 +45,9 @@ from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
     convert_to_csc,
+    dhs_group_comps_into_levels,
     dhs_permutation_indices,
     dhs_solve_index,
-    dhs_group_comps_into_levels,
 )
 
 
@@ -985,7 +985,9 @@ class Module(ABC):
             ]
         )
         self._dhs_node_order = new_node_order
-        self._dhs_node_order_grouped = dhs_group_comps_into_levels(new_node_order, allowed_nodes_per_level)
+        self._dhs_node_order_grouped = dhs_group_comps_into_levels(
+            new_node_order, allowed_nodes_per_level
+        )
 
     def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
         """Given radius, length, r_a, compute the axial coupling conductances.
