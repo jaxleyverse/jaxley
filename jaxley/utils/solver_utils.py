@@ -379,7 +379,19 @@ def bfs_edge_hops(graph: nx.DiGraph, root: Any, allowed_nodes_per_level: int):
         yield u, v, current_depth
 
 
-def dhs_group_comps_into_levels(new_node_order, allowed_nodes_per_level):
+def dhs_group_comps_into_levels(new_node_order: np.ndarray, allowed_nodes_per_level: int) -> np.ndarray:
+    """Group nodes into levels, such that nodes get processed in parallel when possible.
+    
+    Args:
+        new_node_order: Array of shape (N, 3). The `3` are (node, parent, level).
+            `N` is the number of compartment edges to be processed.
+        allowed_nodes_per_level: The maximal number of compartments in each level.
+            No `level` can exist more often than `allowed_nodes_per_level`.
+
+    Returns:
+        Array of shape (num_levels, allowed_nodes_per_level, 2), where 2 indicates
+        (node, parent).
+    """
     # Group the edges by their level. Each level is processed in parallel.
     nodes = pd.DataFrame(new_node_order, columns=["node", "parent", "level"])
     grouping = nodes.groupby("level")

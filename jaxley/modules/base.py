@@ -930,6 +930,7 @@ class Module(ABC):
             allowed_nodes_per_level: How many nodes are visited before the level is
                 increased, even if the number of hops did not change. This sets the
                 amount of parallelism of the simulation.
+            root: The root node from which to start tracing.
         """
         # Export to graph and traverse it to identify the solve order.
         node_order, node_to_solve_index_mapping = dhs_solve_index(
@@ -939,7 +940,7 @@ class Module(ABC):
         # Set the order in which compartments are processed during Dendritic Hierachical
         # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
         # the values correspond to compartment indices.
-        dhs_node_order = jnp.asarray(node_order[1:])
+        dhs_node_order = np.asarray(node_order[1:])
 
         # We have to change the order of compartments at every time step of the solve.
         # Because of this, we make it as efficient as pssible to perform this ordering with
@@ -989,17 +990,22 @@ class Module(ABC):
             new_node_order, allowed_nodes_per_level
         )
 
-    def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
+    def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray], voltage_solver: str):
         """Given radius, length, r_a, compute the axial coupling conductances.
 
         If ion diffusion was activated by the user (with `cell.diffuse()`) then this
         function also compute the axial conductances for every ion.
         """
+        if voltage_solver in ["jax.dhs"]:
+            node_mapping = self.jaxnodes["node_to_comp_index_mapping"]
+        else:
+            node_mapping = None
         return compute_axial_conductances(
             self._comp_edges,
-            self.jaxnodes["node_to_comp_index_mapping"],
+            node_mapping,
             params,
             self.diffusion_states,
+            voltage_solver,
         )
 
     def set(self, key: str, val: Union[float, jnp.ndarray]):
@@ -1530,9 +1536,10 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and add them to the params dictionary.
-        conds, all_coupling_conds = self.base._compute_axial_conductances(params=params)
+        conds = self.base._compute_axial_conductances(
+            params=params, voltage_solver=voltage_solver
+        )
         params["axial_conductances"] = conds
-        params["axial_conductances_ordered"] = all_coupling_conds
         return params
 
     @only_allow_module
@@ -2119,7 +2126,7 @@ class Module(ABC):
             "constant_terms": [(const_terms["v"] + i_ext + v_syn_const_terms) / cm],
             # The axial conductances have already been divided by `cm` in the
             # `cell_utils.py` in the `compute_axial_conductances` method.
-            "axial_conductances": [params["axial_conductances_ordered"]],
+            "axial_conductances": [params["axial_conductances"]["v"]],
         }
 
         for ion_name in self.pumped_ions:

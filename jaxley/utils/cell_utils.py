@@ -562,22 +562,22 @@ def compute_axial_conductances(
     node_to_comp_index_mapping: jnp.ndarray,
     params: Dict[str, jnp.ndarray],
     diffusion_states: List[str],
+    voltage_solver: str,
 ) -> Dict[str, jnp.ndarray]:
     """Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.
 
     Note that the resulting axial conductances will already by divided by the
     capacitance `cm`.
     """
-    resulting_conds = jnp.zeros(len(comp_edges))
+    ordered_conds = jnp.zeros((1+len(diffusion_states), len(comp_edges)))
 
     # `Compartment-to-compartment` (c2c) axial coupling conductances.
     condition = comp_edges["type"].to_numpy() == 0
-    source_comp_inds = node_to_comp_index_mapping[
-        np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
-    ]
-    sink_comp_inds = node_to_comp_index_mapping[
-        np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
-    ]
+    source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
+    sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
+    if node_to_comp_index_mapping is not None:
+        source_comp_inds = node_to_comp_index_mapping[source_comp_inds]
+        sink_comp_inds = node_to_comp_index_mapping[sink_comp_inds]
 
     axial_conductances = jnp.stack(
         [1 / params["axial_resistivity"]]
@@ -621,13 +621,13 @@ def compute_axial_conductances(
 
     if len(sink_comp_inds) > 0:
         inds = jnp.asarray(comp_edges[condition].index)
-        resulting_conds = resulting_conds.at[inds].set(conds_c2c[0])
+        ordered_conds = ordered_conds.at[:, inds].set(conds_c2c)
 
     # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
     condition = comp_edges["type"].isin([1, 2])
-    sink_comp_inds = node_to_comp_index_mapping[
-        np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
-    ]
+    sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
+    if node_to_comp_index_mapping is not None:
+        sink_comp_inds = node_to_comp_index_mapping[sink_comp_inds]
 
     if len(sink_comp_inds) > 0:
         # For voltages, divide by the surface area.
@@ -666,13 +666,13 @@ def compute_axial_conductances(
 
     if len(sink_comp_inds) > 0:
         inds = jnp.asarray(comp_edges[condition].index)
-        resulting_conds = resulting_conds.at[inds].set(conds_bp2c[0])
+        ordered_conds = ordered_conds.at[:, inds].set(conds_bp2c)
 
     # `compartment-to-branchpoint` (c2bp) axial coupling conductances.
     condition = comp_edges["type"].isin([3, 4])
-    source_comp_inds = node_to_comp_index_mapping[
-        np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
-    ]
+    source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
+    if node_to_comp_index_mapping is not None:
+        source_comp_inds = node_to_comp_index_mapping[source_comp_inds]
 
     if len(source_comp_inds) > 0:
         conds_c2bp = vmap(
@@ -690,15 +690,21 @@ def compute_axial_conductances(
 
     if len(source_comp_inds) > 0:
         inds = jnp.asarray(comp_edges[condition].index)
-        resulting_conds = resulting_conds.at[inds].set(conds_c2bp[0])
+        ordered_conds = ordered_conds.at[:, inds].set(conds_c2bp)
 
     # All axial coupling conductances.
     all_coupling_conds = jnp.concatenate([conds_c2c, conds_bp2c, conds_c2bp], axis=1)
 
     conds_as_dict = {}
+    ordered_conds_as_dict = {}
     for i, key in enumerate(["v"] + diffusion_states):
         conds_as_dict[key] = all_coupling_conds[i]
-    return conds_as_dict, resulting_conds
+        ordered_conds_as_dict[key] = ordered_conds[i]
+
+    if voltage_solver in ["jaxley.dhs"]:
+        return ordered_conds_as_dict
+    else:
+        return conds_as_dict
 
 
 def compute_children_and_parents(
