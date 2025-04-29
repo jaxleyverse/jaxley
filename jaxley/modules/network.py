@@ -27,6 +27,7 @@ from jaxley.utils.solver_utils import (
     JaxleySolveIndexer,
     comp_edges_to_indices,
     remap_index_to_masked,
+    dhs_group_comps_into_levels,
 )
 from jaxley.utils.syn_utils import gather_synapes
 
@@ -255,7 +256,7 @@ class Network(Module):
 
         # self._off_diagonal_inds = off_diagonal_inds
 
-    def _init_morph_jaxley_dhs_solve(self) -> None:
+    def _init_morph_jaxley_dhs_solve(self, allowed_nodes_per_level: int = 1) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
         This function first generates the networkX `comp_graph`, then traverses it
@@ -329,6 +330,10 @@ class Network(Module):
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
         self._off_diagonal_inds = off_diagonal_inds
+
+        self._dhs_node_order_grouped = dhs_group_comps_into_levels(
+            self._dhs_node_order, allowed_nodes_per_level=allowed_nodes_per_level
+        )
 
     def _step_synapse(
         self,
