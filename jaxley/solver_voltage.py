@@ -326,16 +326,28 @@ def step_voltage_implicit_with_dhs_solve(
         uppers = jnp.concatenate([uppers, jnp.asarray([0.0])])
         lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
 
-        # Solve the voltage equations.
-        #
-        # Triangulate.
+        # # Solve the voltage equations.
+        # #
+        # # Triangulate.
+        # steps = len(flipped_comp_edges)
+        # init = (diags, solves, lowers, uppers, flipped_comp_edges)
+        # diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
+
+        # # Backsubstitute.
+        # init = (diags, solves, lowers, ordered_comp_edges)
+        # diags, solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
+
         steps = len(flipped_comp_edges)
-        init = (diags, solves, lowers, uppers, flipped_comp_edges)
-        diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
+        for i in range(steps):
+            diags, solves, _, _, _ = _comp_based_triang(
+                i, (diags, solves, lowers, uppers, flipped_comp_edges)
+            )
 
         # Backsubstitute.
-        init = (diags, solves, lowers, ordered_comp_edges)
-        diags, solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
+        for i in range(steps):
+            diags, solves, _, _ = _comp_based_backsub(
+                i, (diags, solves, lowers, ordered_comp_edges)
+            )
 
         # Remove the spurious compartment. This compartment got modified by masking of
         # compartments in certain levels.
