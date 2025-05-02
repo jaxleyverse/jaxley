@@ -267,6 +267,7 @@ def step_voltage_implicit_with_dhs_solve(
     map_to_solve_order_lower,
     map_to_solve_order_upper,
     n_nodes,
+    optimize_for_gpu: bool,
     delta_t,
 ):
     """Return voltage update via compartment-based matrix inverse.
@@ -286,6 +287,11 @@ def step_voltage_implicit_with_dhs_solve(
         map_to_solve_order_lower_and_upper: An array of indices that permutes
             the concatenation of lowers and uppers into the order of the solve:
             `lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]`.
+        optimize_for_gpu: If True, it does two things: (1) it unrolls the for-loop
+            for the triangularization stage. (2) It uses recursive doubling (also
+            unrolled) for the backsubstitution stage. Setting this to `True` will
+            largely speed up runs on GPU, but it will slow down compilation time and
+            run time on CPU.
     """
     axial_conductances = delta_t * axial_conductances
 
@@ -328,45 +334,49 @@ def step_voltage_implicit_with_dhs_solve(
 
         # Solve the voltage equations.
         #
-        # Triangulate.
         steps = len(flipped_comp_edges)
-        init = (diags, solves, lowers, uppers, flipped_comp_edges)
-        diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
+        if not optimize_for_gpu:
+            # Triangulate.
+            steps = len(flipped_comp_edges)
+            init = (diags, solves, lowers, uppers, flipped_comp_edges)
+            diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
 
-        # Backsubstitute.
-        lowers /= diags
-        solves /= diags
-        diags /= diags
-        # init = (solves, lowers, ordered_comp_edges)
-        # solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
+            # Backsubstitute.
+            lowers /= diags
+            solves /= diags
+            diags = jnp.ones_like(solves)
+            init = (solves, lowers, ordered_comp_edges)
+            solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
+        else:
+            # Triangulate by unrolling the loop of the levels.
+            for i in range(steps):
+                diags, solves, _, _, _ = _comp_based_triang(
+                    i, (diags, solves, lowers, uppers, flipped_comp_edges)
+                )
 
-        # steps = len(flipped_comp_edges)
-        # for i in range(steps):
-        #     diags, solves, _, _, _ = _comp_based_triang(
-        #         i, (diags, solves, lowers, uppers, flipped_comp_edges)
-        #     )
+            # Backsubstitute with recursive doubling.
+            lowers = lowers.at[0].set(0.0)
+            lowers /= diags
+            solves /= diags
+            diags = jnp.ones_like(solves)
+            
+            neg_lowers = -lowers
+            step = 1
+            while step <= steps:
+                parents = ordered_comp_edges[step - 1 :, :, 1]
+                children = ordered_comp_edges[step - 1 :, :, 0]
+                lowers_children = neg_lowers[children].copy()
+                lowers_parents = neg_lowers[parents].copy()
+                solves_children = solves[children].copy()
+                solves_parents = solves[parents].copy()
 
-        # Backsubstitute.
-        A = -lowers
-        n = steps
-        step = 1
-        while step < n:
-            parents = ordered_comp_edges[step-1:, :, 1]
-            children = ordered_comp_edges[step-1:, :, 0]
-            lowers_children = A[children].copy()
-            lowers_parents = A[parents]
-            solves_children = solves[children].copy()
-            solves_parent = solves[parents]
-
-            A = A.at[children].set(lowers_children * lowers_parents)
-            solves = solves.at[children].set(lowers_children * solves_parent + solves_children)
-            step *= 2
-
-        solves = solves
-        # for i in range(steps):
-        #     solves, _, _ = _comp_based_backsub(
-        #         i, (solves, lowers, ordered_comp_edges)
-        #     )
+                neg_lowers = neg_lowers.at[children].set(
+                    lowers_children * lowers_parents
+                )
+                solves = solves.at[children].set(
+                    lowers_children * solves_parents + solves_children
+                )
+                step *= 2
 
         # Remove the spurious compartment. This compartment got modified by masking of
         # compartments in certain levels.
@@ -406,22 +416,6 @@ def _comp_based_triang(index, carry):
 
 
 def _comp_based_backsub(index, carry):
-    """Backsubstitute the quasi-tridiagonal system compartment by compartment."""
-    solves, lowers, comp_edges = carry
-
-    # `comp_edges` has shape `(num_levels, num_comps_per_level, 2)`. We first get the
-    # relevant level with `[index]` and then we get all children and parents in the
-    # level.
-    comp_edge = comp_edges[index]
-    child = comp_edge[:, 0]
-    parent = comp_edge[:, 1]
-
-    # Updates to diagonal and solve
-    solves = solves.at[child].add(-solves[parent] * lowers[child])
-    return (solves, lowers, comp_edges)
-
-
-def _comp_based_backsub_recursive_doubling(index, carry):
     """Backsubstitute the quasi-tridiagonal system compartment by compartment."""
     solves, lowers, comp_edges = carry
 

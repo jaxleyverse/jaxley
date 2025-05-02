@@ -2195,7 +2195,7 @@ class Module(ABC):
             }
             # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
-        elif voltage_solver == "jaxley.dhs":
+        elif voltage_solver.startswith("jaxley.dhs"):
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
@@ -2205,6 +2205,7 @@ class Module(ABC):
                 "map_to_node_order_lower": self._dhs_map_to_node_order_lower,
                 "map_to_node_order_upper": self._dhs_map_to_node_order_upper,
                 "n_nodes": self._n_nodes,
+                "optimize_for_gpu": True if voltage_solver.endswith("gpu") else False,
             }
             step_voltage_implicit = step_voltage_implicit_with_dhs_solve
         else:
