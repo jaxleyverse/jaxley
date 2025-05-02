@@ -326,28 +326,47 @@ def step_voltage_implicit_with_dhs_solve(
         uppers = jnp.concatenate([uppers, jnp.asarray([0.0])])
         lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
 
-        # # Solve the voltage equations.
-        # #
-        # # Triangulate.
-        # steps = len(flipped_comp_edges)
-        # init = (diags, solves, lowers, uppers, flipped_comp_edges)
-        # diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
-
-        # # Backsubstitute.
-        # init = (diags, solves, lowers, ordered_comp_edges)
-        # diags, solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
-
+        # Solve the voltage equations.
+        #
+        # Triangulate.
         steps = len(flipped_comp_edges)
-        for i in range(steps):
-            diags, solves, _, _, _ = _comp_based_triang(
-                i, (diags, solves, lowers, uppers, flipped_comp_edges)
-            )
+        init = (diags, solves, lowers, uppers, flipped_comp_edges)
+        diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
 
         # Backsubstitute.
-        for i in range(steps):
-            diags, solves, _, _ = _comp_based_backsub(
-                i, (diags, solves, lowers, ordered_comp_edges)
-            )
+        lowers /= diags
+        solves /= diags
+        diags /= diags
+        # init = (solves, lowers, ordered_comp_edges)
+        # solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
+
+        # steps = len(flipped_comp_edges)
+        # for i in range(steps):
+        #     diags, solves, _, _, _ = _comp_based_triang(
+        #         i, (diags, solves, lowers, uppers, flipped_comp_edges)
+        #     )
+
+        # Backsubstitute.
+        A = -lowers
+        n = steps
+        step = 1
+        while step < n:
+            parents = ordered_comp_edges[step-1:, :, 1]
+            children = ordered_comp_edges[step-1:, :, 0]
+            lowers_children = A[children].copy()
+            lowers_parents = A[parents]
+            solves_children = solves[children].copy()
+            solves_parent = solves[parents]
+
+            A = A.at[children].set(lowers_children * lowers_parents)
+            solves = solves.at[children].set(lowers_children * solves_parent + solves_children)
+            step *= 2
+
+        solves = solves
+        # for i in range(steps):
+        #     solves, _, _ = _comp_based_backsub(
+        #         i, (solves, lowers, ordered_comp_edges)
+        #     )
 
         # Remove the spurious compartment. This compartment got modified by masking of
         # compartments in certain levels.
@@ -388,7 +407,7 @@ def _comp_based_triang(index, carry):
 
 def _comp_based_backsub(index, carry):
     """Backsubstitute the quasi-tridiagonal system compartment by compartment."""
-    diags, solves, lowers, comp_edges = carry
+    solves, lowers, comp_edges = carry
 
     # `comp_edges` has shape `(num_levels, num_comps_per_level, 2)`. We first get the
     # relevant level with `[index]` and then we get all children and parents in the
@@ -397,17 +416,25 @@ def _comp_based_backsub(index, carry):
     child = comp_edge[:, 0]
     parent = comp_edge[:, 1]
 
-    lower_val = lowers[child]
-    parent_solve = solves[parent]
-    parent_diag = diags[parent]
+    # Updates to diagonal and solve
+    solves = solves.at[child].add(-solves[parent] * lowers[child])
+    return (solves, lowers, comp_edges)
 
-    # Factor that the child row has to be multiplied by.
-    multiplier = lower_val / parent_diag
+
+def _comp_based_backsub_recursive_doubling(index, carry):
+    """Backsubstitute the quasi-tridiagonal system compartment by compartment."""
+    solves, lowers, comp_edges = carry
+
+    # `comp_edges` has shape `(num_levels, num_comps_per_level, 2)`. We first get the
+    # relevant level with `[index]` and then we get all children and parents in the
+    # level.
+    comp_edge = comp_edges[index]
+    child = comp_edge[:, 0]
+    parent = comp_edge[:, 1]
 
     # Updates to diagonal and solve
-    solves = solves.at[child].add(-parent_solve * multiplier)
-
-    return (diags, solves, lowers, comp_edges)
+    solves = solves.at[child].add(-solves[parent] * lowers[child])
+    return (solves, lowers, comp_edges)
 
 
 def _voltage_vectorfield(
