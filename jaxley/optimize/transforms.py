@@ -123,7 +123,7 @@ class ChainTransform(Transform):
 
     def forward(self, x: ArrayLike) -> Array:
         for transform in self.transforms:
-            x = transform(x)
+            x = transform.forward(x)
         return x
 
     def inverse(self, y: ArrayLike) -> Array:

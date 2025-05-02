@@ -35,6 +35,10 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 - `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
 - introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
 
+### Bug fixes
+
+- `ChainTransform` forward now working as mirror to inverse (#628, @kyralianaka)
+
 
 # 0.8.2
 
