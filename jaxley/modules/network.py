@@ -310,7 +310,7 @@ class Network(Module):
         self._dhs_map_to_node_order_upper = np.concatenate(
             self._dhs_map_to_node_order_upper
         )
-        self._dhs_node_order = np.concatenate(self._dhs_node_order)
+        self._dhs_node_order = np.concatenate(self._dhs_node_order, axis=0)
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
         self._branchpoints = pd.concat(self._branchpoints)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)
@@ -338,6 +338,7 @@ class Network(Module):
             self.nodes.index.to_numpy()
         )
         self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+        self._init_view()
 
     def _step_synapse(
         self,

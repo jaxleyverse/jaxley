@@ -394,6 +394,11 @@ def dhs_group_comps_into_levels(
         Array of shape (num_levels, allowed_nodes_per_level, 2), where 2 indicates
         (node, parent).
     """
+    if len(new_node_order) == 0:
+        # If len == 0, we need to ensure that there are 3 columns, otherwise
+        # pd.DataFrame() will throw an error.
+        new_node_order = np.zeros((0, 3)).astype(int)
+
     # Group the edges by their level. Each level is processed in parallel.
     nodes = pd.DataFrame(new_node_order, columns=["node", "parent", "level"])
     grouping = nodes.groupby("level")

@@ -58,11 +58,11 @@ class Compartment(Module):
         )
         self._internal_node_inds = jnp.asarray([0])
 
-        # Initialize the module.
-        self._initialize()
-
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
+
+        # Initialize the module.
+        self._initialize()
 
     def _init_morph_jaxley_spsolve(self):
         self._solve_indexer = JaxleySolveIndexer(

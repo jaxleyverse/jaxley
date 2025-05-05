@@ -85,10 +85,9 @@ class Branch(Module):
         )
         self._internal_node_inds = jnp.arange(self.ncomp)
 
-        self._initialize()
-
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
+        self._initialize()
 
     def _init_morph_jaxley_spsolve(self):
         self._solve_indexer = JaxleySolveIndexer(

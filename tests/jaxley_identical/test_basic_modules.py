@@ -22,7 +22,6 @@ from jaxley.channels import HH
 from jaxley.connect import connect, fully_connect
 from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 from jaxley.synapses import IonotropicSynapse, TestSynapse
-from jaxley.io.graph import to_graph
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu", "jax.sparse"])
@@ -53,9 +52,6 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
 
     # Test compartment.
     comp = SimpleComp()
-    comp.compute_xyz()
-    comp.compute_compartment_centers()
-    comp._init_morph_jaxley_dhs_solve(to_graph(comp), allowed_nodes_per_level=1, root=0)
     comp.insert(HH())
     comp.record()
     comp.stimulate(current)
@@ -65,9 +61,6 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
 
     # Test branch of a single compartment.
     branch = SimpleBranch(ncomp=1)
-    branch.compute_xyz()
-    branch.compute_compartment_centers()
-    branch._init_morph_jaxley_dhs_solve(to_graph(branch), allowed_nodes_per_level=1, root=0)
     branch.insert(HH())
     branch.record()
     branch.stimulate(current)
@@ -77,9 +70,6 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
 
     # Test cell of a single compartment.
     cell = SimpleCell(1, 1)
-    cell.compute_xyz()
-    cell.compute_compartment_centers()
-    cell._init_morph_jaxley_dhs_solve(to_graph(cell), allowed_nodes_per_level=1, root=0)
     cell.insert(HH())
     cell.record()
     cell.stimulate(current)
@@ -87,17 +77,14 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
     max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
     assert max_error <= tolerance, f"Cell error is {max_error} > {tolerance}"
 
-    # # Test net of a single compartment.
-    # net = SimpleNet(1, 1, 1)
-    # net.compute_xyz()
-    # net.compute_compartment_centers()
-    # net._init_morph_jaxley_dhs_solve(to_graph(net), allowed_nodes_per_level=1, root=0)
-    # net.insert(HH())
-    # net.record()
-    # net.stimulate(current)
-    # voltages = jx.integrate(net, delta_t=dt, voltage_solver=voltage_solver)
-    # max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
-    # assert max_error <= tolerance, f"Network error is {max_error} > {tolerance}"
+    # Test net of a single compartment.
+    net = SimpleNet(1, 1, 1)
+    net.insert(HH())
+    net.record()
+    net.stimulate(current)
+    voltages = jx.integrate(net, delta_t=dt, voltage_solver=voltage_solver)
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_081123))
+    assert max_error <= tolerance, f"Network error is {max_error} > {tolerance}"
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
@@ -108,11 +95,6 @@ def test_branch(voltage_solver, SimpleBranch):
     )
 
     branch = SimpleBranch(2)
-
-    branch.compute_xyz()
-    branch.compute_compartment_centers()
-    branch._init_morph_jaxley_dhs_solve(to_graph(branch), allowed_nodes_per_level=1, root=0)
-
     branch.insert(HH())
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
@@ -187,11 +169,6 @@ def test_cell(voltage_solver, SimpleCell):
     )
 
     cell = SimpleCell(3, 2)
-
-    cell.compute_xyz()
-    cell.compute_compartment_centers()
-    cell._init_morph_jaxley_dhs_solve(to_graph(cell), allowed_nodes_per_level=1, root=0)
-
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
@@ -255,10 +232,6 @@ def test_complex_cell(voltage_solver, SimpleBranch):
     cell.branch(3).comp(1).record("CaCon_i")
     cell.branch(3).comp(3).record("CaCon_i")
 
-    cell.compute_xyz()
-    cell.compute_compartment_centers()
-    cell._init_morph_jaxley_dhs_solve(to_graph(cell), allowed_nodes_per_level=1, root=0)
-
     recordings = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
     voltages_240225 = jnp.asarray(
         [
@@ -297,17 +270,7 @@ def test_net(voltage_solver, SimpleCell):
     # net = SimpleNet(2, 3, 2)
     cell1 = SimpleCell(3, 2)
     cell2 = SimpleCell(3, 2)
-
-    cell1.compute_compartment_centers()
-    cell1._init_morph_jaxley_dhs_solve(to_graph(cell1), allowed_nodes_per_level=1, root=0)
-
-    cell2.compute_compartment_centers()
-    cell2._init_morph_jaxley_dhs_solve(to_graph(cell2), allowed_nodes_per_level=1, root=0)
     net = jx.Network([cell1, cell2])
-
-    net.compute_compartment_centers()
-    net._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=1)
-    net._init_view()
 
     connect(
         net.cell(0).branch(0).loc(0.0),
@@ -365,61 +328,61 @@ def test_net(voltage_solver, SimpleCell):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-# @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-# def test_complex_net(voltage_solver, SimpleNet):
-#     net = SimpleNet(7, 5, 4)
-#     net.insert(HH())
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
+def test_complex_net(voltage_solver, SimpleNet):
+    net = SimpleNet(7, 5, 4)
+    net.insert(HH())
 
-#     _ = np.random.seed(0)
-#     pre = net.cell([0, 1, 2])
-#     post = net.cell([3, 4, 5])
-#     fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
-#     fully_connect(pre, post, TestSynapse(), random_post_comp=True)
+    _ = np.random.seed(0)
+    pre = net.cell([0, 1, 2])
+    post = net.cell([3, 4, 5])
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
 
-#     pre = net.cell([3, 4, 5])
-#     post = net.cell(6)
-#     fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
-#     fully_connect(pre, post, TestSynapse(), random_post_comp=True)
+    pre = net.cell([3, 4, 5])
+    post = net.cell(6)
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
 
-#     area = 2 * pi * 10.0 * 1.0
-#     point_process_to_dist_factor = 100_000.0 / area
-#     net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
-#     net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
-#     net.IonotropicSynapse.edge([0, 2, 4]).set(
-#         "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
-#     )
-#     net.TestSynapse.edge([0, 3, 5]).set(
-#         "TestSynapse_gC", 0.24 / point_process_to_dist_factor
-#     )
+    area = 2 * pi * 10.0 * 1.0
+    point_process_to_dist_factor = 100_000.0 / area
+    net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
+    net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
+    net.IonotropicSynapse.edge([0, 2, 4]).set(
+        "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
+    )
+    net.TestSynapse.edge([0, 3, 5]).set(
+        "TestSynapse_gC", 0.24 / point_process_to_dist_factor
+    )
 
-#     current = jx.step_current(
-#         i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
-#     )
-#     for i in range(3):
-#         net.cell(i).branch(0).loc(0.0).stimulate(current)
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
+    for i in range(3):
+        net.cell(i).branch(0).loc(0.0).stimulate(current)
 
-#     net.cell(6).branch(0).loc(0.0).record()
+    net.cell(6).branch(0).loc(0.0).record()
 
-#     voltages = jx.integrate(net, voltage_solver=voltage_solver)
+    voltages = jx.integrate(net, voltage_solver=voltage_solver)
 
-#     voltages_300724 = jnp.asarray(
-#         [
-#             [
-#                 -70.0,
-#                 -64.5478417407739,
-#                 -61.37506280116741,
-#                 -58.27492707181707,
-#                 -51.53610508254835,
-#                 31.739248535280243,
-#                 -23.276048469250686,
-#                 -73.58311542313007,
-#                 -75.5489796956953,
-#                 -74.69162422333675,
-#                 -73.52874849932951,
-#             ]
-#         ]
-#     )
+    voltages_300724 = jnp.asarray(
+        [
+            [
+                -70.0,
+                -64.5478417407739,
+                -61.37506280116741,
+                -58.27492707181707,
+                -51.53610508254835,
+                31.739248535280243,
+                -23.276048469250686,
+                -73.58311542313007,
+                -75.5489796956953,
+                -74.69162422333675,
+                -73.52874849932951,
+            ]
+        ]
+    )
 
-#     max_error = np.max(np.abs(voltages[:, ::40] - voltages_300724))
-#     tolerance = 1e-8
-#     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+    max_error = np.max(np.abs(voltages[:, ::40] - voltages_300724))
+    tolerance = 1e-8
+    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
