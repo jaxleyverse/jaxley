@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from copy import deepcopy
-from typing import List
+from typing import List, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -267,6 +267,7 @@ def step_voltage_implicit_with_dhs_solve(
     map_to_solve_order_lower,
     map_to_solve_order_upper,
     n_nodes,
+    parent_lookup: np.ndarray,
     optimize_for_gpu: bool,
     delta_t,
 ):
@@ -355,51 +356,9 @@ def step_voltage_implicit_with_dhs_solve(
                 )
 
             # Backsubstitute with recursive doubling.
-            lowers = lowers.at[0].set(0.0)
-            lowers /= diags
-            solves /= diags
-            diags = jnp.ones_like(solves)
-            neg_lowers = -lowers
-            step = 1
-
-            parents = -1 * np.ones(n_nodes + 1)
-            parents[ordered_comp_edges[:, 0, 0]] = ordered_comp_edges[:, 0, 1]
-            parents = parents.astype(int)
-            while step <= steps:
-                nodes = np.arange(n_nodes+1)
-                for _ in range(step):
-                    nodes = parents[nodes]
-
-                A_slice = neg_lowers.copy()
-                A_prev = neg_lowers[nodes]
-                B_slice = solves.copy()
-                B_prev = solves[nodes]
-
-                neg_lowers = A_slice * A_prev
-                solves = A_slice * B_prev + B_slice
-
-                step *= 2
-                # # A_slice = A[step:]
-                # # A_prev = A[:-step]
-                # parents = ordered_comp_edges[: -step, :, 1]
-                # print("parents", parents)
-                # children = ordered_comp_edges[step - 1 :, :, 0]
-                # print("children", children)
-                # # children = ordered_comp_edges[step - 1 :, :, 0]
-                # lowers_children = neg_lowers[children]
-                # lowers_parents = neg_lowers[parents]
-                # solves_children = solves[children]
-                # solves_parents = solves[parents]
-
-                # neg_lowers = neg_lowers.at[children].set(
-                #     lowers_children * lowers_parents
-                # )
-                # solves = solves.at[children].set(
-                #     lowers_children * solves_parents + solves_children
-                # )
-                # print("parents", parents[:, 0], "step", step, "neg_lowers", neg_lowers)
-                # step *= 2
-            print("Afterwards step", neg_lowers)
+            diags, solves = _comp_based_backsub_recursive_doubling(
+                diags, solves, lowers, steps, n_nodes, parent_lookup
+            )
 
         # Remove the spurious compartment. This compartment got modified by masking of
         # compartments in certain levels.
@@ -452,6 +411,90 @@ def _comp_based_backsub(index, carry):
     # Updates to diagonal and solve
     solves = solves.at[child].add(-solves[parent] * lowers[child])
     return (solves, lowers, comp_edges)
+
+
+def _comp_based_backsub_recursive_doubling(
+    diags: jnp.ndarray,
+    solves: jnp.ndarray,
+    lowers: jnp.ndarray,
+    steps: int,
+    n_nodes: int,
+    parent_lookup: np.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Backsubstitute with recursive doubling.
+
+    This function contains a lot of math, so I will describe what is going on here:
+
+    The matrix describes a system like:
+    diag[n] * x[n] + lower[n] * x[parent] = solve[n]
+
+    We rephrase this as:
+    x[n] = solve[n]/diag[n] - lower[n]/diag[n] * x[parent].
+
+    and we call variables as follows:
+    solve/diag => solve_effect
+    -lower/diag => lower_effect
+
+    This gives:
+    x[n] = solve_effect[n] + lower_effect[n] * x[parent].
+
+    Recursive doubling solves this equation for `x` in log_2(N) steps. How?
+
+    (1) Notice that lower_effect[n]=0, because x[0] has no parent.
+
+    (2) In the first step, recursive doubling substitutes x[parent] into
+    every equation. This leads to something like:
+    x[n] = solve_effect[n] + lower_effect[n] * (solve_effect[parent] + ...
+    ...lower_effect[parent] * x[parent[parent]])
+
+    Abbreviate this as:
+    new_solve_effect[n] = solve_effect[n] + lower_effect[n] * solve_effect[parent]
+    new_lower_effect[n] = lower_effect[n] + lower_effect[parent]
+    x[n] = new_solve_effect[n] + new_lower_effect[n] * x[parent[parent]]
+    Importantly, every node n is now a function of its two-step parent.
+
+    (3) In the next step, recursive doubling substitutes x[parent[parent]].
+    Since x[parent[parent]] already depends on its own _two-step_ parent,
+    every node then depends on its four step parent. This introduces the
+    log_2 scaling.
+
+    (4) The algorithm terminates when all `new_lower_effect=0`. This
+    naturally happens because `lower_effect[0]=0`, and the recursion
+    keeps multiplying new_lower_effect with the `lower_effect[parent]`.
+    """
+    # Why `lowers = lowers.at[0].set(0.0)`? During triangulation (and the
+    # cpu-optimized solver), we never access `lowers[0]`. Its value should
+    # be zero (because the zero-eth compartment does not have a `lower`), but
+    # it is not for coding convenience in the other solvers. For the recursive
+    # doubling solver below, we do use lowers[0], so we set it to the value
+    # it should have anyways: 0.
+    lowers = lowers.at[0].set(0.0)
+
+    # Rephrase the equations as a recursion.
+    # x[n] = solve[n]/diag[n] - lower[n]/diag[n] * x[parent].
+    # x[n] = solve_effect[n] + lower_effect[n] * x[parent].
+    lower_effect = -lowers / diags
+    solve_effect = solves / diags
+
+    step = 1
+    while step <= steps:
+        # For each node, get its k-step parent, where k=`step`.
+        k_step_parent = np.arange(n_nodes + 1)
+        for _ in range(step):
+            k_step_parent = parent_lookup[k_step_parent]
+
+        # Update.
+        solve_effect = lower_effect * solve_effect[k_step_parent] + solve_effect
+        lower_effect *= lower_effect[k_step_parent]
+        step *= 2
+
+    # We have to return a `diags` becaus the final solution is computed as
+    # `solves/diags` (see `step_voltage_implicit_with_dhs_solve`). For recursive
+    # doubling, the solution should just be `solve_effect`, so we define diags as
+    # 1.0 so the division has no effect.
+    diags = jnp.ones_like(solve_effect)
+    solves = solve_effect
+    return diags, solves
 
 
 def _voltage_vectorfield(

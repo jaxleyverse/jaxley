@@ -990,6 +990,17 @@ class Module(ABC):
             new_node_order, allowed_nodes_per_level
         )
 
+        # Define a simple lookup table that allows to retrieve the parent of a node.
+        # E.g.:
+        # ```parent_node = parents[node]``` or:
+        # ```two_step_parent = parents[parents[node]]```.
+        parents = -1 * np.ones(self._n_nodes + 1)
+        for k in range(self._dhs_node_order_grouped.shape[1]):
+            parents[self._dhs_node_order_grouped[:, k, 0]] = (
+                self._dhs_node_order_grouped[:, k, 1]
+            )
+        self._dhs_parent_lookup = parents.astype(int)
+
     def _compute_axial_conductances(
         self, params: Dict[str, jnp.ndarray], voltage_solver: str
     ):
@@ -2205,6 +2216,7 @@ class Module(ABC):
                 "map_to_node_order_lower": self._dhs_map_to_node_order_lower,
                 "map_to_node_order_upper": self._dhs_map_to_node_order_upper,
                 "n_nodes": self._n_nodes,
+                "parent_lookup": self._dhs_parent_lookup,
                 "optimize_for_gpu": True if voltage_solver.endswith("gpu") else False,
             }
             step_voltage_implicit = step_voltage_implicit_with_dhs_solve
