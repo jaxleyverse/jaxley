@@ -826,17 +826,19 @@ class Module(ABC):
         """
         self.base.jaxnodes = {}
         for key, value in self.base.nodes.to_dict(orient="list").items():
-            inds = jnp.arange(len(value))
-            self.base.jaxnodes[key] = jnp.asarray(value)[inds]
+            # inds = jnp.arange(len(value))
+            values = -1 * jnp.ones((self._n_nodes))
+            values = values.at[self.base.nodes.index.to_numpy()].set(value)
+            self.base.jaxnodes[key] = values
 
-        self.base.jaxnodes["node_to_comp_index_mapping"] = -1 * jnp.ones(
-            self.nodes.index.max() + 1
-        ).astype(int)
-        self.base.jaxnodes["node_to_comp_index_mapping"] = (
-            self.base.jaxnodes["node_to_comp_index_mapping"]
-            .at[self.nodes.index.to_numpy()]
-            .set(self.nodes["global_comp_index"])
-        )
+        # self.base.jaxnodes["node_to_comp_index_mapping"] = -1 * jnp.ones(
+        #     self.nodes.index.max() + 1
+        # ).astype(int)
+        # self.base.jaxnodes["node_to_comp_index_mapping"] = (
+        #     self.base.jaxnodes["node_to_comp_index_mapping"]
+        #     .at[self.nodes.index.to_numpy()]
+        #     .set(self.nodes["global_comp_index"])
+        # )
 
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
@@ -1009,13 +1011,8 @@ class Module(ABC):
         If ion diffusion was activated by the user (with `cell.diffuse()`) then this
         function also compute the axial conductances for every ion.
         """
-        if voltage_solver in ["jax.dhs"]:
-            node_mapping = self.jaxnodes["node_to_comp_index_mapping"]
-        else:
-            node_mapping = None
         return compute_axial_conductances(
             self._comp_edges,
-            node_mapping,
             params,
             self.diffusion_states,
             voltage_solver,
@@ -1557,9 +1554,12 @@ class Module(ABC):
 
     @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> Dict[str, jnp.ndarray]:
-        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
-        """Return states as they are set in the `.nodes` and `.edges` tables."""
-        self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        """Return states as they are set in the `.nodes` and `.edges` tables.
+
+        TODO FROM #447: MAKE THIS WORK FOR VIEW?
+        """
+        # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        self.base.to_jax()
         states = {"v": self.base.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
         for channel in self.base.channels + self.base.pumps:
@@ -1605,7 +1605,12 @@ class Module(ABC):
 
         # Add to the states the initial current through every synapse.
         states, _ = self.base._synapse_currents(
-            states, self.synapses, all_params, delta_t, self.edges
+            states,
+            self.synapses,
+            all_params,
+            delta_t,
+            self.edges,
+            self.comp_to_index_mapping,
         )
         return states
 
@@ -2127,6 +2132,7 @@ class Module(ABC):
             params,
             delta_t,
             self.edges,
+            self.comp_to_index_mapping,
         )
 
         # Voltage steps.
@@ -2348,7 +2354,7 @@ class Module(ABC):
         voltages = states["v"]
 
         # Update states of the channels.
-        indices = channel_nodes["global_comp_index"].to_numpy()
+        indices = channel_nodes.index.to_numpy()
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += [
@@ -2410,9 +2416,7 @@ class Module(ABC):
                 modified_state_name = channel.ion_name
             modified_state = states[modified_state_name]
 
-            indices = channel_nodes.loc[channel_nodes[name]][
-                "global_comp_index"
-            ].to_numpy()
+            indices = channel_nodes.loc[channel_nodes[name]].index.to_numpy()
             current, linear_term, const_term = self._channel_current_components(
                 modified_state,
                 states,
@@ -2493,6 +2497,7 @@ class Module(ABC):
         params: Dict[str, jnp.ndarray],
         delta_t: float,
         edges: pd.DataFrame,
+        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         """One step of integration of the channels.
 
@@ -2503,7 +2508,13 @@ class Module(ABC):
         return u, (jnp.zeros_like(voltages), jnp.zeros_like(voltages))
 
     def _synapse_currents(
-        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+        self,
+        states,
+        syn_channels,
+        params,
+        delta_t,
+        edges: pd.DataFrame,
+        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         return states, (None, None)
 

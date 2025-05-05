@@ -559,7 +559,6 @@ def query_channel_states_and_params(d, keys, idcs):
 
 def compute_axial_conductances(
     comp_edges: pd.DataFrame,
-    node_to_comp_index_mapping: jnp.ndarray,
     params: Dict[str, jnp.ndarray],
     diffusion_states: List[str],
     voltage_solver: str,
@@ -575,9 +574,6 @@ def compute_axial_conductances(
     condition = comp_edges["type"].to_numpy() == 0
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
-    if node_to_comp_index_mapping is not None:
-        source_comp_inds = node_to_comp_index_mapping[source_comp_inds]
-        sink_comp_inds = node_to_comp_index_mapping[sink_comp_inds]
 
     axial_conductances = jnp.stack(
         [1 / params["axial_resistivity"]]
@@ -626,8 +622,6 @@ def compute_axial_conductances(
     # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
     condition = comp_edges["type"].isin([1, 2])
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
-    if node_to_comp_index_mapping is not None:
-        sink_comp_inds = node_to_comp_index_mapping[sink_comp_inds]
 
     if len(sink_comp_inds) > 0:
         # For voltages, divide by the surface area.
@@ -671,8 +665,6 @@ def compute_axial_conductances(
     # `compartment-to-branchpoint` (c2bp) axial coupling conductances.
     condition = comp_edges["type"].isin([3, 4])
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
-    if node_to_comp_index_mapping is not None:
-        source_comp_inds = node_to_comp_index_mapping[source_comp_inds]
 
     if len(source_comp_inds) > 0:
         conds_c2bp = vmap(
@@ -701,7 +693,7 @@ def compute_axial_conductances(
         conds_as_dict[key] = all_coupling_conds[i]
         ordered_conds_as_dict[key] = ordered_conds[i]
 
-    if voltage_solver in ["jaxley.dhs"]:
+    if voltage_solver.startswith("jaxley.dhs"):
         return ordered_conds_as_dict
     else:
         return conds_as_dict

@@ -333,6 +333,12 @@ class Network(Module):
 
         self.nodes.index = pd.concat([c.nodes for c in self._cells_list]).index
 
+        comp_to_index_mapping = np.zeros((len(self.nodes)))
+        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
+            self.nodes.index.to_numpy()
+        )
+        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+
     def _step_synapse(
         self,
         states: Dict,
@@ -340,11 +346,14 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Perform one step of the synapses and obtain their currents."""
-        states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
+        states = self._step_synapse_state(
+            states, syn_channels, params, delta_t, edges, comp_to_index_mapping
+        )
         states, current_terms = self._synapse_currents(
-            states, syn_channels, params, delta_t, edges
+            states, syn_channels, params, delta_t, edges, comp_to_index_mapping
         )
         return states, current_terms
 
@@ -355,6 +364,7 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        comp_to_index_mapping: np.ndarray,
     ) -> Dict:
         voltages = states["v"]
 
@@ -377,8 +387,10 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            pre_inds = comp_to_index_mapping[np.asarray(pre_syn_inds[synapse_names[i]])]
+            post_inds = comp_to_index_mapping[
+                np.asarray(post_syn_inds[synapse_names[i]])
+            ]
 
             # State updates.
             states_updated = synapse_type.update_states(
@@ -402,6 +414,7 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         voltages = states["v"]
 
@@ -430,8 +443,10 @@ class Network(Module):
                 synapse_states[s] = states[s]
 
             # Get pre and post indexes of the current synapse type.
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            pre_inds = comp_to_index_mapping[np.asarray(pre_syn_inds[synapse_names[i]])]
+            post_inds = comp_to_index_mapping[
+                np.asarray(post_syn_inds[synapse_names[i]])
+            ]
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(

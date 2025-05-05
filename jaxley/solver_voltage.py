@@ -297,18 +297,19 @@ def step_voltage_implicit_with_dhs_solve(
     axial_conductances = delta_t * axial_conductances
 
     # Build diagonals.
-    diags = jnp.zeros(n_nodes)
-
+    diags = delta_t * voltage_terms
+    diags = diags.at[internal_node_inds].add(1.0)
+    #
     # if-case needed because `.at` does not allow empty inputs, but the input is
     # empty for compartments.
     if len(sinks) > 0:
         diags = diags.at[sinks].add(axial_conductances)
 
-    diags = diags.at[internal_node_inds].add(1.0 + delta_t * voltage_terms)
-
     # Build solve.
     solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
+    solves = solves.at[internal_node_inds].set(
+        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
+    )
 
     # Why `n_nodes > 1`? For compartments (or point neurons), we save computation and
     # compile time by skipping the entire solve procedure.
@@ -368,7 +369,8 @@ def step_voltage_implicit_with_dhs_solve(
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
     solution = solution[inv_map_to_solve_order]
-    return solution[internal_node_inds]
+
+    return solution
 
 
 def _comp_based_triang(index, carry):

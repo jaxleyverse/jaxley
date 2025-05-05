@@ -101,3 +101,9 @@ class Compartment(Module):
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         self._off_diagonal_inds = off_diagonal_inds
+
+        comp_to_index_mapping = np.zeros((len(self.nodes)))
+        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
+            self.nodes.index.to_numpy()
+        )
+        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
