@@ -22,7 +22,7 @@ from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
 
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 def test_radius_and_length_compartment(voltage_solver, SimpleComp):
     dt = 0.025  # ms
     current = jx.step_current(
@@ -63,7 +63,7 @@ def test_radius_and_length_compartment(voltage_solver, SimpleComp):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 def test_radius_and_length_branch(voltage_solver, SimpleBranch):
     dt = 0.025  # ms
     current = jx.step_current(
@@ -104,7 +104,7 @@ def test_radius_and_length_branch(voltage_solver, SimpleBranch):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 def test_radius_and_length_cell(voltage_solver, SimpleCell):
     dt = 0.025  # ms
     current = jx.step_current(
@@ -149,7 +149,7 @@ def test_radius_and_length_cell(voltage_solver, SimpleCell):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 def test_radius_and_length_net(voltage_solver, SimpleNet):
     dt = 0.025  # ms
     current = jx.step_current(

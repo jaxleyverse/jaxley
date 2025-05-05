@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
+from jaxley.modules.base import _branch_n2e, _set_branchpoint_indices
 from jaxley.utils.cell_utils import (
     radius_from_xyzr,
     split_xyzr_into_equal_length_segments,

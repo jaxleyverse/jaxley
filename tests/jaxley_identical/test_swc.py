@@ -23,7 +23,7 @@ from jaxley.synapses import IonotropicSynapse
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
 )
@@ -87,7 +87,7 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 def test_swc_net(voltage_solver: str, SimpleMorphCell):
     dt = 0.025  # ms
     current = jx.step_current(
