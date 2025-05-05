@@ -183,7 +183,7 @@ def _run_jaxley_unequal_ncomp(i_delay, i_dur, i_amp, dt, t_max):
     cell.branch(3).comp(1).record()
     cell.branch(3).comp(3).record()
 
-    voltages = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
+    voltages = jx.integrate(cell, delta_t=dt, voltage_solver="jaxley.dhs.cpu")
     return voltages
 
 

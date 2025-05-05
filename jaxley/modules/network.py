@@ -268,6 +268,7 @@ class Network(Module):
         self._comp_edges = []
         self._branchpoints = []
         self._internal_node_inds = []
+        self._dhs_parent_lookup = []
         node_indices = []
         for cell in self._cells_list:
             node_indices.append(cell.nodes.index + offset)
@@ -297,6 +298,13 @@ class Network(Module):
 
             self._internal_node_inds.append(cell._internal_node_inds + offset)
 
+            # Discard the last one because it is a [-1] which just absorbs all
+            # compartments that are already finished with their recursion. We append
+            # such a compartment after this loop again.
+            parent_lookup = cell._dhs_parent_lookup.copy()[:-1]
+            parent_lookup[1:] += offset
+            self._dhs_parent_lookup.append(parent_lookup)
+
             offset += cell._n_nodes  # Compartment-offset.
             lower_and_upper_offset += (cell._n_nodes - 1) * 2
 
@@ -311,6 +319,7 @@ class Network(Module):
             self._dhs_map_to_node_order_upper
         )
         self._dhs_node_order = np.concatenate(self._dhs_node_order, axis=0)
+        self._dhs_parent_lookup = np.concatenate(self._dhs_parent_lookup + [[-1]])
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
         self._branchpoints = pd.concat(self._branchpoints)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)

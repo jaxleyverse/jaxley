@@ -4,7 +4,8 @@
 import networkx as nx
 import numpy as np
 
-from jaxley.io.graph import connect_graphs, from_graph, to_graph
+from jaxley.io.graph import connect_graphs, from_graph
+from jaxley.modules.base import to_graph
 
 
 def morph_delete(module_view) -> "Cell":

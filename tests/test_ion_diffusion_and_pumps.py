@@ -232,7 +232,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.set("axial_diffusion_CaCon_i", 200.0)
     cell.set("axial_diffusion_NaCon_i", 400.0)
     cell.init_states()
-    v1 = jx.integrate(cell, voltage_solver="jax.sparse")
+    v1 = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
 
     ############################ Option 2:
     cell = _build_active_cell()
@@ -248,7 +248,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.set("axial_diffusion_CaCon_i", 200.0)
     cell.set("axial_diffusion_NaCon_i", 400.0)
     cell.init_states()
-    v2 = jx.integrate(cell, voltage_solver="jax.sparse")
+    v2 = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
 
     ############################ Option 3:
     cell = _build_active_cell()
@@ -261,7 +261,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.set("axial_diffusion_CaCon_i", 200.0)
     cell.set("axial_diffusion_NaCon_i", 400.0)
     cell.init_states()
-    v3 = jx.integrate(cell, voltage_solver="jax.sparse")
+    v3 = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
 
     ############################ Option 4:
     cell = _build_active_cell()
@@ -274,7 +274,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.set("axial_diffusion_CaCon_i", 200.0)
     cell.set("axial_diffusion_NaCon_i", 400.0)
     cell.init_states()
-    v4 = jx.integrate(cell, voltage_solver="jax.sparse")
+    v4 = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
 
     for i, v_compare in enumerate([v2, v3, v4]):
         max_error = np.max(np.abs(v1 - v_compare))
@@ -310,11 +310,11 @@ def test_that_high_axial_diffusion_approaches_no_diffusion():
     cell1.diffuse("CaCon_i")
     # Very high axial resistivity, almost no diffusion.
     cell1.set("axial_diffusion_CaCon_i", 1e-8)
-    v1 = jx.integrate(cell1, solver="crank_nicolson", voltage_solver="jax.sparse")
+    v1 = jx.integrate(cell1, solver="crank_nicolson", voltage_solver="jaxley.dhs.cpu")
 
     cell2 = _build_calcium_cell()
     cell2.insert(CaPump())
-    v2 = jx.integrate(cell2, solver="crank_nicolson", voltage_solver="jax.sparse")
+    v2 = jx.integrate(cell2, solver="crank_nicolson", voltage_solver="jaxley.dhs.cpu")
 
     max_error = np.max(np.abs(v1 - v2))
     assert max_error < 1e-7, f"Gap is {max_error}."
@@ -396,7 +396,7 @@ def test_ion_is_diffused_but_not_pumped():
 def test_ion_is_pumped_but_not_diffused():
     """Test whether there is no NaN when an ion is pumped but not diffused."""
     cell = _build_calcium_cell()
-    cacon_i = jx.integrate(cell, t_max=5.0, voltage_solver="jax.sparse")
+    cacon_i = jx.integrate(cell, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
     assert np.invert(np.any(np.isnan(cacon_i))), "Found NaN when ion is not diffused!"
 
 
@@ -409,7 +409,7 @@ def test_ion_diffusion_compartment():
     comp.set("axial_diffusion_CaCon_i", 1.0)
     comp.record("v")
     comp.record("CaCon_i")
-    recs = jx.integrate(comp, t_max=10.0, voltage_solver="jax.sparse")
+    recs = jx.integrate(comp, t_max=10.0, voltage_solver="jaxley.dhs.cpu")
     assert np.invert(np.any(np.isnan(recs)))
 
 
@@ -441,7 +441,7 @@ def test_ion_diffusion_cell():
     cell.set("axial_diffusion_CaCon_i", 1.0)
     cell.record("v")
     cell.record("CaCon_i")
-    recs = jx.integrate(cell, t_max=5.0, voltage_solver="jax.sparse")
+    recs = jx.integrate(cell, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
     assert np.invert(np.any(np.isnan(recs)))
 
 
@@ -457,7 +457,7 @@ def test_ion_diffusion_net():
     net.set("axial_diffusion_CaCon_i", 1.0)
     net.record("v")
     net.record("CaCon_i")
-    recs = jx.integrate(net, t_max=5.0, voltage_solver="jax.sparse")
+    recs = jx.integrate(net, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
     assert np.invert(np.any(np.isnan(recs)))
 
 
@@ -479,7 +479,7 @@ def test_diffuse_a_channel_state():
         cell.set("axial_diffusion_CaCon_i", 1.0)
         cell.record("v")
         cell.record("CaCon_i")
-    v1 = jx.integrate(cell1, t_max=10.0, voltage_solver="jax.sparse")
-    v2 = jx.integrate(cell2, t_max=10.0, voltage_solver="jax.sparse")
+    v1 = jx.integrate(cell1, t_max=10.0, voltage_solver="jaxley.dhs.cpu")
+    v2 = jx.integrate(cell2, t_max=10.0, voltage_solver="jaxley.dhs.cpu")
     max_error = np.max(np.abs(v1 - v2))
     assert max_error < 1e-2, f"Error {max_error} > 1e-2"

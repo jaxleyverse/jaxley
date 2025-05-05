@@ -61,12 +61,15 @@ def test_solver_backends_comp(SimpleComp):
     comp.stimulate(current)
     comp.record()
 
-    voltages_jx_thomas = jx.integrate(comp, voltage_solver="jaxley.thomas")
-    voltages_jx_stone = jx.integrate(comp, voltage_solver="jaxley.stone")
+    voltages_jx_cpu = jx.integrate(comp, voltage_solver="jaxley.dhs.cpu")
+    voltages_jx_gpu = jx.integrate(comp, voltage_solver="jaxley.dhs.gpu")
+    voltages_jx_sparse = jx.integrate(comp, voltage_solver="jax.sparse")
 
     message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
-    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
+    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
+    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
 def test_solver_backends_branch(SimpleBranch):
@@ -79,12 +82,15 @@ def test_solver_backends_branch(SimpleBranch):
     branch.loc(0.0).stimulate(current)
     branch.loc(0.5).record()
 
-    voltages_jx_thomas = jx.integrate(branch, voltage_solver="jaxley.thomas")
-    voltages_jx_stone = jx.integrate(branch, voltage_solver="jaxley.stone")
+    voltages_jx_cpu = jx.integrate(branch, voltage_solver="jaxley.dhs.cpu")
+    voltages_jx_gpu = jx.integrate(branch, voltage_solver="jaxley.dhs.gpu")
+    voltages_jx_sparse = jx.integrate(branch, voltage_solver="jax.sparse")
 
     message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
-    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
+    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
+    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
 @pytest.mark.slow
@@ -99,12 +105,15 @@ def test_solver_backends_cell(SimpleCell):
     cell.branch(0).loc(0.5).record()
     cell.branch(3).loc(0.5).record()
 
-    voltages_jx_thomas = jx.integrate(cell, voltage_solver="jaxley.thomas")
-    voltages_jx_stone = jx.integrate(cell, voltage_solver="jaxley.stone")
+    voltages_jx_cpu = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
+    voltages_jx_gpu = jx.integrate(cell, voltage_solver="jaxley.dhs.gpu")
+    voltages_jx_sparse = jx.integrate(cell, voltage_solver="jax.sparse")
 
     message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
-    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
+    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
+    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
 def test_solver_backends_net(SimpleNet):
@@ -129,12 +138,15 @@ def test_solver_backends_net(SimpleNet):
     net.cell(0).branch(0).loc(0.5).record()
     net.cell(1).branch(3).loc(0.5).record()
 
-    voltages_jx_thomas = jx.integrate(net, voltage_solver="jaxley.thomas")
-    voltages_jx_stone = jx.integrate(net, voltage_solver="jaxley.stone")
+    voltages_jx_cpu = jx.integrate(net, voltage_solver="jaxley.dhs.cpu")
+    voltages_jx_gpu = jx.integrate(net, voltage_solver="jaxley.dhs.gpu")
+    voltages_jx_sparse = jx.integrate(net, voltage_solver="jax.sparse")
 
     message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_thomas - voltages_jx_stone))
-    assert max_error < 1e-8, f"{message} thomas/stone. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
+    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
+    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
+    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
 def test_api_equivalence_synapses(SimpleNet):
@@ -218,15 +230,15 @@ def test_api_equivalence_network_matches_cell(SimpleBranch):
 
     net.cell(1).branch(1).comp(1).stimulate(current)
     net.cell(1).branch(0).comp(0).record()
-    voltages_net = jx.integrate(net, delta_t=dt, voltage_solver="jax.sparse")
+    voltages_net = jx.integrate(net, delta_t=dt, voltage_solver="jaxley.dhs.cpu")
 
     cell1.branch(2).comp(2).stimulate(current)
     cell1.branch(0).comp(0).record()
 
     cell2.branch(1).comp(1).stimulate(current)
     cell2.branch(0).comp(0).record()
-    voltages_cell1 = jx.integrate(cell1, delta_t=dt, voltage_solver="jax.sparse")
-    voltages_cell2 = jx.integrate(cell2, delta_t=dt, voltage_solver="jax.sparse")
+    voltages_cell1 = jx.integrate(cell1, delta_t=dt, voltage_solver="jaxley.dhs.cpu")
+    voltages_cell2 = jx.integrate(cell2, delta_t=dt, voltage_solver="jaxley.dhs.cpu")
     voltages_cells = jnp.concatenate([voltages_cell1, voltages_cell2], axis=0)
 
     max_error = np.max(np.abs(voltages_net - voltages_cells))

@@ -4,6 +4,7 @@
 from math import prod
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+import jax
 import jax.numpy as jnp
 import pandas as pd
 
@@ -167,7 +168,7 @@ def integrate(
     t_max: Optional[float] = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
-    voltage_solver: str = "jaxley.stone",
+    voltage_solver: str = "jaxley.dhs",
     checkpoint_lengths: Optional[List[int]] = None,
     all_states: Optional[Dict] = None,
     return_states: bool = False,
@@ -188,11 +189,13 @@ def integrate(
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler",
             "crank_nicolson"].
-        tridiag_solver: Algorithm to solve tridiagonal systems. The  different options
-            only affect `bwd_euler` and `crank_nicolson` solvers. Either of ["stone",
-            "thomas"], where `stone` is much faster on GPU for long branches
-            with many compartments and `thomas` is slightly faster on CPU (`thomas` is
-            used in NEURON).
+        voltage_solver: Algorithm to solve quasi-tridiagonal linear system describing
+            the voltage equations. The different options only take effect when
+            `solver` is either `bwd_euler` or `crank_nicolson`. The options for
+            `voltage_solver` are `jaxley.dhs.cpu`, `jaxley.dhs.gpu`, and `jax.sparse`.
+            If you pass `jaxley.dhs` then we automatically choose between
+            `jaxley.dhs.cpu` and `jaxley.dhs.gpu`, depending on which device you are
+            using.
         checkpoint_lengths: Number of timesteps at every level of checkpointing. The
             `prod(checkpoint_lengths)` must be larger or equal to the desired number of
             simulated timesteps. Warning: the simulation is run for
@@ -206,6 +209,13 @@ def integrate(
         return_states: If True, it returns all states such that the current state of
             the `Module` can be set with `set_states`.
     """
+    if voltage_solver == "jax.dhs":
+        # Automatically infer the voltage solver.
+        device = jax.devices()[0]
+        if "gpu" in device.device_kind.lower() or "tpu" in device.device_kind.lower():
+            voltage_solver = "jaxley.dhs.gpu"
+        else:
+            voltage_solver = "jaxley.dhs.cpu"
 
     assert module.initialized, "Module is not initialized, run `._initialize()`."
     module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.

@@ -26,9 +26,9 @@ from jaxley.io.graph import (
     _add_missing_graph_attrs,
     build_compartment_graph,
     from_graph,
-    to_graph,
     to_swc_graph,
 )
+from jaxley.modules.base import to_graph
 from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 

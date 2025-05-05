@@ -21,17 +21,16 @@ def step_voltage_explicit(
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
     axial_conductances: jnp.ndarray,
-    internal_node_inds: jnp.ndarray,
-    sinks: jnp.ndarray,
-    sources: jnp.ndarray,
-    types: jnp.ndarray,
-    ncomp_per_branch: jnp.ndarray,
-    par_inds: jnp.ndarray,
-    child_inds: jnp.ndarray,
-    nbranches: int,
-    solver: str,
-    idx: JaxleySolveIndexer,
-    debug_states,
+    internal_node_inds,
+    sinks,
+    node_order,
+    map_to_solve_order,
+    inv_map_to_solve_order,
+    map_to_node_order_lower,
+    map_to_node_order_upper,
+    n_nodes,
+    parent_lookup,
+    optimize_for_gpu,
     delta_t: float,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
@@ -229,28 +228,25 @@ def step_voltage_implicit_with_jax_spsolve(
     axial_conductances = delta_t * axial_conductances
 
     # Build diagonals.
-    diagonal_values = jnp.zeros(n_nodes)
-
+    diags = delta_t * voltage_terms
+    diags = diags.at[internal_node_inds].add(1.0)
+    #
     # if-case needed because `.at` does not allow empty inputs, but the input is
     # empty for compartments.
     if len(sinks) > 0:
-        diagonal_values = diagonal_values.at[sinks].add(axial_conductances)
-
-    diagonal_values = diagonal_values.at[internal_node_inds].add(
-        1.0 + delta_t * voltage_terms
-    )
-
-    # Concatenate diagonals and off-diagonals (which are just `-axial_conductances`).
-    all_values = jnp.concatenate([diagonal_values, -axial_conductances])
+        diags = diags.at[sinks].add(axial_conductances)
 
     # Build solve.
     solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].add(voltages + delta_t * constant_terms)
+    solves = solves.at[internal_node_inds].set(
+        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
+    )
+
+    # Concatenate diagonals and off-diagonals (which are just `-axial_conductances`).
+    all_values = jnp.concatenate([diags, -axial_conductances])
 
     # Solve the voltage equations.
-    solution = jax_spsolve(all_values[data_inds], indices, indptr, solves)[
-        internal_node_inds
-    ]
+    solution = jax_spsolve(all_values[data_inds], indices, indptr, solves)
     return solution
 
 
@@ -503,17 +499,18 @@ def _voltage_vectorfield(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
-    types: jnp.ndarray,
-    sources: jnp.ndarray,
-    sinks: jnp.ndarray,
     axial_conductances: jnp.ndarray,
-    par_inds: jnp.ndarray,
-    child_inds: jnp.ndarray,
-    nbranches: int,
-    solver: str,
-    delta_t: float,
-    idx: JaxleySolveIndexer,
-    debug_states,
+    internal_node_inds,
+    sinks,
+    node_order,
+    map_to_solve_order,
+    inv_map_to_solve_order,
+    map_to_node_order_lower,
+    map_to_node_order_upper,
+    n_nodes,
+    parent_lookup,
+    optimize_for_gpu,
+    delta_t,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
     if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
