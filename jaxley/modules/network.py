@@ -268,9 +268,9 @@ class Network(Module):
         self._comp_edges = []
         self._branchpoints = []
         self._internal_node_inds = []
-
+        node_indices = []
         for cell in self._cells_list:
-            cell.nodes.index += offset
+            node_indices.append(cell.nodes.index + offset)
             self._dhs_map_dict.update(
                 {k + offset: v + offset for k, v in cell._dhs_map_dict.items()}
             )
@@ -287,11 +287,11 @@ class Network(Module):
             )
             self._dhs_node_order.append(cell._dhs_node_order + offset)
 
-            edges = cell._comp_edges
+            edges = cell._comp_edges.copy()
             edges[["source", "sink"]] += offset
             self._comp_edges.append(edges)
 
-            branchpoints = cell._branchpoints
+            branchpoints = cell._branchpoints.copy()
             branchpoints.index = branchpoints.index + offset
             self._branchpoints.append(branchpoints)
 
@@ -331,7 +331,7 @@ class Network(Module):
             self._dhs_node_order, allowed_nodes_per_level=allowed_nodes_per_level
         )
 
-        self.nodes.index = pd.concat([c.nodes for c in self._cells_list]).index
+        self.nodes.index = np.concatenate(node_indices)
 
         comp_to_index_mapping = np.zeros((len(self.nodes)))
         comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
