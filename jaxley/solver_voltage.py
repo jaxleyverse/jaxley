@@ -359,24 +359,47 @@ def step_voltage_implicit_with_dhs_solve(
             lowers /= diags
             solves /= diags
             diags = jnp.ones_like(solves)
-            
             neg_lowers = -lowers
             step = 1
-            while step <= steps:
-                parents = ordered_comp_edges[step - 1 :, :, 1]
-                children = ordered_comp_edges[step - 1 :, :, 0]
-                lowers_children = neg_lowers[children].copy()
-                lowers_parents = neg_lowers[parents].copy()
-                solves_children = solves[children].copy()
-                solves_parents = solves[parents].copy()
 
-                neg_lowers = neg_lowers.at[children].set(
-                    lowers_children * lowers_parents
-                )
-                solves = solves.at[children].set(
-                    lowers_children * solves_parents + solves_children
-                )
+            parents = -1 * np.ones(n_nodes + 1)
+            parents[ordered_comp_edges[:, 0, 0]] = ordered_comp_edges[:, 0, 1]
+            parents = parents.astype(int)
+            while step <= steps:
+                nodes = np.arange(n_nodes+1)
+                for _ in range(step):
+                    nodes = parents[nodes]
+
+                A_slice = neg_lowers.copy()
+                A_prev = neg_lowers[nodes]
+                B_slice = solves.copy()
+                B_prev = solves[nodes]
+
+                neg_lowers = A_slice * A_prev
+                solves = A_slice * B_prev + B_slice
+
                 step *= 2
+                # # A_slice = A[step:]
+                # # A_prev = A[:-step]
+                # parents = ordered_comp_edges[: -step, :, 1]
+                # print("parents", parents)
+                # children = ordered_comp_edges[step - 1 :, :, 0]
+                # print("children", children)
+                # # children = ordered_comp_edges[step - 1 :, :, 0]
+                # lowers_children = neg_lowers[children]
+                # lowers_parents = neg_lowers[parents]
+                # solves_children = solves[children]
+                # solves_parents = solves[parents]
+
+                # neg_lowers = neg_lowers.at[children].set(
+                #     lowers_children * lowers_parents
+                # )
+                # solves = solves.at[children].set(
+                #     lowers_children * solves_parents + solves_children
+                # )
+                # print("parents", parents[:, 0], "step", step, "neg_lowers", neg_lowers)
+                # step *= 2
+            print("Afterwards step", neg_lowers)
 
         # Remove the spurious compartment. This compartment got modified by masking of
         # compartments in certain levels.
