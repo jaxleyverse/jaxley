@@ -1196,6 +1196,7 @@ class Module(ABC):
             )
 
         # Add new rows as the average of all rows. Special case for the length is below.
+        start_index = int(self.nodes.index.to_numpy()[0])
         average_row = self.nodes.mean(skipna=False)
         average_row = average_row.to_frame().T
         view = pd.concat([*[average_row] * ncomp], axis="rows")
@@ -1238,7 +1239,10 @@ class Module(ABC):
         df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
 
         # 3) Combine the parts: before, new rows, and after
-        all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
+        view.index = np.arange(len(view)).astype(int) + start_index
+        df2.index -= num_previous_ncomp
+        df2.index += ncomp
+        all_nodes = pd.concat([df1, view, df2])
 
         # Override `comp_index` to just be a consecutive list.
         all_nodes["global_comp_index"] = np.arange(len(all_nodes))
@@ -1256,8 +1260,8 @@ class Module(ABC):
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
-        self.base._initialize()
         self.base._init_view()
+        self.base._initialize()
         self.base._update_local_indices()
 
     def make_trainable(
@@ -2132,6 +2136,8 @@ class Module(ABC):
             u, delta_t, self.channels + self.pumps, self.nodes, params
         )
 
+        print("u", u)
+
         # Step of the synapse.
         u, (v_syn_linear_terms, v_syn_const_terms) = self._step_synapse(
             u,
@@ -2330,6 +2336,7 @@ class Module(ABC):
         if "v" in externals.keys():
             u["v"] = u["v"].at[external_inds["v"]].set(externals["v"])
 
+        print("returned u", u)
         return u
 
     def _step_channels(
@@ -2888,7 +2895,7 @@ class View(Module):
         edges: Optional[np.ndarray] = None,
         comp_edge_condition: str = "source_or_sink",
     ):
-        self.base = pointer.base  # forard base module
+        self.base: Module = pointer.base  # Point to the base module.
         self._scope = pointer._scope  # forward view
 
         # attrs with a static view

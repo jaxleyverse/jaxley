@@ -117,46 +117,47 @@ class Network(Module):
         return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
 
     def _init_morph_jaxley_spsolve(self):
-        branchpoint_group_inds = build_branchpoint_group_inds(
-            len(self._par_inds),
-            self._child_belongs_to_branchpoint,
-            self.cumsum_ncomp[-1],
-        )
-        children_in_level = merge_cells(
-            self._cumsum_nbranches,
-            self._cumsum_nbranchpoints_per_cell,
-            [cell._solve_indexer.children_in_level for cell in self._cells_list],
-            exclude_first=False,
-        )
-        parents_in_level = merge_cells(
-            self._cumsum_nbranches,
-            self._cumsum_nbranchpoints_per_cell,
-            [cell._solve_indexer.parents_in_level for cell in self._cells_list],
-            exclude_first=False,
-        )
-        padded_cumsum_ncomp = cumsum_leading_zero(
-            np.concatenate(
-                [np.diff(cell._solve_indexer.cumsum_ncomp) for cell in self._cells_list]
-            )
-        )
+        pass
+        # branchpoint_group_inds = build_branchpoint_group_inds(
+        #     len(self._par_inds),
+        #     self._child_belongs_to_branchpoint,
+        #     self.cumsum_ncomp[-1],
+        # )
+        # children_in_level = merge_cells(
+        #     self._cumsum_nbranches,
+        #     self._cumsum_nbranchpoints_per_cell,
+        #     [cell._solve_indexer.children_in_level for cell in self._cells_list],
+        #     exclude_first=False,
+        # )
+        # parents_in_level = merge_cells(
+        #     self._cumsum_nbranches,
+        #     self._cumsum_nbranchpoints_per_cell,
+        #     [cell._solve_indexer.parents_in_level for cell in self._cells_list],
+        #     exclude_first=False,
+        # )
+        # padded_cumsum_ncomp = cumsum_leading_zero(
+        #     np.concatenate(
+        #         [np.diff(cell._solve_indexer.cumsum_ncomp) for cell in self._cells_list]
+        #     )
+        # )
 
-        # Generate mapping to dealing with the masking which allows using the custom
-        # sparse solver to deal with different ncomp per branch.
-        remapped_node_indices = remap_index_to_masked(
-            self._internal_node_inds,
-            self.nodes,
-            padded_cumsum_ncomp,
-            self.ncomp_per_branch,
-        )
-        self._solve_indexer = JaxleySolveIndexer(
-            cumsum_ncomp=padded_cumsum_ncomp,
-            ncomp_per_branch=self.ncomp_per_branch,
-            branchpoint_group_inds=branchpoint_group_inds,
-            children_in_level=children_in_level,
-            parents_in_level=parents_in_level,
-            root_inds=self._cumsum_nbranches[:-1],
-            remapped_node_indices=remapped_node_indices,
-        )
+        # # Generate mapping to dealing with the masking which allows using the custom
+        # # sparse solver to deal with different ncomp per branch.
+        # remapped_node_indices = remap_index_to_masked(
+        #     self._internal_node_inds,
+        #     self.nodes,
+        #     padded_cumsum_ncomp,
+        #     self.ncomp_per_branch,
+        # )
+        # self._solve_indexer = JaxleySolveIndexer(
+        #     cumsum_ncomp=padded_cumsum_ncomp,
+        #     ncomp_per_branch=self.ncomp_per_branch,
+        #     branchpoint_group_inds=branchpoint_group_inds,
+        #     children_in_level=children_in_level,
+        #     parents_in_level=parents_in_level,
+        #     root_inds=self._cumsum_nbranches[:-1],
+        #     remapped_node_indices=remapped_node_indices,
+        # )
 
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for networks.
