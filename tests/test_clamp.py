@@ -205,7 +205,7 @@ def test_data_clamp_and_clamp(SimpleComp):
     comp2.insert(HH())
     branch1 = jx.Branch(comp, 4)
     branch2 = jx.Branch(comp2, 4)
-    cell = jx.Cell([branch1, branch2], [-1, -1])
+    cell = jx.Cell([branch1, branch2], [-1, 0])
 
     # Apply the clamp1 to the second branch via clamp
     cell[1, 0].clamp("v", clamp1)

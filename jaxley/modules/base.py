@@ -1607,6 +1607,7 @@ class Module(ABC):
             A dictionary of all states of the module.
         """
         states = self.base._get_states_from_nodes_and_edges()
+        print("s", states["v"].shape)
 
         # Override with the initial states set by `.make_trainable()`.
         for parameter in pstate:
@@ -1634,6 +1635,7 @@ class Module(ABC):
             self.edges,
             self.comp_to_index_mapping,
         )
+        print("states", states["v"].shape)
         return states
 
     @property
@@ -2223,7 +2225,13 @@ class Module(ABC):
                 u[key] = u[key].at[external_inds[key]].set(externals[key])
 
         # Add solver specific arguments.
-        if voltage_solver == "jax.sparse":
+        if solver == "fwd_euler":
+            solver_kwargs = {
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "sources": np.asarray(self._comp_edges["source"].to_list()),
+                "types": np.asarray(self._comp_edges["type"].to_list()),
+            }
+        elif voltage_solver == "jax.sparse":
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),

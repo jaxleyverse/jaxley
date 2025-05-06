@@ -21,41 +21,23 @@ def step_voltage_explicit(
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
     axial_conductances: jnp.ndarray,
-    internal_node_inds,
     sinks,
-    node_order,
-    map_to_solve_order,
-    inv_map_to_solve_order,
-    map_to_node_order_lower,
-    map_to_node_order_upper,
-    n_nodes,
-    parent_lookup,
-    optimize_for_gpu,
+    sources,
+    types,
     delta_t: float,
 ) -> jnp.ndarray:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
-    voltages = jnp.reshape(voltages, (nbranches, -1))
-    voltage_terms = jnp.reshape(voltage_terms, (nbranches, -1))
-    constant_terms = jnp.reshape(constant_terms, (nbranches, -1))
-
     update = _voltage_vectorfield(
         voltages,
         voltage_terms,
         constant_terms,
-        types,
-        sources,
-        sinks,
         axial_conductances,
-        par_inds,
-        child_inds,
-        nbranches,
-        solver,
-        delta_t,
-        idx,
-        debug_states,
+        sinks,
+        sources,
+        types,
     )
     new_voltates = voltages + delta_t * update
-    return new_voltates.ravel(order="C")
+    return new_voltates
 
 
 def step_voltage_implicit_with_jaxley_spsolve(
@@ -304,7 +286,7 @@ def step_voltage_implicit_with_dhs_solve(
 
     # Why `n_nodes > 1`? For compartments (or point neurons), we save computation and
     # compile time by skipping the entire solve procedure.
-    if n_nodes > 1:
+    if len(axial_conductances) > 0:
         # Build lower and upper matrix.
         lowers_and_uppers = -axial_conductances
 
@@ -494,17 +476,9 @@ def _voltage_vectorfield(
     voltage_terms: jnp.ndarray,
     constant_terms: jnp.ndarray,
     axial_conductances: jnp.ndarray,
-    internal_node_inds,
     sinks,
-    node_order,
-    map_to_solve_order,
-    inv_map_to_solve_order,
-    map_to_node_order_lower,
-    map_to_node_order_upper,
-    n_nodes,
-    parent_lookup,
-    optimize_for_gpu,
-    delta_t,
+    sources,
+    types,
 ) -> jnp.ndarray:
     """Evaluate the vectorfield of the nerve equation."""
     if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
@@ -515,30 +489,10 @@ def _voltage_vectorfield(
     # Membrane current update.
     vecfield = -voltage_terms * voltages + constant_terms
 
-    # Build upper and lower within the branch.
-    c2c = types == 0  # c2c = compartment-to-compartment.
-
-    # Build uppers.
-    upper_inds = sources[c2c] > sinks[c2c]
-    if len(upper_inds) > 0:
-        uppers = axial_conductances[c2c][upper_inds]
-    else:
-        uppers = jnp.asarray([])
-
-    # Build lowers.
-    lower_inds = sources[c2c] < sinks[c2c]
-    if len(lower_inds) > 0:
-        lowers = axial_conductances[c2c][lower_inds]
-    else:
-        lowers = jnp.asarray([])
-
-    # For networks consisting of branches.
-    uppers = jnp.reshape(uppers, (nbranches, -1))
-    lowers = jnp.reshape(lowers, (nbranches, -1))
-
     # Current through segments within the same branch.
-    vecfield = vecfield.at[:, :-1].add((voltages[:, 1:] - voltages[:, :-1]) * uppers)
-    vecfield = vecfield.at[:, 1:].add((voltages[:, :-1] - voltages[:, 1:]) * lowers)
+    vecfield = vecfield.at[sinks].add(
+        (voltages[sources] - voltages[sinks]) * axial_conductances
+    )
 
     return vecfield
 
