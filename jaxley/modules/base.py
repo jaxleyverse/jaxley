@@ -393,6 +393,14 @@ class Module(ABC):
         centers = self._compute_coords_of_comp_centers()
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
 
+        # Estimate the branchpoint xyz as the mean of the xyz of all neighboring
+        # compartments.
+        for branchpoint in self.base._branchpoints.index:
+            edges = self.base._comp_edges.copy()
+            neighbors = edges[edges["sink"] == branchpoint]["source"]
+            neighbor_xyz = self.base.nodes.loc[neighbors, ["x", "y", "z"]].mean()
+            self.base._branchpoints.loc[branchpoint, ["x", "y", "z"]] = neighbor_xyz
+
     def _reformat_index(self, idx: Any, dtype: type = int) -> np.ndarray:
         """Transforms different types of indices into an array.
 
@@ -3287,7 +3295,7 @@ class View(Module):
 
 
 def to_graph(
-    module: "jx.Module", synapses: bool = False, channels: bool = False
+    module: "jx.Module", synapses: bool = False, channels: bool = False, skip=False
 ) -> nx.DiGraph:
     """Export a `jx.Module` as a networkX compartment graph.
 
@@ -3351,22 +3359,20 @@ def to_graph(
             nodes = nodes.drop(list(c.channel_params), axis=1, errors="ignore")
             nodes = nodes.drop(list(c.channel_states), axis=1, errors="ignore")
 
+    nodes["type"] = "comp"
     for col in nodes.columns:  # col wise adding preserves dtypes
         module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
 
+    module._branchpoints["type"] = "branchpoint"
+    for col in module._branchpoints.columns:
+        module_graph.add_nodes_from(
+            module._branchpoints[[col]].to_dict(orient="index").items()
+        )
+
     module_graph.graph["group_names"] = module.group_names
 
-    inter_branch_edges = module.branch_edges.copy()
-    intra_branch_edges = []
     for i, branch_data in nodes.groupby("branch_index"):
         inds = branch_data.index.values
-        intra_branch_edges += _branch_n2e(inds)
-
-        parents = module.branch_edges["parent_branch_index"]
-        children = module.branch_edges["child_branch_index"]
-        inter_branch_edges.loc[parents == i, "parent_branch_index"] = inds[-1]
-        inter_branch_edges.loc[children == i, "child_branch_index"] = inds[0]
-
         # Special handling for xyzr. In the module, xyzr is currently stored in a list,
         # where each list entry indicates one _branch_. In the `comp_graph`, each
         # compartment is assigned its own `xyzr`. Here, we cast from the branch
@@ -3377,46 +3383,40 @@ def to_graph(
         for i, comp_index in enumerate(inds):
             module_graph.nodes[comp_index]["xyzr"] = xyzr_per_comp[i]
 
-    inter_branch_edges = inter_branch_edges.to_numpy()
-    module_graph.add_edges_from(inter_branch_edges)
-    module_graph.add_edges_from(intra_branch_edges)
+    edges = module._comp_edges.copy()
+    edges = edges[edges["type"].isin([0, 1, 3])][["source", "sink"]]
+    if len(edges) > 0:
+        module_graph.add_edges_from(edges.to_numpy())
     module_graph.graph["type"] = module.__class__.__name__.lower()
 
-    module_comp_graph = _jaxley_graph_to_comp_graph(module_graph)
-    for branchpoint in module._branchpoints.iterrows():
-        node = branchpoint[0]
-        xyz = branchpoint[1]
-        for key in ["x", "y", "z"]:
-            module_comp_graph.nodes[node][key] = xyz[key]
+    # if synapses:
+    #     syn_edges = module.edges.copy()
+    #     multiple_syn_per_edge = syn_edges[
+    #         ["pre_global_comp_index", "post_global_comp_index"]
+    #     ].duplicated(keep=False)
+    #     dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
+    #     if multiple_syn_per_edge.any():
+    #         warn(
+    #             f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
+    #             "Exporting synapses to the graph only works if the same two "
+    #             "compartments are connected by at most one synapse."
+    #         )
+    #     module_comp_graph.graph["synapses"] = module.synapses
+    #     module_comp_graph.graph["synapse_param_names"] = module.synapse_param_names
+    #     module_comp_graph.graph["synapse_state_names"] = module.synapse_state_names
+    #     module_comp_graph.graph["synapse_names"] = module.synapse_names
+    #     module_comp_graph.graph["synapse_current_names"] = module.synapse_current_names
 
-    if synapses:
-        syn_edges = module.edges.copy()
-        multiple_syn_per_edge = syn_edges[
-            ["pre_global_comp_index", "post_global_comp_index"]
-        ].duplicated(keep=False)
-        dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
-        if multiple_syn_per_edge.any():
-            warn(
-                f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
-                "Exporting synapses to the graph only works if the same two "
-                "compartments are connected by at most one synapse."
-            )
-        module_comp_graph.graph["synapses"] = module.synapses
-        module_comp_graph.graph["synapse_param_names"] = module.synapse_param_names
-        module_comp_graph.graph["synapse_state_names"] = module.synapse_state_names
-        module_comp_graph.graph["synapse_names"] = module.synapse_names
-        module_comp_graph.graph["synapse_current_names"] = module.synapse_current_names
+    #     syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
+    #     syn_edges["syn_type"] = syn_edges["type"]
+    #     syn_edges["type"] = "synapse"
+    #     syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
 
-        syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
-        syn_edges["syn_type"] = syn_edges["type"]
-        syn_edges["type"] = "synapse"
-        syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
+    #     if not syn_edges.empty:
+    #         for (i, j), edge_data in syn_edges.iterrows():
+    #             module_comp_graph.add_edge(i, j, **edge_data.to_dict())
 
-        if not syn_edges.empty:
-            for (i, j), edge_data in syn_edges.iterrows():
-                module_comp_graph.add_edge(i, j, **edge_data.to_dict())
-
-    return module_comp_graph
+    return module_graph
 
 
 def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
