@@ -693,10 +693,7 @@ def compute_axial_conductances(
         conds_as_dict[key] = all_coupling_conds[i]
         ordered_conds_as_dict[key] = ordered_conds[i]
 
-    if voltage_solver.startswith("jaxley.dhs"):
-        return ordered_conds_as_dict
-    else:
-        return conds_as_dict
+    return ordered_conds_as_dict
 
 
 def compute_children_and_parents(
