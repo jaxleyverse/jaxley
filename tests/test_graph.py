@@ -316,7 +316,7 @@ def test_morph_delete(ncomp: int):
     assert np.all(
         equal_both_nan_or_empty_df(
             cell.nodes.drop(columns=["x", "y", "z"]),
-            cell2.nodes,
+            cell2.nodes.drop(columns=["x", "y", "z"]),
         )
     )
 
@@ -352,7 +352,7 @@ def test_morph_attach(ncomp: int):
     assert np.all(
         equal_both_nan_or_empty_df(
             cell.nodes.drop(columns=["x", "y", "z"]),
-            cell2.nodes,
+            cell2.nodes.drop(columns=["x", "y", "z"]),
         )
     )
 
