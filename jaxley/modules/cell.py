@@ -130,6 +130,7 @@ class Cell(Module):
         self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
+
         self._initialize()
 
     def _init_morph_jaxley_spsolve(self) -> None:

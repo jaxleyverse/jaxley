@@ -946,8 +946,9 @@ class Module(ABC):
                 amount of parallelism of the simulation.
             root: The root node from which to start tracing.
         """
-        self.compute_xyz()
-        self.compute_compartment_centers()
+        if np.any(np.isnan(self.xyzr[0][:, :3])):
+            self.compute_xyz()
+            self.compute_compartment_centers()
         comp_graph = to_graph(self)
 
         # Export to graph and traverse it to identify the solve order.
@@ -2145,8 +2146,6 @@ class Module(ABC):
             u, delta_t, self.channels + self.pumps, self.nodes, params
         )
 
-        print("u", u)
-
         # Step of the synapse.
         u, (v_syn_linear_terms, v_syn_const_terms) = self._step_synapse(
             u,
@@ -2345,7 +2344,6 @@ class Module(ABC):
         if "v" in externals.keys():
             u["v"] = u["v"].at[external_inds["v"]].set(externals["v"])
 
-        print("returned u", u)
         return u
 
     def _step_channels(
@@ -3295,7 +3293,7 @@ class View(Module):
 
 
 def to_graph(
-    module: "jx.Module", synapses: bool = False, channels: bool = False, skip=False
+    module: "jx.Module", synapses: bool = False, channels: bool = False
 ) -> nx.DiGraph:
     """Export a `jx.Module` as a networkX compartment graph.
 
@@ -3384,37 +3382,46 @@ def to_graph(
             module_graph.nodes[comp_index]["xyzr"] = xyzr_per_comp[i]
 
     edges = module._comp_edges.copy()
-    edges = edges[edges["type"].isin([0, 1, 3])][["source", "sink"]]
+    condition1 = edges["type"].isin([2, 3])
+    condition2 = edges["type"] == 0
+    condition3 = edges["source"] < edges["sink"]
+    edges = edges[condition1 | (condition3 & condition2)][["source", "sink"]]
     if len(edges) > 0:
         module_graph.add_edges_from(edges.to_numpy())
     module_graph.graph["type"] = module.__class__.__name__.lower()
 
-    # if synapses:
-    #     syn_edges = module.edges.copy()
-    #     multiple_syn_per_edge = syn_edges[
-    #         ["pre_global_comp_index", "post_global_comp_index"]
-    #     ].duplicated(keep=False)
-    #     dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
-    #     if multiple_syn_per_edge.any():
-    #         warn(
-    #             f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
-    #             "Exporting synapses to the graph only works if the same two "
-    #             "compartments are connected by at most one synapse."
-    #         )
-    #     module_comp_graph.graph["synapses"] = module.synapses
-    #     module_comp_graph.graph["synapse_param_names"] = module.synapse_param_names
-    #     module_comp_graph.graph["synapse_state_names"] = module.synapse_state_names
-    #     module_comp_graph.graph["synapse_names"] = module.synapse_names
-    #     module_comp_graph.graph["synapse_current_names"] = module.synapse_current_names
+    if synapses:
+        syn_edges = module.edges.copy()
+        multiple_syn_per_edge = syn_edges[
+            ["pre_global_comp_index", "post_global_comp_index"]
+        ].duplicated(keep=False)
+        dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
+        if multiple_syn_per_edge.any():
+            warn(
+                f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
+                "Exporting synapses to the graph only works if the same two "
+                "compartments are connected by at most one synapse."
+            )
+        module_graph.graph["synapses"] = module.synapses
+        module_graph.graph["synapse_param_names"] = module.synapse_param_names
+        module_graph.graph["synapse_state_names"] = module.synapse_state_names
+        module_graph.graph["synapse_names"] = module.synapse_names
+        module_graph.graph["synapse_current_names"] = module.synapse_current_names
 
-    #     syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
-    #     syn_edges["syn_type"] = syn_edges["type"]
-    #     syn_edges["type"] = "synapse"
-    #     syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
+        syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
+        syn_edges["syn_type"] = syn_edges["type"]
+        syn_edges["type"] = "synapse"
+        syn_edges["pre_comp_index"] = module.comp_to_index_mapping[
+            syn_edges["pre_comp_index"]
+        ]
+        syn_edges["post_comp_index"] = module.comp_to_index_mapping[
+            syn_edges["post_comp_index"]
+        ]
+        syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
 
-    #     if not syn_edges.empty:
-    #         for (i, j), edge_data in syn_edges.iterrows():
-    #             module_comp_graph.add_edge(i, j, **edge_data.to_dict())
+        if not syn_edges.empty:
+            for (i, j), edge_data in syn_edges.iterrows():
+                module_graph.add_edge(i, j, **edge_data.to_dict())
 
     return module_graph
 

@@ -834,8 +834,8 @@ def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
                     solve_graph.add_edge(u, v, type="inter_branch")
             solve_graph.remove_node(node)
 
-    mapping = {n: attrs["comp_index"] for n, attrs in solve_graph.nodes(data=True)}
-    solve_graph = nx.relabel_nodes(solve_graph, mapping, copy=True)
+    # mapping = {n: attrs["comp_index"] for n, attrs in solve_graph.nodes(data=True)}
+    # solve_graph = nx.relabel_nodes(solve_graph, mapping, copy=True)
     return solve_graph
 
 
@@ -944,7 +944,8 @@ def from_graph(
 
     solve_graph = _remove_branch_points(comp_graph)
     solve_graph = _add_meta_data(solve_graph)
-    return _build_module(solve_graph, comp_graph, assign_groups=assign_groups)
+    module = _build_module(solve_graph, comp_graph, assign_groups=assign_groups)
+    return module
 
 
 def _build_module(
@@ -956,13 +957,14 @@ def _build_module(
     node_df = pd.DataFrame(
         [d for i, d in solve_graph.nodes(data=True)], index=solve_graph.nodes
     ).sort_index()
+
     node_df = node_df.drop(columns=["xyzr", "type"])
     edge_type = nx.get_edge_attributes(solve_graph, "type")
     synapse_edges = pd.DataFrame(
         [
             {
-                "pre_global_comp_index": i,
-                "post_global_comp_index": j,
+                "pre_global_comp_index": node_df.loc[i, "comp_index"],
+                "post_global_comp_index": node_df.loc[j, "comp_index"],
                 **solve_graph.edges[i, j],
             }
             for (i, j), t in edge_type.items()
