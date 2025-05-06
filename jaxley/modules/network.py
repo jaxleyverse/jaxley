@@ -260,34 +260,41 @@ class Network(Module):
         """
         offset = 0
         lower_and_upper_offset = 0
-        self._dhs_map_dict = {}
-        self._dhs_inv_map_to_node_order = []
-        self._dhs_map_to_node_order = []
-        self._dhs_map_to_node_order_lower = []
-        self._dhs_map_to_node_order_upper = []
-        self._dhs_node_order = []
+        dhs_map_dict = {}
+        dhs_inv_map_to_node_order = []
+        dhs_map_to_node_order = []
+        dhs_map_to_node_order_lower = []
+        dhs_map_to_node_order_upper = []
+        dhs_node_order = []
         self._comp_edges = []
         self._branchpoints = []
         self._internal_node_inds = []
-        self._dhs_parent_lookup = []
+        dhs_parent_lookup = []
         node_indices = []
         for cell in self._cells_list:
             node_indices.append(cell.nodes.index + offset)
-            self._dhs_map_dict.update(
-                {k + offset: v + offset for k, v in cell._dhs_map_dict.items()}
+            dhs_map_dict.update(
+                {
+                    k + offset: v + offset
+                    for k, v in cell._dhs_solve_indexer["map_dict"].items()
+                }
             )
-            self._dhs_inv_map_to_node_order.append(
-                cell._dhs_inv_map_to_node_order + offset
+            dhs_inv_map_to_node_order.append(
+                cell._dhs_solve_indexer["inv_map_to_node_order"] + offset
             )
-            self._dhs_map_to_node_order.append(cell._dhs_map_to_node_order + offset)
+            dhs_map_to_node_order.append(
+                cell._dhs_solve_indexer["map_to_node_order"] + offset
+            )
 
-            self._dhs_map_to_node_order_lower.append(
-                cell._dhs_map_to_node_order_lower + lower_and_upper_offset
+            dhs_map_to_node_order_lower.append(
+                cell._dhs_solve_indexer["map_to_node_order_lower"]
+                + lower_and_upper_offset
             )
-            self._dhs_map_to_node_order_upper.append(
-                cell._dhs_map_to_node_order_upper + lower_and_upper_offset
+            dhs_map_to_node_order_upper.append(
+                cell._dhs_solve_indexer["map_to_node_order_upper"]
+                + lower_and_upper_offset
             )
-            self._dhs_node_order.append(cell._dhs_node_order + offset)
+            dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
 
             edges = cell._comp_edges.copy()
             edges[["source", "sink"]] += offset
@@ -302,25 +309,30 @@ class Network(Module):
             # Discard the last one because it is a [-1] which just absorbs all
             # compartments that are already finished with their recursion. We append
             # such a compartment after this loop again.
-            parent_lookup = cell._dhs_parent_lookup.copy()[:-1]
+            parent_lookup = cell._dhs_solve_indexer["parent_lookup"].copy()[:-1]
             parent_lookup[1:] += offset
-            self._dhs_parent_lookup.append(parent_lookup)
+            dhs_parent_lookup.append(parent_lookup)
 
             offset += cell._n_nodes  # Compartment-offset.
             lower_and_upper_offset += (cell._n_nodes - 1) * 2
 
-        self._dhs_inv_map_to_node_order = np.concatenate(
-            self._dhs_inv_map_to_node_order
+        self._dhs_solve_indexer = {}
+        self._dhs_solve_indexer["inv_map_to_node_order"] = np.concatenate(
+            dhs_inv_map_to_node_order
         )
-        self._dhs_map_to_node_order = np.concatenate(self._dhs_map_to_node_order)
-        self._dhs_map_to_node_order_lower = np.concatenate(
-            self._dhs_map_to_node_order_lower
+        self._dhs_solve_indexer["map_to_node_order"] = np.concatenate(
+            dhs_map_to_node_order
         )
-        self._dhs_map_to_node_order_upper = np.concatenate(
-            self._dhs_map_to_node_order_upper
+        self._dhs_solve_indexer["map_to_node_order_lower"] = np.concatenate(
+            dhs_map_to_node_order_lower
         )
-        self._dhs_node_order = np.concatenate(self._dhs_node_order, axis=0)
-        self._dhs_parent_lookup = np.concatenate(self._dhs_parent_lookup + [[-1]])
+        self._dhs_solve_indexer["map_to_node_order_upper"] = np.concatenate(
+            dhs_map_to_node_order_upper
+        )
+        self._dhs_solve_indexer["node_order"] = np.concatenate(dhs_node_order, axis=0)
+        self._dhs_solve_indexer["parent_lookup"] = np.concatenate(
+            dhs_parent_lookup + [[-1]]
+        )
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
         self._branchpoints = pd.concat(self._branchpoints)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)
@@ -337,8 +349,9 @@ class Network(Module):
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
         self._off_diagonal_inds = off_diagonal_inds
 
-        self._dhs_node_order_grouped = dhs_group_comps_into_levels(
-            self._dhs_node_order, allowed_nodes_per_level=allowed_nodes_per_level
+        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
+            self._dhs_solve_indexer["node_order"],
+            allowed_nodes_per_level=allowed_nodes_per_level,
         )
 
         self.nodes.index = np.concatenate(node_indices)

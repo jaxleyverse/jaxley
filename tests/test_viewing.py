@@ -265,6 +265,12 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
         "_indices_jax_spsolve",
         "_indptr_jax_spsolve",
         "_off_diagonal_inds",
+        "_n_nodes",
+        "_data_inds",
+        "_indices_jax_spsolve",
+        "_indptr_jax_spsolve",
+        "_off_diagonal_inds",
+        "_dhs_solve_indexer",
     ]  # for base/comp
     exceptions += ["comb_children"]  # for cell
     exceptions += [

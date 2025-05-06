@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from copy import deepcopy
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -257,13 +257,8 @@ def step_voltage_implicit_with_dhs_solve(
     axial_conductances,
     internal_node_inds,
     sinks,
-    ordered_comp_edges,
-    map_to_solve_order,
-    inv_map_to_solve_order,
-    map_to_solve_order_lower,
-    map_to_solve_order_upper,
     n_nodes,
-    parent_lookup: np.ndarray,
+    solve_indexer: Dict[str, Any],
     optimize_for_gpu: bool,
     delta_t,
 ):
@@ -314,14 +309,13 @@ def step_voltage_implicit_with_dhs_solve(
         lowers_and_uppers = -axial_conductances
 
         # Reorder diagonals and solves.
-        diags = diags[map_to_solve_order]
-        solves = solves[map_to_solve_order]
+        diags = diags[solve_indexer["map_to_solve_order"]]
+        solves = solves[solve_indexer["map_to_solve_order"]]
 
         # Reorder the lower and upper values.
-        lowers = lowers_and_uppers[map_to_solve_order_lower]
-        uppers = lowers_and_uppers[map_to_solve_order_upper]
-        # lowers = lowers_and_uppers[: n_nodes - 1]
-        # uppers = lowers_and_uppers[n_nodes - 1 :]
+        lowers = lowers_and_uppers[solve_indexer["map_to_solve_order_lower"]]
+        uppers = lowers_and_uppers[solve_indexer["map_to_solve_order_upper"]]
+        ordered_comp_edges = solve_indexer["ordered_comp_edges"]
         flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
 
         # Add a spurious compartment that is modified by the masking.
@@ -354,7 +348,7 @@ def step_voltage_implicit_with_dhs_solve(
 
             # Backsubstitute with recursive doubling.
             diags, solves = _comp_based_backsub_recursive_doubling(
-                diags, solves, lowers, steps, n_nodes, parent_lookup
+                diags, solves, lowers, steps, n_nodes, solve_indexer["parent_lookup"]
             )
 
         # Remove the spurious compartment. This compartment got modified by masking of
@@ -364,7 +358,7 @@ def step_voltage_implicit_with_dhs_solve(
 
     # Get inverse of the diagonalized matrix.
     solution = solves / diags
-    solution = solution[inv_map_to_solve_order]
+    solution = solution[solve_indexer["inv_map_to_solve_order"]]
 
     return solution
 

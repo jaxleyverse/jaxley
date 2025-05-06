@@ -972,9 +972,10 @@ class Module(ABC):
         inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
         mapping_array = np.argsort(inv_mapping_array)
         #
-        self._dhs_map_dict = map_dict
-        self._dhs_inv_map_to_node_order = inv_mapping_array
-        self._dhs_map_to_node_order = mapping_array
+        self._dhs_solve_indexer = {}
+        self._dhs_solve_indexer["map_dict"] = map_dict
+        self._dhs_solve_indexer["inv_map_to_node_order"] = inv_mapping_array
+        self._dhs_solve_indexer["map_to_node_order"] = mapping_array
 
         # Define the matrix permutation for DHS.
         lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
@@ -982,7 +983,7 @@ class Module(ABC):
             lower_and_upper_inds,
             self._off_diagonal_inds,
             dhs_node_order,
-            self._dhs_map_dict,
+            self._dhs_solve_indexer["map_dict"],
         )
 
         # Concatenate a `0` such that the `lower` and `upper` will have the same
@@ -992,20 +993,20 @@ class Module(ABC):
         # Here, we assume that `comp_edges` has lowers first and uppers only after that
         # (by using `[:self._n_nodes-1]`). TODO we should make this more robust in the
         # future as we move towards simulating _any_ graph.
-        self._dhs_map_to_node_order_lower = jnp.concatenate(
+        self._dhs_solve_indexer["map_to_node_order_lower"] = jnp.concatenate(
             [
                 jnp.asarray([0]).astype(int),
                 lower_and_upper_inds.astype(int)[: self._n_nodes - 1],
             ]
         )
-        self._dhs_map_to_node_order_upper = jnp.concatenate(
+        self._dhs_solve_indexer["map_to_node_order_upper"] = jnp.concatenate(
             [
                 jnp.asarray([0]).astype(int),
                 lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
             ]
         )
-        self._dhs_node_order = new_node_order
-        self._dhs_node_order_grouped = dhs_group_comps_into_levels(
+        self._dhs_solve_indexer["node_order"] = new_node_order
+        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
             new_node_order, allowed_nodes_per_level
         )
 
@@ -1014,11 +1015,11 @@ class Module(ABC):
         # ```parent_node = parents[node]``` or:
         # ```two_step_parent = parents[parents[node]]```.
         parents = -1 * np.ones(self._n_nodes + 1)
-        for k in range(self._dhs_node_order_grouped.shape[1]):
-            parents[self._dhs_node_order_grouped[:, k, 0]] = (
-                self._dhs_node_order_grouped[:, k, 1]
+        for k in range(self._dhs_solve_indexer["node_order_grouped"].shape[1]):
+            parents[self._dhs_solve_indexer["node_order_grouped"][:, k, 0]] = (
+                self._dhs_solve_indexer["node_order_grouped"][:, k, 1]
             )
-        self._dhs_parent_lookup = parents.astype(int)
+        self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
     def _compute_axial_conductances(
         self, params: Dict[str, jnp.ndarray], voltage_solver: str
@@ -2237,13 +2238,8 @@ class Module(ABC):
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "node_order": self._dhs_node_order_grouped,
-                "map_to_solve_order": self._dhs_map_to_node_order,
-                "inv_map_to_solve_order": self._dhs_inv_map_to_node_order,
-                "map_to_node_order_lower": self._dhs_map_to_node_order_lower,
-                "map_to_node_order_upper": self._dhs_map_to_node_order_upper,
                 "n_nodes": self._n_nodes,
-                "parent_lookup": self._dhs_parent_lookup,
+                "solve_indexer": self._dhs_solve_indexer,
                 "optimize_for_gpu": True if voltage_solver.endswith("gpu") else False,
             }
             step_voltage_implicit = step_voltage_implicit_with_dhs_solve
@@ -2973,6 +2969,7 @@ class View(Module):
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
         self.group_names = self.base.group_names
+        self.comp_to_index_mapping = self.base.comp_to_index_mapping
 
         self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
             pointer
