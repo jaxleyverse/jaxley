@@ -315,7 +315,7 @@ def step_voltage_implicit_with_dhs_solve(
         # Reorder the lower and upper values.
         lowers = lowers_and_uppers[solve_indexer["map_to_solve_order_lower"]]
         uppers = lowers_and_uppers[solve_indexer["map_to_solve_order_upper"]]
-        ordered_comp_edges = solve_indexer["ordered_comp_edges"]
+        ordered_comp_edges = solve_indexer["node_order_grouped"]
         flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
 
         # Add a spurious compartment that is modified by the masking.

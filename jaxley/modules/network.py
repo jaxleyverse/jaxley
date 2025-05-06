@@ -280,18 +280,18 @@ class Network(Module):
                 }
             )
             dhs_inv_map_to_node_order.append(
-                cell._dhs_solve_indexer["inv_map_to_node_order"] + offset
+                cell._dhs_solve_indexer["inv_map_to_solve_order"] + offset
             )
             dhs_map_to_node_order.append(
-                cell._dhs_solve_indexer["map_to_node_order"] + offset
+                cell._dhs_solve_indexer["map_to_solve_order"] + offset
             )
 
             dhs_map_to_node_order_lower.append(
-                cell._dhs_solve_indexer["map_to_node_order_lower"]
+                cell._dhs_solve_indexer["map_to_solve_order_lower"]
                 + lower_and_upper_offset
             )
             dhs_map_to_node_order_upper.append(
-                cell._dhs_solve_indexer["map_to_node_order_upper"]
+                cell._dhs_solve_indexer["map_to_solve_order_upper"]
                 + lower_and_upper_offset
             )
             dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
@@ -317,16 +317,16 @@ class Network(Module):
             lower_and_upper_offset += (cell._n_nodes - 1) * 2
 
         self._dhs_solve_indexer = {}
-        self._dhs_solve_indexer["inv_map_to_node_order"] = np.concatenate(
+        self._dhs_solve_indexer["inv_map_to_solve_order"] = np.concatenate(
             dhs_inv_map_to_node_order
         )
-        self._dhs_solve_indexer["map_to_node_order"] = np.concatenate(
+        self._dhs_solve_indexer["map_to_solve_order"] = np.concatenate(
             dhs_map_to_node_order
         )
-        self._dhs_solve_indexer["map_to_node_order_lower"] = np.concatenate(
+        self._dhs_solve_indexer["map_to_solve_order_lower"] = np.concatenate(
             dhs_map_to_node_order_lower
         )
-        self._dhs_solve_indexer["map_to_node_order_upper"] = np.concatenate(
+        self._dhs_solve_indexer["map_to_solve_order_upper"] = np.concatenate(
             dhs_map_to_node_order_upper
         )
         self._dhs_solve_indexer["node_order"] = np.concatenate(dhs_node_order, axis=0)

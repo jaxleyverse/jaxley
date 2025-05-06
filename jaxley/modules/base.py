@@ -974,8 +974,8 @@ class Module(ABC):
         #
         self._dhs_solve_indexer = {}
         self._dhs_solve_indexer["map_dict"] = map_dict
-        self._dhs_solve_indexer["inv_map_to_node_order"] = inv_mapping_array
-        self._dhs_solve_indexer["map_to_node_order"] = mapping_array
+        self._dhs_solve_indexer["inv_map_to_solve_order"] = inv_mapping_array
+        self._dhs_solve_indexer["map_to_solve_order"] = mapping_array
 
         # Define the matrix permutation for DHS.
         lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
@@ -993,13 +993,13 @@ class Module(ABC):
         # Here, we assume that `comp_edges` has lowers first and uppers only after that
         # (by using `[:self._n_nodes-1]`). TODO we should make this more robust in the
         # future as we move towards simulating _any_ graph.
-        self._dhs_solve_indexer["map_to_node_order_lower"] = jnp.concatenate(
+        self._dhs_solve_indexer["map_to_solve_order_lower"] = jnp.concatenate(
             [
                 jnp.asarray([0]).astype(int),
                 lower_and_upper_inds.astype(int)[: self._n_nodes - 1],
             ]
         )
-        self._dhs_solve_indexer["map_to_node_order_upper"] = jnp.concatenate(
+        self._dhs_solve_indexer["map_to_solve_order_upper"] = jnp.concatenate(
             [
                 jnp.asarray([0]).astype(int),
                 lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
