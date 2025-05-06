@@ -938,6 +938,7 @@ class Module(ABC):
                 amount of parallelism of the simulation.
             root: The root node from which to start tracing.
         """
+        self.compute_xyz()
         self.compute_compartment_centers()
         comp_graph = to_graph(self)
 
@@ -2640,7 +2641,9 @@ class Module(ABC):
         inds_branch = self.nodes.groupby("global_branch_index")[
             "global_comp_index"
         ].apply(list)
-        branch_lens = [np.sum(self.nodes["length"].iloc[np.asarray(i)]) for i in inds_branch]
+        branch_lens = [
+            np.sum(self.nodes["length"].iloc[np.asarray(i)]) for i in inds_branch
+        ]
         endpoints = []
 
         # Different levels will get a different "angle" at which the children emerge from

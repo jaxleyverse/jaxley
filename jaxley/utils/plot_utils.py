@@ -364,6 +364,7 @@ def plot_comps(
         if locs.shape[0] == 1:  # assume spherical comp
             radius = xyzr[:, -1]
             center = xyzr[0, :3]
+            print("center", center)
             if len(dims) == 3:
                 xyz = create_sphere_mesh(radius, resolution)
                 ax = plot_mesh(
