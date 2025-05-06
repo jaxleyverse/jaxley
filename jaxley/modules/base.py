@@ -2640,7 +2640,7 @@ class Module(ABC):
         inds_branch = self.nodes.groupby("global_branch_index")[
             "global_comp_index"
         ].apply(list)
-        branch_lens = [np.sum(self.nodes["length"][np.asarray(i)]) for i in inds_branch]
+        branch_lens = [np.sum(self.nodes["length"].iloc[np.asarray(i)]) for i in inds_branch]
         endpoints = []
 
         # Different levels will get a different "angle" at which the children emerge from
