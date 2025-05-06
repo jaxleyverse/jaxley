@@ -15,7 +15,7 @@ from jaxley.utils.jax_utils import nested_checkpoint_scan
 
 def build_init_and_step_fn(
     module: Module,
-    voltage_solver: str = "jaxley.stone",
+    voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
 ) -> Tuple[Callable, Callable]:
     """This function returns the `init_fn` and `step_fn` which initialize the

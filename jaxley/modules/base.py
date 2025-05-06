@@ -1296,9 +1296,10 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        assert (
-            self.allow_make_trainable
-        ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
+        assert self.allow_make_trainable, (
+            "network.cell('all').make_trainable() is not supported. Use a "
+            "for-loop over cells."
+        )
         ncomps_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
@@ -1308,7 +1309,7 @@ class Module(ABC):
 
         assert data is not None, f"Key '{key}' not found in nodes or edges"
         not_nan = ~data[key].isna()
-        data = data.loc[not_nan]
+        data = data.loc[not_nan].copy()
         assert (
             len(data) > 0
         ), "No settable parameters found in the selected compartments."
@@ -1348,13 +1349,15 @@ class Module(ABC):
             if isinstance(init_val, float):
                 new_params = jnp.asarray([init_val] * num_created_parameters)
             elif isinstance(init_val, list):
-                assert (
-                    len(init_val) == num_created_parameters
-                ), f"len(init_val)={len(init_val)}, but trying to create {num_created_parameters} parameters."
+                assert len(init_val) == num_created_parameters, (
+                    f"len(init_val)={len(init_val)}, but trying to create "
+                    f"{num_created_parameters} parameters."
+                )
                 new_params = jnp.asarray(init_val)
             else:
                 raise ValueError(
-                    f"init_val must a float, list, or None, but it is a {type(init_val).__name__}."
+                    f"init_val must a float, list, or None, but it is a "
+                    f"{type(init_val).__name__}."
                 )
         else:
             new_params = jnp.nanmean(param_vals, axis=1)
@@ -1363,7 +1366,9 @@ class Module(ABC):
         self.base.num_trainable_params += num_created_parameters
         if verbose:
             print(
-                f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.base.num_trainable_params}"
+                f"Number of newly added trainable parameters: "
+                f"{num_created_parameters}. Total number of trainable "
+                f"parameters: {self.base.num_trainable_params}"
             )
 
     def write_trainables(self, trainable_params: List[Dict[str, jnp.ndarray]]):
@@ -1391,7 +1396,10 @@ class Module(ABC):
         # taken care of by `get_all_parameters()`).
         self.base.to_jax()
         pstate = params_to_pstate(trainable_params, self.base.indices_set_by_trainables)
-        all_params = self.base.get_all_parameters(pstate, voltage_solver="jaxley.stone")
+        all_params = self.base.get_all_parameters(
+            pstate, voltage_solver="jaxley.dhs.cpu"
+        )
+        print("raidus", all_params["radius"].shape)
 
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
@@ -1403,7 +1411,7 @@ class Module(ABC):
             key = parameter["key"]
             if key in self.base.nodes.columns:
                 vals_to_set = all_params if key in all_params.keys() else all_states
-                self.base.nodes[key] = vals_to_set[key]
+                self.base.nodes[key] = vals_to_set[key][self._internal_node_inds]
 
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.

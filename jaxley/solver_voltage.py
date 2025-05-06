@@ -490,9 +490,10 @@ def _voltage_vectorfield(
     vecfield = -voltage_terms * voltages + constant_terms
 
     # Current through segments within the same branch.
-    vecfield = vecfield.at[sinks].add(
-        (voltages[sources] - voltages[sinks]) * axial_conductances
-    )
+    if len(sinks) > 0:
+        vecfield = vecfield.at[sinks].add(
+            (voltages[sources] - voltages[sinks]) * axial_conductances
+        )
 
     return vecfield
 
