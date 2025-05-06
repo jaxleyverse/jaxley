@@ -1,17 +1,26 @@
 # 0.9.0
 
-### New features
+### ✨ Highlights
 
-- utility to delete parts of a morphology (#612, @michaeldeistler):
+- This PR implements a new solver, which is now used by default (#625,
+@michaeldeistler). The new solver has the following advantages:  
+  - Much lower runtime. Across several morphologies, we get a 30% runtime speedup on
+    CPU and a 60% runtime speedup on GPU.  
+  - Almost zero compile time. We get a 50x compile time speedup on CPU and a 3x compile
+    time speedup on GPU.
+- Utility to delete parts of a morphology (#612, @michaeldeistler):
 ```python
 from jaxley.morphology import morph_delete
 cell = morph_delete(cell.branch([1, 2]))
 ```
-- utility to connect two cells into a single cell (#612, @michaeldeistler):
+- Utility to connect two cells into a single cell (#612, @michaeldeistler):
 ```python
 from jaxley.morphology import morph_connect
 cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
 ```
+
+### 🧩 New features
+
 - the default SWC reader has changed. To use the previous SWC reader, run
 `jx.read_swc(..., backend="custom")`. However, note that we will remove this reader
 in the future. If the new SWC reader is causing issues for you, please open an issue
@@ -21,26 +30,19 @@ in the future. If the new SWC reader is causing issues for you, please open an i
 - remove pin of `JAX` version. New `JAX` versions (`JAX>=0.6.0`) resolve slow CPU
 runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeldeistler).
 
-### Documentation
+### 📚 Documentation
 
 - Introduce the `how-to guide` on the website (#612, @michaeldeistler)
 - reorganize the advanced tutorials into subgroups (#612, @michaeldeistler)
 - split the morphology handling tutorials into two notebooks (#612, @michaeldeistler)
 
-### Internal updates
+### 🛠️ Internal updates
 
 - improvements to graph-backend for more flexibility in modifying morphologies (#613, @michaeldeistler)
 - remove root compartment for SWC files (#613, @michaeldeistler)
 - enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
 - `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
 - introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
-- first draft for compartment-based voltage solvers. The new solver is still limited and
-thus not yet exposed. To run it for `jx.Cell` (other modules not supported yet):
-```python
-cell.compute_compartment_centers()
-cell._init_morph_jaxley_dhs_solve(to_graph(cell))
-v = jx.integrate(cell, voltage_solver="jaxley.dhs")
-```
 
 ### Bug fixes
 
