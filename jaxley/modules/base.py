@@ -23,7 +23,7 @@ from jaxley.solver_voltage import (
     step_voltage_explicit,
     step_voltage_implicit_with_dhs_solve,
     step_voltage_implicit_with_jax_spsolve,
-    step_voltage_implicit_with_jaxley_spsolve,
+    step_voltage_implicit_with_stone,
 )
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
@@ -41,6 +41,7 @@ from jaxley.utils.cell_utils import (
     split_xyzr_into_equal_length_segments,
     v_interp,
 )
+from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
@@ -123,6 +124,7 @@ class Module(ABC):
     """
 
     def __init__(self):
+        self._solver_device = infer_device()
         self.ncomp: int = None
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
@@ -909,7 +911,7 @@ class Module(ABC):
         return nodes[cols]
 
     @only_allow_module
-    def _init_morph(self, allowed_nodes_per_level: int = 1):
+    def _init_morph(self, allowed_nodes_per_level: Optional[int] = None):
         """Initialize the morphology such that it can be processed by the solvers."""
         self._init_morph_jaxley_spsolve()
         self._init_morph_jax_spsolve()
@@ -929,7 +931,7 @@ class Module(ABC):
         raise NotImplementedError
 
     def _init_morph_jaxley_dhs_solve(
-        self, allowed_nodes_per_level: int = 1, root: int = 0
+        self, allowed_nodes_per_level: Optional[int] = 1, root: int = 0
     ) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
@@ -946,6 +948,25 @@ class Module(ABC):
                 amount of parallelism of the simulation.
             root: The root node from which to start tracing.
         """
+        # Infer the amount of parallelism of the solver. Note that the `jaxley.dhs.cpu`
+        # requires `allowed_nodes_per_level = 1`, or you have to run the following
+        # after having initialized the module (in order to fill up all
+        # `node_order_grouped` to be of the same shape):
+        #
+        # ```
+        # nodes_and_parents = self._dhs_solve_indexer["node_order_grouped"]
+        # padded_stack = np.full((len(nodes_and_parents), allowed_nodes_per_level, 2), -1)
+        # for idx, arr in enumerate(nodes_and_parents):
+        #     padded_stack[idx, : arr.shape[0], :] = arr
+        # self._dhs_solve_indexer["node_order_grouped"] = padded_stack
+        # ```
+        #
+        if allowed_nodes_per_level is None:
+            if self._solver_device == "cpu":
+                allowed_nodes_per_level = 1
+            else:
+                allowed_nodes_per_level = 32
+
         if np.any(np.isnan(self.xyzr[0][:, :3])):
             self.compute_xyz()
             self.compute_compartment_centers()
@@ -1007,7 +1028,7 @@ class Module(ABC):
         )
         self._dhs_solve_indexer["node_order"] = new_node_order
         self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
-            new_node_order, allowed_nodes_per_level
+            new_node_order
         )
 
         # Define a simple lookup table that allows to retrieve the parent of a node.
@@ -1015,10 +1036,8 @@ class Module(ABC):
         # ```parent_node = parents[node]``` or:
         # ```two_step_parent = parents[parents[node]]```.
         parents = -1 * np.ones(self._n_nodes + 1)
-        for k in range(self._dhs_solve_indexer["node_order_grouped"].shape[1]):
-            parents[self._dhs_solve_indexer["node_order_grouped"][:, k, 0]] = (
-                self._dhs_solve_indexer["node_order_grouped"][:, k, 1]
-            )
+        for nodes in self._dhs_solve_indexer["node_order_grouped"]:
+            parents[nodes[:, 0]] = nodes[:, 1]
         self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
     def _compute_axial_conductances(
@@ -2245,7 +2264,6 @@ class Module(ABC):
                 "indptr": self._indptr_jax_spsolve,
                 "n_nodes": self._n_nodes,
             }
-            # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
         elif voltage_solver.startswith("jaxley.dhs"):
             solver_kwargs = {
@@ -2256,7 +2274,7 @@ class Module(ABC):
                 "optimize_for_gpu": True if voltage_solver.endswith("gpu") else False,
             }
             step_voltage_implicit = step_voltage_implicit_with_dhs_solve
-        else:
+        elif voltage_solver == "jaxley.stone":
             # Our custom sparse solver requires a different format of all conductance
             # values to perform triangulation and backsubstution optimally.
             #
@@ -2265,19 +2283,12 @@ class Module(ABC):
             # the future.
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
+                "n_nodes": self._n_nodes,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                 "sources": np.asarray(self._comp_edges["source"].to_list()),
                 "types": np.asarray(self._comp_edges["type"].to_list()),
-                "ncomp_per_branch": self.ncomp_per_branch,
-                "par_inds": self._par_inds,
-                "child_inds": self._child_inds,
-                "nbranches": self.total_nbranches,
-                "solver": voltage_solver,
-                "idx": self._solve_indexer,
-                "debug_states": self.debug_states,
             }
-            # Only for `bwd_euler` and `cranck-nicolson`.
-            step_voltage_implicit = step_voltage_implicit_with_jaxley_spsolve
+            step_voltage_implicit = step_voltage_implicit_with_stone
 
         if solver in ["bwd_euler", "crank_nicolson"]:
             # Crank-Nicolson advances by half a step of backward and half a step of

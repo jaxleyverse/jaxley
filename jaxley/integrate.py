@@ -192,10 +192,9 @@ def integrate(
         voltage_solver: Algorithm to solve quasi-tridiagonal linear system describing
             the voltage equations. The different options only take effect when
             `solver` is either `bwd_euler` or `crank_nicolson`. The options for
-            `voltage_solver` are `jaxley.dhs.cpu`, `jaxley.dhs.gpu`, and `jax.sparse`.
-            If you pass `jaxley.dhs` then we automatically choose between
-            `jaxley.dhs.cpu` and `jaxley.dhs.gpu`, depending on which device you are
-            using.
+            `voltage_solver` are `jaxley.dhs` and `jax.sparse`. For unbranched cables,
+            we also support `jaxley.stone` (which has good performance for unbranched
+            cables on GPU).
         checkpoint_lengths: Number of timesteps at every level of checkpointing. The
             `prod(checkpoint_lengths)` must be larger or equal to the desired number of
             simulated timesteps. Warning: the simulation is run for
@@ -211,8 +210,7 @@ def integrate(
     """
     if voltage_solver == "jax.dhs":
         # Automatically infer the voltage solver.
-        device = jax.devices()[0]
-        if "gpu" in device.device_kind.lower() or "tpu" in device.device_kind.lower():
+        if module._solver_device in ["gpu", "tpu"]:
             voltage_solver = "jaxley.dhs.gpu"
         else:
             voltage_solver = "jaxley.dhs.cpu"

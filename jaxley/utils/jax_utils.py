@@ -74,3 +74,17 @@ def _inner_nested_scan(f, init, xs, lengths, scan_fn, checkpoint_fn):
     carry, out = scan_fn(sub_scans, init, xs, lengths[0])
     stacked_out = jax.tree_util.tree_map(jnp.concatenate, out)
     return carry, stacked_out
+
+
+def infer_device() -> str:
+    """Automatically infer the jax device.
+    
+    Returns:
+        Either of `gpu`, `tpu`, `cpu`, as a string."""
+    device = jax.devices()[0]
+    if "gpu" in device.device_kind.lower():
+        return "gpu"
+    elif "tpu" in device.device_kind.lower():
+        return "tpu"
+    else:
+        return "cpu"

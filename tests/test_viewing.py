@@ -271,6 +271,7 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
         "_indptr_jax_spsolve",
         "_off_diagonal_inds",
         "_dhs_solve_indexer",
+        "_solver_device",
     ]  # for base/comp
     exceptions += ["comb_children"]  # for cell
     exceptions += [

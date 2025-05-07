@@ -40,6 +40,55 @@ def step_voltage_explicit(
     return new_voltates
 
 
+
+def step_voltage_implicit_with_stone(
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    axial_conductances: jnp.ndarray,
+    internal_node_inds: jnp.ndarray,
+    n_nodes: int,
+    sinks: jnp.ndarray,
+    sources: jnp.ndarray,
+    types: jnp.ndarray,
+    delta_t: float,
+):
+    """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
+    if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
+        raise NotImplementedError(
+            f"The stone solver is not implemented for branched morphologies."
+        )
+
+    axial_conductances = delta_t * axial_conductances
+
+    # Build diagonals.
+    diags = delta_t * voltage_terms
+    diags = diags.at[internal_node_inds].add(1.0)
+    #
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sinks) > 0:
+        diags = diags.at[sinks].add(axial_conductances)
+
+    lower_inds = sinks > sources
+    lowers = -axial_conductances[lower_inds]
+
+    upper_inds = sinks < sources
+    uppers = -axial_conductances[upper_inds]
+
+    # Build solve.
+    solves = jnp.zeros(n_nodes)
+    solves = solves.at[internal_node_inds].set(
+        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
+    )
+
+    # Solve the tridiagonal system.
+    diags, lowers, solves = stone_triang_upper(lowers, diags, uppers, solves)
+    solves = stone_backsub_lower(solves, lowers, diags)
+
+    return solves
+
+
 def step_voltage_implicit_with_jaxley_spsolve(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
@@ -298,7 +347,7 @@ def step_voltage_implicit_with_dhs_solve(
         lowers = lowers_and_uppers[solve_indexer["map_to_solve_order_lower"]]
         uppers = lowers_and_uppers[solve_indexer["map_to_solve_order_upper"]]
         ordered_comp_edges = solve_indexer["node_order_grouped"]
-        flipped_comp_edges = jnp.flip(ordered_comp_edges, axis=0)
+        flipped_comp_edges = list(reversed(ordered_comp_edges))
 
         # Add a spurious compartment that is modified by the masking.
         diags = jnp.concatenate([diags, jnp.asarray([1.0])])
@@ -310,6 +359,12 @@ def step_voltage_implicit_with_dhs_solve(
         #
         steps = len(flipped_comp_edges)
         if not optimize_for_gpu:
+            # Cast from a list to a np.array.
+            # `ordered_comp_edges` has shape `(num_levels, num_comps_per_level, 2)`,
+            # and `num_comps_per_level=1` for CPU.
+            ordered_comp_edges = np.asarray(ordered_comp_edges)
+            flipped_comp_edges = np.asarray(flipped_comp_edges)
+
             # Triangulate.
             steps = len(flipped_comp_edges)
             init = (diags, solves, lowers, uppers, flipped_comp_edges)

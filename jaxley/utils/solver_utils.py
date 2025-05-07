@@ -379,9 +379,7 @@ def bfs_edge_hops(graph: nx.DiGraph, root: Any, allowed_nodes_per_level: int):
         yield u, v, current_depth
 
 
-def dhs_group_comps_into_levels(
-    new_node_order: np.ndarray, allowed_nodes_per_level: int
-) -> np.ndarray:
+def dhs_group_comps_into_levels(new_node_order: np.ndarray) -> List[np.ndarray]:
     """Group nodes into levels, such that nodes get processed in parallel when possible.
 
     Args:
@@ -406,13 +404,6 @@ def dhs_group_comps_into_levels(
     parents = grouping["parent"].apply(list).to_numpy()
     nodes_and_parents = [np.stack([n, p]).T for n, p in zip(nodes, parents)]
 
-    # Pad levels with different number of compartments with [-1, -1] entries. In
-    # the voltage solver (`solver_voltage.py`), we add a spurious compartment at
-    # the very end. This compartment is modified by all of these spurious edges,
-    # but it gets ignored afterwards.
-    padded_stack = np.full((len(nodes_and_parents), allowed_nodes_per_level, 2), -1)
-    for idx, arr in enumerate(nodes_and_parents):
-        padded_stack[idx, : arr.shape[0], :] = arr
-
-    # `self._dhs_node_order` has shape `(num_levels, num_comps_per_level, 2)`.
-    return np.asarray(padded_stack)
+    # `nodes_and_parents` is a List of length `num_levels`. Each element has shape
+    # `(num_comps_per_level, 2)`.
+    return nodes_and_parents

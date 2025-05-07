@@ -251,7 +251,7 @@ class Network(Module):
 
         self._off_diagonal_inds = off_diagonal_inds
 
-    def _init_morph_jaxley_dhs_solve(self, allowed_nodes_per_level: int = 1) -> None:
+    def _init_morph_jaxley_dhs_solve(self, *args, **kwargs) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
         This function first generates the networkX `comp_graph`, then traverses it
@@ -350,8 +350,7 @@ class Network(Module):
         self._off_diagonal_inds = off_diagonal_inds
 
         self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
-            self._dhs_solve_indexer["node_order"],
-            allowed_nodes_per_level=allowed_nodes_per_level,
+            self._dhs_solve_indexer["node_order"]
         )
 
         self.nodes.index = np.concatenate(node_indices)
