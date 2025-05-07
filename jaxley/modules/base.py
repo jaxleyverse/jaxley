@@ -1399,7 +1399,6 @@ class Module(ABC):
         all_params = self.base.get_all_parameters(
             pstate, voltage_solver="jaxley.dhs.cpu"
         )
-        print("raidus", all_params["radius"].shape)
 
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
@@ -1615,7 +1614,6 @@ class Module(ABC):
             A dictionary of all states of the module.
         """
         states = self.base._get_states_from_nodes_and_edges()
-        print("s", states["v"].shape)
 
         # Override with the initial states set by `.make_trainable()`.
         for parameter in pstate:
@@ -1643,7 +1641,6 @@ class Module(ABC):
             self.edges,
             self.comp_to_index_mapping,
         )
-        print("states", states["v"].shape)
         return states
 
     @property

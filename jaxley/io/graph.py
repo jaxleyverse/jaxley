@@ -757,7 +757,7 @@ def _set_comp_and_branch_index(
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
-    node_mapping = {}
+    node_mapping = {root: 0}
     for i, j in nx.dfs_edges(
         undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)
     ):
@@ -944,13 +944,12 @@ def from_graph(
 
     solve_graph = _remove_branch_points(comp_graph)
     solve_graph = _add_meta_data(solve_graph)
-    module = _build_module(solve_graph, comp_graph, assign_groups=assign_groups)
+    module = _build_module(solve_graph, assign_groups=assign_groups)
     return module
 
 
 def _build_module(
     solve_graph: nx.DiGraph,
-    comp_graph: nx.DiGraph,
     assign_groups: bool = True,
 ):
     # nodes and edges

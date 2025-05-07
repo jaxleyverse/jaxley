@@ -394,3 +394,44 @@ def test_morph_edit_swc(ncomp: int):
     v = jx.integrate(cell)
 
     assert np.invert(np.any(np.isnan(v))), "Found NaN"
+
+
+def test_trim_dendrites_of_swc():
+    """This function tests whether we can successfully trim dendrites.
+
+    If is just an API test and does not check for correctness.
+
+    When the morphology is being trimmed, it deletes node [0] which had caused issues
+    at some point.
+    """
+
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
+    swc_graph = to_swc_graph(fname)
+    comp_graph = build_compartment_graph(swc_graph, ncomp=1)
+
+    # Next, we loop over all nodes. We want to keep nodes only if they made any of the
+    # following conditions:
+    # - if a node has more than one neighbor (`degree > 1`),
+    # - if its compartment length is > 250 $\mu$m, or
+    # - if it is a soma.
+    nodes_to_keep = []
+    for node in comp_graph.nodes:
+        degree = comp_graph.in_degree(node) + comp_graph.out_degree(node)
+
+        condition1 = degree > 1
+        condition2 = comp_graph.nodes[node]["length"] > 250.0
+        condition3 = "soma" in comp_graph.nodes[node]["groups"]
+        if condition1 or condition2 or condition3:
+            nodes_to_keep.append(node)
+
+    comp_graph = nx.subgraph(comp_graph, nodes_to_keep)
+    cell = from_graph(comp_graph)
+    cell.delete_recordings()
+    cell.delete_stimuli()
+    cell.soma.branch(0).comp(0).record()
+    cell.soma.branch(0).comp(0).stimulate(
+        jx.step_current(10.0, 20.0, 0.1, 0.025, 100.0)
+    )
+    v = jx.integrate(cell)
+    assert np.invert(np.any(np.isnan(v))), "Found a NaN in the voltage."
