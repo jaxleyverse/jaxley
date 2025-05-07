@@ -123,7 +123,8 @@ def test_branch(voltage_solver, SimpleBranch):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-def test_branch_fwd_euler_uneven_radiuses(SimpleBranch):
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+def test_branch_uneven_radiuses(SimpleBranch, solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=2.0, delta_t=0.025, t_max=10.0
@@ -141,21 +142,43 @@ def test_branch_fwd_euler_uneven_radiuses(SimpleBranch):
     branch.loc(1.0).stimulate(current)
     branch.loc(0.0).record()
 
-    voltages = jx.integrate(branch, delta_t=dt, solver="fwd_euler")
-
-    voltages_240920 = jnp.asarray(
-        [
-            -70.0,
-            -64.319374,
-            -61.61975,
-            -56.971237,
-            25.785686,
-            -42.466354,
-            -75.86178,
-            -75.06558,
-            -73.95041,
-        ]
+    if solver == "bwd_euler":
+        voltage_solver = "jaxley.stone"
+    else:
+        # unused: `voltage_solver` is ignored for fwd_euler.
+        voltage_solver = "jaxley.dhs"
+    voltages = jx.integrate(
+        branch, delta_t=dt, solver=solver, voltage_solver=voltage_solver
     )
+
+    if solver == "fwd_euler":
+        voltages_240920 = jnp.asarray(
+            [
+                -70.0,
+                -64.319374,
+                -61.61975,
+                -56.971237,
+                25.785686,
+                -42.466354,
+                -75.86178,
+                -75.06558,
+                -73.95041,
+            ]
+        )
+    else:
+        voltages_240920 = jnp.asarray(
+            [
+                -70.0,
+                -64.36480976,
+                -61.66232751,
+                -56.87833254,
+                28.49415671,
+                -39.54294182,
+                -75.89996029,
+                -75.16066305,
+                -74.07568059,
+            ]
+        )
     tolerance = 1e-5
     max_error = jnp.max(jnp.abs(voltages_240920 - voltages[0, ::50]))
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

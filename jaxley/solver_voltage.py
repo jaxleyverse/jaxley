@@ -40,7 +40,6 @@ def step_voltage_explicit(
     return new_voltates
 
 
-
 def step_voltage_implicit_with_stone(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
@@ -60,6 +59,7 @@ def step_voltage_implicit_with_stone(
         )
 
     axial_conductances = delta_t * axial_conductances
+    print("axial_conductances", axial_conductances)
 
     # Build diagonals.
     diags = delta_t * voltage_terms

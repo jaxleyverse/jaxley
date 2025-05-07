@@ -78,7 +78,7 @@ def _inner_nested_scan(f, init, xs, lengths, scan_fn, checkpoint_fn):
 
 def infer_device() -> str:
     """Automatically infer the jax device.
-    
+
     Returns:
         Either of `gpu`, `tpu`, `cpu`, as a string."""
     device = jax.devices()[0]
