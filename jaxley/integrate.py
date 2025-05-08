@@ -208,7 +208,7 @@ def integrate(
         return_states: If True, it returns all states such that the current state of
             the `Module` can be set with `set_states`.
     """
-    if voltage_solver == "jax.dhs":
+    if voltage_solver == "jaxley.dhs":
         # Automatically infer the voltage solver.
         if module._solver_device in ["gpu", "tpu"]:
             voltage_solver = "jaxley.dhs.gpu"
