@@ -64,17 +64,6 @@ class Compartment(Module):
         # Initialize the module.
         self._initialize()
 
-    def _init_morph_jaxley_spsolve(self):
-        self._solve_indexer = JaxleySolveIndexer(
-            cumsum_ncomp=self.cumsum_ncomp,
-            ncomp_per_branch=self.ncomp_per_branch,
-            branchpoint_group_inds=np.asarray([]).astype(int),
-            children_in_level=[],
-            parents_in_level=[],
-            root_inds=np.asarray([0]),
-            remapped_node_indices=self._internal_node_inds,
-        )
-
     def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.
 

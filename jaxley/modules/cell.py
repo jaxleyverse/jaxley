@@ -133,66 +133,6 @@ class Cell(Module):
 
         self._initialize()
 
-    def _init_morph_jaxley_spsolve(self) -> None:
-        """Initialize morphology for the custom sparse solver.
-
-        Running this function is only required for custom Jaxley solvers, i.e., for
-        `voltage_solver={'jaxley.stone', 'jaxley.thomas'}`. However, because at
-        `.__init__()` (when the function is run), we do not yet know which solver the
-        user will use. Therefore, we always run this function at `.__init__()`.
-        """
-        pass
-        # children_and_parents = compute_morphology_indices_in_levels(
-        #     len(self._par_inds),
-        #     self._child_belongs_to_branchpoint,
-        #     self._par_inds,
-        #     self._child_inds,
-        # )
-        # branchpoint_group_inds = build_branchpoint_group_inds(
-        #     len(self._par_inds),
-        #     self._child_belongs_to_branchpoint,
-        #     self.cumsum_ncomp[-1],
-        # )
-        # parents = self.comb_parents
-        # children_inds = children_and_parents["children"]
-        # parents_inds = children_and_parents["parents"]
-
-        # levels = compute_levels(parents)
-        # children_in_level = compute_children_in_level(levels, children_inds)
-        # parents_in_level = compute_parents_in_level(
-        #     levels, self._par_inds, parents_inds
-        # )
-        # levels_and_ncomp = pd.DataFrame().from_dict(
-        #     {
-        #         "levels": levels,
-        #         "ncomps": self.ncomp_per_branch,
-        #     }
-        # )
-        # levels_and_ncomp["max_ncomp_in_level"] = levels_and_ncomp.groupby("levels")[
-        #     "ncomps"
-        # ].transform("max")
-        # padded_cumsum_ncomp = cumsum_leading_zero(
-        #     levels_and_ncomp["max_ncomp_in_level"].to_numpy()
-        # )
-
-        # # Generate mapping to deal with the masking which allows using the custom
-        # # sparse solver to deal with different ncomp per branch.
-        # remapped_node_indices = remap_index_to_masked(
-        #     self._internal_node_inds,
-        #     self.nodes,
-        #     padded_cumsum_ncomp,
-        #     self.ncomp_per_branch,
-        # )
-        # self._solve_indexer = JaxleySolveIndexer(
-        #     cumsum_ncomp=padded_cumsum_ncomp,
-        #     ncomp_per_branch=self.ncomp_per_branch,
-        #     branchpoint_group_inds=branchpoint_group_inds,
-        #     children_in_level=children_in_level,
-        #     parents_in_level=parents_in_level,
-        #     root_inds=np.asarray([0]),
-        #     remapped_node_indices=remapped_node_indices,
-        # )
-
     def _init_morph_jax_spsolve(self):
         """For morphology indexing with the `jax.sparse` voltage volver.
 

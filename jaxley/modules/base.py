@@ -913,7 +913,6 @@ class Module(ABC):
     @only_allow_module
     def _init_morph(self, allowed_nodes_per_level: Optional[int] = None):
         """Initialize the morphology such that it can be processed by the solvers."""
-        self._init_morph_jaxley_spsolve()
         self._init_morph_jax_spsolve()
         self._init_morph_jaxley_dhs_solve(
             allowed_nodes_per_level=allowed_nodes_per_level
@@ -923,11 +922,6 @@ class Module(ABC):
     @abstractmethod
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for the JAX sparse solver."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def _init_morph_jaxley_spsolve(self):
-        """Initialize the morphology for the custom Jaxley solver."""
         raise NotImplementedError
 
     def _init_morph_jaxley_dhs_solve(
