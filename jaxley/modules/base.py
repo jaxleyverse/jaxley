@@ -1125,6 +1125,7 @@ class Module(ABC):
         self,
         ncomp: int,
         min_radius: Optional[float] = None,
+        skip_init: bool = False
     ):
         """Set the number of compartments with which the branch is discretized.
 
@@ -1133,6 +1134,17 @@ class Module(ABC):
                 into.
             min_radius: Only used if the morphology was read from an SWC file. If passed
                 the radius is capped to be at least this value.
+            skip_init: If `True`, it skips the initialization stage and the user
+                has to run it manually afterwards. This is useful when `set_ncomp`
+                is run in a loop (e.g. for the d_lambda rule), where one can
+                initialize only once after the entire loop to largely speed up
+                computation time. If `True`, then the user has to run
+                ```
+                cell._init_view()
+                cell._initialize()
+                cell._update_local_indices()
+                ```
+                manually afterwards.
 
         Raises:
             - When there are stimuli in any compartment in the module.
@@ -1290,9 +1302,10 @@ class Module(ABC):
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
-        self.base._init_view()
-        self.base._initialize()
-        self.base._update_local_indices()
+        if not skip_init:
+            self.base._init_view()
+            self.base._initialize()
+            self.base._update_local_indices()
 
     def make_trainable(
         self,

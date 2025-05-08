@@ -81,10 +81,10 @@ def infer_device() -> str:
 
     Returns:
         Either of `gpu`, `tpu`, `cpu`, as a string."""
-    device = jax.devices()[0]
-    if "gpu" in device.device_kind.lower():
+    platform = jax.devices()[0].platform
+    if platform == "gpu":
         return "gpu"
-    elif "tpu" in device.device_kind.lower():
+    elif platform == "tpu":
         return "tpu"
     else:
         return "cpu"
