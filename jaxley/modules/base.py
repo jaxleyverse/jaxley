@@ -41,8 +41,8 @@ from jaxley.utils.cell_utils import (
     split_xyzr_into_equal_length_segments,
     v_interp,
 )
-from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.debug_solver import compute_morphology_indices
+from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
