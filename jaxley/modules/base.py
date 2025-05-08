@@ -1122,10 +1122,7 @@ class Module(ABC):
         return param_state
 
     def set_ncomp(
-        self,
-        ncomp: int,
-        min_radius: Optional[float] = None,
-        skip_init: bool = False
+        self, ncomp: int, min_radius: Optional[float] = None, skip_init: bool = False
     ):
         """Set the number of compartments with which the branch is discretized.
 
