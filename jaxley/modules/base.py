@@ -1663,7 +1663,19 @@ class Module(ABC):
         return self.initialized_solver
 
     def initialize(self):
-        """Initialize the module."""
+        """Initialize the module.
+
+        This function does several things:
+        1) It computes local indices in the `.nodes` dataframe (from global indices).
+        2) It builds the compartment graph (`._comp_edges` and `._branchpoints`).
+        3) It initializes the `View`.
+        4) It initializes all solvers required for solving the differential equation.
+
+        This function should be run whenever the graph-structure (i.e., the morphology
+        or the compartmentalization) of the module have been changed. Inbuilt functions
+        such as `morph_attach()`, `morph_delete()`, or `set_ncomp()` run this function
+        automatically though, so there is no need for the user to run it manually.
+        """
         # Compute the local indices from the global indices.
         self._update_local_indices()
 
