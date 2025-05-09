@@ -902,7 +902,7 @@ class Module(ABC):
         return nodes[cols]
 
     @only_allow_module
-    def _init_morph(self, allowed_nodes_per_level: Optional[int] = None):
+    def _init_solvers(self, allowed_nodes_per_level: Optional[int] = None):
         """Initialize the morphology such that it can be processed by the solvers."""
         self._init_morph_jax_spsolve()
         self._init_morph_jaxley_dhs_solve(
@@ -1653,7 +1653,8 @@ class Module(ABC):
 
     def _initialize(self):
         """Initialize the module."""
-        self._init_morph()
+        self._init_comp_graph()
+        self._init_solvers()
         return self
 
     @only_allow_module

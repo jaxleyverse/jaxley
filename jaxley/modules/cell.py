@@ -123,53 +123,10 @@ class Cell(Module):
         )
 
         # Compartment edges.
-        self._comp_edges = self._build_comp_edges()
-
-        # Branchpoints.
-        #
-        # Get last xyz of parent.
-        branchpoint_xyz = []
-        for i in self._par_inds:
-            branchpoint_xyz.append(self.xyzr[i][-1, :3])
-        if len(branchpoint_xyz) > 0:
-            # It is initialized as empty pd.DataFrame in `base.py`.
-            self._branchpoints = pd.DataFrame(
-                np.asarray(branchpoint_xyz), columns=["x", "y", "z"]
-            )
-            # Create offset for the branchpoints.
-            self._branchpoints.index = (
-                np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
-            )
-
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
-
-        # Mapping from global_comp_index to `nodes.index`.
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
-
+        self._init_comp_graph()
         self._initialize()
 
-    def _init_morph_jax_spsolve(self):
-        """For morphology indexing with the `jax.sparse` voltage volver.
-
-        Running this function is only required for generic sparse solvers, i.e., for
-        `voltage_solver='jax.sparse'`.
-        """
-        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
-            self._comp_edges
-        )
-        self._n_nodes = n_nodes
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-        self._off_diagonal_inds = off_diagonal_inds
-
-    def _build_comp_edges(self) -> pd.DataFrame:
+    def _init_comp_graph(self):
         """Build the `self._comp_edges` attribute.
 
         Explanation of `self._comp_eges['type']`:
@@ -231,7 +188,7 @@ class Cell(Module):
         )
         child_to_branchpoint_edges["type"] = 4
 
-        return pd.concat(
+        self._comp_edges = pd.concat(
             [
                 comp_edges,
                 parent_to_branchpoint_edges,
@@ -239,3 +196,45 @@ class Cell(Module):
             ],
             ignore_index=True,
         )
+
+        # Branchpoints.
+        #
+        # Get last xyz of parent.
+        branchpoint_xyz = []
+        for i in self._par_inds:
+            branchpoint_xyz.append(self.xyzr[i][-1, :3])
+        if len(branchpoint_xyz) > 0:
+            # It is initialized as empty pd.DataFrame in `base.py`.
+            self._branchpoints = pd.DataFrame(
+                np.asarray(branchpoint_xyz), columns=["x", "y", "z"]
+            )
+            # Create offset for the branchpoints.
+            self._branchpoints.index = (
+                np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
+            )
+
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+
+        # Mapping from global_comp_index to `nodes.index`.
+        comp_to_index_mapping = np.zeros((len(self.nodes)))
+        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
+            self.nodes.index.to_numpy()
+        )
+        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+
+    def _init_morph_jax_spsolve(self):
+        """For morphology indexing with the `jax.sparse` voltage volver.
+
+        Running this function is only required for generic sparse solvers, i.e., for
+        `voltage_solver='jax.sparse'`.
+        """
+        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
+            self._comp_edges
+        )
+        self._n_nodes = n_nodes
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
+        self._off_diagonal_inds = off_diagonal_inds

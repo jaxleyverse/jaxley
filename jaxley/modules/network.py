@@ -111,12 +111,22 @@ class Network(Module):
         # Channels.
         self._gather_channels_from_constituents(cells)
 
+        self._initialize()
+        del self._cells_list
+
+    def __repr__(self):
+        return (
+            f"{type(self).__name__} with {len(self.channels)} different channels "
+            f"and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
+        )
+
+    def _init_comp_graph(self):
         # Compartment edges, branchpoints, internal_node_inds.
         offset = 0
         self._comp_edges = []
         self._branchpoints = []
         self._internal_node_inds = []
-        for cell in cells:
+        for cell in self._cells_list:
             # Compartment edges
             edges = cell._comp_edges.copy()
             edges[["source", "sink"]] += offset
@@ -144,15 +154,6 @@ class Network(Module):
             self.nodes.index.to_numpy()
         )
         self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
-
-        self._initialize()
-        del self._cells_list
-
-    def __repr__(self):
-        return (
-            f"{type(self).__name__} with {len(self.channels)} different channels "
-            f"and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
-        )
 
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for networks.

@@ -58,6 +58,13 @@ class Compartment(Module):
         )
         self._internal_node_inds = jnp.asarray([0])
 
+        # Coordinates.
+        self.xyzr = [float("NaN") * np.zeros((2, 4))]
+
+        # Initialize the module.
+        self._initialize()
+
+    def _init_comp_graph(self):
         # Compartment edges.
         self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}
@@ -73,12 +80,6 @@ class Compartment(Module):
             self.nodes.index.to_numpy()
         )
         self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
-
-        # Coordinates.
-        self.xyzr = [float("NaN") * np.zeros((2, 4))]
-
-        # Initialize the module.
-        self._initialize()
 
     def _init_morph_jax_spsolve(self):
         """Initialize morphology for the jax sparse voltage solver.
