@@ -111,6 +111,8 @@ class Branch(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
+        print("x")
+        self._comp_edges = 3
         self._comp_edges = pd.DataFrame().from_dict(
             {
                 "source": list(range(self.ncomp - 1)) + list(range(1, self.ncomp)),
