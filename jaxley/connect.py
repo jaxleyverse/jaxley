@@ -117,7 +117,7 @@ def fully_connect(
     # Pre-synapse is at the zero-eth branch and zero-eth compartment.
     pre_rows = pre_cell_view.scope("local").branch(0).comp(0).nodes.copy()
     # Repeat rows `num_post` times. See SO 50788508.
-    pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)].reset_index(drop=True)
+    pre_rows = pre_rows.loc[pre_rows.index.repeat(num_post)]
 
     if random_post_comp:
         global_post_comp_indices = (

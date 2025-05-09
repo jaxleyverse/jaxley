@@ -237,9 +237,7 @@ class Network(Module):
         edges: pd.DataFrame,
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Perform one step of the synapses and obtain their currents."""
-        states = self._step_synapse_state(
-            states, syn_channels, params, delta_t, edges
-        )
+        states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
         states, current_terms = self._synapse_currents(
             states, syn_channels, params, delta_t, edges
         )
@@ -472,11 +470,12 @@ class Network(Module):
         else:
             raise ValueError("detail must be in {full, point}.")
 
-        nodes = self.nodes.set_index("global_comp_index")
+        # Plot the synapses.
+        nodes = self.nodes
         for i, edge in self.edges.iterrows():
             prepost_locs = []
             for prepost in ["pre", "post"]:
-                loc, comp = edge[[prepost + "_locs", prepost + "_global_comp_index"]]
+                loc, comp = edge[[prepost + "_locs", prepost + "_index"]]
                 branch = nodes.loc[comp, "global_branch_index"]
                 cell = nodes.loc[comp, "global_cell_index"]
                 branch_xyz = self.xyzr[branch][:, :3]

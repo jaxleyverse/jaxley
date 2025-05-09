@@ -118,8 +118,8 @@ def test_graph_import_export_cycle(
         edges = pd.DataFrame(
             [
                 {
-                    "pre_global_comp_index": i,
-                    "post_global_comp_index": j,
+                    "pre_index": i,
+                    "post_index": j,
                     **module_graph.edges[i, j],
                 }
                 for (i, j) in module_graph.edges
@@ -128,8 +128,8 @@ def test_graph_import_export_cycle(
         re_edges = pd.DataFrame(
             [
                 {
-                    "pre_global_comp_index": i,
-                    "post_global_comp_index": j,
+                    "pre_index": i,
+                    "post_index": j,
                     **re_module_graph.edges[i, j],
                 }
                 for (i, j) in re_module_graph.edges

@@ -2872,10 +2872,8 @@ class Module(ABC):
                     )
 
                 self.edges = self.edges.join(
-                    self.nodes[[property_to_import, "global_comp_index"]].set_index(
-                        "global_comp_index"
-                    ),
-                    on=f"{pre_or_post_val}_global_comp_index",
+                    self.nodes[property_to_import],
+                    on=f"{pre_or_post_val}_index",
                 )
                 self.edges = self.edges.rename(
                     columns={
@@ -3093,7 +3091,7 @@ class View(Module):
                 self._edges_in_view, ["pre_index", "post_index"]
             ]
             incl_comps = np.unique(incl_comps.to_numpy().flatten())
-            where_comps = base_nodes["global_comp_index"].isin(incl_comps)
+            where_comps = base_nodes.index.isin(incl_comps)
             possible_nodes_in_view = base_nodes.index[where_comps].to_numpy()
             self._nodes_in_view = np.intersect1d(
                 possible_nodes_in_view, self._nodes_in_view
@@ -3426,9 +3424,9 @@ def to_graph(
 
     if synapses:
         syn_edges = module.edges.copy()
-        multiple_syn_per_edge = syn_edges[
-            ["pre_global_comp_index", "post_global_comp_index"]
-        ].duplicated(keep=False)
+        multiple_syn_per_edge = syn_edges[["pre_index", "post_index"]].duplicated(
+            keep=False
+        )
         dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
         if multiple_syn_per_edge.any():
             warn(
@@ -3442,10 +3440,10 @@ def to_graph(
         module_graph.graph["synapse_names"] = module.synapse_names
         module_graph.graph["synapse_current_names"] = module.synapse_current_names
 
-        syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
+        syn_edges.columns = syn_edges.columns
         syn_edges["syn_type"] = syn_edges["type"]
         syn_edges["type"] = "synapse"
-        syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
+        syn_edges = syn_edges.set_index(["pre_index", "post_index"])
 
         if not syn_edges.empty:
             for (i, j), edge_data in syn_edges.iterrows():

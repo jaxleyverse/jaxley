@@ -210,6 +210,9 @@ def test_copy_node_property_to_edges(SimpleNet):
     net.cell(1).branch(0).comp(0).set("capacitance", 0.3)
     fully_connect(net.cell("all"), net.cell("all"), IonotropicSynapse())
 
+    net.copy_node_property_to_edges("global_comp_index", "pre")
+    net.copy_node_property_to_edges("global_comp_index", "post")
+
     net.copy_node_property_to_edges("HH_gNa", "pre")
     # Run it another time to ensure that it can be run twice.
     net.copy_node_property_to_edges("HH_gNa", "pre")

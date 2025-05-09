@@ -989,8 +989,8 @@ def _build_module(
     synapse_edges = pd.DataFrame(
         [
             {
-                "pre_global_comp_index": node_df.loc[i, "comp_index"],
-                "post_global_comp_index": node_df.loc[j, "comp_index"],
+                "pre_index": i,
+                "post_index": j,
                 **solve_graph.edges[i, j],
             }
             for (i, j), t in edge_type.items()
