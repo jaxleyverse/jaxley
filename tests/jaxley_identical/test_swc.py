@@ -111,8 +111,8 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
         # allowed_nodes_per_level=32.
-        cell1._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=4)
-        cell2._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=4)
+        cell1._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
+        cell2._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
 
     network = jx.Network([cell1, cell2])
     connect(

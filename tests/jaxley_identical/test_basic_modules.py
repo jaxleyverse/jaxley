@@ -260,7 +260,7 @@ def test_complex_cell(voltage_solver, SimpleBranch):
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
         # allowed_nodes_per_level=32.
-        cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=4)
+        cell._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
 
     recordings = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
     voltages_240225 = jnp.asarray(
@@ -366,7 +366,7 @@ def test_complex_net(voltage_solver, SimpleCell):
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
         # allowed_nodes_per_level=32.
-        cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=4)
+        cell._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
     net = jx.Network([cell for _ in range(7)])
 
     net.insert(HH())

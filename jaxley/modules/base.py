@@ -65,7 +65,10 @@ def only_allow_module(func):
         method_name = func.__name__
         assert not isinstance(
             self, View
-        ), f"{method_name} is currently not supported for Views. Call on the {module_name} base Module."
+        ), (
+            f"{method_name} is currently not supported for Views. Call on "
+            f"the {module_name} base Module."
+        )
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -926,7 +929,7 @@ class Module(ABC):
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
 
-    def _init_morph_jaxley_dhs_solve(
+    def _init_solver_jaxley_dhs_solve(
         self, allowed_nodes_per_level: Optional[int] = 1, root: int = 0
     ) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
@@ -3430,10 +3433,10 @@ def to_graph(
         syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
         syn_edges["syn_type"] = syn_edges["type"]
         syn_edges["type"] = "synapse"
-        syn_edges["pre_comp_index"] = module.comp_to_index_mapping[
+        syn_edges["pre_comp_index"] = module._comp_to_index_mapping[
             syn_edges["pre_comp_index"]
         ]
-        syn_edges["post_comp_index"] = module.comp_to_index_mapping[
+        syn_edges["post_comp_index"] = module._comp_to_index_mapping[
             syn_edges["post_comp_index"]
         ]
         syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
@@ -3443,96 +3446,3 @@ def to_graph(
                 module_graph.add_edge(i, j, **edge_data.to_dict())
 
     return module_graph
-
-
-def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
-    """Cast Jaxley graph (no branchpoints or spurious points) to a compartment graph.
-
-    This function inserts the branchpoints between compartments. In particular, if
-    the `branch_index` of compartments changes, we insert an additional node (the
-    branchpoint), connect the compartments to the branchpoint, and remove the connection
-    between compartments.
-
-    Args:
-        jaxley_graph: A directed graph consisting only of compartments (no additional)
-            nodes for branchpoints.
-
-    Returns:
-        A compartment graph which has branchpoints (nodes with attribute
-        `type="branchpoint"`). This graph is also directed.
-    """
-    jaxley_graph = jaxley_graph.copy()
-    nx.set_node_attributes(jaxley_graph, "comp", "type")
-    new_node_id = 0
-
-    # Add branchpoints to the graph: replace every edge (i, j) with (i, n), (n, j).
-    nodes = list(jaxley_graph.nodes())
-    for n in nodes:
-        successors = list(jaxley_graph.successors(n))
-        if len(successors) > 0:
-            # This handles the case of a branchpoint or of a node between compartments
-            # of the same branch.
-            if (
-                jaxley_graph.nodes[n]["branch_index"]
-                != jaxley_graph.nodes[successors[0]]["branch_index"]
-            ):
-                node_name = f"n{new_node_id}"
-                jaxley_graph.add_node(node_name)
-                for key in ["x", "y", "z"]:
-                    # 0.5 * (...): the spurious node is inserted halfway between its
-                    # connecting compartments. The location only matters for plotting
-                    # the graph. If a comp has multiple successors (i.e., branchpoint),
-                    # then we simply use the first successor for simplicity.
-                    jaxley_graph.nodes[node_name][key] = 0.5 * (
-                        jaxley_graph.nodes[n][key]
-                        + jaxley_graph.nodes[successors[0]][key]
-                    )
-
-                    # Decide on the type (branchpoint vs spurious) of the new node.
-                    jaxley_graph.nodes[node_name]["type"] = "branchpoint"
-
-                jaxley_graph.add_edge(n, node_name)
-                for j in successors:
-                    jaxley_graph.remove_edge(n, j)
-                    jaxley_graph.add_edge(node_name, j)
-                new_node_id += 1
-
-    return _set_branchpoint_indices(jaxley_graph)  # This is now a valid `comp_graph`.
-
-
-def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
-    """Return a graph whose branchpoint indices match those of a `jx.Module`.
-
-    Here, we ensure that the branchpoints are enumerated in the same way in the
-    module as they are in the graph. The ordering is by the branch_index of the
-    parent branch of a branchpoint.
-
-    As an example, this could remap branchpoints as follows, if there are ten
-    compartments: ["n0", "n1", "n2"] -> [10, 12, 11]
-    """
-    predecessor_branch_inds = []
-    branchpoints = []
-    max_comp_index = 0
-    for node in jaxley_graph.nodes:
-        if jaxley_graph.nodes[node]["type"] == "branchpoint":
-            predecessor = list(jaxley_graph.predecessors(node))[0]
-            predecessor_branch_inds.append(
-                jaxley_graph.nodes[predecessor]["branch_index"]
-            )
-            branchpoints.append(node)
-        else:
-            if jaxley_graph.nodes[node]["comp_index"] > max_comp_index:
-                max_comp_index = jaxley_graph.nodes[node]["comp_index"]
-    sorting = np.argsort(predecessor_branch_inds)
-    branchpoints_in_corrected_order = np.asarray(branchpoints)[sorting]
-    mapping = {
-        k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)
-    }
-    return nx.relabel_nodes(jaxley_graph, mapping)
-
-
-def _branch_n2e(branch_nodes):
-    """Return all edges given the nodes within a branch.
-
-    E.g. `branch_nodes = [0, 1, 2]` -> [(0, 1), (1, 2)]`"""
-    return [e for e in zip(branch_nodes[:-1], branch_nodes[1:])]
