@@ -1,126 +1,13 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 import jax.numpy as jnp
 import numpy as np
-from jax import vmap
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from jax.lax import fori_loop
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
-
-
-def step_voltage_explicit(
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    axial_conductances: jnp.ndarray,
-    sinks,
-    sources,
-    types,
-    delta_t: float,
-) -> jnp.ndarray:
-    """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
-    update = _voltage_vectorfield(
-        voltages,
-        voltage_terms,
-        constant_terms,
-        axial_conductances,
-        sinks,
-        sources,
-        types,
-    )
-    new_voltates = voltages + delta_t * update
-    return new_voltates
-
-
-def step_voltage_implicit_with_stone(
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    axial_conductances: jnp.ndarray,
-    internal_node_inds: jnp.ndarray,
-    n_nodes: int,
-    sinks: jnp.ndarray,
-    sources: jnp.ndarray,
-    types: jnp.ndarray,
-    delta_t: float,
-):
-    """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
-    if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
-        raise NotImplementedError(
-            f"The stone solver is not implemented for branched morphologies."
-        )
-
-    axial_conductances = delta_t * axial_conductances
-    print("axial_conductances", axial_conductances)
-
-    # Build diagonals.
-    diags = delta_t * voltage_terms
-    diags = diags.at[internal_node_inds].add(1.0)
-    #
-    # if-case needed because `.at` does not allow empty inputs, but the input is
-    # empty for compartments.
-    if len(sinks) > 0:
-        diags = diags.at[sinks].add(axial_conductances)
-
-    lower_inds = sinks > sources
-    lowers = -axial_conductances[lower_inds]
-
-    upper_inds = sinks < sources
-    uppers = -axial_conductances[upper_inds]
-
-    # Build solve.
-    solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].set(
-        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
-    )
-
-    # Solve the tridiagonal system.
-    diags, lowers, solves = stone_triang_upper(lowers, diags, uppers, solves)
-    solves = stone_backsub_lower(solves, lowers, diags)
-
-    return solves
-
-
-def step_voltage_implicit_with_jax_spsolve(
-    voltages,
-    voltage_terms,
-    constant_terms,
-    axial_conductances,
-    internal_node_inds,
-    sinks,
-    data_inds,
-    indices,
-    indptr,
-    n_nodes,
-    delta_t,
-):
-    axial_conductances = delta_t * axial_conductances
-
-    # Build diagonals.
-    diags = delta_t * voltage_terms
-    diags = diags.at[internal_node_inds].add(1.0)
-    #
-    # if-case needed because `.at` does not allow empty inputs, but the input is
-    # empty for compartments.
-    if len(sinks) > 0:
-        diags = diags.at[sinks].add(axial_conductances)
-
-    # Build solve.
-    solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].set(
-        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
-    )
-
-    # Concatenate diagonals and off-diagonals (which are just `-axial_conductances`).
-    all_values = jnp.concatenate([diags, -axial_conductances])
-
-    # Solve the voltage equations.
-    solution = jax_spsolve(all_values[data_inds], indices, indptr, solves)
-    return solution
 
 
 def step_voltage_implicit_with_dhs_solve(
@@ -368,6 +255,68 @@ def _comp_based_backsub_recursive_doubling(
     return diags, solves
 
 
+def step_voltage_implicit_with_jax_spsolve(
+    voltages,
+    voltage_terms,
+    constant_terms,
+    axial_conductances,
+    internal_node_inds,
+    sinks,
+    data_inds,
+    indices,
+    indptr,
+    n_nodes,
+    delta_t,
+):
+    axial_conductances = delta_t * axial_conductances
+
+    # Build diagonals.
+    diags = delta_t * voltage_terms
+    diags = diags.at[internal_node_inds].add(1.0)
+    #
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sinks) > 0:
+        diags = diags.at[sinks].add(axial_conductances)
+
+    # Build solve.
+    solves = jnp.zeros(n_nodes)
+    solves = solves.at[internal_node_inds].set(
+        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
+    )
+
+    # Concatenate diagonals and off-diagonals (which are just `-axial_conductances`).
+    all_values = jnp.concatenate([diags, -axial_conductances])
+
+    # Solve the voltage equations.
+    solution = jax_spsolve(all_values[data_inds], indices, indptr, solves)
+    return solution
+
+
+def step_voltage_explicit(
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    axial_conductances: jnp.ndarray,
+    sinks,
+    sources,
+    types,
+    delta_t: float,
+) -> jnp.ndarray:
+    """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
+    update = _voltage_vectorfield(
+        voltages,
+        voltage_terms,
+        constant_terms,
+        axial_conductances,
+        sinks,
+        sources,
+        types,
+    )
+    new_voltates = voltages + delta_t * update
+    return new_voltates
+
+
 def _voltage_vectorfield(
     voltages: jnp.ndarray,
     voltage_terms: jnp.ndarray,
@@ -393,3 +342,52 @@ def _voltage_vectorfield(
         )
 
     return vecfield
+
+
+def step_voltage_implicit_with_stone(
+    voltages: jnp.ndarray,
+    voltage_terms: jnp.ndarray,
+    constant_terms: jnp.ndarray,
+    axial_conductances: jnp.ndarray,
+    internal_node_inds: jnp.ndarray,
+    n_nodes: int,
+    sinks: jnp.ndarray,
+    sources: jnp.ndarray,
+    types: jnp.ndarray,
+    delta_t: float,
+):
+    """Solve one timestep of branched nerve equations with implicit (backward) Euler."""
+    if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
+        raise NotImplementedError(
+            f"The stone solver is not implemented for branched morphologies."
+        )
+
+    axial_conductances = delta_t * axial_conductances
+    print("axial_conductances", axial_conductances)
+
+    # Build diagonals.
+    diags = delta_t * voltage_terms
+    diags = diags.at[internal_node_inds].add(1.0)
+    #
+    # if-case needed because `.at` does not allow empty inputs, but the input is
+    # empty for compartments.
+    if len(sinks) > 0:
+        diags = diags.at[sinks].add(axial_conductances)
+
+    lower_inds = sinks > sources
+    lowers = -axial_conductances[lower_inds]
+
+    upper_inds = sinks < sources
+    uppers = -axial_conductances[upper_inds]
+
+    # Build solve.
+    solves = jnp.zeros(n_nodes)
+    solves = solves.at[internal_node_inds].set(
+        voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
+    )
+
+    # Solve the tridiagonal system.
+    diags, lowers, solves = stone_triang_upper(lowers, diags, uppers, solves)
+    solves = stone_backsub_lower(solves, lowers, diags)
+
+    return solves

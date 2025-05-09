@@ -71,6 +71,13 @@ class Network(Module):
                 *[[i] * int(cell.cumsum_ncomp[-1]) for i, cell in enumerate(cells)]
             )
         )
+        offset = 0
+        node_indices = []
+        for cell in cells:
+            node_indices.append(cell.nodes.index + offset)
+            offset += cell._n_nodes
+        self.nodes.index = np.concatenate(node_indices)
+
         self._update_local_indices()
         self._init_view()
 
@@ -96,18 +103,56 @@ class Network(Module):
             compute_children_and_parents(self.branch_edges)
         )
 
-        # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are unique).
+        # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are
+        # unique).
         nbranchpoints = jnp.asarray([len(cell._par_inds) for cell in cells])
         self._cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
         # Channels.
         self._gather_channels_from_constituents(cells)
 
+        # Compartment edges, branchpoints, internal_node_inds.
+        offset = 0
+        self._comp_edges = []
+        self._branchpoints = []
+        self._internal_node_inds = []
+        for cell in cells:
+            # Compartment edges
+            edges = cell._comp_edges.copy()
+            edges[["source", "sink"]] += offset
+            self._comp_edges.append(edges)
+
+            # Branchpoints.
+            branchpoints = cell._branchpoints.copy()
+            branchpoints.index = branchpoints.index + offset
+            self._branchpoints.append(branchpoints)
+
+            # Internal node indices.
+            self._internal_node_inds.append(cell._internal_node_inds + offset)
+
+            offset += cell._n_nodes  # Compartment-offset.
+        self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
+        self._branchpoints = pd.concat(self._branchpoints)
+        self._internal_node_inds = np.concatenate(self._internal_node_inds)
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+        self._n_nodes = offset
+
+        # Mapping from global_comp_index to `nodes.index`.
+        comp_to_index_mapping = np.zeros((len(self.nodes)))
+        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
+            self.nodes.index.to_numpy()
+        )
+        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+
         self._initialize()
-        # del self._cells_list
+        del self._cells_list
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
+        return (
+            f"{type(self).__name__} with {len(self.channels)} different channels "
+            f"and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
+        )
 
     def _init_morph_jax_spsolve(self):
         """Initialize the morphology for networks.
@@ -128,7 +173,13 @@ class Network(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
-        pass
+        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
+            self._comp_edges
+        )
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
+        self._off_diagonal_inds = off_diagonal_inds
 
     def _init_morph_jaxley_dhs_solve(self, *args, **kwargs) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
@@ -145,13 +196,8 @@ class Network(Module):
         dhs_map_to_node_order_lower = []
         dhs_map_to_node_order_upper = []
         dhs_node_order = []
-        self._comp_edges = []
-        self._branchpoints = []
-        self._internal_node_inds = []
         dhs_parent_lookup = []
-        node_indices = []
         for cell in self._cells_list:
-            node_indices.append(cell.nodes.index + offset)
             dhs_map_dict.update(
                 {
                     k + offset: v + offset
@@ -174,16 +220,6 @@ class Network(Module):
                 + lower_and_upper_offset
             )
             dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
-
-            edges = cell._comp_edges.copy()
-            edges[["source", "sink"]] += offset
-            self._comp_edges.append(edges)
-
-            branchpoints = cell._branchpoints.copy()
-            branchpoints.index = branchpoints.index + offset
-            self._branchpoints.append(branchpoints)
-
-            self._internal_node_inds.append(cell._internal_node_inds + offset)
 
             # Discard the last one because it is a [-1] which just absorbs all
             # compartments that are already finished with their recursion. We append
@@ -212,33 +248,9 @@ class Network(Module):
         self._dhs_solve_indexer["parent_lookup"] = np.concatenate(
             dhs_parent_lookup + [[-1]]
         )
-        self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
-        self._branchpoints = pd.concat(self._branchpoints)
-        self._internal_node_inds = np.concatenate(self._internal_node_inds)
-
-        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
-            self._comp_edges
-        )
-        self._n_nodes = offset
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
-        self._off_diagonal_inds = off_diagonal_inds
-
         self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
             self._dhs_solve_indexer["node_order"]
         )
-
-        self.nodes.index = np.concatenate(node_indices)
-
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
         self._init_view()
 
     def _step_synapse(

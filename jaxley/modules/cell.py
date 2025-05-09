@@ -122,91 +122,11 @@ class Cell(Module):
             compute_children_and_parents(self.branch_edges)
         )
 
-        self._initialize()
+        # Compartment edges.
+        self._comp_edges = self._build_comp_edges()
 
-    def _init_morph_jax_spsolve(self):
-        """For morphology indexing with the `jax.sparse` voltage volver.
-
-        Explanation of `self._comp_eges['type']`:
-        `type == 0`: compartment <--> compartment (within branch)
-        `type == 1`: branchpoint --> parent-compartment
-        `type == 2`: branchpoint --> child-compartment
-        `type == 3`: parent-compartment --> branchpoint
-        `type == 4`: child-compartment --> branchpoint
-
-        Running this function is only required for generic sparse solvers, i.e., for
-        `voltage_solver='jax.sparse'`.
-        """
-
-        # Edges between compartments within the branches.
-        self._comp_edges = pd.concat(
-            [
-                pd.DataFrame()
-                .from_dict(
-                    {
-                        "source": list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp))
-                        + list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp)),
-                        "sink": list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp))
-                        + list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp)),
-                    }
-                )
-                .astype(int)
-                for ncomp, cumsum_ncomp in zip(self.ncomp_per_branch, self.cumsum_ncomp)
-            ]
-        )
-        self._comp_edges["type"] = 0
-
-        # Edges from branchpoints to compartments.
-        branchpoint_to_parent_edges = pd.DataFrame().from_dict(
-            {
-                "source": np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1],
-                "sink": self.cumsum_ncomp[self._par_inds + 1] - 1,
-                "type": 1,
-            }
-        )
-        branchpoint_to_child_edges = pd.DataFrame().from_dict(
-            {
-                "source": self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1],
-                "sink": self.cumsum_ncomp[self._child_inds],
-                "type": 2,
-            }
-        )
-        self._comp_edges = pd.concat(
-            [
-                self._comp_edges,
-                branchpoint_to_parent_edges,
-                branchpoint_to_child_edges,
-            ],
-            ignore_index=True,
-        )
-
-        # Edges from compartments to branchpoints.
-        parent_to_branchpoint_edges = branchpoint_to_parent_edges.rename(
-            columns={"sink": "source", "source": "sink"}
-        )
-        parent_to_branchpoint_edges["type"] = 3
-        child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
-            columns={"sink": "source", "source": "sink"}
-        )
-        child_to_branchpoint_edges["type"] = 4
-
-        self._comp_edges = pd.concat(
-            [
-                self._comp_edges,
-                parent_to_branchpoint_edges,
-                child_to_branchpoint_edges,
-            ],
-            ignore_index=True,
-        )
-
-        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
-            self._comp_edges
-        )
-        self._n_nodes = n_nodes
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-
+        # Branchpoints.
+        #
         # Get last xyz of parent.
         branchpoint_xyz = []
         for i in self._par_inds:
@@ -225,10 +145,97 @@ class Cell(Module):
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
-        self._off_diagonal_inds = off_diagonal_inds
-
+        # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))
         comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
             self.nodes.index.to_numpy()
         )
         self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+
+        self._initialize()
+
+    def _init_morph_jax_spsolve(self):
+        """For morphology indexing with the `jax.sparse` voltage volver.
+
+        Running this function is only required for generic sparse solvers, i.e., for
+        `voltage_solver='jax.sparse'`.
+        """
+        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
+            self._comp_edges
+        )
+        self._n_nodes = n_nodes
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
+        self._off_diagonal_inds = off_diagonal_inds
+
+    def _build_comp_edges(self) -> pd.DataFrame:
+        """Build the `self._comp_edges` attribute.
+
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
+        """
+        # Edges between compartments within the branches.
+        comp_edges = pd.concat(
+            [
+                pd.DataFrame()
+                .from_dict(
+                    {
+                        "source": list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp))
+                        + list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp)),
+                        "sink": list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp))
+                        + list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp)),
+                    }
+                )
+                .astype(int)
+                for ncomp, cumsum_ncomp in zip(self.ncomp_per_branch, self.cumsum_ncomp)
+            ]
+        )
+        comp_edges["type"] = 0
+
+        # Edges from branchpoints to compartments.
+        branchpoint_to_parent_edges = pd.DataFrame().from_dict(
+            {
+                "source": np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1],
+                "sink": self.cumsum_ncomp[self._par_inds + 1] - 1,
+                "type": 1,
+            }
+        )
+        branchpoint_to_child_edges = pd.DataFrame().from_dict(
+            {
+                "source": self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1],
+                "sink": self.cumsum_ncomp[self._child_inds],
+                "type": 2,
+            }
+        )
+        comp_edges = pd.concat(
+            [
+                comp_edges,
+                branchpoint_to_parent_edges,
+                branchpoint_to_child_edges,
+            ],
+            ignore_index=True,
+        )
+
+        # Edges from compartments to branchpoints.
+        parent_to_branchpoint_edges = branchpoint_to_parent_edges.rename(
+            columns={"sink": "source", "source": "sink"}
+        )
+        parent_to_branchpoint_edges["type"] = 3
+        child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
+            columns={"sink": "source", "source": "sink"}
+        )
+        child_to_branchpoint_edges["type"] = 4
+
+        return pd.concat(
+            [
+                comp_edges,
+                parent_to_branchpoint_edges,
+                child_to_branchpoint_edges,
+            ],
+            ignore_index=True,
+        )

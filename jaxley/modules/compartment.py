@@ -58,6 +58,22 @@ class Compartment(Module):
         )
         self._internal_node_inds = jnp.asarray([0])
 
+        # Compartment edges.
+        self._comp_edges = pd.DataFrame().from_dict(
+            {"source": [], "sink": [], "type": []}
+        )
+
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+
+        # Mapping from global_comp_index to `nodes.index`.
+        comp_to_index_mapping = np.zeros((len(self.nodes)))
+        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
+            self.nodes.index.to_numpy()
+        )
+        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
@@ -74,9 +90,6 @@ class Compartment(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
-        self._comp_edges = pd.DataFrame().from_dict(
-            {"source": [], "sink": [], "type": []}
-        )
         n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
             self._comp_edges
         )
@@ -84,15 +97,4 @@ class Compartment(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
-
         self._off_diagonal_inds = off_diagonal_inds
-
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)

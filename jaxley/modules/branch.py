@@ -85,6 +85,26 @@ class Branch(Module):
         )
         self._internal_node_inds = jnp.arange(self.ncomp)
 
+        # Compartment edges.
+        self._comp_edges = pd.DataFrame().from_dict(
+            {
+                "source": list(range(self.ncomp - 1)) + list(range(1, self.ncomp)),
+                "sink": list(range(1, self.ncomp)) + list(range(self.ncomp - 1)),
+            }
+        )
+        self._comp_edges["type"] = 0
+
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+
+        # Mapping from global_comp_index to `nodes.index`.
+        comp_to_index_mapping = np.zeros((len(self.nodes)))
+        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
+            self.nodes.index.to_numpy()
+        )
+        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
         self._initialize()
@@ -99,13 +119,6 @@ class Branch(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
-        self._comp_edges = pd.DataFrame().from_dict(
-            {
-                "source": list(range(self.ncomp - 1)) + list(range(1, self.ncomp)),
-                "sink": list(range(1, self.ncomp)) + list(range(self.ncomp - 1)),
-            }
-        )
-        self._comp_edges["type"] = 0
         n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
             self._comp_edges
         )
@@ -113,18 +126,7 @@ class Branch(Module):
         self._data_inds = data_inds
         self._indices_jax_spsolve = indices
         self._indptr_jax_spsolve = indptr
-
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
-
         self._off_diagonal_inds = off_diagonal_inds
-
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
 
     def __len__(self) -> int:
         return self.ncomp
