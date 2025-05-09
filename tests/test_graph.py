@@ -37,8 +37,6 @@ from tests.helpers import (
     equal_both_nan_or_empty_df,
     get_segment_xyzrL,
     import_neuron_morph,
-    jaxley2neuron_by_group,
-    match_stim_loc,
 )
 
 

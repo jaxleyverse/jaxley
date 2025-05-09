@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
-from jaxley.modules.base import _branch_n2e, _set_branchpoint_indices
 from jaxley.utils.cell_utils import (
     radius_from_xyzr,
     split_xyzr_into_equal_length_segments,
@@ -704,6 +703,33 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
 
     return interrupted_nodes
 
+
+def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
+    """Return a graph whose branchpoint indices match those of a `jx.Module`.
+
+    Here, we ensure that the branchpoints are enumerated in the same way in the
+    module as they are in the graph. The ordering is by the branch_index of the
+    parent branch of a branchpoint.
+    """
+    predecessor_branch_inds = []
+    branchpoints = []
+    max_comp_index = 0
+    for node in jaxley_graph.nodes:
+        if jaxley_graph.nodes[node]["type"] == "branchpoint":
+            predecessor = list(jaxley_graph.predecessors(node))[0]
+            predecessor_branch_inds.append(
+                jaxley_graph.nodes[predecessor]["branch_index"]
+            )
+            branchpoints.append(node)
+        else:
+            if jaxley_graph.nodes[node]["comp_index"] > max_comp_index:
+                max_comp_index = jaxley_graph.nodes[node]["comp_index"]
+    sorting = np.argsort(predecessor_branch_inds)
+    branchpoints_in_corrected_order = np.asarray(branchpoints)[sorting]
+    mapping = {
+        k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)
+    }
+    return nx.relabel_nodes(jaxley_graph, mapping)
 
 ########################################################################################
 ################################ BUILD SOLVE GRAPH #####################################

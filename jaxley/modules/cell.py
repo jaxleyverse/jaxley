@@ -100,7 +100,6 @@ class Cell(Module):
         self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
 
         self._update_local_indices()
-        self._init_view()
 
         # Appending general parameters (radius, length, r_a, cm) and channel parameters,
         # as well as the states (v, and channel states).
@@ -131,8 +130,6 @@ class Cell(Module):
         - `_comp_edges`
         - `_branchpoints`
         - `_comp_to_index_mapping`
-        - `_comp_edges_in_view`
-        - `_branchpoints_in_view`
         - `_n_nodes`
         - `_off_diagonal_inds`
 
@@ -219,10 +216,6 @@ class Cell(Module):
             self._branchpoints.index = (
                 np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
             )
-
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))

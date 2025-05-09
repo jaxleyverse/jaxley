@@ -69,7 +69,6 @@ class Branch(Module):
         self.nodes["global_branch_index"] = [0] * self.ncomp
         self.nodes["global_cell_index"] = [0] * self.ncomp
         self._update_local_indices()
-        self._init_view()
 
         # Channels.
         self._gather_channels_from_constituents(compartment_list)
@@ -100,10 +99,6 @@ class Branch(Module):
             }
         )
         self._comp_edges["type"] = 0
-
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))

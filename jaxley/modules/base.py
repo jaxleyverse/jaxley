@@ -348,6 +348,11 @@ class Module(ABC):
         self._current_view = "comp" if parent == "compartment" else parent
         self._nodes_in_view = self.nodes.index.to_numpy()
         self._edges_in_view = self.edges.index.to_numpy()
+
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+
         self.nodes["controlled_by_param"] = 0
 
     def _compute_coords_of_comp_centers(self) -> np.ndarray:
@@ -1131,7 +1136,6 @@ class Module(ABC):
                 initialize only once after the entire loop to largely speed up
                 computation time. If `True`, then the user has to run
                 ```
-                cell._init_view()
                 cell._initialize()
                 cell._update_local_indices()
                 ```
@@ -1294,7 +1298,6 @@ class Module(ABC):
 
         # Update the morphology indexing (e.g., `.comp_edges`).
         if not skip_init:
-            self.base._init_view()
             self.base._initialize()
             self.base._update_local_indices()
 
@@ -1668,6 +1671,7 @@ class Module(ABC):
     def _initialize(self):
         """Initialize the module."""
         self._init_comp_graph()
+        self._init_view()
         self._init_solvers()
         return self
 

@@ -45,7 +45,6 @@ class Compartment(Module):
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
         self._update_local_indices()
-        self._init_view()
 
         # Synapses.
         self.branch_edges = pd.DataFrame(
@@ -71,8 +70,6 @@ class Compartment(Module):
         - `_comp_edges`
         - `_branchpoints`
         - `_comp_to_index_mapping`
-        - `_comp_edges_in_view`
-        - `_branchpoints_in_view`
         - `_n_nodes`
         - `_off_diagonal_inds`
 
@@ -82,9 +79,10 @@ class Compartment(Module):
             {"source": [], "sink": [], "type": []}
         )
 
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+        # Branchpoints.
+        self._branchpoints = pd.DataFrame().from_dict(
+            {"x": [], "y": [], "z": []}
+        )
 
         # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))

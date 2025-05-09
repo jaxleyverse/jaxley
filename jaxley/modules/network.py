@@ -130,8 +130,6 @@ class Network(Module):
         - `_comp_edges`
         - `_branchpoints`
         - `_comp_to_index_mapping`
-        - `_comp_edges_in_view`
-        - `_branchpoints_in_view`
         - `_n_nodes`
         - `_off_diagonal_inds`
         """
@@ -153,9 +151,6 @@ class Network(Module):
             offset += cell._n_nodes  # Compartment-offset.
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
         self._branchpoints = pd.concat(self._branchpoints)
-
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
 
         # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))
