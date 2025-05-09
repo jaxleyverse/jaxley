@@ -21,7 +21,7 @@ from jaxley.utils.cell_utils import (
     loc_of_index,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
-from jaxley.utils.solver_utils import comp_edges_to_indices, dhs_group_comps_into_levels
+from jaxley.utils.solver_utils import dhs_group_comps_into_levels
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -73,10 +73,13 @@ class Network(Module):
         )
         offset = 0
         node_indices = []
+        self._internal_node_inds = []
         for cell in cells:
             node_indices.append(cell.nodes.index + offset)
+            self._internal_node_inds.append(cell._internal_node_inds + offset)
             offset += cell._n_nodes
         self.nodes.index = np.concatenate(node_indices)
+        self._internal_node_inds = np.concatenate(self._internal_node_inds)
 
         self._update_local_indices()
         self._init_view()
@@ -121,11 +124,21 @@ class Network(Module):
         )
 
     def _init_comp_graph(self):
+        """Initialize attributes concerning the compartment graph.
+
+        In particular, it initializes:
+        - `_comp_edges`
+        - `_branchpoints`
+        - `_comp_to_index_mapping`
+        - `_comp_edges_in_view`
+        - `_branchpoints_in_view`
+        - `_n_nodes`
+        - `_off_diagonal_inds`
+        """
         # Compartment edges, branchpoints, internal_node_inds.
         offset = 0
         self._comp_edges = []
         self._branchpoints = []
-        self._internal_node_inds = []
         for cell in self._cells_list:
             # Compartment edges
             edges = cell._comp_edges.copy()
@@ -137,52 +150,27 @@ class Network(Module):
             branchpoints.index = branchpoints.index + offset
             self._branchpoints.append(branchpoints)
 
-            # Internal node indices.
-            self._internal_node_inds.append(cell._internal_node_inds + offset)
-
             offset += cell._n_nodes  # Compartment-offset.
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
         self._branchpoints = pd.concat(self._branchpoints)
-        self._internal_node_inds = np.concatenate(self._internal_node_inds)
+
         self._comp_edges_in_view = self._comp_edges.index.to_numpy()
         self._branchpoints_in_view = self._branchpoints.index.to_numpy()
-        self._n_nodes = offset
 
         # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))
         comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
             self.nodes.index.to_numpy()
         )
-        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
+        self._comp_to_index_mapping = comp_to_index_mapping.astype(int)
+        self._n_nodes = offset
 
-    def _init_morph_jax_spsolve(self):
-        """Initialize the morphology for networks.
+        # off_diagonal_inds
+        sources = np.asarray(self._comp_edges["source"].to_list())
+        sinks = np.asarray(self._comp_edges["sink"].to_list())
+        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
 
-        The reason that this function is a bit involved for a `Network` is that Jaxley
-        considers branchpoint nodes to be at the very end of __all__ nodes (i.e. the
-        branchpoints of the first cell are even after the compartments of the second
-        cell. The reason for this is that, otherwise, `cumsum_ncomp` becomes tricky).
-
-        To achieve this, we first loop over all compartments and append them, and then
-        loop over all branchpoints and append those. The code for building the indices
-        from the `comp_edges` is identical to `jx.Cell`.
-
-        Explanation of `self._comp_eges['type']`:
-        `type == 0`: compartment <--> compartment (within branch)
-        `type == 1`: branchpoint --> parent-compartment
-        `type == 2`: branchpoint --> child-compartment
-        `type == 3`: parent-compartment --> branchpoint
-        `type == 4`: child-compartment --> branchpoint
-        """
-        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
-            self._comp_edges
-        )
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-        self._off_diagonal_inds = off_diagonal_inds
-
-    def _init_morph_jaxley_dhs_solve(self, *args, **kwargs) -> None:
+    def _init_solver_jaxley_dhs_solve(self, *args, **kwargs) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
         This function first generates the networkX `comp_graph`, then traverses it
@@ -191,6 +179,7 @@ class Network(Module):
         """
         offset = 0
         lower_and_upper_offset = 0
+
         dhs_map_dict = {}
         dhs_inv_map_to_node_order = []
         dhs_map_to_node_order = []
@@ -198,6 +187,7 @@ class Network(Module):
         dhs_map_to_node_order_upper = []
         dhs_node_order = []
         dhs_parent_lookup = []
+
         for cell in self._cells_list:
             dhs_map_dict.update(
                 {

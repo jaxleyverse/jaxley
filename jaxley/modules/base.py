@@ -46,6 +46,7 @@ from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
+    comp_edges_to_indices,
     convert_to_csc,
     dhs_group_comps_into_levels,
     dhs_permutation_indices,
@@ -155,7 +156,7 @@ class Module(ABC):
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
 
-        self.initialized_morph: bool = False
+        self.initialized_solver: bool = False
         self.initialized_syns: bool = False
 
         # List of all types of `jx.Synapse`s.
@@ -904,16 +905,26 @@ class Module(ABC):
     @only_allow_module
     def _init_solvers(self, allowed_nodes_per_level: Optional[int] = None):
         """Initialize the morphology such that it can be processed by the solvers."""
-        self._init_morph_jax_spsolve()
-        self._init_morph_jaxley_dhs_solve(
+        self._init_solver_jax_spsolve()
+        self._init_solver_jaxley_dhs_solve(
             allowed_nodes_per_level=allowed_nodes_per_level
         )
-        self.initialized_morph = True
+        self.initialized_solver = True
 
-    @abstractmethod
-    def _init_morph_jax_spsolve(self):
-        """Initialize the morphology for the JAX sparse solver."""
-        raise NotImplementedError
+    def _init_solver_jax_spsolve(self):
+        """Initialize morphology for the jax sparse voltage solver.
+
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
+        """
+        data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
 
     def _init_morph_jaxley_dhs_solve(
         self, allowed_nodes_per_level: Optional[int] = 1, root: int = 0
@@ -1642,14 +1653,14 @@ class Module(ABC):
             all_params,
             delta_t,
             self.edges,
-            self.comp_to_index_mapping,
+            self._comp_to_index_mapping,
         )
         return states
 
     @property
     def initialized(self) -> bool:
         """Whether the `Module` is ready to be solved or not."""
-        return self.initialized_morph
+        return self.initialized_solver
 
     def _initialize(self):
         """Initialize the module."""
@@ -2165,7 +2176,7 @@ class Module(ABC):
             params,
             delta_t,
             self.edges,
-            self.comp_to_index_mapping,
+            self._comp_to_index_mapping,
         )
 
         # Voltage steps.
@@ -2915,7 +2926,7 @@ class View(Module):
         self._scope = pointer._scope  # forward view
 
         # attrs with a static view
-        self.initialized_morph = pointer.initialized_morph
+        self.initialized_solver = pointer.initialized_solver
         self.initialized_syns = pointer.initialized_syns
         self.allow_make_trainable = pointer.allow_make_trainable
 
@@ -2980,7 +2991,7 @@ class View(Module):
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
         self.group_names = self.base.group_names
-        self.comp_to_index_mapping = self.base.comp_to_index_mapping
+        self._comp_to_index_mapping = self.base._comp_to_index_mapping
 
         self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
             pointer

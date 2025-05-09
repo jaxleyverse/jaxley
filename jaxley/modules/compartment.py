@@ -11,7 +11,6 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
 class Compartment(Module):
@@ -38,6 +37,7 @@ class Compartment(Module):
         self.nbranches_per_cell = [1]
         self._cumsum_nbranches = np.asarray([0, 1])
         self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
+        self._n_nodes = 1
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
@@ -65,6 +65,18 @@ class Compartment(Module):
         self._initialize()
 
     def _init_comp_graph(self):
+        """Initialize attributes concerning the compartment graph.
+
+        In particular, it initializes:
+        - `_comp_edges`
+        - `_branchpoints`
+        - `_comp_to_index_mapping`
+        - `_comp_edges_in_view`
+        - `_branchpoints_in_view`
+        - `_n_nodes`
+        - `_off_diagonal_inds`
+
+        It also initializes `_comp_edges_in_view` and `_branchpoints_in_view`."""
         # Compartment edges.
         self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}
@@ -79,23 +91,6 @@ class Compartment(Module):
         comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
             self.nodes.index.to_numpy()
         )
-        self.comp_to_index_mapping = comp_to_index_mapping.astype(int)
-
-    def _init_morph_jax_spsolve(self):
-        """Initialize morphology for the jax sparse voltage solver.
-
-        Explanation of `self._comp_eges['type']`:
-        `type == 0`: compartment <--> compartment (within branch)
-        `type == 1`: branchpoint --> parent-compartment
-        `type == 2`: branchpoint --> child-compartment
-        `type == 3`: parent-compartment --> branchpoint
-        `type == 4`: child-compartment --> branchpoint
-        """
-        n_nodes, data_inds, indices, indptr, off_diagonal_inds = comp_edges_to_indices(
-            self._comp_edges
-        )
-        self._n_nodes = n_nodes
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-        self._off_diagonal_inds = off_diagonal_inds
+        self._comp_to_index_mapping = comp_to_index_mapping.astype(int)
+        self._n_nodes = 1
+        self._off_diagonal_inds = np.asarray([])

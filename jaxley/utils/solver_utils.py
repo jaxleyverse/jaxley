@@ -75,7 +75,7 @@ def comp_edges_to_indices(
         row_ind=all_inds[0],
         col_ind=all_inds[1],
     )
-    return n_nodes, data_inds, indices, indptr, off_diagonal_inds
+    return data_inds, indices, indptr
 
 
 def dhs_permutation_indices(
