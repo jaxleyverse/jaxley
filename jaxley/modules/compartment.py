@@ -11,7 +11,7 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
+from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
 class Compartment(Module):

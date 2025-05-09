@@ -233,7 +233,6 @@ def sparse_connect(
             lambda x: x.sample(n=n_samples_dict[x.name], replace=True)
         )
         global_post_comp_indices = sampled_inds.orig_index.to_numpy()
-        print("global_post_comp_indices", global_post_comp_indices)
         post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
     else:
         post_syn_neurons, inverse_post = np.unique(
@@ -248,13 +247,10 @@ def sparse_connect(
             .comp(0)
             .nodes.index
         )
-        print("global_post_indices", global_post_indices)
         global_post_indices = global_post_indices[inverse_post]
         post_rows = post_cell_view.base.nodes.loc[global_post_indices]
 
     if len(pre_rows) > 0:
-        print("pre", len(pre_rows))
-        print("post_rows", len(post_rows))
         pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)
 
 

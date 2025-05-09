@@ -842,15 +842,6 @@ class Module(ABC):
             values = values.at[self.base.nodes.index.to_numpy()].set(value)
             self.base.jaxnodes[key] = values
 
-        # self.base.jaxnodes["node_to_comp_index_mapping"] = -1 * jnp.ones(
-        #     self.nodes.index.max() + 1
-        # ).astype(int)
-        # self.base.jaxnodes["node_to_comp_index_mapping"] = (
-        #     self.base.jaxnodes["node_to_comp_index_mapping"]
-        #     .at[self.nodes.index.to_numpy()]
-        #     .set(self.nodes["global_comp_index"])
-        # )
-
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.
@@ -1034,19 +1025,14 @@ class Module(ABC):
             parents[nodes[:, 0]] = nodes[:, 1]
         self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
-    def _compute_axial_conductances(
-        self, params: Dict[str, jnp.ndarray], voltage_solver: str
-    ):
+    def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
         """Given radius, length, r_a, compute the axial coupling conductances.
 
         If ion diffusion was activated by the user (with `cell.diffuse()`) then this
         function also compute the axial conductances for every ion.
         """
         return compute_axial_conductances(
-            self._comp_edges,
-            params,
-            self.diffusion_states,
-            voltage_solver,
+            self._comp_edges, params, self.diffusion_states
         )
 
     def set(self, key: str, val: Union[float, jnp.ndarray]):
@@ -1419,9 +1405,7 @@ class Module(ABC):
         # taken care of by `get_all_parameters()`).
         self.base.to_jax()
         pstate = params_to_pstate(trainable_params, self.base.indices_set_by_trainables)
-        all_params = self.base.get_all_parameters(
-            pstate, voltage_solver="jaxley.dhs.cpu"
-        )
+        all_params = self.base.get_all_parameters(pstate)
 
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
@@ -1524,9 +1508,7 @@ class Module(ABC):
         return self.trainable_params
 
     @only_allow_module
-    def get_all_parameters(
-        self, pstate: List[Dict], voltage_solver: str
-    ) -> Dict[str, jnp.ndarray]:
+    def get_all_parameters(self, pstate: List[Dict]) -> Dict[str, jnp.ndarray]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
@@ -1598,9 +1580,7 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and add them to the params dictionary.
-        conds = self.base._compute_axial_conductances(
-            params=params, voltage_solver=voltage_solver
-        )
+        conds = self.base._compute_axial_conductances(params=params)
         params["axial_conductances"] = conds
         return params
 
@@ -1694,7 +1674,7 @@ class Module(ABC):
         # that by allowing an input `params` and `pstate` to this function.
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
-        params = self.base.get_all_parameters([], voltage_solver="jaxley.thomas")
+        params = self.base.get_all_parameters([])
 
         for channel in self.base.channels + self.base.pumps:
             name = channel._name
@@ -2671,6 +2651,8 @@ class Module(ABC):
         inds_branch = self.nodes.groupby("global_branch_index")[
             "global_comp_index"
         ].apply(list)
+        # TODO: `.iloc` is a bit risky here because it assumes that the i-th row
+        # of self.nodes corresponds to the i-th global compartment.
         branch_lens = [
             np.sum(self.nodes["length"].iloc[np.asarray(i)]) for i in inds_branch
         ]

@@ -16,19 +16,12 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
-    build_branchpoint_group_inds,
     compute_children_and_parents,
     convert_point_process_to_distributed,
     loc_of_index,
-    merge_cells,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
-from jaxley.utils.solver_utils import (
-    JaxleySolveIndexer,
-    comp_edges_to_indices,
-    dhs_group_comps_into_levels,
-    remap_index_to_masked,
-)
+from jaxley.utils.solver_utils import comp_edges_to_indices, dhs_group_comps_into_levels
 from jaxley.utils.syn_utils import gather_synapes
 
 

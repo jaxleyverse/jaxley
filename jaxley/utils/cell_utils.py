@@ -227,17 +227,6 @@ def compute_children_in_level(
     return children_in_each_level
 
 
-def compute_parents_in_level(levels, par_inds, parents_row_and_col):
-    level_of_parent = levels[par_inds]
-    parents_in_each_level = []
-    for l in range(np.max(levels)):
-        parents_inds_in_current_level = np.where(level_of_parent == l)[0]
-        parents_in_current_level = parents_row_and_col[parents_inds_in_current_level]
-        parents_in_current_level = np.asarray(parents_in_current_level)
-        parents_in_each_level.append(parents_in_current_level)
-    return parents_in_each_level
-
-
 def _compute_num_children(parents):
     num_branches = len(parents)
     num_children = []
@@ -486,42 +475,6 @@ def convert_point_process_to_distributed(
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
 
 
-def build_branchpoint_group_inds(
-    num_branchpoints, child_belongs_to_branchpoint, start_ind_for_branchpoints
-):
-    branchpoint_inds_parents = start_ind_for_branchpoints + jnp.arange(num_branchpoints)
-    branchpoint_inds_children = (
-        start_ind_for_branchpoints + child_belongs_to_branchpoint
-    )
-
-    all_branchpoint_inds = jnp.concatenate(
-        [branchpoint_inds_parents, branchpoint_inds_children]
-    )
-    branchpoint_group_inds = remap_to_consecutive(all_branchpoint_inds)
-    return branchpoint_group_inds
-
-
-def compute_morphology_indices_in_levels(
-    num_branchpoints,
-    child_belongs_to_branchpoint,
-    par_inds,
-    child_inds,
-):
-    """Return (row, col) to build the sparse matrix defining the voltage eqs.
-
-    This is run at `init`, not during runtime.
-    """
-    branchpoint_inds_parents = jnp.arange(num_branchpoints)
-    branchpoint_inds_children = child_belongs_to_branchpoint
-    branch_inds_parents = par_inds
-    branch_inds_children = child_inds
-
-    children = jnp.stack([branch_inds_children, branchpoint_inds_children])
-    parents = jnp.stack([branch_inds_parents, branchpoint_inds_parents])
-
-    return {"children": children.T, "parents": parents.T}
-
-
 def group_and_sum(
     values_to_sum: jnp.ndarray, inds_to_group_by: jnp.ndarray, num_branchpoints: int
 ) -> jnp.ndarray:
@@ -561,7 +514,6 @@ def compute_axial_conductances(
     comp_edges: pd.DataFrame,
     params: Dict[str, jnp.ndarray],
     diffusion_states: List[str],
-    voltage_solver: str,
 ) -> Dict[str, jnp.ndarray]:
     """Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.
 

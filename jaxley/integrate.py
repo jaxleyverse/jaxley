@@ -56,7 +56,7 @@ def build_init_and_step_fn(
         if param_state is not None:
             pstate += param_state
 
-        all_params = module.get_all_parameters(pstate, voltage_solver=voltage_solver)
+        all_params = module.get_all_parameters(pstate)
         all_states = (
             module.get_all_states(pstate, all_params, delta_t)
             if all_states is None

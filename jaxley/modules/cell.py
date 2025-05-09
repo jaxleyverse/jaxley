@@ -11,20 +11,11 @@ import pandas as pd
 from jaxley.modules.base import Module
 from jaxley.modules.branch import Branch
 from jaxley.utils.cell_utils import (
-    build_branchpoint_group_inds,
     compute_children_and_parents,
-    compute_children_in_level,
     compute_children_indices,
-    compute_levels,
-    compute_morphology_indices_in_levels,
-    compute_parents_in_level,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
-from jaxley.utils.solver_utils import (
-    JaxleySolveIndexer,
-    comp_edges_to_indices,
-    remap_index_to_masked,
-)
+from jaxley.utils.solver_utils import comp_edges_to_indices
 
 
 class Cell(Module):

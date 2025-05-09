@@ -13,7 +13,6 @@ from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
 
 from jaxley.utils.cell_utils import group_and_sum
-from jaxley.utils.solver_utils import JaxleySolveIndexer
 
 
 def step_voltage_explicit(
