@@ -27,13 +27,11 @@ in the future. If the new SWC reader is causing issues for you, please open an i
 (#612, @michaeldeistler)
 - radiuses are now integrated across SWC coordinates, not interpolated
 (#612, @michaeldeistler)
-<<<<<<< HEAD
 - remove pin of `JAX` version. New `JAX` versions (`JAX>=0.6.0`) resolve slow CPU
-runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeldeistler).
-=======
-- running the `d_lambda` rule is now much faster (#625, @michaeldeistler), see
-[the how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/set_ncomp.html).
->>>>>>> 10e3d20 (CHANGELOG improvements)
+runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeldeistler)
+- running the `d_lambda` rule is now much faster, see
+[the how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/set_ncomp.html)
+(#625, @michaeldeistler)
 
 ### 📚 Documentation
 
