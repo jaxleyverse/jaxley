@@ -10,9 +10,6 @@ from jax import vmap
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from jax.lax import fori_loop
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
-from tridiax.thomas import thomas_backsub_lower, thomas_triang_upper
-
-from jaxley.utils.cell_utils import group_and_sum
 
 
 def step_voltage_explicit(

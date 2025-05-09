@@ -475,26 +475,6 @@ def convert_point_process_to_distributed(
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
 
 
-def group_and_sum(
-    values_to_sum: jnp.ndarray, inds_to_group_by: jnp.ndarray, num_branchpoints: int
-) -> jnp.ndarray:
-    """Group values by whether they have the same integer and sum values within group.
-
-    This is used to construct the last diagonals at the branch points.
-
-    Written by ChatGPT.
-    """
-    # Initialize an array to hold the sum of each group
-    group_sums = jnp.zeros(num_branchpoints)
-
-    # `.at[inds]` requires that `inds` is not empty, so we need an if-case here.
-    # `len(inds) == 0` is the case for branches and compartments.
-    if num_branchpoints > 0:
-        group_sums = group_sums.at[inds_to_group_by].add(values_to_sum)
-
-    return group_sums
-
-
 def query_channel_states_and_params(d, keys, idcs):
     """Get dict with subset of keys and values from d.
 
