@@ -1494,7 +1494,6 @@ class Module(ABC):
         states, _ = self.base._synapse_currents(
             states, self.synapses, all_params, delta_t, self.edges
         )
-        print("startes", states)
         return states
 
     @property
