@@ -126,7 +126,6 @@ class Network(Module):
         In particular, it initializes:
         - `_comp_edges`
         - `_branchpoints`
-        - `_comp_to_index_mapping`
         - `_n_nodes`
         - `_off_diagonal_inds`
         """
@@ -148,13 +147,6 @@ class Network(Module):
             offset += cell._n_nodes  # Compartment-offset.
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
         self._branchpoints = pd.concat(self._branchpoints)
-
-        # Mapping from global_comp_index to `nodes.index`.
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self._comp_to_index_mapping = comp_to_index_mapping.astype(int)
         self._n_nodes = offset
 
         # off_diagonal_inds
@@ -243,14 +235,13 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
-        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(
-            states, syn_channels, params, delta_t, edges, comp_to_index_mapping
+            states, syn_channels, params, delta_t, edges
         )
         states, current_terms = self._synapse_currents(
-            states, syn_channels, params, delta_t, edges, comp_to_index_mapping
+            states, syn_channels, params, delta_t, edges
         )
         return states, current_terms
 
@@ -261,13 +252,12 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
-        comp_to_index_mapping: np.ndarray,
     ) -> Dict:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["pre_index"].apply(list)
+        post_syn_inds = grouped_syns["post_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         for i, synapse_type in enumerate(syn_channels):
@@ -284,10 +274,8 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            pre_inds = comp_to_index_mapping[np.asarray(pre_syn_inds[synapse_names[i]])]
-            post_inds = comp_to_index_mapping[
-                np.asarray(post_syn_inds[synapse_names[i]])
-            ]
+            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
+            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
             # State updates.
             states_updated = synapse_type.update_states(
@@ -311,13 +299,12 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
-        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["pre_index"].apply(list)
+        post_syn_inds = grouped_syns["post_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         syn_voltage_terms = jnp.zeros_like(voltages)
@@ -340,10 +327,8 @@ class Network(Module):
                 synapse_states[s] = states[s]
 
             # Get pre and post indexes of the current synapse type.
-            pre_inds = comp_to_index_mapping[np.asarray(pre_syn_inds[synapse_names[i]])]
-            post_inds = comp_to_index_mapping[
-                np.asarray(post_syn_inds[synapse_names[i]])
-            ]
+            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
+            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
@@ -554,10 +539,8 @@ class Network(Module):
         )
 
         # Define new synapses. Each row is one synapse.
-        pre_nodes = pre_nodes[["global_comp_index"]]
-        pre_nodes.columns = ["pre_global_comp_index"]
-        post_nodes = post_nodes[["global_comp_index"]]
-        post_nodes.columns = ["post_global_comp_index"]
+        pre_nodes = pd.DataFrame({"pre_index": pre_nodes.index})
+        post_nodes = pd.DataFrame({"post_index": post_nodes.index})
         new_rows = pd.concat(
             [
                 global_edge_index,

@@ -144,8 +144,8 @@ class Module(ABC):
         self.edges = pd.DataFrame(
             columns=[
                 "global_edge_index",
-                "pre_global_comp_index",
-                "post_global_comp_index",
+                "pre_index",
+                "post_index",
                 "pre_locs",
                 "post_locs",
                 "type",
@@ -1653,7 +1653,6 @@ class Module(ABC):
             all_params,
             delta_t,
             self.edges,
-            self._comp_to_index_mapping,
         )
         return states
 
@@ -2198,7 +2197,6 @@ class Module(ABC):
             params,
             delta_t,
             self.edges,
-            self._comp_to_index_mapping,
         )
 
         # Voltage steps.
@@ -2556,7 +2554,6 @@ class Module(ABC):
         params: Dict[str, jnp.ndarray],
         delta_t: float,
         edges: pd.DataFrame,
-        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         """One step of integration of the channels.
 
@@ -2573,7 +2570,6 @@ class Module(ABC):
         params,
         delta_t,
         edges: pd.DataFrame,
-        comp_to_index_mapping: np.ndarray,
     ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         return states, (None, None)
 
@@ -3013,7 +3009,6 @@ class View(Module):
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
         self.group_names = self.base.group_names
-        self._comp_to_index_mapping = self.base._comp_to_index_mapping
 
         self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
             pointer
@@ -3065,12 +3060,10 @@ class View(Module):
         if not has_edge_inds and has_node_inds:
             base_edges = self.base.edges
             self._nodes_in_view = nodes
-            incl_comps = pointer.nodes.loc[
-                self._nodes_in_view, "global_comp_index"
-            ].unique()
+            incl_comps = pointer.nodes.loc[self._nodes_in_view].index.unique()
             if not base_edges.empty:
-                pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
-                post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
+                pre = base_edges["pre_index"].isin(incl_comps).to_numpy()
+                post = base_edges["post_index"].isin(incl_comps).to_numpy()
                 possible_edges_in_view = base_edges.index.to_numpy()[
                     (pre & post).flatten()
                 ]
@@ -3097,7 +3090,7 @@ class View(Module):
             base_nodes = self.base.nodes
             self._edges_in_view = edges
             incl_comps = pointer.edges.loc[
-                self._edges_in_view, ["pre_global_comp_index", "post_global_comp_index"]
+                self._edges_in_view, ["pre_index", "post_index"]
             ]
             incl_comps = np.unique(incl_comps.to_numpy().flatten())
             where_comps = base_nodes["global_comp_index"].isin(incl_comps)
@@ -3452,12 +3445,6 @@ def to_graph(
         syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
         syn_edges["syn_type"] = syn_edges["type"]
         syn_edges["type"] = "synapse"
-        syn_edges["pre_comp_index"] = module._comp_to_index_mapping[
-            syn_edges["pre_comp_index"]
-        ]
-        syn_edges["post_comp_index"] = module._comp_to_index_mapping[
-            syn_edges["post_comp_index"]
-        ]
         syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
 
         if not syn_edges.empty:

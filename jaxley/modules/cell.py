@@ -127,7 +127,6 @@ class Cell(Module):
         In particular, it initializes:
         - `_comp_edges`
         - `_branchpoints`
-        - `_comp_to_index_mapping`
         - `_n_nodes`
         - `_off_diagonal_inds`
 
@@ -214,13 +213,6 @@ class Cell(Module):
             self._branchpoints.index = (
                 np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
             )
-
-        # Mapping from global_comp_index to `nodes.index`.
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self._comp_to_index_mapping = comp_to_index_mapping.astype(int)
 
         sources = np.asarray(self._comp_edges["source"].to_list())
         sinks = np.asarray(self._comp_edges["sink"].to_list())

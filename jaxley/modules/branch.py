@@ -98,13 +98,6 @@ class Branch(Module):
             }
         )
         self._comp_edges["type"] = 0
-
-        # Mapping from global_comp_index to `nodes.index`.
-        comp_to_index_mapping = np.zeros((len(self.nodes)))
-        comp_to_index_mapping[self.nodes["global_comp_index"].to_numpy()] = (
-            self.nodes.index.to_numpy()
-        )
-        self._comp_to_index_mapping = comp_to_index_mapping.astype(int)
         self._n_nodes = self.ncomp
 
         # `off_diagonal_inds`.

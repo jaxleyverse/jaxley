@@ -79,7 +79,7 @@ def test_fully_connect(SimpleNet):
     fully_connect(net1[8:12], net1[12:16], TestSynapse())
 
     assert all(
-        net1.edges.post_global_comp_index
+        net1.nodes.loc[net1.edges.post_index, "global_comp_index"]
         == [
             96,
             120,
@@ -125,7 +125,7 @@ def test_fully_connect(SimpleNet):
     fully_connect(net2[8:12], net2[12:16], TestSynapse(), random_post_comp=True)
 
     assert all(
-        net2.edges.post_global_comp_index
+        net2.nodes.loc[net2.edges.post_index, "global_comp_index"]
         == [
             108,
             135,
@@ -173,7 +173,7 @@ def test_sparse_connect(SimpleNet):
     sparse_connect(net1[8:12], net1[12:], TestSynapse(), p=0.5)
 
     assert all(
-        net1.edges.post_global_comp_index
+        net1.nodes.loc[net1.edges.post_index, "global_comp_index"]
         == [112, 112, 240, 192, 208, 208, 208, 224, 208, 192, 240]
     )
 
@@ -187,7 +187,7 @@ def test_sparse_connect(SimpleNet):
     sparse_connect(net2[8:12], net2[12:], TestSynapse(), p=0.5, random_post_comp=True)
 
     assert all(
-        net2.edges.post_global_comp_index
+        net2.nodes.loc[net2.edges.post_index, "global_comp_index"]
         == [123, 201, 196, 211, 208, 211, 213, 238, 255, 255]
     )
 
