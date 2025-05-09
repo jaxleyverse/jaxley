@@ -63,9 +63,7 @@ def only_allow_module(func):
     def wrapper(self, *args, **kwargs):
         module_name = self.base.__class__.__name__
         method_name = func.__name__
-        assert not isinstance(
-            self, View
-        ), (
+        assert not isinstance(self, View), (
             f"{method_name} is currently not supported for Views. Call on "
             f"the {module_name} base Module."
         )
@@ -286,6 +284,7 @@ class Module(ABC):
 
     def _update_local_indices(self) -> pd.DataFrame:
         """Compute local indices from the global indices that are in view.
+
         This is recomputed everytime a View is created."""
         rerank = lambda df: df.rank(method="dense").astype(int) - 1
 
@@ -1121,7 +1120,7 @@ class Module(ABC):
         return param_state
 
     def set_ncomp(
-        self, ncomp: int, min_radius: Optional[float] = None, skip_init: bool = False
+        self, ncomp: int, min_radius: Optional[float] = None, initialize: bool = True
     ):
         """Set the number of compartments with which the branch is discretized.
 
@@ -1130,16 +1129,12 @@ class Module(ABC):
                 into.
             min_radius: Only used if the morphology was read from an SWC file. If passed
                 the radius is capped to be at least this value.
-            skip_init: If `True`, it skips the initialization stage and the user
+            initialize: If `False`, it skips the initialization stage and the user
                 has to run it manually afterwards. This is useful when `set_ncomp`
                 is run in a loop (e.g. for the d_lambda rule), where one can
                 initialize only once after the entire loop to largely speed up
-                computation time. If `True`, then the user has to run
-                ```
-                cell._initialize()
-                cell._update_local_indices()
-                ```
-                manually afterwards.
+                computation time. If `False`, then the user has to run
+                `cell.initialize()` manually afterwards.
 
         Raises:
             - When there are stimuli in any compartment in the module.
@@ -1297,9 +1292,8 @@ class Module(ABC):
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
-        if not skip_init:
-            self.base._initialize()
-            self.base._update_local_indices()
+        if initialize:
+            self.base.initialize()
 
     def make_trainable(
         self,
@@ -1668,11 +1662,20 @@ class Module(ABC):
         """Whether the `Module` is ready to be solved or not."""
         return self.initialized_solver
 
-    def _initialize(self):
+    def initialize(self):
         """Initialize the module."""
+        # Compute the local indices from the global indices.
+        self._update_local_indices()
+
+        # Initialize compartment graph structure (`_comp_edges`, `_branchpoints`, ...).
         self._init_comp_graph()
+
+        # Initialize view of nodes, edges, and compartment graph structure.
         self._init_view()
+
+        # Inititalize solvers.
         self._init_solvers()
+
         return self
 
     @only_allow_module

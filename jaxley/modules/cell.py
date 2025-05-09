@@ -99,8 +99,6 @@ class Cell(Module):
         ).tolist()
         self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
 
-        self._update_local_indices()
-
         # Appending general parameters (radius, length, r_a, cm) and channel parameters,
         # as well as the states (v, and channel states).
         self._append_params_and_states(self.cell_params, self.cell_states)
@@ -121,7 +119,7 @@ class Cell(Module):
         )
 
         # Compartment edges.
-        self._initialize()
+        self.initialize()
 
     def _init_comp_graph(self):
         """Initialize attributes concerning the compartment graph.

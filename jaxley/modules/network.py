@@ -81,9 +81,6 @@ class Network(Module):
         self.nodes.index = np.concatenate(node_indices)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)
 
-        self._update_local_indices()
-        self._init_view()
-
         parents = [cell.comb_parents for cell in cells]
         self.comb_parents = jnp.concatenate(
             [p.at[1:].add(self._cumsum_nbranches[i]) for i, p in enumerate(parents)]
@@ -114,7 +111,7 @@ class Network(Module):
         # Channels.
         self._gather_channels_from_constituents(cells)
 
-        self._initialize()
+        self.initialize()
         del self._cells_list
 
     def __repr__(self):

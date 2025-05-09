@@ -44,7 +44,6 @@ class Compartment(Module):
             dict(global_cell_index=[0], global_branch_index=[0], global_comp_index=[0])
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
-        self._update_local_indices()
 
         # Synapses.
         self.branch_edges = pd.DataFrame(
@@ -61,7 +60,7 @@ class Compartment(Module):
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
         # Initialize the module.
-        self._initialize()
+        self.initialize()
 
     def _init_comp_graph(self):
         """Initialize attributes concerning the compartment graph.
@@ -80,9 +79,7 @@ class Compartment(Module):
         )
 
         # Branchpoints.
-        self._branchpoints = pd.DataFrame().from_dict(
-            {"x": [], "y": [], "z": []}
-        )
+        self._branchpoints = pd.DataFrame().from_dict({"x": [], "y": [], "z": []})
 
         # Mapping from global_comp_index to `nodes.index`.
         comp_to_index_mapping = np.zeros((len(self.nodes)))

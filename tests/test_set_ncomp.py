@@ -193,3 +193,33 @@ def test_set_ncomp_raises_for_inhomogenous_branches(SimpleCell):
     cell.branch(0).comp(0).add_to_group("exc")
     with pytest.raises(AssertionError):
         cell.branch(0).set_ncomp(2)
+
+
+def test_dlambda_rule(SimpleMorphCell):
+    """If you have to modify this test, make sure to also modify the how-to guide."""
+    file = "morph_ca1_n120_250.swc"
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", file)
+
+    cell = SimpleMorphCell(fname, ncomp=1)
+
+    # Reasonable default values for most models.
+    frequency = 100.0
+    d_lambda = 0.1  # Larger -> more coarse-grained.
+
+    for branch in cell.branches:
+        diameter = 2 * branch.nodes["radius"].to_numpy()[0]
+        c_m = branch.nodes["capacitance"].to_numpy()[0]
+        r_a = branch.nodes["axial_resistivity"].to_numpy()[0]
+        l = branch.nodes["length"].to_numpy()[0]
+
+        lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
+        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
+        branch.set_ncomp(ncomp, initialize=False)
+
+    # After the loop, you have to run `cell.initialize()` because we passed
+    # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
+    cell.initialize()
+    cell[0, 0].record()
+    v = jx.integrate(cell, t_max=1.0)
+    assert np.invert(np.any(np.isnan(v))), "Found NaN after d_lambda rule."

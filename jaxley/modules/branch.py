@@ -68,7 +68,6 @@ class Branch(Module):
         self.nodes["global_comp_index"] = np.arange(self.ncomp).tolist()
         self.nodes["global_branch_index"] = [0] * self.ncomp
         self.nodes["global_cell_index"] = [0] * self.ncomp
-        self._update_local_indices()
 
         # Channels.
         self._gather_channels_from_constituents(compartment_list)
@@ -85,7 +84,7 @@ class Branch(Module):
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
-        self._initialize()
+        self.initialize()
 
     def _init_comp_graph(self):
         """Initialize `._comp_edges`, `._branchpoints`, and `comp_to_index_mapping`.
