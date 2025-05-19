@@ -55,6 +55,7 @@ by default. To get them, do `net.copy_node_property_to_edges("global_comp_index"
 ### Bug fixes
 
 - `ChainTransform` forward now working as mirror to inverse (#628, @kyralianaka)
+- allow `data_set` with vectors of values (#606, @chaseking)
 
 
 # 0.8.2

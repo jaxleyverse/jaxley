@@ -1095,7 +1095,7 @@ class Module(ABC):
         self,
         key: str,
         val: Union[float, jnp.ndarray],
-        param_state: Optional[List[Dict]] = None,
+        param_state: Optional[List[Dict]],
     ):
         """Set parameter of module (or its view) to a new value within `jit`.
 
@@ -1112,8 +1112,12 @@ class Module(ABC):
         viewed_inds = self._nodes_in_view if is_node_param else self._edges_in_view
         if key in data.columns:
             not_nan = ~data[key].isna()
-            indices = jnp.asarray(viewed_inds[not_nan]).reshape(-1, 1)  # shape (n_comp, 1)
-            val = jnp.broadcast_to(jnp.asarray(val), (indices.shape[0],))  # shape (n_comp,)
+            indices = jnp.asarray(viewed_inds[not_nan]).reshape(
+                -1, 1
+            )  # shape (n_comp, 1)
+            val = jnp.broadcast_to(
+                jnp.asarray(val), (indices.shape[0],)
+            )  # shape (n_comp,)
             added_param_state = [
                 {
                     "indices": indices,
