@@ -90,6 +90,8 @@ html_theme_options = {
     "toc_title": "Navigation",
     "show_navbar_depth": 1,
     "show_toc_level": 3,
+    "pygment_light_style": "default",
+    "pygment_dark_style": "github-dark",  # All styles: https://pygments.org/styles/
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
