@@ -90,9 +90,7 @@ def dhs_permutation_indices(
         edge_data[tuple(edge.tolist())] = v
 
     ordered_comp_edges = {}
-    for ij in edge_data.keys():
-        i = ij[0]
-        j = ij[1]
+    for i, j in edge_data.keys():
         new_i = mapping_dict[i]
         new_j = mapping_dict[j]
         ordered_comp_edges[(new_i, new_j)] = edge_data[(i, j)]

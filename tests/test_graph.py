@@ -397,7 +397,7 @@ def test_morph_edit_swc(ncomp: int):
 def test_trim_dendrites_of_swc():
     """This function tests whether we can successfully trim dendrites.
 
-    If is just an API test and does not check for correctness.
+    It is just an API test and does not check for correctness.
 
     When the morphology is being trimmed, it deletes node [0] which had caused issues
     at some point.

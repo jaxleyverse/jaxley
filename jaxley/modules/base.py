@@ -723,7 +723,8 @@ class Module(ABC):
 
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
-        Example:
+        Example usage
+        ^^^^^^^^^^^^^
 
         .. code-block:: python
 
@@ -911,7 +912,14 @@ class Module(ABC):
 
     @only_allow_module
     def _init_solvers(self, allowed_nodes_per_level: Optional[int] = None):
-        """Initialize the morphology such that it can be processed by the solvers."""
+        """Initialize the morphology such that it can be processed by the solvers.
+
+        Args:
+            allowed_nodes_per_level: Only relevant to the `jaxley.dhs` solver. It sets
+                how many nodes are visited before the level is increased, even if the
+                number of hops did not change. This sets the amount of parallelism
+                of the simulation.
+        """
         self._init_solver_jax_spsolve()
         self._init_solver_jaxley_dhs_solve(
             allowed_nodes_per_level=allowed_nodes_per_level
@@ -986,7 +994,7 @@ class Module(ABC):
         dhs_node_order = np.asarray(node_order[1:])
 
         # We have to change the order of compartments at every time step of the solve.
-        # Because of this, we make it as efficient as pssible to perform this ordering
+        # Because of this, we make it as efficient as possible to perform this ordering
         # with the arrays below. Example:
         # ```
         # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
@@ -2646,9 +2654,10 @@ class Module(ABC):
                 self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
             )
 
-        assert not np.any(
-            [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
-        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
+        assert not np.any([np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]), (
+            "No coordinates available. Use `vis(detail='point')` or run "
+            "`.compute_xyz()` before running `.vis()`."
+        )
 
         ax = plot_graph(
             self.xyzr,
@@ -2681,10 +2690,11 @@ class Module(ABC):
         inds_branch = self.nodes.groupby("global_branch_index")[
             "global_comp_index"
         ].apply(list)
-        # TODO: `.iloc` is a bit risky here because it assumes that the i-th row
-        # of self.nodes corresponds to the i-th global compartment.
         branch_lens = [
-            np.sum(self.nodes["length"].iloc[np.asarray(i)]) for i in inds_branch
+            np.sum(
+                self.nodes.set_index("global_comp_index").loc[np.asarray(i), "length"]
+            )
+            for i in inds_branch
         ]
         endpoints = []
 
@@ -2773,7 +2783,8 @@ class Module(ABC):
         # Test if any coordinate values are NaN which would greatly affect moving
         if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
             raise ValueError(
-                "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
+                "NaN coordinate values detected. Shift amounts cannot be computed. "
+                "Please run compute_xyzr() or assign initial coordinate values."
             )
 
         # can only iterate over cells for networks
@@ -3349,8 +3360,8 @@ def to_graph(
         A networkx compartment. Has the same structure as a graph built with
         `build_compartment_graph()`.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 

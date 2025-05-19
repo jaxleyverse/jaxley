@@ -128,6 +128,10 @@ class Network(Module):
         - `_branchpoints`
         - `_n_nodes`
         - `_off_diagonal_inds`
+
+        In principle, we could do this by traversing the entire `graph`. However,
+        it is faster to just collect the graph attributes of each `cell` and
+        concatenate them (which is what we do here).
         """
         # Compartment edges, branchpoints, internal_node_inds.
         offset = 0

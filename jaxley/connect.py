@@ -36,8 +36,8 @@ def connect(
         post: View of the postsynaptic compartment.
         synapse_type: The type of synapse to use.
 
-    Examples:
-    ---------
+    Example usage
+    ^^^^^^^^^^^^^
 
     Example 1: Connect one compartment to another compartment with a single synapse:
 
@@ -93,8 +93,8 @@ def fully_connect(
         synapse_type: The synapse to append.
         random_post_comp: If True, randomly samples the postsynaptic compartments.
 
-    Examples:
-    ---------
+    Example usage
+    ^^^^^^^^^^^^^
 
     The following example insert 12 synapses (3 x 4).
 
@@ -137,6 +137,7 @@ def fully_connect(
         ).to_numpy()
         to_idx = np.tile(range(0, num_post), num_pre)
         global_post_comp_indices = global_post_comp_indices[to_idx]
+        post_cell_view.nodes.drop(columns="orig_index", inplace=True)
 
     post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
 
@@ -166,8 +167,8 @@ def sparse_connect(
         p: Probability of connection.
         random_post_comp: If True, randomly samples the postsynaptic compartments.
 
-    Examples:
-    ---------
+    Example usage
+    ^^^^^^^^^^^^^
 
     The following example insert approximately 6 synapses (3 x 4 = 12 possible
     synapses, with connection probability 0.5).
@@ -234,6 +235,7 @@ def sparse_connect(
         )
         global_post_comp_indices = sampled_inds.orig_index.to_numpy()
         post_rows = post_cell_view.nodes.loc[global_post_comp_indices]
+        post_syn_view.drop(columns="orig_index", inplace=True)
     else:
         post_syn_neurons, inverse_post = np.unique(
             post_syn_neurons, return_inverse=True
@@ -277,8 +279,8 @@ def connectivity_matrix_connect(
             not (connection).
         random_post_comp: If True, randomly samples the postsynaptic compartments.
 
-    Examples:
-    ---------
+    Example usage
+    ^^^^^^^^^^^^^
 
     The following generates a random 10 x 10 boolean matrix and uses it to connect the
     neurons in a network.
@@ -318,6 +320,7 @@ def connectivity_matrix_connect(
         pre_cell_view.nodes.groupby("global_cell_index").first()["orig_index"]
     ).to_numpy()
     pre_rows = pre_cell_view.select(nodes=global_pre_comp_indices[from_idx]).nodes
+    pre_cell_view.nodes.drop(columns="orig_index", inplace=True)
 
     if random_post_comp:
         global_to_idx = post_cell_view.nodes.global_cell_index.unique()[to_idx]
@@ -339,6 +342,7 @@ def connectivity_matrix_connect(
             post_cell_view.nodes.groupby("global_cell_index").first()["orig_index"]
         ).to_numpy()
         global_post_comp_indices = global_post_comp_indices[to_idx]
+        post_cell_view.nodes.drop(columns="orig_index", inplace=True)
     post_rows = post_cell_view.select(nodes=global_post_comp_indices).nodes
 
     pre_cell_view.base._append_multiple_synapses(pre_rows, post_rows, synapse_type)

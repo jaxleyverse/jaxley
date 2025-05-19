@@ -22,13 +22,13 @@ def build_init_and_step_fn(
     parameters and states of the neuron model and then step through the model
 
     Args:
-        module (Module): A `Module` object that e.g. a cell.
-        voltage_solver (str, optional): Voltage solver used in step. Defaults to "jaxley.stone".
-        solver (str, optional): ODE solver. Defaults to "bwd_euler".
+        module: A `Module` object that e.g. a cell.
+        voltage_solver: Voltage solver used in step. Defaults to "jaxley.stone".
+        solver: ODE solver. Defaults to "bwd_euler".
 
     Returns:
-        init_fn, step_fn: Functions that initialize the state and parameters, and perform
-            a single integration step, respectively.
+        init_fn, step_fn: Functions that initialize the state and parameters, and
+            perform a single integration step, respectively.
     """
     # Initialize the external inputs and their indices.
     external_inds = module.external_inds.copy()
@@ -42,13 +42,13 @@ def build_init_and_step_fn(
         """Initializes the parameters and states of the neuron model.
 
         Args:
-            params (List[Dict[str, jnp.ndarray]]): List of trainable parameters.
-            all_states (Optional[Dict], optional): State if alread initialized. Defaults to None.
-            param_state (Optional[List[Dict]], optional): Parameters returned by `data_set`.. Defaults to None.
-            delta_t (float, optional): Step size. Defaults to 0.025.
+            params: List of trainable parameters.
+            all_states: State if alread initialized. Defaults to None.
+            param_state: Parameters returned by `data_set`.. Defaults to None.
+            delta_t: Step size. Defaults to 0.025.
 
         Returns:
-            Tuple[Dict, Dict]: All states and parameters.
+            All states and parameters.
         """
         # Make the `trainable_params` of the same shape as the `param_state`, such that
         # they can be processed together by `get_all_parameters`.
@@ -74,14 +74,14 @@ def build_init_and_step_fn(
         """Performs a single integration step with step size delta_t.
 
         Args:
-            all_states (Dict): Current state of the neuron model.
-            all_params (Dict): Current parameters of the neuron model.
-            externals (Dict): External inputs.
-            external_inds (Dict, optional): External indices. Defaults to `module.external_inds`.
-            delta_t (float, optional): Time step. Defaults to 0.025.
+            all_states: Current state of the neuron model.
+            all_params: Current parameters of the neuron model.
+            externals: External inputs.
+            external_inds: External indices. Defaults to `module.external_inds`.
+            delta_t: Time step. Defaults to 0.025.
 
         Returns:
-            Dict: Updated states.
+            Updated states.
         """
         state = all_states
         state = module.step(
@@ -106,12 +106,12 @@ def add_stimuli(
     """Extends the external inputs with the stimuli.
 
     Args:
-        externals (Dict): Current external inputs.
-        external_inds (Dict): Current external indices.
-        data_stimuli (Optional[Tuple[jnp.ndarray, pd.DataFrame]], optional): Additional data stimuli. Defaults to None.
+        externals: Current external inputs.
+        external_inds: Current external indices.
+        data_stimuli: Additional data stimuli. Defaults to None.
 
     Returns:
-        Tuple[Dict, Dict]: Updated external inputs and indices.
+        Updated external inputs and indices.
     """
     # If stimulus is inserted, add it to the external inputs.
     if "i" in externals.keys() or data_stimuli is not None:
@@ -136,12 +136,12 @@ def add_clamps(
     """Adds clamps to the external inputs.
 
     Args:
-        externals (Dict): Current external inputs.
-        external_inds (Dict): Current external indices.
-        data_clamps (Optional[Tuple[str, jnp.ndarray, pd.DataFrame]], optional): Additional data clamps. Defaults to None.
+        externals: Current external inputs.
+        external_inds: Current external indices.
+        data_clamps: Additional data clamps. Defaults to None.
 
     Returns:
-        Tuple[Dict, Dict]: Updated external inputs and indices.
+        Updated external inputs and indices.
     """
     # If a clamp is inserted, add it to the external inputs.
     if data_clamps is not None:
@@ -192,9 +192,9 @@ def integrate(
         voltage_solver: Algorithm to solve quasi-tridiagonal linear system describing
             the voltage equations. The different options only take effect when
             `solver` is either `bwd_euler` or `crank_nicolson`. The options for
-            `voltage_solver` are `jaxley.dhs` and `jax.sparse`. For unbranched cables,
-            we also support `jaxley.stone` (which has good performance for unbranched
-            cables on GPU).
+            `voltage_solver` are `jaxley.dhs` and `jax.sparse`.
+            For unbranched cables, we also support `jaxley.stone` (which has good
+            performance for unbranched cables on GPU).
         checkpoint_lengths: Number of timesteps at every level of checkpointing. The
             `prod(checkpoint_lengths)` must be larger or equal to the desired number of
             simulated timesteps. Warning: the simulation is run for
@@ -207,6 +207,39 @@ def integrate(
             trainable initial states.
         return_states: If True, it returns all states such that the current state of
             the `Module` can be set with `set_states`.
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    The most simple usage is the following:
+
+    ::
+
+        cell = jx.Cell()
+        v = jx.integrate(cell, t_max=10.0)
+
+    If ``t_max`` is not passed, then you must have inserted a stimulus, and ``t_max``
+    will match the stimulus length.
+
+    Customizing the solver
+    ^^^^^^^^^^^^^^^^^^^^^^
+
+    If you use ``jx.integrate(..., voltage_solver="jaxley.dhs")``, we automatically
+    choose between a CPU and a GPU optimized version. If you manually want to run the
+    CPU-optimized version on GPU, do:
+
+    ::
+
+        cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=1)
+        v = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
+
+    To run the GPU-opotimized version on CPU, do:
+
+    ::
+
+        cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=16)
+        v = jx.integrate(cell, voltage_solver="jaxley.dhs.gpu")
+
     """
     if voltage_solver == "jaxley.dhs":
         # Automatically infer the voltage solver.

@@ -110,8 +110,8 @@ def to_swc_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
         nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0, 'p': -1}
         edges: {'l': 1.0}
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -257,8 +257,8 @@ def build_compartment_graph(
 
         Edges have attributes: {}
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -861,8 +861,6 @@ def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
                     solve_graph.add_edge(u, v, type="inter_branch")
             solve_graph.remove_node(node)
 
-    # mapping = {n: attrs["comp_index"] for n, attrs in solve_graph.nodes(data=True)}
-    # solve_graph = nx.relabel_nodes(solve_graph, mapping, copy=True)
     return solve_graph
 
 
@@ -951,8 +949,8 @@ def from_graph(
     Return:
         A `jx.Module` representing the graph.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -964,7 +962,7 @@ def from_graph(
     comp_graph = _remove_branch_points_at_tips(comp_graph)
 
     # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
-    # and we did not modify the exported graph, then we might do not want to traverse
+    # and we did not modify the exported graph, then we might not want to traverse
     # the graph again because this would change the ordering of the branches.
     if traverse_for_solve_order:
         comp_graph = _set_comp_and_branch_index(comp_graph, root=solve_root)
@@ -1169,8 +1167,8 @@ def vis_compartment_graph(
         comp_color: The color of the compartments.
         branchpoint_color: The color of the compartments.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 

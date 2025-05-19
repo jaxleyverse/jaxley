@@ -22,8 +22,8 @@ def morph_delete(module_view) -> "Cell":
     Returns:
         A cell in which specified branches are deleted.
 
-    Examples:
-    ---------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -106,8 +106,8 @@ def morph_connect(module_view1, module_view2) -> "Cell":
     Returns:
         A ``jx.Cell`` which is made up of both input cells.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
