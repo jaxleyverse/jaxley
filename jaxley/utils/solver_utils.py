@@ -1,33 +1,12 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
+import networkx as nx
 import numpy as np
 import pandas as pd
-
-
-def remap_index_to_masked(
-    index, nodes: pd.DataFrame, padded_cumsum_ncomp, ncomp_per_branch: jnp.ndarray
-):
-    """Convert actual index of the compartment to the index in the masked system.
-
-    E.g. if `ncomps = [2, 4]`, then the index `3` would be mapped to `5` because the
-    masked `ncomps` are `[4, 4]`. I.e.:
-
-    original: [0, 1,           2, 3, 4, 5]
-    masked:   [0, 1, (2) ,(3) ,4, 5, 6, 7]
-    """
-    cumsum_ncomp_per_branch = jnp.concatenate(
-        [
-            jnp.asarray([0]),
-            jnp.cumsum(ncomp_per_branch),
-        ]
-    )
-    branch_inds = nodes.loc[index, "global_branch_index"].to_numpy()
-    remainders = index - cumsum_ncomp_per_branch[branch_inds]
-    return padded_cumsum_ncomp[branch_inds] + remainders
 
 
 def convert_to_csc(
@@ -96,139 +75,176 @@ def comp_edges_to_indices(
         row_ind=all_inds[0],
         col_ind=all_inds[1],
     )
-    return n_nodes, data_inds, indices, indptr
+    return data_inds, indices, indptr
 
 
-class JaxleySolveIndexer:
-    """Indexer for easy access to compartment indices given a branch index.
+def dhs_permutation_indices(
+    lowers_and_uppers,
+    offdiag_inds,
+    node_order,
+    mapping_dict,
+):
+    """Return mapping to the DHS solve order, also for lower and upper diagonal vals."""
+    edge_data = {}
+    for edge, v in zip(offdiag_inds.T, lowers_and_uppers):
+        edge_data[tuple(edge.tolist())] = v
 
-    Used only by the custom Jaxley solvers. This class has two purposes:
+    ordered_comp_edges = {}
+    for i, j in edge_data.keys():
+        new_i = mapping_dict[i]
+        new_j = mapping_dict[j]
+        ordered_comp_edges[(new_i, new_j)] = edge_data[(i, j)]
 
-    1) It simplifies indexing. Indexing is difficult because every branch has a
-    different number of compartments (in the solve, every branch within a level has
-    the same number of compartments, but the number can still differ between levels).
-
-    2) It stores several attributes such that we do not have to track all of them
-    separately before they are used in `step()`.
-    """
-
-    def __init__(
-        self,
-        cumsum_ncomp: np.ndarray,
-        ncomp_per_branch: np.ndarray,
-        branchpoint_group_inds: Optional[np.ndarray] = None,
-        children_in_level: Optional[np.ndarray] = None,
-        parents_in_level: Optional[np.ndarray] = None,
-        root_inds: Optional[np.ndarray] = None,
-        remapped_node_indices: Optional[np.ndarray] = None,
-    ):
-        self.cumsum_ncomp = np.asarray(cumsum_ncomp)
-        self.ncomp_per_branch = np.asarray(ncomp_per_branch)
-
-        # Save items for easier access.
-        self.branchpoint_group_inds = branchpoint_group_inds
-        self.children_in_level = children_in_level
-        self.parents_in_level = parents_in_level
-        self.root_inds = root_inds
-        self.remapped_node_indices = remapped_node_indices
-
-    def first(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return the indices of the first compartment of all `branch_inds`."""
-        return self.cumsum_ncomp[branch_inds]
-
-    def masked_last(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return the indices of the last compartment of all `branch_inds`.
-
-        Notably, this returns the index of the last compartment _with_ taking into
-        account the masking structure which is needed to make all branches in a level
-        have the same number of compartments.
-
-        Example:
-        ```
-        parents = [-1, 0, 0, 1]
-        ncomp_per_branch = [2, 2, 4, 4]
-        masked_last([0, 1, 2, 3]) => [1, 5, 9, 13]
-        # The important one is `masked_last(1) = 5`, because the second level has a
-        # branch with 4 compartments.
-        ```
-        """
-        return self.cumsum_ncomp[branch_inds + 1] - 1
-
-    def last(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return the indices of the last compartment of all `branch_inds`.
-
-        Unlike `masked_last`, this returns the index of the last compartment that
-        acutally has a value.
-
-        Example:
-        ```
-        parents = [-1, 0, 0, 1]
-        ncomp_per_branch = [2, 2, 4, 4]
-        masked_last([0, 1, 2, 3]) => [1, 3, 9, 13]
-        # The important one is `masked_last(1) = 3`, because the branch has only
-        # 2 compartments.
-        ```
-        """
-        return self.cumsum_ncomp[branch_inds] + self.ncomp_per_branch[branch_inds] - 1
-
-    def branch(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return indices of all compartments in all `branch_inds`."""
-        start_inds = self.first(branch_inds)
-        end_inds = self.masked_last(branch_inds) + 1
-        return self._consecutive_indices(start_inds, end_inds)
-
-    def lower(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return indices of all lowers in all `branch_inds`.
-
-        This is needed because the `lowers` array in the voltage solve is instantiated
-        to have as many elements as the `diagonal`. In this method, we get rid of
-        this additional element."""
-        start_inds = self.first(branch_inds) + 1
-        end_inds = self.masked_last(branch_inds) + 1
-        return self._consecutive_indices(start_inds, end_inds)
-
-    def upper(self, branch_inds: np.ndarray) -> np.ndarray:
-        """Return indices of all uppers in all `branch_inds`.
-
-        This is needed because the `uppers` array in the voltage solve is instantiated
-        to have as many elements as the `diagonal`. In this method, we get rid of
-        this additional element."""
-        start_inds = self.first(branch_inds)
-        end_inds = self.masked_last(branch_inds)
-        return self._consecutive_indices(start_inds, end_inds)
-
-    def _consecutive_indices(
-        self, start_inds: np.ndarray, end_inds: np.ndarray
-    ) -> np.ndarray:
-        """Return array of all indices in [start, end], for every start, end.
-
-        It also reshape the indices to `(nbranches, ncomp)`.
-
-        E.g.:
-        ```
-        start_inds = [0, 6]
-        end_inds = [3, 9]
-        -->
-        [[0, 1, 2], [6, 7, 8]]
-        ```
-        """
-        n_inds = end_inds - start_inds
-        assert np.all(n_inds[0] == n_inds), (
-            "The indexer only supports indexing into branches with the same number "
-            "of compartments."
-        )
-        if n_inds[0] > 0:
-            repeated_starts = np.reshape(np.repeat(start_inds, n_inds), (-1, n_inds[0]))
-            # For single compartment neurons there are no uppers or lowers, so `n_inds`
-            # can be zero.
-            return repeated_starts + np.arange(n_inds[0]).astype(int)
+    lowers = {}
+    uppers = {}
+    for ij in ordered_comp_edges.keys():
+        if ij[0] < ij[1]:
+            lowers[ij] = ordered_comp_edges[ij]
         else:
-            return np.asarray([[]] * len(start_inds)).astype(int)
+            uppers[ij] = ordered_comp_edges[ij]
 
-    def mask(self, indices: np.ndarray) -> np.ndarray:
-        """Return the masked index given the global compartment index.
+    # We have to sort lowers and uppers to be in the solve order.
+    children = []
+    for key in lowers.keys():
+        children.append(key[1])
+    lower_sorting = np.argsort(children)
 
-        The masked index is the one which occurs because all branches within a level
-        must have the same number of compartments for the solve.
-        """
-        return self.remapped_node_indices[indices]
+    parents = []
+    for key in uppers.keys():
+        parents.append(key[0])
+    upper_sorting = np.argsort(parents)
+
+    lowers = jnp.asarray(list(lowers.values()))[lower_sorting]
+    uppers = jnp.asarray(list(uppers.values()))[upper_sorting]
+
+    # Adapt node order.
+    new_node_order = []
+    for n in node_order:
+        new_node_order.append(
+            [mapping_dict[int(n[0])], mapping_dict[int(n[1])], int(n[2])]
+        )
+    new_node_order = jnp.asarray(new_node_order)
+
+    lowers_and_uppers = jnp.concatenate([lowers, uppers])
+    return lowers_and_uppers, new_node_order
+
+
+def dhs_solve_index(
+    solve_graph: nx.DiGraph,
+    allowed_nodes_per_level: int = 1,
+    root: Optional[int] = 0,
+) -> nx.DiGraph:
+    """Given a compartment graph, return a directed graph indicating the solve order.
+
+    Args:
+        comp_graph: Compartment graph. Must have the compartment indices such that
+            they match the ones in the `jx.Module` (i.e., the compartment graph must
+            have been generated with `to_graph()` or it must have run
+            `_set_comp_and_branch_index()` after having run
+            `build_compartment_graph()`).
+        root: The root node to traverse the graph for the DHS solve order.
+        allowed_nodes_per_level: How many nodes are visited before the level is
+            increased, even if the number of hops did not change.
+
+    Returns:
+        - node_and_parent: A list of tuples (node, parent, level), where the node and
+        parent indicate the (child and parent) node index, and the level indicates the
+        number of hops it took from the root to get there. The number of hops is
+        currently unused, but it will be important in the future to parallelization.
+        - node_to_solve_index_mapping: An dictionary mapping from the compartment
+        indices to the solve indices.
+    """
+    undirected_solve_graph = solve_graph.to_undirected()
+
+    # Traverse the graph for the solve order.
+    # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
+    node_and_parent = [(root, -1, 0)]
+    solve_graph.nodes[root]["solve_index"] = 0
+    solve_index = 1
+    for i, j, level in bfs_edge_hops(
+        undirected_solve_graph, root, allowed_nodes_per_level
+    ):
+        solve_graph.add_edge(i, j)
+        # Copy comp_index and branch_index from compartment graph. We only update the
+        # solve_index.
+        solve_graph.nodes[j]["solve_index"] = solve_index
+        node_and_parent.append((j, i, level))
+        solve_index += 1
+
+    # Create a dictionary which maps every node to its solve index. Two notes:
+    # - The node name corresponds to the compartment index (and branchpoints continue
+    # numerically from where the compartments have ended)
+    # - The solve index specifies the order in which the node is processed durin the
+    # DHS solve.
+    inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
+    node_to_solve_index_mapping = dict(sorted(inds.items()))
+    return node_and_parent, node_to_solve_index_mapping
+
+
+def bfs_edge_hops(graph: nx.DiGraph, root: Any, allowed_nodes_per_level: int):
+    """Yields BFS tree edges along with hop count from root.
+
+    Hop count increases when:
+    - A real hop (child is at parent + 1 distance).
+    - Or after `allowed_nodes_per_level` nodes have been discovered without hop
+      increase.
+
+    Function written by ChatGPT.
+
+    Args:
+        graph: The graph to traverse.
+        root: The starting node for BFS.
+        allowed_nodes_per_level: How many nodes are visited before the level is
+            increased, even if the number of hops did not change.
+
+    Yields:
+        Tuple[Tuple[Any, Any], int]: Edge u, v and current hop count.
+    """
+    true_distance = nx.single_source_shortest_path_length(graph, root)
+
+    current_depth = 0
+    nodes_since_last_depth_increase = 0
+    last_true_depth = true_distance[root]
+
+    for u, v in nx.bfs_edges(graph, root):
+        # Detect real hop
+        if true_distance[v] > last_true_depth:
+            current_depth += 1
+            nodes_since_last_depth_increase = 0
+            last_true_depth = true_distance[v]
+        elif nodes_since_last_depth_increase >= allowed_nodes_per_level:
+            current_depth += 1
+            nodes_since_last_depth_increase = 0
+
+        nodes_since_last_depth_increase += 1
+        yield u, v, current_depth
+
+
+def dhs_group_comps_into_levels(new_node_order: np.ndarray) -> List[np.ndarray]:
+    """Group nodes into levels, such that nodes get processed in parallel when possible.
+
+    Args:
+        new_node_order: Array of shape (N, 3). The `3` are (node, parent, level).
+            `N` is the number of compartment edges to be processed.
+        allowed_nodes_per_level: The maximal number of compartments in each level.
+            No `level` can exist more often than `allowed_nodes_per_level`.
+
+    Returns:
+        Array of shape (num_levels, allowed_nodes_per_level, 2), where 2 indicates
+        (node, parent).
+    """
+    if len(new_node_order) == 0:
+        # If len == 0, we need to ensure that there are 3 columns, otherwise
+        # pd.DataFrame() will throw an error.
+        new_node_order = np.zeros((0, 3)).astype(int)
+
+    # Group the edges by their level. Each level is processed in parallel.
+    nodes = pd.DataFrame(new_node_order, columns=["node", "parent", "level"])
+    grouping = nodes.groupby("level")
+    nodes = grouping["node"].apply(list).to_numpy()
+    parents = grouping["parent"].apply(list).to_numpy()
+    nodes_and_parents = [np.stack([n, p]).T for n, p in zip(nodes, parents)]
+
+    # `nodes_and_parents` is a List of length `num_levels`. Each element has shape
+    # `(num_comps_per_level, 2)`.
+    return nodes_and_parents

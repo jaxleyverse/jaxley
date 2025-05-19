@@ -219,15 +219,15 @@ def build_net(
     "num_cells, artificial, connect, connection_prob, voltage_solver, calcium_dynamics",
     (
         # Test a single SWC cell with both solvers.
-        pytest.param(1, False, False, 0.0, "jaxley.stone", False),
+        pytest.param(1, False, False, 0.0, "jaxley.dhs", False),
         pytest.param(1, False, False, 0.0, "jax.sparse", False),
         # Test a single SWC cell, and add detailed calcium mechanisms.
-        pytest.param(1, False, False, 0.0, "jaxley.stone", True),
+        pytest.param(1, False, False, 0.0, "jaxley.dhs", True),
         # Test a network of SWC cells with both solvers.
-        pytest.param(10, False, True, 0.1, "jaxley.stone", False),
+        pytest.param(10, False, True, 0.1, "jaxley.dhs", False),
         pytest.param(10, False, True, 0.1, "jax.sparse", False),
         # Test a larger network of smaller neurons with both solvers.
-        pytest.param(1000, True, True, 0.001, "jaxley.stone", False),
+        pytest.param(1000, True, True, 0.001, "jaxley.dhs", False),
         pytest.param(1000, True, True, 0.001, "jax.sparse", False),
     ),
 )

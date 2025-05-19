@@ -196,7 +196,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     for i in trunk_inds + tuft_inds + basal_inds:
         cell.branch(i).loc(loc).record()
 
-    voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jax.sparse")
+    voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jaxley.dhs.cpu")
 
     ################### NEURON #################
     stim = h.IClamp(h.soma[0](stim_loc))

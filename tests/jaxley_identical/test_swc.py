@@ -23,7 +23,7 @@ from jaxley.synapses import IonotropicSynapse
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
+@pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
 )
@@ -87,17 +87,32 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("voltage_solver", ["jaxley.stone", "jax.sparse"])
-def test_swc_net(voltage_solver: str, SimpleMorphCell):
+@pytest.mark.parametrize(
+    ("voltage_solver", "morph"),
+    [
+        ("jaxley.dhs.cpu", "morph_ca1_n120"),
+        ("jax.sparse", "morph_ca1_n120"),
+        ("jaxley.dhs.cpu", "morph_ca1_n120_250"),
+        ("jaxley.dhs.gpu", "morph_ca1_n120_250"),
+        # Don't run .gpu on large morph, compile time is ~40 seconds.
+    ],
+)
+def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
     )
 
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "../swc_files/morph_ca1_n120.swc")
+    fname = os.path.join(dirname, f"../swc_files/{morph}.swc")
     cell1 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
     cell2 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
+
+    if voltage_solver == "jaxley.dhs.gpu":
+        # On CPU we have to run this manually. On GPU, it gets run automatically with
+        # allowed_nodes_per_level=32.
+        cell1._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
+        cell2._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
 
     network = jx.Network([cell1, cell2])
     connect(
@@ -122,37 +137,69 @@ def test_swc_net(voltage_solver: str, SimpleMorphCell):
 
     voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
 
-    voltages_170425 = np.asarray(
-        [
+    if morph == "morph_ca1_n120":
+        voltages_250508 = np.asarray(
             [
-                -70.0,
-                -66.53085703,
-                -56.928443,
-                -49.4153355,
-                -45.75946592,
-                -20.88450734,
-                25.21457888,
-                0.28822062,
-                -26.75653314,
-                -49.6276084,
-                -70.02595183,
-            ],
+                [
+                    -70.0,
+                    -66.53085703,
+                    -56.928443,
+                    -49.4153355,
+                    -45.75946592,
+                    -20.88450734,
+                    25.21457888,
+                    0.28822062,
+                    -26.75653314,
+                    -49.6276084,
+                    -70.02595183,
+                ],
+                [
+                    -70.0,
+                    -65.7378087,
+                    -55.72628991,
+                    -47.35289814,
+                    -38.49352785,
+                    14.00950776,
+                    14.87718965,
+                    -13.44472479,
+                    -37.20407657,
+                    -59.67997404,
+                    -71.49426045,
+                ],
+            ]
+        )
+    else:
+        voltages_250508 = np.asarray(
             [
-                -70.0,
-                -65.7378087,
-                -55.72628991,
-                -47.35289814,
-                -38.49352785,
-                14.00950776,
-                14.87718965,
-                -13.44472479,
-                -37.20407657,
-                -59.67997404,
-                -71.49426045,
-            ],
-        ]
-    )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_170425))
+                [
+                    -70.0,
+                    -66.53085703,
+                    -47.08680766,
+                    -11.4463186,
+                    27.26651305,
+                    -2.63107191,
+                    -28.3549199,
+                    -47.11883043,
+                    -66.60457915,
+                    -71.42379445,
+                    -72.78327646,
+                ],
+                [
+                    -70.0,
+                    -65.47320472,
+                    -45.30423454,
+                    -3.18026731,
+                    24.57356312,
+                    -5.83628794,
+                    -30.12343407,
+                    -48.16739979,
+                    -65.74251879,
+                    -69.69987607,
+                    -70.76272996,
+                ],
+            ]
+        )
+    max_error = np.max(np.abs(voltages[:, ::20] - voltages_250508))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 

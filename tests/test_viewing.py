@@ -20,7 +20,6 @@ from jaxley.modules.base import View
 from jaxley.synapses import TestSynapse
 from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import JaxleySolveIndexer
 
 
 def test_getitem(SimpleBranch, SimpleCell, SimpleNet):
@@ -226,18 +225,6 @@ def test_indexing_a_compartment_of_many_branches(SimpleBranch):
     net.cell("all").branch(0).loc("all")
 
 
-def test_solve_indexer():
-    ncomps = [4, 3, 4, 2, 2, 3, 3]
-    cumsum_ncomp = cumsum_leading_zero(ncomps)
-    idx = JaxleySolveIndexer(cumsum_ncomp, ncomps)
-    branch_inds = np.asarray([0, 2])
-    assert np.all(idx.first(branch_inds) == np.asarray([0, 7]))
-    assert np.all(idx.last(branch_inds) == np.asarray([3, 10]))
-    assert np.all(idx.branch(branch_inds) == np.asarray([[0, 1, 2, 3], [7, 8, 9, 10]]))
-    assert np.all(idx.lower(branch_inds) == np.asarray([[1, 2, 3], [8, 9, 10]]))
-    assert np.all(idx.upper(branch_inds) == np.asarray([[0, 1, 2], [7, 8, 9]]))
-
-
 # make sure all attrs in module also have a corresponding attr in view
 def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     """Check if all attributes of Module have a corresponding attribute in View.
@@ -264,6 +251,14 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
         "_data_inds",
         "_indices_jax_spsolve",
         "_indptr_jax_spsolve",
+        "_off_diagonal_inds",
+        "_n_nodes",
+        "_data_inds",
+        "_indices_jax_spsolve",
+        "_indptr_jax_spsolve",
+        "_off_diagonal_inds",
+        "_dhs_solve_indexer",
+        "_solver_device",
     ]  # for base/comp
     exceptions += ["comb_children"]  # for cell
     exceptions += [
@@ -362,12 +357,10 @@ def test_select(SimpleNet):
 
     # check if pre and post comps of edges are in nodes
     edge_node_inds = np.unique(
-        view.edges[["pre_global_comp_index", "post_global_comp_index"]]
-        .to_numpy()
-        .flatten()
+        view.edges[["pre_index", "post_index"]].to_numpy().flatten()
     )
     assert np.all(
-        view.nodes["global_comp_index"] == edge_node_inds
+        view.nodes.index == edge_node_inds
     ), "Selecting edges did not yield the correct nodes."
 
     # select nodes and edges

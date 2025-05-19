@@ -96,7 +96,7 @@ def test_diverse_synapse_types(SimpleNet):
     params[1]["TestSynapse_gC"] = params[1]["TestSynapse_gC"].at[1].set(4.4)
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    all_parameters = net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    all_parameters = net.get_all_parameters(pstate)
 
     assert np.all(all_parameters["radius"] == 1.0)
     assert np.all(all_parameters["length"] == 10.0)
@@ -116,7 +116,7 @@ def test_diverse_synapse_types(SimpleNet):
     params[2]["IonotropicSynapse_gS"] = params[2]["IonotropicSynapse_gS"].at[:].set(5.5)
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    all_parameters = net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    all_parameters = net.get_all_parameters(pstate)
     assert np.all(all_parameters["IonotropicSynapse_gS"][0] == 2.2)
     assert np.all(all_parameters["IonotropicSynapse_gS"][1] == 5.5)
 
@@ -210,6 +210,9 @@ def test_copy_node_property_to_edges(SimpleNet):
     net.cell(1).branch(0).comp(0).set("capacitance", 0.3)
     fully_connect(net.cell("all"), net.cell("all"), IonotropicSynapse())
 
+    net.copy_node_property_to_edges("global_comp_index", "pre")
+    net.copy_node_property_to_edges("global_comp_index", "post")
+
     net.copy_node_property_to_edges("HH_gNa", "pre")
     # Run it another time to ensure that it can be run twice.
     net.copy_node_property_to_edges("HH_gNa", "pre")
@@ -264,7 +267,7 @@ def get_params_subset_trainable(net):
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    return net.get_all_parameters(pstate)
 
 
 def get_params_set_subset(net):
@@ -272,7 +275,7 @@ def get_params_set_subset(net):
     params = net.get_parameters()
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    return net.get_all_parameters(pstate)
 
 
 def get_params_all_trainable(net):
@@ -281,7 +284,7 @@ def get_params_all_trainable(net):
     params[0]["HH_gNa"] = params[0]["HH_gNa"].at[:].set(0.0)
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    return net.get_all_parameters(pstate)
 
 
 def get_params_set(net):
@@ -289,7 +292,7 @@ def get_params_set(net):
     params = net.get_parameters()
     net.to_jax()
     pstate = params_to_pstate(params, net.indices_set_by_trainables)
-    return net.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    return net.get_all_parameters(pstate)
 
 
 def test_make_trainable_corresponds_to_set_pospischil(SimpleNet):
@@ -303,7 +306,7 @@ def test_make_trainable_corresponds_to_set_pospischil(SimpleNet):
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
     pstate1 = params_to_pstate(params1, net1.indices_set_by_trainables)
-    all_params1 = net1.get_all_parameters(pstate1, voltage_solver="jaxley.thomas")
+    all_params1 = net1.get_all_parameters(pstate1)
 
     net2.cell(0).insert(Na())
     net2.insert(K())
@@ -312,7 +315,7 @@ def test_make_trainable_corresponds_to_set_pospischil(SimpleNet):
     params2[0]["vt"] = params2[0]["vt"].at[:].set(0.05)
     net2.to_jax()
     pstate2 = params_to_pstate(params2, net2.indices_set_by_trainables)
-    all_params2 = net2.get_all_parameters(pstate2, voltage_solver="jaxley.thomas")
+    all_params2 = net2.get_all_parameters(pstate2)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
     assert np.array_equal(all_params1["Na_gNa"], all_params2["Na_gNa"], equal_nan=True)
     assert np.array_equal(all_params1["K_gK"], all_params2["K_gK"], equal_nan=True)
@@ -350,14 +353,14 @@ def test_group_trainable_corresponds_to_set():
     params[0]["radius"] = params[0]["radius"].at[:].set(2.5)
     net1.to_jax()
     pstate = params_to_pstate(params, net1.indices_set_by_trainables)
-    all_parameters1 = net1.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    all_parameters1 = net1.get_all_parameters(pstate)
 
     net2 = build_net()
     net2.test.set("radius", 2.5)
     params = net2.get_parameters()
     net2.to_jax()
     pstate = params_to_pstate(params, net2.indices_set_by_trainables)
-    all_parameters2 = net2.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    all_parameters2 = net2.get_all_parameters(pstate)
 
     assert np.allclose(all_parameters1["radius"], all_parameters2["radius"])
 
@@ -372,14 +375,14 @@ def test_data_set_vs_make_trainable_pospischil(SimpleNet):
     params1[0]["vt"] = params1[0]["vt"].at[:].set(0.05)
     net1.to_jax()
     pstate1 = params_to_pstate(params1, net1.indices_set_by_trainables)
-    all_params1 = net1.get_all_parameters(pstate1, voltage_solver="jaxley.thomas")
+    all_params1 = net1.get_all_parameters(pstate1)
 
     net2.cell(0).insert(Na())
     net2.insert(K())
     val = params1[0]["vt"]
     pstate = net2.cell("all").branch("all").loc("all").data_set("vt", val.item(), None)
     net2.to_jax()
-    all_params2 = net2.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    all_params2 = net2.get_all_parameters(pstate)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
     assert np.array_equal(all_params1["Na_gNa"], all_params2["Na_gNa"], equal_nan=True)
     assert np.array_equal(all_params1["K_gK"], all_params2["K_gK"], equal_nan=True)
@@ -545,7 +548,7 @@ def test_param_sharing_w_different_group_sizes():
     params[0]["radius"] = params[0]["radius"].at[:].set([2, 3, 4])
     branch1.to_jax()
     pstate = params_to_pstate(params, branch1.indices_set_by_trainables)
-    params1 = branch1.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    params1 = branch1.get_all_parameters(pstate)
 
     # set
     branch2 = jx.Branch(ncomp=6)
@@ -553,6 +556,6 @@ def test_param_sharing_w_different_group_sizes():
     params = branch2.get_parameters()
     branch2.to_jax()
     pstate = params_to_pstate(params, branch2.indices_set_by_trainables)
-    params2 = branch2.get_all_parameters(pstate, voltage_solver="jaxley.thomas")
+    params2 = branch2.get_all_parameters(pstate)
 
     assert np.array_equal(params1["radius"], params2["radius"], equal_nan=True)

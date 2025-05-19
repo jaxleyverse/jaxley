@@ -11,20 +11,10 @@ import pandas as pd
 from jaxley.modules.base import Module
 from jaxley.modules.branch import Branch
 from jaxley.utils.cell_utils import (
-    build_branchpoint_group_inds,
     compute_children_and_parents,
-    compute_children_in_level,
     compute_children_indices,
-    compute_levels,
-    compute_morphology_indices_in_levels,
-    compute_parents_in_level,
 )
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated_kwargs
-from jaxley.utils.solver_utils import (
-    JaxleySolveIndexer,
-    comp_edges_to_indices,
-    remap_index_to_masked,
-)
 
 
 class Cell(Module):
@@ -109,9 +99,6 @@ class Cell(Module):
         ).tolist()
         self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
 
-        self._update_local_indices()
-        self._init_view()
-
         # Appending general parameters (radius, length, r_a, cm) and channel parameters,
         # as well as the states (v, and channel states).
         self._append_params_and_states(self.cell_params, self.cell_states)
@@ -131,69 +118,17 @@ class Cell(Module):
             compute_children_and_parents(self.branch_edges)
         )
 
-        self._initialize()
+        # Compartment edges.
+        self.initialize()
 
-    def _init_morph_jaxley_spsolve(self):
-        """Initialize morphology for the custom sparse solver.
+    def _init_comp_graph(self):
+        """Initialize attributes concerning the compartment graph.
 
-        Running this function is only required for custom Jaxley solvers, i.e., for
-        `voltage_solver={'jaxley.stone', 'jaxley.thomas'}`. However, because at
-        `.__init__()` (when the function is run), we do not yet know which solver the
-        user will use. Therefore, we always run this function at `.__init__()`.
-        """
-        children_and_parents = compute_morphology_indices_in_levels(
-            len(self._par_inds),
-            self._child_belongs_to_branchpoint,
-            self._par_inds,
-            self._child_inds,
-        )
-        branchpoint_group_inds = build_branchpoint_group_inds(
-            len(self._par_inds),
-            self._child_belongs_to_branchpoint,
-            self.cumsum_ncomp[-1],
-        )
-        parents = self.comb_parents
-        children_inds = children_and_parents["children"]
-        parents_inds = children_and_parents["parents"]
-
-        levels = compute_levels(parents)
-        children_in_level = compute_children_in_level(levels, children_inds)
-        parents_in_level = compute_parents_in_level(
-            levels, self._par_inds, parents_inds
-        )
-        levels_and_ncomp = pd.DataFrame().from_dict(
-            {
-                "levels": levels,
-                "ncomps": self.ncomp_per_branch,
-            }
-        )
-        levels_and_ncomp["max_ncomp_in_level"] = levels_and_ncomp.groupby("levels")[
-            "ncomps"
-        ].transform("max")
-        padded_cumsum_ncomp = cumsum_leading_zero(
-            levels_and_ncomp["max_ncomp_in_level"].to_numpy()
-        )
-
-        # Generate mapping to deal with the masking which allows using the custom
-        # sparse solver to deal with different ncomp per branch.
-        remapped_node_indices = remap_index_to_masked(
-            self._internal_node_inds,
-            self.nodes,
-            padded_cumsum_ncomp,
-            self.ncomp_per_branch,
-        )
-        self._solve_indexer = JaxleySolveIndexer(
-            cumsum_ncomp=padded_cumsum_ncomp,
-            ncomp_per_branch=self.ncomp_per_branch,
-            branchpoint_group_inds=branchpoint_group_inds,
-            children_in_level=children_in_level,
-            parents_in_level=parents_in_level,
-            root_inds=np.asarray([0]),
-            remapped_node_indices=remapped_node_indices,
-        )
-
-    def _init_morph_jax_spsolve(self):
-        """For morphology indexing with the `jax.sparse` voltage volver.
+        In particular, it initializes:
+        - `_comp_edges`
+        - `_branchpoints`
+        - `_n_nodes`
+        - `_off_diagonal_inds`
 
         Explanation of `self._comp_eges['type']`:
         `type == 0`: compartment <--> compartment (within branch)
@@ -201,13 +136,9 @@ class Cell(Module):
         `type == 2`: branchpoint --> child-compartment
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
-
-        Running this function is only required for generic sparse solvers, i.e., for
-        `voltage_solver='jax.sparse'`.
         """
-
         # Edges between compartments within the branches.
-        self._comp_edges = pd.concat(
+        comp_edges = pd.concat(
             [
                 pd.DataFrame()
                 .from_dict(
@@ -222,7 +153,7 @@ class Cell(Module):
                 for ncomp, cumsum_ncomp in zip(self.ncomp_per_branch, self.cumsum_ncomp)
             ]
         )
-        self._comp_edges["type"] = 0
+        comp_edges["type"] = 0
 
         # Edges from branchpoints to compartments.
         branchpoint_to_parent_edges = pd.DataFrame().from_dict(
@@ -239,9 +170,9 @@ class Cell(Module):
                 "type": 2,
             }
         )
-        self._comp_edges = pd.concat(
+        comp_edges = pd.concat(
             [
-                self._comp_edges,
+                comp_edges,
                 branchpoint_to_parent_edges,
                 branchpoint_to_child_edges,
             ],
@@ -260,19 +191,15 @@ class Cell(Module):
 
         self._comp_edges = pd.concat(
             [
-                self._comp_edges,
+                comp_edges,
                 parent_to_branchpoint_edges,
                 child_to_branchpoint_edges,
             ],
             ignore_index=True,
         )
 
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
-        self._n_nodes = n_nodes
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-
+        # Branchpoints.
+        #
         # Get last xyz of parent.
         branchpoint_xyz = []
         for i in self._par_inds:
@@ -287,6 +214,7 @@ class Cell(Module):
                 np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
             )
 
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+        sources = np.asarray(self._comp_edges["source"].to_list())
+        sinks = np.asarray(self._comp_edges["sink"].to_list())
+        self._n_nodes = np.max(sinks) + 1 if len(sinks) > 0 else 1
+        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)

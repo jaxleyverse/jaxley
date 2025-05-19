@@ -4,7 +4,8 @@
 import networkx as nx
 import numpy as np
 
-from jaxley.io.graph import connect_graphs, from_graph, to_graph
+from jaxley.io.graph import connect_graphs, from_graph
+from jaxley.modules.base import to_graph
 
 
 def morph_delete(module_view) -> "Cell":
@@ -21,8 +22,8 @@ def morph_delete(module_view) -> "Cell":
     Returns:
         A cell in which specified branches are deleted.
 
-    Examples:
-    ---------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -105,8 +106,8 @@ def morph_connect(module_view1, module_view2) -> "Cell":
     Returns:
         A ``jx.Cell`` which is made up of both input cells.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 

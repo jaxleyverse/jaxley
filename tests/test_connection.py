@@ -56,8 +56,8 @@ def test_connect(SimpleBranch, SimpleCell, SimpleNet):
 
     # check if all connections are made correctly
     first_set_edges = net2.edges.iloc[:8]
-    nodes = net2.nodes.set_index("global_comp_index")
-    cols = ["pre_global_comp_index", "post_global_comp_index"]
+    nodes = net2.nodes
+    cols = ["pre_index", "post_index"]
     comp_inds = nodes.loc[first_set_edges[cols].to_numpy().flatten()]
     branch_inds = comp_inds["global_branch_index"].to_numpy().reshape(-1, 2)
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
@@ -79,7 +79,7 @@ def test_fully_connect(SimpleNet):
     fully_connect(net1[8:12], net1[12:16], TestSynapse())
 
     assert all(
-        net1.edges.post_global_comp_index
+        net1.nodes.loc[net1.edges.post_index, "global_comp_index"]
         == [
             96,
             120,
@@ -125,7 +125,7 @@ def test_fully_connect(SimpleNet):
     fully_connect(net2[8:12], net2[12:16], TestSynapse(), random_post_comp=True)
 
     assert all(
-        net2.edges.post_global_comp_index
+        net2.nodes.loc[net2.edges.post_index, "global_comp_index"]
         == [
             108,
             135,
@@ -173,7 +173,7 @@ def test_sparse_connect(SimpleNet):
     sparse_connect(net1[8:12], net1[12:], TestSynapse(), p=0.5)
 
     assert all(
-        net1.edges.post_global_comp_index
+        net1.nodes.loc[net1.edges.post_index, "global_comp_index"]
         == [112, 112, 240, 192, 208, 208, 208, 224, 208, 192, 240]
     )
 
@@ -187,7 +187,7 @@ def test_sparse_connect(SimpleNet):
     sparse_connect(net2[8:12], net2[12:], TestSynapse(), p=0.5, random_post_comp=True)
 
     assert all(
-        net2.edges.post_global_comp_index
+        net2.nodes.loc[net2.edges.post_index, "global_comp_index"]
         == [123, 201, 196, 211, 208, 211, 213, 238, 255, 255]
     )
 
@@ -206,11 +206,13 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 4
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["pre_global_comp_index", "post_global_comp_index"]
+    cols = ["pre_index", "post_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == inds_of_connected_cells)
-    assert net.edges.post_global_comp_index.tolist() == [120, 144, 168, 96]
+    assert all(
+        net.nodes.loc[net.edges.post_index, "global_comp_index"] == [120, 144, 168, 96]
+    )
 
     m_by_n_adjacency_matrix = np.array(
         [[0, 1, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=bool
@@ -229,11 +231,13 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["pre_global_comp_index", "post_global_comp_index"]
+    cols = ["pre_index", "post_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == inds_of_connected_cells)
-    assert net.edges.post_global_comp_index.to_numpy().tolist() == [36, 63, 69, 72, 75]
+    assert all(
+        net.nodes.loc[net.edges.post_index, "global_comp_index"] == [36, 63, 69, 72, 75]
+    )
 
     # Test with different cell views
     net = SimpleNet(4 * 4, 3, 8)
@@ -242,7 +246,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["pre_global_comp_index", "post_global_comp_index"]
+    cols = ["pre_index", "post_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     # adjust the cell indices based on the views passed
@@ -260,7 +264,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     assert len(net.edges.index) == 5
     nodes = net.nodes.set_index("global_comp_index")
-    cols = ["pre_global_comp_index", "post_global_comp_index"]
+    cols = ["pre_index", "post_index"]
     comp_inds = nodes.loc[net.edges[cols].to_numpy().flatten()]
     cell_inds = comp_inds["global_cell_index"].to_numpy().reshape(-1, 2)
     assert np.all(cell_inds == inds_of_connected_cells)

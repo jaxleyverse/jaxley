@@ -11,7 +11,6 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
-from jaxley.utils.solver_utils import JaxleySolveIndexer, comp_edges_to_indices
 
 
 class Compartment(Module):
@@ -38,14 +37,13 @@ class Compartment(Module):
         self.nbranches_per_cell = [1]
         self._cumsum_nbranches = np.asarray([0, 1])
         self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
+        self._n_nodes = 1
 
         # Setting up the `nodes` for indexing.
         self.nodes = pd.DataFrame(
             dict(global_cell_index=[0], global_branch_index=[0], global_comp_index=[0])
         )
         self._append_params_and_states(self.compartment_params, self.compartment_states)
-        self._update_local_indices()
-        self._init_view()
 
         # Synapses.
         self.branch_edges = pd.DataFrame(
@@ -58,42 +56,30 @@ class Compartment(Module):
         )
         self._internal_node_inds = jnp.asarray([0])
 
-        # Initialize the module.
-        self._initialize()
-
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
-    def _init_morph_jaxley_spsolve(self):
-        self._solve_indexer = JaxleySolveIndexer(
-            cumsum_ncomp=self.cumsum_ncomp,
-            ncomp_per_branch=self.ncomp_per_branch,
-            branchpoint_group_inds=np.asarray([]).astype(int),
-            children_in_level=[],
-            parents_in_level=[],
-            root_inds=np.asarray([0]),
-            remapped_node_indices=self._internal_node_inds,
-        )
+        # Initialize the module.
+        self.initialize()
 
-    def _init_morph_jax_spsolve(self):
-        """Initialize morphology for the jax sparse voltage solver.
+    def _init_comp_graph(self):
+        """Initialize attributes concerning the compartment graph.
 
-        Explanation of `self._comp_eges['type']`:
-        `type == 0`: compartment <--> compartment (within branch)
-        `type == 1`: branchpoint --> parent-compartment
-        `type == 2`: branchpoint --> child-compartment
-        `type == 3`: parent-compartment --> branchpoint
-        `type == 4`: child-compartment --> branchpoint
-        """
+        In particular, it initializes:
+        - `_comp_edges`
+        - `_branchpoints`
+        - `_n_nodes`
+        - `_off_diagonal_inds`
+
+        It also initializes `_comp_edges_in_view` and `_branchpoints_in_view`."""
+        # Compartment edges.
         self._comp_edges = pd.DataFrame().from_dict(
             {"source": [], "sink": [], "type": []}
         )
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
-        self._n_nodes = n_nodes
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
 
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+        # Branchpoints.
+        self._branchpoints = pd.DataFrame().from_dict({"x": [], "y": [], "z": []})
+
+        # Mapping from global_comp_index to `nodes.index`.
+        self._n_nodes = 1
+        self._off_diagonal_inds = np.asarray([])

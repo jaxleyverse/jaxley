@@ -1,17 +1,26 @@
 # 0.9.0
 
-### New features
+### ✨ Highlights
 
-- utility to delete parts of a morphology (#612, @michaeldeistler):
+- This PR implements a new solver, which is now used by default (#625,
+@michaeldeistler). The new solver has the following advantages:  
+  - Much lower runtime. Across several morphologies, we get a 20% runtime speedup on
+    CPU and a 50% runtime speedup on GPU.  
+  - Almost zero compile time. We get a 50x compile time speedup on CPU and a 3x compile
+    time speedup on GPU.
+- Utility to delete parts of a morphology (#612, @michaeldeistler):
 ```python
 from jaxley.morphology import morph_delete
 cell = morph_delete(cell.branch([1, 2]))
 ```
-- utility to connect two cells into a single cell (#612, @michaeldeistler):
+- Utility to connect two cells into a single cell (#612, @michaeldeistler):
 ```python
 from jaxley.morphology import morph_connect
 cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
 ```
+
+### 🧩 New features
+
 - the default SWC reader has changed. To use the previous SWC reader, run
 `jx.read_swc(..., backend="custom")`. However, note that we will remove this reader
 in the future. If the new SWC reader is causing issues for you, please open an issue
@@ -19,19 +28,24 @@ in the future. If the new SWC reader is causing issues for you, please open an i
 - radiuses are now integrated across SWC coordinates, not interpolated
 (#612, @michaeldeistler)
 - remove pin of `JAX` version. New `JAX` versions (`JAX>=0.6.0`) resolve slow CPU
-runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeldeistler).
+runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeldeistler)
+- running the `d_lambda` rule is now much faster, see
+[the how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/set_ncomp.html)
+(#625, @michaeldeistler)
 
-### Documentation
+### 📚 Documentation
 
 - Introduce the `how-to guide` on the website (#612, @michaeldeistler)
 - reorganize the advanced tutorials into subgroups (#612, @michaeldeistler)
 - split the morphology handling tutorials into two notebooks (#612, @michaeldeistler)
 
-### Internal updates
+### 🛠️ Internal updates
 
-- improvements to graph-backend for more flexibility in modifying morphologies (#613, @michaeldeistler)
+- improvements to graph-backend for more flexibility in modifying morphologies (#613,
+@michaeldeistler)
 - remove root compartment for SWC files (#613, @michaeldeistler)
-- enable traversing compartmentalized graph for optimizing solve order (#613, @michaeldeistler)
+- enable traversing compartmentalized graph for optimizing solve order (#613,
+@michaeldeistler)
 - `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
 - introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
 
@@ -56,12 +70,14 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 
 ### New features
 
-- add leaky integrate-and-fire neurons (#564, @jnsbck), Izhikevich neurons, and rate-based neurons (#601, @michaeldeistler)
+- add leaky integrate-and-fire neurons (#564, @jnsbck), Izhikevich neurons, and
+rate-based neurons (#601, @michaeldeistler)
 
 ### Minor updates
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)  
-- make random postsnaptic compartment selection optional in connectivity functions (#489, @kyralianaka)  
+- make random postsnaptic compartment selection optional in connectivity functions
+(#489, @kyralianaka)  
 
 ### Bug fixes
 
@@ -91,14 +107,17 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 
 ### Bug fixes
 
-- Fix for simulation of morphologies with inhomogenous numbers of compartments (#438, @michaeldeistler)
-- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582, @Kartik-Sama, @michaeldeistler).
+- Fix for simulation of morphologies with inhomogenous numbers of compartments (#438,
+@michaeldeistler)
+- Bugfix for types assigned by SWC reader when soma is traced by a single point (#582,
+@Kartik-Sama, @michaeldeistler).
 
 ### Code health
 
 - add new release workflow (#588, @jnsbck)
 - update FAQ and tutorials (#593, @michaeldeistler)
-- make random post compartment selection optional in connectivity functions (#489 @kyralianaka)
+- make random post compartment selection optional in connectivity functions (#489,
+@kyralianaka)
 
 # 0.6.2
 
@@ -115,11 +134,17 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 
 ### Pin of JAX version
 
-Installing `Jaxley` will no longer install the newest version of `JAX`. We realized that, on CPU, with version `jax==0.4.32` or newer, simulation time in `Jaxley` is 10x slower and gradient time is 5x slower as compared to older versions of JAX. Newer versions of `JAX` can be made equally fast as older versions by setting `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning of your jupyter notebook (#570, @michaeldeistler).
+Installing `Jaxley` will no longer install the newest version of `JAX`. We realized
+that, on CPU, with version `jax==0.4.32` or newer, simulation time in `Jaxley` is 10x
+slower and gradient time is 5x slower as compared to older versions of JAX. Newer
+versions of `JAX` can be made equally fast as older versions by setting
+`os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning of
+your jupyter notebook (#570, @michaeldeistler).
 
 ### New Features
 
-- Add ability to record synaptic currents (#523, @ntolley). Recordings can be turned on with
+- Add ability to record synaptic currents (#523, @ntolley). Recordings can be turned on
+with
 ```python
 net.record("i_IonotropicSynapse")
 ```
@@ -127,16 +152,21 @@ net.record("i_IonotropicSynapse")
 - refactor plotting (#539, @jnsbck).
   - rm networkx dependency
   - add `Network.arrange_in_layers`
-  - disentangle moving of cells and plotting in `Network.vis`. To get the same as `net.vis(layers=[3,3])`, one now has to do:
+  - disentangle moving of cells and plotting in `Network.vis`. To get the same as
+  `net.vis(layers=[3,3])`, one now has to do:
 ```python
 net.arrange_in_layers([3,3])
 net.vis()
 ```
 
-- Allow parameter sharing for groups of different sizes, i.e. due to inhomogenous numbers of compartments or for synapses with the same (pre-)synaptic parameters but different numbers of post-synaptic partners. (#514, @jnsbck)
+- Allow parameter sharing for groups of different sizes, i.e. due to inhomogenous
+numbers of compartments or for synapses with the same (pre-)synaptic parameters but
+different numbers of post-synaptic partners. (#514, @jnsbck)
 
-- Add `jaxley.io.graph` for exporting and importing of jaxley modules to and from `networkx` graph objects (#355, @jnsbck).
-  - Adds a new (and improved) SWC reader, which is more flexible and should also be easier to extend in the future.
+- Add `jaxley.io.graph` for exporting and importing of jaxley modules to and from
+`networkx` graph objects (#355, @jnsbck).
+  - Adds a new (and improved) SWC reader, which is more flexible and should also be
+  easier to extend in the future.
   ```python
   from jaxley.io.graph import swc_to_graph, from_graph
   graph = swc_to_graph(fname)
@@ -144,23 +174,33 @@ net.vis()
   pruned_graph = do_something_to_graph(graph)
   cell = from_graph(pruned_graph, ncomp=4)
   ```
-  - Adds a new `to_graph` method for jaxley modules, which exports a module to a `networkX` graph. This allows to seamlessly work with `networkX`'s graph manipulation or visualization functions.
+  - Adds a new `to_graph` method for jaxley modules, which exports a module to a
+  `networkX` graph. This allows to seamlessly work with `networkX`'s graph manipulation
+  or visualization functions.
   - `"graph"` can now also be selected as a backend in the `read_swc`.
-  - See [the improved SWC reader tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html) for more details.
+  - See the improved SWC reader
+  [tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html)
+  for more details.
 
 ### Code Health
 
 - changelog added to CI (#537, #558,  @jnsbck)
 
-- Add regression tests and supporting workflows for maintaining baselines (#475, #546, @jnsbck).
+- Add regression tests and supporting workflows for maintaining baselines (#475,
+#546, @jnsbck).
   - Regression tests can be triggered by commenting "/test_regression" on a PR.
-  - Regression tests can be done locally by running `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression` on `feature`, which will produce a test report (printed to the console and saved to .txt).
+  - Regression tests can be done locally by running
+  `NEW_BASELINE=1 pytest -m regression` i.e. on `main` and then `pytest -m regression`
+  on `feature`, which will produce a test report (printed to the console and saved
+  to .txt).
 
-- Allow inspecting the version via `import jaxley as jx; print(jx.__version__)` (#577, @michaeldeistler).
+- Allow inspecting the version via `import jaxley as jx; print(jx.__version__)` (#577,
+@michaeldeistler).
 
 ### Bug fixes
 
-- Fixed inconsistency with *type* assertions arising due to `numpy` functions returning different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
+- Fixed inconsistency with *type* assertions arising due to `numpy` functions returning
+different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 
 
 # 0.5.0

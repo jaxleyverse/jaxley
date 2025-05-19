@@ -1,7 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
@@ -111,8 +110,8 @@ def to_swc_graph(fname: str, num_lines: int = None) -> nx.DiGraph:
         nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0, 'p': -1}
         edges: {'l': 1.0}
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -258,8 +257,8 @@ def build_compartment_graph(
 
         Edges have attributes: {}
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -705,28 +704,51 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
     return interrupted_nodes
 
 
+def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
+    """Return a graph whose branchpoint indices match those of a `jx.Module`.
+
+    Here, we ensure that the branchpoints are enumerated in the same way in the
+    module as they are in the graph. The ordering is by the branch_index of the
+    parent branch of a branchpoint.
+    """
+    predecessor_branch_inds = []
+    branchpoints = []
+    max_comp_index = 0
+    for node in jaxley_graph.nodes:
+        if jaxley_graph.nodes[node]["type"] == "branchpoint":
+            predecessor = list(jaxley_graph.predecessors(node))[0]
+            predecessor_branch_inds.append(
+                jaxley_graph.nodes[predecessor]["branch_index"]
+            )
+            branchpoints.append(node)
+        else:
+            if jaxley_graph.nodes[node]["comp_index"] > max_comp_index:
+                max_comp_index = jaxley_graph.nodes[node]["comp_index"]
+    sorting = np.argsort(predecessor_branch_inds)
+    branchpoints_in_corrected_order = np.asarray(branchpoints)[sorting]
+    mapping = {
+        k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)
+    }
+    return nx.relabel_nodes(jaxley_graph, mapping)
+
+
 ########################################################################################
 ################################ BUILD SOLVE GRAPH #####################################
 ########################################################################################
 
 
-def _build_solve_graph(
+def _set_comp_and_branch_index(
     comp_graph: nx.DiGraph,
     root: Optional[int] = None,
-    traverse_for_solve_order: bool = True,
 ) -> nx.DiGraph:
-    """Given a compartment graph, return a directed graph indicating the solve order.
+    """Given a compartment graph, return a comp_graph with new comp and branch index.
+
+    The returned comp and branch index are the ones used also in the resulting
+    jx.Cell, and they define the solve order for `jaxley.stone` solvers.
 
     Args:
         comp_graph: Compartment graph returned by `build_compartment_graph`.
         root: The root node to traverse the graph for the solve order.
-        traverse_for_solve_order: Whether to traverse the graph for identifying the
-            solve order. Should only be set to `False` if you are confident that the
-            `comp_graph` is in a form in which it can be solved (i.e. its branch
-            indices, compartment indices, and node names are correct). Typically, this
-            is the case only if you exported a module to a `comp_graph` via `to_graph`,
-            did not modify the graph, and now re-import it as a module with
-            `from_graph`.
 
     Returns:
         A directed graph indicating the solve order. The graph does no longer contain
@@ -743,15 +765,7 @@ def _build_solve_graph(
         'length': 2.0,
         'cell_index': 0}```
     """
-    comp_graph = _remove_branch_points_at_tips(comp_graph)
     undirected_comp_graph = comp_graph.to_undirected()
-
-    # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
-    # and we did not modify the exported graph, then we might do not want to traverse
-    # the graph again because this would change the ordering of the branches.
-    if not traverse_for_solve_order:
-        return _remove_branch_points(comp_graph)
-
     root = root if root else _find_root(undirected_comp_graph)
 
     # Directed graph to store the traversal
@@ -770,12 +784,15 @@ def _build_solve_graph(
 
     # Traverse the graph for the solve order.
     # `sort_neighbors=lambda x: sorted(x)` to first handle nodes with lower node index.
+    node_mapping = {root: 0}
     for i, j in nx.dfs_edges(
         undirected_comp_graph, root, sort_neighbors=lambda x: sorted(x)
     ):
         solve_graph.add_edge(i, j)
         solve_graph.nodes[j]["branch_index"] = branch_index
-        solve_graph.nodes[j]["comp_index"] = comp_index
+        if solve_graph.nodes[j]["type"] == "comp":
+            solve_graph.nodes[j]["comp_index"] = comp_index
+            node_mapping[j] = comp_index
 
         if _is_leaf(undirected_comp_graph, j):
             branch_index += 1
@@ -802,7 +819,9 @@ def _build_solve_graph(
         # Branchpoint nodes do not have the xyzr property.
         if "xyzr" in solve_graph.nodes[n].keys():
             solve_graph.nodes[n]["xyzr"] = solve_graph.nodes[n]["xyzr"][::-1]
-    solve_graph = _remove_branch_points(solve_graph)
+
+    solve_graph = nx.relabel_nodes(solve_graph, node_mapping)
+    solve_graph = _set_branchpoint_indices(solve_graph)
     return solve_graph
 
 
@@ -842,8 +861,6 @@ def _remove_branch_points(solve_graph: nx.DiGraph) -> nx.DiGraph:
                     solve_graph.add_edge(u, v, type="inter_branch")
             solve_graph.remove_node(node)
 
-    mapping = {n: attrs["comp_index"] for n, attrs in solve_graph.nodes(data=True)}
-    solve_graph = nx.relabel_nodes(solve_graph, mapping, copy=True)
     return solve_graph
 
 
@@ -932,8 +949,8 @@ def from_graph(
     Return:
         A `jx.Module` representing the graph.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 
@@ -942,25 +959,36 @@ def from_graph(
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
         cell = from_graph(comp_graph)
     """
-    solve_graph = _build_solve_graph(
-        comp_graph, root=solve_root, traverse_for_solve_order=traverse_for_solve_order
-    )
+    comp_graph = _remove_branch_points_at_tips(comp_graph)
+
+    # If the graph is based on a custom-built `jx.Module` (e.g., parents=[-1, 0, 0, 1]),
+    # and we did not modify the exported graph, then we might not want to traverse
+    # the graph again because this would change the ordering of the branches.
+    if traverse_for_solve_order:
+        comp_graph = _set_comp_and_branch_index(comp_graph, root=solve_root)
+
+    solve_graph = _remove_branch_points(comp_graph)
     solve_graph = _add_meta_data(solve_graph)
-    return _build_module(solve_graph, assign_groups=assign_groups)
+    module = _build_module(solve_graph, assign_groups=assign_groups)
+    return module
 
 
-def _build_module(solve_graph: nx.DiGraph, assign_groups: bool = True):
+def _build_module(
+    solve_graph: nx.DiGraph,
+    assign_groups: bool = True,
+):
     # nodes and edges
     node_df = pd.DataFrame(
         [d for i, d in solve_graph.nodes(data=True)], index=solve_graph.nodes
     ).sort_index()
+
     node_df = node_df.drop(columns=["xyzr", "type"])
     edge_type = nx.get_edge_attributes(solve_graph, "type")
     synapse_edges = pd.DataFrame(
         [
             {
-                "pre_global_comp_index": i,
-                "post_global_comp_index": j,
+                "pre_index": i,
+                "post_index": j,
                 **solve_graph.edges[i, j],
             }
             for (i, j), t in edge_type.items()
@@ -1114,230 +1142,6 @@ def _infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
 
 
 ########################################################################################
-###################################### TO GRAPH ########################################
-########################################################################################
-
-
-def to_graph(
-    module: "jx.Module", synapses: bool = False, channels: bool = False
-) -> nx.DiGraph:
-    """Export a `jx.Module` as a networkX compartment graph.
-
-    Constructs a nx.DiGraph from the module. Each compartment in the module
-    is represented by a node in the graph. The edges between the nodes represent
-    the connections between the compartments. These edges can either be connections
-    between compartments within the same branch, between different branches or
-    even between different cells. In the latter case the synapse parameters
-    are stored as edge attributes. Only function allows one synapse per edge!
-    Additionally, global attributes of the module, for example `ncomp`, are stored as
-    graph attributes.
-
-    Exported graphs can be imported again to `jaxley` using the `from_graph` method.
-
-    Args:
-        module: A jaxley module or view instance.
-        synapses: Whether to export synapses to the graph.
-        channels: Whether to export ion channels to the graph.
-
-    Returns:
-        A networkx compartment. Has the same structure as a graph built with
-        `build_compartment_graph()`.
-
-    Example:
-    --------
-
-    ::
-
-        cell = jx.read_swc("path_to_swc.swc", ncomp=1)
-        comp_graph = to_graph(cell)
-    """
-    module_graph = nx.DiGraph()
-
-    # add global attrs
-    module_graph.graph["type"] = module.__class__.__name__.lower()
-    for attr in [
-        "ncomp",
-        "externals",
-        "external_inds",
-        "recordings",
-        "trainable_params",
-        "indices_set_by_trainables",
-    ]:
-        module_graph.graph[attr] = getattr(module, attr)
-
-    # add nodes
-    nodes = module.nodes.copy()
-    nodes = nodes.drop([col for col in nodes.columns if "local" in col], axis=1)
-    nodes.columns = [col.replace("global_", "") for col in nodes.columns]
-
-    if channels:
-        module_graph.graph["channels"] = module.channels
-        module_graph.graph["membrane_current_names"] = [
-            c.current_name for c in module.channels
-        ]
-    else:
-        for c in module.channels:
-            nodes = nodes.drop(c.name, axis=1)
-            # errors="ignore" because some channels might have the same parameter or
-            # state name (if the channels share parameters).
-            nodes = nodes.drop(list(c.channel_params), axis=1, errors="ignore")
-            nodes = nodes.drop(list(c.channel_states), axis=1, errors="ignore")
-
-    for col in nodes.columns:  # col wise adding preserves dtypes
-        module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
-
-    module_graph.graph["group_names"] = module.group_names
-
-    inter_branch_edges = module.branch_edges.copy()
-    intra_branch_edges = []
-    for i, branch_data in nodes.groupby("branch_index"):
-        inds = branch_data.index.values
-        intra_branch_edges += _branch_n2e(inds)
-
-        parents = module.branch_edges["parent_branch_index"]
-        children = module.branch_edges["child_branch_index"]
-        inter_branch_edges.loc[parents == i, "parent_branch_index"] = inds[-1]
-        inter_branch_edges.loc[children == i, "child_branch_index"] = inds[0]
-
-        # Special handling for xyzr. In the module, xyzr is currently stored in a list,
-        # where each list entry indicates one _branch_. In the `comp_graph`, each
-        # compartment is assigned its own `xyzr`. Here, we cast from the branch
-        # representation to the compartment representation.
-        xyzr = module.xyzr[i]
-        ncomp_per_branch = len(branch_data)
-        xyzr_per_comp = np.array_split(xyzr, ncomp_per_branch)
-        for i, comp_index in enumerate(inds):
-            module_graph.nodes[comp_index]["xyzr"] = xyzr_per_comp[i]
-
-    inter_branch_edges = inter_branch_edges.to_numpy()
-    module_graph.add_edges_from(inter_branch_edges)
-    module_graph.add_edges_from(intra_branch_edges)
-    module_graph.graph["type"] = module.__class__.__name__.lower()
-
-    module_comp_graph = _jaxley_graph_to_comp_graph(module_graph)
-    for branchpoint in module._branchpoints.iterrows():
-        node = branchpoint[0]
-        xyz = branchpoint[1]
-        for key in ["x", "y", "z"]:
-            module_comp_graph.nodes[node][key] = xyz[key]
-
-    if synapses:
-        syn_edges = module.edges.copy()
-        multiple_syn_per_edge = syn_edges[
-            ["pre_global_comp_index", "post_global_comp_index"]
-        ].duplicated(keep=False)
-        dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
-        if multiple_syn_per_edge.any():
-            warn(
-                f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
-                "Exporting synapses to the graph only works if the same two "
-                "compartments are connected by at most one synapse."
-            )
-        module_comp_graph.graph["synapses"] = module.synapses
-        module_comp_graph.graph["synapse_param_names"] = module.synapse_param_names
-        module_comp_graph.graph["synapse_state_names"] = module.synapse_state_names
-        module_comp_graph.graph["synapse_names"] = module.synapse_names
-        module_comp_graph.graph["synapse_current_names"] = module.synapse_current_names
-
-        syn_edges.columns = [col.replace("global_", "") for col in syn_edges.columns]
-        syn_edges["syn_type"] = syn_edges["type"]
-        syn_edges["type"] = "synapse"
-        syn_edges = syn_edges.set_index(["pre_comp_index", "post_comp_index"])
-
-        if not syn_edges.empty:
-            for (i, j), edge_data in syn_edges.iterrows():
-                module_comp_graph.add_edge(i, j, **edge_data.to_dict())
-
-    return module_comp_graph
-
-
-def _jaxley_graph_to_comp_graph(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
-    """Cast Jaxley graph (no branchpoints or spurious points) to a compartment graph.
-
-    This function inserts the branchpoints between compartments. In particular, if
-    the `branch_index` of compartments changes, we insert an additional node (the
-    branchpoint), connect the compartments to the branchpoint, and remove the connection
-    between compartments.
-
-    Args:
-        jaxley_graph: A directed graph consisting only of compartments (no additional)
-            nodes for branchpoints.
-
-    Returns:
-        A compartment graph which has branchpoints (nodes with attribute
-        `type="branchpoint"`). This graph is also directed.
-    """
-    jaxley_graph = jaxley_graph.copy()
-    nx.set_node_attributes(jaxley_graph, "comp", "type")
-    new_node_id = 0
-
-    # Add branchpoints to the graph: replace every edge (i, j) with (i, n), (n, j).
-    nodes = list(jaxley_graph.nodes())
-    for n in nodes:
-        successors = list(jaxley_graph.successors(n))
-        if len(successors) > 0:
-            # This handles the case of a branchpoint or of a node between compartments
-            # of the same branch.
-            if (
-                jaxley_graph.nodes[n]["branch_index"]
-                != jaxley_graph.nodes[successors[0]]["branch_index"]
-            ):
-                node_name = f"n{new_node_id}"
-                jaxley_graph.add_node(node_name)
-                for key in ["x", "y", "z"]:
-                    # 0.5 * (...): the spurious node is inserted halfway between its
-                    # connecting compartments. The location only matters for plotting
-                    # the graph. If a comp has multiple successors (i.e., branchpoint),
-                    # then we simply use the first successor for simplicity.
-                    jaxley_graph.nodes[node_name][key] = 0.5 * (
-                        jaxley_graph.nodes[n][key]
-                        + jaxley_graph.nodes[successors[0]][key]
-                    )
-
-                    # Decide on the type (branchpoint vs spurious) of the new node.
-                    jaxley_graph.nodes[node_name]["type"] = "branchpoint"
-
-                jaxley_graph.add_edge(n, node_name)
-                for j in successors:
-                    jaxley_graph.remove_edge(n, j)
-                    jaxley_graph.add_edge(node_name, j)
-                new_node_id += 1
-
-    return _set_branchpoint_indices(jaxley_graph)  # This is now a valid `comp_graph`.
-
-
-def _set_branchpoint_indices(jaxley_graph: nx.DiGraph) -> nx.DiGraph:
-    """Return a graph whose branchpoint indices match those of a `jx.Module`.
-
-    Here, we ensure that the branchpoints are enumerated in the same way in the
-    module as they are in the graph. The ordering is by the branch_index of the
-    parent branch of a branchpoint.
-
-    As an example, this could remap branchpoints as follows, if there are ten
-    compartments: ["n0", "n1", "n2"] -> [10, 12, 11]
-    """
-    predecessor_branch_inds = []
-    branchpoints = []
-    max_comp_index = 0
-    for node in jaxley_graph.nodes:
-        if jaxley_graph.nodes[node]["type"] == "branchpoint":
-            predecessor = list(jaxley_graph.predecessors(node))[0]
-            predecessor_branch_inds.append(
-                jaxley_graph.nodes[predecessor]["branch_index"]
-            )
-            branchpoints.append(node)
-        else:
-            if jaxley_graph.nodes[node]["comp_index"] > max_comp_index:
-                max_comp_index = jaxley_graph.nodes[node]["comp_index"]
-    sorting = np.argsort(predecessor_branch_inds)
-    branchpoints_in_corrected_order = np.asarray(branchpoints)[sorting]
-    mapping = {
-        k: max_comp_index + i + 1 for i, k in enumerate(branchpoints_in_corrected_order)
-    }
-    return nx.relabel_nodes(jaxley_graph, mapping)
-
-
-########################################################################################
 #################################### VISUALIZATION #####################################
 ########################################################################################
 
@@ -1363,8 +1167,8 @@ def vis_compartment_graph(
         comp_color: The color of the compartments.
         branchpoint_color: The color of the compartments.
 
-    Example:
-    --------
+    Example usage
+    ^^^^^^^^^^^^^
 
     ::
 

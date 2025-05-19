@@ -16,18 +16,12 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
-    build_branchpoint_group_inds,
     compute_children_and_parents,
     convert_point_process_to_distributed,
     loc_of_index,
-    merge_cells,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
-from jaxley.utils.solver_utils import (
-    JaxleySolveIndexer,
-    comp_edges_to_indices,
-    remap_index_to_masked,
-)
+from jaxley.utils.solver_utils import dhs_group_comps_into_levels
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -77,8 +71,15 @@ class Network(Module):
                 *[[i] * int(cell.cumsum_ncomp[-1]) for i, cell in enumerate(cells)]
             )
         )
-        self._update_local_indices()
-        self._init_view()
+        offset = 0
+        node_indices = []
+        self._internal_node_inds = []
+        for cell in cells:
+            node_indices.append(cell.nodes.index + offset)
+            self._internal_node_inds.append(cell._internal_node_inds + offset)
+            offset += cell._n_nodes
+        self.nodes.index = np.concatenate(node_indices)
+        self._internal_node_inds = np.concatenate(self._internal_node_inds)
 
         parents = [cell.comb_parents for cell in cells]
         self.comb_parents = jnp.concatenate(
@@ -102,148 +103,134 @@ class Network(Module):
             compute_children_and_parents(self.branch_edges)
         )
 
-        # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are unique).
+        # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are
+        # unique).
         nbranchpoints = jnp.asarray([len(cell._par_inds) for cell in cells])
         self._cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
         # Channels.
         self._gather_channels_from_constituents(cells)
 
-        self._initialize()
+        self.initialize()
         del self._cells_list
 
     def __repr__(self):
-        return f"{type(self).__name__} with {len(self.channels)} different channels and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
-
-    def _init_morph_jaxley_spsolve(self):
-        branchpoint_group_inds = build_branchpoint_group_inds(
-            len(self._par_inds),
-            self._child_belongs_to_branchpoint,
-            self.cumsum_ncomp[-1],
-        )
-        children_in_level = merge_cells(
-            self._cumsum_nbranches,
-            self._cumsum_nbranchpoints_per_cell,
-            [cell._solve_indexer.children_in_level for cell in self._cells_list],
-            exclude_first=False,
-        )
-        parents_in_level = merge_cells(
-            self._cumsum_nbranches,
-            self._cumsum_nbranchpoints_per_cell,
-            [cell._solve_indexer.parents_in_level for cell in self._cells_list],
-            exclude_first=False,
-        )
-        padded_cumsum_ncomp = cumsum_leading_zero(
-            np.concatenate(
-                [np.diff(cell._solve_indexer.cumsum_ncomp) for cell in self._cells_list]
-            )
+        return (
+            f"{type(self).__name__} with {len(self.channels)} different channels "
+            f"and {len(self.synapses)} synapses. Use `.nodes` or `.edges` for details."
         )
 
-        # Generate mapping to dealing with the masking which allows using the custom
-        # sparse solver to deal with different ncomp per branch.
-        remapped_node_indices = remap_index_to_masked(
-            self._internal_node_inds,
-            self.nodes,
-            padded_cumsum_ncomp,
-            self.ncomp_per_branch,
-        )
-        self._solve_indexer = JaxleySolveIndexer(
-            cumsum_ncomp=padded_cumsum_ncomp,
-            ncomp_per_branch=self.ncomp_per_branch,
-            branchpoint_group_inds=branchpoint_group_inds,
-            children_in_level=children_in_level,
-            parents_in_level=parents_in_level,
-            root_inds=self._cumsum_nbranches[:-1],
-            remapped_node_indices=remapped_node_indices,
-        )
+    def _init_comp_graph(self):
+        """Initialize attributes concerning the compartment graph.
 
-    def _init_morph_jax_spsolve(self):
-        """Initialize the morphology for networks.
+        In particular, it initializes:
+        - `_comp_edges`
+        - `_branchpoints`
+        - `_n_nodes`
+        - `_off_diagonal_inds`
 
-        The reason that this function is a bit involved for a `Network` is that Jaxley
-        considers branchpoint nodes to be at the very end of __all__ nodes (i.e. the
-        branchpoints of the first cell are even after the compartments of the second
-        cell. The reason for this is that, otherwise, `cumsum_ncomp` becomes tricky).
-
-        To achieve this, we first loop over all compartments and append them, and then
-        loop over all branchpoints and append those. The code for building the indices
-        from the `comp_edges` is identical to `jx.Cell`.
-
-        Explanation of `self._comp_eges['type']`:
-        `type == 0`: compartment <--> compartment (within branch)
-        `type == 1`: branchpoint --> parent-compartment
-        `type == 2`: branchpoint --> child-compartment
-        `type == 3`: parent-compartment --> branchpoint
-        `type == 4`: child-compartment --> branchpoint
+        In principle, we could do this by traversing the entire `graph`. However,
+        it is faster to just collect the graph attributes of each `cell` and
+        concatenate them (which is what we do here).
         """
-        self._cumsum_ncomp_per_cell = cumsum_leading_zero(
-            jnp.asarray([cell.cumsum_ncomp[-1] for cell in self.cells])
+        # Compartment edges, branchpoints, internal_node_inds.
+        offset = 0
+        self._comp_edges = []
+        self._branchpoints = []
+        for cell in self._cells_list:
+            # Compartment edges
+            edges = cell._comp_edges.copy()
+            edges[["source", "sink"]] += offset
+            self._comp_edges.append(edges)
+
+            # Branchpoints.
+            branchpoints = cell._branchpoints.copy()
+            branchpoints.index = branchpoints.index + offset
+            self._branchpoints.append(branchpoints)
+
+            offset += cell._n_nodes  # Compartment-offset.
+        self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
+        self._branchpoints = pd.concat(self._branchpoints)
+        self._n_nodes = offset
+
+        # off_diagonal_inds
+        sources = np.asarray(self._comp_edges["source"].to_list())
+        sinks = np.asarray(self._comp_edges["sink"].to_list())
+        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
+
+    def _init_solver_jaxley_dhs_solve(self, *args, **kwargs) -> None:
+        """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
+
+        This function first generates the networkX `comp_graph`, then traverses it
+        to identify the solve order, and then pre-computes the relevant attributes used
+        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+        """
+        offset = 0
+        lower_and_upper_offset = 0
+
+        dhs_map_dict = {}
+        dhs_inv_map_to_node_order = []
+        dhs_map_to_node_order = []
+        dhs_map_to_node_order_lower = []
+        dhs_map_to_node_order_upper = []
+        dhs_node_order = []
+        dhs_parent_lookup = []
+
+        for cell in self._cells_list:
+            dhs_map_dict.update(
+                {
+                    k + offset: v + offset
+                    for k, v in cell._dhs_solve_indexer["map_dict"].items()
+                }
+            )
+            dhs_inv_map_to_node_order.append(
+                cell._dhs_solve_indexer["inv_map_to_solve_order"] + offset
+            )
+            dhs_map_to_node_order.append(
+                cell._dhs_solve_indexer["map_to_solve_order"] + offset
+            )
+
+            dhs_map_to_node_order_lower.append(
+                cell._dhs_solve_indexer["map_to_solve_order_lower"]
+                + lower_and_upper_offset
+            )
+            dhs_map_to_node_order_upper.append(
+                cell._dhs_solve_indexer["map_to_solve_order_upper"]
+                + lower_and_upper_offset
+            )
+            dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
+
+            # Discard the last one because it is a [-1] which just absorbs all
+            # compartments that are already finished with their recursion. We append
+            # such a compartment after this loop again.
+            parent_lookup = cell._dhs_solve_indexer["parent_lookup"].copy()[:-1]
+            parent_lookup[1:] += offset
+            dhs_parent_lookup.append(parent_lookup)
+
+            offset += cell._n_nodes  # Compartment-offset.
+            lower_and_upper_offset += (cell._n_nodes - 1) * 2
+
+        self._dhs_solve_indexer = {}
+        self._dhs_solve_indexer["inv_map_to_solve_order"] = np.concatenate(
+            dhs_inv_map_to_node_order
         )
-        self._comp_edges = pd.DataFrame()
-
-        # Add all the internal nodes.
-        for offset, cell in zip(self._cumsum_ncomp_per_cell, self._cells_list):
-            condition = cell._comp_edges["type"].to_numpy() == 0
-            rows = cell._comp_edges[condition]
-            self._comp_edges = pd.concat(
-                [self._comp_edges, [offset, offset, 0] + rows], ignore_index=True
-            )
-
-        # All branchpoint-to-compartment nodes.
-        start_branchpoints = self.cumsum_ncomp[-1]  # Index of the first branchpoint.
-        for offset, offset_branchpoints, cell in zip(
-            self._cumsum_ncomp_per_cell,
-            self._cumsum_nbranchpoints_per_cell,
-            self._cells_list,
-        ):
-            offset_within_cell = cell.cumsum_ncomp[-1]
-            condition = cell._comp_edges["type"].isin([1, 2])
-            rows = cell._comp_edges[condition]
-            self._comp_edges = pd.concat(
-                [
-                    self._comp_edges,
-                    [
-                        start_branchpoints - offset_within_cell + offset_branchpoints,
-                        offset,
-                        0,
-                    ]
-                    + rows,
-                ],
-                ignore_index=True,
-            )
-
-        # All compartment-to-branchpoint nodes.
-        for offset, offset_branchpoints, cell in zip(
-            self._cumsum_ncomp_per_cell,
-            self._cumsum_nbranchpoints_per_cell,
-            self._cells_list,
-        ):
-            offset_within_cell = cell.cumsum_ncomp[-1]
-            condition = cell._comp_edges["type"].isin([3, 4])
-            rows = cell._comp_edges[condition]
-            self._comp_edges = pd.concat(
-                [
-                    self._comp_edges,
-                    [
-                        offset,
-                        start_branchpoints - offset_within_cell + offset_branchpoints,
-                        0,
-                    ]
-                    + rows,
-                ],
-                ignore_index=True,
-            )
-
-        # Convert comp_edges to the index format required for `jax.sparse` solvers.
-        n_nodes, data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
-        self._n_nodes = n_nodes
-        self._data_inds = data_inds
-        self._indices_jax_spsolve = indices
-        self._indptr_jax_spsolve = indptr
-
-        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
-        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
-        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+        self._dhs_solve_indexer["map_to_solve_order"] = np.concatenate(
+            dhs_map_to_node_order
+        )
+        self._dhs_solve_indexer["map_to_solve_order_lower"] = np.concatenate(
+            dhs_map_to_node_order_lower
+        )
+        self._dhs_solve_indexer["map_to_solve_order_upper"] = np.concatenate(
+            dhs_map_to_node_order_upper
+        )
+        self._dhs_solve_indexer["node_order"] = np.concatenate(dhs_node_order, axis=0)
+        self._dhs_solve_indexer["parent_lookup"] = np.concatenate(
+            dhs_parent_lookup + [[-1]]
+        )
+        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
+            self._dhs_solve_indexer["node_order"]
+        )
+        self._init_view()
 
     def _step_synapse(
         self,
@@ -271,8 +258,8 @@ class Network(Module):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["pre_index"].apply(list)
+        post_syn_inds = grouped_syns["post_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         for i, synapse_type in enumerate(syn_channels):
@@ -318,8 +305,8 @@ class Network(Module):
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_global_comp_index"].apply(list)
-        post_syn_inds = grouped_syns["post_global_comp_index"].apply(list)
+        pre_syn_inds = grouped_syns["pre_index"].apply(list)
+        post_syn_inds = grouped_syns["post_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
         syn_voltage_terms = jnp.zeros_like(voltages)
@@ -487,11 +474,12 @@ class Network(Module):
         else:
             raise ValueError("detail must be in {full, point}.")
 
-        nodes = self.nodes.set_index("global_comp_index")
+        # Plot the synapses.
+        nodes = self.nodes
         for i, edge in self.edges.iterrows():
             prepost_locs = []
             for prepost in ["pre", "post"]:
-                loc, comp = edge[[prepost + "_locs", prepost + "_global_comp_index"]]
+                loc, comp = edge[[prepost + "_locs", prepost + "_index"]]
                 branch = nodes.loc[comp, "global_branch_index"]
                 cell = nodes.loc[comp, "global_cell_index"]
                 branch_xyz = self.xyzr[branch][:, :3]
@@ -554,10 +542,8 @@ class Network(Module):
         )
 
         # Define new synapses. Each row is one synapse.
-        pre_nodes = pre_nodes[["global_comp_index"]]
-        pre_nodes.columns = ["pre_global_comp_index"]
-        post_nodes = post_nodes[["global_comp_index"]]
-        post_nodes.columns = ["post_global_comp_index"]
+        pre_nodes = pd.DataFrame({"pre_index": pre_nodes.index})
+        post_nodes = pd.DataFrame({"post_index": post_nodes.index})
         new_rows = pd.concat(
             [
                 global_edge_index,

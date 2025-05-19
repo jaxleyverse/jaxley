@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
+import networkx as nx
 import numpy as np
 import pandas as pd
 from jax import jit, vmap
@@ -20,8 +21,9 @@ from jaxley.channels import Channel
 from jaxley.pumps import Pump
 from jaxley.solver_voltage import (
     step_voltage_explicit,
+    step_voltage_implicit_with_dhs_solve,
     step_voltage_implicit_with_jax_spsolve,
-    step_voltage_implicit_with_jaxley_spsolve,
+    step_voltage_implicit_with_stone,
 )
 from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
@@ -40,9 +42,16 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
+from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
-from jaxley.utils.solver_utils import convert_to_csc
+from jaxley.utils.solver_utils import (
+    comp_edges_to_indices,
+    convert_to_csc,
+    dhs_group_comps_into_levels,
+    dhs_permutation_indices,
+    dhs_solve_index,
+)
 
 
 def only_allow_module(func):
@@ -54,9 +63,10 @@ def only_allow_module(func):
     def wrapper(self, *args, **kwargs):
         module_name = self.base.__class__.__name__
         method_name = func.__name__
-        assert not isinstance(
-            self, View
-        ), f"{method_name} is currently not supported for Views. Call on the {module_name} base Module."
+        assert not isinstance(self, View), (
+            f"{method_name} is currently not supported for Views. Call on "
+            f"the {module_name} base Module."
+        )
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -116,6 +126,7 @@ class Module(ABC):
     """
 
     def __init__(self):
+        self._solver_device = infer_device()
         self.ncomp: int = None
         self.total_nbranches: int = 0
         self.nbranches_per_cell: List[int] = None
@@ -133,8 +144,8 @@ class Module(ABC):
         self.edges = pd.DataFrame(
             columns=[
                 "global_edge_index",
-                "pre_global_comp_index",
-                "post_global_comp_index",
+                "pre_index",
+                "post_index",
                 "pre_locs",
                 "post_locs",
                 "type",
@@ -146,7 +157,7 @@ class Module(ABC):
 
         self.comb_parents: jnp.ndarray = jnp.asarray([-1])
 
-        self.initialized_morph: bool = False
+        self.initialized_solver: bool = False
         self.initialized_syns: bool = False
 
         # List of all types of `jx.Synapse`s.
@@ -273,6 +284,7 @@ class Module(ABC):
 
     def _update_local_indices(self) -> pd.DataFrame:
         """Compute local indices from the global indices that are in view.
+
         This is recomputed everytime a View is created."""
         rerank = lambda df: df.rank(method="dense").astype(int) - 1
 
@@ -335,6 +347,11 @@ class Module(ABC):
         self._current_view = "comp" if parent == "compartment" else parent
         self._nodes_in_view = self.nodes.index.to_numpy()
         self._edges_in_view = self.edges.index.to_numpy()
+
+        # To enable updating `self._comp_edges` and `self._branchpoints` during `View`.
+        self._comp_edges_in_view = self._comp_edges.index.to_numpy()
+        self._branchpoints_in_view = self._branchpoints.index.to_numpy()
+
         self.nodes["controlled_by_param"] = 0
 
     def _compute_coords_of_comp_centers(self) -> np.ndarray:
@@ -385,6 +402,14 @@ class Module(ABC):
         """Add compartment centers to nodes dataframe"""
         centers = self._compute_coords_of_comp_centers()
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
+
+        # Estimate the branchpoint xyz as the mean of the xyz of all neighboring
+        # compartments.
+        for branchpoint in self.base._branchpoints.index:
+            edges = self.base._comp_edges.copy()
+            neighbors = edges[edges["sink"] == branchpoint]["source"]
+            neighbor_xyz = self.base.nodes.loc[neighbors, ["x", "y", "z"]].mean()
+            self.base._branchpoints.loc[branchpoint, ["x", "y", "z"]] = neighbor_xyz
 
     def _reformat_index(self, idx: Any, dtype: type = int) -> np.ndarray:
         """Transforms different types of indices into an array.
@@ -698,7 +723,8 @@ class Module(ABC):
 
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
-        Example:
+        Example usage
+        ^^^^^^^^^^^^^
 
         .. code-block:: python
 
@@ -820,8 +846,10 @@ class Module(ABC):
         """
         self.base.jaxnodes = {}
         for key, value in self.base.nodes.to_dict(orient="list").items():
-            inds = jnp.arange(len(value))
-            self.base.jaxnodes[key] = jnp.asarray(value)[inds]
+            # inds = jnp.arange(len(value))
+            values = -1 * jnp.ones((self._n_nodes))
+            values = values.at[self.base.nodes.index.to_numpy()].set(value)
+            self.base.jaxnodes[key] = values
 
         # `jaxedges` contains only parameters (no indices).
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
@@ -883,21 +911,145 @@ class Module(ABC):
         return nodes[cols]
 
     @only_allow_module
-    def _init_morph(self):
-        """Initialize the morphology such that it can be processed by the solvers."""
-        self._init_morph_jaxley_spsolve()
-        self._init_morph_jax_spsolve()
-        self.initialized_morph = True
+    def _init_solvers(self, allowed_nodes_per_level: Optional[int] = None):
+        """Initialize the morphology such that it can be processed by the solvers.
 
-    @abstractmethod
-    def _init_morph_jax_spsolve(self):
-        """Initialize the morphology for the JAX sparse solver."""
-        raise NotImplementedError
+        Args:
+            allowed_nodes_per_level: Only relevant to the `jaxley.dhs` solver. It sets
+                how many nodes are visited before the level is increased, even if the
+                number of hops did not change. This sets the amount of parallelism
+                of the simulation.
+        """
+        self._init_solver_jax_spsolve()
+        self._init_solver_jaxley_dhs_solve(
+            allowed_nodes_per_level=allowed_nodes_per_level
+        )
+        self.initialized_solver = True
 
-    @abstractmethod
-    def _init_morph_jaxley_spsolve(self):
-        """Initialize the morphology for the custom Jaxley solver."""
-        raise NotImplementedError
+    def _init_solver_jax_spsolve(self):
+        """Initialize morphology for the jax sparse voltage solver.
+
+        Explanation of `self._comp_eges['type']`:
+        `type == 0`: compartment <--> compartment (within branch)
+        `type == 1`: branchpoint --> parent-compartment
+        `type == 2`: branchpoint --> child-compartment
+        `type == 3`: parent-compartment --> branchpoint
+        `type == 4`: child-compartment --> branchpoint
+        """
+        data_inds, indices, indptr = comp_edges_to_indices(self._comp_edges)
+        self._data_inds = data_inds
+        self._indices_jax_spsolve = indices
+        self._indptr_jax_spsolve = indptr
+
+    def _init_solver_jaxley_dhs_solve(
+        self, allowed_nodes_per_level: Optional[int] = 1, root: int = 0
+    ) -> None:
+        """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
+
+        This function first generates the networkX `comp_graph`, then traverses it
+        to identify the solve order, and then pre-computes the relevant attributes used
+        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+
+        This base-method is used by `jx.Compartment`, `jx.Branch`, and `jx.Cell`.
+        The `jx.Network` implements its own method.
+
+        Args:
+            allowed_nodes_per_level: How many nodes are visited before the level is
+                increased, even if the number of hops did not change. This sets the
+                amount of parallelism of the simulation.
+            root: The root node from which to start tracing.
+        """
+        # Infer the amount of parallelism of the solver. Note that the `jaxley.dhs.cpu`
+        # requires `allowed_nodes_per_level = 1`, or you have to run the following
+        # after having initialized the module (in order to fill up all
+        # `node_order_grouped` to be of the same shape):
+        #
+        # ```
+        # nodes_and_parents = self._dhs_solve_indexer["node_order_grouped"]
+        # padded_stack = np.full((len(nodes_and_parents), allowed_nodes_per_level, 2), -1)
+        # for idx, arr in enumerate(nodes_and_parents):
+        #     padded_stack[idx, : arr.shape[0], :] = arr
+        # self._dhs_solve_indexer["node_order_grouped"] = padded_stack
+        # ```
+        #
+        if allowed_nodes_per_level is None:
+            if self._solver_device == "cpu":
+                allowed_nodes_per_level = 1
+            else:
+                allowed_nodes_per_level = 32
+
+        if np.any(np.isnan(self.xyzr[0][:, :3])):
+            self.compute_xyz()
+            self.compute_compartment_centers()
+        comp_graph = to_graph(self)
+
+        # Export to graph and traverse it to identify the solve order.
+        node_order, node_to_solve_index_mapping = dhs_solve_index(
+            comp_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
+        )
+
+        # Set the order in which compartments are processed during Dendritic Hierachical
+        # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
+        # the values correspond to compartment indices.
+        dhs_node_order = np.asarray(node_order[1:])
+
+        # We have to change the order of compartments at every time step of the solve.
+        # Because of this, we make it as efficient as possible to perform this ordering
+        # with the arrays below. Example:
+        # ```
+        # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
+        # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
+        # ```
+        map_dict = node_to_solve_index_mapping  # Abbreviation.
+        inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
+        mapping_array = np.argsort(inv_mapping_array)
+        #
+        self._dhs_solve_indexer = {}
+        self._dhs_solve_indexer["map_dict"] = map_dict
+        self._dhs_solve_indexer["inv_map_to_solve_order"] = inv_mapping_array
+        self._dhs_solve_indexer["map_to_solve_order"] = mapping_array
+
+        # Define the matrix permutation for DHS.
+        lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
+        lower_and_upper_inds, new_node_order = dhs_permutation_indices(
+            lower_and_upper_inds,
+            self._off_diagonal_inds,
+            dhs_node_order,
+            self._dhs_solve_indexer["map_dict"],
+        )
+
+        # Concatenate a `0` such that the `lower` and `upper` will have the same
+        # shape as the `diag` and `solve`. The 0-eth element will never actually be
+        # accessed, but it makes indexing easier in the voltage solver.
+        #
+        # Here, we assume that `comp_edges` has lowers first and uppers only after that
+        # (by using `[:self._n_nodes-1]`). TODO we should make this more robust in the
+        # future as we move towards simulating _any_ graph.
+        self._dhs_solve_indexer["map_to_solve_order_lower"] = jnp.concatenate(
+            [
+                jnp.asarray([0]).astype(int),
+                lower_and_upper_inds.astype(int)[: self._n_nodes - 1],
+            ]
+        )
+        self._dhs_solve_indexer["map_to_solve_order_upper"] = jnp.concatenate(
+            [
+                jnp.asarray([0]).astype(int),
+                lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
+            ]
+        )
+        self._dhs_solve_indexer["node_order"] = new_node_order
+        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
+            new_node_order
+        )
+
+        # Define a simple lookup table that allows to retrieve the parent of a node.
+        # E.g.:
+        # ```parent_node = parents[node]``` or:
+        # ```two_step_parent = parents[parents[node]]```.
+        parents = -1 * np.ones(self._n_nodes + 1)
+        for nodes in self._dhs_solve_indexer["node_order_grouped"]:
+            parents[nodes[:, 0]] = nodes[:, 1]
+        self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
     def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
         """Given radius, length, r_a, compute the axial coupling conductances.
@@ -976,9 +1128,7 @@ class Module(ABC):
         return param_state
 
     def set_ncomp(
-        self,
-        ncomp: int,
-        min_radius: Optional[float] = None,
+        self, ncomp: int, min_radius: Optional[float] = None, initialize: bool = True
     ):
         """Set the number of compartments with which the branch is discretized.
 
@@ -987,6 +1137,12 @@ class Module(ABC):
                 into.
             min_radius: Only used if the morphology was read from an SWC file. If passed
                 the radius is capped to be at least this value.
+            initialize: If `False`, it skips the initialization stage and the user
+                has to run it manually afterwards. This is useful when `set_ncomp`
+                is run in a loop (e.g. for the d_lambda rule), where one can
+                initialize only once after the entire loop to largely speed up
+                computation time. If `False`, then the user has to run
+                `cell.initialize()` manually afterwards.
 
         Raises:
             - When there are stimuli in any compartment in the module.
@@ -1080,6 +1236,7 @@ class Module(ABC):
             )
 
         # Add new rows as the average of all rows. Special case for the length is below.
+        start_index = int(self.nodes.index.to_numpy()[0])
         average_row = self.nodes.mean(skipna=False)
         average_row = average_row.to_frame().T
         view = pd.concat([*[average_row] * ncomp], axis="rows")
@@ -1122,7 +1279,10 @@ class Module(ABC):
         df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
 
         # 3) Combine the parts: before, new rows, and after
-        all_nodes = pd.concat([df1, view, df2]).reset_index(drop=True)
+        view.index = np.arange(len(view)).astype(int) + start_index
+        df2.index -= num_previous_ncomp
+        df2.index += ncomp
+        all_nodes = pd.concat([df1, view, df2])
 
         # Override `comp_index` to just be a consecutive list.
         all_nodes["global_comp_index"] = np.arange(len(all_nodes))
@@ -1140,9 +1300,8 @@ class Module(ABC):
         self.base._internal_node_inds = internal_node_inds
 
         # Update the morphology indexing (e.g., `.comp_edges`).
-        self.base._initialize()
-        self.base._init_view()
-        self.base._update_local_indices()
+        if initialize:
+            self.base.initialize()
 
     def make_trainable(
         self,
@@ -1165,9 +1324,10 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
-        assert (
-            self.allow_make_trainable
-        ), "network.cell('all').make_trainable() is not supported. Use a for-loop over cells."
+        assert self.allow_make_trainable, (
+            "network.cell('all').make_trainable() is not supported. Use a "
+            "for-loop over cells."
+        )
         ncomps_per_branch = (
             self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
@@ -1177,7 +1337,7 @@ class Module(ABC):
 
         assert data is not None, f"Key '{key}' not found in nodes or edges"
         not_nan = ~data[key].isna()
-        data = data.loc[not_nan]
+        data = data.loc[not_nan].copy()
         assert (
             len(data) > 0
         ), "No settable parameters found in the selected compartments."
@@ -1217,13 +1377,15 @@ class Module(ABC):
             if isinstance(init_val, float):
                 new_params = jnp.asarray([init_val] * num_created_parameters)
             elif isinstance(init_val, list):
-                assert (
-                    len(init_val) == num_created_parameters
-                ), f"len(init_val)={len(init_val)}, but trying to create {num_created_parameters} parameters."
+                assert len(init_val) == num_created_parameters, (
+                    f"len(init_val)={len(init_val)}, but trying to create "
+                    f"{num_created_parameters} parameters."
+                )
                 new_params = jnp.asarray(init_val)
             else:
                 raise ValueError(
-                    f"init_val must a float, list, or None, but it is a {type(init_val).__name__}."
+                    f"init_val must a float, list, or None, but it is a "
+                    f"{type(init_val).__name__}."
                 )
         else:
             new_params = jnp.nanmean(param_vals, axis=1)
@@ -1232,7 +1394,9 @@ class Module(ABC):
         self.base.num_trainable_params += num_created_parameters
         if verbose:
             print(
-                f"Number of newly added trainable parameters: {num_created_parameters}. Total number of trainable parameters: {self.base.num_trainable_params}"
+                f"Number of newly added trainable parameters: "
+                f"{num_created_parameters}. Total number of trainable "
+                f"parameters: {self.base.num_trainable_params}"
             )
 
     def write_trainables(self, trainable_params: List[Dict[str, jnp.ndarray]]):
@@ -1260,7 +1424,7 @@ class Module(ABC):
         # taken care of by `get_all_parameters()`).
         self.base.to_jax()
         pstate = params_to_pstate(trainable_params, self.base.indices_set_by_trainables)
-        all_params = self.base.get_all_parameters(pstate, voltage_solver="jaxley.stone")
+        all_params = self.base.get_all_parameters(pstate)
 
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
@@ -1272,7 +1436,7 @@ class Module(ABC):
             key = parameter["key"]
             if key in self.base.nodes.columns:
                 vals_to_set = all_params if key in all_params.keys() else all_states
-                self.base.nodes[key] = vals_to_set[key]
+                self.base.nodes[key] = vals_to_set[key][self._internal_node_inds]
 
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.
@@ -1363,9 +1527,7 @@ class Module(ABC):
         return self.trainable_params
 
     @only_allow_module
-    def get_all_parameters(
-        self, pstate: List[Dict], voltage_solver: str
-    ) -> Dict[str, jnp.ndarray]:
+    def get_all_parameters(self, pstate: List[Dict]) -> Dict[str, jnp.ndarray]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
@@ -1437,16 +1599,18 @@ class Module(ABC):
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
         # Compute conductance params and add them to the params dictionary.
-        params["axial_conductances"] = self.base._compute_axial_conductances(
-            params=params
-        )
+        conds = self.base._compute_axial_conductances(params=params)
+        params["axial_conductances"] = conds
         return params
 
     @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> Dict[str, jnp.ndarray]:
-        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
-        """Return states as they are set in the `.nodes` and `.edges` tables."""
-        self.base.to_jax()  # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        """Return states as they are set in the `.nodes` and `.edges` tables.
+
+        TODO FROM #447: MAKE THIS WORK FOR VIEW?
+        """
+        # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+        self.base.to_jax()
         states = {"v": self.base.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
         for channel in self.base.channels + self.base.pumps:
@@ -1492,18 +1656,45 @@ class Module(ABC):
 
         # Add to the states the initial current through every synapse.
         states, _ = self.base._synapse_currents(
-            states, self.synapses, all_params, delta_t, self.edges
+            states,
+            self.synapses,
+            all_params,
+            delta_t,
+            self.edges,
         )
         return states
 
     @property
     def initialized(self) -> bool:
         """Whether the `Module` is ready to be solved or not."""
-        return self.initialized_morph
+        return self.initialized_solver
 
-    def _initialize(self):
-        """Initialize the module."""
-        self._init_morph()
+    def initialize(self):
+        """Initialize the module.
+
+        This function does several things:
+        1) It computes local indices in the `.nodes` dataframe (from global indices).
+        2) It builds the compartment graph (`._comp_edges` and `._branchpoints`).
+        3) It initializes the `View`.
+        4) It initializes all solvers required for solving the differential equation.
+
+        This function should be run whenever the graph-structure (i.e., the morphology
+        or the compartmentalization) of the module have been changed. Inbuilt functions
+        such as `morph_attach()`, `morph_delete()`, or `set_ncomp()` run this function
+        automatically though, so there is no need for the user to run it manually.
+        """
+        # Compute the local indices from the global indices.
+        self._update_local_indices()
+
+        # Initialize compartment graph structure (`_comp_edges`, `_branchpoints`, ...).
+        self._init_comp_graph()
+
+        # Initialize view of nodes, edges, and compartment graph structure.
+        self._init_view()
+
+        # Inititalize solvers.
+        self._init_solvers()
+
         return self
 
     @only_allow_module
@@ -1524,7 +1715,7 @@ class Module(ABC):
         # that by allowing an input `params` and `pstate` to this function.
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
-        params = self.base.get_all_parameters([], voltage_solver="jaxley.thomas")
+        params = self.base.get_all_parameters([])
 
         for channel in self.base.channels + self.base.pumps:
             name = channel._name
@@ -2082,7 +2273,13 @@ class Module(ABC):
                 u[key] = u[key].at[external_inds[key]].set(externals[key])
 
         # Add solver specific arguments.
-        if voltage_solver == "jax.sparse":
+        if solver == "fwd_euler":
+            solver_kwargs = {
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "sources": np.asarray(self._comp_edges["source"].to_list()),
+                "types": np.asarray(self._comp_edges["type"].to_list()),
+            }
+        elif voltage_solver == "jax.sparse":
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
@@ -2091,9 +2288,17 @@ class Module(ABC):
                 "indptr": self._indptr_jax_spsolve,
                 "n_nodes": self._n_nodes,
             }
-            # Only for `bwd_euler` and `cranck-nicolson`.
             step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
-        else:
+        elif voltage_solver.startswith("jaxley.dhs"):
+            solver_kwargs = {
+                "internal_node_inds": self._internal_node_inds,
+                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
+                "n_nodes": self._n_nodes,
+                "solve_indexer": self._dhs_solve_indexer,
+                "optimize_for_gpu": True if voltage_solver.endswith("gpu") else False,
+            }
+            step_voltage_implicit = step_voltage_implicit_with_dhs_solve
+        elif voltage_solver == "jaxley.stone":
             # Our custom sparse solver requires a different format of all conductance
             # values to perform triangulation and backsubstution optimally.
             #
@@ -2102,19 +2307,12 @@ class Module(ABC):
             # the future.
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
+                "n_nodes": self._n_nodes,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                 "sources": np.asarray(self._comp_edges["source"].to_list()),
                 "types": np.asarray(self._comp_edges["type"].to_list()),
-                "ncomp_per_branch": self.ncomp_per_branch,
-                "par_inds": self._par_inds,
-                "child_inds": self._child_inds,
-                "nbranches": self.total_nbranches,
-                "solver": voltage_solver,
-                "idx": self._solve_indexer,
-                "debug_states": self.debug_states,
             }
-            # Only for `bwd_euler` and `cranck-nicolson`.
-            step_voltage_implicit = step_voltage_implicit_with_jaxley_spsolve
+            step_voltage_implicit = step_voltage_implicit_with_stone
 
         if solver in ["bwd_euler", "crank_nicolson"]:
             # Crank-Nicolson advances by half a step of backward and half a step of
@@ -2221,7 +2419,7 @@ class Module(ABC):
         voltages = states["v"]
 
         # Update states of the channels.
-        indices = channel_nodes["global_comp_index"].to_numpy()
+        indices = channel_nodes.index.to_numpy()
         for channel in channels:
             channel_param_names = list(channel.channel_params)
             channel_param_names += [
@@ -2283,9 +2481,7 @@ class Module(ABC):
                 modified_state_name = channel.ion_name
             modified_state = states[modified_state_name]
 
-            indices = channel_nodes.loc[channel_nodes[name]][
-                "global_comp_index"
-            ].to_numpy()
+            indices = channel_nodes.loc[channel_nodes[name]].index.to_numpy()
             current, linear_term, const_term = self._channel_current_components(
                 modified_state,
                 states,
@@ -2376,7 +2572,12 @@ class Module(ABC):
         return u, (jnp.zeros_like(voltages), jnp.zeros_like(voltages))
 
     def _synapse_currents(
-        self, states, syn_channels, params, delta_t, edges: pd.DataFrame
+        self,
+        states,
+        syn_channels,
+        params,
+        delta_t,
+        edges: pd.DataFrame,
     ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
         return states, (None, None)
 
@@ -2453,9 +2654,10 @@ class Module(ABC):
                 self, dims=dims, ax=ax, color=color, resolution=res, **kwargs
             )
 
-        assert not np.any(
-            [np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]
-        ), "No coordinates available. Use `vis(detail='point')` or run `.compute_xyz()` before running `.vis()`."
+        assert not np.any([np.isnan(xyzr[:, dims]).all() for xyzr in self.xyzr]), (
+            "No coordinates available. Use `vis(detail='point')` or run "
+            "`.compute_xyz()` before running `.vis()`."
+        )
 
         ax = plot_graph(
             self.xyzr,
@@ -2488,7 +2690,12 @@ class Module(ABC):
         inds_branch = self.nodes.groupby("global_branch_index")[
             "global_comp_index"
         ].apply(list)
-        branch_lens = [np.sum(self.nodes["length"][np.asarray(i)]) for i in inds_branch]
+        branch_lens = [
+            np.sum(
+                self.nodes.set_index("global_comp_index").loc[np.asarray(i), "length"]
+            )
+            for i in inds_branch
+        ]
         endpoints = []
 
         # Different levels will get a different "angle" at which the children emerge from
@@ -2576,7 +2783,8 @@ class Module(ABC):
         # Test if any coordinate values are NaN which would greatly affect moving
         if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
             raise ValueError(
-                "NaN coordinate values detected. Shift amounts cannot be computed. Please run compute_xyzr() or assign initial coordinate values."
+                "NaN coordinate values detected. Shift amounts cannot be computed. "
+                "Please run compute_xyzr() or assign initial coordinate values."
             )
 
         # can only iterate over cells for networks
@@ -2675,10 +2883,8 @@ class Module(ABC):
                     )
 
                 self.edges = self.edges.join(
-                    self.nodes[[property_to_import, "global_comp_index"]].set_index(
-                        "global_comp_index"
-                    ),
-                    on=f"{pre_or_post_val}_global_comp_index",
+                    self.nodes[property_to_import],
+                    on=f"{pre_or_post_val}_index",
                 )
                 self.edges = self.edges.rename(
                     columns={
@@ -2743,11 +2949,11 @@ class View(Module):
         edges: Optional[np.ndarray] = None,
         comp_edge_condition: str = "source_or_sink",
     ):
-        self.base = pointer.base  # forard base module
+        self.base: Module = pointer.base  # Point to the base module.
         self._scope = pointer._scope  # forward view
 
         # attrs with a static view
-        self.initialized_morph = pointer.initialized_morph
+        self.initialized_solver = pointer.initialized_solver
         self.initialized_syns = pointer.initialized_syns
         self.allow_make_trainable = pointer.allow_make_trainable
 
@@ -2771,7 +2977,6 @@ class View(Module):
         self._branchpoints = (
             ptr_nodes if ptr_nodes.empty else ptr_nodes.loc[self._branchpoints_in_view]
         )
-
         self.xyzr = self._xyzr_in_view()
         self.ncomp = 1 if len(self.nodes) == 1 else pointer.ncomp
         self.total_nbranches = len(self._branches_in_view)
@@ -2857,18 +3062,17 @@ class View(Module):
         has_edge_inds = edges is not None
         self._edges_in_view = pointer._edges_in_view
         self._nodes_in_view = pointer._nodes_in_view
+
         self._comp_edges_in_view = pointer._comp_edges_in_view
         self._branchpoints_in_view = pointer._branchpoints_in_view
 
         if not has_edge_inds and has_node_inds:
             base_edges = self.base.edges
             self._nodes_in_view = nodes
-            incl_comps = pointer.nodes.loc[
-                self._nodes_in_view, "global_comp_index"
-            ].unique()
+            incl_comps = pointer.nodes.loc[self._nodes_in_view].index.unique()
             if not base_edges.empty:
-                pre = base_edges["pre_global_comp_index"].isin(incl_comps).to_numpy()
-                post = base_edges["post_global_comp_index"].isin(incl_comps).to_numpy()
+                pre = base_edges["pre_index"].isin(incl_comps).to_numpy()
+                post = base_edges["post_index"].isin(incl_comps).to_numpy()
                 possible_edges_in_view = base_edges.index.to_numpy()[
                     (pre & post).flatten()
                 ]
@@ -2895,10 +3099,10 @@ class View(Module):
             base_nodes = self.base.nodes
             self._edges_in_view = edges
             incl_comps = pointer.edges.loc[
-                self._edges_in_view, ["pre_global_comp_index", "post_global_comp_index"]
+                self._edges_in_view, ["pre_index", "post_index"]
             ]
             incl_comps = np.unique(incl_comps.to_numpy().flatten())
-            where_comps = base_nodes["global_comp_index"].isin(incl_comps)
+            where_comps = base_nodes.index.isin(incl_comps)
             possible_nodes_in_view = base_nodes.index[where_comps].to_numpy()
             self._nodes_in_view = np.intersect1d(
                 possible_nodes_in_view, self._nodes_in_view
@@ -3124,3 +3328,136 @@ class View(Module):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         pass
+
+
+########################################################################################
+###################################### TO GRAPH ########################################
+########################################################################################
+
+
+def to_graph(
+    module: "jx.Module", synapses: bool = False, channels: bool = False
+) -> nx.DiGraph:
+    """Export a `jx.Module` as a networkX compartment graph.
+
+    Constructs a nx.DiGraph from the module. Each compartment in the module
+    is represented by a node in the graph. The edges between the nodes represent
+    the connections between the compartments. These edges can either be connections
+    between compartments within the same branch, between different branches or
+    even between different cells. In the latter case the synapse parameters
+    are stored as edge attributes. Only function allows one synapse per edge!
+    Additionally, global attributes of the module, for example `ncomp`, are stored as
+    graph attributes.
+
+    Exported graphs can be imported again to `jaxley` using the `from_graph` method.
+
+    Args:
+        module: A jaxley module or view instance.
+        synapses: Whether to export synapses to the graph.
+        channels: Whether to export ion channels to the graph.
+
+    Returns:
+        A networkx compartment. Has the same structure as a graph built with
+        `build_compartment_graph()`.
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    ::
+
+        cell = jx.read_swc("path_to_swc.swc", ncomp=1)
+        comp_graph = to_graph(cell)
+    """
+    module_graph = nx.DiGraph()
+
+    # add global attrs
+    module_graph.graph["type"] = module.__class__.__name__.lower()
+    for attr in [
+        "ncomp",
+        "externals",
+        "external_inds",
+        "recordings",
+        "trainable_params",
+        "indices_set_by_trainables",
+    ]:
+        module_graph.graph[attr] = getattr(module, attr)
+
+    # add nodes
+    nodes = module.nodes.copy()
+    nodes = nodes.drop([col for col in nodes.columns if "local" in col], axis=1)
+    nodes.columns = [col.replace("global_", "") for col in nodes.columns]
+
+    if channels:
+        module_graph.graph["channels"] = module.channels
+        module_graph.graph["membrane_current_names"] = [
+            c.current_name for c in module.channels
+        ]
+    else:
+        for c in module.channels:
+            nodes = nodes.drop(c.name, axis=1)
+            # errors="ignore" because some channels might have the same parameter or
+            # state name (if the channels share parameters).
+            nodes = nodes.drop(list(c.channel_params), axis=1, errors="ignore")
+            nodes = nodes.drop(list(c.channel_states), axis=1, errors="ignore")
+
+    nodes["type"] = "comp"
+    for col in nodes.columns:  # col wise adding preserves dtypes
+        module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
+
+    module._branchpoints["type"] = "branchpoint"
+    for col in module._branchpoints.columns:
+        module_graph.add_nodes_from(
+            module._branchpoints[[col]].to_dict(orient="index").items()
+        )
+
+    module_graph.graph["group_names"] = module.group_names
+
+    for i, branch_data in nodes.groupby("branch_index"):
+        inds = branch_data.index.values
+        # Special handling for xyzr. In the module, xyzr is currently stored in a list,
+        # where each list entry indicates one _branch_. In the `comp_graph`, each
+        # compartment is assigned its own `xyzr`. Here, we cast from the branch
+        # representation to the compartment representation.
+        xyzr = module.xyzr[i]
+        ncomp_per_branch = len(branch_data)
+        xyzr_per_comp = np.array_split(xyzr, ncomp_per_branch)
+        for i, comp_index in enumerate(inds):
+            module_graph.nodes[comp_index]["xyzr"] = xyzr_per_comp[i]
+
+    edges = module._comp_edges.copy()
+    condition1 = edges["type"].isin([2, 3])
+    condition2 = edges["type"] == 0
+    condition3 = edges["source"] < edges["sink"]
+    edges = edges[condition1 | (condition3 & condition2)][["source", "sink"]]
+    if len(edges) > 0:
+        module_graph.add_edges_from(edges.to_numpy())
+    module_graph.graph["type"] = module.__class__.__name__.lower()
+
+    if synapses:
+        syn_edges = module.edges.copy()
+        multiple_syn_per_edge = syn_edges[["pre_index", "post_index"]].duplicated(
+            keep=False
+        )
+        dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
+        if multiple_syn_per_edge.any():
+            warn(
+                f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
+                "Exporting synapses to the graph only works if the same two "
+                "compartments are connected by at most one synapse."
+            )
+        module_graph.graph["synapses"] = module.synapses
+        module_graph.graph["synapse_param_names"] = module.synapse_param_names
+        module_graph.graph["synapse_state_names"] = module.synapse_state_names
+        module_graph.graph["synapse_names"] = module.synapse_names
+        module_graph.graph["synapse_current_names"] = module.synapse_current_names
+
+        syn_edges.columns = syn_edges.columns
+        syn_edges["syn_type"] = syn_edges["type"]
+        syn_edges["type"] = "synapse"
+        syn_edges = syn_edges.set_index(["pre_index", "post_index"])
+
+        if not syn_edges.empty:
+            for (i, j), edge_data in syn_edges.iterrows():
+                module_graph.add_edge(i, j, **edge_data.to_dict())
+
+    return module_graph
