@@ -48,6 +48,9 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 @michaeldeistler)
 - `._comp_edges` are being tracked in the `View` (#621, @michaeldeistler)
 - introduce `._branchpoints_` attribute and track in the `View` (#612, @michaeldeistler)
+- `pre_global_comp_index` and `post_global_comp_index` are no longer part of `.edges`
+by default. To get them, do `net.copy_node_property_to_edges("global_comp_index")`
+(#625, @michaeldeistler)
 
 ### Bug fixes
 
