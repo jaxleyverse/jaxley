@@ -448,6 +448,22 @@ def test_data_set_vs_make_trainable_network(SimpleNet):
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
 
 
+def test_data_set_vector(SimpleNet):
+    net = SimpleNet(2, 2, 4)
+    net.set("radius", np.repeat(1.0, 16))
+    with pytest.raises(ValueError):
+        net.comp(range(2)).set("radius", np.repeat(1, 16))
+
+    param_state = None
+    param_state = net.data_set("length", np.repeat(1.0, 16), param_state)
+    with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
+        param_state = net.comp(range(2)).data_set(
+            "radius", np.array([0.1, 0.2]), param_state
+        )
+    net.record("v")
+    jx.integrate(net, t_max=10, param_state=param_state)
+
+
 def test_make_states_trainable_api(SimpleNet):
     net = SimpleNet(2, 2, 4)
     net.insert(HH())
