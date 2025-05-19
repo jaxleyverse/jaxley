@@ -3,7 +3,7 @@
 Developer notes
 ===============
 
-`Jaxley` welcomes contributions from the community.
+``Jaxley`` welcomes contributions from the community.
 These are guides to get set up as a developer, as well as
 developer-focused resources.
 

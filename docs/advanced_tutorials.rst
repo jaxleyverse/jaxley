@@ -3,8 +3,8 @@
 Advanced tutorials
 ==================
 
-Our advanced tutorials provide a detailed explanation of different features of `Jaxley`.
-If you are looking for brief answers to specific questions, check our
+Our advanced tutorials provide a detailed explanation of different features of
+``Jaxley``. If you are looking for brief answers to specific questions, check our
 `how-to guide <https://jaxley.readthedocs.io/en/latest/how_to_guide.html>`_.
 
 

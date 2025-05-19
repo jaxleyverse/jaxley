@@ -76,13 +76,13 @@ Installation
 
 ``Jaxley`` is available on `PyPI <https://pypi.org/project/jaxley/>`_:
 
-.. code-block:: console
+.. code-block:: none
 
    pip install jaxley
 
 This will install ``Jaxley`` with CPU support. If you want GPU support, follow the instructions on the `JAX github repository <https://github.com/google/jax>`_ to install ``JAX`` with GPU support (in addition to installing ``Jaxley``). For example, for NVIDIA GPUs, run
 
-.. code-block:: console
+.. code-block:: none
 
    pip install -U "jax[cuda12]"
 
@@ -96,9 +96,9 @@ We welcome any feedback on how ``Jaxley`` is working for your neuron models and 
 Citation
 --------
 
-If you use `Jaxley`, consider citing the `corresponding paper <https://www.biorxiv.org/content/10.1101/2024.08.21.608979>`_:
+If you use ``Jaxley``, consider citing the `corresponding paper <https://www.biorxiv.org/content/10.1101/2024.08.21.608979>`_:
 
-.. code-block:: console
+.. code-block:: none
    
    @article{deistler2024differentiable,
       doi = {10.1101/2024.08.21.608979},
