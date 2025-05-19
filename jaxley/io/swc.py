@@ -433,14 +433,6 @@ def read_swc_custom(
     return cell
 
 
-@deprecated_kwargs(
-    "v0.10.0",
-    ["backend"],
-    (
-        "If you are experiencing issues with the default SWC reader, please open "
-        "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
-    ),
-)
 def read_swc(
     fname: str,
     ncomp: Optional[int] = None,
@@ -481,6 +473,15 @@ def read_swc(
         A `Cell` object."""
 
     if backend == "custom":
+        # We do not use the deprecation utility because it messes with
+        # `autosummary` for building the docs.
+        warn(
+            "You set `jx.read_swc(..., backend='custom')`. The `custom` option is "
+            "deprecated and will be removed in `Jaxley` version `0.10.0`. Use "
+            "`jx.read_swc(..., backend='graph')` instead. "
+            "If you are experiencing issues with this SWC reader, please open "
+            "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
+        )
         return read_swc_custom(
             fname,
             ncomp=ncomp,

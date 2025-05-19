@@ -13,11 +13,11 @@ from jaxley.channels import Channel
 class Fire(Channel):
     """Mechanism to reset the voltage when it crosses a threshold.
 
-    When combined with a `Leak` channel, this can be used to implement
+    When combined with a ``Leak`` channel, this can be used to implement
     leaky-integrate-and-fire neurons.
 
     Note that, after the voltage is reset by this channel, other channels (or external
-    currents), can still modify the membrane voltage _within the same time step_.
+    currents), can still modify the membrane voltage `within the same time step`.
     """
 
     def __init__(self, name: Optional[str] = None):

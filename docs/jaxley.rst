@@ -22,6 +22,7 @@ Simulation
    :nosignatures:
 
    jaxley.integrate
+   jaxley.integrate.build_init_and_step_fn
 
 
 Morphologies
@@ -122,4 +123,4 @@ Graph backend
    jaxley.io.graph.build_compartment_graph
    jaxley.io.graph.vis_compartment_graph
    jaxley.io.graph.from_graph
-   jaxley.io.graph.to_graph
+   jaxley.modules.base.to_graph

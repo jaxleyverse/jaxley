@@ -1518,7 +1518,8 @@ class Module(ABC):
     def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
         """Get all trainable parameters.
 
-        The returned parameters should be passed to `jx.integrate(..., params=params).
+        The returned parameters should be passed to
+        ``jx.integrate(..., params=params)``.
 
         Returns:
             A list of all trainable parameters in the form of
