@@ -4,8 +4,8 @@
    contain the root `toctree` directive.
 
 
-Welcome to Jaxley!
-===================
+Welcome to ``Jaxley``!
+======================
 
 ``Jaxley`` is a differentiable simulator for biophysical neuron models in `JAX <https://github.com/google/jax>`_. Its key features are:
 
