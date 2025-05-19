@@ -996,8 +996,8 @@
     <tr style="text-align: right;">
       <th></th>
       <th>global_edge_index</th>
-      <th>pre_global_comp_index</th>
-      <th>post_global_comp_index</th>
+      <th>pre_index</th>
+      <th>post_index</th>
       <th>type</th>
       <th>type_ind</th>
       <th>pre_locs</th>
@@ -1005,6 +1005,8 @@
       <th>IonotropicSynapse_gS</th>
       <th>IonotropicSynapse_e_syn</th>
       <th>IonotropicSynapse_k_minus</th>
+      <th>IonotropicSynapse_v_th</th>
+      <th>IonotropicSynapse_delta</th>
       <th>IonotropicSynapse_s</th>
       <th>controlled_by_param</th>
     </tr>
@@ -1014,35 +1016,22 @@
       <th>0</th>
       <td>0</td>
       <td>0</td>
-      <td>13</td>
+      <td>15</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
-      <td>0.75</td>
+      <td>0.25</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>1</th>
       <td>1</td>
-      <td>0</td>
-      <td>19</td>
-      <td>IonotropicSynapse</td>
-      <td>0</td>
-      <td>0.25</td>
-      <td>0.75</td>
-      <td>0.0001</td>
-      <td>0.0</td>
-      <td>0.025</td>
-      <td>0.2</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>2</td>
       <td>0</td>
       <td>20</td>
       <td>IonotropicSynapse</td>
@@ -1052,14 +1041,33 @@
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
+      <td>0.2</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>0</td>
+      <td>25</td>
+      <td>IonotropicSynapse</td>
+      <td>0</td>
+      <td>0.25</td>
+      <td>0.25</td>
+      <td>0.0001</td>
+      <td>0.0</td>
+      <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>3</td>
-      <td>4</td>
-      <td>12</td>
+      <td>5</td>
+      <td>15</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
@@ -1067,14 +1075,16 @@
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>4</th>
       <td>4</td>
-      <td>4</td>
-      <td>16</td>
+      <td>5</td>
+      <td>20</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
@@ -1082,66 +1092,76 @@
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>5</th>
       <td>5</td>
-      <td>4</td>
-      <td>21</td>
+      <td>5</td>
+      <td>25</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
-      <td>0.75</td>
+      <td>0.25</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>6</th>
       <td>6</td>
-      <td>8</td>
-      <td>13</td>
+      <td>10</td>
+      <td>15</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
-      <td>0.75</td>
+      <td>0.25</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>7</th>
       <td>7</td>
-      <td>8</td>
-      <td>17</td>
+      <td>10</td>
+      <td>20</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
-      <td>0.75</td>
+      <td>0.25</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
     <tr>
       <th>8</th>
       <td>8</td>
-      <td>8</td>
-      <td>21</td>
+      <td>10</td>
+      <td>25</td>
       <td>IonotropicSynapse</td>
       <td>0</td>
       <td>0.25</td>
-      <td>0.75</td>
+      <td>0.25</td>
       <td>0.0001</td>
       <td>0.0</td>
       <td>0.025</td>
+      <td>-35.0</td>
+      <td>10.0</td>
       <td>0.2</td>
       <td>0</td>
     </tr>
@@ -1271,7 +1291,9 @@ Name: IonotropicSynapse_gS, dtype: float64
 <span class="n">net</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Na</span><span class="p">())</span>
 </code></pre></div>
 <p>Now, let us query which cells have the desired synapses:</p>
-<div class="highlight"><pre><span></span><code><span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">nodes</span>
+<div class="highlight"><pre><span></span><code><span class="n">net</span><span class="o">.</span><span class="n">copy_node_property_to_edges</span><span class="p">(</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">net</span><span class="o">.</span><span class="n">nodes</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Na&quot;</span><span class="p">)</span>
 <span class="n">indices_of_sodium_compartments</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 </code></pre></div>
