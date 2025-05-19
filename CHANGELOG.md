@@ -52,9 +52,14 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 by default. To get them, do `net.copy_node_property_to_edges("global_comp_index")`
 (#625, @michaeldeistler)
 
-### Bug fixes
+### 🐛 Bug fixes
 
 - `ChainTransform` forward now working as mirror to inverse (#628, @kyralianaka)
+- allow `data_set` with vectors of values (#606, @chaseking)
+
+### 🎉 New Contributors
+
+- @chaseking made their first contribution in #606
 
 
 # 0.8.2
@@ -71,18 +76,18 @@ by default. To get them, do `net.copy_node_property_to_edges("global_comp_index"
 
 # 0.8.0
 
-### New features
+### 🧩 New features
 
 - add leaky integrate-and-fire neurons (#564, @jnsbck), Izhikevich neurons, and
 rate-based neurons (#601, @michaeldeistler)
 
-### Minor updates
+### 🛠️ Minor updates
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)  
 - make random postsnaptic compartment selection optional in connectivity functions
 (#489, @kyralianaka)  
 
-### Bug fixes
+### 🐛 Bug fixes
 
 - Fix bug for `groups` when `.set_ncomp` was run (#587, @michaeldeistler)
 - allow `.distance` to be jitted (#603, @michaeldeistler)
@@ -90,7 +95,7 @@ rate-based neurons (#601, @michaeldeistler)
 
 # 0.7.0
 
-### New Features
+### 🧩 New Features
 
 - Allow ion diffusion with `cell.diffuse()` and add tutorials (#438, @michaeldeistler):
 ```python
@@ -104,11 +109,11 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 ```
 - Introduce ion pumps (#438, @michaeldeistler)
 
-### Minor changes
+### 🛠️ Minor changes
 
 - rename `delete_channel()` to `delete()` (#438, @michaeldeistler)  
 
-### Bug fixes
+### 🐛 Bug fixes
 
 - Fix for simulation of morphologies with inhomogenous numbers of compartments (#438,
 @michaeldeistler)
@@ -121,6 +126,11 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 - update FAQ and tutorials (#593, @michaeldeistler)
 - make random post compartment selection optional in connectivity functions (#489,
 @kyralianaka)
+
+### 🎉 New Contributors
+
+- @Kartik-Sama made their first contribution in #582
+
 
 # 0.6.2
 
@@ -144,7 +154,7 @@ versions of `JAX` can be made equally fast as older versions by setting
 `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning of
 your jupyter notebook (#570, @michaeldeistler).
 
-### New Features
+### 🧩 New Features
 
 - Add ability to record synaptic currents (#523, @ntolley). Recordings can be turned on
 with
@@ -185,9 +195,9 @@ different numbers of post-synaptic partners. (#514, @jnsbck)
   [tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html)
   for more details.
 
-### Code Health
+### 🛠️ Code Health
 
-- changelog added to CI (#537, #558,  @jnsbck)
+- changelog added to CI (#537, #558, @jnsbck)
 
 - Add regression tests and supporting workflows for maintaining baselines (#475,
 #546, @jnsbck).
@@ -200,15 +210,19 @@ different numbers of post-synaptic partners. (#514, @jnsbck)
 - Allow inspecting the version via `import jaxley as jx; print(jx.__version__)` (#577,
 @michaeldeistler).
 
-### Bug fixes
+### 🐛 Bug fixes
 
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning
 different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 
+### 🎉 New Contributors
+
+- @ntolley made their first contribution in #523
+
 
 # 0.5.0
 
-### API changes
+### 🛠️ API changes
 
 - Synapse views no longer exist (#447, #453, @jnsbck). Previous code such as
 ```python
@@ -248,7 +262,7 @@ transforms = [
 tf = jt.ParamTransform(transforms)
 ```
 
-### New features
+### 🧩 New features
 
 - Added a new `delete_channel()` method (#521, @jnsbck)
 - Allow to write trainables to the module (#470, @michaeldeistler):
@@ -267,14 +281,14 @@ net[r_greater_1].nodes.vis()
 - check if recordings are empty (#460, @deezer257)
 - enable `clamp` to be jitted and vmapped with `data_clamp()` (#374, @kyralianaka)
 
-### Bug fixes
+### 🐛 Bug fixes
 
 - allow for cells that were read from swc to be pickled (#525, @jnsbck)
 - fix units of `compute_current()` in channels (#461, @michaeldeistler)
 - fix issues with plotting when the morphology has a different number of compartments
 (#513, @jnsbck)
 
-### Documentation
+### 📚 Documentation
 
 - new tutorial on synapse indexing (#464, @michaeldeistler, @zinaStef)
 - new tutorial on parameter sharing (#464, @michaeldeistler, @zinaStef)
@@ -293,10 +307,17 @@ net[r_greater_1].nodes.vis()
 - automated tests to check if tutorials can be run (#480, @jnsbck)
 - add helpers to deprecate functions and kwargs (#516, @jnsbck)
 
+### 🎉 New Contributors
+
+- @simoneeb made their first contribution in #473
+- @zinaStef made their first contribution in #464
+- @fabioseel made their first contribution in #479
+- @deezer257 made their first contribution in #460
+
 
 # 0.4.0
 
-### New features
+### 🧩 New features
 
 - Changing the number of compartments: `cell.branch(0).set_ncomp(4)` (#436, #440, #445,
 @michaeldeistler, @jnsbck)
@@ -305,7 +326,7 @@ net[r_greater_1].nodes.vis()
 - Speed optimization for `jx.integrate(..., voltage_solver="jaxley.stone")` (#442,
 @michaeldeistler)
 
-### Documentation
+### 📚 Documentation
 
 - new website powered by sphinx:
 [`jaxley.readthedocs.io`](https://jaxley.readthedocs.io/) (#434, #435, @michaeldeistler)
@@ -313,7 +334,7 @@ net[r_greater_1].nodes.vis()
 
 # v0.3.0
 
-### New features
+### 🧩 New features
 
 - New solver: `jx.integrate(..., voltage_solver="jax.sparse")` which has very low
 compile time (#418, @michaeldeistler)
@@ -321,7 +342,7 @@ compile time (#418, @michaeldeistler)
 the number of compartments after initialization is not yet supported, #418, #426, 
 @michaeldeistler)
 
-### Bugfixes
+### 🐛 Bug fixes
 
 - Bugfix for capacitances and their interplay with axial conductances (Thanks @Tunenip, 
 #426, @michaeldeistler)
@@ -337,13 +358,13 @@ the number of compartments after initialization is not yet supported, #418, #426
 
 # v0.2.0
 
-### New features
+### 🧩 New features
 
 - Cranck-Nicolson solver (#413, @michaeldeistler)
 - Forward Euler solver for compartments and branches (#413, @michaeldeistler)
 - Add option to access `states` in `channel.init_state` (#416, @michaeldeistler)
 
-### Bugfixes
+### 🐛 Bug fixes
 
 - Bugfix for interpolation of x, y, z values (#411, @jnsbck)
 
