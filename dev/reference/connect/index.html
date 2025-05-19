@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1132,7 +1132,8 @@ second-to-second,&hellip;).</p>
           </tr>
       </tbody>
     </table>
-        <h5 id="jaxley.connect.connect--examples">Examples:<a class="headerlink" href="#jaxley.connect.connect--examples" title="Permanent link">&para;</a></h5>
+        <p>Example usage
+<sup>^</sup><sup>^</sup><sup>^</sup><sup>^</sup>^</p>
 <p>Example 1: Connect one compartment to another compartment with a single synapse:</p>
 <p>::</p>
 <div class="codehilite"><pre><span></span><code>from jaxley.connect import connect
@@ -1237,8 +1238,8 @@ print(net.edges)
 <span class="sd">        post: View of the postsynaptic compartment.</span>
 <span class="sd">        synapse_type: The type of synapse to use.</span>
 
-<span class="sd">    Examples:</span>
-<span class="sd">    ---------</span>
+<span class="sd">    Example usage</span>
+<span class="sd">    ^^^^^^^^^^^^^</span>
 
 <span class="sd">    Example 1: Connect one compartment to another compartment with a single synapse:</span>
 
@@ -1394,7 +1395,8 @@ not (connection).</p>
           </tr>
       </tbody>
     </table>
-        <h5 id="jaxley.connect.connectivity_matrix_connect--examples">Examples:<a class="headerlink" href="#jaxley.connect.connectivity_matrix_connect--examples" title="Permanent link">&para;</a></h5>
+        <p>Example usage
+<sup>^</sup><sup>^</sup><sup>^</sup><sup>^</sup>^</p>
 <p>The following generates a random 10 x 10 boolean matrix and uses it to connect the
 neurons in a network.</p>
 <p>::</p>
@@ -1415,32 +1417,7 @@ print(net.edges)
 
             <details class="quote">
               <summary>Source code in <code>jaxley/connect.py</code></summary>
-              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
+              <div class="codehilite"><table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
 <span class="normal">262</span>
@@ -1502,7 +1479,34 @@ print(net.edges)
 <span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
-<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">connectivity_matrix_connect</span><span class="p">(</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">connectivity_matrix_connect</span><span class="p">(</span>
     <span class="n">pre_cell_view</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">,</span>
     <span class="n">post_cell_view</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">,</span>
     <span class="n">synapse_type</span><span class="p">:</span> <span class="s2">&quot;Synapse&quot;</span><span class="p">,</span>
@@ -1525,8 +1529,8 @@ print(net.edges)
 <span class="sd">            not (connection).</span>
 <span class="sd">        random_post_comp: If True, randomly samples the postsynaptic compartments.</span>
 
-<span class="sd">    Examples:</span>
-<span class="sd">    ---------</span>
+<span class="sd">    Example usage</span>
+<span class="sd">    ^^^^^^^^^^^^^</span>
 
 <span class="sd">    The following generates a random 10 x 10 boolean matrix and uses it to connect the</span>
 <span class="sd">    neurons in a network.</span>
@@ -1560,10 +1564,13 @@ print(net.edges)
     <span class="n">from_idx</span><span class="p">,</span> <span class="n">to_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">connectivity_matrix</span><span class="p">)</span>
 
     <span class="c1"># Pre-synapse at the zero-eth branch and zero-eth compartment</span>
+    <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span>
     <span class="n">global_pre_comp_indices</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()[</span><span class="s2">&quot;global_comp_index&quot;</span><span class="p">]</span>
+        <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span>
     <span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">global_pre_comp_indices</span><span class="p">[</span><span class="n">from_idx</span><span class="p">])</span><span class="o">.</span><span class="n">nodes</span>
+    <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">&quot;orig_index&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">random_post_comp</span><span class="p">:</span>
         <span class="n">global_to_idx</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">global_cell_index</span><span class="o">.</span><span class="n">unique</span><span class="p">()[</span><span class="n">to_idx</span><span class="p">]</span>
@@ -1578,15 +1585,14 @@ print(net.edges)
         <span class="n">sampled_inds</span> <span class="o">=</span> <span class="n">post_syn_view</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
             <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">n_samples_dict</span><span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="n">sampled_inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="n">sampled_inds</span><span class="o">.</span><span class="n">orig_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Post-synapse also at the zero-eth branch and zero-eth compartment</span>
         <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()[</span>
-                <span class="s2">&quot;global_comp_index&quot;</span>
-            <span class="p">]</span>
+            <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span>
         <span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="n">global_post_comp_indices</span><span class="p">[</span><span class="n">to_idx</span><span class="p">]</span>
+        <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">&quot;orig_index&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">post_rows</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">global_post_comp_indices</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span>
 
     <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_append_multiple_synapses</span><span class="p">(</span><span class="n">pre_rows</span><span class="p">,</span> <span class="n">post_rows</span><span class="p">,</span> <span class="n">synapse_type</span><span class="p">)</span>
@@ -1689,7 +1695,8 @@ location 0 of the post-synaptic cell unless random_post_comp=True.</p>
           </tr>
       </tbody>
     </table>
-        <h5 id="jaxley.connect.fully_connect--examples">Examples:<a class="headerlink" href="#jaxley.connect.fully_connect--examples" title="Permanent link">&para;</a></h5>
+        <p>Example usage
+<sup>^</sup><sup>^</sup><sup>^</sup><sup>^</sup>^</p>
 <p>The following example insert 12 synapses (3 x 4).</p>
 <p>::</p>
 <div class="codehilite"><pre><span></span><code>from jaxley.connect import fully_connect
@@ -1788,8 +1795,8 @@ print(net.edges)
 <span class="sd">        synapse_type: The synapse to append.</span>
 <span class="sd">        random_post_comp: If True, randomly samples the postsynaptic compartments.</span>
 
-<span class="sd">    Examples:</span>
-<span class="sd">    ---------</span>
+<span class="sd">    Example usage</span>
+<span class="sd">    ^^^^^^^^^^^^^</span>
 
 <span class="sd">    The following example insert 12 synapses (3 x 4).</span>
 
@@ -1812,7 +1819,7 @@ print(net.edges)
     <span class="c1"># Pre-synapse is at the zero-eth branch and zero-eth compartment.</span>
     <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="c1"># Repeat rows `num_post` times. See SO 50788508.</span>
-    <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_rows</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pre_rows</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">num_post</span><span class="p">)]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_rows</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pre_rows</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">num_post</span><span class="p">)]</span>
 
     <span class="k">if</span> <span class="n">random_post_comp</span><span class="p">:</span>
         <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="p">(</span>
@@ -1826,13 +1833,13 @@ print(net.edges)
         <span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Post-synapse also at the zero-eth branch and zero-eth compartment</span>
+        <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span>
         <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()[</span>
-                <span class="s2">&quot;global_comp_index&quot;</span>
-            <span class="p">]</span>
+            <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span>
         <span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">to_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_post</span><span class="p">),</span> <span class="n">num_pre</span><span class="p">)</span>
         <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="n">global_post_comp_indices</span><span class="p">[</span><span class="n">to_idx</span><span class="p">]</span>
+        <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">&quot;orig_index&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">post_rows</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_post_comp_indices</span><span class="p">]</span>
 
@@ -2018,7 +2025,8 @@ not fully connect.</p>
           </tr>
       </tbody>
     </table>
-        <h5 id="jaxley.connect.sparse_connect--examples">Examples:<a class="headerlink" href="#jaxley.connect.sparse_connect--examples" title="Permanent link">&para;</a></h5>
+        <p>Example usage
+<sup>^</sup><sup>^</sup><sup>^</sup><sup>^</sup>^</p>
 <p>The following example insert approximately 6 synapses (3 x 4 = 12 possible
 synapses, with connection probability 0.5).</p>
 <p>::</p>
@@ -2122,7 +2130,32 @@ print(net.edges)
 <span class="normal">228</span>
 <span class="normal">229</span>
 <span class="normal">230</span>
-<span class="normal">231</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sparse_connect</span><span class="p">(</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sparse_connect</span><span class="p">(</span>
     <span class="n">pre_cell_view</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">,</span>
     <span class="n">post_cell_view</span><span class="p">:</span> <span class="s2">&quot;View&quot;</span><span class="p">,</span>
     <span class="n">synapse_type</span><span class="p">:</span> <span class="s2">&quot;Synapse&quot;</span><span class="p">,</span>
@@ -2145,8 +2178,8 @@ print(net.edges)
 <span class="sd">        p: Probability of connection.</span>
 <span class="sd">        random_post_comp: If True, randomly samples the postsynaptic compartments.</span>
 
-<span class="sd">    Examples:</span>
-<span class="sd">    ---------</span>
+<span class="sd">    Example usage</span>
+<span class="sd">    ^^^^^^^^^^^^^</span>
 
 <span class="sd">    The following example insert approximately 6 synapses (3 x 4 = 12 possible</span>
 <span class="sd">    synapses, with connection probability 0.5).</span>
@@ -2172,6 +2205,10 @@ print(net.edges)
     <span class="n">num_post</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">post_cell_view</span><span class="o">.</span><span class="n">_cells_in_view</span><span class="p">)</span>
 
     <span class="n">num_connections</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">num_pre</span> <span class="o">*</span> <span class="n">num_post</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">num_connections</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Don&#39;t do any of the following connections if no synapse is inserted.</span>
+        <span class="k">return</span>
     <span class="n">pre_syn_neurons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">pre_cell_inds</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">num_connections</span><span class="p">)</span>
     <span class="n">post_syn_neurons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">post_cell_inds</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">num_connections</span><span class="p">)</span>
 
@@ -2180,8 +2217,18 @@ print(net.edges)
     <span class="n">pre_syn_neurons</span> <span class="o">=</span> <span class="n">pre_syn_neurons</span><span class="p">[</span><span class="n">sorting</span><span class="p">]</span>
     <span class="n">post_syn_neurons</span> <span class="o">=</span> <span class="n">post_syn_neurons</span><span class="p">[</span><span class="n">sorting</span><span class="p">]</span>
 
+    <span class="n">pre_syn_neurons</span><span class="p">,</span> <span class="n">inverse_pre</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pre_syn_neurons</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
     <span class="c1"># Pre-synapse is at the zero-eth branch and zero-eth compartment.</span>
-    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span><span class="p">[</span><span class="n">pre_syn_neurons</span><span class="p">]</span>
+    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;global&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">pre_syn_neurons</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span>
+    <span class="p">)</span>
+    <span class="n">global_pre_indices</span> <span class="o">=</span> <span class="n">global_pre_indices</span><span class="p">[</span><span class="n">inverse_pre</span><span class="p">]</span>
     <span class="n">pre_rows</span> <span class="o">=</span> <span class="n">pre_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_pre_indices</span><span class="p">]</span>
 
     <span class="c1"># Sample the post-synaptic compartments</span>
@@ -2189,20 +2236,31 @@ print(net.edges)
         <span class="c1"># Filter the post cell view to include post-synaptic neurons</span>
         <span class="n">post_syn_view</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span>
             <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">post_syn_neurons</span><span class="p">)</span>
-        <span class="p">]</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="c1"># Determine how many comps to sample for each post-synaptic neuron</span>
         <span class="n">unique_cells</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">post_syn_neurons</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">n_samples_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">unique_cells</span><span class="p">,</span> <span class="n">counts</span><span class="p">))</span>
+        <span class="n">post_syn_view</span><span class="p">[</span><span class="s2">&quot;orig_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_syn_view</span><span class="o">.</span><span class="n">index</span>
         <span class="n">sampled_inds</span> <span class="o">=</span> <span class="n">post_syn_view</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;global_cell_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
             <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">n_samples_dict</span><span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="n">sampled_inds</span><span class="o">.</span><span class="n">global_comp_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">global_post_comp_indices</span> <span class="o">=</span> <span class="n">sampled_inds</span><span class="o">.</span><span class="n">orig_index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">post_rows</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_post_comp_indices</span><span class="p">]</span>
+        <span class="n">post_syn_view</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">&quot;orig_index&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
+        <span class="n">post_syn_neurons</span><span class="p">,</span> <span class="n">inverse_post</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
+            <span class="n">post_syn_neurons</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
         <span class="c1"># Post-synapse also at the zero-eth branch and zero-eth compartment</span>
-        <span class="n">global_post_indices</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">_cumsum_ncomp_per_cell</span><span class="p">[</span>
-            <span class="n">post_syn_neurons</span>
-        <span class="p">]</span>
+        <span class="n">global_post_indices</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">post_cell_view</span><span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;global&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">post_syn_neurons</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">scope</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span>
+        <span class="p">)</span>
+        <span class="n">global_post_indices</span> <span class="o">=</span> <span class="n">global_post_indices</span><span class="p">[</span><span class="n">inverse_post</span><span class="p">]</span>
         <span class="n">post_rows</span> <span class="o">=</span> <span class="n">post_cell_view</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">global_post_indices</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -2268,10 +2326,10 @@ print(net.edges)
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
     
   </body>

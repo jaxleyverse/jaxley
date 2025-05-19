@@ -14,7 +14,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -22,7 +22,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -884,8 +884,9 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jaxley</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">to_swc_graph</span><span class="p">,</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">vis_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span><span class="p">,</span> <span class="n">to_graph</span>
+    <span class="n">to_swc_graph</span><span class="p">,</span> <span class="n">build_compartment_graph</span><span class="p">,</span> <span class="n">vis_compartment_graph</span><span class="p">,</span> <span class="n">from_graph</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.modules.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_graph</span>
 
 <span class="c1"># Import cell from SWC via the graph-backend.</span>
 <span class="n">swc_graph</span> <span class="o">=</span> <span class="n">to_swc_graph</span><span class="p">(</span><span class="s2">&quot;tests/swc_files/morph.swc&quot;</span><span class="p">)</span>
@@ -958,7 +959,7 @@ edge attributes {}
     <span class="n">branch</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;HH_gNa&quot;</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">y_pos</span><span class="p">)</span>
 </code></pre></div>
 <p><code>Jaxley</code> also offers the option to export any <code>Module</code> to a <code>networkX</code> graph object:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.io.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_graph</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.modules.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_graph</span>
 
 <span class="n">comp_graph</span> <span class="o">=</span> <span class="n">to_graph</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
@@ -1131,10 +1132,10 @@ Added 1 external_states. See `.externals` for details.
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
     
   </body>
