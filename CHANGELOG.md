@@ -220,6 +220,10 @@ different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 - @ntolley made their first contribution in #523
 
 
+### Code Health
+
+- Vectorize recording updates during `integrate()`. (#561, @ntolley)
+
 # 0.5.0
 
 ### 🛠️ API changes
