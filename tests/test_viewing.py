@@ -658,8 +658,10 @@ def test_comp_edge_indexing(SimpleCell, ncomp: int):
         not in cell.branch(1).loc(0.0)._comp_edges["sink"].to_numpy().tolist()
     )
 
+
 def test_module_inheritance():
     """Test inheritance of modules works properly. (see #590)"""
+
     class CustomCompartment(jx.Compartment):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -685,5 +687,5 @@ def test_module_inheritance():
     custom_cell = CustomCell([custom_branch], [-1])
     custom_network = CustomNetwork([custom_cell])
     custom_child_network = CustomChildNetwork([custom_cell])
-    
+
     custom_child_network.cell(0).branch(0).comp(0).nodes
