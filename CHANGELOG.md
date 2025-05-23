@@ -1,3 +1,8 @@
+# 0.9.1
+
+### Fixes
+- Fix inheriting from a Module (#590, @jnsbck)
+
 # 0.9.0
 
 ### ✨ Highlights
