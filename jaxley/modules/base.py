@@ -144,6 +144,7 @@ class Module(ABC):
         self.edges = pd.DataFrame(
             columns=[
                 "global_edge_index",
+                "index_within_type",
                 "pre_index",
                 "post_index",
                 "pre_locs",
@@ -1822,9 +1823,14 @@ class Module(ABC):
 
     def record(self, state: str = "v", verbose=True):
         comp_states, edge_states = self._get_state_names()
-        if state not in comp_states + edge_states:
+        if state in comp_states:
+            in_view = self._nodes_in_view
+        elif state in edge_states:
+            in_view = self.base.edges.iloc[
+                self._edges_in_view.tolist()
+            ].index_within_type.to_numpy(dtype=int)
+        else:
             raise KeyError(f"{state} is not a recognized state in this module.")
-        in_view = self._nodes_in_view if state in comp_states else self._edges_in_view
 
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state

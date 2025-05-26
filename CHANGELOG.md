@@ -1,3 +1,9 @@
+# 0.9.1
+
+### 🐛 Bug fixes
+
+- fixed synapse recording indices to be within type (@kyralianaka)
+
 # 0.9.0
 
 ### ✨ Highlights
