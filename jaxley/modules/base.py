@@ -344,8 +344,10 @@ class Module(ABC):
         """Init attributes critical for View.
 
         Needs to be called at init of a Module."""
-        parent = self.__class__.__name__.lower()
-        self._current_view = "comp" if parent == "compartment" else parent
+        modules = ["compartment", "branch", "cell", "network"]
+        module_inheritance = [c.__name__.lower() for c in self.__class__.__mro__]
+        module_type = next((t for t in modules if t in module_inheritance), None)
+        self._current_view = "comp" if module_type == "compartment" else module_type
         self._nodes_in_view = self.nodes.index.to_numpy()
         self._edges_in_view = self.edges.index.to_numpy()
 
