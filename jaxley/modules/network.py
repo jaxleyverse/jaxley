@@ -526,10 +526,16 @@ class Network(Module):
         if is_new:  # synapse is not known
             self._update_synapse_state_names(synapse_type)
             self.base.synapse_current_names.append(synapse_current_name)
+            index_within_type = list(range(0, len(pre_nodes)))
+        else:
+            # Figure out how many synapses of this type already exist
+            n_existing = len(self.base.edges[self.base.edges.type == synapse_name])
+            index_within_type = list(range(n_existing, n_existing + len(pre_nodes)))
 
         index = len(self.base.edges)
         indices = [idx for idx in range(index, index + len(pre_nodes))]
         global_edge_index = pd.DataFrame({"global_edge_index": indices})
+        index_within_type = pd.DataFrame({"index_within_type": index_within_type})
         post_loc = loc_of_index(
             post_nodes["global_comp_index"].to_numpy(),
             post_nodes["global_branch_index"].to_numpy(),
@@ -547,6 +553,7 @@ class Network(Module):
         new_rows = pd.concat(
             [
                 global_edge_index,
+                index_within_type,
                 pre_nodes.reset_index(drop=True),
                 post_nodes.reset_index(drop=True),
             ],

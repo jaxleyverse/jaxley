@@ -203,3 +203,24 @@ def test_shuffling_order_of_set(synapse_type, SimpleNet):
     voltages2 = jx.integrate(net2, t_max=5.0)
 
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
+
+
+def test_synapse_recording_order(SimpleNet):
+    """Ensure that record finds the correct synapse index"""
+    net1 = SimpleNet(4, 1, 1)
+    jx.fully_connect(net1.cell([0, 1]), net1.cell([3]), IonotropicSynapse())
+    net1.IonotropicSynapse.record("IonotropicSynapse_s")
+    stim = np.zeros_like(np.arange(0, 2, 0.025))  # 2 ms stimulus
+    stim[int(0.5 / 0.025) :] = 0.05
+    net1.cell(1).stimulate(stim)
+    soln1 = jx.integrate(net1)
+
+    net2 = SimpleNet(4, 1, 1)
+    # Addition of these extra synapses should not throw off the indices recorded
+    jx.fully_connect(net2.cell([0, 1]), net2.cell([2]), TestSynapse())
+    jx.fully_connect(net2.cell([0, 1]), net2.cell([3]), IonotropicSynapse())
+    net2.IonotropicSynapse.record("IonotropicSynapse_s")
+    net2.cell(1).stimulate(stim)
+    soln2 = jx.integrate(net2)
+
+    assert np.allclose(soln1, soln2)

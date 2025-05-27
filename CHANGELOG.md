@@ -1,7 +1,9 @@
 # 0.9.1
 
-### Fixes
-- Fix inheriting from a Module (#590, @jnsbck)
+### 🐛 Bug fixes
+
+- fixed synapse recording indices to be within type (#643, @kyralianaka)
+- Fix inheriting from a Module #590 (#642, @jnsbck)
 
 # 0.9.0
 
