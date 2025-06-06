@@ -1457,10 +1457,21 @@ class Module(ABC):
             for key in list(synapse.synapse_states.keys()):
                 self.base.edges.loc[condition, key] = all_states[key]
 
+    @deprecated(
+        "v0.11.0",
+        (
+            " Instead, please use, e.g., "
+            "`jx.morphology_utils.distance_direct(cell[0, 0], cell[2, 1])`. "
+            "Note that, unlike `cell[0, 0].distance(cell[2, 1]), that "
+            "function returns a list of distances (to all endpoints)."
+        )
+    )
     def distance(self, endpoint: "View") -> float:
         """Return the direct distance between two compartments.
-        This does not compute the pathwise distance (which is currently not
-        implemented).
+        
+        This function computes the direct distance. To compute the pathwise distance,
+        use `distance_pathwise()`.
+
         Args:
             endpoint: The compartment to which to compute the distance to.
         """
