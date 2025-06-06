@@ -2,5 +2,6 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from jaxley.morphology.morph_utils import morph_connect, morph_delete
+from jaxley.morphology.distance_utils import distance_pathwise, distance_direct
 
-__all__ = ["morph_connect", "morph_delete"]
+__all__ = ["morph_connect", "morph_delete", "distance_pathwise", "distance_direct"]
