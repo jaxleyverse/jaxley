@@ -5,18 +5,23 @@ from jaxley.modules.base import to_graph
 import networkx as nx
 
 
-def distance(startpoint: "View", endpoints: "View", kind="pathwise") -> List[float]:
+def distance(
+    startpoint: "View", endpoints: Union["Module", "View"], kind: str = "pathwise"
+) -> List[float]:
     """Return the distance (pathwise or direct) between a root and other compartments.
-
-    This function uses Dijkstra's algorithm to get the path with the lowest number
-    of compartments between start and endpoint. It then computes the length of
-    that path in micrometers. Note that, for an uncyclic graph, the path with the
-    lowest number of compartments between start and endpoint is also the path
-    with the lowest length.
 
     Args:
         startpoint: A single compartment from which to compute the distance.
         endpoints: One or multiple compartments to which to compute the distance to.
+        kind: Either of 'pathwise' or 'direct'. If 'pathwise', it computes the
+            shortest path distance between two compartments. If 'direct', it computes
+            the direct (line of sight) distance between two compartments. For
+            'pathwise', we use Dijkstra's algorithm to get the path with the lowest
+            number of compartments between start and endpoint. It then computes the
+            length of that path in micrometers. Note that, for an uncyclic graph, the
+            path with the lowest number of compartments between start and endpoint is
+            also the path with the lowest length. For 'direct', we use
+            `cell.nodes[['x', 'y', 'z']]` and compute the euclidean distance.
 
     Returns:
         A list of distances.
@@ -30,14 +35,14 @@ def distance(startpoint: "View", endpoints: "View", kind="pathwise") -> List[flo
 
     ::
 
-        path_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
+        path_dists = distance(cell.soma.branch(0).comp(0), cell)
         cell.nodes["path_dist_from_soma"] = path_dists
 
     Example 2: The following computes the pathwise distance between two compartments.
 
     ::
 
-        dist = distance_pathwise(cell.branch(8).comp(2), cell.branch(2).comp(0))
+        dist = distance(cell.branch(8).comp(2), cell.branch(2).comp(0))
 
     Example 3: The following computes the direct (line of sight) distance between the
     zero-eth soma compartment and all other compartments. It then saves this distance
@@ -45,7 +50,7 @@ def distance(startpoint: "View", endpoints: "View", kind="pathwise") -> List[flo
 
     ::
 
-        direct_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
+        direct_dists = distance(cell.soma.branch(0).comp(0), cell, kind='direct')
         cell.nodes["direct_dist_from_soma"] = direct_dists
     """
     assert len(startpoint.nodes.index) == 1, "Cannot use multiple root nodes."
