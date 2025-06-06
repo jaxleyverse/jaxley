@@ -1,8 +1,12 @@
-import jax.numpy as jnp
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import List, Union
-from jaxley.modules.base import to_graph
+
+import jax.numpy as jnp
 import networkx as nx
+
+from jaxley.modules.base import to_graph
 
 
 def distance(
@@ -54,6 +58,7 @@ def distance(
 
     ::
 
+        cell.compute_compartment_centers()  # necessary if you modified branch length.
         direct_dists = distance(cell.soma.branch(0).comp(0), cell, kind='direct')
         cell.nodes["direct_dist_from_soma"] = direct_dists
     """
@@ -74,15 +79,15 @@ def distance(
         for _, data in graph.nodes(data=True):
             data.setdefault("length", 0.0)
 
-        def custom_path_length(graph: nx.Graph, path: List):
+        def custom_path_length(graph: nx.Graph, path: List) -> float:
             """Compute total path length, counting root and target node lengths as half.
 
             Args:
-                G (nx.Graph): Graph with node attribute "length".
-                path (list): List of node IDs representing the path.
+                graph:: Graph with node attribute "length".
+                path: List of node IDs representing the path.
 
             Returns:
-                float: Adjusted total path length.
+                Adjusted total path length.
             """
             if not path:
                 return 0
