@@ -1461,7 +1461,7 @@ class Module(ABC):
         "v0.11.0",
         (
             " Instead, please use, e.g., "
-            "`jx.morphology_utils.distance_direct(cell[0, 0], cell[2, 1])`. "
+            "`jx.morphology_utils.distance(cell[0, 0], cell[2, 1], kind='direct')`. "
             "Note that, unlike `cell[0, 0].distance(cell[2, 1]), that "
             "function returns a list of distances (to all endpoints)."
         )
