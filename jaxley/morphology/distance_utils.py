@@ -1,12 +1,14 @@
 import jax.numpy as jnp
 
-from typing import List
+from typing import List, Union
 from jaxley.modules.base import to_graph
 import networkx as nx
 
 
 def distance(
-    startpoint: "View", endpoints: Union["Module", "View"], kind: str = "pathwise"
+    startpoint: "View",
+    endpoints: Union["Branch", "Cell", "View"],
+    kind: str = "pathwise",
 ) -> List[float]:
     """Return the distance (pathwise or direct) between a root and other compartments.
 
@@ -34,6 +36,8 @@ def distance(
     `cell.nodes["path_dist_from_soma"]`.
 
     ::
+
+        from jaxley.morphology import distance
 
         path_dists = distance(cell.soma.branch(0).comp(0), cell)
         cell.nodes["path_dist_from_soma"] = path_dists
