@@ -1464,11 +1464,11 @@ class Module(ABC):
             "`jx.morphology_utils.distance(cell[0, 0], cell[2, 1], kind='direct')`. "
             "Note that, unlike `cell[0, 0].distance(cell[2, 1]), that "
             "function returns a list of distances (to all endpoints)."
-        )
+        ),
     )
     def distance(self, endpoint: "View") -> float:
         """Return the direct distance between two compartments.
-        
+
         This function computes the direct distance. To compute the pathwise distance,
         use `distance_pathwise()`.
 
