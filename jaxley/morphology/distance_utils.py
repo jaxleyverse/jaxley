@@ -13,10 +13,10 @@ def distance_direct(
     startpoint: "View",
     endpoints: Union["Branch", "Cell", "View"],
 ) -> List[float]:
-    """Return the direct (line of sight) distance between a root and other compartments.
+    """Returns the direct distance between a root and other compartments.
 
     This function uses `cell.nodes[['x', 'y', 'z']]` and computes the euclidean
-    distance.
+    distance (i.e., the line of sight distance).
 
     Args:
         startpoint: A single compartment from which to compute the distance.
@@ -35,7 +35,7 @@ def distance_direct(
     ::
 
         cell.compute_compartment_centers()  # necessary if you modified branch length.
-        direct_dists = distance(cell.soma.branch(0).comp(0), cell, kind='direct')
+        direct_dists = distance_direct(cell.soma.branch(0).comp(0), cell)
         cell.nodes["direct_dist_from_soma"] = direct_dists
     """
     assert len(startpoint.nodes.index) == 1, "Cannot use multiple root nodes."
@@ -72,16 +72,16 @@ def distance_pathwise(
 
     ::
 
-        from jaxley.morphology import distance
+        from jaxley.morphology import distance_pathwise
 
-        path_dists = distance(cell.soma.branch(0).comp(0), cell)
+        path_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
         cell.nodes["path_dist_from_soma"] = path_dists
 
     Example 2: The following computes the pathwise distance between two compartments.
 
     ::
 
-        dist = distance(cell.branch(8).comp(2), cell.branch(2).comp(0))
+        dist = distance_pathwise(cell.branch(8).comp(2), cell.branch(2).comp(0))
     """
     assert len(startpoint.nodes.index) == 1, "Cannot use multiple root nodes."
 
