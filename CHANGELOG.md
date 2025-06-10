@@ -1,9 +1,25 @@
-# 0.9.1
+# 0.10.0 (pre-release)
+
+### 🧩 New features
+
+- functionality to compute the pathwise distance between compartments (#648,
+@michaeldeistler):
+```python
+from jaxley.morphology import distance_pathwise
+path_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
+cell.nodes["path_dist_from_soma"] = path_dists
+```
 
 ### 🐛 Bug fixes
 
 - fixed synapse recording indices to be within type (#643, @kyralianaka)
 - Fix inheriting from a Module #590 (#642, @jnsbck)
+
+### 🛠️ Internal updates
+
+- `module.distance()` is now deprecated in favor of `jx.morphology.distance_direct()`
+(#648, @michaeldeistler)
+
 
 # 0.9.0
 
@@ -49,6 +65,9 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 ### 🛠️ Internal updates
 
 - improvements to graph-backend for more flexibility in modifying morphologies (#613,
+@michaeldeistler)
+- `jx.read_swc()` now ignores `type_id > 4` by default. This ensures compatibility
+with flywire, which highjacks `type_id > 4` to indicate synaptic contacts (#612,
 @michaeldeistler)
 - remove root compartment for SWC files (#613, @michaeldeistler)
 - enable traversing compartmentalized graph for optimizing solve order (#613,

@@ -84,7 +84,7 @@ def morph_delete(module_view) -> "Cell":
 
 
 def morph_connect(module_view1, module_view2) -> "Cell":
-    """Combine two morphologies into a single cell.
+    """Combines two morphologies into a single cell.
 
     Both morphologies must have the same number of compartments per branch in all
     branches.
