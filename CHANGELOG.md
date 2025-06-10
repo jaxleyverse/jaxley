@@ -5,8 +5,8 @@
 - functionality to compute the pathwise distance between compartments (#648,
 @michaeldeistler):
 ```python
-from jaxley.morphology import distance
-path_dists = distance(cell.soma.branch(0).comp(0), cell)
+from jaxley.morphology import distance_pathwise
+path_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
 cell.nodes["path_dist_from_soma"] = path_dists
 ```
 
@@ -17,8 +17,8 @@ cell.nodes["path_dist_from_soma"] = path_dists
 
 ### 🛠️ Internal updates
 
-- `module.distance()` is now deprecated in favor of `jx.morphology.distance()` (#648,
-@michaeldeistler)
+- `module.distance()` is now deprecated in favor of `jx.morphology.distance_direct()`
+(#648, @michaeldeistler)
 
 
 # 0.9.0
