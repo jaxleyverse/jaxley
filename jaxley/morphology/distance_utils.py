@@ -15,7 +15,7 @@ def distance_direct(
 ) -> List[float]:
     """Returns the direct distance between a root and other compartments.
 
-    This function uses `cell.nodes[['x', 'y', 'z']]` and computes the euclidean
+    This function uses ``cell.nodes[['x', 'y', 'z']]`` and computes the euclidean
     distance (i.e., the line of sight distance).
 
     Args:
@@ -33,6 +33,8 @@ def distance_direct(
     in `cell.nodes["direct_dist_from_soma"]`.
 
     ::
+
+        from jaxley.morphology import distance_pathwise
 
         cell.compute_compartment_centers()  # necessary if you modified branch length.
         direct_dists = distance_direct(cell.soma.branch(0).comp(0), cell)
