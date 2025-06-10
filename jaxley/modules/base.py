@@ -1458,7 +1458,7 @@ class Module(ABC):
                 self.base.edges.loc[condition, key] = all_states[key]
 
     @deprecated(
-        "v0.11.0",
+        "0.11.0",
         (
             " Instead, please use, e.g., "
             "`jx.morphology_utils.distance(cell[0, 0], cell[2, 1], kind='direct')`. "
