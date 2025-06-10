@@ -33,7 +33,8 @@ Morphologies
    :nosignatures:
 
    jaxley.read_swc
-   jaxley.morphology.distance
+   jaxley.morphology.distance_direct
+   jaxley.morphology.distance_pathwise
    jaxley.morphology.morph_delete
    jaxley.morphology.morph_connect
 
