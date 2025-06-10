@@ -1,7 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import List, Union
+from typing import Dict, List, Union
 
 import jax.numpy as jnp
 import networkx as nx
@@ -94,26 +94,19 @@ def distance_pathwise(
     for _, data in graph.nodes(data=True):
         data.setdefault("length", 0.0)
 
-    def custom_path_length(graph: nx.Graph, path: List) -> float:
-        """Compute total path length, counting root and target node lengths as half.
-
+    def edge_weight(u: int, v: int, d: Dict) -> float:
+        """
         Args:
-            graph:: Graph with node attribute "length".
-            path: List of node IDs representing the path.
+            u: Start node of an edge.
+            v: End node of an edge.
+            d: Dictionary of edge attributes (unused because all our attributes are
+                not attributes, not edge attributes).
 
         Returns:
-            Adjusted total path length.
+            The pathwise distance between two nodes.
         """
-        if not path:
-            return 0
-        length = sum(graph.nodes[n]["length"] for n in path)
-        length -= 0.5 * graph.nodes[path[0]]["length"]  # subtract half root
-        length -= 0.5 * graph.nodes[path[-1]]["length"]  # subtract half target
-        return length
+        return (graph.nodes[u]["length"] + graph.nodes[v]["length"]) / 2
 
-    # Use Dijkstra to minimum adjusted length from root to all endpoint nodes.
-    lengths = []
-    for endpoint in endpoint_inds:
-        path = nx.shortest_path(graph, root, endpoint)
-        lengths.append(custom_path_length(graph, path))
-    return lengths
+    return [
+        nx.dijkstra_path_length(graph, root, end, edge_weight) for end in endpoint_inds
+    ]

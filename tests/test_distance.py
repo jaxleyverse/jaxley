@@ -93,11 +93,19 @@ def test_distance_within_jit(SimpleCell, kind: str):
     cell[0, 0].stimulate(0.1 * jnp.ones((100,)))
     cell[0, 0].record()
 
+    if kind == "direct":
+        dists = distance_direct(cell[0, 0], cell)
+    elif kind == "pathwise":
+        dists = distance_pathwise(cell[0, 0], cell)
+    else:
+        raise ValueError
+
     def simulate(sigmoid_offset, global_scaling):
         pstate = None
+        counter = 0
         for branch in cell:
             for comp in branch:
-                dist = distance_pathwise(cell[0, 0], comp, kind=kind)[0]
+                dist = dists[counter]
                 conductance = global_scaling / (jnp.exp(-(dist + sigmoid_offset)))
                 pstate = comp.data_set("Leak_gLeak", conductance * 1e-4, pstate)
         return jx.integrate(cell, param_state=pstate)
