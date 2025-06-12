@@ -286,7 +286,7 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
 
 def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     """Check if different ways to index into Modules/Views work correctly."""
-    # test int, range, slice, list, np.array, pd.Index
+    # test int, range, slice, list, np.array, pd.Index, jnp.array
 
     for module in [
         SimpleComp(),
@@ -305,6 +305,7 @@ def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, Simple
             pd.Index([0, 1, 2]),
             pd.Index([0, 1, 2]).to_numpy(),
             np.array([True, False, True, False] * 100)[: len(module.nodes)],
+            jnp.array([0, 1, 2]),
         ]
 
         # comp.comp is not allowed
