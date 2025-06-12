@@ -430,9 +430,9 @@ class Module(ABC):
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
 
-        # pass through for jax arrays. hotfix for #654, until #657 is fixed
+        # temporary fix for #654, until #657 is fixed
         if isinstance(idx, jnp.ndarray):
-            return idx
+            idx = np.array(idx)
 
         if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.number):
             np_dtype = idx.dtype.type
