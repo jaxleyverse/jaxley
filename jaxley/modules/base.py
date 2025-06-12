@@ -430,6 +430,10 @@ class Module(ABC):
         if is_str_all(idx):  # also asserts that the only allowed str == "all"
             return idx
 
+        # temporary fix for #654, until #657 is fixed
+        if isinstance(idx, jnp.ndarray):
+            idx = np.array(idx)
+
         if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.number):
             np_dtype = idx.dtype.type
         else:

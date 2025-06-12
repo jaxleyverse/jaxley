@@ -1,3 +1,9 @@
+# 0.11.0 (Prerelease
+
+
+### 🐛 Bug fixes
+- temporary fix to allow indexing modules with jax arrays until #657 is fixed (#654, @jnsbck).
+
 # 0.10.0
 
 ### 🧩 New features
