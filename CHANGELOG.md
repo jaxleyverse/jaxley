@@ -1,3 +1,10 @@
+# 0.11.0
+
+### 🧩 New features
+
+- simple conductance synapse added (#659, @kyralianaka)
+
+
 # 0.10.0
 
 ### 🧩 New features
