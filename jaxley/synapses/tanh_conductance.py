@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from jaxley.synapses.synapse import Synapse
 
 
-class ConductanceSynapse(Synapse):
+class TanhConductanceSynapse(Synapse):
     """
     Compute synaptic current for a simple conductance synapse (no state). This is just
     the tanh rate synapse with a conductance current.
@@ -41,7 +41,7 @@ class ConductanceSynapse(Synapse):
     ) -> float:
         """Return updated synapse state and current."""
         prefix = self._name
-        tanh_pre_voltage = -1 * jnp.tanh(
+        tanh_pre_voltage = jnp.tanh(
             (pre_voltage - params[f"{prefix}_x_offset"]) * params[f"{prefix}_slope"]
         )
         current = (

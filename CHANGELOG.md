@@ -1,3 +1,10 @@
+# 0.11.0
+
+### 🧩 New features
+
+- simple conductance synapse added (#659, @kyralianaka)
+
+
 # 0.10.0
 
 ### 🧩 New features
@@ -9,7 +16,6 @@ from jaxley.morphology import distance_pathwise
 path_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
 cell.nodes["path_dist_from_soma"] = path_dists
 ```
-- simple conductance synapse added (@kyralianaka)
 
 ### 🐛 Bug fixes
 
