@@ -10,9 +10,16 @@ from jaxley.io.graph import _build_module_scaffold
 import jaxley as jx
 
 
-def compute_xyz(G: nx.DiGraph,  length: float = 1.0,  spread: float = np.pi/8, spread_decay: float = 0.9,  twist: float = 0.0, xy_only: bool = True) -> Dict[int, tuple[float, float, float]]:
+def compute_xyz(
+    G: nx.DiGraph,
+    length: float = 1.0,
+    spread: float = np.pi / 8,
+    spread_decay: float = 0.9,
+    twist: float = 0.0,
+    xy_only: bool = True,
+) -> Dict[int, tuple[float, float, float]]:
     """Compute xyz coordinates for a tree-like appearance of a networkX graph in 2D or 3D.
-    
+
     Handles branches implicitly since nodes in a branch have 1 child.
 
     Args:
@@ -30,22 +37,27 @@ def compute_xyz(G: nx.DiGraph,  length: float = 1.0,  spread: float = np.pi/8, s
     root = next(n for n, d in G.in_degree() if d == 0)
     pos = {root: (0.0, 0.0, 0.0)}
 
-    def recurse(node, depth=1, theta=0.0, phi=np.pi/2):
+    def recurse(node, depth=1, theta=0.0, phi=np.pi / 2):
         children = [n for n in G.successors(node) if n not in pos]
-        if not children: return
+        if not children:
+            return
         n = len(children)
         curr_spread = spread * (spread_decay ** (depth - 1))
         x0, y0, z0 = pos[node]
-        phi = np.pi/2 if xy_only else phi
+        phi = np.pi / 2 if xy_only else phi
         base_theta = theta + depth * twist
         if n == 1:
             thetas, phis = [base_theta], [phi]
         else:
             if xy_only:
-                thetas = np.linspace(base_theta - curr_spread/2, base_theta + curr_spread/2, n)
+                thetas = np.linspace(
+                    base_theta - curr_spread / 2, base_theta + curr_spread / 2, n
+                )
                 phis = [phi] * n
             else:
-                thetas = np.linspace(base_theta, base_theta + 2 * np.pi, n, endpoint=False)
+                thetas = np.linspace(
+                    base_theta, base_theta + 2 * np.pi, n, endpoint=False
+                )
                 phis = [phi - curr_spread] * n
         for th, ph, child in zip(thetas, phis, children):
             x = x0 + length * np.sin(ph) * np.cos(th)
@@ -54,8 +66,9 @@ def compute_xyz(G: nx.DiGraph,  length: float = 1.0,  spread: float = np.pi/8, s
             pos[child] = (x, y, z)
             recurse(child, depth + 1, th, ph)
 
-    recurse(root, theta=0.0, phi=np.pi/2)
+    recurse(root, theta=0.0, phi=np.pi / 2)
     return pos
+
 
 def pandas_to_nx(
     node_attrs: pd.DataFrame, edge_attrs: pd.DataFrame, global_attrs: pd.Series
@@ -214,7 +227,7 @@ def list_branches(
     Returns:
         A list of linear paths in the graph. Each path is represented as list of nodes.
     """
-    G = G.to_undirected()
+    G = G.copy().to_undirected()
     branches = []
     branchpoints = set()
     visited = set()
@@ -391,11 +404,9 @@ def compartmentalize(
     xyzr = []
     for i, branch in enumerate(branches):
         node_attrs = nodes_df.loc[branch]
-        xyzr_i = node_attrs[["x", "y", "z", "r"]]
-        xyzr.append(xyzr_i.values)
 
         compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
-        edge_lens = compute_edge_lens(xyzr_i[["x", "y", "z"]])
+        edge_lens = compute_edge_lens(node_attrs[["x", "y", "z"]])
         node_attrs["l"] = edge_lens.cumsum()  # path length
 
         # For single-point somatata, we set l = 2*r this ensures
@@ -405,9 +416,7 @@ def compartmentalize(
             radius = node_attrs["r"].iloc[0]
             node_attrs["l"] = np.array([0, 2 * radius])
 
-        branch_id = node_attrs["id"].iloc[
-            -1
-        ]  # TODO: how to handle mult. ids in branch!
+        branch_id = node_attrs["id"].iloc[1]  # TODO: how to handle mult. ids in branch!
         branch_len = max(node_attrs["l"])
         comp_len = branch_len / ncomp
         comp_locs = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
@@ -428,7 +437,7 @@ def compartmentalize(
 
         x = np.array([0] + comp_locs + [branch_len])
         xp = np.array(node_attrs["l"].values)
-        fp = np.array(xyzr_i.values)
+        fp = np.array(node_attrs[["x", "y", "z", "r"]].values)
 
         # TODO: interpolate **r** differently!
         interpolated_coords = np.column_stack(
@@ -439,12 +448,18 @@ def compartmentalize(
         comp_attrs = np.hstack([comp_attrs, interpolated_coords])
 
         # remove tip nodes
-        comp_attrs = comp_attrs[1:] if branch_tips[0] in tip_node_inds else comp_attrs
+        comp_attrs = (
+            comp_attrs[1:]
+            if branch_tips[0] in tip_node_inds or len(branch) == 1
+            else comp_attrs
+        )
         comp_attrs = comp_attrs[:-1] if branch_tips[1] in tip_node_inds else comp_attrs
 
-        # Store edges and nodes
-        branch_edges.append(list(zip(comp_attrs[:-1, 0], comp_attrs[1:, 0])))
+        # Store edges, nodes, and xyzr in branch-wise manner
+        intra_branch_edges = np.stack([comp_attrs[:-1, 0], comp_attrs[1:, 0]]).T
+        branch_edges.append(intra_branch_edges.astype(int).tolist())
         branch_nodes.append(comp_attrs)
+        xyzr.append(node_attrs[["x", "y", "z", "r"]].values)
 
     branch_nodes = np.concatenate(branch_nodes)
     comp_attrs_keys = ["idx", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
@@ -460,8 +475,8 @@ def compartmentalize(
     if min_radius is not None:
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
-    # drop duplicated branch nodes
-    comp_df = comp_df.drop_duplicates(subset=["idx"])
+    # drop duplicated branchpoint nodes
+    comp_df = comp_df.drop_duplicates(subset=["idx", "branchpoint"])
     comp_df = comp_df.set_index("idx")
 
     # create comp edges
@@ -499,7 +514,7 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     # new columns
     nodes_df["capacitance"] = 1.0
     nodes_df["v"] = -70.0
-    nodes_df["axial_resistivity"] = 1000.0
+    nodes_df["axial_resistivity"] = 5000.0
     # TODO: rename to cell_index > cell, comp_index > comp, branch_index > branch
     nodes_df["comp_index"] = np.arange(len(nodes_df))
     nodes_df["cell_index"] = 0
@@ -507,26 +522,38 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
 
 
-def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
+def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
     """Replace branchpoint nodes with edges connecting parent and children."""
+    # reorder graph depth-first
+    # TODO: Which order to choose?
+    leaf = next(n for n in G.nodes if G.degree(n) == 1)
+    source = leaf if source is None else source
+    for u, v in nx.dfs_edges(G.to_undirected(), source):
+        if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
+            G.add_edge(u, v, **G.get_edge_data(v, u))
+            G.remove_edge(v, u)
+
     G.add_edges_from([(i, j, {"branch_edge": False}) for i, j in G.edges])
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
 
     branchpoints = [n for n in G.nodes if G.nodes[n]["branchpoint"]]
     for n in branchpoints:
-        parent = next(G.predecessors(n))
+        parents = list(G.predecessors(n))
         children = list(G.successors(n))
 
         # remove branchpoint and connect parent to children
         G.remove_node(n)
-        G.add_edges_from([(parent, c) for c in children], **branch_edge_attrs)
+        if len(parents) == 0 and len(children) == 2:  # linear branchpoint
+            G.add_edge(*children, **branch_edge_attrs)
+        else:
+            G.add_edges_from([(parents[0], c) for c in children], **branch_edge_attrs)
 
     for i, n in enumerate(G.nodes):
         G.nodes[n].pop("branchpoint")
         # TODO: Can we skip relabeling comps and reindexing the dataframe?
         G.nodes[n]["comp_index"] = i
-    G = nx.relabel_nodes(G, {n: i for i, n in enumerate(G.nodes)})
 
+    G = nx.relabel_nodes(G, {n: i for i, n in enumerate(G.nodes)})
     return G
 
 
