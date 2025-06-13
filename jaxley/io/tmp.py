@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import pandas as pd
+from typing import Dict, List, Optional, Set, Tuple, Union
+
 import networkx as nx
 import numpy as np
+import pandas as pd
 
-from typing import Optional, List, Dict, Union, Set, Tuple
-
-from jaxley.io.graph import _build_module_scaffold
 import jaxley as jx
+from jaxley.io.graph import _build_module_scaffold
 
 
 def compute_xyz(
@@ -284,7 +284,7 @@ def list_branches(
                 if not was_visited(node, succ):
                     branches.append(walk_path(node, succ))
 
-    # split branches
+    # split branches (if tracing was interrupted or max_len is reached)
     if not ignore_swc_tracing_interruptions:  # TODO: fix!
         split_edges = _find_swc_tracing_interruptions(G)
         branches = _split_branches(branches, split_edges)
@@ -316,6 +316,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     available_keys = G.nodes[next(iter(G.nodes()))].keys()
     xyz = compute_xyz(G) if "x" not in available_keys else {}
     for n, (x, y, z) in xyz.items():
+        # xyz is needed to compute compartment lengths
         G.nodes[n]["x"] = x
         G.nodes[n]["y"] = y
         G.nodes[n]["z"] = z
@@ -500,8 +501,11 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     module_global_attrs = pd.Series({"channels": {}, "synapses": {}, "group_names": []})
     global_attrs = pd.concat([global_attrs, module_global_attrs])
 
-    # rename/reformat existing columns
+    # Description of SWC file format:
+    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
     group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
+    
+    # rename/reformat existing columns
     for group_id, group_name in group_ids.items():
         where_group = nodes_df["id"] == group_id
         if where_group.any():
@@ -557,6 +561,7 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
     return G
 
 
+#TODO: Remove this along with branch_edges attr in nodes in favour of comp_edges
 def _compute_branch_parents(
     node_df: pd.DataFrame, edge_df: pd.DataFrame
 ) -> List[List[int]]:
