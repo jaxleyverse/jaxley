@@ -237,26 +237,24 @@ def list_branches(
     is_soma = lambda n: id_of(n) == 1
     soma_nodes = lambda: [i for i, n in G.nodes.items() if n["id"] == 1]
 
+    def same_id(G: nx.DiGraph, n1: int, n2: int) -> bool:
+        has_id = lambda n: id_of(n) in relevant_ids if "id" in G.nodes[n] else False
+        return id_of(n1) == id_of(n2) if has_id(n1) and has_id(n2) else True
+
     def is_branchpoint_or_tip(n: int) -> bool:
         if G.degree(n) == 2:
             i, j = G.neighbors(n)
-            # trace dir matters here! For segment with node IDs: [1, 1, 2, 2]
-            # -> [[1,1], [1,2,2]]
-            # <- [[2,2], [2,1,1]]
-            return not same_id(n, j)
+            # trace dir matters here! For segment [0,1,2,3] with node IDs: [1,1,2,2]
+            # -> [[1,1], [1,2,2]] => node 1 is taken as branchpoint
+            # <- [[2,2], [2,1,1]] => node 2 is taken as branchpoint
+            return not same_id(G, n, j)
 
         is_leaf = G.degree(n) <= 1
         is_branching = G.degree(n) > 2
         return is_leaf or is_branching
 
-    def same_id(n1: int, n2: int) -> bool:
-        has_id = lambda n: id_of(n) in relevant_ids if "id" in G.nodes[n] else False
-        if has_id(n1) and has_id(n2):
-            return id_of(n1) == id_of(n2)
-        return True
-
     def walk_path(start: int, succ: int) -> List[int]:
-        """Walk from start to succ, recording new nodes until a branching node is hit."""
+        """Walk from start to succ, recording new nodes until a branchpoint or tip is hit."""
         path = [start, succ]
         visited.add((start, succ))
 
@@ -275,7 +273,7 @@ def list_branches(
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
     single_soma = len(soma_nodes()) == 1
     for node in nx.dfs_tree(G, leaf):
-        if single_soma and is_soma(node):
+        if single_soma and is_soma(node):  # a single soma is its own branch
             branches.append([node])
 
         elif is_branchpoint_or_tip(node):
@@ -390,11 +388,11 @@ def compartmentalize(
 
     # create new set of indices which arent already used as node indices to label comps
     existing_inds = set(nodes_df.index)
-    num_new_inds = len(branches) * ncomp
-    proposed_inds = set(range(num_new_inds + len(existing_inds)))
+    num_additional_inds = len(branches) * ncomp
+    proposed_inds = set(range(num_additional_inds + len(existing_inds)))
     proposed_comp_inds = list(
         proposed_inds - existing_inds
-    )  # avoid overlap w. node indices
+    )  # avoid overlap w node inds
 
     # identify tip nodes (degree == 1 -> node appears only once in edges)
     nodes_in_edges, node_counts_in_edges = np.unique(G.edges, return_counts=True)
@@ -412,35 +410,39 @@ def compartmentalize(
 
         # For single-point somatata, we set l = 2*r this ensures
         # A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
-        if len(branch) == 1:
+        if single_soma := (len(branch) == 1):
             node_attrs = node_attrs.loc[branch * 2]  # duplicate soma node
             radius = node_attrs["r"].iloc[0]
             node_attrs["l"] = np.array([0, 2 * radius])
 
-        branch_id = node_attrs["id"].iloc[1]  # TODO: how to handle mult. ids in branch!
+        branch_id = node_attrs["id"].iloc[
+            1
+        ]  # node after branchpoint (0) det. branch id
         branch_len = max(node_attrs["l"])
         comp_len = branch_len / ncomp
         comp_locs = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
-        # Create node indices and attributes
-        # branch_inds, branchpoint, comp_id, comp_len
+        # Create node indices and attributes for branch-tips/branchpoints and comps
+        # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
         branch_tips = branch[0], branch[-1]
         branch_tip_attrs = [
             [i, True, node_attrs["id"].iloc[0], 0],
             [i, True, node_attrs["id"].iloc[-1], 0],
         ]
-        comp_attrs = [[i, False, branch_id, comp_len]] * ncomp
 
         comp_inds = proposed_comp_inds[i * ncomp : (i + 1) * ncomp]
         comp_inds = np.array([branch_tips[0], *comp_inds, branch_tips[1]])
+
+        comp_attrs = [[i, False, branch_id, comp_len]] * ncomp
         comp_attrs = [branch_tip_attrs[0]] + comp_attrs + [branch_tip_attrs[1]]
         comp_attrs = np.hstack([comp_inds[:, None], comp_attrs])
 
+        # Interpolate xyzr along branch
         x = np.array([0] + comp_locs + [branch_len])
         xp = np.array(node_attrs["l"].values)
         fp = np.array(node_attrs[["x", "y", "z", "r"]].values)
 
-        # TODO: interpolate **r** differently!
+        # TODO: average **r** instead of interpolating!
         interpolated_coords = np.column_stack(
             [np.interp(x, xp, fp[:, i]) for i in range(fp.shape[1])]
         )
@@ -449,12 +451,12 @@ def compartmentalize(
         comp_attrs = np.hstack([comp_attrs, interpolated_coords])
 
         # remove tip nodes
-        comp_attrs = (
-            comp_attrs[1:]
-            if branch_tips[0] in tip_node_inds or len(branch) == 1
-            else comp_attrs
-        )
+        comp_attrs = comp_attrs[1:] if branch_tips[0] in tip_node_inds else comp_attrs
         comp_attrs = comp_attrs[:-1] if branch_tips[1] in tip_node_inds else comp_attrs
+
+        # single soma branches lead to self looping edges, since branch[0] == branch[-1]
+        # we therefore remove one tip node / branchpoint node, i.e. [0,s,0] -> [s,0]
+        comp_attrs = comp_attrs[1:] if single_soma else comp_attrs
 
         # Store edges, nodes, and xyzr in branch-wise manner
         intra_branch_edges = np.stack([comp_attrs[:-1, 0], comp_attrs[1:, 0]]).T
@@ -483,8 +485,8 @@ def compartmentalize(
     # create comp edges
     comp_edges = sum(branch_edges, [])
     comp_edges_df = pd.DataFrame(index=pd.MultiIndex.from_tuples(comp_edges))
-    comp_edges_df["synapse"] = False
-    comp_edges_df["comp_edge"] = True
+    comp_edges_df["synapse"] = False  # edges between compartments that are synapses
+    comp_edges_df["comp_edge"] = True  # edges between connected compartments
 
     global_attrs = pd.Series({"xyzr": xyzr})
     G = pandas_to_nx(comp_df, comp_edges_df, global_attrs)
@@ -504,7 +506,7 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     # Description of SWC file format:
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
     group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
-    
+
     # rename/reformat existing columns
     for group_id, group_name in group_ids.items():
         where_group = nodes_df["id"] == group_id
@@ -519,7 +521,7 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     nodes_df["capacitance"] = 1.0
     nodes_df["v"] = -70.0
     nodes_df["axial_resistivity"] = 5000.0
-    # TODO: rename to cell_index > cell, comp_index > comp, branch_index > branch
+    # TODO: rename cell_index > cell, comp_index > comp, branch_index > branch
     nodes_df["comp_index"] = np.arange(len(nodes_df))
     nodes_df["cell_index"] = 0
 
@@ -527,9 +529,10 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
 
 
 def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
-    """Replace branchpoint nodes with edges connecting parent and children."""
-    # reorder graph depth-first
-    # TODO: Which order to choose?
+    """Replace branchpoint nodes with edges connecting parent and children.
+
+    Also does a depth-first traversal of the graph and reorders the edges."""
+    # reorder graph depth-first TODO: Which order to choose?
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
     source = leaf if source is None else source
     for u, v in nx.dfs_edges(G.to_undirected(), source):
@@ -561,7 +564,7 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
     return G
 
 
-#TODO: Remove this along with branch_edges attr in nodes in favour of comp_edges
+# TODO: Remove this along with branch_edges attr in nodes in favour of comp_edges
 def _compute_branch_parents(
     node_df: pd.DataFrame, edge_df: pd.DataFrame
 ) -> List[List[int]]:
