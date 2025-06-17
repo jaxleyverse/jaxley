@@ -10,49 +10,9 @@ import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
 
-########################################################################################
-################################### BUILD SWC GRAPH ####################################
-########################################################################################
-
-
-def to_swc_graph(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
-    # def swc_to_nx(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
-    """Read a SWC morphology file into a NetworkX DiGraph.
-
-    The graph is read such that each entry in the swc file becomes a graph node
-    with the column attributes (id, x, y, z, r). Then each node is connected to its
-    designated parent via an edge.
-
-    Args:
-        fname: Path to the SWC file
-        num_lines: Number of lines to read from the file. If None, all lines are read.
-
-    Returns:
-        A networkx DiGraph of the traced morphology in the swc file. It has attributes:
-        nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0}
-        edges: {}
-
-    Example usage
-    ^^^^^^^^^^^^^
-
-    ::
-
-        from jaxley.io.graph swc_to_nx
-        swc_graph = swc_to_nx("path_to_swc.swc")
-    """
-    i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
-
-    graph = nx.DiGraph()
-    for i, id, x, y, z, r, p in i_id_xyzr_p.tolist():  # tolist: np.float64 -> float
-        graph.add_node(int(i), **{"id": int(id), "x": x, "y": y, "z": z, "r": r})
-        if p != -1:
-            graph.add_edge(int(p), int(i))
-    return graph
-
-
-########################################################################################
-############################## BUILD COMPARTMENT GRAPH #################################
-########################################################################################
+#########################################################################################
+################################### Helper functions ####################################
+#########################################################################################
 
 
 def pandas_to_nx(
@@ -102,6 +62,111 @@ def nx_to_pandas(
     edge_df = edge_df.sort_index() if sort_index else edge_df
 
     return node_df, edge_df, pd.Series(G.graph)
+
+
+def compute_xyz(
+    G: nx.DiGraph,
+    length: float = 1.0,
+    spread: float = np.pi / 8,
+    spread_decay: float = 0.9,
+    twist: float = 0.0,
+    xy_only: bool = True,
+) -> Dict[int, tuple[float, float, float]]:
+    """Compute xyz coordinates for a tree-like appearance of a networkX graph in 2D or 3D.
+
+    Handles branches implicitly since nodes in a branch have 1 child.
+
+    Args:
+        G: The Graph to compute node xyz coordinates for.
+        length: The length of each edge.
+        spread: The opening angle at which the edges spread out.
+        spread_decay: Multiplicative decay factor for the opening angle / spread.
+        twist: Add additional twisting. Means fewer overlapping nodes in 3D projections.
+        xy_only: Whether to only compute the xy coordinates and fix the z-coordinate.
+
+    Returns:
+        A dictionary mapping node indices to xyz coordinates.
+    """
+    # TODO: Replace compute_xyz with this or vice versa, redundant!
+    root = next(n for n, d in G.in_degree() if d == 0)
+    pos = {root: (0.0, 0.0, 0.0)}
+
+    def recurse(node, depth=1, theta=0.0, phi=np.pi / 2):
+        children = [n for n in G.successors(node) if n not in pos]
+        if not children:
+            return
+        n = len(children)
+        curr_spread = spread * (spread_decay ** (depth - 1))
+        x0, y0, z0 = pos[node]
+        phi = np.pi / 2 if xy_only else phi
+        base_theta = theta + depth * twist
+        if n == 1:
+            thetas, phis = [base_theta], [phi]
+        else:
+            if xy_only:
+                thetas = np.linspace(
+                    base_theta - curr_spread / 2, base_theta + curr_spread / 2, n
+                )
+                phis = [phi] * n
+            else:
+                thetas = np.linspace(
+                    base_theta, base_theta + 2 * np.pi, n, endpoint=False
+                )
+                phis = [phi - curr_spread] * n
+        for th, ph, child in zip(thetas, phis, children):
+            x = x0 + length * np.sin(ph) * np.cos(th)
+            y = y0 + length * np.sin(ph) * np.sin(th)
+            z = z0 + length * np.cos(ph) * (not xy_only)
+            pos[child] = (x, y, z)
+            recurse(child, depth + 1, th, ph)
+
+    recurse(root, theta=0.0, phi=np.pi / 2)
+    return pos
+
+
+########################################################################################
+################################### BUILD SWC GRAPH ####################################
+########################################################################################
+
+
+def to_swc_graph(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
+    # def swc_to_nx(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
+    """Read a SWC morphology file into a NetworkX DiGraph.
+
+    The graph is read such that each entry in the swc file becomes a graph node
+    with the column attributes (id, x, y, z, r). Then each node is connected to its
+    designated parent via an edge.
+
+    Args:
+        fname: Path to the SWC file
+        num_lines: Number of lines to read from the file. If None, all lines are read.
+
+    Returns:
+        A networkx DiGraph of the traced morphology in the swc file. It has attributes:
+        nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0}
+        edges: {}
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    ::
+
+        from jaxley.io.graph swc_to_nx
+        swc_graph = swc_to_nx("path_to_swc.swc")
+    """
+    i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
+
+    graph = nx.DiGraph()
+    for i, id, x, y, z, r, p in i_id_xyzr_p.tolist():  # tolist: np.float64 -> float
+        graph.add_node(int(i), **{"id": int(id), "x": x, "y": y, "z": z, "r": r})
+        if p != -1:
+            graph.add_edge(int(p), int(i))
+    return graph
+
+
+########################################################################################
+############################## BUILD COMPARTMENT GRAPH #################################
+########################################################################################
 
 
 def _split_branches(
@@ -301,13 +366,12 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     defaults = {"id": 0, "r": 1}
 
     available_keys = G.nodes[next(iter(G.nodes()))].keys()
-    # TODO: ADD BACK IN
-    # xyz = compute_xyz(G) if "x" not in available_keys else {}
-    # for n, (x, y, z) in xyz.items():
-    #     # xyz is needed to compute compartment lengths
-    #     G.nodes[n]["x"] = x
-    #     G.nodes[n]["y"] = y
-    #     G.nodes[n]["z"] = z
+    xyz = compute_xyz(G) if "x" not in available_keys else {}
+    for n, (x, y, z) in xyz.items():
+        # xyz is needed to compute compartment lengths
+        G.nodes[n]["x"] = x
+        G.nodes[n]["y"] = y
+        G.nodes[n]["z"] = z
 
     for key in set(defaults.keys()).difference(available_keys):
         nx.set_node_attributes(G, defaults[key], key)
@@ -461,19 +525,8 @@ def build_compartment_graph(
         )  # store xyzr for each node in branch
 
     branch_nodes = np.concatenate(branch_nodes)
-    comp_attrs_keys = [
-        "node",
-        "comp",
-        "branch",
-        "branchpoint",
-        "id",
-        "l",
-        "x",
-        "y",
-        "z",
-        "r",
-    ]
-    comp_df = pd.DataFrame(branch_nodes, columns=comp_attrs_keys)
+    comp_cols = ["node", "comp", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
+    comp_df = pd.DataFrame(branch_nodes, columns=comp_cols)
 
     int_cols = ["node", "id"]  # comp & branch cols are floats due to branchpoints
     comp_df[int_cols] = comp_df[int_cols].astype(int)
@@ -530,13 +583,13 @@ def _add_jaxley_meta_data(
             global_attrs["group_names"].append(group_name)
             nodes_df[group_name] = where_group
     nodes_df = nodes_df.drop(columns=["id"])
-    module_col_names = {
+    jaxley_keys = {
         "r": "radius",
         "l": "length",
         "branch": "branch_index",
         "comp": "comp_index",
     }
-    nodes_df = nodes_df.rename(module_col_names, axis=1)
+    nodes_df = nodes_df.rename(jaxley_keys, axis=1)
 
     # new columns
     is_comp = ~nodes_df["branchpoint"]
@@ -555,8 +608,7 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
     Also does a depth-first traversal of the graph and reorders the edges."""
     # reorder graph depth-first TODO: Which order to choose?
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
-    source = leaf if source is None else source
-    for u, v in nx.dfs_edges(G.to_undirected(), source):
+    for u, v in nx.dfs_edges(G.to_undirected(), leaf if source is None else source):
         if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
             G.add_edge(u, v, **G.get_edge_data(v, u))
             G.remove_edge(v, u)
@@ -564,21 +616,18 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
     G.add_edges_from([(i, j, {"branch_edge": False}) for i, j in G.edges])
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
 
-    branchpoints = [n for n in G.nodes if G.nodes[n]["branchpoint"]]
-    for n in branchpoints:
-        parents = list(G.predecessors(n))
-        children = list(G.successors(n))
+    branchpoint_nodes = [n for n in G.nodes if G.nodes[n]["branchpoint"]]
+    for n in branchpoint_nodes:
+        parent = next(G.predecessors(n))
+        children = G.successors(n)
 
         # remove branchpoint and connect parent to children
         G.remove_node(n)
-        if len(parents) == 0 and len(children) == 2:  # linear branchpoint
-            G.add_edge(*children, **branch_edge_attrs)
-        else:
-            G.add_edges_from([(parents[0], c) for c in children], **branch_edge_attrs)
+        G.add_edges_from([(parent, c) for c in children], **branch_edge_attrs)
 
-    for i, n in enumerate(G.nodes):
-        G.nodes[n].pop("branchpoint")
-        # re-enumerate comps and make branch_index int
+    for n in G.nodes:
+        del G.nodes[n]["branchpoint"]  # del branchpoint attr
+        # ensure int indices, since they are float, due to branchpoint inds being nan
         G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
         G.nodes[n]["branch_index"] = int(G.nodes[n]["branch_index"])
 
