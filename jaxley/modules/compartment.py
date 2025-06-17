@@ -23,6 +23,7 @@ class Compartment(Module):
     compartment_params: Dict = {
         "length": 10.0,  # um
         "radius": 1.0,  # um
+        "area": 2 * np.pi * 10.0 * 1.0,  # um^2
         "axial_resistivity": 5_000.0,  # ohm cm
         "capacitance": 1.0,  # uF/cm^2
     }

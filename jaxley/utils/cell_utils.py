@@ -12,7 +12,7 @@ from jax import vmap
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
-def radius_from_xyzr(
+def radius_and_area_from_xyzr(
     xyzr: np.ndarray,
     min_radius: Optional[float],
 ) -> float:
@@ -24,18 +24,38 @@ def radius_from_xyzr(
         min_radius: If passed, the radiuses are clipped to be at least as large.
         ncomp: The number of compartments that every branch is discretized into.
     """
-    xyz = xyzr[:, :3]
-    radius = xyzr[:, 3]
+    # Extract 3D coordinates and radii
+    positions = xyzr[:, :3]  # shape (N, 3): x, y, z
+    radii = xyzr[:, 3]  # shape (N,): radius at each point
+    # print("radii", radii)
+
     if len(xyzr) > 1:
-        deltas = np.diff(xyz, axis=0)
-        dists = np.linalg.norm(deltas, axis=1)
-        weights = np.zeros(len(dists) + 1)
-        weights[1:] += dists
-        weights[:-1] += dists
-        weights /= np.sum(weights)
-        avg_radius = np.sum(radius * weights)
+        # Compute Euclidean distances between consecutive points
+        position_deltas = np.diff(positions, axis=0)  # shape (N-1, 3)
+        segment_lengths = np.linalg.norm(position_deltas, axis=1)  # shape (N-1,)
+
+        # Radii at start and end of each frustum
+        radius_start = radii[:-1]
+        radius_end = radii[1:]
+        delta_radii = radius_end - radius_start
+
+        # Slant height of each frustum (NEURON uses this)
+        slant_lengths = np.sqrt(delta_radii**2 + segment_lengths**2)
+
+        # NEURON-style surface area of each frustum
+        frustum_surface_areas = np.pi * (radius_start + radius_end) * slant_lengths
+        total_surface_area = np.sum(frustum_surface_areas)
+
+        # Weighted average radius, trapezoidal weighting over length
+        radius_weights = np.zeros(len(segment_lengths) + 1)
+        radius_weights[1:] += segment_lengths
+        radius_weights[:-1] += segment_lengths
+        radius_weights /= np.sum(radius_weights)
+        avg_radius = np.sum(radii * radius_weights)
     else:
-        avg_radius = radius.mean()
+        print("Problem!")
+        avg_radius = radii.mean()
+        total_surface_area = 4 * np.pi * radii[0] ** 2
 
     if min_radius is None:
         assert (
@@ -47,8 +67,7 @@ def radius_from_xyzr(
             if (avg_radius < min_radius or np.isnan(avg_radius))
             else avg_radius
         )
-
-    return avg_radius
+    return avg_radius, total_surface_area
 
 
 def split_xyzr_into_equal_length_segments(
@@ -456,7 +475,7 @@ def params_to_pstate(
 
 
 def convert_point_process_to_distributed(
-    current: jnp.ndarray, radius: jnp.ndarray, length: jnp.ndarray
+    current: jnp.ndarray, area: jnp.ndarray
 ) -> jnp.ndarray:
     """Convert current point process (nA) to distributed current (uA/cm2).
 
@@ -470,7 +489,6 @@ def convert_point_process_to_distributed(
     Return:
         Current in `uA/cm2`.
     """
-    area = 2 * pi * radius * length
     current /= area  # nA / um^2
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
 

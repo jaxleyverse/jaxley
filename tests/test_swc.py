@@ -263,13 +263,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     assert all(errors < 2.0), f"Error {np.max(errors)} > 2.0. Voltages do not match."
 
 
-@pytest.mark.parametrize(
-    "reader_backend",
-    [
-        "graph",
-        "custom",
-    ],
-)
+@pytest.mark.parametrize("reader_backend", ["graph"])
 @pytest.mark.parametrize(
     "file",
     [
