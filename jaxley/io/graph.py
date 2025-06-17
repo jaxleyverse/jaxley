@@ -75,17 +75,19 @@ def pandas_to_nx(
         edge_attr=True,
         create_using=nx.DiGraph(),
     )
-
-    nx.set_node_attributes(G, node_attrs.to_dict(orient="index"))
+    G.add_nodes_from((n, dict(d)) for n, d in node_attrs.iterrows())
     G.graph.update(global_attrs.to_dict())
     return G
 
 
-def nx_to_pandas(G: nx.DiGraph) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
+def nx_to_pandas(
+    G: nx.DiGraph, sort_index: bool = True
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """Convert a NetworkX DiGraph to pandas datatypes.
 
     Args:
         G: Input directed graph
+        sort_index: Whether to sort the index of the DataFrames.
 
     Returns:
         Tuple containing:
@@ -96,6 +98,8 @@ def nx_to_pandas(G: nx.DiGraph) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     edge_df = nx.to_pandas_edgelist(G).set_index(["source", "target"])
     edge_df.index.names = [None, None]
     node_df = pd.DataFrame.from_dict(dict(G.nodes(data=True)), orient="index")
+    node_df = node_df.sort_index() if sort_index else node_df
+    edge_df = edge_df.sort_index() if sort_index else edge_df
 
     return node_df, edge_df, pd.Series(G.graph)
 
@@ -115,8 +119,9 @@ def _split_branches(
     for p, n in split_edges:
         for i, branch in enumerate(branches):
             if n in branch:
-                split_idx = branch.index(n)
-                branches[i : i + 1] = [branch[:split_idx], branch[split_idx:]]
+                parent_end = branch.index(p) + 1
+                child_start = branch.index(n) - 1
+                branches[i : i + 1] = [branch[:parent_end], branch[child_start:]]
                 break
     return branches
 
@@ -254,13 +259,25 @@ def list_branches(
 
     # split branches (if tracing was interrupted or max_len is reached)
     if not ignore_swc_tracing_interruptions:  # TODO: fix!
-        split_edges = _find_swc_tracing_interruptions(directed_graph)
-        branches = _split_branches(branches, split_edges)
-        branchpoints.update(set(p for (p, n) in split_edges))
+        interupted_edges = _find_swc_tracing_interruptions(directed_graph)
+        branches = _split_branches(branches, interupted_edges)
+        branchpoints.update(set(p for (p, n) in interupted_edges))
 
-    # TODO: add max_len
+    # split max_len after accounting for interrupted branches
     if max_len is not None:
-        raise NotImplementedError("max_len not implemented")
+        node_attrs = lambda n, keys: [undirected_graph.nodes[n][key] for key in keys]
+        exceed_edges = []
+        for branch in branches:
+            branch_xyz = np.array([node_attrs(i, ["x", "y", "z"]) for i in branch])
+
+            path_len = np.linalg.norm(branch_xyz[1:] - branch_xyz[:-1], axis=1).cumsum()
+            path_len = np.concatenate([[0], path_len])
+
+            exceed_inds = np.where(np.diff(path_len // max_len) > 0)[0]
+            exceed_edges += [(branch[i], branch[i + 1]) for i in exceed_inds]
+
+        branches = _split_branches(branches, exceed_edges)
+        branchpoints.update(set(p for (p, n) in exceed_edges))
 
     if return_branchpoints:
         branchpoint_edges = sum(
@@ -365,7 +382,7 @@ def build_compartment_graph(
     existing_inds = set(nodes_df.index)
     num_additional_inds = len(branches) * ncomp
     proposed_inds = set(range(num_additional_inds + len(existing_inds)))
-    proposed_comp_inds = list(
+    proposed_node_inds = list(
         proposed_inds - existing_inds
     )  # avoid overlap w node inds
 
@@ -376,7 +393,7 @@ def build_compartment_graph(
     # collect comps and comp_edges
     branch_nodes, branch_edges = [], []
     xyzr = []
-    for i, branch in enumerate(branches):
+    for branch_idx, branch in enumerate(branches):
         node_attrs = nodes_df.loc[branch]
 
         compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
@@ -387,8 +404,7 @@ def build_compartment_graph(
         # A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         if single_soma := (len(branch) == 1):
             node_attrs = node_attrs.loc[branch * 2]  # duplicate soma node
-            radius = node_attrs["r"].iloc[0]
-            node_attrs["l"] = np.array([0, 2 * radius])
+            node_attrs["l"] = np.array([0, 2 * node_attrs["r"].iloc[0]])
 
         branch_id = node_attrs["id"].iloc[
             1
@@ -398,19 +414,22 @@ def build_compartment_graph(
         comp_locs = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
         # Create node indices and attributes for branch-tips/branchpoints and comps
-        # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
+        # comp_inds, branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
         branch_tips = branch[0], branch[-1]
         branch_tip_attrs = [
-            [i, True, node_attrs["id"].iloc[0], 0],
-            [i, True, node_attrs["id"].iloc[-1], 0],
+            [float("nan"), float("nan"), True, node_attrs["id"].iloc[0], 0],
+            [float("nan"), float("nan"), True, node_attrs["id"].iloc[-1], 0],
         ]
 
-        comp_inds = proposed_comp_inds[i * ncomp : (i + 1) * ncomp]
-        comp_inds = np.array([branch_tips[0], *comp_inds, branch_tips[1]])
+        node_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
+        node_inds = np.array([branch_tips[0], *node_inds, branch_tips[1]])
+        comp_inds = np.arange(ncomp) + branch_idx * ncomp
 
-        comp_attrs = [[i, False, branch_id, comp_len]] * ncomp
+        comp_attrs = [
+            [comp_idx, branch_idx, False, branch_id, comp_len] for comp_idx in comp_inds
+        ]
         comp_attrs = [branch_tip_attrs[0]] + comp_attrs + [branch_tip_attrs[1]]
-        comp_attrs = np.hstack([comp_inds[:, None], comp_attrs])
+        comp_attrs = np.hstack([node_inds[:, None], comp_attrs])
 
         # Interpolate xyzr along branch
         x = np.array([0] + comp_locs + [branch_len])
@@ -437,13 +456,26 @@ def build_compartment_graph(
         intra_branch_edges = np.stack([comp_attrs[:-1, 0], comp_attrs[1:, 0]]).T
         branch_edges.append(intra_branch_edges.astype(int).tolist())
         branch_nodes.append(comp_attrs)
-        xyzr.append(node_attrs[["x", "y", "z", "r"]].values)
+        xyzr.append(
+            node_attrs[["x", "y", "z", "r"]].values
+        )  # store xyzr for each node in branch
 
     branch_nodes = np.concatenate(branch_nodes)
-    comp_attrs_keys = ["idx", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
+    comp_attrs_keys = [
+        "node",
+        "comp",
+        "branch",
+        "branchpoint",
+        "id",
+        "l",
+        "x",
+        "y",
+        "z",
+        "r",
+    ]
     comp_df = pd.DataFrame(branch_nodes, columns=comp_attrs_keys)
 
-    int_cols = ["idx", "branch", "id"]
+    int_cols = ["node", "id"]  # comp & branch cols are floats due to branchpoints
     comp_df[int_cols] = comp_df[int_cols].astype(int)
 
     bool_cols = ["branchpoint"]
@@ -454,8 +486,8 @@ def build_compartment_graph(
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
     # drop duplicated branchpoint nodes
-    comp_df = comp_df.drop_duplicates(subset=["idx", "branchpoint"])
-    comp_df = comp_df.set_index("idx")
+    comp_df = comp_df.drop_duplicates(subset=["node", "branchpoint"])
+    comp_df = comp_df.set_index("node")
 
     # create comp edges
     comp_edges = sum(branch_edges, [])
@@ -474,35 +506,44 @@ def build_compartment_graph(
 ########################################################################################
 
 
-def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
+def _add_jaxley_meta_data(
+    G: nx.DiGraph, relevant_type_ids: List[int] = [1, 2, 3, 4]
+) -> nx.DiGraph:
     """Add attributes to and rename existing attributes of the compartalized morphology.
 
     Makes the imported and compartmentalized morphology compatible with jaxley.
     """
     nodes_df, edge_df, global_attrs = nx_to_pandas(G)
-    module_global_attrs = pd.Series({"channels": {}, "synapses": {}, "group_names": []})
+    # TODO: make channels and synapses dicts?
+    module_global_attrs = pd.Series({"channels": [], "synapses": [], "group_names": []})
     global_attrs = pd.concat([global_attrs, module_global_attrs])
 
     # Description of SWC file format:
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-    group_ids = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
+    group_names = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
 
     # rename/reformat existing columns
-    for group_id, group_name in group_ids.items():
+    for group_id in relevant_type_ids:
         where_group = nodes_df["id"] == group_id
         if where_group.any():
+            group_name = group_names.get(group_id, "custom")
             global_attrs["group_names"].append(group_name)
             nodes_df[group_name] = where_group
     nodes_df = nodes_df.drop(columns=["id"])
-    module_col_names = {"r": "radius", "l": "length", "branch": "branch_index"}
+    module_col_names = {
+        "r": "radius",
+        "l": "length",
+        "branch": "branch_index",
+        "comp": "comp_index",
+    }
     nodes_df = nodes_df.rename(module_col_names, axis=1)
 
     # new columns
-    nodes_df["capacitance"] = 1.0
-    nodes_df["v"] = -70.0
-    nodes_df["axial_resistivity"] = 5000.0
+    is_comp = ~nodes_df["branchpoint"]
+    nodes_df.loc[is_comp, "capacitance"] = 1.0
+    nodes_df.loc[is_comp, "v"] = -70.0
+    nodes_df.loc[is_comp, "axial_resistivity"] = 5000.0
     # TODO: rename cell_index > cell, comp_index > comp, branch_index > branch
-    nodes_df["comp_index"] = np.arange(len(nodes_df))
     nodes_df["cell_index"] = 0
 
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
@@ -537,10 +578,10 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
 
     for i, n in enumerate(G.nodes):
         G.nodes[n].pop("branchpoint")
-        # TODO: Can we skip relabeling comps and reindexing the dataframe?
-        G.nodes[n]["comp_index"] = i
+        # re-enumerate comps and make branch_index int
+        G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
+        G.nodes[n]["branch_index"] = int(G.nodes[n]["branch_index"])
 
-    G = nx.relabel_nodes(G, {n: i for i, n in enumerate(G.nodes)})
     return G
 
 
@@ -613,10 +654,14 @@ def _build_module(G: nx.DiGraph) -> Module:
         for col in node_df.columns
     ]
 
-    synapse_edges = edge_df[edge_df.synapse]
+    # jaxley expects contiguous indices, but since we drop branchpoints in
+    # _replace_branchpoints_with_edges, we need to re-assign the indices here
+    node_df.index = module.nodes.index
 
     # set column-wise. preserves cols not in df.
     module.nodes[node_df.columns] = node_df
+
+    synapse_edges = edge_df[edge_df.synapse]
     module.edges = synapse_edges if not synapse_edges.empty else module.edges
 
     # add all the extra attrs
