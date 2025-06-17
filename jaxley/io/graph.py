@@ -11,7 +11,7 @@ import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
 from jaxley.utils.cell_utils import (
-    radius_from_xyzr,
+    radius_and_area_from_xyzr,
     split_xyzr_into_equal_length_segments,
     v_interp,
 )
@@ -315,7 +315,9 @@ def build_compartment_graph(
 
         # Here, we split xyzr into compartments.
         xyzr_per_comp = split_xyzr_into_equal_length_segments(xyzr, ncomp)
-        radiuses = [radius_from_xyzr(xyzr, min_radius) for xyzr in xyzr_per_comp]
+        radiuses_and_areas = np.asarray(
+            [radius_and_area_from_xyzr(xyzr, min_radius) for xyzr in xyzr_per_comp]
+        )
 
         branch_len = branch_data["l"].max()
         if branch_len < 1e-8:
@@ -348,7 +350,8 @@ def build_compartment_graph(
         new_branch_nodes["type"] = "comp"
         comp_offset += ncomp
         new_branch_nodes["xyzr"] = xyzr_per_comp
-        new_branch_nodes["r"] = radiuses
+        new_branch_nodes["r"] = radiuses_and_areas[:, 0]
+        new_branch_nodes["area"] = radiuses_and_areas[:, 1]
 
         # Add the compartments as nodes to the new `comp_graph`.
         new_branch_nodes = new_branch_nodes.set_index("node_index")

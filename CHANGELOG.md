@@ -10,6 +10,15 @@
 [here](https://jaxley.readthedocs.io/en/latest/how_to_guide/import_channels_from_neuron.html)
 (#669, @michaeldeistler, special thanks to @r-makarov for building the tool)
 
+### 🛠️ Internal updates
+
+- changes to how the membrane area from SWC files is computed when the radius within a
+compartment is not constant. This fix can have an impact on simulation results. The
+updated computation of membrane area matches that of the NEURON simulator (#662,
+@michaeldeistler, thanks to @VENOM314 for reporting).
+- remove the `custom` SWC reader (which had been deprecated in `v0.9.0`, #662,
+@michaeldeistler).
+
 
 # 0.10.0
 

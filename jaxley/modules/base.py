@@ -25,7 +25,6 @@ from jaxley.solver_voltage import (
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_stone,
 )
-from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -34,10 +33,9 @@ from jaxley.utils.cell_utils import (
     compute_levels,
     convert_point_process_to_distributed,
     interpolate_xyzr,
-    loc_of_index,
     params_to_pstate,
     query_channel_states_and_params,
-    radius_from_xyzr,
+    radius_and_area_from_xyzr,
     split_xyzr_into_equal_length_segments,
     v_interp,
 )
@@ -1088,6 +1086,31 @@ class Module(ABC):
         if key in self.nodes.columns:
             not_nan = ~self.nodes[key].isna().to_numpy()
             self.base.nodes.loc[self._nodes_in_view[not_nan], key] = val
+
+            # When the key is `radius` or `length`, we also have to update the
+            # membrane surface area. In principle, we could also do this on the fly
+            # when a simulation is started, but computing the membrane area for
+            # SWC-traced neurons can be computationally expensive.
+            if key in ["radius", "length"]:
+                rad = self.base.nodes.loc[self._nodes_in_view[not_nan], "radius"]
+                length = self.base.nodes.loc[self._nodes_in_view[not_nan], "length"]
+                self.base.nodes.loc[self._nodes_in_view[not_nan], "area"] = (
+                    2 * np.pi * rad * length
+                )
+
+                # Add an additional warning if the neuron was read from SWC.
+                xyzr = np.concatenate(self.base.xyzr)
+                xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
+                if xyzr_is_available:
+                    warn(
+                        f"You are modifying the {key} of a neuron that was read "
+                        f"from an SWC file. By doing this, Jaxley recomputes the "
+                        f"membrane surface area as `A = 2 * pi * r * l`. "
+                        f"This formula differs from the formula used by the SWC "
+                        f"reader, which takes the exact positions and radiuses of "
+                        f"SWC-traced points into account. The membrane surface area "
+                        f"impacts the electrophysiology of the neuron."
+                    )
         elif key in self.edges.columns:
             not_nan = ~self.edges[key].isna().to_numpy()
             self.base.edges.loc[self._edges_in_view[not_nan], key] = val
@@ -1273,8 +1296,11 @@ class Module(ABC):
             # If all xyzr-radiuses of the branch are available, then use them to
             # compute the new compartment radiuses.
             comp_xyzrs = split_xyzr_into_equal_length_segments(xyzr, ncomp)
-            rads = [radius_from_xyzr(xyzr, min_radius) for xyzr in comp_xyzrs]
-            view["radius"] = rads
+            radii_and_areas = np.asarray(
+                [radius_and_area_from_xyzr(xyzr, min_radius) for xyzr in comp_xyzrs]
+            )
+            view["radius"] = radii_and_areas[:, 0]
+            view["area"] = radii_and_areas[:, 1]
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
 
@@ -1582,7 +1608,7 @@ class Module(ABC):
             A dictionary of all module parameters.
         """
         params = {}
-        for key in ["radius", "length", "axial_resistivity", "capacitance"]:
+        for key in ["radius", "length", "area", "axial_resistivity", "capacitance"]:
             params[key] = self.base.jaxnodes[key]
 
         for key in self.diffusion_states:
@@ -2212,9 +2238,7 @@ class Module(ABC):
         if "i" in externals.keys():
             i_current = externals["i"]
             i_inds = external_inds["i"]
-            i_ext = self._get_external_input(
-                u["v"], i_inds, i_current, params["radius"], params["length"]
-            )
+            i_ext = self._get_external_input(u["v"], i_inds, i_current, params["area"])
         else:
             i_ext = 0.0
 
@@ -2612,8 +2636,7 @@ class Module(ABC):
         voltages: jnp.ndarray,
         i_inds: jnp.ndarray,
         i_stim: jnp.ndarray,
-        radius: float,
-        length_single_compartment: float,
+        area: float,
     ) -> jnp.ndarray:
         """
         Return external input to each compartment in uA / cm^2.
@@ -2625,9 +2648,7 @@ class Module(ABC):
             length_single_compartment: um.
         """
         zero_vec = jnp.zeros_like(voltages)
-        current = convert_point_process_to_distributed(
-            i_stim, radius[i_inds], length_single_compartment[i_inds]
-        )
+        current = convert_point_process_to_distributed(i_stim, area[i_inds])
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),
