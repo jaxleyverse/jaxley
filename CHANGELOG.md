@@ -1,7 +1,7 @@
 # 0.11.0 (pre-release)
 
 ### 🛠️ Internal updates
-- refactor of the graph import. Now more better, more faster and has fewer lines (#660, @jnsbck)
+- refactor of the graph import. Now much faster with >10x speedups on some morphologies and many fewer lines (#660, @jnsbck)
 
 
 # 0.10.0
