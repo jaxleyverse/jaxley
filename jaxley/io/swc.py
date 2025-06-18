@@ -15,7 +15,7 @@ def read_swc(
     assign_groups: bool = True,
     backend: str = "graph",
     ignore_swc_tracing_interruptions: bool = True,
-    relevant_type_ids: Optional[List[int]] = None,
+    relevant_type_ids: Optional[List[int]] = [1, 2, 3, 4],
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 

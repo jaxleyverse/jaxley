@@ -23,7 +23,7 @@ from jaxley import connect
 from jaxley.channels import HH
 from jaxley.channels.pospischil import K, Leak, Na
 from jaxley.io.graph import (
-    _add_missing_graph_attrs,
+    _add_missing_swc_attrs,
     build_compartment_graph,
     from_graph,
     to_swc_graph,
@@ -106,13 +106,13 @@ def test_graph_import_export_cycle(
             [d for i, d in module_graph.nodes(data=True)],
             index=module_graph.nodes,
         )
-        node_df = node_df.loc[node_df["type"] != "branchpoint"].sort_index()
+        node_df = node_df.loc[~node_df["branchpoint"]].sort_index()
 
         re_node_df = pd.DataFrame(
             [d for i, d in re_module_graph.nodes(data=True)],
             index=re_module_graph.nodes,
         )
-        re_node_df = re_node_df.loc[re_node_df["type"] != "branchpoint"].sort_index()
+        re_node_df = re_node_df.loc[~re_node_df["branchpoint"]].sort_index()
         assert np.all(equal_both_nan_or_empty_df(node_df, re_node_df))
 
         edges = pd.DataFrame(
@@ -184,7 +184,7 @@ def test_trace_branches(file):
 
     nx_branch_lens = []
     for n in comp_graph.nodes:
-        if comp_graph.nodes[n]["type"] == "comp":
+        if not comp_graph.nodes[n]["branchpoint"]:
             nx_branch_lens.append(comp_graph.nodes[n]["length"])
     nx_branch_lens = np.sort(nx_branch_lens)
 
@@ -281,7 +281,7 @@ def test_edges_only_to_jaxley():
     ]
     for edges in sets_of_edges:
         graph = nx.Graph(edges)
-        swc_graph = _add_missing_graph_attrs(graph)
+        swc_graph = _add_missing_swc_attrs(graph)
         comp_graph = build_compartment_graph(swc_graph, ncomp=1, min_radius=1.0)
         edge_module = from_graph(comp_graph)
 
