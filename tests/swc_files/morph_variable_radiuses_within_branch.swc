@@ -1,0 +1,8 @@
+# A toy SWC file written by @michaeldeistler. It creates a single branches where the
+# first node (think of the soma) is much thicker than the rest. However, all type_ids
+# are the same, so they get lumped into one branch. This is an important test case
+# to check if area, and axial resistivities get computed correctly.
+1 1 0.0  0.0 0.0 15.0 -1
+2 1 0.0 40.0 0.0 0.2 1
+3 1 0.0 80.0 0.0 0.2 2
+4 1 0.0 120.0 0.0 0.2 3

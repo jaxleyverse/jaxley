@@ -2,10 +2,12 @@
 
 ### 🐛 Bug fixes
 
-- fixup for computing the membrane area from SWC files when the radius within a
-compartment is not constant. This fix can have an impact on simulation results. The
-updated computation of membrane area matches that of the NEURON simulator (#662,
-@michaeldeistler, thanks to @VENOM314 for reporting).
+- fixup for computing the membrane area and the axial resistivity from SWC files when
+the radius within a compartment is not constant. This fix can have an impact on
+simulation results. The updated computation of membrane area matches that of the
+NEURON simulator (#662, @michaeldeistler, thanks to @VENOM314 for reporting).
+- avoid `raise` when calling `set_ncomp()` on morphologies that had `ncomp=1` and that
+already have channels inserted (#662, @michaeldeistler).
 
 ### 🛠️ Internal updates
 

@@ -23,7 +23,10 @@ class Compartment(Module):
     compartment_params: Dict = {
         "length": 10.0,  # um
         "radius": 1.0,  # um
-        "area": 2 * np.pi * 10.0 * 1.0,  # um^2
+        "area": 2.0 * jnp.pi * 10.0 * 1.0,  # um^2, 2*pi*r*l.
+        "volume": jnp.pi * 1.0**2 * 10.0,  # um^2, 2*pi*r^2*l.
+        "resistive_load_out": 10.0 / 1.0**2,  # 1 / um, l/r^2.
+        "resistive_load_in": 10.0 / 1.0**2,  # 1 / um, l/r^2.
         "axial_resistivity": 5_000.0,  # ohm cm
         "capacitance": 1.0,  # uF/cm^2
     }
@@ -75,7 +78,7 @@ class Compartment(Module):
         It also initializes `_comp_edges_in_view` and `_branchpoints_in_view`."""
         # Compartment edges.
         self._comp_edges = pd.DataFrame().from_dict(
-            {"source": [], "sink": [], "type": []}
+            {"source": [], "sink": [], "ordered": [], "type": []}
         )
 
         # Branchpoints.

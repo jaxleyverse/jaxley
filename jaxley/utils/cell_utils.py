@@ -12,11 +12,12 @@ from jax import vmap
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
-def radius_and_area_from_xyzr(
+def morph_attrs_from_xyzr(
     xyzr: np.ndarray,
     min_radius: Optional[float],
+    ncomp: int,
 ) -> float:
-    """Return the radius of a compartment given its SWC file xyzr.
+    """Return radius, area, volume, and resistive loads of a comp given its SWC xyzr.
 
     Args:
         radius_fns: Functions which, given compartment locations return the radius.
@@ -27,35 +28,38 @@ def radius_and_area_from_xyzr(
     # Extract 3D coordinates and radii
     positions = xyzr[:, :3]  # shape (N, 3): x, y, z
     radii = xyzr[:, 3]  # shape (N,): radius at each point
-    # print("radii", radii)
 
     if len(xyzr) > 1:
         # Compute Euclidean distances between consecutive points
         position_deltas = np.diff(positions, axis=0)  # shape (N-1, 3)
         segment_lengths = np.linalg.norm(position_deltas, axis=1)  # shape (N-1,)
 
-        # Radii at start and end of each frustum
-        radius_start = radii[:-1]
-        radius_end = radii[1:]
-        delta_radii = radius_end - radius_start
+        avg_radius = swc_radius(segment_lengths, radii)
+        total_surface_area = swc_area(segment_lengths, radii)
+        total_volume = swc_volume(segment_lengths, radii)
 
-        # Slant height of each frustum (NEURON uses this)
-        slant_lengths = np.sqrt(delta_radii**2 + segment_lengths**2)
+        # Finally, we compute the source and sink frustums. For this, we first have
+        # to split the xyzr into two: the ones on the left half of the compartment,
+        # and the ones on the right half.
+        xyzr_split = split_xyzr_into_equal_length_segments(xyzr, 2)
+        frustum = []
+        for xyzr_half in xyzr_split:
+            # Extract 3D coordinates and radii
+            positions_half = xyzr_half[:, :3]  # shape (N, 3): x, y, z
+            radii_half = xyzr_half[:, 3]  # shape (N,): radius at each point
 
-        # NEURON-style surface area of each frustum
-        frustum_surface_areas = np.pi * (radius_start + radius_end) * slant_lengths
-        total_surface_area = np.sum(frustum_surface_areas)
-
-        # Weighted average radius, trapezoidal weighting over length
-        radius_weights = np.zeros(len(segment_lengths) + 1)
-        radius_weights[1:] += segment_lengths
-        radius_weights[:-1] += segment_lengths
-        radius_weights /= np.sum(radius_weights)
-        avg_radius = np.sum(radii * radius_weights)
+            # Compute Euclidean distances between consecutive points
+            position_deltas_half = np.diff(positions_half, axis=0)  # shape (N-1, 3)
+            segment_lengths_half = np.linalg.norm(
+                position_deltas_half, axis=1
+            )  # shape (N-1,)
+            frustum.append(swc_frustum(segment_lengths_half, radii_half))
     else:
-        print("Problem!")
         avg_radius = radii.mean()
-        total_surface_area = 4 * np.pi * radii[0] ** 2
+        total_surface_area = 4 * np.pi * radii[0] ** 2 / ncomp  # Surface of a sphere.
+        total_volume = 4 / 3 * np.pi * radii[0] ** 3 / ncomp  # Volume of a sphere.
+        # length / 2 / radius^2 = radius / 2 / radius^2 = 1 / radius / 2
+        frustum = [1 / radii[0] / 2] * 2
 
     if min_radius is None:
         assert (
@@ -67,7 +71,72 @@ def radius_and_area_from_xyzr(
             if (avg_radius < min_radius or np.isnan(avg_radius))
             else avg_radius
         )
-    return avg_radius, total_surface_area
+    return avg_radius, total_surface_area, total_volume, *frustum
+
+
+def swc_radius(lengths, radii):
+    radius_weights = np.zeros(len(lengths) + 1)
+    radius_weights[1:] += lengths
+    radius_weights[:-1] += lengths
+    radius_weights /= np.sum(radius_weights)
+    return np.sum(radii * radius_weights)
+
+
+def swc_area(lengths, radii):
+    radius_start = radii[:-1]
+    radius_end = radii[1:]
+    delta_radii = radius_end - radius_start
+    slant_lengths = np.sqrt(delta_radii**2 + lengths**2)
+    frustum_surface_areas = np.pi * (radius_start + radius_end) * slant_lengths
+    return np.sum(frustum_surface_areas)
+
+
+def swc_volume(lengths, radii):
+    radius_start = radii[:-1]
+    radius_end = radii[1:]
+    volume = (
+        (np.pi / 3)
+        * lengths
+        * (radius_start**2 + radius_start * radius_end + radius_end**2)
+    )
+    return np.sum(volume)
+
+
+def swc_frustum(lengths, radii):
+    lengths = np.asarray(lengths)
+    radius_start = np.asarray(radii[:-1])
+    radius_end = np.asarray(radii[1:])
+    delta_radius = radius_end - radius_start
+
+    segment_integrals = np.empty_like(lengths)
+
+    # Segments with constant radius.
+    is_constant_radius = np.isclose(delta_radius, 0)
+    segment_integrals[is_constant_radius] = (
+        lengths[is_constant_radius] / radius_start[is_constant_radius] ** 2
+    )
+
+    # Segments with varying radius (truncated cone).
+    is_varying_radius = ~is_constant_radius
+    segment_integrals[is_varying_radius] = (
+        lengths[is_varying_radius]
+        / delta_radius[is_varying_radius]
+        * (1 / radius_start[is_varying_radius] - 1 / radius_end[is_varying_radius])
+    )
+
+    return np.sum(segment_integrals) * 2
+
+
+def cylinder_area(length, radius):
+    return 2.0 * jnp.pi * radius * length
+
+
+def cylinder_frustum(length, radius):
+    return length / radius**2
+
+
+def cylinder_volume(length, radius):
+    return length * radius**2 * jnp.pi
 
 
 def split_xyzr_into_equal_length_segments(
@@ -112,6 +181,11 @@ def split_xyzr_into_equal_length_segments(
     idxs = np.searchsorted(cum_dists, target_dists, side="right") - 1
     idxs = np.clip(idxs, 0, len(xyz) - 2)  # Ensure valid indices
     local_dist = target_dists - cum_dists[idxs]
+
+    # When two traced SWC are right on top of each other, their dists=0. Then, when
+    # these points lie exactly at the point where the xyz is supposed to be split,
+    # we get `segment_lens=0`, which causes frac to be infinity.
+    dists = np.where(dists < 1e-14, 1e-14, dists)
     segment_lens = dists[idxs]
     frac = (local_dist / segment_lens)[:, None]  # shape (n, 1)
 
@@ -357,7 +431,7 @@ def compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2):
     )
 
 
-def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2):
+def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2, area1):
     """Return the voltage coupling conductance between two compartments.
 
     Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
@@ -380,8 +454,7 @@ def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2):
     `length_single_compartment`: um
     """
     g_long = compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2)
-    surface_area = 2 * pi * rad1 * l1
-    return g_long / surface_area
+    return g_long / area1
 
 
 def g_long_by_volume(rad1, rad2, g_a1, g_a2, l1, l2):
@@ -508,6 +581,23 @@ def query_channel_states_and_params(d, keys, idcs):
     return dict(zip(keys, (v[idcs] for v in map(d.get, keys))))
 
 
+def compute_comp_surface_areas(
+    params: Dict[str, jnp.ndarray],
+    xyzr: List[jnp.ndarray],
+) -> Dict[str, jnp.ndarray]:
+    """Return the membrane surface area of every compartment.
+
+    This function loops over compartments. It checks whether xyzr is available for
+    the a given compartment, and then either:
+    - integrates the membrane area with a cone approximation (if xyzr is available).
+    - uses `2 * pi * r * l` (if xyzr is _not_ available).
+
+    Args:
+        params: Dictionary of parameters, including radius and length.
+    """
+    return 2 * jnp.pi * params["radius"] * params["length"]
+
+
 def compute_axial_conductances(
     comp_edges: pd.DataFrame,
     params: Dict[str, jnp.ndarray],
@@ -520,95 +610,64 @@ def compute_axial_conductances(
     """
     ordered_conds = jnp.zeros((1 + len(diffusion_states), len(comp_edges)))
 
+    axial_conds = jnp.stack(
+        [1 / params["axial_resistivity"]]
+        + [params[f"axial_diffusion_{d}"] for d in diffusion_states]
+    )
+    # These are still _compartment_ properties.
+    comp_source_r_a = params["resistive_load_out"] / 2.0 / jnp.pi / axial_conds
+    comp_sink_r_a = params["resistive_load_in"] / 2.0 / jnp.pi / axial_conds
+
+    # comp_r_a has shape (N, 2, num_comps). Here, N is the number of states that are
+    # diffused (including voltage).
+    comp_r_a = jnp.stack([comp_sink_r_a, comp_source_r_a], axis=1)
+
     # `Compartment-to-compartment` (c2c) axial coupling conductances.
     condition = comp_edges["type"].to_numpy() == 0
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
+    ordered_edge = np.asarray(comp_edges[condition]["ordered"].to_list())
 
-    axial_conductances = jnp.stack(
-        [1 / params["axial_resistivity"]]
-        + [params[f"axial_diffusion_{d}"] for d in diffusion_states]
-    )
-
+    # Now we compute c2c _comp_edges_ properties.
     if len(sink_comp_inds) > 0:
-        # For voltages, divide by the surface area.
-        conds_c2c = vmap(
-            vmap(g_long_by_surface_area, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][source_comp_inds],
-            axial_conductances[:1, sink_comp_inds],
-            axial_conductances[:1, source_comp_inds],
-            params["length"][sink_comp_inds],
-            params["length"][source_comp_inds],
-        )
-        # .at[0] because we only divide the axial voltage conductances by the
+        r_a_of_sources = comp_r_a[:, ordered_edge, source_comp_inds]
+        r_a_of_sinks = comp_r_a[:, 1 - ordered_edge, sink_comp_inds]
+        r_a = r_a_of_sources + r_a_of_sinks
+
+        # Voltage diffusion.
+        conds_c2c = 1 / r_a[:1] / params["area"][sink_comp_inds]
+
+        # We only divide the axial _voltage_ conductances by the
         # capacitance, _not_ the axial conductances of the diffusing ions.
-        conds_c2c = conds_c2c.at[0].divide(params["capacitance"][sink_comp_inds])
+        conds_c2c /= params["capacitance"][sink_comp_inds]
         # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-        conds_c2c = conds_c2c.at[0].multiply(10**7)
+        conds_c2c *= 10**7
 
         # For ion diffusion, we have to divide by the volume, not the surface area.
-        conds_diffusion = vmap(
-            vmap(g_long_by_volume, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][source_comp_inds],
-            axial_conductances[1:, sink_comp_inds],
-            axial_conductances[1:, source_comp_inds],
-            params["length"][sink_comp_inds],
-            params["length"][source_comp_inds],
-        )
-        conds_c2c = jnp.concatenate([conds_c2c, conds_diffusion])
-    else:
-        conds_c2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
+        conds_diffusion = 1 / r_a[1:] / params["volume"][sink_comp_inds]
+        conds_c2c = jnp.concatenate([conds_c2c, conds_diffusion], axis=0)
 
-    if len(sink_comp_inds) > 0:
         inds = jnp.asarray(comp_edges[condition].index)
         ordered_conds = ordered_conds.at[:, inds].set(conds_c2c)
 
     # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
     condition = comp_edges["type"].isin([1, 2])
     sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
+    ordered_edge = np.asarray(comp_edges[condition]["ordered"].to_list())
 
     if len(sink_comp_inds) > 0:
-        # For voltages, divide by the surface area.
-        conds_bp2c = vmap(
-            vmap(g_long_by_surface_area, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][sink_comp_inds],
-            axial_conductances[:1, sink_comp_inds],
-            axial_conductances[:1, sink_comp_inds],
-            params["length"][sink_comp_inds],
-            jnp.zeros_like(params["length"][sink_comp_inds]),  # l=0 for branchpoint.
-        )
-        # .at[0] because we only divide the axial voltage conductances by the
-        # capacitance, _not_ the axial conductances of the diffusing ions.
-        conds_bp2c = conds_bp2c.at[0].divide(params["capacitance"][sink_comp_inds])
+        r_a = comp_r_a[:, 1 - ordered_edge, sink_comp_inds]
+
+        # Voltage diffusion.
+        conds_bp2c = 1 / r_a[:1] / params["area"][sink_comp_inds]
+        conds_bp2c /= params["capacitance"][sink_comp_inds]
         # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-        conds_bp2c = conds_bp2c.at[0].multiply(10**7)
+        conds_bp2c *= 10**7
 
         # For ion diffusion, we have to divide by the volume, not the surface area.
-        conds_bp2c_diffusion = vmap(
-            vmap(g_long_by_volume, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][sink_comp_inds],
-            axial_conductances[1:, sink_comp_inds],
-            axial_conductances[1:, sink_comp_inds],
-            params["length"][sink_comp_inds],
-            jnp.zeros_like(params["length"][sink_comp_inds]),  # l=0 for branchpoint.
-        )
-        conds_bp2c = jnp.concatenate([conds_bp2c, conds_bp2c_diffusion])
-    else:
-        conds_bp2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
+        conds_diffusion = 1 / r_a[1:] / params["volume"][sink_comp_inds]
+        conds_bp2c = jnp.concatenate([conds_bp2c, conds_diffusion], axis=0)
 
-    if len(sink_comp_inds) > 0:
         inds = jnp.asarray(comp_edges[condition].index)
         ordered_conds = ordered_conds.at[:, inds].set(conds_bp2c)
 
@@ -616,31 +675,18 @@ def compute_axial_conductances(
     condition = comp_edges["type"].isin([3, 4])
     source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
 
-    if len(source_comp_inds) > 0:
-        conds_c2bp = vmap(
-            vmap(compute_impact_on_node, in_axes=(0, 0, 0)), in_axes=(None, 0, None)
-        )(
-            params["radius"][source_comp_inds],
-            axial_conductances[:, source_comp_inds],
-            params["length"][source_comp_inds],
-        )
-        # For numerical stability. These values are very small, but their scale
-        # does not matter.
-        conds_c2bp *= 1_000
-    else:
-        conds_c2bp = jnp.asarray([[]] * (len(diffusion_states) + 1))
+    comp_source_g_a = 1 / params["resistive_load_out"] * axial_conds
+    comp_sink_g_a = 1 / params["resistive_load_in"] * axial_conds
+    comp_g_a = jnp.stack([comp_sink_g_a, comp_source_g_a], axis=1)
 
     if len(source_comp_inds) > 0:
+        conds_c2bp = comp_g_a[:, 1 - ordered_edge, source_comp_inds]
         inds = jnp.asarray(comp_edges[condition].index)
         ordered_conds = ordered_conds.at[:, inds].set(conds_c2bp)
 
-    # All axial coupling conductances.
-    all_coupling_conds = jnp.concatenate([conds_c2c, conds_bp2c, conds_c2bp], axis=1)
-
-    conds_as_dict = {}
+    # Reformat the conductances along the key of the quantity being diffused.
     ordered_conds_as_dict = {}
     for i, key in enumerate(["v"] + diffusion_states):
-        conds_as_dict[key] = all_coupling_conds[i]
         ordered_conds_as_dict[key] = ordered_conds[i]
 
     return ordered_conds_as_dict
