@@ -231,6 +231,42 @@ def _find_swc_tracing_interruptions(G: nx.DiGraph) -> list[tuple[int, int]]:
     return interrupt_edges
 
 
+def _compute_long_branch_splits(
+    G: nx.DiGraph, branches: list[list[int]], max_len: float
+) -> list[list[int]]:
+    """Find branches that are too long and split them at equidistant points.
+
+    If branch >= 1*max_len, then we split it down the middle. If branch >= 2*max_len,
+    then we split it into 3 parts. And so on. This ensures that the resulting sub-branches
+    are of similar length and all have a length <= max_len.
+
+    Args:
+        G: NetworkX graph tracing of swc file.
+        branches: List of branches, each represented as list of nodes.
+        max_len: Maximum length any branch cannot exceed.
+
+    Returns:
+        Edges where to split branches, to ensure that no branch exceeds max_len and such
+        that the resulting sub-branches are of similar length.
+    """
+    split_edges = []
+    node_attrs = lambda n, keys: [G.nodes[n][key] for key in keys]
+    branches_wo_single_soma = (branch for branch in branches if len(branch) > 2)
+    for branch in branches_wo_single_soma:
+        branch_xyz = np.array([node_attrs(i, ["x", "y", "z"]) for i in branch])
+
+        # split at equidistant points along the branch if branch_len > max_len
+        # this ensure that tracing order does not matter!
+        path_lens = np.linalg.norm(branch_xyz[1:] - branch_xyz[:-1], axis=1).cumsum()
+        num_splits = int(path_lens.max() // max_len)
+        branch_ends = np.linspace(0, path_lens.max(), num_splits + 2)
+
+        comp_in_branch = branch_ends[1:-1, None] >= path_lens
+        break_at = [(branch[i - 1], branch[i]) for i in comp_in_branch.sum(axis=1)]
+        split_edges += break_at
+    return split_edges
+
+
 def list_branches(
     swc_graph: nx.DiGraph,
     source: Optional[int] = None,
@@ -263,31 +299,31 @@ def list_branches(
     Returns:
         A list of linear paths in the graph. Each path is represented as list of nodes.
     """
-    directed_graph = swc_graph.copy()
-    undirected_graph = swc_graph.copy().to_undirected()
+    dir_graph = swc_graph.copy()
+    undir_graph = swc_graph.copy().to_undirected()
     branches = []
     branchpoints = set()
     visited = set()
 
     was_visited = lambda n1, n2: (n1, n2) in visited or (n2, n1) in visited
-    id_of = lambda n: undirected_graph.nodes[n]["id"]
+    id_of = lambda n: undir_graph.nodes[n]["id"]
     is_soma = lambda n: id_of(n) == 1
-    soma_nodes = lambda: [i for i, n in undirected_graph.nodes.items() if n["id"] == 1]
+    soma_nodes = lambda: [i for i, n in undir_graph.nodes.items() if n["id"] == 1]
 
     def same_id(graph: nx.Graph, n1: int, n2: int) -> bool:
         has_id = lambda n: id_of(n) in relevant_ids if "id" in graph.nodes[n] else False
         return id_of(n1) == id_of(n2) if has_id(n1) and has_id(n2) else True
 
     def is_branchpoint_or_tip(n: int) -> bool:
-        if undirected_graph.degree(n) == 2:
-            i, j = undirected_graph.neighbors(n)
+        if undir_graph.degree(n) == 2:
+            i, j = undir_graph.neighbors(n)
             # trace dir matters here! For segment [0,1,2,3] with node IDs: [1,1,2,2]
             # -> [[1,1], [1,2,2]] => node 1 is taken as branchpoint
             # <- [[2,2], [2,1,1]] => node 2 is taken as branchpoint
-            return not same_id(undirected_graph, n, j)
+            return not same_id(undir_graph, n, j)
 
-        is_leaf = undirected_graph.degree(n) <= 1
-        is_branching = undirected_graph.degree(n) > 2
+        is_leaf = undir_graph.degree(n) <= 1
+        is_branching = undir_graph.degree(n) > 2
         return is_leaf or is_branching
 
     def walk_path(start: int, succ: int) -> List[int]:
@@ -295,10 +331,8 @@ def list_branches(
         path = [start, succ]
         visited.add((start, succ))
 
-        while undirected_graph.degree(succ) == 2:
-            next_node = next(
-                n for n in undirected_graph.neighbors(succ) if n != path[-2]
-            )
+        while undir_graph.degree(succ) == 2:
+            next_node = next(n for n in undir_graph.neighbors(succ) if n != path[-2])
 
             if was_visited(succ, next_node) or is_branchpoint_or_tip(succ):
                 break
@@ -309,45 +343,34 @@ def list_branches(
 
         return path
 
-    leaf = next(n for n in undirected_graph.nodes if undirected_graph.degree(n) == 1)
+    # traverse graph and collect branches
+    leaf = next(n for n in undir_graph.nodes if undir_graph.degree(n) == 1)
     source = leaf if source is None else source
     single_soma = len(soma_nodes()) == 1
-    for node in nx.dfs_tree(undirected_graph, source):
+    for node in nx.dfs_tree(undir_graph, source):
         if single_soma and is_soma(node):  # a single soma is its own branch
             branches.append([node])
 
         elif is_branchpoint_or_tip(node):
             branchpoints.add(node)
-            for succ in undirected_graph.neighbors(node):
+            for succ in undir_graph.neighbors(node):
                 if not was_visited(node, succ):
                     branches.append(walk_path(node, succ))
 
     # split branches (if tracing was interrupted or max_len is reached)
     if not ignore_swc_tracing_interruptions:  # TODO: fix!
-        interupted_edges = _find_swc_tracing_interruptions(directed_graph)
+        interupted_edges = _find_swc_tracing_interruptions(dir_graph)
         branches = _split_branches(branches, interupted_edges)
         branchpoints.update(set(p for (p, n) in interupted_edges))
 
-    # split max_len after accounting for interrupted branches
+    # max_len splitting only after accounting for interrupted branches
     if max_len is not None:
-        node_attrs = lambda n, keys: [undirected_graph.nodes[n][key] for key in keys]
-        exceed_edges = []
-        for branch in branches:
-            branch_xyz = np.array([node_attrs(i, ["x", "y", "z"]) for i in branch])
-
-            path_len = np.linalg.norm(branch_xyz[1:] - branch_xyz[:-1], axis=1).cumsum()
-            path_len = np.concatenate([[0], path_len])
-
-            exceed_inds = np.where(np.diff(path_len // max_len) > 0)[0]
-            exceed_edges += [(branch[i], branch[i + 1]) for i in exceed_inds]
-
-        branches = _split_branches(branches, exceed_edges)
-        branchpoints.update(set(p for (p, n) in exceed_edges))
+        split_edges = _compute_long_branch_splits(dir_graph, branches, max_len)
+        branches = _split_branches(branches, split_edges)
+        branchpoints.update(set(p for (p, n) in split_edges))
 
     if return_branchpoints:
-        branchpoint_edges = sum(
-            [list(undirected_graph.edges(n)) for n in branchpoints], []
-        )
+        branchpoint_edges = sum([list(undir_graph.edges(n)) for n in branchpoints], [])
         return branches, branchpoints, branchpoint_edges
     return branches
 
@@ -458,6 +481,10 @@ def build_compartment_graph(
     branch_nodes, branch_edges = [], []
     xyzr = []
     for branch_idx, branch in enumerate(branches):
+        # ensures comp_index increases with node_index along branch
+        # this is necessary for branch.loc() to work
+        branch = branch[::-1] if branch[0] < branch[-1] else branch
+
         node_attrs = nodes_df.loc[branch]
 
         compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
@@ -551,6 +578,7 @@ def build_compartment_graph(
     global_attrs = pd.Series({"xyzr": xyzr})
     G = pandas_to_nx(comp_df, comp_edges_df, global_attrs)
     G = nx.relabel_nodes(G, {n: i for i, n in enumerate(G.nodes)})
+    # TODO: do we also need to ensure that the node dict is ordered?
     return G
 
 
@@ -573,16 +601,18 @@ def _add_jaxley_meta_data(
 
     # Description of SWC file format:
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+    ids = nodes_df["id"].unique()
     group_names = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
+    group_names.update({i: f"custom_id{i}" for i in ids if i not in group_names})
 
     # rename/reformat existing columns
-    for group_id in relevant_type_ids:
-        where_group = nodes_df["id"] == group_id
-        if where_group.any():
-            group_name = group_names.get(group_id, "custom")
-            global_attrs["group_names"].append(group_name)
-            nodes_df[group_name] = where_group
-    nodes_df = nodes_df.drop(columns=["id"])
+    one_hot_ids = pd.get_dummies(nodes_df["id"])
+    one_hot_ids = one_hot_ids[
+        [c for c in one_hot_ids.columns if c in relevant_type_ids]
+    ]
+    groups = one_hot_ids.rename(columns=group_names)
+    nodes_df = pd.concat([nodes_df.drop("id", axis=1), groups], axis=1)
+
     jaxley_keys = {
         "r": "radius",
         "l": "length",
@@ -602,17 +632,71 @@ def _add_jaxley_meta_data(
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
 
 
-def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
-    """Replace branchpoint nodes with edges connecting parent and children.
+def _determine_solve_order(G: nx.DiGraph, source=None) -> nx.DiGraph:
+    """Determine in which order to solve the graph.
 
-    Also does a depth-first traversal of the graph and reorders the edges."""
+    For this, the graph is traversed depth first along the undirected edges. If edges
+    in the directed graph are oriented in the wrong direction, they are flipped. In
+    addition, a solve_index is added to the nodes.
+
+    Args:
+        G: The graph to determine the solve order of.
+        source: The source node to start the traversal from. If `None`, the first leaf
+            node is used.
+
+    Returns:
+        The graph with the solve order determined.
+    """
     # reorder graph depth-first TODO: Which order to choose?
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
-    for u, v in nx.dfs_edges(G.to_undirected(), leaf if source is None else source):
+    source = leaf if source is None else source
+
+    # branchpoints cannot act as solve roots since they have to be replaced by a set of
+    # edges. For this branchpoints need a parent node for the order to be uniquely
+    # determined. For details see `_replace_branchpoints_with_edges``.
+    assert not G.nodes[source]["branchpoint"], "Source cannot be a branchpoint"
+
+    for u, v in nx.dfs_edges(G.to_undirected(), source):
         if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
             G.add_edge(u, v, **G.get_edge_data(v, u))
             G.remove_edge(v, u)
 
+    dfs_node_order = {n: i for i, n in enumerate(nx.dfs_tree(G, source))}
+    nx.set_node_attributes(G, dfs_node_order, "solve_index")
+
+    # # TODO: Is all of the following really necessary?
+    # # comp_index along branches has to increase monotonically for branch.loc() to work
+    # G = nx.relabel_nodes(G, dfs_node_order)
+    # comp_df = nx_to_pandas(G)[0]
+    # is_comp = ~comp_df["branchpoint"]
+    # comp_df.loc[is_comp, "comp_index"] = np.arange(sum(is_comp))
+    # nx.set_node_attributes(G, comp_df["comp_index"], "comp_index")
+
+    return G
+
+
+def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
+    """Replace branchpoint nodes with edges connecting parent and children.
+
+    This depends on the directionality of the edges! To ensure that the edges are
+    correctly oriented, you can use `_determine_solve_order()` to reorder the graph
+    before calling this function. (x = branchpoint, o = compartment)
+
+                Example 1             |            Example 2
+    ----------------------------------|----------------------------------
+     o --> x --> o          o --> o   | o <-- x <-- o    o <-- o
+           |                |         |       |                |
+           v                v         |       v                v
+           o                o         |       o                o
+
+    Args:
+        G: The graph to replace branchpoints with edges.
+
+    Returns:
+        The graph with branchpoints replaced with edges.
+    """
+    # TODO: fix source kwarg
+    G = G.copy()
     G.add_edges_from([(i, j, {"branch_edge": False}) for i, j in G.edges])
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
 
@@ -622,8 +706,8 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph, source=None) -> nx.DiGraph:
         children = G.successors(n)
 
         # remove branchpoint and connect parent to children
-        G.remove_node(n)
         G.add_edges_from([(parent, c) for c in children], **branch_edge_attrs)
+        G.remove_node(n)
 
     for n in G.nodes:
         del G.nodes[n]["branchpoint"]  # del branchpoint attr
@@ -723,6 +807,7 @@ def _build_module(G: nx.DiGraph) -> Module:
     return module
 
 
+# TODO: add kwarg functionality
 def from_graph(
     comp_graph: nx.DiGraph,
     assign_groups: bool = True,
@@ -764,7 +849,9 @@ def from_graph(
     """
 
     comp_graph = _add_jaxley_meta_data(comp_graph)
-    solve_graph = _replace_branchpoints_with_edges(comp_graph, source=solve_root)
+    # edge direction matter from here on
+    comp_graph = _determine_solve_order(comp_graph, source=solve_root)
+    solve_graph = _replace_branchpoints_with_edges(comp_graph)
     module = _build_module(solve_graph)
     return module
 
@@ -872,17 +959,14 @@ def vis_compartment_graph(
         comp_graph = to_graph(cell)
         vis_compartment_graph(comp_graph)
     """
-    color_map = []
-    for n in comp_graph.nodes:
-        if comp_graph.nodes[n].get("type") == "comp":
-            new_col = comp_color
-        elif comp_graph.nodes[n].get("type") == "branchpoint":
-            new_col = branchpoint_color
-        color_map.append(new_col)
+    cmap = lambda x: branchpoint_color if x else comp_color
+    colors = [
+        cmap(comp_graph.nodes[n].get("branchpoint", False)) for n in comp_graph.nodes
+    ]
 
     pos = {k: (v["x"], v["y"]) for k, v in comp_graph.nodes.items()}
-    if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(4, 4))
+
+    ax = plt.subplots(1, 1, figsize=(4, 4))[1] if ax is None else ax
 
     nx.draw(
         comp_graph,
@@ -891,7 +975,7 @@ def vis_compartment_graph(
         font_size=font_size,
         node_size=node_size,
         ax=ax,
-        node_color=color_map,
+        node_color=colors,
         arrowsize=arrowsize,
     )
 
