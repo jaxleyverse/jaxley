@@ -29,23 +29,24 @@ from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     _get_comp_edges_in_view,
-    compute_axial_conductances,
-    compute_comp_surface_areas,
     compute_levels,
     convert_point_process_to_distributed,
-    cylinder_area,
-    cylinder_frustum,
-    cylinder_volume,
     interpolate_xyzr,
-    morph_attrs_from_xyzr,
     params_to_pstate,
     query_channel_states_and_params,
-    split_xyzr_into_equal_length_segments,
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
+from jaxley.utils.morph_attributes import (
+    compute_axial_conductances,
+    cylinder_area,
+    cylinder_resistive_load,
+    cylinder_volume,
+    morph_attrs_from_xyzr,
+    split_xyzr_into_equal_length_segments,
+)
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
     comp_edges_to_indices,
@@ -1105,7 +1106,9 @@ class Module(ABC):
                 # update 1) area, 2) source_frustum, and 3) sink_frustum.
                 l = self.base.nodes["length"]
                 r = self.base.nodes["radius"]
-                resistive_load = cylinder_frustum(l, r)
+                # l/2 because we want the input load (left half of the cylinder) and
+                # the output load (right half of the cylinder).
+                resistive_load = cylinder_resistive_load(l / 2, r)
                 self.base.nodes.loc[rows, "area"] = cylinder_area(l, r)
                 self.base.nodes.loc[rows, "volume"] = cylinder_volume(l, r)
                 self.base.nodes.loc[rows, "resistive_load_out"] = resistive_load
@@ -1313,7 +1316,9 @@ class Module(ABC):
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
             l = comp_lengths
             r = within_branch_radiuses[0]
-            resistive_load = cylinder_frustum(l, r)
+            # l/2 because we want the input load (left half of the cylinder) and
+            # the output load (right half of the cylinder).
+            resistive_load = cylinder_resistive_load(l / 2, r)
             view["area"] = cylinder_area(l, r)
             view["volume"] = cylinder_volume(l, r)
             view["resistive_load_out"] = resistive_load
@@ -1674,7 +1679,9 @@ class Module(ABC):
             if key in ["radius", "length"]:
                 l = params["length"][inds]
                 r = params["radius"][inds]
-                resistive_load = cylinder_frustum(l, r)
+                # l/2 because we want the input load (left half of the cylinder) and
+                # the output load (right half of the cylinder).
+                resistive_load = cylinder_resistive_load(l / 2, r)
                 params["area"] = params["area"].at[inds].set(cylinder_area(l, r))
                 params["volume"] = params["volume"].at[inds].set(cylinder_volume(l, r))
                 params["resistive_load_out"] = (

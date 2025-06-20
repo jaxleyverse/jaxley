@@ -11,6 +11,14 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
+from jaxley.utils.morph_attributes import (
+    compute_axial_conductances,
+    cylinder_area,
+    cylinder_resistive_load,
+    cylinder_volume,
+    morph_attrs_from_xyzr,
+    split_xyzr_into_equal_length_segments,
+)
 
 
 class Compartment(Module):
@@ -23,10 +31,6 @@ class Compartment(Module):
     compartment_params: Dict = {
         "length": 10.0,  # um
         "radius": 1.0,  # um
-        "area": 2.0 * jnp.pi * 10.0 * 1.0,  # um^2, 2*pi*r*l.
-        "volume": jnp.pi * 1.0**2 * 10.0,  # um^2, 2*pi*r^2*l.
-        "resistive_load_out": 10.0 / 1.0**2,  # 1 / um, l/r^2.
-        "resistive_load_in": 10.0 / 1.0**2,  # 1 / um, l/r^2.
         "axial_resistivity": 5_000.0,  # ohm cm
         "capacitance": 1.0,  # uF/cm^2
     }
@@ -62,6 +66,16 @@ class Compartment(Module):
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
+
+        l = self.compartment_params["length"]
+        r = self.compartment_params["radius"]
+        # l/2 because we want the input load (left half of the cylinder) and
+        # the output load (right half of the cylinder).
+        resistive_load = cylinder_resistive_load(l / 2, r)
+        self.nodes["area"] = cylinder_area(l, r)
+        self.nodes["volume"] = cylinder_volume(l, r)
+        self.nodes["resistive_load_in"] = resistive_load
+        self.nodes["resistive_load_out"] = resistive_load
 
         # Initialize the module.
         self.initialize()
