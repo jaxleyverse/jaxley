@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
-from jaxley.utils.cell_utils import (
+from jaxley.utils.cell_utils import v_interp
+from jaxley.utils.morph_attributes import (
     morph_attrs_from_xyzr,
     split_xyzr_into_equal_length_segments,
-    v_interp,
 )
 
 ########################################################################################
