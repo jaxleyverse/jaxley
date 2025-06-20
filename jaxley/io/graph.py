@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Network
-from jaxley.utils.cell_utils import (
-    radius_from_xyzr,
+from jaxley.utils.cell_utils import v_interp
+from jaxley.utils.morph_attributes import (
+    morph_attrs_from_xyzr,
     split_xyzr_into_equal_length_segments,
-    v_interp,
 )
 
 ########################################################################################
@@ -315,7 +315,9 @@ def build_compartment_graph(
 
         # Here, we split xyzr into compartments.
         xyzr_per_comp = split_xyzr_into_equal_length_segments(xyzr, ncomp)
-        radiuses = [radius_from_xyzr(xyzr, min_radius) for xyzr in xyzr_per_comp]
+        morph_attrs = np.asarray(
+            [morph_attrs_from_xyzr(xyzr, min_radius, ncomp) for xyzr in xyzr_per_comp]
+        )
 
         branch_len = branch_data["l"].max()
         if branch_len < 1e-8:
@@ -348,7 +350,11 @@ def build_compartment_graph(
         new_branch_nodes["type"] = "comp"
         comp_offset += ncomp
         new_branch_nodes["xyzr"] = xyzr_per_comp
-        new_branch_nodes["r"] = radiuses
+        new_branch_nodes["r"] = morph_attrs[:, 0]
+        new_branch_nodes["area"] = morph_attrs[:, 1]
+        new_branch_nodes["volume"] = morph_attrs[:, 2]
+        new_branch_nodes["resistive_load_in"] = morph_attrs[:, 3]
+        new_branch_nodes["resistive_load_out"] = morph_attrs[:, 4]
 
         # Add the compartments as nodes to the new `comp_graph`.
         new_branch_nodes = new_branch_nodes.set_index("node_index")

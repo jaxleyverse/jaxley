@@ -11,6 +11,14 @@ from matplotlib.axes import Axes
 from jaxley.modules.base import Module
 from jaxley.utils.cell_utils import compute_children_and_parents
 from jaxley.utils.misc_utils import cumsum_leading_zero
+from jaxley.utils.morph_attributes import (
+    compute_axial_conductances,
+    cylinder_area,
+    cylinder_resistive_load,
+    cylinder_volume,
+    morph_attrs_from_xyzr,
+    split_xyzr_into_equal_length_segments,
+)
 
 
 class Compartment(Module):
@@ -59,6 +67,16 @@ class Compartment(Module):
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
 
+        l = self.compartment_params["length"]
+        r = self.compartment_params["radius"]
+        # l/2 because we want the input load (left half of the cylinder) and
+        # the output load (right half of the cylinder).
+        resistive_load = cylinder_resistive_load(l / 2, r)
+        self.nodes["area"] = cylinder_area(l, r)
+        self.nodes["volume"] = cylinder_volume(l, r)
+        self.nodes["resistive_load_in"] = resistive_load
+        self.nodes["resistive_load_out"] = resistive_load
+
         # Initialize the module.
         self.initialize()
 
@@ -74,7 +92,7 @@ class Compartment(Module):
         It also initializes `_comp_edges_in_view` and `_branchpoints_in_view`."""
         # Compartment edges.
         self._comp_edges = pd.DataFrame().from_dict(
-            {"source": [], "sink": [], "type": []}
+            {"source": [], "sink": [], "ordered": [], "type": []}
         )
 
         # Branchpoints.

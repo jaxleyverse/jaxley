@@ -95,6 +95,7 @@ class Branch(Module):
             {
                 "source": list(range(self.ncomp - 1)) + list(range(1, self.ncomp)),
                 "sink": list(range(1, self.ncomp)) + list(range(self.ncomp - 1)),
+                "ordered": list([1] * (self.ncomp - 1)) + list([0] * (self.ncomp - 1)),
             }
         )
         self._comp_edges["type"] = 0

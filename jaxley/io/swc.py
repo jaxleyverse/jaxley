@@ -9,12 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
-from jaxley.modules import Branch, Cell, Compartment
-from jaxley.utils.cell_utils import (
-    radius_from_xyzr,
-    split_xyzr_into_equal_length_segments,
-)
-from jaxley.utils.misc_utils import deprecated_kwargs
+from jaxley.modules import Cell
 
 
 def _split_long_branches(
@@ -358,81 +353,6 @@ def swc_to_jaxley(
     return parents, pathlengths, radius_fns, types, all_coords_of_branches
 
 
-def read_swc_custom(
-    fname: str,
-    ncomp: Optional[int] = None,
-    max_branch_len: Optional[float] = None,
-    min_radius: Optional[float] = None,
-    assign_groups: bool = True,
-) -> Cell:
-    """Reads SWC file into a `Cell`.
-
-    Jaxley assumes cylindrical compartments and therefore defines length and radius
-    for every compartment. The surface area is then 2*pi*r*length. For branches
-    consisting of a single traced point we assume for them to have area 4*pi*r*r.
-    Therefore, in these cases, we set lenght=2*r.
-
-    Args:
-        fname: Path to the swc file.
-        ncomp: The number of compartments per branch.
-        max_branch_len: If a branch is longer than this value it is split into two
-            branches.
-        min_radius: If the radius of a reconstruction is below this value it is clipped.
-        assign_groups: If True, then the identity of reconstructed points in the SWC
-            file will be used to generate groups `undefined`, `soma`, `axon`, `basal`,
-            `apical`, `custom`. See here:
-            http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-
-    Returns:
-        A `Cell` object.
-    """
-    parents, pathlengths, radius_fns, types, coords_of_branches = swc_to_jaxley(
-        fname, max_branch_len=max_branch_len, sort=True, num_lines=None
-    )
-    nbranches = len(parents)
-
-    comp = Compartment()
-    branch = Branch([comp for _ in range(ncomp)])
-    cell = Cell(
-        [branch for _ in range(nbranches)], parents=parents, xyzr=coords_of_branches
-    )
-    # Also save the radius generating functions in case users post-hoc modify the number
-    # of compartments with `.set_ncomp()`.
-    cell._radius_generating_fns = radius_fns
-
-    lengths_each = np.repeat(pathlengths, ncomp) / ncomp
-    cell.set("length", lengths_each)
-
-    radiuses = []
-    for xyzr_in_branch in coords_of_branches:
-        xyzr_per_comp = split_xyzr_into_equal_length_segments(xyzr_in_branch, ncomp)
-        radiuses += [radius_from_xyzr(xyzr, min_radius) for xyzr in xyzr_per_comp]
-    radiuses_each = np.asarray(radiuses)
-    cell.set("radius", radiuses_each)
-
-    # Description of SWC file format:
-    # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-    ind_name_lookup = {
-        0: "undefined",
-        1: "soma",
-        2: "axon",
-        3: "basal",
-        4: "apical",
-        5: "custom",
-    }
-    types = np.asarray(types).astype(int)
-    if assign_groups:
-        for type_ind in np.unique(types):
-            if type_ind < 5.5:
-                name = ind_name_lookup[type_ind]
-            else:
-                name = f"custom{type_ind}"
-            indices = np.where(types == type_ind)[0].tolist()
-            if len(indices) > 0:
-                cell.branch(indices).add_to_group(name)
-    return cell
-
-
 def read_swc(
     fname: str,
     ncomp: Optional[int] = None,
@@ -472,24 +392,7 @@ def read_swc(
     Returns:
         A `Cell` object."""
 
-    if backend == "custom":
-        # We do not use the deprecation utility because it messes with
-        # `autosummary` for building the docs.
-        warn(
-            "You set `jx.read_swc(..., backend='custom')`. The `custom` option is "
-            "deprecated and will be removed in `Jaxley` version `0.10.0`. Use "
-            "`jx.read_swc(..., backend='graph')` instead. "
-            "If you are experiencing issues with this SWC reader, please open "
-            "a `New issue` on GitHub: https://github.com/jaxleyverse/jaxley/issues"
-        )
-        return read_swc_custom(
-            fname,
-            ncomp=ncomp,
-            max_branch_len=max_branch_len,
-            min_radius=min_radius,
-            assign_groups=assign_groups,
-        )
-    elif backend == "graph":
+    if backend == "graph":
         swc_graph = to_swc_graph(fname)
         comp_graph = build_compartment_graph(
             swc_graph,
