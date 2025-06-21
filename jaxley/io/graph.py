@@ -129,7 +129,9 @@ def compute_xyz(
 ########################################################################################
 
 
-def to_swc_graph(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
+def to_swc_graph(
+    fname: str, num_lines: Optional[int] = None, relevant_ids: List[int] = [1, 2, 3, 4]
+) -> nx.DiGraph:
     # def swc_to_nx(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
     """Read a SWC morphology file into a NetworkX DiGraph.
 
@@ -140,6 +142,8 @@ def to_swc_graph(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
     Args:
         fname: Path to the SWC file
         num_lines: Number of lines to read from the file. If None, all lines are read.
+        relevant_ids: List of ids to include in the graph. Defaults to [1, 2, 3, 4].
+            All other ids are set to 0.
 
     Returns:
         A networkx DiGraph of the traced morphology in the swc file. It has attributes:
@@ -157,8 +161,9 @@ def to_swc_graph(fname: str, num_lines: Optional[int] = None) -> nx.DiGraph:
     i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
 
     graph = nx.DiGraph()
+    fmt_id = lambda id: int(id) if id in relevant_ids else 0
     for i, id, x, y, z, r, p in i_id_xyzr_p.tolist():  # tolist: np.float64 -> float
-        graph.add_node(int(i), **{"id": int(id), "x": x, "y": y, "z": z, "r": r})
+        graph.add_node(int(i), **{"id": fmt_id(id), "x": x, "y": y, "z": z, "r": r})
         if p != -1:
             graph.add_edge(int(p), int(i))
     return graph
@@ -272,7 +277,6 @@ def list_branches(
     source: Optional[int] = None,
     return_branchpoints: bool = False,
     ignore_swc_tracing_interruptions=True,
-    relevant_ids: List[int] = [1, 2, 3, 4],
     max_len: Optional[float] = None,
 ) -> Union[List[List[int]], Tuple[List[List[int]], Set[int], List[Tuple[int, int]]]]:
     """Get all uninterrupted paths in the traced morphology (i.e. branches).
@@ -291,10 +295,6 @@ def list_branches(
             seperately.
         ignore_swc_tracing_interruptions: Whether to ignore discontinuities in the swc
             tracing order. If False, this will result in split branches at these points.
-        relevant_ids: All type ids that are not in this list will be ignored for
-            tracing the morphology. This means that branches which have multiple type
-            ids (which are not in `relevant_ids`) will be considered as one branch.
-            Defaults to `[1, 2, 3, 4]`.
 
     Returns:
         A list of linear paths in the graph. Each path is represented as list of nodes.
@@ -311,7 +311,7 @@ def list_branches(
     soma_nodes = lambda: [i for i, n in undir_graph.nodes.items() if n["id"] == 1]
 
     def same_id(graph: nx.Graph, n1: int, n2: int) -> bool:
-        has_id = lambda n: id_of(n) in relevant_ids if "id" in graph.nodes[n] else False
+        has_id = lambda n: id_of(n) != 0 if "id" in graph.nodes[n] else False
         return id_of(n1) == id_of(n2) if has_id(n1) and has_id(n2) else True
 
     def is_branchpoint_or_tip(n: int) -> bool:
@@ -408,7 +408,6 @@ def build_compartment_graph(
     min_radius: Optional[float] = None,
     max_len: Optional[float] = None,
     ignore_swc_tracing_interruptions: bool = True,
-    relevant_type_ids: List[int] = [1, 2, 3, 4],
 ) -> nx.DiGraph:
     """Return a networkX graph that indicates the compartment structure.
 
@@ -420,7 +419,7 @@ def build_compartment_graph(
     o-----------o----------o---o---o---o--------o
     o-------x---o----x-----o--xo---o---ox-------o
 
-    This function returns a nx:DiGraph. The graph is directed only because every
+    This function returns a nx.DiGraph. The graph is directed only because every
     compartment tracks the xyzr coordinates of the associated SWC file. These xyzr
     coordinates are ordered by the order of the traversal of the swc_graph. In later
     methods (e.g. build_solve_graph), we traverse the `comp_graph` and mostly ignore
@@ -437,10 +436,6 @@ def build_compartment_graph(
             separate branches.
         ignore_swc_tracing_interruptions: If `False`, it this function automatically
             starts a new branch when a section is traced with interruptions.
-        relevant_type_ids: All type ids that are not in this list will be ignored for
-            tracing the morphology. This means that branches which have multiple type
-            ids (which are not in `relevant_type_ids`) will be considered as one branch.
-            If `None`, we default to `[1, 2, 3, 4]`.
 
     Returns:
         Graph of the compartmentalized morphology.
@@ -461,7 +456,6 @@ def build_compartment_graph(
         source=root,
         ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
         max_len=max_len,
-        relevant_ids=relevant_type_ids,
     )
     nodes_df = nx_to_pandas(G)[0].astype(float)
 
@@ -481,8 +475,7 @@ def build_compartment_graph(
     branch_nodes, branch_edges = [], []
     xyzr = []
     for branch_idx, branch in enumerate(branches):
-        # ensures comp_index increases with node_index along branch
-        # this is necessary for branch.loc() to work
+        # ensure node_index increases monotonically along branch. Required for branch.loc()
         branch = branch[::-1] if branch[0] < branch[-1] else branch
 
         node_attrs = nodes_df.loc[branch]
@@ -505,20 +498,17 @@ def build_compartment_graph(
         comp_locs = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
         # Create node indices and attributes for branch-tips/branchpoints and comps
-        # comp_inds, branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
+        # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
         branch_tips = branch[0], branch[-1]
         branch_tip_attrs = [
-            [float("nan"), float("nan"), True, node_attrs["id"].iloc[0], 0],
-            [float("nan"), float("nan"), True, node_attrs["id"].iloc[-1], 0],
+            [float("nan"), True, node_attrs["id"].iloc[0], 0],
+            [float("nan"), True, node_attrs["id"].iloc[-1], 0],
         ]
 
         node_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
         node_inds = np.array([branch_tips[0], *node_inds, branch_tips[1]])
-        comp_inds = np.arange(ncomp) + branch_idx * ncomp
 
-        comp_attrs = [
-            [comp_idx, branch_idx, False, branch_id, comp_len] for comp_idx in comp_inds
-        ]
+        comp_attrs = [[branch_idx, False, branch_id, comp_len]] * ncomp
         comp_attrs = [branch_tip_attrs[0]] + comp_attrs + [branch_tip_attrs[1]]
         comp_attrs = np.hstack([node_inds[:, None], comp_attrs])
 
@@ -552,10 +542,10 @@ def build_compartment_graph(
         )  # store xyzr for each node in branch
 
     branch_nodes = np.concatenate(branch_nodes)
-    comp_cols = ["node", "comp", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
+    comp_cols = ["node", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
     comp_df = pd.DataFrame(branch_nodes, columns=comp_cols)
 
-    int_cols = ["node", "id"]  # comp & branch cols are floats due to branchpoints
+    int_cols = ["node", "id"]  # branch cols are floats due to branchpoints
     comp_df[int_cols] = comp_df[int_cols].astype(int)
 
     bool_cols = ["branchpoint"]
@@ -587,9 +577,7 @@ def build_compartment_graph(
 ########################################################################################
 
 
-def _add_jaxley_meta_data(
-    G: nx.DiGraph, relevant_type_ids: List[int] = [1, 2, 3, 4]
-) -> nx.DiGraph:
+def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     """Add attributes to and rename existing attributes of the compartalized morphology.
 
     Makes the imported and compartmentalized morphology compatible with jaxley.
@@ -603,22 +591,17 @@ def _add_jaxley_meta_data(
     # http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
     ids = nodes_df["id"].unique()
     group_names = {0: "undefined", 1: "soma", 2: "axon", 3: "basal", 4: "apical"}
-    group_names.update({i: f"custom_id{i}" for i in ids if i not in group_names})
+    group_names.update({i: f"custom{i}" for i in ids if i not in group_names})
 
-    # rename/reformat existing columns
-    one_hot_ids = pd.get_dummies(nodes_df["id"])
-    one_hot_ids = one_hot_ids[
-        [c for c in one_hot_ids.columns if c in relevant_type_ids]
-    ]
+    # rename/reformat existing columns (incl. one-hot groups)
+    one_hot_ids = pd.get_dummies(nodes_df.pop("id"))
     groups = one_hot_ids.rename(columns=group_names)
-    nodes_df = pd.concat([nodes_df.drop("id", axis=1), groups], axis=1)
+    # ignore undefined ids. If errors="ignore" -> only remove if present
+    groups = groups.drop("undefined", axis=1, errors="ignore")
+    nodes_df = pd.concat([nodes_df, groups], axis=1)
+    global_attrs["group_names"] += groups.columns.tolist()
 
-    jaxley_keys = {
-        "r": "radius",
-        "l": "length",
-        "branch": "branch_index",
-        "comp": "comp_index",
-    }
+    jaxley_keys = {"r": "radius", "l": "length", "branch": "branch_index"}
     nodes_df = nodes_df.rename(jaxley_keys, axis=1)
 
     # new columns
@@ -627,6 +610,7 @@ def _add_jaxley_meta_data(
     nodes_df.loc[is_comp, "v"] = -70.0
     nodes_df.loc[is_comp, "axial_resistivity"] = 5000.0
     # TODO: rename cell_index > cell, comp_index > comp, branch_index > branch
+    nodes_df.loc[is_comp, "comp_index"] = np.arange(sum(is_comp))
     nodes_df["cell_index"] = 0
 
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
