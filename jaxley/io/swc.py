@@ -8,7 +8,7 @@ from warnings import warn
 import jax.numpy as jnp
 import numpy as np
 
-from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
+from jaxley.io.graph import build_compartment_graph, from_graph, swc_to_nx
 from jaxley.modules import Branch, Cell, Compartment
 from jaxley.utils.cell_utils import (
     radius_from_xyzr,
@@ -490,7 +490,7 @@ def read_swc(
             assign_groups=assign_groups,
         )
     elif backend == "graph":
-        swc_graph = to_swc_graph(fname)
+        swc_graph = swc_to_nx(fname, relevant_ids=relevant_type_ids)
         comp_graph = build_compartment_graph(
             swc_graph,
             ncomp=ncomp,
@@ -498,7 +498,6 @@ def read_swc(
             min_radius=min_radius,
             max_len=max_branch_len,
             ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
-            relevant_type_ids=relevant_type_ids,
         )
         module = from_graph(
             comp_graph,
