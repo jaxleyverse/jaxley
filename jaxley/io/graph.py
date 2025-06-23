@@ -491,9 +491,13 @@ def build_compartment_graph(
             node_attrs = node_attrs.loc[branch * 2]  # duplicate soma node
             node_attrs["l"] = np.array([0, 2 * node_attrs["r"].iloc[0]])
 
-        branch_id = node_attrs["id"].iloc[
-            1
-        ]  # node after branchpoint (0) det. branch id
+        # branches originating from soma have radius set to raidus of first branch node.
+        is_soma = (node_attrs["id"] == 1).values
+        next2soma_nodes = [1]*is_soma[0] + [-2]*is_soma[-1] # neighbour nodes to soma
+        if np.any(is_soma) and not is_soma[1]: # soma branchpoints, branch type != soma
+            node_attrs.loc[is_soma, "r"] = node_attrs["r"].iloc[next2soma_nodes].values
+
+        branch_id = node_attrs["id"].iloc[1] # node after branchpoint det. branch id
         branch_len = max(node_attrs["l"])
         comp_len = branch_len / ncomp
         comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
