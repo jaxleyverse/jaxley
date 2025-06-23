@@ -12,28 +12,41 @@ from jax import vmap
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
-def trapz_integrate(xp, fp_r, x1, x2):
+def trapz_average(xp: np.ndarray, fp: np.ndarray, x1: float, x2: float) -> float:
+    """Trapezoidally integrate and average a function between two points.
+
+    Args:
+        xp: The x-values of the function.
+        fp: The y-values of the function.
+        x1: The lower bound of the integration.
+        x2: The upper bound of the integration.
+
+    Returns:
+        The average value of the function between x1 and x2.
+    """
+    # TODO: use in place of radius_from_xyzr / split_xyzr_into_equal_length_segments?
     # Find indices for the segment [x1, x2]
     mask = (xp >= x1) & (xp <= x2)
     x_seg = xp[mask]
-    r_seg = fp_r[mask]
-    
+    fp_seg = fp[mask]
+
     # Add boundary points if needed
     if x1 not in x_seg:
-        r1 = np.interp(x1, xp, fp_r)
+        r1 = np.interp(x1, xp, fp)
         x_seg = np.insert(x_seg, 0, x1)
-        r_seg = np.insert(r_seg, 0, r1)
-    
+        fp_seg = np.insert(fp_seg, 0, r1)
+
     if x2 not in x_seg:
-        r2 = np.interp(x2, xp, fp_r)
+        r2 = np.interp(x2, xp, fp)
         x_seg = np.append(x_seg, x2)
-        r_seg = np.append(r_seg, r2)
-    
+        fp_seg = np.append(fp_seg, r2)
+
     # Trapezoidal integration
-    integral = np.trapezoid(r_seg, x_seg)
-    
+    integral = np.trapezoid(fp_seg, x_seg)
+
     # Return average
     return integral / (x2 - x1)
+
 
 def radius_from_xyzr(
     xyzr: np.ndarray,
