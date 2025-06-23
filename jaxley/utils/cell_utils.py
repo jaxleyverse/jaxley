@@ -12,6 +12,29 @@ from jax import vmap
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
+def trapz_integrate(xp, fp_r, x1, x2):
+    # Find indices for the segment [x1, x2]
+    mask = (xp >= x1) & (xp <= x2)
+    x_seg = xp[mask]
+    r_seg = fp_r[mask]
+    
+    # Add boundary points if needed
+    if x1 not in x_seg:
+        r1 = np.interp(x1, xp, fp_r)
+        x_seg = np.insert(x_seg, 0, x1)
+        r_seg = np.insert(r_seg, 0, r1)
+    
+    if x2 not in x_seg:
+        r2 = np.interp(x2, xp, fp_r)
+        x_seg = np.append(x_seg, x2)
+        r_seg = np.append(r_seg, r2)
+    
+    # Trapezoidal integration
+    integral = np.trapezoid(r_seg, x_seg)
+    
+    # Return average
+    return integral / (x2 - x1)
+
 def radius_from_xyzr(
     xyzr: np.ndarray,
     min_radius: Optional[float],

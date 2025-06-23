@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
+from jaxley.utils.cell_utils import trapz_integrate
 
 #########################################################################################
 ################################### Helper functions ####################################
@@ -495,7 +496,7 @@ def build_compartment_graph(
         ]  # node after branchpoint (0) det. branch id
         branch_len = max(node_attrs["l"])
         comp_len = branch_len / ncomp
-        comp_locs = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
+        comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
         # Create node indices and attributes for branch-tips/branchpoints and comps
         # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
@@ -513,17 +514,23 @@ def build_compartment_graph(
         comp_attrs = np.hstack([node_inds[:, None], comp_attrs])
 
         # Interpolate xyzr along branch
-        x = np.array([0] + comp_locs + [branch_len])
+        x = np.array([0] + comp_centers + [branch_len])
         xp = np.array(node_attrs["l"].values)
-        fp = np.array(node_attrs[["x", "y", "z", "r"]].values)
+        fp_xyz = np.array(node_attrs[["x", "y", "z"]].values)
 
-        # TODO: average **r** instead of interpolating!
         interpolated_coords = np.column_stack(
-            [np.interp(x, xp, fp[:, i]) for i in range(fp.shape[1])]
+            [np.interp(x, xp, fp_xyz[:, i]) for i in range(fp_xyz.shape[1])]
         )
+        
+        comp_ends = np.linspace(0, branch_len, ncomp+1)
+        comp_ends = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
+        fp_r = np.array(node_attrs["r"].values)
+        
+        radii = [trapz_integrate(xp, fp_r, x1, x2) for x1, x2 in comp_ends]
+        radii = np.array([fp_r[0]] + radii + [fp_r[-1]]).reshape(-1,1)
 
         # Combine interpolated coordinates with existing attributes
-        comp_attrs = np.hstack([comp_attrs, interpolated_coords])
+        comp_attrs = np.hstack([comp_attrs, interpolated_coords, radii])
 
         # remove tip nodes
         comp_attrs = comp_attrs[1:] if branch_tips[0] in tip_node_inds else comp_attrs
