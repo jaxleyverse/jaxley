@@ -12,107 +12,6 @@ from jax import vmap
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
-def radius_from_xyzr(
-    xyzr: np.ndarray,
-    min_radius: Optional[float],
-) -> float:
-    """Return the radius of a compartment given its SWC file xyzr.
-
-    Args:
-        radius_fns: Functions which, given compartment locations return the radius.
-        branch_indices: The indices of the branches for which to return the radiuses.
-        min_radius: If passed, the radiuses are clipped to be at least as large.
-        ncomp: The number of compartments that every branch is discretized into.
-    """
-    xyz = xyzr[:, :3]
-    radius = xyzr[:, 3]
-    if len(xyzr) > 1:
-        deltas = np.diff(xyz, axis=0)
-        dists = np.linalg.norm(deltas, axis=1)
-        weights = np.zeros(len(dists) + 1)
-        weights[1:] += dists
-        weights[:-1] += dists
-        weights /= np.sum(weights)
-        avg_radius = np.sum(radius * weights)
-    else:
-        avg_radius = radius.mean()
-
-    if min_radius is None:
-        assert (
-            avg_radius > 0.0
-        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
-    else:
-        avg_radius = (
-            min_radius
-            if (avg_radius < min_radius or np.isnan(avg_radius))
-            else avg_radius
-        )
-
-    return avg_radius
-
-
-def split_xyzr_into_equal_length_segments(
-    xyzr: np.ndarray, ncomp: int
-) -> List[np.ndarray]:
-    """Split xyzr into equal-length segments by inserting interpolated points as needed.
-
-    This function was written by ChatGPT, based on the prompt:
-    ```I have an array of shape 100x3. The 3 indicate x, y, z coordinates. I want to
-    split this array into 4 segments, each with equal euclidean length. To have
-    euclidean length exactly equal, I would like to insert additional points into
-    the 100x3 array (to make it length 100 + 4 segments - 1). These points should be
-    linear interpolation of neighboring points. In the final split array, the newly
-    inserted nodes should be the last point of one segment and the first point of
-    another segment.```
-
-    Args:
-        points: Array of 3D coordinates representing a path.
-        num_segments: Number of segments to split the path into.
-
-    Returns:
-        A list of `num_segments` arrays, each containing the 3D coordinates
-        of one segment. The segments have (approximately) equal Euclidean
-        length, and split points are interpolated between original points.
-    """
-    if len(xyzr) == 1:
-        return [xyzr] * ncomp
-
-    # Compute distances between consecutive points
-    xyz = xyzr[:, :3]
-
-    # Compute distances and cumulative distances
-    deltas = np.diff(xyz, axis=0)
-    dists = np.linalg.norm(deltas, axis=1)
-    cum_dists = np.concatenate([[0], np.cumsum(dists)])
-    total_length = cum_dists[-1]
-
-    # Target cumulative distances where we want to split
-    target_dists = np.linspace(0, total_length, ncomp + 1)
-
-    # Find insertion indices and interpolation factors
-    idxs = np.searchsorted(cum_dists, target_dists, side="right") - 1
-    idxs = np.clip(idxs, 0, len(xyz) - 2)  # Ensure valid indices
-    local_dist = target_dists - cum_dists[idxs]
-    segment_lens = dists[idxs]
-    frac = (local_dist / segment_lens)[:, None]  # shape (n, 1)
-
-    # Interpolate split points
-    split_points = xyzr[idxs] + frac * (xyzr[idxs + 1] - xyzr[idxs])
-
-    # Build final list of points with inserted nodes
-    all_points = [split_points[0]]
-    compartment_xyzrs = []
-
-    for i in range(1, len(split_points)):
-        # Collect original points between splits.
-        mask = (cum_dists > target_dists[i - 1]) & (cum_dists < target_dists[i])
-        between_points = xyzr[mask]
-        segment = np.vstack([all_points[-1], *between_points, split_points[i]])
-        compartment_xyzrs.append(segment)
-        all_points.append(split_points[i])
-    return compartment_xyzrs
-
-
 def equal_segments(branch_property: list, ncomp_per_branch: int):
     """Generates segments where some property is the same in each segment.
 
@@ -316,99 +215,6 @@ def loc_of_index(global_comp_index, global_branch_index, ncomp_per_branch):
     return (0.5 + index) / ncomp
 
 
-def compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2):
-    """Return the axial conductance between two compartments.
-
-    Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
-
-    The axial conductance is:
-    g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
-
-    Here, we define `g_a = 1/r_a`, because g_a can be zero (but not infinity as this
-    would be inherently unstable).
-    """
-    return (
-        2
-        * pi
-        * rad1**2
-        * rad2**2
-        * g_a1
-        * g_a2
-        / (l1 * g_a2 * rad2**2 + l2 * g_a1 * rad1**2)
-    )
-
-
-def g_long_by_surface_area(rad1, rad2, g_a1, g_a2, l1, l2):
-    """Return the voltage coupling conductance between two compartments.
-
-    Equations taken from `https://en.wikipedia.org/wiki/Compartmental_neuron_models`.
-
-    The axial resistivity is:
-    g_long = 2 * pi * rad1^2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
-
-    For voltage, we have to divide the axial conductance by the surface are of
-    the sink, i.e. by A = 2 * pi * rad1 * l1
-
-    By that, we get:
-    g_axial = rad1 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2) / l1
-
-    Here, we define `g_a = 1/r_a`, because g_a can be zero (but not infinity as this
-    would be inherently unstable).
-
-    `radius`: um
-    `g_a`: Siemens / cm
-    `r_a`: ohm cm (unused, just for reference)
-    `length_single_compartment`: um
-    """
-    g_long = compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2)
-    surface_area = 2 * pi * rad1 * l1
-    return g_long / surface_area
-
-
-def g_long_by_volume(rad1, rad2, g_a1, g_a2, l1, l2):
-    """Return the ion diffusive constant between two compartments.
-
-    The axial resistivity is:
-    g_long = 2 * pi * rad1^2 rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2)
-
-    For ions, we have to divide the axial conductance by the volume of the sink,
-    i.e. by V = pi * rad1^2 * l1
-
-    This gives:
-    g_axial = 2 * rad2^2 / (l1 * r_a1 * rad2^2 + l2 * r_a2 * rad1^2) / l1
-
-    Expressed in conductances g_a (not r_a), this gives:
-    g_axial = 2 * rad2^2 * g_a1 * g_a2 / (l1 * g_a2 * rad2^2 + l2 * g_a1 * rad1^2) / l1
-
-    But here, we define `g = 1/r_a`, because g can be zero (but not infinity as this
-    would be inherently unstable). In particular, one might want g=0 for ion diffusion.
-
-    `radius`: um
-    `g_a`: mM / liter / cm
-    `l`: um
-    """
-    g_long = compute_g_long(rad1, rad2, g_a1, g_a2, l1, l2)
-    volume = pi * rad1**2 * l1
-    return g_long / volume
-
-
-def compute_impact_on_node(rad, g_a, l):
-    r"""Compute the weight with which a compartment influences its node.
-
-    In order to satisfy Kirchhoffs current law, the current at a branch point must be
-    proportional to the crosssection of the compartment. We only require proportionality
-    here because the branch point equation reads:
-    `g_1 * (V_1 - V_b) + g_2 * (V_2 - V_b) = 0.0`
-
-    Because R_long = r_a * L/2 / crosssection, we get
-    g_long = crosssection * 2 / L / r_a \propto rad**2 / L / r_a
-
-    Finally, we define `g_a = 1 / r_a` (in order to allow `r_a=inf`, or `g_a=0`).
-
-    This equation can be multiplied by any constant."""
-    return rad**2 * g_a / l
-
-
 def remap_to_consecutive(arr):
     """Maps an array of integers to an array of consecutive integers.
 
@@ -456,7 +262,7 @@ def params_to_pstate(
 
 
 def convert_point_process_to_distributed(
-    current: jnp.ndarray, radius: jnp.ndarray, length: jnp.ndarray
+    current: jnp.ndarray, area: jnp.ndarray
 ) -> jnp.ndarray:
     """Convert current point process (nA) to distributed current (uA/cm2).
 
@@ -464,13 +270,11 @@ def convert_point_process_to_distributed(
 
     Args:
         current: Current in `nA`.
-        radius: Compartment radius in `um`.
-        length: Compartment length in `um`.
+        area: Membrane surface area radius in `um^2`.
 
     Return:
         Current in `uA/cm2`.
     """
-    area = 2 * pi * radius * length
     current /= area  # nA / um^2
     return current * 100_000  # Convert (nA / um^2) to (uA / cm^2)
 
@@ -488,144 +292,6 @@ def query_channel_states_and_params(d, keys, idcs):
 
     Only loops over necessary keys, as opposed to looping over `d.items()`."""
     return dict(zip(keys, (v[idcs] for v in map(d.get, keys))))
-
-
-def compute_axial_conductances(
-    comp_edges: pd.DataFrame,
-    params: Dict[str, jnp.ndarray],
-    diffusion_states: List[str],
-) -> Dict[str, jnp.ndarray]:
-    """Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.
-
-    Note that the resulting axial conductances will already by divided by the
-    capacitance `cm`.
-    """
-    ordered_conds = jnp.zeros((1 + len(diffusion_states), len(comp_edges)))
-
-    # `Compartment-to-compartment` (c2c) axial coupling conductances.
-    condition = comp_edges["type"].to_numpy() == 0
-    source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
-    sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
-
-    axial_conductances = jnp.stack(
-        [1 / params["axial_resistivity"]]
-        + [params[f"axial_diffusion_{d}"] for d in diffusion_states]
-    )
-
-    if len(sink_comp_inds) > 0:
-        # For voltages, divide by the surface area.
-        conds_c2c = vmap(
-            vmap(g_long_by_surface_area, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][source_comp_inds],
-            axial_conductances[:1, sink_comp_inds],
-            axial_conductances[:1, source_comp_inds],
-            params["length"][sink_comp_inds],
-            params["length"][source_comp_inds],
-        )
-        # .at[0] because we only divide the axial voltage conductances by the
-        # capacitance, _not_ the axial conductances of the diffusing ions.
-        conds_c2c = conds_c2c.at[0].divide(params["capacitance"][sink_comp_inds])
-        # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-        conds_c2c = conds_c2c.at[0].multiply(10**7)
-
-        # For ion diffusion, we have to divide by the volume, not the surface area.
-        conds_diffusion = vmap(
-            vmap(g_long_by_volume, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][source_comp_inds],
-            axial_conductances[1:, sink_comp_inds],
-            axial_conductances[1:, source_comp_inds],
-            params["length"][sink_comp_inds],
-            params["length"][source_comp_inds],
-        )
-        conds_c2c = jnp.concatenate([conds_c2c, conds_diffusion])
-    else:
-        conds_c2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
-
-    if len(sink_comp_inds) > 0:
-        inds = jnp.asarray(comp_edges[condition].index)
-        ordered_conds = ordered_conds.at[:, inds].set(conds_c2c)
-
-    # `branchpoint-to-compartment` (bp2c) axial coupling conductances.
-    condition = comp_edges["type"].isin([1, 2])
-    sink_comp_inds = np.asarray(comp_edges[condition]["sink"].to_list()).astype(int)
-
-    if len(sink_comp_inds) > 0:
-        # For voltages, divide by the surface area.
-        conds_bp2c = vmap(
-            vmap(g_long_by_surface_area, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][sink_comp_inds],
-            axial_conductances[:1, sink_comp_inds],
-            axial_conductances[:1, sink_comp_inds],
-            params["length"][sink_comp_inds],
-            jnp.zeros_like(params["length"][sink_comp_inds]),  # l=0 for branchpoint.
-        )
-        # .at[0] because we only divide the axial voltage conductances by the
-        # capacitance, _not_ the axial conductances of the diffusing ions.
-        conds_bp2c = conds_bp2c.at[0].divide(params["capacitance"][sink_comp_inds])
-        # Multiply by 10**7 to convert (S / cm / um) -> (mS / cm^2).
-        conds_bp2c = conds_bp2c.at[0].multiply(10**7)
-
-        # For ion diffusion, we have to divide by the volume, not the surface area.
-        conds_bp2c_diffusion = vmap(
-            vmap(g_long_by_volume, in_axes=(0, 0, 0, 0, 0, 0)),
-            in_axes=(None, None, 0, 0, None, None),
-        )(
-            params["radius"][sink_comp_inds],
-            params["radius"][sink_comp_inds],
-            axial_conductances[1:, sink_comp_inds],
-            axial_conductances[1:, sink_comp_inds],
-            params["length"][sink_comp_inds],
-            jnp.zeros_like(params["length"][sink_comp_inds]),  # l=0 for branchpoint.
-        )
-        conds_bp2c = jnp.concatenate([conds_bp2c, conds_bp2c_diffusion])
-    else:
-        conds_bp2c = jnp.asarray([[]] * (len(diffusion_states) + 1))
-
-    if len(sink_comp_inds) > 0:
-        inds = jnp.asarray(comp_edges[condition].index)
-        ordered_conds = ordered_conds.at[:, inds].set(conds_bp2c)
-
-    # `compartment-to-branchpoint` (c2bp) axial coupling conductances.
-    condition = comp_edges["type"].isin([3, 4])
-    source_comp_inds = np.asarray(comp_edges[condition]["source"].to_list()).astype(int)
-
-    if len(source_comp_inds) > 0:
-        conds_c2bp = vmap(
-            vmap(compute_impact_on_node, in_axes=(0, 0, 0)), in_axes=(None, 0, None)
-        )(
-            params["radius"][source_comp_inds],
-            axial_conductances[:, source_comp_inds],
-            params["length"][source_comp_inds],
-        )
-        # For numerical stability. These values are very small, but their scale
-        # does not matter.
-        conds_c2bp *= 1_000
-    else:
-        conds_c2bp = jnp.asarray([[]] * (len(diffusion_states) + 1))
-
-    if len(source_comp_inds) > 0:
-        inds = jnp.asarray(comp_edges[condition].index)
-        ordered_conds = ordered_conds.at[:, inds].set(conds_c2bp)
-
-    # All axial coupling conductances.
-    all_coupling_conds = jnp.concatenate([conds_c2c, conds_bp2c, conds_c2bp], axis=1)
-
-    conds_as_dict = {}
-    ordered_conds_as_dict = {}
-    for i, key in enumerate(["v"] + diffusion_states):
-        conds_as_dict[key] = all_coupling_conds[i]
-        ordered_conds_as_dict[key] = ordered_conds[i]
-
-    return ordered_conds_as_dict
 
 
 def compute_children_and_parents(
