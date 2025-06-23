@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
-from jaxley.utils.cell_utils import trapz_integrate
+from jaxley.utils.cell_utils import trapz_average
 
 #########################################################################################
 ################################### Helper functions ####################################
@@ -513,7 +513,7 @@ def build_compartment_graph(
         comp_attrs = [branch_tip_attrs[0]] + comp_attrs + [branch_tip_attrs[1]]
         comp_attrs = np.hstack([node_inds[:, None], comp_attrs])
 
-        # Interpolate xyzr along branch
+        # Interpolate xyz along branch
         x = np.array([0] + comp_centers + [branch_len])
         xp = np.array(node_attrs["l"].values)
         fp_xyz = np.array(node_attrs[["x", "y", "z"]].values)
@@ -521,13 +521,14 @@ def build_compartment_graph(
         interpolated_coords = np.column_stack(
             [np.interp(x, xp, fp_xyz[:, i]) for i in range(fp_xyz.shape[1])]
         )
-        
-        comp_ends = np.linspace(0, branch_len, ncomp+1)
+
+        # trapezoidal integration of r between compartment ends
+        comp_ends = np.linspace(0, branch_len, ncomp + 1)
         comp_ends = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
         fp_r = np.array(node_attrs["r"].values)
-        
-        radii = [trapz_integrate(xp, fp_r, x1, x2) for x1, x2 in comp_ends]
-        radii = np.array([fp_r[0]] + radii + [fp_r[-1]]).reshape(-1,1)
+
+        radii = [trapz_average(xp, fp_r, x1, x2) for x1, x2 in comp_ends]
+        radii = np.array([fp_r[0], *radii, fp_r[-1]]).reshape(-1, 1)
 
         # Combine interpolated coordinates with existing attributes
         comp_attrs = np.hstack([comp_attrs, interpolated_coords, radii])
@@ -559,7 +560,11 @@ def build_compartment_graph(
     comp_df[bool_cols] = comp_df[bool_cols].astype(bool)
 
     # threshold radius
-    if min_radius is not None:
+    if min_radius is None:
+        assert (
+            comp_df["r"] > 0.0
+        ).all(), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
+    else:
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
     # drop duplicated branchpoint nodes
@@ -840,7 +845,7 @@ def from_graph(
     """
 
     comp_graph = _add_jaxley_meta_data(comp_graph)
-    # edge direction matter from here on
+    # edge direction matters from here on
     comp_graph = _determine_solve_order(comp_graph, source=solve_root)
     solve_graph = _replace_branchpoints_with_edges(comp_graph)
     module = _build_module(solve_graph)
