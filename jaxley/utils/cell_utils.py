@@ -270,8 +270,7 @@ def convert_point_process_to_distributed(
 
     Args:
         current: Current in `nA`.
-        radius: Compartment radius in `um`.
-        length: Compartment length in `um`.
+        area: Membrane surface area radius in `um^2`.
 
     Return:
         Current in `uA/cm2`.
