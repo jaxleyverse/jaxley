@@ -1103,7 +1103,7 @@ class Module(ABC):
                         f"will likely change the electrophysiology of the cell."
                     )
                 # If radius and length are updated by the pstate, then we have to also
-                # update 1) area, 2) source_frustum, and 3) sink_frustum.
+                # update 1) area, 2) volume, and 3) resistive_loads.
                 l = self.base.nodes["length"]
                 r = self.base.nodes["radius"]
                 # l/2 because we want the input load (left half of the cylinder) and
@@ -1277,8 +1277,8 @@ class Module(ABC):
 
         # Add new rows as the average of all rows. Special case for the length is below.
         start_index = int(self.nodes.index.to_numpy()[0])
-        average_row = self.nodes.mean(skipna=False)
-        average_row = pd.DataFrame([self.nodes.iloc[0]])
+        average_row = self.nodes.mean(skipna=False, numeric_only=False)
+        average_row = pd.DataFrame([average_row])
         view = pd.concat([average_row] * ncomp, axis="rows", ignore_index=True)
 
         # Set the correct datatype after having performed an average which cast
