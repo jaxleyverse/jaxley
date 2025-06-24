@@ -970,7 +970,7 @@
 <span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">K</span><span class="p">())</span>
 <span class="n">cell</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Leak</span><span class="p">())</span>
 </code></pre></div></p>
-<p>In this tutorial, we will show you how to build your own channel and synapse models.</p>
+<p>In this tutorial, we will show you how to build your own channel and synapse models. Alternatively, the Python toolbox <code>DendroTweaks</code> has built a tool to convert <code>NMODL</code> files to <code>Jaxley</code> channels, available <a href="https://dendrotweaks.readthedocs.io/en/latest/tutorials/convert_to_jaxley.html">here</a>. We would appreciate both positive and negative experiences with this conversion tool: Please post feedback in the discussion <a href="https://github.com/jaxleyverse/jaxley/discussions/668">here</a>.</p>
 <h3 id="your-own-channel">Your own channel<a class="headerlink" href="#your-own-channel" title="Permanent link">&para;</a></h3>
 <p>Below is how you can define your own channel. We will go into detail about individual parts of the code in the next couple of cells.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
