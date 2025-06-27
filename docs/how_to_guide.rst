@@ -11,6 +11,7 @@ The `how-to guide` provides brief answers to specific questions.
 
    how_to_guide/save_and_load.ipynb
    how_to_guide/define_custom_stimuli.ipynb
+   how_to_guide/import_channels_from_neuron.ipynb
    how_to_guide/set_ncomp.ipynb
    how_to_guide/edit_morphologies.ipynb
    how_to_guide/ion_diffusion.ipynb
