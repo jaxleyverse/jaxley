@@ -1,5 +1,9 @@
 # 0.11.0 (pre-release)
 
+### 🧩 New features
+
+- simple conductance synapse added (#659, @kyralianaka)
+
 ### 📚 Documentation
 
 - add a how-to guide on converting `NMODL` files to `Jaxley`, see
