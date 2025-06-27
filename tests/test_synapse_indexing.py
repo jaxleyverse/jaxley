@@ -14,7 +14,13 @@ import pytest
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import connect
-from jaxley.synapses import IonotropicSynapse, Synapse, TanhRateSynapse, TestSynapse
+from jaxley.synapses import (
+    IonotropicSynapse,
+    Synapse,
+    TanhConductanceSynapse,
+    TanhRateSynapse,
+    TestSynapse,
+)
 
 
 def test_multiparameter_setting(SimpleNet):
@@ -50,11 +56,16 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
         full_syn_view = net.TestSynapse
         single_syn_view = net.TestSynapse.edge(single_idx)
         double_syn_view = net.TestSynapse.edge(double_idxs)
+    if synapse_name == "TanhConductanceSynapse":
+        full_syn_view = net.TanhConductanceSynapse
+        single_syn_view = net.TanhConductanceSynapse.edge(single_idx)
+        double_syn_view = net.TanhConductanceSynapse.edge(double_idxs)
     return full_syn_view, single_syn_view, double_syn_view
 
 
 @pytest.mark.parametrize(
-    "synapse_type", [IonotropicSynapse, TanhRateSynapse, TestSynapse]
+    "synapse_type",
+    [IonotropicSynapse, TanhRateSynapse, TestSynapse, TanhConductanceSynapse],
 )
 def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
     """Test if the correct parameters are set if one type of synapses is inserted."""
@@ -93,7 +104,9 @@ def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
         assert np.all(net.edges[p].to_numpy()[np.asarray([2, 3])] == 0.12)
 
 
-@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse])
+@pytest.mark.parametrize(
+    "synapse_type", [TanhRateSynapse, TanhConductanceSynapse, TestSynapse]
+)
 def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
     """Test whether the correct parameters are set."""
     synapse_type = synapse_type()
@@ -149,7 +162,9 @@ def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.21)
 
 
-@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse])
+@pytest.mark.parametrize(
+    "synapse_type", [TanhRateSynapse, TanhConductanceSynapse, TestSynapse]
+)
 def test_shuffling_order_of_set(synapse_type, SimpleNet):
     """Test whether the result is the same if the order of synapses is changed."""
     synapse_type = synapse_type()
