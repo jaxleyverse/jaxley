@@ -10,8 +10,10 @@ from jaxley.synapses.synapse import Synapse
 
 class TanhConductanceSynapse(Synapse):
     """
-    Compute synaptic current for a simple conductance synapse (no state). This is just
-    the tanh rate synapse with a conductance current.
+    Compute synaptic current for a simple conductance synapse (no state).
+
+    This is just the TanhRateSynapse with current affected by the postsynaptic
+    conductance.
     """
 
     def __init__(self, name: Optional[str] = None):

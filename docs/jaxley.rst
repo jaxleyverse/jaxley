@@ -82,6 +82,7 @@ Synapses
    jaxley.synapses.Synapse
    jaxley.synapses.IonotropicSynapse
    jaxley.synapses.TanhRateSynapse
+   jaxley.synapses.TanhConductanceSynapse
 
 
 Connectivity
