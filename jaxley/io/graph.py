@@ -347,6 +347,15 @@ def list_branches(
     # traverse graph and collect branches
     leaf = next(n for n in undir_graph.nodes if undir_graph.degree(n) == 1)
     source = leaf if source is None else source
+
+    # start recording from first branchpoint or tip since starting from non-branchpoint
+    # will split the branch in two. I.e. starting at (2) will split [0,1,2,3] into two
+    # separate branches: [0,1,2] and [2,3].
+    if not is_branchpoint_or_tip(source):
+        source = next(
+            n for n in nx.dfs_tree(undir_graph, source) if is_branchpoint_or_tip(n)
+        )
+
     single_soma = len(soma_nodes()) == 1
     for node in nx.dfs_tree(undir_graph, source):
         if single_soma and is_soma(node):  # a single soma is its own branch
@@ -400,6 +409,75 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     for key in set(defaults.keys()).difference(available_keys):
         nx.set_node_attributes(G, defaults[key], key)
     return G
+
+
+def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFrame:
+    """Interpolate or integrate node attributes along branch.
+
+    Takes a dataframe with nodes (index) and node attributes (columns) and returns a
+    dataframe of compartments and compartment attributes. Compartments are spaced at
+    equidistant points along the branch. Node attributes, like radius are linearly
+    interpolated along its length.
+
+    Example: 4 compartments | edges = - | nodes = o | comp_nodes = x
+    o-----------o----------o---o---o---o--------o
+    o-------x---o----x-----o--xo---o---ox-------o
+
+    Args:
+        node_attrs: DataFrame of node attributes.
+        ncomp: Number of compartments per branch.
+
+    Returns:
+        DataFrame of compartments and compartment attributes.
+    """
+    branch = node_attrs.index.tolist()
+
+    compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
+    edge_lens = compute_edge_lens(node_attrs[["x", "y", "z"]])
+    node_attrs["l"] = edge_lens.cumsum()  # path length
+
+    # For single-point somatata, we set l = 2*r this ensures
+    # A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
+    if len(branch) == 1:
+        node_attrs = node_attrs.loc[branch * 2]  # duplicate soma node
+        node_attrs["l"] = np.array([0, 2 * node_attrs["r"].iloc[0]])
+
+    # branches originating from soma have attrs set to those of first branch node.
+    is_soma = (node_attrs["id"] == 1).values
+    next2soma_nodes = [1] * is_soma[0] + [-2] * is_soma[-1]  # neighbour nodes to soma
+    if np.any(is_soma) and not is_soma[1]:  # soma branchpoints, branch type != soma
+        node_attrs.loc[is_soma] = node_attrs.iloc[next2soma_nodes].values
+
+    branch_id = node_attrs["id"].iloc[1]  # node after branchpoint det. branch id
+    branch_len = max(node_attrs["l"])
+    comp_len = branch_len / ncomp
+    comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
+
+    # Create node indices and attributes for branch-tips/branchpoints and comps
+    # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
+    comp_attrs = [
+        [True, node_attrs["id"].iloc[0], 0],  # branch tip
+        *[[False, branch_id, comp_len]] * ncomp,  # comps
+        [True, node_attrs["id"].iloc[-1], 0],  # branch tip
+    ]
+
+    # Interpolate xyz along branch
+    x = np.array([0, *comp_centers, branch_len])
+    xp = node_attrs["l"].values
+    fp_xyz = node_attrs[["x", "y", "z"]].values
+
+    interpolated_coords = np.column_stack([np.interp(x, xp, xyz) for xyz in fp_xyz.T])
+
+    # trapezoidal integration of r between compartment tips
+    comp_ends = np.linspace(0, branch_len, ncomp + 1)
+    comp_tips = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
+    fp_r = node_attrs["r"].values
+
+    radii = [trapz_average(xp, fp_r, x1, x2) for x1, x2 in comp_tips]
+    radii = np.array([fp_r[0], *radii, fp_r[-1]]).reshape(-1, 1)
+
+    # Combine interpolated coordinates with existing attributes
+    return np.hstack([comp_attrs, interpolated_coords, radii])
 
 
 def build_compartment_graph(
@@ -470,92 +548,42 @@ def build_compartment_graph(
 
     # identify tip nodes (degree == 1 -> node appears only once in edges)
     nodes_in_edges, node_counts_in_edges = np.unique(G.edges, return_counts=True)
-    tip_node_inds = nodes_in_edges[node_counts_in_edges == 1]
+    tip_nodes = nodes_in_edges[node_counts_in_edges == 1]
 
     # collect comps and comp_edges
-    branch_nodes, branch_edges = [], []
-    xyzr = []
+    comps, comp_edges, xyzr = [], [], []
     for branch_idx, branch in enumerate(branches):
         # ensure node_index increases monotonically along branch. Required for branch.loc()
         branch = branch[::-1] if branch[0] < branch[-1] else branch
 
         node_attrs = nodes_df.loc[branch]
+        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp)
 
-        compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
-        edge_lens = compute_edge_lens(node_attrs[["x", "y", "z"]])
-        node_attrs["l"] = edge_lens.cumsum()  # path length
+        comp_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
+        comp_inds = np.array([branch[0], *comp_inds, branch[-1]])
+        branch_inds = np.array([float("nan"), *[branch_idx] * ncomp, float("nan")])
 
-        # For single-point somatata, we set l = 2*r this ensures
-        # A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
-        if single_soma := (len(branch) == 1):
-            node_attrs = node_attrs.loc[branch * 2]  # duplicate soma node
-            node_attrs["l"] = np.array([0, 2 * node_attrs["r"].iloc[0]])
-
-        # branches originating from soma have radius set to raidus of first branch node.
-        is_soma = (node_attrs["id"] == 1).values
-        next2soma_nodes = [1]*is_soma[0] + [-2]*is_soma[-1] # neighbour nodes to soma
-        if np.any(is_soma) and not is_soma[1]: # soma branchpoints, branch type != soma
-            node_attrs.loc[is_soma, "r"] = node_attrs["r"].iloc[next2soma_nodes].values
-
-        branch_id = node_attrs["id"].iloc[1] # node after branchpoint det. branch id
-        branch_len = max(node_attrs["l"])
-        comp_len = branch_len / ncomp
-        comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
-
-        # Create node indices and attributes for branch-tips/branchpoints and comps
-        # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
-        branch_tips = branch[0], branch[-1]
-        branch_tip_attrs = [
-            [float("nan"), True, node_attrs["id"].iloc[0], 0],
-            [float("nan"), True, node_attrs["id"].iloc[-1], 0],
-        ]
-
-        node_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
-        node_inds = np.array([branch_tips[0], *node_inds, branch_tips[1]])
-
-        comp_attrs = [[branch_idx, False, branch_id, comp_len]] * ncomp
-        comp_attrs = [branch_tip_attrs[0]] + comp_attrs + [branch_tip_attrs[1]]
-        comp_attrs = np.hstack([node_inds[:, None], comp_attrs])
-
-        # Interpolate xyz along branch
-        x = np.array([0] + comp_centers + [branch_len])
-        xp = np.array(node_attrs["l"].values)
-        fp_xyz = np.array(node_attrs[["x", "y", "z"]].values)
-
-        interpolated_coords = np.column_stack(
-            [np.interp(x, xp, fp_xyz[:, i]) for i in range(fp_xyz.shape[1])]
-        )
-
-        # trapezoidal integration of r between compartment ends
-        comp_ends = np.linspace(0, branch_len, ncomp + 1)
-        comp_ends = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
-        fp_r = np.array(node_attrs["r"].values)
-
-        radii = [trapz_average(xp, fp_r, x1, x2) for x1, x2 in comp_ends]
-        radii = np.array([fp_r[0], *radii, fp_r[-1]]).reshape(-1, 1)
-
-        # Combine interpolated coordinates with existing attributes
-        comp_attrs = np.hstack([comp_attrs, interpolated_coords, radii])
-
-        # remove tip nodes
-        comp_attrs = comp_attrs[1:] if branch_tips[0] in tip_node_inds else comp_attrs
-        comp_attrs = comp_attrs[:-1] if branch_tips[1] in tip_node_inds else comp_attrs
+        comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
         # we therefore remove one tip node / branchpoint node, i.e. [0,s,0] -> [s,0]
-        comp_attrs = comp_attrs[1:] if single_soma else comp_attrs
+        comp_attrs = comp_attrs[1:] if branch[0] == branch[-1] else comp_attrs
+
+        # remove tip nodes
+        comp_attrs = comp_attrs[1:] if branch[0] in tip_nodes else comp_attrs
+        comp_attrs = comp_attrs[:-1] if branch[-1] in tip_nodes else comp_attrs
 
         # Store edges, nodes, and xyzr in branch-wise manner
         intra_branch_edges = np.stack([comp_attrs[:-1, 0], comp_attrs[1:, 0]]).T
-        branch_edges.append(intra_branch_edges.astype(int).tolist())
-        branch_nodes.append(comp_attrs)
-        xyzr.append(
-            node_attrs[["x", "y", "z", "r"]].values
-        )  # store xyzr for each node in branch
+        comp_edges.append(intra_branch_edges.astype(int).tolist())
+        comps.append(comp_attrs)
 
-    branch_nodes = np.concatenate(branch_nodes)
+        # store xyzr for each node in branch
+        xyzr.append(node_attrs[["x", "y", "z", "r"]].values)
+
+    comps = np.concatenate(comps)
     comp_cols = ["node", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
-    comp_df = pd.DataFrame(branch_nodes, columns=comp_cols)
+    comp_df = pd.DataFrame(comps, columns=comp_cols)
 
     int_cols = ["node", "id"]  # branch cols are floats due to branchpoints
     comp_df[int_cols] = comp_df[int_cols].astype(int)
@@ -576,7 +604,7 @@ def build_compartment_graph(
     comp_df = comp_df.set_index("node")
 
     # create comp edges
-    comp_edges = sum(branch_edges, [])
+    comp_edges = sum(comp_edges, [])
     comp_edges_df = pd.DataFrame(index=pd.MultiIndex.from_tuples(comp_edges))
     comp_edges_df["synapse"] = False  # edges between compartments that are synapses
     comp_edges_df["comp_edge"] = True  # edges between connected compartments
@@ -584,7 +612,6 @@ def build_compartment_graph(
     global_attrs = pd.Series({"xyzr": xyzr})
     G = pandas_to_nx(comp_df, comp_edges_df, global_attrs)
     G = nx.relabel_nodes(G, {n: i for i, n in enumerate(G.nodes)})
-    # TODO: do we also need to ensure that the node dict is ordered?
     return G
 
 
@@ -632,12 +659,11 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
 
 
-def _determine_solve_order(G: nx.DiGraph, source=None) -> nx.DiGraph:
-    """Determine in which order to solve the graph.
+def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
+    """Determine from which root to traverse the graph dfs and orient edges accordingly.
 
     For this, the graph is traversed depth first along the undirected edges. If edges
-    in the directed graph are oriented in the wrong direction, they are flipped. In
-    addition, a solve_index is added to the nodes.
+    in the directed graph are oriented in the wrong direction, they are flipped.
 
     Args:
         G: The graph to determine the solve order of.
@@ -651,26 +677,16 @@ def _determine_solve_order(G: nx.DiGraph, source=None) -> nx.DiGraph:
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
     source = leaf if source is None else source
 
-    # branchpoints cannot act as solve roots since they have to be replaced by a set of
-    # edges. For this branchpoints need a parent node for the order to be uniquely
-    # determined. For details see `_replace_branchpoints_with_edges``.
-    assert not G.nodes[source]["branchpoint"], "Source cannot be a branchpoint"
+    if "branchpoint" in G.nodes[source]:
+        # branchpoints cannot act as solve roots since they have to be replaced by a
+        # set of edges. For this branchpoints need a parent node for the order to be
+        # uniquely determined. For details see `_replace_branchpoints_with_edges``.
+        assert not G.nodes[source]["branchpoint"], "Source cannot be a branchpoint"
 
     for u, v in nx.dfs_edges(G.to_undirected(), source):
         if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
             G.add_edge(u, v, **G.get_edge_data(v, u))
             G.remove_edge(v, u)
-
-    dfs_node_order = {n: i for i, n in enumerate(nx.dfs_tree(G, source))}
-    nx.set_node_attributes(G, dfs_node_order, "solve_index")
-
-    # # TODO: Do we need to re-order comp_index in solve direction?
-    # # comp_index along branches has to increase monotonically for branch.loc() to work
-    # G = nx.relabel_nodes(G, dfs_node_order)
-    # comp_df = nx_to_pandas(G)[0]
-    # is_comp = ~comp_df["branchpoint"]
-    # comp_df.loc[is_comp, "comp_index"] = np.arange(sum(is_comp))
-    # nx.set_node_attributes(G, comp_df["comp_index"], "comp_index")
 
     return G
 
@@ -679,7 +695,7 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
     """Replace branchpoint nodes with edges connecting parent and children.
 
     This depends on the directionality of the edges! To ensure that the edges are
-    correctly oriented, you can use `_determine_solve_order()` to reorder the graph
+    correctly oriented, you can use `_set_graph_direction()` to reorder the graph
     before calling this function. [(x) = branchpoint, (1) = compartment]
 
                 Example 1             |            Example 2
@@ -850,7 +866,7 @@ def from_graph(
 
     comp_graph = _add_jaxley_meta_data(comp_graph)
     # edge direction matters from here on
-    comp_graph = _determine_solve_order(comp_graph, source=solve_root)
+    comp_graph = _set_graph_direction(comp_graph, source=solve_root)
     solve_graph = _replace_branchpoints_with_edges(comp_graph)
     module = _build_module(solve_graph)
     return module
