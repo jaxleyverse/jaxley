@@ -412,7 +412,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
 
 
 def branch_comps_from_nodes(
-    branch_nodes: pd.DataFrame, ncomp: int, single_soma_morphology: bool = False
+    branch_nodes: pd.DataFrame, ncomp: int, ignore_branchpoint: bool = False
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
 
@@ -428,9 +428,10 @@ def branch_comps_from_nodes(
     Args:
         branch_nodes: DataFrame of node attributes for nodes in a branch.
         ncomp: Number of compartments per branch.
-        single_soma_morphology: Whether the branch is part of a morphology with a single
-            point soma. If `True`, branches connected to the soma are treated as a special
-            case.
+        ignore_branchpoint: Whether to consider the branchpoint part of the neurite or
+        not. This is for example relevant if the branch extends from a single point soma
+        or somatic branchpoint. In these cases, the somatic SWC node is _not_ considered
+        to be part of the dendrite.
 
     Returns:
         DataFrame of compartments and compartment attributes.
@@ -449,12 +450,14 @@ def branch_comps_from_nodes(
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # non soma branches (branch type != soma or is_soma[1]) originating from single point
-    # somata have attrs set to those of first branch node.
-    is_soma = (branch_nodes["id"] == 1).values
-    if single_soma_morphology and np.any(is_soma) and not is_soma[1]:
-        nodes_next2soma = [1] * is_soma[0] + [-2] * is_soma[-1]  # neighbours of soma
-        branch_nodes.loc[is_soma] = branch_nodes.iloc[nodes_next2soma].values
+    # branches originating from branchpoint with different type id start at first branch
+    # node, i.e. have attrs set to those of first branch node.
+    is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
+    if np.any(~is_branch_id) and is_branch_id[1] and ignore_branchpoint:
+        next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
+        # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
+        next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
+        branch_nodes.loc[~is_branch_id] = next2branchpoint_attrs.values
 
     branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
     branch_len = max(branch_nodes["l"])
@@ -545,7 +548,17 @@ def build_compartment_graph(
         max_len=max_len,
     )
     nodes_df = nx_to_pandas(G)[0].astype(float)
-    single_soma_morphology = (nodes_df["id"] == 1).sum() == 1
+
+    # identify somatic branchpoints. A somatic branchpoint is a branchpoint at which at
+    # least two connecting branches are somatic. In that case (and in the case of a
+    # single-point soma), non-somatic branches are assumed to start from their first
+    # traced point, not from the soma.
+    soma_nodes = [n for n in G.nodes if G.nodes[n]["id"] == 1]
+    single_soma = len(soma_nodes) == 1
+    is_soma_branchpoint = (
+        lambda n: len([n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]) >= 2
+    )
+    soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
 
     # create new set of indices which arent already used as node indices to label comps
     existing_inds = set(nodes_df.index)
@@ -571,7 +584,8 @@ def build_compartment_graph(
 
         node_attrs = nodes_df.loc[branch]
 
-        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp, single_soma_morphology)
+        has_somatic_branchpoint = np.any(np.isin(branch, soma_branchpoints))
+        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp, has_somatic_branchpoint)
         comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
@@ -620,16 +634,12 @@ def build_compartment_graph(
     else:
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
-    # drop duplicated soma branchpoint nodes, keeping those with id == 1. Ensures remaining
-    # nodes have the correct soma attrs rather than the atttrs of the attached branch.
-    soma_nodes = nodes_df.index[nodes_df["id"] == 1]
-    is_soma_branchpoint = comp_df["node"].isin(soma_nodes) & comp_df["branchpoint"]
-    not_soma_id = ~(comp_df["id"] == 1)
-    comp_df = comp_df.loc[~(is_soma_branchpoint & not_soma_id)]
-
-    # drop remaining duplicate branchpoint nodes
+    # drop duplicated branchpoint nodes and replace with original node attrs
     comp_df = comp_df.drop_duplicates(subset=["node", "branchpoint"])
     comp_df = comp_df.set_index("node")
+    xyzr_cols = ["x", "y", "z", "r"]
+    at_branchpoints = comp_df.loc[comp_df["branchpoint"]].index
+    comp_df.loc[at_branchpoints, xyzr_cols] = nodes_df.loc[at_branchpoints, xyzr_cols]
 
     # create comp edges
     comp_edges = sum(comp_edges, [])
