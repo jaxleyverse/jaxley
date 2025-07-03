@@ -25,25 +25,28 @@ from jaxley.solver_voltage import (
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_stone,
 )
-from jaxley.synapses import Synapse
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
     _get_comp_edges_in_view,
-    compute_axial_conductances,
     compute_levels,
     convert_point_process_to_distributed,
     interpolate_xyzr,
-    loc_of_index,
     params_to_pstate,
     query_channel_states_and_params,
-    radius_from_xyzr,
-    split_xyzr_into_equal_length_segments,
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.jax_utils import infer_device
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
+from jaxley.utils.morph_attributes import (
+    compute_axial_conductances,
+    cylinder_area,
+    cylinder_resistive_load,
+    cylinder_volume,
+    morph_attrs_from_xyzr,
+    split_xyzr_into_equal_length_segments,
+)
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
     comp_edges_to_indices,
@@ -1054,16 +1057,6 @@ class Module(ABC):
             parents[nodes[:, 0]] = nodes[:, 1]
         self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
-    def _compute_axial_conductances(self, params: Dict[str, jnp.ndarray]):
-        """Given radius, length, r_a, compute the axial coupling conductances.
-
-        If ion diffusion was activated by the user (with `cell.diffuse()`) then this
-        function also compute the axial conductances for every ion.
-        """
-        return compute_axial_conductances(
-            self._comp_edges, params, self.diffusion_states
-        )
-
     def set(self, key: str, val: Union[float, jnp.ndarray]):
         """Set parameter of module (or its view) to a new value.
 
@@ -1087,7 +1080,39 @@ class Module(ABC):
 
         if key in self.nodes.columns:
             not_nan = ~self.nodes[key].isna().to_numpy()
-            self.base.nodes.loc[self._nodes_in_view[not_nan], key] = val
+            rows = self._nodes_in_view[not_nan]
+            self.base.nodes.loc[rows, key] = val
+
+            # When the key is `radius` or `length`, we also have to update the
+            # membrane surface area. In principle, we could also do this on the fly
+            # when a simulation is started, but computing the membrane area for
+            # SWC-traced neurons can be computationally expensive.
+            if key in ["radius", "length"]:
+                # Add an additional warning if the neuron was read from SWC.
+                xyzr = np.concatenate(self.xyzr)
+                xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
+                if xyzr_is_available:
+                    warn(
+                        f"You are modifying the {key} of a neuron that was read "
+                        f"from an SWC file. By doing this, Jaxley recomputes the "
+                        f"membrane surface area as `A = 2 * pi * r * l`. "
+                        f"This formula differs from the formula used by the SWC "
+                        f"reader, which takes the exact positions and radiuses of "
+                        f"SWC-traced points into account. Because of this, even "
+                        f"statements such as `cell.set('{key}', cell.nodes.{key})` "
+                        f"will likely change the electrophysiology of the cell."
+                    )
+                # If radius and length are updated by the pstate, then we have to also
+                # update 1) area, 2) volume, and 3) resistive_loads.
+                l = self.base.nodes["length"]
+                r = self.base.nodes["radius"]
+                # l/2 because we want the input load (left half of the cylinder) and
+                # the output load (right half of the cylinder).
+                resistive_load = cylinder_resistive_load(l / 2, r)
+                self.base.nodes.loc[rows, "area"] = cylinder_area(l, r)
+                self.base.nodes.loc[rows, "volume"] = cylinder_volume(l, r)
+                self.base.nodes.loc[rows, "resistive_load_out"] = resistive_load
+                self.base.nodes.loc[rows, "resistive_load_in"] = resistive_load
         elif key in self.edges.columns:
             not_nan = ~self.edges[key].isna().to_numpy()
             self.base.edges.loc[self._edges_in_view[not_nan], key] = val
@@ -1216,17 +1241,23 @@ class Module(ABC):
             if ~np.all(compartment_properties == compartment_properties[0]):
                 raise ValueError(error_msg(property_name))
 
-        if not (self.nodes[channel_names].var() == 0.0).all():
+        if (
+            num_previous_ncomp > 1
+            and not (self.nodes[channel_names].var() == 0.0).all()
+        ):
             raise ValueError(
-                "Some channel exists only in some compartments of the branch which you"
-                "are trying to modify. This is not allowed. First specify the number"
-                "of compartments with `.set_ncomp()` and then insert the channels"
+                "Some channel exists only in some compartments of the branch which you "
+                "are trying to modify. This is not allowed. First specify the number "
+                "of compartments with `.set_ncomp()` and then insert the channels "
                 "accordingly."
             )
 
-        if not (
-            self.nodes[channel_param_names + channel_state_names].var() == 0.0
-        ).all():
+        if (
+            num_previous_ncomp > 1
+            and not (
+                self.nodes[channel_param_names + channel_state_names].var() == 0.0
+            ).all()
+        ):
             raise ValueError(
                 "Some channel has different parameters or states between the "
                 "different compartments of the branch which you are trying to modify. "
@@ -1246,9 +1277,9 @@ class Module(ABC):
 
         # Add new rows as the average of all rows. Special case for the length is below.
         start_index = int(self.nodes.index.to_numpy()[0])
-        average_row = self.nodes.mean(skipna=False)
-        average_row = average_row.to_frame().T
-        view = pd.concat([*[average_row] * ncomp], axis="rows")
+        average_row = self.nodes.mean(skipna=False, numeric_only=False)
+        average_row = pd.DataFrame([average_row])
+        view = pd.concat([average_row] * ncomp, axis="rows", ignore_index=True)
 
         # Set the correct datatype after having performed an average which cast
         # everything to float.
@@ -1273,10 +1304,25 @@ class Module(ABC):
             # If all xyzr-radiuses of the branch are available, then use them to
             # compute the new compartment radiuses.
             comp_xyzrs = split_xyzr_into_equal_length_segments(xyzr, ncomp)
-            rads = [radius_from_xyzr(xyzr, min_radius) for xyzr in comp_xyzrs]
-            view["radius"] = rads
+            morph_attrs = np.asarray(
+                [morph_attrs_from_xyzr(xyzr, min_radius, ncomp) for xyzr in comp_xyzrs]
+            )
+            view["radius"] = morph_attrs[:, 0]
+            view["area"] = morph_attrs[:, 1]
+            view["volume"] = morph_attrs[:, 2]
+            view["resistive_load_in"] = morph_attrs[:, 3]
+            view["resistive_load_out"] = morph_attrs[:, 4]
         else:
             view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
+            l = comp_lengths
+            r = within_branch_radiuses[0]
+            # l/2 because we want the input load (left half of the cylinder) and
+            # the output load (right half of the cylinder).
+            resistive_load = cylinder_resistive_load(l / 2, r)
+            view["area"] = cylinder_area(l, r)
+            view["volume"] = cylinder_volume(l, r)
+            view["resistive_load_out"] = resistive_load
+            view["resistive_load_in"] = resistive_load
 
         # Update `.nodes`.
         # 1) Delete N rows starting from start_idx
@@ -1333,12 +1379,26 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
+        if key in ["radius", "length"]:
+            # Add an additional warning if the neuron was read from SWC.
+            xyzr = np.concatenate(self.xyzr)
+            xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
+            if xyzr_is_available:
+                warn(
+                    f"You are making trainable the {key} of a neuron that was read "
+                    f"from an SWC file. By doing this, Jaxley recomputes the "
+                    f"membrane surface area as `A = 2 * pi * r * l`. "
+                    f"This formula differs from the formula used by the SWC "
+                    f"reader, which takes the exact positions and radiuses of "
+                    f"SWC-traced points into account. Because of this, "
+                    f"statements such as `cell.make_trainable('{key}')` "
+                    f"will likely change the electrophysiology of the cell, even if "
+                    f"the trainable parameters were not modified."
+                )
+
         assert self.allow_make_trainable, (
             "network.cell('all').make_trainable() is not supported. Use a "
             "for-loop over cells."
-        )
-        ncomps_per_branch = (
-            self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
 
         data = self.nodes if key in self.nodes.columns else None
@@ -1445,7 +1505,7 @@ class Module(ABC):
             key = parameter["key"]
             if key in self.base.nodes.columns:
                 vals_to_set = all_params if key in all_params.keys() else all_states
-                self.base.nodes[key] = vals_to_set[key][self._internal_node_inds]
+                self.base.set(key, vals_to_set[key][self._internal_node_inds])
 
         # `jaxedges` contains only non-Nan elements. This is unlike the channels where
         # we allow parameter sharing.
@@ -1552,7 +1612,7 @@ class Module(ABC):
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
-        Runs `_compute_axial_conductances()` and return every parameter that is needed
+        Runs `compute_axial_conductances()` and returns every parameter that is needed
         to solve the ODE. This includes conductances, radiuses, lengths,
         axial_resistivities, but also coupling conductances.
 
@@ -1582,7 +1642,16 @@ class Module(ABC):
             A dictionary of all module parameters.
         """
         params = {}
-        for key in ["radius", "length", "axial_resistivity", "capacitance"]:
+        for key in [
+            "radius",
+            "length",
+            "axial_resistivity",
+            "capacitance",
+            "area",
+            "volume",
+            "resistive_load_out",
+            "resistive_load_in",
+        ]:
             params[key] = self.base.jaxnodes[key]
 
         for key in self.diffusion_states:
@@ -1619,9 +1688,27 @@ class Module(ABC):
                 # `.set()` to work. This is done with `[:, None]`.
                 params[key] = params[key].at[inds].set(set_param[:, None])
 
+            # If radius and length are updated by the pstate, then we have to also
+            # update 1) area, 2) source_frustum, and 3) sink_frustum.
+            if key in ["radius", "length"]:
+                l = params["length"][inds]
+                r = params["radius"][inds]
+                # l/2 because we want the input load (left half of the cylinder) and
+                # the output load (right half of the cylinder).
+                resistive_load = cylinder_resistive_load(l / 2, r)
+                params["area"] = params["area"].at[inds].set(cylinder_area(l, r))
+                params["volume"] = params["volume"].at[inds].set(cylinder_volume(l, r))
+                params["resistive_load_out"] = (
+                    params["resistive_load_out"].at[inds].set(resistive_load)
+                )
+                params["resistive_load_in"] = (
+                    params["resistive_load_in"].at[inds].set(resistive_load)
+                )
+
         # Compute conductance params and add them to the params dictionary.
-        conds = self.base._compute_axial_conductances(params=params)
-        params["axial_conductances"] = conds
+        params["axial_conductances"] = compute_axial_conductances(
+            self.base._comp_edges, params, self.base.diffusion_states
+        )
         return params
 
     @only_allow_module
@@ -2212,9 +2299,7 @@ class Module(ABC):
         if "i" in externals.keys():
             i_current = externals["i"]
             i_inds = external_inds["i"]
-            i_ext = self._get_external_input(
-                u["v"], i_inds, i_current, params["radius"], params["length"]
-            )
+            i_ext = self._get_external_input(u["v"], i_inds, i_current, params["area"])
         else:
             i_ext = 0.0
 
@@ -2612,8 +2697,7 @@ class Module(ABC):
         voltages: jnp.ndarray,
         i_inds: jnp.ndarray,
         i_stim: jnp.ndarray,
-        radius: float,
-        length_single_compartment: float,
+        area: float,
     ) -> jnp.ndarray:
         """
         Return external input to each compartment in uA / cm^2.
@@ -2625,9 +2709,7 @@ class Module(ABC):
             length_single_compartment: um.
         """
         zero_vec = jnp.zeros_like(voltages)
-        current = convert_point_process_to_distributed(
-            i_stim, radius[i_inds], length_single_compartment[i_inds]
-        )
+        current = convert_point_process_to_distributed(i_stim, area[i_inds])
 
         dnums = ScatterDimensionNumbers(
             update_window_dims=(),

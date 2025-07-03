@@ -147,6 +147,7 @@ class Cell(Module):
                         + list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp)),
                         "sink": list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp))
                         + list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp)),
+                        "ordered": [1] * (ncomp - 1) + [0] * (ncomp - 1),
                     }
                 )
                 .astype(int)
@@ -161,6 +162,7 @@ class Cell(Module):
                 "source": np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1],
                 "sink": self.cumsum_ncomp[self._par_inds + 1] - 1,
                 "type": 1,
+                "ordered": 0,
             }
         )
         branchpoint_to_child_edges = pd.DataFrame().from_dict(
@@ -168,6 +170,7 @@ class Cell(Module):
                 "source": self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1],
                 "sink": self.cumsum_ncomp[self._child_inds],
                 "type": 2,
+                "ordered": 1,
             }
         )
         comp_edges = pd.concat(
@@ -184,10 +187,12 @@ class Cell(Module):
             columns={"sink": "source", "source": "sink"}
         )
         parent_to_branchpoint_edges["type"] = 3
+        parent_to_branchpoint_edges["ordered"] = 1
         child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
             columns={"sink": "source", "source": "sink"}
         )
         child_to_branchpoint_edges["type"] = 4
+        child_to_branchpoint_edges["ordered"] = 0
 
         self._comp_edges = pd.concat(
             [

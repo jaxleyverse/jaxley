@@ -190,29 +190,6 @@ def SimpleMorphCell():
     cells = {}
 
 
-@pytest.fixture(scope="session")
-def swc2jaxley():
-    """Fixture for creating or retrieving an already computed params of a morphology."""
-
-    params = {}
-
-    def get_or_compute_swc2jaxley_params(
-        fname: str = None,
-        max_branch_len: float = 2_000.0,
-        sort: bool = True,
-        force_init: bool = False,
-    ):
-        dirname = os.path.dirname(__file__)
-        default_fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
-        fname = default_fname if fname is None else fname
-        if key := (fname, max_branch_len, sort) not in params or force_init:
-            params[key] = jx.io.swc.swc_to_jaxley(fname, max_branch_len, sort)
-        return params[key]
-
-    yield get_or_compute_swc2jaxley_params
-    params = {}
-
-
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--runslow"):
         # --runslow given in cli: do not skip slow tests

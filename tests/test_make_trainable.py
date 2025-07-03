@@ -1,6 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+import os
+
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -16,6 +18,11 @@ from jaxley.channels import HH, K, Na
 from jaxley.connect import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
+from jaxley.utils.morph_attributes import (
+    cylinder_area,
+    cylinder_resistive_load,
+    cylinder_volume,
+)
 
 
 def test_make_trainable(SimpleCell):
@@ -575,3 +582,100 @@ def test_param_sharing_w_different_group_sizes():
     params2 = branch2.get_all_parameters(pstate)
 
     assert np.array_equal(params1["radius"], params2["radius"], equal_nan=True)
+
+
+def test_updates_of_membrane_area():
+    """Runs `.set("radius")` and checks whether this updates the membrane area."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 4)
+    branch.comp(1).set("radius", 5.5)
+    radiuses = np.asarray([1.0, 5.5, 1.0, 1.0])
+    lengths = np.asarray([10.0, 10.0, 10.0, 10.0])
+    assert np.array_equal(
+        branch.nodes.area.to_numpy(), cylinder_area(lengths, radiuses)
+    )
+    assert np.array_equal(
+        branch.nodes.volume.to_numpy(), cylinder_volume(lengths, radiuses)
+    )
+    assert np.array_equal(
+        branch.nodes.resistive_load_in.to_numpy(),
+        cylinder_resistive_load(lengths / 2, radiuses),
+    )
+    assert np.array_equal(
+        branch.nodes.resistive_load_out.to_numpy(),
+        cylinder_resistive_load(lengths / 2, radiuses),
+    )
+
+    branch.comp(2).set("length", 22.0)
+    radiuses = np.asarray([1.0, 5.5, 1.0, 1.0])
+    lengths = np.asarray([10.0, 10.0, 22.0, 10.0])
+    assert np.array_equal(
+        branch.nodes.area.to_numpy(), cylinder_area(lengths, radiuses)
+    )
+    assert np.array_equal(
+        branch.nodes.volume.to_numpy(), cylinder_volume(lengths, radiuses)
+    )
+    assert np.array_equal(
+        branch.nodes.resistive_load_in.to_numpy(),
+        cylinder_resistive_load(lengths / 2, radiuses),
+    )
+    assert np.array_equal(
+        branch.nodes.resistive_load_out.to_numpy(),
+        cylinder_resistive_load(lengths / 2, radiuses),
+    )
+
+
+def test_updates_to_membrane_area_equal_updates_to_radius():
+    comp = jx.Compartment()
+    branch1 = jx.Branch(comp, 4)
+    branch1.comp(1).set("radius", 5.5)
+    branch1.comp(2).set("length", 22.0)
+
+    radiuses = np.asarray([1.0, 5.5, 1.0, 1.0])
+    lengths = np.asarray([10.0, 10.0, 22.0, 10.0])
+
+    branch2 = jx.Branch(comp, 4)
+    area = cylinder_area(lengths, radiuses)
+    volume = cylinder_volume(lengths, radiuses)
+    r_in = cylinder_resistive_load(lengths / 2, radiuses)
+    r_out = cylinder_resistive_load(lengths / 2, radiuses)
+    branch2.set("area", area)
+    branch2.set("volume", volume)
+    branch2.set("resistive_load_in", r_in)
+    branch2.set("resistive_load_out", r_out)
+
+    for branch in [branch1, branch2]:
+        branch.comp(3).stimulate(jx.step_current(2.0, 5.0, 0.01, 0.025, 10.0))
+        branch.record()
+
+    v1 = jx.integrate(branch1)
+    v2 = jx.integrate(branch2)
+    assert np.max(np.abs(v1 - v2)) < 1e-8
+
+
+def test_whether_swc_after_running_set_on_radius_equals_cylinder():
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(
+        dirname, "swc_files", "morph_variable_radiuses_within_branch.swc"
+    )
+
+    cell1 = jx.read_swc(fname, ncomp=1)
+    cell2 = jx.Cell()
+    cell3 = jx.read_swc(fname, ncomp=1)
+    cell3.make_trainable("radius")
+    cell3.make_trainable("length")
+    params = cell3.get_parameters()
+
+    for cell in [cell1, cell2]:
+        cell.set("length", cell1.nodes.length)
+        cell.set("radius", cell1.nodes.radius)
+
+    for cell in [cell1, cell2, cell3]:
+        cell.stimulate(jx.step_current(2.0, 5.0, 0.01, 0.025, 10.0))
+        cell.record()
+
+    v1 = jx.integrate(cell1)
+    v2 = jx.integrate(cell2)
+    v3 = jx.integrate(cell3, params=params)
+    assert np.max(np.abs(v1 - v2)) < 1e-8
+    assert np.max(np.abs(v1 - v3)) < 1e-8

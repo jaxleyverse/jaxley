@@ -348,9 +348,7 @@ class Network(Module):
                 synapse_params,
             )
             synapse_currents_dist = convert_point_process_to_distributed(
-                synapse_currents,
-                params["radius"][post_inds],
-                params["length"][post_inds],
+                synapse_currents, params["area"][post_inds]
             )
 
             # Split into voltage and constant terms.

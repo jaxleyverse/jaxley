@@ -17,4 +17,4 @@ In addition to these biophysical neuron models, `Jaxley` can also simulate simpl
 
 `Jaxley` also supports networks of these neurons.
 
-Note that, for LIF and Izhikevich neuron models, `Jaxley` does not yet support surrogate gradient descent, which is required for efficient training to due the discontinuity of spikes in these models.
+Note that, for LIF and Izhikevich neuron models, `Jaxley` does not yet support surrogate gradient descent, which is required for efficient training due to the discontinuity of spikes in these models.
