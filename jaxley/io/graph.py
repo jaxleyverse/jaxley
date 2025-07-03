@@ -411,7 +411,9 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     return G
 
 
-def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFrame:
+def branch_comps_from_nodes(
+    branch_nodes: pd.DataFrame, ncomp: int, single_soma_morphology: bool = False
+) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
 
     Takes a dataframe with nodes (index) and node attributes (columns) and returns a
@@ -424,55 +426,60 @@ def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFram
     o-------x---o----x-----o--xo---o---ox-------o
 
     Args:
-        node_attrs: DataFrame of node attributes for nodes in a branch.
+        branch_nodes: DataFrame of node attributes for nodes in a branch.
         ncomp: Number of compartments per branch.
+        single_soma_morphology: Whether the branch is part of a morphology with a single
+            point soma. If `True`, branches connected to the soma are treated as a special
+            case.
 
     Returns:
         DataFrame of compartments and compartment attributes.
     """
     # TODO: This should be reusable for `set_ncomp()`
-    node_inds_in_branch = node_attrs.index.tolist()
+    node_inds_in_branch = branch_nodes.index.tolist()
 
     compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
-    edge_lens = compute_edge_lens(node_attrs[["x", "y", "z"]])
-    node_attrs["l"] = edge_lens.cumsum()  # path length
+    edge_lens = compute_edge_lens(branch_nodes[["x", "y", "z"]])
+    branch_nodes["l"] = edge_lens.cumsum()  # path length
 
-    # For single-point somatata, we set l = 2*r this ensures
-    # A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
+    # handle single point branches / somata
     if len(node_inds_in_branch) == 1:
-        node_attrs = node_attrs.loc[node_inds_in_branch * 2]  # duplicate soma node
-        node_attrs["l"] = np.array([0, 2 * node_attrs["r"].iloc[0]])
+        # duplicate node to compartmentalize it along its "length", i.e. l = 2*r
+        branch_nodes = branch_nodes.loc[node_inds_in_branch * 2]
+        # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
+        branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # branches originating from soma have attrs set to those of first branch node.
-    is_soma = (node_attrs["id"] == 1).values
-    next2soma_nodes = [1] * is_soma[0] + [-2] * is_soma[-1]  # neighbour nodes to soma
-    if np.any(is_soma) and not is_soma[1]:  # soma branchpoints, branch type != soma
-        node_attrs.loc[is_soma] = node_attrs.iloc[next2soma_nodes].values
+    # non soma branches (branch type != soma or is_soma[1]) originating from single point
+    # somata have attrs set to those of first branch node.
+    is_soma = (branch_nodes["id"] == 1).values
+    if single_soma_morphology and np.any(is_soma) and not is_soma[1]:
+        nodes_next2soma = [1] * is_soma[0] + [-2] * is_soma[-1]  # neighbours of soma
+        branch_nodes.loc[is_soma] = branch_nodes.iloc[nodes_next2soma].values
 
-    branch_id = node_attrs["id"].iloc[1]  # node after branchpoint det. branch id
-    branch_len = max(node_attrs["l"])
+    branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
+    branch_len = max(branch_nodes["l"])
     comp_len = branch_len / ncomp
     comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
     # Create node indices and attributes for branch-tips/branchpoints and comps
     # branchpoint, comp_id, comp_len, x, y, z, r
     comp_attrs = [
-        [True, node_attrs["id"].iloc[0], 0],  # branch tip
+        [True, branch_nodes["id"].iloc[0], 0],  # branch tip
         *[[False, branch_id, comp_len]] * ncomp,  # comps
-        [True, node_attrs["id"].iloc[-1], 0],  # branch tip
+        [True, branch_nodes["id"].iloc[-1], 0],  # branch tip
     ]
 
     # Interpolate xyz along branch
     x = np.array([0, *comp_centers, branch_len])
-    xp = node_attrs["l"].values
-    fp_xyz = node_attrs[["x", "y", "z"]].values
+    xp = branch_nodes["l"].values
+    fp_xyz = branch_nodes[["x", "y", "z"]].values
 
     interpolated_coords = np.column_stack([np.interp(x, xp, fp) for fp in fp_xyz.T])
 
     # trapezoidal integration of r between compartment tips
     comp_ends = np.linspace(0, branch_len, ncomp + 1)
     comp_tips = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
-    fp_r = node_attrs["r"].values
+    fp_r = branch_nodes["r"].values
 
     frustum_props = [rev_solid_props(xp, fp_r, x1, x2) for x1, x2 in comp_tips]
     frustum_props = np.array([[fp_r[0], 0, 0], *frustum_props, [fp_r[-1], 0, 0]])
@@ -538,6 +545,7 @@ def build_compartment_graph(
         max_len=max_len,
     )
     nodes_df = nx_to_pandas(G)[0].astype(float)
+    single_soma_morphology = (nodes_df["id"] == 1).sum() == 1
 
     # create new set of indices which arent already used as node indices to label comps
     existing_inds = set(nodes_df.index)
@@ -563,7 +571,7 @@ def build_compartment_graph(
 
         node_attrs = nodes_df.loc[branch]
 
-        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp)
+        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp, single_soma_morphology)
         comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
@@ -612,7 +620,8 @@ def build_compartment_graph(
     else:
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
-    # drop duplicated soma branchpoint nodes, keeping those with id == 1
+    # drop duplicated soma branchpoint nodes, keeping those with id == 1. Ensures remaining
+    # nodes have the correct soma attrs rather than the atttrs of the attached branch.
     soma_nodes = nodes_df.index[nodes_df["id"] == 1]
     is_soma_branchpoint = comp_df["node"].isin(soma_nodes) & comp_df["branchpoint"]
     not_soma_id = ~(comp_df["id"] == 1)
