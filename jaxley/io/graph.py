@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
-from jaxley.utils.cell_utils import trapz_average
+from jaxley.utils.cell_utils import rev_solid_props
 
 #########################################################################################
 ################################### Helper functions ####################################
@@ -243,8 +243,8 @@ def _compute_long_branch_splits(
     """Find branches that are too long and split them at equidistant points.
 
     If branch >= 1*max_len, then we split it down the middle. If branch >= 2*max_len,
-    then we split it into 3 parts. And so on. This ensures that the resulting sub-branches
-    are of similar length and all have a length <= max_len.
+    then we split it into 3 parts. And so on. This ensures that sub-branches have the
+    same length & length <= max_len.
 
     Args:
         G: NetworkX graph tracing of swc file.
@@ -424,13 +424,14 @@ def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFram
     o-------x---o----x-----o--xo---o---ox-------o
 
     Args:
-        node_attrs: DataFrame of node attributes.
+        node_attrs: DataFrame of node attributes for nodes in a branch.
         ncomp: Number of compartments per branch.
 
     Returns:
         DataFrame of compartments and compartment attributes.
     """
-    branch = node_attrs.index.tolist()
+    # TODO: This should be reusable for `set_ncomp()`
+    node_inds_in_branch = node_attrs.index.tolist()
 
     compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
     edge_lens = compute_edge_lens(node_attrs[["x", "y", "z"]])
@@ -438,8 +439,8 @@ def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFram
 
     # For single-point somatata, we set l = 2*r this ensures
     # A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
-    if len(branch) == 1:
-        node_attrs = node_attrs.loc[branch * 2]  # duplicate soma node
+    if len(node_inds_in_branch) == 1:
+        node_attrs = node_attrs.loc[node_inds_in_branch * 2]  # duplicate soma node
         node_attrs["l"] = np.array([0, 2 * node_attrs["r"].iloc[0]])
 
     # branches originating from soma have attrs set to those of first branch node.
@@ -454,7 +455,7 @@ def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFram
     comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
     # Create node indices and attributes for branch-tips/branchpoints and comps
-    # branch_inds, branchpoint, comp_id, comp_len, x, y, z, r
+    # branchpoint, comp_id, comp_len, x, y, z, r
     comp_attrs = [
         [True, node_attrs["id"].iloc[0], 0],  # branch tip
         *[[False, branch_id, comp_len]] * ncomp,  # comps
@@ -466,18 +467,18 @@ def branch_comps_from_nodes(node_attrs: pd.DataFrame, ncomp: int) -> pd.DataFram
     xp = node_attrs["l"].values
     fp_xyz = node_attrs[["x", "y", "z"]].values
 
-    interpolated_coords = np.column_stack([np.interp(x, xp, xyz) for xyz in fp_xyz.T])
+    interpolated_coords = np.column_stack([np.interp(x, xp, fp) for fp in fp_xyz.T])
 
     # trapezoidal integration of r between compartment tips
     comp_ends = np.linspace(0, branch_len, ncomp + 1)
     comp_tips = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
     fp_r = node_attrs["r"].values
 
-    radii = [trapz_average(xp, fp_r, x1, x2) for x1, x2 in comp_tips]
-    radii = np.array([fp_r[0], *radii, fp_r[-1]]).reshape(-1, 1)
+    frustum_props = [rev_solid_props(xp, fp_r, x1, x2) for x1, x2 in comp_tips]
+    frustum_props = np.array([[fp_r[0], 0, 0], *frustum_props, [fp_r[-1], 0, 0]])
 
     # Combine interpolated coordinates with existing attributes
-    return np.hstack([comp_attrs, interpolated_coords, radii])
+    return np.hstack([comp_attrs, interpolated_coords, frustum_props])
 
 
 def build_compartment_graph(
@@ -556,13 +557,13 @@ def build_compartment_graph(
         # ensure node_index increases monotonically along branch. Required for branch.loc()
         branch = branch[::-1] if branch[0] < branch[-1] else branch
 
-        node_attrs = nodes_df.loc[branch]
-        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp)
-
         comp_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
         comp_inds = np.array([branch[0], *comp_inds, branch[-1]])
         branch_inds = np.array([float("nan"), *[branch_idx] * ncomp, float("nan")])
 
+        node_attrs = nodes_df.loc[branch]
+
+        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp)
         comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
@@ -582,7 +583,19 @@ def build_compartment_graph(
         xyzr.append(node_attrs[["x", "y", "z", "r"]].values)
 
     comps = np.concatenate(comps)
-    comp_cols = ["node", "branch", "branchpoint", "id", "l", "x", "y", "z", "r"]
+    comp_cols = [
+        "node",
+        "branch",
+        "branchpoint",
+        "id",
+        "l",
+        "x",
+        "y",
+        "z",
+        "r",
+        "area",
+        "volume",
+    ]
     comp_df = pd.DataFrame(comps, columns=comp_cols)
 
     int_cols = ["node", "id"]  # branch cols are floats due to branchpoints
