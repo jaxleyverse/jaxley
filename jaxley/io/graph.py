@@ -612,7 +612,13 @@ def build_compartment_graph(
     else:
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
-    # drop duplicated branchpoint nodes
+    # drop duplicated soma branchpoint nodes, keeping those with id == 1
+    soma_nodes = nodes_df.index[nodes_df["id"] == 1]
+    is_soma_branchpoint = comp_df["node"].isin(soma_nodes) & comp_df["branchpoint"]
+    not_soma_id = ~(comp_df["id"] == 1)
+    comp_df = comp_df.loc[~(is_soma_branchpoint & not_soma_id)]
+
+    # drop remaining duplicate branchpoint nodes
     comp_df = comp_df.drop_duplicates(subset=["node", "branchpoint"])
     comp_df = comp_df.set_index("node")
 
