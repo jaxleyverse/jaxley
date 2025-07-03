@@ -26,6 +26,7 @@ from jaxley.synapses import IonotropicSynapse, TestSynapse
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
 def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
+    """Test a compartment."""
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0

@@ -24,11 +24,12 @@ _ = h.load_file("import3d.hoc")
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_single_point_soma.swc", "morph_minimal.swc"]
 )
-def test_swc_reader_lengths(file, swc2jaxley):
+def test_swc_reader_lengths(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    _, pathlengths, _, _, _ = swc2jaxley(fname, max_branch_len=2000.0)
+    cell = jx.read_swc(fname, ncomp=1)
+    pathlengths = cell.nodes.length.to_numpy()
     if pathlengths[0] == 0.1:
         pathlengths = pathlengths[1:]
 
@@ -54,32 +55,32 @@ def test_swc_reader_lengths(file, swc2jaxley):
     ), "Number of branches does not match."
 
 
-def test_dummy_compartment_length(swc2jaxley):
+def test_dummy_compartment_length():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_soma_both_ends.swc")
 
-    parents, pathlengths, _, _, _ = swc2jaxley(fname, max_branch_len=2000.0)
-    assert parents == [-1, 0, 0, 1]
-    assert pathlengths == [0.1, 1.0, 2.6, 2.2]
+    cell = jx.read_swc(fname, ncomp=1)
+    pathlengths = cell.nodes.length.to_numpy().tolist()
+    parents = cell.comb_parents.tolist()
+    assert parents == [-1, 0, 1]
+    assert pathlengths == [2.2, 1.0, 2.6]
 
 
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_250_single_point_soma.swc", "morph_ca1_n120_250.swc"]
 )
-def test_swc_radius(file, swc2jaxley):
+def test_swc_radius(file):
     """We expect them to match for sufficiently large ncomp. See #140."""
     ncomp = 64
-    non_split = 1 / ncomp
-    range_16 = np.linspace(non_split / 2, 1 - non_split / 2, ncomp)
 
     # Can not use full morphology because of branch sorting.
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    _, pathlen, radius_fns, _, _ = swc2jaxley(fname, max_branch_len=2000.0, sort=False)
-    jaxley_diams = []
-    for r in radius_fns:
-        jaxley_diams.append(r(range_16) * 2)
+    # _, _, radius_fns, _, _ = swc2jaxley(fname, max_branch_len=2000.0, sort=False)
+    cell = jx.read_swc(fname, ncomp=ncomp)
+    jaxley_diams = cell.nodes.radius.to_numpy() * 2
+    jaxley_diams = np.sort(jaxley_diams)
 
     for sec in h.allsec():
         h.delete_section(sec=sec)
@@ -92,15 +93,13 @@ def test_swc_radius(file, swc2jaxley):
     neuron_diams = []
     for sec in h.allsec():
         sec.nseg = ncomp
-        diams_in_branch = []
         for seg in sec:
-            diams_in_branch.append(seg.diam)
-        neuron_diams.append(diams_in_branch)
+            neuron_diams.append(seg.diam)
     neuron_diams = np.asarray(neuron_diams)
+    neuron_diams = np.sort(neuron_diams)
 
-    for i in range(len(jaxley_diams)):
-        max_error = np.max(np.abs(jaxley_diams[i] - neuron_diams[i]))
-        assert max_error < 0.5, f"radiuses do not match, error {max_error}."
+    max_error = np.max(np.abs(jaxley_diams - neuron_diams))
+    assert max_error < 0.5, f"radiuses do not match, error {max_error}."
 
 
 @pytest.mark.parametrize("reader_backend", ["graph"])

@@ -1089,7 +1089,7 @@ class Module(ABC):
             # SWC-traced neurons can be computationally expensive.
             if key in ["radius", "length"]:
                 # Add an additional warning if the neuron was read from SWC.
-                xyzr = np.concatenate(self.base.xyzr)
+                xyzr = np.concatenate(self.xyzr)
                 xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
                 if xyzr_is_available:
                     warn(
@@ -1099,7 +1099,7 @@ class Module(ABC):
                         f"This formula differs from the formula used by the SWC "
                         f"reader, which takes the exact positions and radiuses of "
                         f"SWC-traced points into account. Because of this, even "
-                        f"statements such as `cell.set('radius', cell.nodes.radius)` "
+                        f"statements such as `cell.set('{key}', cell.nodes.{key})` "
                         f"will likely change the electrophysiology of the cell."
                     )
                 # If radius and length are updated by the pstate, then we have to also
@@ -1379,12 +1379,26 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
         """
+        if key in ["radius", "length"]:
+            # Add an additional warning if the neuron was read from SWC.
+            xyzr = np.concatenate(self.xyzr)
+            xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
+            if xyzr_is_available:
+                warn(
+                    f"You are making trainable the {key} of a neuron that was read "
+                    f"from an SWC file. By doing this, Jaxley recomputes the "
+                    f"membrane surface area as `A = 2 * pi * r * l`. "
+                    f"This formula differs from the formula used by the SWC "
+                    f"reader, which takes the exact positions and radiuses of "
+                    f"SWC-traced points into account. Because of this, "
+                    f"statements such as `cell.make_trainable('{key}')` "
+                    f"will likely change the electrophysiology of the cell, even if "
+                    f"the trainable parameters were not modified."
+                )
+
         assert self.allow_make_trainable, (
             "network.cell('all').make_trainable() is not supported. Use a "
             "for-loop over cells."
-        )
-        ncomps_per_branch = (
-            self.base.nodes["global_branch_index"].value_counts().to_numpy()
         )
 
         data = self.nodes if key in self.nodes.columns else None
