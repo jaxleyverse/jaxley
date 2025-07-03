@@ -12,7 +12,7 @@ from jax import vmap
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
-def trapz(
+def trapz_integral(
     xp: np.ndarray,
     fp: np.ndarray,
     x1: Optional[float] = None,
@@ -99,17 +99,19 @@ def rev_solid_props(
 
     # a) Surface Area: SA = 2π ∫ r * sqrt(1 + (dr/dl)²) dl
     surface_integrand = 2 * np.pi * rs * np.sqrt(1 + dr_dl**2)
-    surface_area = trapz(ls, surface_integrand, l_start, l_end)
+    surface_area = trapz_integral(ls, surface_integrand, l_start, l_end)
 
     # b) Volume: V = π ∫ r² dl
     volume_integrand = np.pi * rs**2
-    volume = trapz(ls, volume_integrand, l_start, l_end)
+    volume = trapz_integral(ls, volume_integrand, l_start, l_end)
 
     # c) Average Radius: r_avg = ∫ r dl / ∫ dl = ∫ r dl / L
     # where L is the integration length
     radius_integrand = rs
     integration_length = l_end - l_start
-    average_radius = trapz(ls, radius_integrand, l_start, l_end) / integration_length
+    average_radius = (
+        trapz_integral(ls, radius_integrand, l_start, l_end) / integration_length
+    )
 
     return average_radius, surface_area, volume
 
