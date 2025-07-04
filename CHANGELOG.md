@@ -18,6 +18,7 @@ updated computation of membrane area matches that of the NEURON simulator (#662,
 @michaeldeistler, thanks to @VENOM314 for reporting).
 - remove the `custom` SWC reader (which had been deprecated in `v0.9.0`, #662,
 @michaeldeistler).
+- fix bug in `set_ncomp` (# 676, @manuelgloeckler)
 
 
 # 0.10.0
@@ -48,9 +49,9 @@ cell.nodes["path_dist_from_soma"] = path_dists
 ### ✨ Highlights
 
 - This PR implements a new solver, which is now used by default (#625,
-@michaeldeistler). The new solver has the following advantages:  
+@michaeldeistler). The new solver has the following advantages:
   - Much lower runtime. Across several morphologies, we get a 20% runtime speedup on
-    CPU and a 50% runtime speedup on GPU.  
+    CPU and a 50% runtime speedup on GPU.
   - Almost zero compile time. We get a 50x compile time speedup on CPU and a 3x compile
     time speedup on GPU.
 - Utility to delete parts of a morphology (#612, @michaeldeistler):
@@ -131,9 +132,9 @@ rate-based neurons (#601, @michaeldeistler)
 
 ### 🛠️ Minor updates
 
-- make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)  
+- make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
 - make random postsnaptic compartment selection optional in connectivity functions
-(#489, @kyralianaka)  
+(#489, @kyralianaka)
 
 ### 🐛 Bug fixes
 
@@ -159,7 +160,7 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 
 ### 🛠️ Minor changes
 
-- rename `delete_channel()` to `delete()` (#438, @michaeldeistler)  
+- rename `delete_channel()` to `delete()` (#438, @michaeldeistler)
 
 ### 🐛 Bug fixes
 
@@ -281,7 +282,7 @@ must be updated to:
 net.set("IonotropicSynapse_s", 0.2)
 ```
 For a more detailed tutorial on how to index synapses, see
-[this new tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html).  
+[this new tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html).
 - Throughout the codebase, we renamed any occurance of `seg` (for `segment`) to `comp`
 (for `compartment`). The most notable user-facing changes are:
   - `branch = jx.Branch(comp, ncomp=4)`
@@ -325,7 +326,7 @@ net.write_trainables(params)
 ```python
 r_greater_1 = net.nodes.groupby("global_cell_index")["radius"].mean() > 1
 net[r_greater_1].nodes.vis()
-```  
+```
 - check if recordings are empty (#460, @deezer257)
 - enable `clamp` to be jitted and vmapped with `data_clamp()` (#374, @kyralianaka)
 
@@ -387,12 +388,12 @@ net[r_greater_1].nodes.vis()
 - New solver: `jx.integrate(..., voltage_solver="jax.sparse")` which has very low
 compile time (#418, @michaeldeistler)
 - Support for different number of compartments per branch at initilization (modifying
-the number of compartments after initialization is not yet supported, #418, #426, 
+the number of compartments after initialization is not yet supported, #418, #426,
 @michaeldeistler)
 
 ### 🐛 Bug fixes
 
-- Bugfix for capacitances and their interplay with axial conductances (Thanks @Tunenip, 
+- Bugfix for capacitances and their interplay with axial conductances (Thanks @Tunenip,
 #426, @michaeldeistler)
 - Bugfixes for tutorials on website
 

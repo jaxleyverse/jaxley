@@ -3086,7 +3086,7 @@ class View(Module):
             ptr_nodes if ptr_nodes.empty else ptr_nodes.loc[self._branchpoints_in_view]
         )
         self.xyzr = self._xyzr_in_view()
-        self.ncomp = 1 if len(self.nodes) == 1 else pointer.ncomp
+        self.ncomp = len(self.nodes)
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
         self._cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
