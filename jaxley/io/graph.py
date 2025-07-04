@@ -427,6 +427,7 @@ def branch_comps_from_nodes(
 
     Args:
         branch_nodes: DataFrame of node attributes for nodes in a branch.
+            needs to include morph attributes `id`, `x`, `y`, `z`, `r`.
         ncomp: Number of compartments per branch.
         ignore_branchpoint: Whether to consider the branchpoint part of the neurite or
         not. This is for example relevant if the branch extends from a single point soma
@@ -465,11 +466,11 @@ def branch_comps_from_nodes(
     comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
     # Create node indices and attributes for branch-tips/branchpoints and comps
-    # branchpoint, comp_id, comp_len, x, y, z, r
+    # is_comp, comp_id, comp_len, x, y, z, r
     comp_attrs = [
-        [True, branch_nodes["id"].iloc[0], 0],  # branch tip
-        *[[False, branch_id, comp_len]] * ncomp,  # comps
-        [True, branch_nodes["id"].iloc[-1], 0],  # branch tip
+        [False, branch_nodes["id"].iloc[0], 0],  # branch tip
+        *[[True, branch_id, comp_len]] * ncomp,  # comps
+        [False, branch_nodes["id"].iloc[-1], 0],  # branch tip
     ]
 
     # Interpolate xyz along branch
@@ -485,6 +486,7 @@ def branch_comps_from_nodes(
     fp_r = branch_nodes["r"].values
 
     frustum_props = [rev_solid_props(xp, fp_r, x1, x2) for x1, x2 in comp_tips]
+    # radius, area, volume
     frustum_props = np.array([[fp_r[0], 0, 0], *frustum_props, [fp_r[-1], 0, 0]])
 
     # Combine interpolated coordinates with existing attributes
@@ -564,13 +566,7 @@ def build_compartment_graph(
     existing_inds = set(nodes_df.index)
     num_additional_inds = len(branches) * ncomp
     proposed_inds = set(range(num_additional_inds + len(existing_inds)))
-    proposed_node_inds = list(
-        proposed_inds - existing_inds
-    )  # avoid overlap w node inds
-
-    # identify tip nodes (degree == 1 -> node appears only once in edges)
-    nodes_in_edges, node_counts_in_edges = np.unique(G.edges, return_counts=True)
-    tip_nodes = nodes_in_edges[node_counts_in_edges == 1]
+    proposed_node_inds = list(proposed_inds - existing_inds)  # avoid node inds overlap
 
     # collect comps and comp_edges
     comps, comp_edges, xyzr = [], [], []
@@ -592,10 +588,6 @@ def build_compartment_graph(
         # we therefore remove one tip node / branchpoint node, i.e. [0,s,0] -> [s,0]
         comp_attrs = comp_attrs[1:] if branch[0] == branch[-1] else comp_attrs
 
-        # remove tip nodes
-        comp_attrs = comp_attrs[1:] if branch[0] in tip_nodes else comp_attrs
-        comp_attrs = comp_attrs[:-1] if branch[-1] in tip_nodes else comp_attrs
-
         # Store edges, nodes, and xyzr in branch-wise manner
         intra_branch_edges = np.stack([comp_attrs[:-1, 0], comp_attrs[1:, 0]]).T
         comp_edges.append(intra_branch_edges.astype(int).tolist())
@@ -605,25 +597,14 @@ def build_compartment_graph(
         xyzr.append(node_attrs[["x", "y", "z", "r"]].values)
 
     comps = np.concatenate(comps)
-    comp_cols = [
-        "node",
-        "branch",
-        "branchpoint",
-        "id",
-        "l",
-        "x",
-        "y",
-        "z",
-        "r",
-        "area",
-        "volume",
-    ]
-    comp_df = pd.DataFrame(comps, columns=comp_cols)
+    comp_inds_cols = ["node", "branch", "is_comp"]
+    comp_cols = ["id", "l", "x", "y", "z", "r", "area", "volume"]
+    comp_df = pd.DataFrame(comps, columns=comp_inds_cols + comp_cols)
 
     int_cols = ["node", "id"]  # branch cols are floats due to branchpoints
     comp_df[int_cols] = comp_df[int_cols].astype(int)
 
-    bool_cols = ["branchpoint"]
+    bool_cols = ["is_comp"]
     comp_df[bool_cols] = comp_df[bool_cols].astype(bool)
 
     # threshold radius
@@ -634,11 +615,11 @@ def build_compartment_graph(
     else:
         comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
-    # drop duplicated branchpoint nodes and replace with original node attrs
-    comp_df = comp_df.drop_duplicates(subset=["node", "branchpoint"])
+    # drop duplicated branchpoint nodes and replace with original branchpoint node attrs
+    comp_df = comp_df.drop_duplicates(subset=["node", "is_comp"])
     comp_df = comp_df.set_index("node")
     xyzr_cols = ["x", "y", "z", "r"]
-    at_branchpoints = comp_df.loc[comp_df["branchpoint"]].index
+    at_branchpoints = comp_df.loc[~comp_df["is_comp"]].index
     comp_df.loc[at_branchpoints, xyzr_cols] = nodes_df.loc[at_branchpoints, xyzr_cols]
 
     # create comp edges
@@ -686,7 +667,7 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     nodes_df = nodes_df.rename(jaxley_keys, axis=1)
 
     # new columns
-    is_comp = ~nodes_df["branchpoint"]
+    is_comp = nodes_df["is_comp"]
     nodes_df.loc[is_comp, "capacitance"] = 1.0
     nodes_df.loc[is_comp, "v"] = -70.0
     nodes_df.loc[is_comp, "axial_resistivity"] = 5000.0
@@ -715,11 +696,13 @@ def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
     source = leaf if source is None else source
 
-    if "branchpoint" in G.nodes[source]:
+    if "is_comp" in G.nodes[source]:
         # branchpoints cannot act as solve roots since they have to be replaced by a
         # set of edges. For this branchpoints need a parent node for the order to be
         # uniquely determined. For details see `_replace_branchpoints_with_edges``.
-        assert not G.nodes[source]["branchpoint"], "Source cannot be a branchpoint"
+        assert (
+            G.nodes[source]["is_comp"] or G.degree(source) == 1
+        ), "Source cannot be a branchpoint."
 
     for u, v in nx.dfs_edges(G.to_undirected(), source):
         if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
@@ -730,7 +713,10 @@ def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
 
 
 def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
-    """Replace branchpoint nodes with edges connecting parent and children.
+    """Replace branchpoint nodes with edges connecting parent and children and remove tips.
+
+    Removes all non-compartment nodes. Branchpoints and tips are stored in the global
+    graph attribute `branchpoints_and_tips`.
 
     This depends on the directionality of the edges! To ensure that the edges are
     correctly oriented, you can use `_set_graph_direction()` to reorder the graph
@@ -747,29 +733,56 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
         G: The graph to replace branchpoints with edges.
 
     Returns:
-        The graph with branchpoints replaced with edges.
+        The graph with branchpoints replaced with edges and tips removed.
     """
     # TODO: fix source kwarg
     G = G.copy()
     G.add_edges_from([(i, j, {"branch_edge": False}) for i, j in G.edges])
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
 
-    branchpoint_nodes = [n for n in G.nodes if G.nodes[n]["branchpoint"]]
-    for n in branchpoint_nodes:
-        parent = next(G.predecessors(n))
-        children = G.successors(n)
+    is_leaf = lambda n: not G.nodes[n]["is_comp"] and G.degree(n) == 1
+    is_branchpoint = lambda n: not G.nodes[n]["is_comp"] and G.degree(n) > 1
+    branch_idx_of = lambda n: int(G.nodes[n]["branch_index"])
 
-        # remove branchpoint and connect parent to children
-        G.add_edges_from([(parent, c) for c in children], **branch_edge_attrs)
+    branchpoint_nodes = {n: d for n, d in G.nodes(data=True) if is_branchpoint(n)}
+    tip_nodes = {n: d for n, d in G.nodes(data=True) if is_leaf(n)}
+    branchpoint_tips = {**branchpoint_nodes, **tip_nodes}
+
+    for n in branchpoint_tips:
+        parents = list(G.predecessors(n))
+        children = list(G.successors(n))
+
+        # remove branchpoints (and tips) and connect parent to children
+        if len(parents) > 0:  # branchpoint node
+            branchpoint_tips[n]["parent_branch"] = branch_idx_of(parents[0])
+            G.add_edges_from([(parents[0], c) for c in children], **branch_edge_attrs)
+        else:  # tip node
+            branchpoint_tips[n]["parent_branch"] = float("nan")
+
+        branchpoint_tips[n]["child_branches"] = [branch_idx_of(c) for c in children]
         G.remove_node(n)
 
     for n in G.nodes:
-        del G.nodes[n]["branchpoint"]  # del branchpoint attr
-        # ensure int indices, since they are float, due to branchpoint inds being nan
+        del G.nodes[n]["is_comp"]  # del `is_comp`
         G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
-        G.nodes[n]["branch_index"] = int(G.nodes[n]["branch_index"])
+        G.nodes[n]["branch_index"] = branch_idx_of(n)
+
+    cols = ["x", "y", "z", "radius", "cell_index"]
+    cols += G.graph["group_names"] + ["parent_branch", "child_branches"]
+    branchpoint_tips = pd.DataFrame(branchpoint_tips).T[cols]
+    G.graph["branchpoints_and_tips"] = branchpoint_tips.sort_index()
 
     return G
+
+
+# TODO: implement this
+def _replace_edges_with_branchpoints(G: nx.DiGraph) -> nx.DiGraph:
+    raise NotImplementedError("Not implemented yet.")
+
+
+########################################################################################
+################################ MODULE FROM GRAPH #####################################
+########################################################################################
 
 
 # TODO: Remove this along with branch_edges attr in nodes in favour of comp_edges
@@ -806,11 +819,6 @@ def _compute_branch_parents(
         parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
         acc_parents.append([-1] + parents.tolist())
     return acc_parents
-
-
-########################################################################################
-################################ MODULE FROM GRAPH #####################################
-########################################################################################
 
 
 def _build_module(G: nx.DiGraph) -> Module:
@@ -1014,9 +1022,7 @@ def vis_compartment_graph(
         vis_compartment_graph(comp_graph)
     """
     cmap = lambda x: branchpoint_color if x else comp_color
-    colors = [
-        cmap(comp_graph.nodes[n].get("branchpoint", False)) for n in comp_graph.nodes
-    ]
+    colors = [cmap(comp_graph.nodes[n].get("is_comp", True)) for n in comp_graph.nodes]
 
     pos = {k: (v["x"], v["y"]) for k, v in comp_graph.nodes.items()}
 
