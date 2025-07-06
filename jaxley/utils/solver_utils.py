@@ -174,7 +174,7 @@ def dhs_solve_index(
     # Create a dictionary which maps every node to its solve index. Two notes:
     # - The node name corresponds to the compartment index (and branchpoints continue
     # numerically from where the compartments have ended)
-    # - The solve index specifies the order in which the node is processed durin the
+    # - The solve index specifies the order in which the node is processed during the
     # DHS solve.
     inds = {node: solve_graph.nodes[node]["solve_index"] for node in solve_graph.nodes}
     node_to_solve_index_mapping = dict(sorted(inds.items()))

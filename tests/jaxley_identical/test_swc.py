@@ -124,8 +124,8 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
 
     # first cell, 0-eth branch, 1-st compartment because loc=0.0 -> comp = ncomp-1 = 1
     radius_post = network.cell(1).soma.branch(0).comp(1).nodes["radius"].item()
-    lenght_post = network.cell(1).soma.branch(0).comp(1).nodes["length"].item()
-    area = 2 * pi * lenght_post * radius_post
+    length_post = network.cell(1).soma.branch(0).comp(1).nodes["length"].item()
+    area = 2 * pi * length_post * radius_post
     point_process_to_dist_factor = 100_000.0 / area
     network.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
 

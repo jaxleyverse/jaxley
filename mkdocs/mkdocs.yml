@@ -19,7 +19,7 @@ nav:
   - API Reference: 
     - Modules: reference/modules.md
     - Simulation: reference/integration.md
-    - Mechansims: reference/mechanisms.md
+    - Mechanisms: reference/mechanisms.md
     - Connecting Cells: reference/connect.md
     - Optimization: reference/optimize.md
     - Utils: reference/utils.md

@@ -163,7 +163,7 @@ def test_user_api(transform, SimpleCell):
 
     params = cell.get_parameters()
 
-    # We scale it to something samll as axial_resistivity is large
+    # We scale it to something small as axial_resistivity is large
     # and then the transform becomes numerically uninvertible.
     t = jt.ChainTransform([jt.AffineTransform(1e-3, 0.0), transform])
 

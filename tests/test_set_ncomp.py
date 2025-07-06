@@ -28,7 +28,7 @@ def test_raise_for_heterogenous_modules(SimpleBranch, property):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_heterogenous_channel_existance(SimpleBranch):
+def test_raise_for_heterogenous_channel_existence(SimpleBranch):
     branch0 = SimpleBranch(4)
     branch1 = SimpleBranch(4)
     branch1.comp(2).insert(HH())
@@ -144,7 +144,7 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
     "file", ["morph_ca1_n120_250.swc", "morph_3_types_single_point_soma.swc"]
 )
 def test_api_equivalence_swc_lengths_and_radiuses(SimpleMorphCell, new_ncomp, file):
-    """Test if the radiuses and lenghts of an SWC morph are reconstructed correctly."""
+    """Test if the radiuses and lengths of an SWC morph are reconstructed correctly."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
@@ -187,7 +187,7 @@ def test_simulation_accuracy_swc_init_vs_set_ncomp(SimpleMorphCell, new_ncomp, f
     assert max_error < 1e-8, f"Too large voltage deviation, {max_error} > 1e-8"
 
 
-def test_set_ncomp_raises_for_inhomogenous_branches(SimpleCell):
+def test_set_ncomp_raises_for_inhomogeneous(SimpleCell):
     """Test whether groups get updated appropriately after `set_ncomp`."""
     cell = SimpleCell(3, 4)
     cell.branch(0).comp(0).add_to_group("exc")

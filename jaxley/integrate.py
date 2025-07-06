@@ -108,7 +108,7 @@ def build_init_and_step_fn(
 
         Args:
             params: List of trainable parameters.
-            all_states: State if alread initialized. Defaults to None.
+            all_states: State if already initialized. Defaults to None.
             param_state: Parameters returned by `data_set`.. Defaults to None.
             delta_t: Step size. Defaults to 0.025.
 

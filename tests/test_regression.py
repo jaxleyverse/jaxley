@@ -37,7 +37,7 @@ pytestmark = pytest.mark.regression  # mark all tests as regression tests in thi
 # This way the runtimes of different parts of the code can be compared to each other.
 
 # The @compare_to_baseline decorator will compare the runtime of the test to the baseline
-# and raise an assertion error if the runtime is significanlty slower than the baseline.
+# and raise an assertion error if the runtime is significantly slower than the baseline.
 # The decorator will also save the runtime of the test to a database, which will be used
 # to generate a report comparing the runtime of the tests to the baseline. The database
 # takes into account the input_kwargs of the test, the name of the test and the runtimes
@@ -158,7 +158,7 @@ class compare_to_baseline:
             )
 
             if not NEW_BASELINE:
-                assert key in self.baselines, f"No basline found for {header}"
+                assert key in self.baselines, f"No baseline found for {header}"
                 func_baselines = self.baselines[key]["runtimes"]
                 for key, baseline in func_baselines.items():
                     assert (

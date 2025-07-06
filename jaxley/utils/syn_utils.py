@@ -20,7 +20,7 @@ def gather_synapes(
     compartment. It returns an array of as many elements as there are compartments.
     """
     incoming_currents_voltages = jnp.zeros((number_of_compartments,))
-    incoming_currents_contant = jnp.zeros((number_of_compartments,))
+    incoming_currents_content = jnp.zeros((number_of_compartments,))
 
     dnums = ScatterDimensionNumbers(
         update_window_dims=(),
@@ -33,10 +33,10 @@ def gather_synapes(
         current_each_synapse_voltage_term,
         dnums,
     )
-    incoming_currents_contant = scatter_add(
-        incoming_currents_contant,
+    incoming_currents_content = scatter_add(
+        incoming_currents_content,
         post_syn_comp_inds[:, None],
         current_each_synapse_constant_term,
         dnums,
     )
-    return incoming_currents_voltages, incoming_currents_contant
+    return incoming_currents_voltages, incoming_currents_content

@@ -46,7 +46,7 @@ jobs:
       run: |
         cd mkdocs
         mike deploy dev --push
-    - name: Build and deploy the lastest documentation upon new release
+    - name: Build and deploy the latest documentation upon new release
       if: ${{ github.event_name == 'release' }}
       run: |
         cd mkdocs

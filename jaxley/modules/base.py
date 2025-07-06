@@ -179,7 +179,7 @@ class Module(ABC):
         self.pumped_ions: List[str] = []
         self.pumps: List[Pump] = []
 
-        # List of all states (exluding voltage) that are being diffused.
+        # List of all states (excluding voltage) that are being diffused.
         self.diffusion_states: List[str] = []
 
         # For trainable parameters.
@@ -363,7 +363,7 @@ class Module(ABC):
     def _compute_coords_of_comp_centers(self) -> np.ndarray:
         """Compute xyz coordinates of compartment centers.
 
-        Centers are the midpoint between the comparment endpoints on the morphology
+        Centers are the midpoint between the compartment endpoints on the morphology
         as defined by xyzr.
 
         Note: For sake of performance, interpolation is not done for each branch
@@ -994,7 +994,7 @@ class Module(ABC):
             comp_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
         )
 
-        # Set the order in which compartments are processed during Dendritic Hierachical
+        # Set the order in which compartments are processed during Dendritic Hierarchical
         # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
         # the values correspond to compartment indices.
         dhs_node_order = np.asarray(node_order[1:])
@@ -1131,7 +1131,7 @@ class Module(ABC):
             key: The name of the parameter to set.
             val: The value to set the parameter to. If it is `jnp.ndarray` then it
                 must be of shape `(len(num_compartments))`.
-            param_state: State of the setted parameters, internally used such that this
+            param_state: State of the set parameters, internally used such that this
                 function does not modify global state.
         """
         # Note: `data_set` does not support arrays for `val`.
@@ -1582,7 +1582,7 @@ class Module(ABC):
     def _get_state_names(self) -> Tuple[List, List]:
         """Collect all recordable / clampable states in the membrane and synapses.
 
-        Returns states seperated by comps and edges."""
+        Returns states separated by comps and edges."""
         channel_states = [
             name for c in self.channels + self.pumps for name in c.channel_states
         ]
@@ -1800,7 +1800,7 @@ class Module(ABC):
         # Initialize view of nodes, edges, and compartment graph structure.
         self._init_view()
 
-        # Inititalize solvers.
+        # Initialize solvers.
         self._init_solvers()
 
         return self
@@ -1989,8 +1989,8 @@ class Module(ABC):
 
         Args:
             state_name: The name of the state to clamp.
-            state_array (jnp.nd: Array of values to clamp the state to.
-            verbose : If True, prints details about the clamping.
+            state_array: Array of values to clamp the state to.
+            verbose: If True, prints details about the clamping.
 
         This function sets external states for the compartments.
         """
@@ -2815,8 +2815,8 @@ class Module(ABC):
         )
 
         for b in range(self.total_nbranches):
-            # For networks with mixed SWC and from-scatch neurons, only update those
-            # branches that do not have coordingates yet.
+            # For networks with mixed SWC and from-scratch neurons, only update those
+            # branches that do not have coordinates yet.
             if np.any(np.isnan(self.xyzr[b])):
                 if parents[b] > -1:
                     start_point = endpoints[parents[b]]
@@ -3263,7 +3263,7 @@ class View(Module):
         """Filters the trainables inside and outside of the view.
 
         Trainables are split between `indices_set_by_trainables` and `trainable_params`
-        and can be shared between mutliple compartments / branches etc, which makes it
+        and can be shared between multiple compartments / branches etc, which makes it
         difficult to filter them based on the current view w.o. destroying the
         original structure.
 
@@ -3353,7 +3353,7 @@ class View(Module):
         viewed_states = []
         if pointer.synapses is not None:
             for syn in pointer.synapses:
-                if syn is not None:  # needed for recurive viewing
+                if syn is not None:  # needed for recursive viewing
                     in_view = syn._name in self.synapse_names
                     viewed_synapses += (
                         [syn] if in_view else [None]

@@ -157,7 +157,7 @@ def morph_connect(module_view1, module_view2) -> "Cell":
             comps.append(global_comp)
         else:
             # Connect to a branchpoint.
-            # Branchpoint counters are stricly higher than compartment counters,
+            # Branchpoint counters are strictly higher than compartment counters,
             # so we can simply take the `max()` to get the branchpoint index.
             comps.append(int(view._comp_edges["sink"].max()))
 
