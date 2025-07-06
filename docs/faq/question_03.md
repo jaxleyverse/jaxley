@@ -10,7 +10,7 @@
 
 For all of these models, `Jaxley` is flexible and accurate. For example, it can flexibly [add new channel models](https://jaxley.readthedocs.io/en/latest/tutorials/05_channel_and_synapse_models.html), use [different kinds of synapses (conductance-based, tanh, ...)](https://github.com/jaxleyverse/jaxley/tree/main/jaxley/synapses), it can [insert different kinds of channels in different branches](https://jaxley.readthedocs.io/en/latest/tutorials/01_morph_neurons.html) (or compartments) within single cells, and it can [simulate complex ion dynamics (diffusion, pumps,...)](https://jaxley.readthedocs.io/en/latest/tutorials/11_ion_dynamics.html). Like `NEURON`, `Jaxley` implements a backward-Euler solver for stable numerical solution of multi-compartment neurons.
 
-In addition to these biophysical neuron models, `Jaxley` can also simulate simplified models, see the tutorial [here](https://jaxley.readthedocs.io/en/latest/tutorials/05_channel_and_synapse_models.html). In particular, `Jaxley` supports:
+In addition to these biophysical neuron models, `Jaxley` can also simulate simplified models, see the tutorial [here](https://jaxley.readthedocs.io/en/latest/tutorials/12_simplified_models.html). In particular, `Jaxley` supports:
 - Leaky-integrate-and-fire (LIF) neurons,  
 - Izhikevich neurons,  
 - Rate-based neurons.  

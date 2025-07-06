@@ -9,6 +9,7 @@
 - add a how-to guide on converting `NMODL` files to `Jaxley`, see
 [here](https://jaxley.readthedocs.io/en/latest/how_to_guide/import_channels_from_neuron.html)
 (#669, @michaeldeistler, special thanks to @r-makarov for building the tool)
+- fixed website link in FAQs for simplified models (@kyralianaka)
 
 ### 🛠️ Internal updates
 
