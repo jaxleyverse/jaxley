@@ -177,7 +177,7 @@ class ParamTransform:
     """Parameter transformation utility.
 
     This class is used to transform parameters usually from an unconstrained space to
-    a constrained space and back (bacause most biophysical parameter are bounded).
+    a constrained space and back (because most biophysical parameter are bounded).
     The user can specify a PyTree of transforms that are applied to the parameters.
 
     Attributes:

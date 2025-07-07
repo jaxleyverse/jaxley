@@ -76,7 +76,7 @@ def SimpleCell(SimpleBranch):
         """Create or retrieve a cell.
 
         If a cell with the same number of branches and compartments already exists, it
-        is returned. The branch strcuture is assumed as [-1, 0, 0, 1, 1, 2, 2, ...].
+        is returned. The branch structure is assumed as [-1, 0, 0, 1, 1, 2, 2, ...].
 
         Args:
             nbranches: Number of branches in the cell.
@@ -219,7 +219,7 @@ def pytest_collection_modifyitems(config, items):
                 )
                 item.add_marker(skip_regression)
 
-    # Avoid that functions marked as `additional_neuron_tests` arent tested by detault.
+    # Avoid that functions marked as `additional_neuron_tests` arent tested by default.
     #
     # If we run `pytest tests` then the `additional_neuron_tests` tests are not run.
     # This is useful because some tests based on NEURON (e.g.

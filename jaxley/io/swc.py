@@ -22,7 +22,7 @@ def read_swc(
     Jaxley assumes cylindrical compartments and therefore defines length and radius
     for every compartment. The surface area is then 2*pi*r*length. For branches
     consisting of a single traced point we assume for them to have area 4*pi*r*r.
-    Therefore, in these cases, we set lenght=2*r.
+    Therefore, in these cases, we set length=2*r.
 
     Args:
         fname: Path to the swc file.

@@ -84,11 +84,11 @@ class deprecated_kwargs:
     def __init__(self, version: str, kwargs: List = [], amend_msg: str = ""):
         self._version: str = version
         self._amend_msg: str = amend_msg
-        self._depcrecated_kwargs: List = kwargs
+        self._deprecated_kwargs: List = kwargs
 
     def __call__(self, func):
         def wrapper(*args, **kwargs):
-            for deprecated_kwarg in self._depcrecated_kwargs:
+            for deprecated_kwarg in self._deprecated_kwargs:
                 if deprecated_kwarg in kwargs and kwargs[deprecated_kwarg] is not None:
                     msg = (
                         f"{deprecated_kwarg} is deprecated and will be removed in "

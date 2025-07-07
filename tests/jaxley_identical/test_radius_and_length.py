@@ -182,8 +182,8 @@ def test_radius_and_length_net(voltage_solver, SimpleNet):
 
     # first cell, 0-eth branch, 0-st compartment because loc=0.0
     radius_post = net[1, 0, 0].nodes["radius"].item()
-    lenght_post = net[1, 0, 0].nodes["length"].item()
-    area = 2 * pi * lenght_post * radius_post
+    length_post = net[1, 0, 0].nodes["length"].item()
+    area = 2 * pi * length_post * radius_post
     point_process_to_dist_factor = 100_000.0 / area
     net.set("IonotropicSynapse_gS", 0.5 / point_process_to_dist_factor)
 

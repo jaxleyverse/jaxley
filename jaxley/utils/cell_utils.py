@@ -238,7 +238,7 @@ def interpolate_xyzr(loc: float, coords: np.ndarray):
         Interpolated xyz coordinate at `loc`, shape `(3,).
     """
     dl = np.sqrt(np.sum(np.diff(coords[:, :3], axis=0) ** 2, axis=1))
-    pathlens = np.insert(np.cumsum(dl), 0, 0)  # cummulative length of sections
+    pathlens = np.insert(np.cumsum(dl), 0, 0)  # cumulative length of sections
     norm_pathlens = pathlens / np.maximum(1e-8, pathlens[-1])  # norm lengths to [0,1].
 
     return v_interp(loc, norm_pathlens, coords)

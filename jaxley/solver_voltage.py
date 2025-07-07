@@ -24,7 +24,7 @@ def step_voltage_implicit_with_dhs_solve(
 ):
     """Return voltage update via compartment-based matrix inverse.
 
-    Combined with an approriate solve order, this results in `dendritic hierarchical
+    Combined with an appropriate solve order, this results in `dendritic hierarchical
     scheduling` (DHS, Zhang et al., 2023). The solve order is defined in the graph
     backend of `Jaxley`.
 
@@ -246,7 +246,7 @@ def _comp_based_backsub_recursive_doubling(
         lower_effect *= lower_effect[k_step_parent]
         step *= 2
 
-    # We have to return a `diags` becaus the final solution is computed as
+    # We have to return a `diags` because the final solution is computed as
     # `solves/diags` (see `step_voltage_implicit_with_dhs_solve`). For recursive
     # doubling, the solution should just be `solve_effect`, so we define diags as
     # 1.0 so the division has no effect.

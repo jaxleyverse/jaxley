@@ -70,7 +70,7 @@ def extract_outline(points: ndarray) -> ndarray:
     the input points.
 
     Args:
-        points: An array of points / corrdinates.
+        points: An array of points / coordinates.
 
     Returns:
         An array of points which form the convex hull.
@@ -418,9 +418,9 @@ def plot_morph(
 
     Plots the traced morphology it was traced. That means at every point that was
     traced a disc of radius `r` is plotted. The outline of the discs are then
-    connected to form the morphology. This means every trace segement can be
+    connected to form the morphology. This means every trace segment can be
     represented by a cone frustum. To prevent breaks in the morphology, each
-    segement is connected with a ball joint.
+    segment is connected with a ball joint.
 
     Args:
         module_or_view: The module or view to plot.

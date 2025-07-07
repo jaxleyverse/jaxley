@@ -37,9 +37,9 @@ class Fire(Channel):
         vreset = params[f"{prefix}_vreset"]
         vth = params[f"{prefix}_vth"]
 
-        spike_occured = v > vth
-        v = jax.lax.select(spike_occured, vreset, v)
-        return {"v": v, f"{self.name}_spikes": spike_occured}
+        spike_occurred = v > vth
+        v = jax.lax.select(spike_occurred, vreset, v)
+        return {"v": v, f"{self.name}_spikes": spike_occurred}
 
     def compute_current(self, states, v, params):
         return jnp.zeros((1,))

@@ -489,7 +489,7 @@ def test_iter(SimpleBranch):
     cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
     net = jx.Network([cell] * 2)
 
-    # test iterating over bracnhes with different numbers of compartments
+    # test iterating over branches with different numbers of compartments
     assert np.all(
         [
             len(branch.nodes) == expected_len

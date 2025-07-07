@@ -631,7 +631,7 @@ def _split_branches_if_swc_nodes_were_traced_with_interruption(
     Both NEURON and Jaxley's hand coded swc reader introduce breaks in the trace
     if the same neurite was traced in disconnected pieces. Since `swc_to_graph` is
     agnostic to the order of the tracing, it does not suffer from this issue. Hence,
-    to artifically force this behaviour (to compare to the other parsers), this
+    to artificially force this behaviour (to compare to the other parsers), this
     function can be used to simulate these errors. See
     `_find_swc_tracing_interruptions` for how to identify these points in the graph.
 
@@ -661,7 +661,7 @@ def _split_branches_if_swc_nodes_were_traced_with_interruption(
         # [:, :2] to get rid of the length. `p` is of shape `(num_nodes_in_branch, 3)`,
         # where the 3 are `parent, node, length`.
         break_idx = np.where(branch[:, :2] == node_idx)[0][1]
-        # insert artifical break into branch
+        # insert artificial break into branch
         branches = b4 + [branch[:break_idx], branch[break_idx:]] + after
         type_inds = type_b4 + [type_val, type_val] + type_after
     return node_idxs, branches, type_inds
@@ -688,14 +688,14 @@ def _find_swc_tracing_interruptions(graph: nx.Graph) -> np.ndarray:
     6 3 3.0 -1.0 0.0 1.0 3
     7 3 4.0 -2.0 0.0 1.0 6
     8 3 5.0 -3.0 0.0 1.0 7
-    # ammend branch 2
+    # amend branch 2
     9 4 5.0 3.0 0.0 1.0 5
 
     Args:
         graph: graph tracing of swc file (from `swc_to_graph`).
 
     Returns:
-        An array of node indices where tracing is discontinous.
+        An array of node indices where tracing is discontinuous.
     """
     interrupted_nodes = []
     for n in graph.nodes:
@@ -1244,7 +1244,7 @@ def connect_graphs(
     graph2 = nx.relabel_nodes(graph2, mapping)
     node2 = mapping[node2]
 
-    # Combine the graph1 and grpah2 into one graph.
+    # Combine the graph1 and graph2 into one graph.
     combined_graph = nx.compose(graph1, graph2)
 
     # By default, nx.compose uses the graph-level attributes from graph2. We want that

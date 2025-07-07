@@ -164,7 +164,7 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 
 ### 🐛 Bug fixes
 
-- Fix for simulation of morphologies with inhomogenous numbers of compartments (#438,
+- Fix for simulation of morphologies with inhomogeneous numbers of compartments (#438,
 @michaeldeistler)
 - Bugfix for types assigned by SWC reader when soma is traced by a single point (#582,
 @Kartik-Sama, @michaeldeistler).
@@ -221,7 +221,7 @@ net.arrange_in_layers([3,3])
 net.vis()
 ```
 
-- Allow parameter sharing for groups of different sizes, i.e. due to inhomogenous
+- Allow parameter sharing for groups of different sizes, i.e. due to inhomogeneous
 numbers of compartments or for synapses with the same (pre-)synaptic parameters but
 different numbers of post-synaptic partners. (#514, @jnsbck)
 
@@ -282,8 +282,8 @@ must be updated to:
 net.set("IonotropicSynapse_s", 0.2)
 ```
 For a more detailed tutorial on how to index synapses, see
-[this new tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html).
-- Throughout the codebase, we renamed any occurance of `seg` (for `segment`) to `comp`
+[this new tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/09_advanced_indexing.html).  
+- Throughout the codebase, we renamed any occurrence of `seg` (for `segment`) to `comp`
 (for `compartment`). The most notable user-facing changes are:
   - `branch = jx.Branch(comp, ncomp=4)`
   - `cell = jx.read_swc(fname, ncomp=4)`
@@ -321,7 +321,7 @@ params = net.get_parameters()
 net.write_trainables(params)
 ```
 - Expose the step function to allow for fine-grained simulation (#466, @manuelgloeckler)
-- More flexible and throrough viewing (#447, #453, @jnsbck)
+- More flexible and thorough viewing (#447, #453, @jnsbck)
 - Boolean indexing for cells, branches, and comps (@494, @jnsbck):
 ```python
 r_greater_1 = net.nodes.groupby("global_cell_index")["radius"].mean() > 1
@@ -387,8 +387,8 @@ net[r_greater_1].nodes.vis()
 
 - New solver: `jx.integrate(..., voltage_solver="jax.sparse")` which has very low
 compile time (#418, @michaeldeistler)
-- Support for different number of compartments per branch at initilization (modifying
-the number of compartments after initialization is not yet supported, #418, #426,
+- Support for different number of compartments per branch at initialization (modifying
+the number of compartments after initialization is not yet supported, #418, #426, 
 @michaeldeistler)
 
 ### 🐛 Bug fixes
@@ -402,7 +402,7 @@ the number of compartments after initialization is not yet supported, #418, #426
 
 - Bugfix for using `states` in `init_state` of the channel (#421, @michaeldeistler)
 - Bugfix for tutorial on building custom channels (#421, @michaeldeistler)
-- Add `jaxley-mech` as `dev` dependency to use it in testsing (#421, @michaeldeistler)
+- Add `jaxley-mech` as `dev` dependency to use it in testing (#421, @michaeldeistler)
 
 
 # v0.2.0
