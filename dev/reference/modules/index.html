@@ -1349,7 +1349,7 @@
   
   
   <span class="md-ellipsis">
-    Mechansims
+    Mechanisms
     
   </span>
   
@@ -5243,7 +5243,7 @@ def change_attr_in_view(self):
         <span class="bp">self</span><span class="o">.</span><span class="n">pumped_ions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pumps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Pump</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="c1"># List of all states (exluding voltage) that are being diffused.</span>
+        <span class="c1"># List of all states (excluding voltage) that are being diffused.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_states</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># For trainable parameters.</span>
@@ -5427,7 +5427,7 @@ def change_attr_in_view(self):
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_coords_of_comp_centers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute xyz coordinates of compartment centers.</span>
 
-<span class="sd">        Centers are the midpoint between the comparment endpoints on the morphology</span>
+<span class="sd">        Centers are the midpoint between the compartment endpoints on the morphology</span>
 <span class="sd">        as defined by xyzr.</span>
 
 <span class="sd">        Note: For sake of performance, interpolation is not done for each branch</span>
@@ -6058,7 +6058,7 @@ def change_attr_in_view(self):
             <span class="n">comp_graph</span><span class="p">,</span> <span class="n">allowed_nodes_per_level</span><span class="o">=</span><span class="n">allowed_nodes_per_level</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span>
         <span class="p">)</span>
 
-        <span class="c1"># Set the order in which compartments are processed during Dendritic Hierachical</span>
+        <span class="c1"># Set the order in which compartments are processed during Dendritic Hierarchical</span>
         <span class="c1"># Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,</span>
         <span class="c1"># the values correspond to compartment indices.</span>
         <span class="n">dhs_node_order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_order</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
@@ -6195,7 +6195,7 @@ def change_attr_in_view(self):
 <span class="sd">            key: The name of the parameter to set.</span>
 <span class="sd">            val: The value to set the parameter to. If it is `jnp.ndarray` then it</span>
 <span class="sd">                must be of shape `(len(num_compartments))`.</span>
-<span class="sd">            param_state: State of the setted parameters, internally used such that this</span>
+<span class="sd">            param_state: State of the set parameters, internally used such that this</span>
 <span class="sd">                function does not modify global state.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Note: `data_set` does not support arrays for `val`.</span>
@@ -6646,7 +6646,7 @@ def change_attr_in_view(self):
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_state_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">,</span> <span class="n">List</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Collect all recordable / clampable states in the membrane and synapses.</span>
 
-<span class="sd">        Returns states seperated by comps and edges.&quot;&quot;&quot;</span>
+<span class="sd">        Returns states separated by comps and edges.&quot;&quot;&quot;</span>
         <span class="n">channel_states</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pumps</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">channel_states</span>
         <span class="p">]</span>
@@ -6864,7 +6864,7 @@ def change_attr_in_view(self):
         <span class="c1"># Initialize view of nodes, edges, and compartment graph structure.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_init_view</span><span class="p">()</span>
 
-        <span class="c1"># Inititalize solvers.</span>
+        <span class="c1"># Initialize solvers.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_init_solvers</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="bp">self</span>
@@ -7053,8 +7053,8 @@ def change_attr_in_view(self):
 
 <span class="sd">        Args:</span>
 <span class="sd">            state_name: The name of the state to clamp.</span>
-<span class="sd">            state_array (jnp.nd: Array of values to clamp the state to.</span>
-<span class="sd">            verbose : If True, prints details about the clamping.</span>
+<span class="sd">            state_array: Array of values to clamp the state to.</span>
+<span class="sd">            verbose: If True, prints details about the clamping.</span>
 
 <span class="sd">        This function sets external states for the compartments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -7879,8 +7879,8 @@ def change_attr_in_view(self):
         <span class="p">)</span>
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">):</span>
-            <span class="c1"># For networks with mixed SWC and from-scatch neurons, only update those</span>
-            <span class="c1"># branches that do not have coordingates yet.</span>
+            <span class="c1"># For networks with mixed SWC and from-scratch neurons, only update those</span>
+            <span class="c1"># branches that do not have coordinates yet.</span>
             <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">b</span><span class="p">])):</span>
                 <span class="k">if</span> <span class="n">parents</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
                     <span class="n">start_point</span> <span class="o">=</span> <span class="n">endpoints</span><span class="p">[</span><span class="n">parents</span><span class="p">[</span><span class="n">b</span><span class="p">]]</span>
@@ -8674,7 +8674,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
                 <code>state_array</code>
             </td>
             <td>
-                  <code><span title="jax.numpy.nd">nd</span></code>
+                  <code><span title="jax.numpy.ndarray">ndarray</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8690,6 +8690,7 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
                 <code>verbose</code>
             </td>
             <td>
+                  <code><span title="bool">bool</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8722,8 +8723,8 @@ net.excitatory.set(&quot;radius&quot;, 0.1)
 
 <span class="sd">    Args:</span>
 <span class="sd">        state_name: The name of the state to clamp.</span>
-<span class="sd">        state_array (jnp.nd: Array of values to clamp the state to.</span>
-<span class="sd">        verbose : If True, prints details about the clamping.</span>
+<span class="sd">        state_array: Array of values to clamp the state to.</span>
+<span class="sd">        verbose: If True, prints details about the clamping.</span>
 
 <span class="sd">    This function sets external states for the compartments.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -8994,8 +8995,8 @@ are only used for plotting.</p>
     <span class="p">)</span>
 
     <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_nbranches</span><span class="p">):</span>
-        <span class="c1"># For networks with mixed SWC and from-scatch neurons, only update those</span>
-        <span class="c1"># branches that do not have coordingates yet.</span>
+        <span class="c1"># For networks with mixed SWC and from-scratch neurons, only update those</span>
+        <span class="c1"># branches that do not have coordinates yet.</span>
         <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xyzr</span><span class="p">[</span><span class="n">b</span><span class="p">])):</span>
             <span class="k">if</span> <span class="n">parents</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
                 <span class="n">start_point</span> <span class="o">=</span> <span class="n">endpoints</span><span class="p">[</span><span class="n">parents</span><span class="p">[</span><span class="n">b</span><span class="p">]]</span>
@@ -9582,7 +9583,7 @@ must be of shape <code>(len(num_compartments))</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>State of the setted parameters, internally used such that this
+                <p>State of the set parameters, internally used such that this
 function does not modify global state.</p>
               </div>
             </td>
@@ -9648,7 +9649,7 @@ function does not modify global state.</p>
 <span class="sd">        key: The name of the parameter to set.</span>
 <span class="sd">        val: The value to set the parameter to. If it is `jnp.ndarray` then it</span>
 <span class="sd">            must be of shape `(len(num_compartments))`.</span>
-<span class="sd">        param_state: State of the setted parameters, internally used such that this</span>
+<span class="sd">        param_state: State of the set parameters, internally used such that this</span>
 <span class="sd">            function does not modify global state.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Note: `data_set` does not support arrays for `val`.</span>
@@ -11231,7 +11232,7 @@ automatically though, so there is no need for the user to run it manually.</p>
     <span class="c1"># Initialize view of nodes, edges, and compartment graph structure.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_init_view</span><span class="p">()</span>
 
-    <span class="c1"># Inititalize solvers.</span>
+    <span class="c1"># Initialize solvers.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_init_solvers</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="bp">self</span>

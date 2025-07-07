@@ -747,7 +747,7 @@
   
   
   <span class="md-ellipsis">
-    Mechansims
+    Mechanisms
     
   </span>
   
@@ -1040,7 +1040,7 @@
 <span class="n">new_n</span> <span class="o">=</span> <span class="n">solve_gate_exponential</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">)</span>
 <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;n_new&quot;</span><span class="p">:</span> <span class="n">new_n</span><span class="p">}</span>
 </code></pre></div></p>
-<p>A channel also needs a <code>compute_current()</code> method which returns the current throught the channel:
+<p>A channel also needs a <code>compute_current()</code> method which returns the current through the channel:
 <div class="highlight"><pre><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">compute_current</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
         <span class="n">ns</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="s2">&quot;n_new&quot;</span><span class="p">]</span>
 

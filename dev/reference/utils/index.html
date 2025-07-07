@@ -687,7 +687,7 @@
   
   
   <span class="md-ellipsis">
-    Mechansims
+    Mechanisms
     
   </span>
   
@@ -1859,7 +1859,7 @@ compute_children_indices(parents) -&gt; [[1, 2], [], []]
 <span class="sd">        Interpolated xyz coordinate at `loc`, shape `(3,).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">dl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">coords</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
-    <span class="n">pathlens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dl</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># cummulative length of sections</span>
+    <span class="n">pathlens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dl</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># cumulative length of sections</span>
     <span class="n">norm_pathlens</span> <span class="o">=</span> <span class="n">pathlens</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">pathlens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>  <span class="c1"># norm lengths to [0,1].</span>
 
     <span class="k">return</span> <span class="n">v_interp</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="n">norm_pathlens</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span>
@@ -3383,7 +3383,7 @@ the input points.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>An array of points / corrdinates.</p>
+                <p>An array of points / coordinates.</p>
               </div>
             </td>
             <td>
@@ -3440,7 +3440,7 @@ the input points.</p>
 <span class="sd">    the input points.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        points: An array of points / corrdinates.</span>
+<span class="sd">        points: An array of points / coordinates.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        An array of points which form the convex hull.</span>
@@ -4327,9 +4327,9 @@ two or three of them.</p>
         <p>Plot the detailed morphology.</p>
 <p>Plots the traced morphology it was traced. That means at every point that was
 traced a disc of radius <code>r</code> is plotted. The outline of the discs are then
-connected to form the morphology. This means every trace segement can be
+connected to form the morphology. This means every trace segment can be
 represented by a cone frustum. To prevent breaks in the morphology, each
-segement is connected with a ball joint.</p>
+segment is connected with a ball joint.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -4565,9 +4565,9 @@ Useful too have a simpler mesh for plotting.</p>
 
 <span class="sd">    Plots the traced morphology it was traced. That means at every point that was</span>
 <span class="sd">    traced a disc of radius `r` is plotted. The outline of the discs are then</span>
-<span class="sd">    connected to form the morphology. This means every trace segement can be</span>
+<span class="sd">    connected to form the morphology. This means every trace segment can be</span>
 <span class="sd">    represented by a cone frustum. To prevent breaks in the morphology, each</span>
-<span class="sd">    segement is connected with a ball joint.</span>
+<span class="sd">    segment is connected with a ball joint.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        module_or_view: The module or view to plot.</span>
@@ -5088,7 +5088,7 @@ compartment. It returns an array of as many elements as there are compartments.<
 <span class="sd">    compartment. It returns an array of as many elements as there are compartments.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">incoming_currents_voltages</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">number_of_compartments</span><span class="p">,))</span>
-    <span class="n">incoming_currents_contant</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">number_of_compartments</span><span class="p">,))</span>
+    <span class="n">incoming_currents_content</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">number_of_compartments</span><span class="p">,))</span>
 
     <span class="n">dnums</span> <span class="o">=</span> <span class="n">ScatterDimensionNumbers</span><span class="p">(</span>
         <span class="n">update_window_dims</span><span class="o">=</span><span class="p">(),</span>
@@ -5101,13 +5101,13 @@ compartment. It returns an array of as many elements as there are compartments.<
         <span class="n">current_each_synapse_voltage_term</span><span class="p">,</span>
         <span class="n">dnums</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">incoming_currents_contant</span> <span class="o">=</span> <span class="n">scatter_add</span><span class="p">(</span>
-        <span class="n">incoming_currents_contant</span><span class="p">,</span>
+    <span class="n">incoming_currents_content</span> <span class="o">=</span> <span class="n">scatter_add</span><span class="p">(</span>
+        <span class="n">incoming_currents_content</span><span class="p">,</span>
         <span class="n">post_syn_comp_inds</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span>
         <span class="n">current_each_synapse_constant_term</span><span class="p">,</span>
         <span class="n">dnums</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="n">incoming_currents_voltages</span><span class="p">,</span> <span class="n">incoming_currents_contant</span>
+    <span class="k">return</span> <span class="n">incoming_currents_voltages</span><span class="p">,</span> <span class="n">incoming_currents_content</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

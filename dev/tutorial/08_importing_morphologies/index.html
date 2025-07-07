@@ -765,7 +765,7 @@
   
   
   <span class="md-ellipsis">
-    Mechansims
+    Mechanisms
     
   </span>
   
@@ -1337,8 +1337,8 @@
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_14_0.png" /></p>
-<p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. The morphology lives seperately in the <code>cell.xyzr</code> attribute in a per branch fashion. </p>
-<p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. Note that <code>"comp"</code> plots the lengths of each compartment which is equal to the length of the traced neurite. While neurites can be zigzaggy, the compartments that approximate them are straight lines. This can lead to miss-aligment of the compartment ends. For details see the documentation of <code>vis</code>. </p>
+<p>While we only use two compartments to approximate each branch in this example, we can see the morphology is still plotted in great detail. This is because we always plot the full <code>.swc</code> reconstruction irrespective of the number of compartments used. The morphology lives separately in the <code>cell.xyzr</code> attribute in a per branch fashion. </p>
+<p>In addition to plotting the full morphology of the cell using points <code>vis(type="scatter")</code> or lines <code>vis(type="line")</code>, <code>Jaxley</code> also supports plotting a detailed morphological <code>vis(type="morph")</code> or approximate compartmental reconstruction <code>vis(type="comp")</code> that correctly considers the thickness of the neurite. Note that <code>"comp"</code> plots the lengths of each compartment which is equal to the length of the traced neurite. While neurites can be zigzaggy, the compartments that approximate them are straight lines. This can lead to miss-alignment of the compartment ends. For details see the documentation of <code>vis</code>. </p>
 <p>The morphologies can either be projected onto 2D or also rendered in 3D. </p>
 <div class="highlight"><pre><span></span><code><span class="c1"># visualize the cell</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1436,7 +1436,7 @@ You must use the same <code>ncomp</code> for both morphologies! You can always m
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_34_0.png" /></p>
 <p>Indeed, the new morphology has an additional stub, which we highlighted in red.</p>
 <h2 id="assembling-cells-into-a-network">Assembling cells into a network<a class="headerlink" href="#assembling-cells-into-a-network" title="Permanent link">&para;</a></h2>
-<p>To build a network of morphologically detailed cells, we can now connect several reconstructed cells together and also visualize the network. However, since all cells are going to have the same center, <code>Jaxley</code> will naively plot all of them on top of each other. To seperate out the cells, we therefore have to move them to a new location first.</p>
+<p>To build a network of morphologically detailed cells, we can now connect several reconstructed cells together and also visualize the network. However, since all cells are going to have the same center, <code>Jaxley</code> will naively plot all of them on top of each other. To separate out the cells, we therefore have to move them to a new location first.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">jaxley.synapses</span><span class="w"> </span><span class="kn">import</span> <span class="n">IonotropicSynapse</span>
 
 <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;data/morph.swc&quot;</span>
@@ -1466,7 +1466,7 @@ You must use the same <code>ncomp</code> for both morphologies! You can always m
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 <p><img alt="png" src="../08_importing_morphologies_files/08_importing_morphologies_38_0.png" /></p>
-<p>Congrats! You have now learned how to vizualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a>. If you are a power-user and need more flexibility for editing or inspecting cell morphologies (e.g., trim dendrites), check out the <a href="https://jaxley.readthedocs.io/en/latest/advanced_tutorials/13_graph_backend.html">tutorial on Jaxley&rsquo;s graph backend</a>.</p>
+<p>Congrats! You have now learned how to visualize and build networks out of very complex morphologies. To simulate this network, you can follow the steps in the tutorial on <a href="https://jaxley.readthedocs.io/en/latest/tutorials/02_small_network.html">how to build a network</a>. If you are a power-user and need more flexibility for editing or inspecting cell morphologies (e.g., trim dendrites), check out the <a href="https://jaxley.readthedocs.io/en/latest/advanced_tutorials/13_graph_backend.html">tutorial on Jaxley&rsquo;s graph backend</a>.</p>
 
 
 
