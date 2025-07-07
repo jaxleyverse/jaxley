@@ -493,6 +493,22 @@ def branch_comps_from_nodes(
     return np.hstack([comp_attrs, interpolated_coords, frustum_props])
 
 
+def propose_new_inds(existing_inds: List[int], num_additional_inds: int) -> List[int]:
+    """Propose new set of indices that does not overlap with existing indices.
+
+    Args:
+        existing_inds: Existing indices.
+        num_additional_inds: Number of additional indices to propose.
+
+    Returns:
+        List of proposed indices.
+    """
+    existing_inds = set(existing_inds)
+    all_new_inds = set(range(num_additional_inds + len(existing_inds)))
+    proposed_inds = list(all_new_inds - existing_inds)  # avoid node inds overlap
+    return proposed_inds
+
+
 def build_compartment_graph(
     swc_graph: nx.DiGraph,
     ncomp: int = 1,
@@ -563,10 +579,10 @@ def build_compartment_graph(
     soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
 
     # create new set of indices which arent already used as node indices to label comps
-    existing_inds = set(nodes_df.index)
     num_additional_inds = len(branches) * ncomp
-    proposed_inds = set(range(num_additional_inds + len(existing_inds)))
-    proposed_node_inds = list(proposed_inds - existing_inds)  # avoid node inds overlap
+    existing_inds = nodes_df.index
+
+    proposed_node_inds = propose_new_inds(existing_inds, num_additional_inds)
 
     # collect comps and comp_edges
     comps, comp_edges, xyzr = [], [], []
@@ -685,12 +701,12 @@ def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
     in the directed graph are oriented in the wrong direction, they are flipped.
 
     Args:
-        G: The graph to determine the solve order of.
+        G: Directed graph in which to flip edges along the dfs traversal.
         source: The source node to start the traversal from. If `None`, the first leaf
             node is used.
 
     Returns:
-        The graph with the solve order determined.
+        The graph with the edges oriented in dfs fashion.
     """
     # reorder graph depth-first TODO: Which order to choose?
     leaf = next(n for n in G.nodes if G.degree(n) == 1)
@@ -739,45 +755,93 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
     G = G.copy()
     G.add_edges_from([(i, j, {"branch_edge": False}) for i, j in G.edges])
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
+    xyz_of = lambda n: [G.nodes[n][key] for key in ["x", "y", "z"]]
 
-    is_leaf = lambda n: not G.nodes[n]["is_comp"] and G.degree(n) == 1
-    is_branchpoint = lambda n: not G.nodes[n]["is_comp"] and G.degree(n) > 1
-    branch_idx_of = lambda n: int(G.nodes[n]["branch_index"])
+    branchpoints_tips = {}
+    for n in G.nodes:
+        if not G.nodes[n]["is_comp"]:
+            parents = list(G.predecessors(n))
+            children = list(G.successors(n))
+            branchpoints_tips[n] = {
+                **G.nodes[n],
+                "xyz_children": [xyz_of(c) for c in children],
+            }
+            if len(parents) == 0:  # root node
+                branchpoints_tips[n]["xyz_parent"] = float("nan")
+            else:  # branchpoint node or tip node (no children)
+                parent = parents[0]
+                branchpoints_tips[n]["xyz_parent"] = xyz_of(parent)
+                for child in children:
+                    G.add_edges_from([(parent, child)], **branch_edge_attrs)
+                G.remove_edge(parent, n)
+        else:
+            G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
+            del G.nodes[n]["is_comp"]  # del `is_comp`
 
-    branchpoint_nodes = {n: d for n, d in G.nodes(data=True) if is_branchpoint(n)}
-    tip_nodes = {n: d for n, d in G.nodes(data=True) if is_leaf(n)}
-    branchpoint_tips = {**branchpoint_nodes, **tip_nodes}
-
-    for n in branchpoint_tips:
-        parents = list(G.predecessors(n))
-        children = list(G.successors(n))
-
-        # remove branchpoints (and tips) and connect parent to children
-        if len(parents) > 0:  # branchpoint node
-            branchpoint_tips[n]["parent_branch"] = branch_idx_of(parents[0])
-            G.add_edges_from([(parents[0], c) for c in children], **branch_edge_attrs)
-        else:  # tip node
-            branchpoint_tips[n]["parent_branch"] = float("nan")
-
-        branchpoint_tips[n]["child_branches"] = [branch_idx_of(c) for c in children]
+    # TODO: keep disconnected branchpoint nodes in graph?
+    for n in branchpoints_tips:
+        # for child in  list(G.successors(n)):
+        #     G.remove_edge(n, child)
         G.remove_node(n)
 
-    for n in G.nodes:
-        del G.nodes[n]["is_comp"]  # del `is_comp`
-        G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
-        G.nodes[n]["branch_index"] = branch_idx_of(n)
-
     cols = ["x", "y", "z", "radius", "cell_index"]
-    cols += G.graph["group_names"] + ["parent_branch", "child_branches"]
-    branchpoint_tips = pd.DataFrame(branchpoint_tips).T[cols]
-    G.graph["branchpoints_and_tips"] = branchpoint_tips.sort_index()
+    cols += G.graph["group_names"] + ["xyz_parent", "xyz_children"]
+    G.graph["branchpoints_and_tips"] = pd.DataFrame(branchpoints_tips).T[cols]
 
     return G
 
 
-# TODO: implement this
 def _replace_edges_with_branchpoints(G: nx.DiGraph) -> nx.DiGraph:
-    raise NotImplementedError("Not implemented yet.")
+    """Replace edges with branchpoints connecting parent and children and add tips.
+
+    Insert branchpoint nodes into graph. Branchpoints and tips are stored in the global
+    graph attribute `branchpoints_and_tips`. Connects the nodes based on the xyz
+    coordinates of the parent and child nodes. This way node indices and edge direction
+    can be changed in between running `_replace_branchpoints_with_edges` and
+    `_replace_edges_with_branchpoints`.
+
+    [(x) = branchpoint, (1) = compartment]
+
+                Example 1             |            Example 2
+    ----------------------------------|----------------------------------
+     (1) --> (2)  (1) --> (x) --> (2) | (1) <-- (2)  (1) <-- (x) <-- (2)
+      |                    |          |          |            |
+      v                    v          |          v            v
+     (3)                  (3)         |         (3)          (3)
+
+    Args:
+        G: The graph to replace edges with branchpoints.
+
+    Returns:
+        The graph with branchpoints and tips.
+    """
+    branchpoints_tips = G.graph["branchpoints_and_tips"]
+    new_inds = propose_new_inds(list(G.nodes), len(branchpoints_tips))
+    node_xyz = nx_to_pandas(G)[0][["x", "y", "z"]]
+
+    branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
+    closest_node = lambda n_xyz: (node_xyz - n_xyz).abs().sum(axis=1).idxmin()
+
+    for idx, (r, row) in zip(new_inds, branchpoints_tips.iterrows()):
+        idx = r if r not in G.nodes else idx
+        G.add_node(idx, **row.drop(["xyz_children", "xyz_parent"]).to_dict())
+
+        if np.isnan(row["xyz_parent"]).all():  # root node
+            child_nodes = [closest_node(c) for c in row["xyz_children"]]
+            G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
+        elif len(row["xyz_children"]) == 0:  # tip node
+            parent_node = closest_node(row["xyz_parent"])
+            G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
+        else:  # branchpoint nodes
+            parent_node = closest_node(row["xyz_parent"])
+            child_nodes = [closest_node(c) for c in row["xyz_children"]]
+
+            G.remove_edges_from([(parent_node, c) for c in child_nodes])
+            G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
+            G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
+
+    del G.graph["branchpoints_and_tips"]
+    return G
 
 
 ########################################################################################
