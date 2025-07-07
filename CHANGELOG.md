@@ -1,3 +1,10 @@
+# 0.11.1 (pre-release)
+
+### 🛠️ Internal updates
+
+- fix all typos in the codebase by using the `typos` project (#682, @alexpejovic)
+
+
 # 0.11.0
 
 ### 🧩 New features
