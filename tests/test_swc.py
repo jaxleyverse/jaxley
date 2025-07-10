@@ -151,3 +151,14 @@ def test_swc_types(reader_backend, file):
         # Additional tests to ensure that `groups` get updated appropriately.
         cell.soma.branch(0).set_ncomp(3)
         cell.basal.branch(0).set_ncomp(3)
+
+
+def test_single_branch_swc():
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", "morph_single_branch.swc")
+    cell = jx.read_swc(fname, ncomp=1)
+    cell.branch(0).set_ncomp(3)
+    cell.set_ncomp(4)
+    cell[0, 0].record()
+    v = jx.integrate(cell, t_max=1.0)
+    assert np.invert(np.any(np.isnan(v))), "Found a NaN."
