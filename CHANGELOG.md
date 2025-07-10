@@ -1,5 +1,10 @@
 # 0.11.1 (pre-release)
 
+### 🐛 Bug fixes
+
+- bugfix for `set_ncomp()` when the cell consists of a single branch (#686,
+@michaeldeistler)
+
 ### 🛠️ Internal updates
 
 - fix all typos in the codebase by using the `typos` project (#682, @alexpejovic)
@@ -25,7 +30,8 @@ updated computation of membrane area matches that of the NEURON simulator (#662,
 @michaeldeistler, thanks to @VENOM314 for reporting).
 - remove the `custom` SWC reader (which had been deprecated in `v0.9.0`, #662,
 @michaeldeistler).
-- fix bug in `set_ncomp` (# 676, @manuelgloeckler)
+- fix bug in the `.ncomp` attribute after `set_ncomp()` had been run (#676,
+@manuelgloeckler)
 
 
 # 0.10.0

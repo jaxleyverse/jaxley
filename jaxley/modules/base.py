@@ -1197,8 +1197,11 @@ class Module(ABC):
         assert self.base._module_type != "network", "This is not allowed for networks."
         assert not (
             self.base._module_type == "cell"
-            and len(self._branches_in_view) == len(self.base._branches_in_view)
-        ), "This is not allowed for cells."
+            and (
+                len(self._branches_in_view) == len(self.base._branches_in_view)
+                and len(self.base._branches_in_view) > 1
+            )
+        ), "This is not allowed for a `cell`, use `cell.branch(i)` instead."
 
         # Update all attributes that are affected by compartment structure.
         view = self.nodes.copy()
