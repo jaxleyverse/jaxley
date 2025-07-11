@@ -38,13 +38,26 @@ class Network(Module):
     def __init__(
         self,
         cells: List[Cell],
+        vectorize_cells: Optional[bool] = None,
     ):
         """Initialize network of cells and synapses.
 
         Args:
             cells: A list of cells that make up the network.
+            vectorize_cells: Whether to vectorize the voltage updates across cells.
+                If `None`, then we default to `True` on GPU and to `False` on CPU.
+                Manually setting this to `True` on CPU has two effects: (1) The voltage
+                equations for each cell are solved in parallel. (2) The
+                `net._solver_device` is set to `gpu`, regardless of which device you
+                are on. Because of this, the voltage update is unrolled, which leads
+                to higher compile time, but potentially lower runtime. Notably,
+                channels are always vectorized, regardless of the value of
+                `vectorize_cells`.
         """
         super().__init__()
+        if vectorize_cells is not None:
+            self._solver_device = "gpu" if vectorize_cells else "cpu"
+
         for cell in cells:
             self.xyzr += deepcopy(cell.xyzr)
 
@@ -198,7 +211,16 @@ class Network(Module):
                 cell._dhs_solve_indexer["map_to_solve_order_upper"]
                 + lower_and_upper_offset
             )
-            dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
+
+            if self._solver_device == "cpu":
+                # On CPU, we want to solve all cells sequentially for minimal compile
+                # time. Because of this, we also add `offset` to the `level`.
+                dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
+            else:
+                node_order = cell._dhs_solve_indexer["node_order"]
+                # Only :2 because node_order contains [node, parent, level], and we do
+                # not want to offset the level when solving cells in parallel.
+                dhs_node_order.append(node_order.at[:, :2].add(offset))
 
             # Discard the last one because it is a [-1] which just absorbs all
             # compartments that are already finished with their recursion. We append

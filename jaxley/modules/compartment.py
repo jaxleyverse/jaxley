@@ -37,6 +37,7 @@ class Compartment(Module):
     compartment_states: Dict = {"v": -70.0}
 
     def __init__(self):
+        """Initialize a compartment."""
         super().__init__()
 
         self.ncomp = 1
