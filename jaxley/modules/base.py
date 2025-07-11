@@ -988,7 +988,6 @@ class Module(ABC):
         else:
             self._solver_device = "cpu" if allowed_nodes_per_level == 1 else "gpu"
 
-
         if np.any(np.isnan(self.xyzr[0][:, :3])):
             self.compute_xyz()
             self.compute_compartment_centers()
