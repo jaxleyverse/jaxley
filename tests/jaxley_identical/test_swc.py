@@ -114,7 +114,11 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
         cell1._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
         cell2._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
 
-    network = jx.Network([cell1, cell2])
+    if voltage_solver == "jaxley.dhs.gpu":
+        network = jx.Network([cell1, cell2], vectorize_cells=True)
+    else:
+        network = jx.Network([cell1, cell2], vectorize_cells=False)
+
     connect(
         network.cell(0).soma.branch(0).loc(1.0),
         network.cell(1).soma.branch(0).loc(1.0),

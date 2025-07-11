@@ -368,7 +368,11 @@ def test_complex_net(voltage_solver, SimpleCell):
         # On CPU we have to run this manually. On GPU, it gets run automatically with
         # allowed_nodes_per_level=32.
         cell._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
-    net = jx.Network([cell for _ in range(7)])
+
+    if voltage_solver == "jaxley.dhs.cpu":
+        net = jx.Network([cell for _ in range(7)], vectorize_cells=False)
+    else:
+        net = jx.Network([cell for _ in range(7)], vectorize_cells=True)
 
     net.insert(HH())
 

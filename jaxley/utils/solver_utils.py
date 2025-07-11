@@ -226,8 +226,6 @@ def dhs_group_comps_into_levels(new_node_order: np.ndarray) -> List[np.ndarray]:
     Args:
         new_node_order: Array of shape (N, 3). The `3` are (node, parent, level).
             `N` is the number of compartment edges to be processed.
-        allowed_nodes_per_level: The maximal number of compartments in each level.
-            No `level` can exist more often than `allowed_nodes_per_level`.
 
     Returns:
         Array of shape (num_levels, allowed_nodes_per_level, 2), where 2 indicates

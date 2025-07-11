@@ -1,6 +1,10 @@
 # Documentation
 
-The documentation is available at: <https://jaxleyverse.github.io/jaxley/>
+This folder used to host the _outdated_ mkdocs documentation, which was available at:
+<https://jaxleyverse.github.io/jaxley/>.
+
+This folder now only exists to maintain a minimal `mkdocs` website. You should not
+be changing anything here, unless you are confident in what you are doing.
 
 ## Building the Documentation
 
