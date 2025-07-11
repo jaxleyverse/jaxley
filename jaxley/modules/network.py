@@ -50,8 +50,11 @@ class Network(Module):
                 equations for each cell are solved in parallel. (2) The
                 `net._solver_device` is set to `gpu`, regardless of which device you
                 are on. Because of this, the voltage update is unrolled, which leads
-                to higher compile time, but potentially lower runtime. Notably,
-                channels are always vectorized, regardless of the value of
+                to higher compile time, but potentially lower runtime. Manually
+                setting this to `False` on GPU will typically lead to very poor
+                performance, and will only work if you had previously run
+                `cell._init_solver_jaxley_dhs_solve()` for every cell in the network.
+                We note that channels are always vectorized, regardless of the value of
                 `vectorize_cells`.
         """
         super().__init__()
@@ -212,14 +215,16 @@ class Network(Module):
                 + lower_and_upper_offset
             )
 
-            if self._solver_device == "cpu":
+            # For point neurons, node order is empty. In that case [:, :2] would
+            # fail. Thus, we need the if-case `len(node_order) == 0`.
+            node_order = cell._dhs_solve_indexer["node_order"]
+            if self._solver_device == "cpu" or len(node_order) == 0:
                 # On CPU, we want to solve all cells sequentially for minimal compile
                 # time. Because of this, we also add `offset` to the `level`.
-                dhs_node_order.append(cell._dhs_solve_indexer["node_order"] + offset)
+                dhs_node_order.append(node_order + offset)
             else:
-                node_order = cell._dhs_solve_indexer["node_order"]
-                # Only :2 because node_order contains [node, parent, level], and we do
-                # not want to offset the level when solving cells in parallel.
+                # Only :2 because node_order contains [node, parent, level], and we
+                # do not want to offset the level when solving cells in parallel.
                 dhs_node_order.append(node_order.at[:, :2].add(offset))
 
             # Discard the last one because it is a [-1] which just absorbs all

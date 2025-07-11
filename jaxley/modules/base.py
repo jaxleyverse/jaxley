@@ -948,7 +948,7 @@ class Module(ABC):
         self._indptr_jax_spsolve = indptr
 
     def _init_solver_jaxley_dhs_solve(
-        self, allowed_nodes_per_level: Optional[int] = 1, root: int = 0
+        self, allowed_nodes_per_level: Optional[int] = None, root: int = 0
     ) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
@@ -962,7 +962,9 @@ class Module(ABC):
         Args:
             allowed_nodes_per_level: How many nodes are visited before the level is
                 increased, even if the number of hops did not change. This sets the
-                amount of parallelism of the simulation.
+                amount of parallelism of the simulation. Setting this value to 1
+                automatically sets `self._solver_device` to `cpu`, and setting it to
+                values larger than 1 automatically sets `self._solver_device` to `gpu`.
             root: The root node from which to start tracing.
         """
         # Infer the amount of parallelism of the solver. Note that the `jaxley.dhs.cpu`
@@ -983,6 +985,9 @@ class Module(ABC):
                 allowed_nodes_per_level = 1
             else:
                 allowed_nodes_per_level = 32
+        else:
+            self._solver_device = "cpu" if allowed_nodes_per_level == 1 else "gpu"
+
 
         if np.any(np.isnan(self.xyzr[0][:, :3])):
             self.compute_xyz()
