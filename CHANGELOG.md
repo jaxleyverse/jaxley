@@ -1,3 +1,10 @@
+# 0.11.2 (pre-release)
+
+### 📚 Documentation
+
+- Remove all content from the old documentation website (#689, @michaeldeistler)
+
+
 # 0.11.1
 
 ### 🐛 Bug fixes
