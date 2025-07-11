@@ -41,13 +41,3 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-    - name: Build and deploy dev documentation upon push to main
-      if: ${{ github.event_name == 'push' }}
-      run: |
-        cd mkdocs
-        mike deploy dev --push
-    - name: Build and deploy the latest documentation upon new release
-      if: ${{ github.event_name == 'release' }}
-      run: |
-        cd mkdocs
-        mike deploy ${{ github.event.release.name }} latest -u --push
