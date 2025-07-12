@@ -1,9 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Dict, Optional
-
-import jax.numpy as jnp
+from typing import Optional
+from jax.typing import ArrayLike
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import (
@@ -49,16 +47,16 @@ class Leak(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """No state to update."""
         return {}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name
@@ -87,10 +85,10 @@ class Na(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update state."""
         prefix = self._name
@@ -100,7 +98,7 @@ class Na(Channel):
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name
@@ -158,10 +156,10 @@ class K(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update state."""
         prefix = self._name
@@ -170,7 +168,7 @@ class K(Channel):
         return {f"{prefix}_n": new_n}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name
@@ -214,10 +212,10 @@ class Km(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update state."""
         prefix = self._name
@@ -228,7 +226,7 @@ class Km(Channel):
         return {f"{prefix}_p": new_p}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name
@@ -270,10 +268,10 @@ class CaL(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update state."""
         prefix = self._name
@@ -283,7 +281,7 @@ class CaL(Channel):
         return {f"{prefix}_q": new_q, f"{prefix}_r": new_r}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name
@@ -339,10 +337,10 @@ class CaT(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update state."""
         prefix = self._name
@@ -353,7 +351,7 @@ class CaT(Channel):
         return {f"{prefix}_u": new_u}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name

@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
-import jax.numpy as jnp
+from jax.typing import ArrayLike
 
 
 class Pump:
@@ -13,10 +13,10 @@ class Pump:
     A pump in Jaxley is everything that modifies the intracellular ion concentrations.
     """
 
-    _name = None
-    channel_params = None
-    channel_states = None
-    current_name = None
+    _name: str
+    channel_params: dict[str, ArrayLike]
+    channel_states: dict[str, ArrayLike]
+    current_name: str
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
@@ -59,14 +59,14 @@ class Pump:
         return self
 
     def update_states(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
+    ) -> None:
         """Update the states of the pump."""
         raise NotImplementedError
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
+    ) -> None:
         """Given channel states and voltage, return the change in ion concentration.
 
         Args:
@@ -81,9 +81,9 @@ class Pump:
 
     def init_state(
         self,
-        states: Dict[str, jnp.ndarray],
-        v: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
         delta_t: float,
     ):
         """Initialize states of channel."""

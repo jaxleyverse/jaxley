@@ -1,13 +1,11 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from math import pi
-from typing import Callable, Dict, List, Optional, Tuple
-
+from typing import List
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
+from jax import Array, vmap
+from jax.typing import ArrayLike
 
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
@@ -24,7 +22,7 @@ def equal_segments(branch_property: list, ncomp_per_branch: int):
 
 
 def linear_segments(
-    initial_val: float, endpoint_vals: list, parents: jnp.ndarray, ncomp_per_branch: int
+    initial_val: float, endpoint_vals: list, parents: ArrayLike, ncomp_per_branch: int
 ):
     """Generates segments where some property is linearly interpolated.
 
@@ -153,7 +151,7 @@ def _compute_index_of_child(parents):
     return index_of_child
 
 
-def compute_children_indices(parents) -> List[jnp.ndarray]:
+def compute_children_indices(parents) -> list[Array]:
     """Return all children indices of every branch.
 
     Example:
@@ -170,7 +168,7 @@ def compute_children_indices(parents) -> List[jnp.ndarray]:
 
 
 def get_num_neighbours(
-    num_children: jnp.ndarray,
+    num_children: ArrayLike,
     ncomp_per_branch: int,
     num_branches: int,
 ):
@@ -245,8 +243,8 @@ def interpolate_xyzr(loc: float, coords: np.ndarray):
 
 
 def params_to_pstate(
-    params: List[Dict[str, jnp.ndarray]],
-    indices_set_by_trainables: List[jnp.ndarray],
+    params: list[dict[str, ArrayLike]],
+    indices_set_by_trainables: list[ArrayLike],
 ):
     """Make outputs `get_parameters()` conform with outputs of `.data_set()`.
 
@@ -262,8 +260,8 @@ def params_to_pstate(
 
 
 def convert_point_process_to_distributed(
-    current: jnp.ndarray, area: jnp.ndarray
-) -> jnp.ndarray:
+    current: ArrayLike, area: ArrayLike
+) -> Array:
     """Convert current point process (nA) to distributed current (uA/cm2).
 
     This function gets called for synapses and for external stimuli.
@@ -296,7 +294,7 @@ def query_channel_states_and_params(d, keys, idcs):
 
 def compute_children_and_parents(
     branch_edges: pd.DataFrame,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, int]:
+) -> tuple[Array, Array, Array, int]:
     """Build indices used during `._init_morph_custom_spsolve()."""
     par_inds = branch_edges["parent_branch_index"].to_numpy()
     child_inds = branch_edges["child_branch_index"].to_numpy()

@@ -1,7 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 import jax.numpy as jnp
+from jax.typing import ArrayLike
 
 
 def save_exp(x, max_value: float = 20.0):
@@ -11,10 +11,10 @@ def save_exp(x, max_value: float = 20.0):
 
 
 def solve_gate_implicit(
-    gating_state: jnp.ndarray,
+    gating_state: ArrayLike,
     dt: float,
-    alpha: jnp.ndarray,
-    beta: jnp.ndarray,
+    alpha: ArrayLike,
+    beta: ArrayLike,
 ):
     a_m = gating_state + dt * alpha
     b_m = 1.0 + dt * alpha + dt * beta
@@ -23,10 +23,10 @@ def solve_gate_implicit(
 
 
 def solve_gate_exponential(
-    x: jnp.ndarray,
+    x: ArrayLike,
     dt: float,
-    alpha: jnp.ndarray,
-    beta: jnp.ndarray,
+    alpha: ArrayLike,
+    beta: ArrayLike,
 ):
     tau = 1 / (alpha + beta)
     xinf = alpha * tau
@@ -34,10 +34,10 @@ def solve_gate_exponential(
 
 
 def exponential_euler(
-    x: jnp.ndarray,
+    x: ArrayLike,
     dt: float,
-    x_inf: jnp.ndarray,
-    x_tau: jnp.ndarray,
+    x_inf: ArrayLike,
+    x_tau: ArrayLike,
 ):
     """An exact solver for the linear dynamical system `dx = -(x - x_inf) / x_tau`."""
     exp_term = save_exp(-dt / x_tau)
@@ -45,19 +45,19 @@ def exponential_euler(
 
 
 def solve_inf_gate_exponential(
-    x: jnp.ndarray,
+    x: ArrayLike,
     dt: float,
-    s_inf: jnp.ndarray,
-    tau_s: jnp.ndarray,
+    s_inf: ArrayLike,
+    tau_s: ArrayLike,
 ):
     """solves dx/dt = (s_inf - x) / tau_s
     via exponential Euler
 
     Args:
-        x (jnp.ndarray): gate variable
+        x (ArrayLike): gate variable
         dt (float): time_delta
-        s_inf (jnp.ndarray): _description_
-        tau_s (jnp.ndarray): _description_
+        s_inf (ArrayLike): _description_
+        tau_s (ArrayLike): _description_
 
     Returns:
         _type_: updated gate

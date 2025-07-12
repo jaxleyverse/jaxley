@@ -1,9 +1,10 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Dict, Optional
+from typing import Optional
 
 import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
@@ -34,11 +35,11 @@ class HH(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
-        dt,
-        v,
-        params: Dict[str, jnp.ndarray],
-    ):
+        states: dict[str, ArrayLike],
+        dt: float,
+        v: float,
+        params: dict[str, ArrayLike],
+    ) -> dict[str, Array]:
         """Return updated HH channel state."""
         prefix = self._name
         m, h, n = states[f"{prefix}_m"], states[f"{prefix}_h"], states[f"{prefix}_n"]
@@ -48,8 +49,8 @@ class HH(Channel):
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h, f"{prefix}_n": new_n}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+        self, states: dict[str, ArrayLike], v: float, params: dict[str, ArrayLike]
+    ) -> float:
         """Return current through HH channels."""
         prefix = self._name
         m, h, n = states[f"{prefix}_m"], states[f"{prefix}_h"], states[f"{prefix}_n"]
@@ -64,7 +65,13 @@ class HH(Channel):
             + gLeak * (v - params[f"{prefix}_eLeak"])
         )
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
+        delta_t: float,
+    ) -> dict[str, float]:
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)

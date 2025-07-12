@@ -1,11 +1,11 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Callable, Dict, List, Optional, Tuple
-
+from typing import List, Optional
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+from jax import Array
+from jax.typing import ArrayLike
 
 
 def morph_attrs_from_xyzr(
@@ -254,7 +254,7 @@ def swc_resistive_load(lengths: np.ndarray, radii: np.ndarray) -> np.ndarray:
     return np.sum(segment_integrals) / jnp.pi
 
 
-def cylinder_area(length: jnp.ndarray, radius: jnp.ndarray) -> jnp.ndarray:
+def cylinder_area(length: ArrayLike, radius: ArrayLike) -> Array:
     r"""Return the surface area of a cylindric compartment, given its length and radius.
 
     Args:
@@ -266,7 +266,7 @@ def cylinder_area(length: jnp.ndarray, radius: jnp.ndarray) -> jnp.ndarray:
     return 2.0 * jnp.pi * radius * length
 
 
-def cylinder_volume(length: jnp.ndarray, radius: jnp.ndarray) -> jnp.ndarray:
+def cylinder_volume(length: ArrayLike, radius: ArrayLike) -> Array:
     r"""Return the volume of a cylindric compartment, given its length and radius.
 
     The resistive load is defined as the integral over :math:`1/(\pi r^2)`, i.e.,
@@ -287,7 +287,7 @@ def cylinder_volume(length: jnp.ndarray, radius: jnp.ndarray) -> jnp.ndarray:
     return length * radius**2 * jnp.pi
 
 
-def cylinder_resistive_load(length: jnp.ndarray, radius: jnp.ndarray) -> jnp.ndarray:
+def cylinder_resistive_load(length: ArrayLike, radius: ArrayLike) -> Array:
     r"""Return the resistive load of a cylindric compartment, given length and radius.
 
     The resistive load is defined as the integral over :math:`1/(\pi r^2)`, i.e.,
@@ -310,9 +310,9 @@ def cylinder_resistive_load(length: jnp.ndarray, radius: jnp.ndarray) -> jnp.nda
 
 def compute_axial_conductances(
     comp_edges: pd.DataFrame,
-    params: Dict[str, jnp.ndarray],
-    diffusion_states: List[str],
-) -> Dict[str, jnp.ndarray]:
+    params: dict[str, ArrayLike],
+    diffusion_states: list[str],
+) -> dict[str, Array]:
     r"""Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.
 
     Note that the resulting axial conductances will already by divided by the

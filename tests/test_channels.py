@@ -1,7 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 import jax
+from jax.typing import ArrayLike
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -223,10 +223,10 @@ class KCA11(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update state."""
         prefix = self._name
@@ -239,7 +239,7 @@ class KCA11(Channel):
         return {f"{prefix}_m": new_m}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
     ):
         """Return current."""
         prefix = self._name

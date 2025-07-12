@@ -1,12 +1,13 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 
 import jax.numpy as jnp
 import numpy as np
+from jax import Array
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from jax.lax import fori_loop
+from jax.typing import ArrayLike
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 
 
@@ -172,13 +173,13 @@ def _comp_based_backsub(index, carry):
 
 
 def _comp_based_backsub_recursive_doubling(
-    diags: jnp.ndarray,
-    solves: jnp.ndarray,
-    lowers: jnp.ndarray,
+    diags: ArrayLike,
+    solves: ArrayLike,
+    lowers: ArrayLike,
     steps: int,
     n_nodes: int,
     parent_lookup: np.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+) -> tuple[Array, Array]:
     """Backsubstitute with recursive doubling.
 
     This function contains a lot of math, so I will describe what is going on here:
@@ -294,15 +295,15 @@ def step_voltage_implicit_with_jax_spsolve(
 
 
 def step_voltage_explicit(
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    axial_conductances: jnp.ndarray,
+    voltages: ArrayLike,
+    voltage_terms: ArrayLike,
+    constant_terms: ArrayLike,
+    axial_conductances: ArrayLike,
     sinks,
     sources,
     types,
     delta_t: float,
-) -> jnp.ndarray:
+) -> Array:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
     update = _voltage_vectorfield(
         voltages,
@@ -318,14 +319,14 @@ def step_voltage_explicit(
 
 
 def _voltage_vectorfield(
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    axial_conductances: jnp.ndarray,
+    voltages: ArrayLike,
+    voltage_terms: ArrayLike,
+    constant_terms: ArrayLike,
+    axial_conductances: ArrayLike,
     sinks,
     sources,
     types,
-) -> jnp.ndarray:
+) -> Array:
     """Evaluate the vectorfield of the nerve equation."""
     if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
         raise NotImplementedError(
@@ -345,15 +346,15 @@ def _voltage_vectorfield(
 
 
 def step_voltage_implicit_with_stone(
-    voltages: jnp.ndarray,
-    voltage_terms: jnp.ndarray,
-    constant_terms: jnp.ndarray,
-    axial_conductances: jnp.ndarray,
-    internal_node_inds: jnp.ndarray,
+    voltages: ArrayLike,
+    voltage_terms: ArrayLike,
+    constant_terms: ArrayLike,
+    axial_conductances: ArrayLike,
+    internal_node_inds: ArrayLike,
     n_nodes: int,
-    sinks: jnp.ndarray,
-    sources: jnp.ndarray,
-    types: jnp.ndarray,
+    sinks: ArrayLike,
+    sources: ArrayLike,
+    types: ArrayLike,
     delta_t: float,
 ):
     """Solve one timestep of branched nerve equations with implicit (backward) Euler."""

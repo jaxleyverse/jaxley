@@ -1,11 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from copy import deepcopy
-from typing import Dict, Optional
-
 import jax
 import pytest
+from jax.typing import ArrayLike
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -45,19 +42,19 @@ class NaPump(Pump):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"NaCon_i": states["NaCon_i"], "i_Na": states["i_Na"]}
 
     def compute_current(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         modified_state,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -77,9 +74,9 @@ class NaPump(Pump):
 
     def init_state(
         self,
-        states: Dict[str, jnp.ndarray],
-        v: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
         delta_t: float,
     ):
         """Initialize states of channel."""
@@ -151,19 +148,19 @@ class CaPump2(Pump):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
 
     def compute_current(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
         modified_state,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, ArrayLike],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -183,9 +180,9 @@ class CaPump2(Pump):
 
     def init_state(
         self,
-        states: Dict[str, jnp.ndarray],
-        v: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
         delta_t: float,
     ):
         """Initialize states of channel."""

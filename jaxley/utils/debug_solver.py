@@ -1,10 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Tuple
-
 import jax.numpy as jnp
-import numpy as np
+from jax import Array
+from jax.typing import ArrayLike
 
 
 def compute_morphology_indices(
@@ -162,10 +160,9 @@ def build_voltage_matrix_elements(
 
 
 def drop_ncomp_th_element(
-    arr: jnp.ndarray, ncomp: int, nbranches: int, start: int
-) -> jnp.ndarray:
-    """
-    Create an array of integers from 0 to limit, dropping every n-th element.
+    arr: ArrayLike, ncomp: int, nbranches: int, start: int
+) -> Array:
+    """Create an array of integers from 0 to limit, dropping every n-th element.
 
     Written by ChatGPT.
 
