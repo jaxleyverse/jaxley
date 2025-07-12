@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from typing import List
+
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -259,9 +260,7 @@ def params_to_pstate(
     ]
 
 
-def convert_point_process_to_distributed(
-    current: ArrayLike, area: ArrayLike
-) -> Array:
+def convert_point_process_to_distributed(current: ArrayLike, area: ArrayLike) -> Array:
     """Convert current point process (nA) to distributed current (uA/cm2).
 
     This function gets called for synapses and for external stimuli.

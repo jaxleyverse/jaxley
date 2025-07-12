@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from typing import Optional
+
 from jax.typing import ArrayLike
 
 from jaxley.pumps.pump import Pump

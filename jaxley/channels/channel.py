@@ -82,9 +82,7 @@ class Channel:
         }
         return self
 
-    def update_states(
-        self, states, dt, v, params
-    ) -> tuple[Array, tuple[Array, Array]]:
+    def update_states(self, states, dt, v, params) -> tuple[Array, tuple[Array, Array]]:
         """Return the updated states."""
         raise NotImplementedError
 
