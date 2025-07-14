@@ -185,7 +185,7 @@ class Module(ABC):
 
         # For trainable parameters.
         self.indices_set_by_trainables: list[ArrayLike] = []
-        self.trainable_params: list[dict[str, ArrayLike]] = []
+        self.trainable_params: list[dict[str, Array]] = []
         self.allow_make_trainable: bool = True
         self.num_trainable_params: int = 0
 
@@ -1472,7 +1472,7 @@ class Module(ABC):
                 f"parameters: {self.base.num_trainable_params}"
             )
 
-    def write_trainables(self, trainable_params: list[dict[str, ArrayLike]]):
+    def write_trainables(self, trainable_params: list[dict[str, Array]]):
         """Write the trainables into `.nodes` and `.edges`.
 
         This allows to, e.g., visualize trained networks with `.vis()`.
@@ -2274,7 +2274,7 @@ class Module(ABC):
         delta_t: float,
         external_inds: dict[str, ArrayLike],
         externals: dict[str, ArrayLike],
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
         solver: str = "bwd_euler",
         voltage_solver: str = "jaxley.stone",
     ) -> dict[str, Array]:
@@ -2507,11 +2507,11 @@ class Module(ABC):
 
     def _step_channels(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         delta_t: float,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """One step of integration of the channels and of computing their current."""
         states = self._step_channels_state(
@@ -2528,7 +2528,7 @@ class Module(ABC):
         delta_t,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ) -> dict[str, Array]:
         """One integration step of the channels."""
         voltages = states["v"]
@@ -2566,11 +2566,11 @@ class Module(ABC):
 
     def _channel_currents(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         delta_t: float,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """Return the current through each channel.
 
@@ -2630,12 +2630,12 @@ class Module(ABC):
 
     def _channel_current_components(
         self,
-        modified_state: ArrayLike,
-        states: dict[str, ArrayLike],
+        modified_state: Array,
+        states: dict[str, Array],
         delta_t: float,
         channel: Channel,
         indices: pd.DataFrame,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Computes current through a channel and its linear and const components.
 
@@ -2672,9 +2672,9 @@ class Module(ABC):
 
     def _step_synapse(
         self,
-        u: dict[str, ArrayLike],
+        u: dict[str, Array],
         syn_channels: list[Channel],
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
         delta_t: float,
         edges: pd.DataFrame,
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:

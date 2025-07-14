@@ -14,7 +14,7 @@ class TypeOptimizer:
         self,
         optimizer: Callable,
         optimizer_args: dict[str, Any],
-        opt_params: list[dict[str, ArrayLike]],
+        opt_params: list[dict[str, Array]],
     ):
         """Create the optimizers.
 
@@ -57,7 +57,7 @@ class TypeOptimizer:
             optimizer = self.base_optimizer(optimizer_args[name])
             self.optimizers.append({name: optimizer})
 
-    def init(self, opt_params: list[dict[str, ArrayLike]]) -> list:
+    def init(self, opt_params: list[dict[str, Array]]) -> list:
         """Initialize the optimizers. Equivalent to `optax.optimizers.init()`."""
         opt_states = []
         for params, optimizer in zip(opt_params, self.optimizers):
@@ -66,7 +66,7 @@ class TypeOptimizer:
             opt_states.append(opt_state)
         return opt_states
 
-    def update(self, gradient: ArrayLike, opt_state: list) -> tuple[list, list]:
+    def update(self, gradient: Array, opt_state: list) -> tuple[list, list]:
         """Update the optimizers. Equivalent to `optax.optimizers.update()`."""
         all_updates = []
         new_opt_states = []

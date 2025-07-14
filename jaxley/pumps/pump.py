@@ -1,9 +1,9 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
+from jax import Array
 from jax.typing import ArrayLike
 
 
@@ -14,8 +14,8 @@ class Pump:
     """
 
     _name: str
-    channel_params: dict[str, ArrayLike]
-    channel_states: dict[str, ArrayLike]
+    channel_params: dict[str, Array]
+    channel_states: dict[str, Array]
     current_name: str
 
     def __init__(self, name: Optional[str] = None):
@@ -59,13 +59,13 @@ class Pump:
         return self
 
     def update_states(
-        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
+        self, states: dict[str, Array], v, params: dict[str, Array]
     ) -> None:
         """Update the states of the pump."""
         raise NotImplementedError
 
     def compute_current(
-        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
+        self, states: dict[str, Array], v, params: dict[str, Array]
     ) -> None:
         """Given channel states and voltage, return the change in ion concentration.
 

@@ -1,6 +1,5 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Sequence
 
@@ -193,9 +192,7 @@ class ParamTransform:
 
         self.tf_dict = tf_dict
 
-    def forward(
-        self, params: List[Dict[str, ArrayLike]] | ArrayLike
-    ) -> Dict[str, Array]:
+    def forward(self, params: List[Dict[str, Array]] | Array) -> Dict[str, Array]:
         """Pushes unconstrained parameters through a tf such that they fit the interval.
 
         Args:
@@ -208,9 +205,7 @@ class ParamTransform:
 
         return jax.tree_util.tree_map(lambda x, tf: tf.forward(x), params, self.tf_dict)
 
-    def inverse(
-        self, params: List[Dict[str, ArrayLike]] | ArrayLike
-    ) -> Dict[str, Array]:
+    def inverse(self, params: List[Dict[str, Array]] | Array) -> Dict[str, Array]:
         """Takes parameters from within the interval and makes them unconstrained.
 
         Args:

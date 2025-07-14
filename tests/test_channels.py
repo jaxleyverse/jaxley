@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 import jax
+from jax import Array
 from jax.typing import ArrayLike
 
 jax.config.update("jax_enable_x64", True)
@@ -223,10 +224,10 @@ class KCA11(Channel):
 
     def update_states(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         dt,
         v,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Update state."""
         prefix = self._name
@@ -238,9 +239,7 @@ class KCA11(Channel):
         new_m = solve_inf_gate_exponential(m, dt, *self.m_gate(v, cai, q10))
         return {f"{prefix}_m": new_m}
 
-    def compute_current(
-        self, states: dict[str, ArrayLike], v, params: dict[str, ArrayLike]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         m = states[f"{prefix}_m"]

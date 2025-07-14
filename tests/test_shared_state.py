@@ -3,6 +3,7 @@
 from typing import Optional
 
 import jax
+from jax import Array
 from jax.typing import ArrayLike
 
 jax.config.update("jax_enable_x64", True)
@@ -87,7 +88,7 @@ class CaHVA(Channel):
         u: dict[str, ArrayLike],
         dt: float,
         voltages: float,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Update state of gating variables."""
         prefix = self._name

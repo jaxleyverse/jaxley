@@ -35,10 +35,10 @@ class HH(Channel):
 
     def update_states(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         dt: float,
         v: float,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ) -> dict[str, Array]:
         """Return updated HH channel state."""
         prefix = self._name
@@ -49,7 +49,7 @@ class HH(Channel):
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h, f"{prefix}_n": new_n}
 
     def compute_current(
-        self, states: dict[str, ArrayLike], v: float, params: dict[str, ArrayLike]
+        self, states: dict[str, Array], v: float, params: dict[str, Array]
     ) -> float:
         """Return current through HH channels."""
         prefix = self._name

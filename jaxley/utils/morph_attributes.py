@@ -311,7 +311,7 @@ def cylinder_resistive_load(length: ArrayLike, radius: ArrayLike) -> Array:
 
 def compute_axial_conductances(
     comp_edges: pd.DataFrame,
-    params: dict[str, ArrayLike],
+    params: dict[str, Array],
     diffusion_states: list[str],
 ) -> dict[str, Array]:
     r"""Given `comp_edges`, radius, length, r_a, cm, compute the axial conductances.

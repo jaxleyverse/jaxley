@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from typing import Optional
 
+from jax import Array
 from jax.typing import ArrayLike
 
 from jaxley.pumps.pump import Pump
@@ -105,19 +106,19 @@ class CaFaradayConcentrationChange(Pump):
 
     def update_states(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         dt,
         v,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Update states if necessary (but this mechanism has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
 
     def compute_current(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         modified_state,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Return change of calcium concentration as the calcium current."""
         # 2.0 is valence of calcium.

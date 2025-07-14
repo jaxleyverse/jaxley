@@ -101,7 +101,7 @@ def build_init_and_step_fn(
     external_inds = module.external_inds.copy()
 
     def init_fn(
-        params: list[dict[str, ArrayLike]],
+        params: list[dict[str, Array]],
         all_states: dict | None = None,
         param_state: list[dict] | None = None,
         delta_t: float = 0.025,
@@ -227,7 +227,7 @@ def add_clamps(
 
 def integrate(
     module: Module,
-    params: list[dict[str, ArrayLike]] = [],
+    params: list[dict[str, Array]] = [],
     *,
     param_state: list[dict] | None = None,
     data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,

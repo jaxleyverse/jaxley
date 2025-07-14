@@ -4,6 +4,7 @@ from typing import Optional
 
 import jax
 import pytest
+from jax import Array
 from jax.typing import ArrayLike
 
 jax.config.update("jax_enable_x64", True)
@@ -44,19 +45,19 @@ class NaPump(Pump):
 
     def update_states(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         dt,
         v,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"NaCon_i": states["NaCon_i"], "i_Na": states["i_Na"]}
 
     def compute_current(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         modified_state,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -150,19 +151,19 @@ class CaPump2(Pump):
 
     def update_states(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         dt,
         v,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
 
     def compute_current(
         self,
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         modified_state,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name

@@ -1,6 +1,5 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 from warnings import warn
@@ -87,7 +86,7 @@ class Channel:
         raise NotImplementedError
 
     def compute_current(
-        self, states: dict[str, ArrayLike], v: float, params: dict[str, ArrayLike]
+        self, states: dict[str, Array], v: float, params: dict[str, Array]
     ):
         """Given channel states and voltage, return the current through the channel.
 

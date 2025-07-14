@@ -58,11 +58,11 @@ class Synapse:
         return self
 
     def update_states(
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         delta_t: float,
         pre_voltage: ArrayLike,
         post_voltage: ArrayLike,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ) -> dict[str, Array]:
         """ODE update step.
 
@@ -78,10 +78,10 @@ class Synapse:
         raise NotImplementedError
 
     def compute_current(
-        states: dict[str, ArrayLike],
+        states: dict[str, Array],
         pre_voltage: ArrayLike,
         post_voltage: ArrayLike,
-        params: dict[str, ArrayLike],
+        params: dict[str, Array],
     ) -> Array:
         """Return current through one synapse in `nA`.
 
