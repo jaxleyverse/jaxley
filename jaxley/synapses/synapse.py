@@ -1,9 +1,9 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+from typing import Optional
 
-from typing import Dict, Optional, Tuple
-
-import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 
 class Synapse:
@@ -58,12 +58,12 @@ class Synapse:
         return self
 
     def update_states(
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         delta_t: float,
-        pre_voltage: jnp.ndarray,
-        post_voltage: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
-    ) -> Dict[str, jnp.ndarray]:
+        pre_voltage: ArrayLike,
+        post_voltage: ArrayLike,
+        params: dict[str, Array],
+    ) -> dict[str, Array]:
         """ODE update step.
 
         Args:
@@ -78,11 +78,11 @@ class Synapse:
         raise NotImplementedError
 
     def compute_current(
-        states: Dict[str, jnp.ndarray],
-        pre_voltage: jnp.ndarray,
-        post_voltage: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
-    ) -> jnp.ndarray:
+        states: dict[str, Array],
+        pre_voltage: ArrayLike,
+        post_voltage: ArrayLike,
+        params: dict[str, Array],
+    ) -> Array:
         """Return current through one synapse in `nA`.
 
         Internally, we use `jax.vmap` to vectorize this function across many synapses.

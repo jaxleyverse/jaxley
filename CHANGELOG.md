@@ -1,3 +1,10 @@
+# 0.11.3 (pre-release)
+
+### 🛠️ Internal updates
+
+-  follow jax typing practices with Array and ArrayLike (#693, @alexpejovic)
+
+
 # 0.11.2
 
 ### 🐛 Bug fixes

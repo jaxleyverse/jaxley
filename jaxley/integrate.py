@@ -1,12 +1,14 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
+from collections.abc import Callable
 from math import prod
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 import pandas as pd
+from jax import Array
+from jax.typing import ArrayLike
 
 from jaxley.modules import Module
 from jaxley.utils.cell_utils import params_to_pstate
@@ -99,9 +101,9 @@ def build_init_and_step_fn(
     external_inds = module.external_inds.copy()
 
     def init_fn(
-        params: List[Dict[str, jnp.ndarray]],
-        all_states: Optional[Dict] = None,
-        param_state: Optional[List[Dict]] = None,
+        params: list[dict[str, Array]],
+        all_states: dict | None = None,
+        param_state: list[dict] | None = None,
         delta_t: float = 0.025,
     ) -> Tuple[Dict, Dict]:
         """Initializes the parameters and states of the neuron model.
@@ -164,10 +166,10 @@ def build_init_and_step_fn(
 
 
 def add_stimuli(
-    externals: Dict,
-    external_inds: Dict,
-    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
-) -> Tuple[Dict, Dict]:
+    externals: dict,
+    external_inds: dict,
+    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+) -> tuple[dict, dict]:
     """Extends the external inputs with the stimuli.
 
     Args:
@@ -194,10 +196,10 @@ def add_stimuli(
 
 
 def add_clamps(
-    externals: Dict,
-    external_inds: Dict,
-    data_clamps: Optional[Tuple[str, jnp.ndarray, pd.DataFrame]] = None,
-) -> Tuple[Dict, Dict]:
+    externals: dict,
+    external_inds: dict,
+    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+) -> tuple[dict, dict]:
     """Adds clamps to the external inputs.
 
     Args:
@@ -225,21 +227,20 @@ def add_clamps(
 
 def integrate(
     module: Module,
-    params: List[Dict[str, jnp.ndarray]] = [],
+    params: list[dict[str, Array]] = [],
     *,
-    param_state: Optional[List[Dict]] = None,
-    data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
-    data_clamps: Optional[Tuple[str, jnp.ndarray, pd.DataFrame]] = None,
-    t_max: Optional[float] = None,
+    param_state: list[dict] | None = None,
+    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    t_max: float | None = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
     voltage_solver: str = "jaxley.dhs",
     checkpoint_lengths: Optional[List[int]] = None,
     all_states: Optional[Dict] = None,
     return_states: bool = False,
-) -> jnp.ndarray:
-    """
-    Solves ODE and simulates neuron model.
+) -> Array:
+    """Solves ODE and simulates neuron model.
 
     Args:
         params: Trainable parameters returned by `get_parameters()`.

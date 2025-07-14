@@ -1,11 +1,11 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 from warnings import warn
 
-import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 
 class Channel:
@@ -81,14 +81,12 @@ class Channel:
         }
         return self
 
-    def update_states(
-        self, states, dt, v, params
-    ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
+    def update_states(self, states, dt, v, params) -> tuple[Array, tuple[Array, Array]]:
         """Return the updated states."""
         raise NotImplementedError
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self, states: dict[str, Array], v: float, params: dict[str, Array]
     ):
         """Given channel states and voltage, return the current through the channel.
 
@@ -104,9 +102,9 @@ class Channel:
 
     def init_state(
         self,
-        states: Dict[str, jnp.ndarray],
-        v: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
         delta_t: float,
     ):
         """Initialize states of channel."""

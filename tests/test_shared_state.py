@@ -1,9 +1,10 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Dict, Optional
+from typing import Optional
 
 import jax
+from jax import Array
+from jax.typing import ArrayLike
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -84,10 +85,10 @@ class CaHVA(Channel):
 
     def update_states(
         self,
-        u: Dict[str, jnp.ndarray],
+        u: dict[str, ArrayLike],
         dt: float,
         voltages: float,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Update state of gating variables."""
         prefix = self._name
@@ -97,7 +98,7 @@ class CaHVA(Channel):
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": u["eCa"]}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, u: dict[str, ArrayLike], voltages, params: dict[str, ArrayLike]
     ):
         """Compute the current through the channel."""
         prefix = self._name

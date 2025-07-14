@@ -1,12 +1,11 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 import math
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple, TypeVar
 
 import jax
 import jax.numpy as jnp
-import pandas as pd
+from jax.typing import ArrayLike
 
 Carry = TypeVar("Carry")
 Input = TypeVar("Input")
@@ -15,10 +14,10 @@ Func = TypeVar("Func", bound=Callable)
 
 
 def nested_checkpoint_scan(
-    f: Callable[[Carry, Dict[str, jnp.ndarray]], Tuple[Carry, Output]],
+    f: Callable[[Carry, dict[str, ArrayLike]], tuple[Carry, Output]],
     init: Carry,
-    xs: Dict[str, jnp.ndarray],
-    length: Optional[int] = None,
+    xs: dict[str, ArrayLike],
+    length: int | None = None,
     *,
     nested_lengths: Sequence[int],
     scan_fn=jax.lax.scan,

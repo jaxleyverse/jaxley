@@ -13,8 +13,9 @@ import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
-from jax import jit, vmap
+from jax import Array, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from jax.typing import ArrayLike
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
@@ -159,7 +160,7 @@ class Module(ABC):
 
         self._cumsum_nbranches: Optional[np.ndarray] = None
 
-        self.comb_parents: jnp.ndarray = jnp.asarray([-1])
+        self.comb_parents: ArrayLike = jnp.asarray([-1])
 
         self.initialized_solver: bool = False
         self.initialized_syns: bool = False
@@ -183,8 +184,8 @@ class Module(ABC):
         self.diffusion_states: List[str] = []
 
         # For trainable parameters.
-        self.indices_set_by_trainables: List[jnp.ndarray] = []
-        self.trainable_params: List[Dict[str, jnp.ndarray]] = []
+        self.indices_set_by_trainables: list[ArrayLike] = []
+        self.trainable_params: list[dict[str, Array]] = []
         self.allow_make_trainable: bool = True
         self.num_trainable_params: int = 0
 
@@ -194,9 +195,9 @@ class Module(ABC):
         # For stimuli or clamps.
         # E.g. `self.externals = {"v": zeros(1000,2), "i": ones(1000, 2)}`
         # for 1000 timesteps and two compartments.
-        self.externals: Dict[str, jnp.ndarray] = {}
+        self.externals: dict[str, ArrayLike] = {}
         # E.g. `self.external)inds = {"v": jnp.asarray([0,1]), "i": jnp.asarray([2,3])}`
-        self.external_inds: Dict[str, jnp.ndarray] = {}
+        self.external_inds: dict[str, ArrayLike] = {}
 
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
@@ -1061,7 +1062,7 @@ class Module(ABC):
             parents[nodes[:, 0]] = nodes[:, 1]
         self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
-    def set(self, key: str, val: Union[float, jnp.ndarray]):
+    def set(self, key: str, val: float | ArrayLike):
         """Set parameter of module (or its view) to a new value.
 
         Note that this function can not be called within `jax.jit` or `jax.grad`.
@@ -1071,7 +1072,7 @@ class Module(ABC):
 
         Args:
             key: The name of the parameter to set.
-            val: The value to set the parameter to. If it is `jnp.ndarray` then it
+            val: The value to set the parameter to. If it is `ArrayLike` then it
                 must be of shape `(len(num_compartments))`.
         """
         if key in [f"axial_diffusion_{ion_name}" for ion_name in self.diffusion_states]:
@@ -1126,14 +1127,14 @@ class Module(ABC):
     def data_set(
         self,
         key: str,
-        val: Union[float, jnp.ndarray],
-        param_state: Optional[List[Dict]],
+        val: float | ArrayLike,
+        param_state: list[dict] | None,
     ):
         """Set parameter of module (or its view) to a new value within `jit`.
 
         Args:
             key: The name of the parameter to set.
-            val: The value to set the parameter to. If it is `jnp.ndarray` then it
+            val: The value to set the parameter to. If it is `ArrayLike` then it
                 must be of shape `(len(num_compartments))`.
             param_state: State of the set parameters, internally used such that this
                 function does not modify global state.
@@ -1475,7 +1476,7 @@ class Module(ABC):
                 f"parameters: {self.base.num_trainable_params}"
             )
 
-    def write_trainables(self, trainable_params: List[Dict[str, jnp.ndarray]]):
+    def write_trainables(self, trainable_params: list[dict[str, Array]]):
         """Write the trainables into `.nodes` and `.edges`.
 
         This allows to, e.g., visualize trained networks with `.vis()`.
@@ -1602,7 +1603,7 @@ class Module(ABC):
             synapse_states + self.synapse_current_names,
         )
 
-    def get_parameters(self) -> List[Dict[str, jnp.ndarray]]:
+    def get_parameters(self) -> list[dict[str, Array]]:
         """Get all trainable parameters.
 
         The returned parameters should be passed to
@@ -1615,7 +1616,7 @@ class Module(ABC):
         return self.trainable_params
 
     @only_allow_module
-    def get_all_parameters(self, pstate: List[Dict]) -> Dict[str, jnp.ndarray]:
+    def get_all_parameters(self, pstate: list[dict]) -> dict[str, Array]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Return all parameters (and coupling conductances) needed to simulate.
 
@@ -1719,7 +1720,7 @@ class Module(ABC):
         return params
 
     @only_allow_module
-    def _get_states_from_nodes_and_edges(self) -> Dict[str, jnp.ndarray]:
+    def _get_states_from_nodes_and_edges(self) -> dict[str, Array]:
         """Return states as they are set in the `.nodes` and `.edges` tables.
 
         TODO FROM #447: MAKE THIS WORK FOR VIEW?
@@ -1737,8 +1738,8 @@ class Module(ABC):
 
     @only_allow_module
     def get_all_states(
-        self, pstate: List[Dict], all_params, delta_t: float
-    ) -> Dict[str, jnp.ndarray]:
+        self, pstate: list[dict], all_params, delta_t: float
+    ) -> dict[str, Array]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Get the full initial state of the module from jaxnodes and trainables.
 
@@ -1975,7 +1976,7 @@ class Module(ABC):
         else:
             self.base.recordings = pd.DataFrame().from_dict({})
 
-    def stimulate(self, current: Optional[jnp.ndarray] = None, verbose: bool = True):
+    def stimulate(self, current: ArrayLike | None = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
 
         current must be a 1d array or have batch dimension of size `(num_compartments, )`
@@ -1991,7 +1992,7 @@ class Module(ABC):
         """
         self._external_input("i", current, verbose=verbose)
 
-    def clamp(self, state_name: str, state_array: jnp.ndarray, verbose: bool = True):
+    def clamp(self, state_name: str, state_array: ArrayLike, verbose: bool = True):
         """Clamp a state to a given value across specified compartments.
 
         Args:
@@ -2006,7 +2007,7 @@ class Module(ABC):
     def _external_input(
         self,
         key: str,
-        values: Optional[jnp.ndarray],
+        values: ArrayLike | None,
         verbose: bool = True,
     ):
         comp_states, edge_states = self._get_state_names()
@@ -2045,10 +2046,10 @@ class Module(ABC):
 
     def data_stimulate(
         self,
-        current: jnp.ndarray,
-        data_stimuli: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+        current: ArrayLike,
+        data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
         verbose: bool = False,
-    ) -> Tuple[jnp.ndarray, pd.DataFrame]:
+    ) -> tuple[Array, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
 
         Args:
@@ -2063,8 +2064,8 @@ class Module(ABC):
     def data_clamp(
         self,
         state_name: str,
-        state_array: jnp.ndarray,
-        data_clamps: Optional[Tuple[jnp.ndarray, pd.DataFrame]] = None,
+        state_array: ArrayLike,
+        data_clamps: tuple[ArrayLike, pd.DataFrame] | None = None,
         verbose: bool = False,
     ):
         """Insert a clamp into the module within jit (or grad).
@@ -2088,8 +2089,8 @@ class Module(ABC):
     def _data_external_input(
         self,
         state_name: str,
-        state_array: jnp.ndarray,
-        data_external_input: Optional[Tuple[jnp.ndarray, pd.DataFrame]],
+        state_array: ArrayLike,
+        data_external_input: tuple[ArrayLike, pd.DataFrame] | None,
         view: pd.DataFrame,
         verbose: bool = False,
     ):
@@ -2273,14 +2274,14 @@ class Module(ABC):
     @only_allow_module
     def step(
         self,
-        u: Dict[str, jnp.ndarray],
+        u: dict[str, ArrayLike],
         delta_t: float,
-        external_inds: Dict[str, jnp.ndarray],
-        externals: Dict[str, jnp.ndarray],
-        params: Dict[str, jnp.ndarray],
+        external_inds: dict[str, ArrayLike],
+        externals: dict[str, ArrayLike],
+        params: dict[str, Array],
         solver: str = "bwd_euler",
         voltage_solver: str = "jaxley.stone",
-    ) -> Dict[str, jnp.ndarray]:
+    ) -> dict[str, Array]:
         """One step of solving the Ordinary Differential Equation.
 
         This function is called inside of `integrate` and increments the state of the
@@ -2510,12 +2511,12 @@ class Module(ABC):
 
     def _step_channels(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         delta_t: float,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
-        params: Dict[str, jnp.ndarray],
-    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
+        params: dict[str, Array],
+    ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """One step of integration of the channels and of computing their current."""
         states = self._step_channels_state(
             states, delta_t, channels, channel_nodes, params
@@ -2531,8 +2532,8 @@ class Module(ABC):
         delta_t,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
-        params: Dict[str, jnp.ndarray],
-    ) -> Dict[str, jnp.ndarray]:
+        params: dict[str, Array],
+    ) -> dict[str, Array]:
         """One integration step of the channels."""
         voltages = states["v"]
 
@@ -2569,12 +2570,12 @@ class Module(ABC):
 
     def _channel_currents(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         delta_t: float,
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
-        params: Dict[str, jnp.ndarray],
-    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
+        params: dict[str, Array],
+    ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """Return the current through each channel.
 
         This is also updates `state` because the `state` also contains the current.
@@ -2633,12 +2634,12 @@ class Module(ABC):
 
     def _channel_current_components(
         self,
-        modified_state: jnp.ndarray,
-        states: Dict[str, jnp.ndarray],
+        modified_state: Array,
+        states: dict[str, Array],
         delta_t: float,
         channel: Channel,
         indices: pd.DataFrame,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Computes current through a channel and its linear and const components.
 
@@ -2675,12 +2676,12 @@ class Module(ABC):
 
     def _step_synapse(
         self,
-        u: Dict[str, jnp.ndarray],
-        syn_channels: List[Channel],
-        params: Dict[str, jnp.ndarray],
+        u: dict[str, Array],
+        syn_channels: list[Channel],
+        params: dict[str, Array],
         delta_t: float,
         edges: pd.DataFrame,
-    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
+    ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """One step of integration of the channels.
 
         `Network` overrides this method (because it actually has synapses), whereas
@@ -2696,18 +2697,17 @@ class Module(ABC):
         params,
         delta_t,
         edges: pd.DataFrame,
-    ) -> Tuple[Dict[str, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray]]:
+    ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         return states, (None, None)
 
     @staticmethod
     def _get_external_input(
-        voltages: jnp.ndarray,
-        i_inds: jnp.ndarray,
-        i_stim: jnp.ndarray,
+        voltages: ArrayLike,
+        i_inds: ArrayLike,
+        i_stim: ArrayLike,
         area: float,
-    ) -> jnp.ndarray:
-        """
-        Return external input to each compartment in uA / cm^2.
+    ) -> Array:
+        """Return external input to each compartment in uA / cm^2.
 
         Args:
             voltages: mV.

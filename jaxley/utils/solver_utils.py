@@ -1,12 +1,12 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple
 
 import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
+from jax import Array
 
 
 def convert_to_csc(
@@ -44,7 +44,7 @@ def convert_to_csc(
 
 def comp_edges_to_indices(
     comp_edges: pd.DataFrame,
-) -> Tuple[int, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> tuple[int, Array, Array, Array]:
     """Generates sparse matrix indices from the table of node edges.
 
     This is only used for the `jax.sparse` voltage solver.

@@ -1,9 +1,9 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+from typing import Optional
 
-from typing import Dict, Optional
-
-import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import (
@@ -49,17 +49,15 @@ class Leak(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """No state to update."""
         return {}
 
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
@@ -87,10 +85,10 @@ class Na(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Update state."""
         prefix = self._name
@@ -99,9 +97,7 @@ class Na(Channel):
         new_h = solve_gate_exponential(h, dt, *self.h_gate(v, params["vt"]))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
@@ -158,10 +154,10 @@ class K(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Update state."""
         prefix = self._name
@@ -169,9 +165,7 @@ class K(Channel):
         new_n = solve_gate_exponential(n, dt, *self.n_gate(v, params["vt"]))
         return {f"{prefix}_n": new_n}
 
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         n = states[f"{prefix}_n"]
@@ -214,10 +208,10 @@ class Km(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Update state."""
         prefix = self._name
@@ -227,9 +221,7 @@ class Km(Channel):
         )
         return {f"{prefix}_p": new_p}
 
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         p = states[f"{prefix}_p"]
@@ -270,10 +262,10 @@ class CaL(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Update state."""
         prefix = self._name
@@ -282,9 +274,7 @@ class CaL(Channel):
         new_r = solve_gate_exponential(r, dt, *self.r_gate(v))
         return {f"{prefix}_q": new_q, f"{prefix}_r": new_r}
 
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         q, r = states[f"{prefix}_q"], states[f"{prefix}_r"]
@@ -339,10 +329,10 @@ class CaT(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
         dt,
         v,
-        params: Dict[str, jnp.ndarray],
+        params: dict[str, Array],
     ):
         """Update state."""
         prefix = self._name
@@ -352,9 +342,7 @@ class CaT(Channel):
         )
         return {f"{prefix}_u": new_u}
 
-    def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
-    ):
+    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
         """Return current."""
         prefix = self._name
         u = states[f"{prefix}_u"]

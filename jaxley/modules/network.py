@@ -1,6 +1,5 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-
 import itertools
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, Union
@@ -9,7 +8,7 @@ from warnings import warn
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import vmap
+from jax import Array, vmap
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
@@ -266,7 +265,7 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
-    ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
+    ) -> tuple[dict, tuple[Array, Array]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
         states, current_terms = self._synapse_currents(
@@ -328,7 +327,7 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
-    ) -> Tuple[Dict, Tuple[jnp.ndarray, jnp.ndarray]]:
+    ) -> tuple[dict, tuple[Array, Array]]:
         voltages = states["v"]
 
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
@@ -395,7 +394,7 @@ class Network(Module):
             syn_constant_terms -= gathered_syn_currents[1]
 
             # Add the synaptic currents through every compartment as state.
-            # `post_syn_currents` is a `jnp.ndarray` of as many elements as there are
+            # `post_syn_currents` is a `ArrayLike` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
             states[f"i_{synapse_type._name}"] = synapse_currents[0]
