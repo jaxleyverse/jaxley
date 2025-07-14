@@ -5,11 +5,18 @@
 -  follow jax typing practices with Array and ArrayLike (#693, @alexpejovic)
 
 
-# 0.11.2 (pre-release)
+# 0.11.2
+
+### 🐛 Bug fixes
+
+- Bugfix for `Network`s on `GPU`: since `v0.9.0`, networks had been very slow on GPU
+because the voltage equations of cells had been processed in sequence, not in parallel.
+This is now solved, giving a large speed-up for networks consisting of many cells (#691,
+@michaeldeistler, thanks to @VENOM314 for reporting)
 
 ### 📚 Documentation
 
-- Remove all content from the old documentation website (#689, @michaeldeistler)
+- Remove all content from the old mkdocs documentation website (#689, @michaeldeistler)
 
 
 # 0.11.1

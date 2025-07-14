@@ -174,6 +174,7 @@ def build_net(
     connect=True,
     connection_prob=0.0,
     calcium_dynamics=False,
+    voltage_solver="jaxley.dhs",
 ):
     _ = np.random.seed(1)  # For sparse connectivity matrix.
 
@@ -187,8 +188,14 @@ def build_net(
         dirname = os.path.dirname(__file__)
         fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
         cell = jx.read_swc(fname, ncomp=4)
-    net = jx.Network([cell for _ in range(num_cells)])
 
+    if voltage_solver == "jaxley.dhs.gpu":
+        cell._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=16)
+
+    if voltage_solver == "jaxley.dhs.gpu":
+        net = jx.Network([cell for _ in range(num_cells)], vectorize_cells=True)
+    else:
+        net = jx.Network([cell for _ in range(num_cells)], vectorize_cells=False)
     # Channels.
     net.insert(HH())
 
@@ -228,6 +235,7 @@ def build_net(
         pytest.param(10, False, True, 0.1, "jax.sparse", False),
         # Test a larger network of smaller neurons with both solvers.
         pytest.param(1000, True, True, 0.001, "jaxley.dhs", False),
+        pytest.param(1000, True, True, 0.001, "jaxley.dhs.gpu", False),
         pytest.param(1000, True, True, 0.001, "jax.sparse", False),
     ),
 )
@@ -261,6 +269,7 @@ def test_runtime(
         connect=connect,
         connection_prob=connection_prob,
         calcium_dynamics=calcium_dynamics,
+        voltage_solver=voltage_solver,
     )
     runtimes["build_time"] = time.time() - start_time
 
