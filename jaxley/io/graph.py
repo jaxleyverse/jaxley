@@ -776,9 +776,11 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
                 G.remove_edge(parent, n)
         else:
             G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
+            G.nodes[n]["branch_index"] = int(G.nodes[n]["branch_index"])
             del G.nodes[n]["is_comp"]  # del `is_comp`
 
-    # TODO: keep disconnected branchpoint nodes in graph?
+    # TODO: keep disconnected branchpoint / tip nodes in graph?
+    #  instead of adding them as a global attribute?
     for n in branchpoints_tips:
         # for child in  list(G.successors(n)):
         #     G.remove_edge(n, child)
@@ -975,7 +977,7 @@ def from_graph(
     """
 
     comp_graph = _add_jaxley_meta_data(comp_graph)
-    # edge direction matters from here on
+    # edge direction matters from here on out
     comp_graph = _set_graph_direction(comp_graph, source=solve_root)
     solve_graph = _replace_branchpoints_with_edges(comp_graph)
     module = _build_module(solve_graph)
