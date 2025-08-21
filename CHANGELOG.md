@@ -1,7 +1,58 @@
-# 0.11.0 (pre-release)
+# 0.11.3 (pre-release)
 
 ### 🛠️ Internal updates
-- refactor of the graph import. Now much faster with >10x speedups on some morphologies and many fewer lines (#660, @jnsbck)
+
+-  follow jax typing practices with Array and ArrayLike (#693, @alexpejovic)
+
+
+# 0.11.2
+
+### 🐛 Bug fixes
+
+- Bugfix for `Network`s on `GPU`: since `v0.9.0`, networks had been very slow on GPU
+because the voltage equations of cells had been processed in sequence, not in parallel.
+This is now solved, giving a large speed-up for networks consisting of many cells (#691,
+@michaeldeistler, thanks to @VENOM314 for reporting)
+
+### 📚 Documentation
+
+- Remove all content from the old mkdocs documentation website (#689, @michaeldeistler)
+
+
+# 0.11.1
+
+### 🐛 Bug fixes
+
+- bugfix for `set_ncomp()` when the cell consists of a single branch (#686,
+@michaeldeistler)
+
+### 🛠️ Internal updates
+
+- fix all typos in the codebase by using the `typos` project (#682, @alexpejovic)
+
+
+# 0.11.0
+
+### 🧩 New features
+
+- simple conductance synapse added (#659, @kyralianaka)
+
+### 📚 Documentation
+
+- add a how-to guide on converting `NMODL` files to `Jaxley`, see
+[here](https://jaxley.readthedocs.io/en/latest/how_to_guide/import_channels_from_neuron.html)
+(#669, @michaeldeistler, special thanks to @r-makarov for building the tool)
+
+### 🛠️ Internal updates
+
+- changes to how the membrane area from SWC files is computed when the radius within a
+compartment is not constant. This fix can have an impact on simulation results. The
+updated computation of membrane area matches that of the NEURON simulator (#662,
+@michaeldeistler, thanks to @VENOM314 for reporting).
+- remove the `custom` SWC reader (which had been deprecated in `v0.9.0`, #662,
+@michaeldeistler).
+- fix bug in the `.ncomp` attribute after `set_ncomp()` had been run (#676,
+@manuelgloeckler)
 
 
 # 0.10.0
