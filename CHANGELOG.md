@@ -8,6 +8,8 @@
 
 - fix for networks that mix point neurons and morphologically detailed neurons (#702,
 @michaeldeistler)
+- carry over groups from constituents of a module (e.g., `jx.Cell` groups get carried
+over to `jx.Network`) (#703, @michaeldeistler)
 
 
 # 0.11.2
