@@ -840,6 +840,12 @@ class Module(ABC):
             name = channel._name
             self.base.nodes.loc[self.nodes[name].isna(), name] = False
 
+        # Set columns of groups to `False` instead of `NaN`.
+        for name in self.base.group_names:
+            self.base.nodes.loc[self.nodes[name].isna(), name] = False
+            # Ensure that type is boolean---in some cases, it had been an `object`.
+            self.base.nodes[name] = self.base.nodes[name].astype(bool)
+
     @only_allow_module
     def to_jax(self):
         # TODO FROM #447: Make this work for View?

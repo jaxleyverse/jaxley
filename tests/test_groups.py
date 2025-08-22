@@ -136,3 +136,17 @@ def test_set_ncomp_changes_groups(SimpleCell):
     cell.branch(1).add_to_group("exc")
     cell.branch(0).set_ncomp(2)
     assert len(cell.exc.nodes) == 6  # 2 from branch(0) and 4 from branch(1).
+
+
+def test_groups_are_carried_over_from_constituents(SimpleCell):
+    cell1 = SimpleCell(2, 3)
+    cell1.set("radius", np.arange(6))
+    cell1.branch(1).add_to_group("soma")
+
+    cell2 = SimpleCell(2, 3)
+    cell2.set("radius", 10 * np.arange(6))
+    cell2.branch(0).add_to_group("axon")
+
+    net = jx.Network([cell1, cell2])
+    assert (net.soma.nodes["radius"].values == cell1.soma.nodes["radius"].values).all()
+    assert (net.axon.nodes["radius"].values == cell2.axon.nodes["radius"].values).all()
