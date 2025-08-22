@@ -4,6 +4,11 @@
 
 -  follow jax typing practices with Array and ArrayLike (#693, @alexpejovic)
 
+### 🐛 Bug fixes
+
+- fix for networks that mix point neurons and morphologically detailed neurons (#702,
+@michaeldeistler)
+
 
 # 0.11.2
 

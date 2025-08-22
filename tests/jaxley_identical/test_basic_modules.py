@@ -429,3 +429,80 @@ def test_complex_net(voltage_solver, SimpleCell):
     max_error = np.max(np.abs(voltages[:, ::40] - voltages_300724))
     tolerance = 1e-8
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+
+
+@pytest.mark.parametrize(
+    "voltage_solver", ["jaxley.dhs.cpu", "jaxley.dhs.gpu", "jax.sparse"]
+)
+def test_mixed_net(voltage_solver, SimpleCell):
+    simple_cell = jx.Cell()
+    morph_cell = SimpleCell(5, 4)
+    if voltage_solver == "jaxley.dhs.gpu":
+        # On CPU we have to run this manually. On GPU, it gets run automatically with
+        # allowed_nodes_per_level=32.
+        morph_cell._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
+
+    if voltage_solver == "jaxley.dhs.cpu":
+        net = jx.Network(
+            [simple_cell for _ in range(6)] + [morph_cell], vectorize_cells=False
+        )
+    else:
+        net = jx.Network(
+            [simple_cell for _ in range(6)] + [morph_cell], vectorize_cells=True
+        )
+
+    net.insert(HH())
+
+    _ = np.random.seed(0)
+    pre = net.cell([0, 1, 2])
+    post = net.cell([3, 4, 5])
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
+
+    pre = net.cell([3, 4, 5])
+    post = net.cell(6)
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
+
+    area = 2 * pi * 10.0 * 1.0
+    point_process_to_dist_factor = 100_000.0 / area
+    net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
+    net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
+    net.IonotropicSynapse.edge([0, 2, 4]).set(
+        "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
+    )
+    net.TestSynapse.edge([0, 3, 5]).set(
+        "TestSynapse_gC", 0.24 / point_process_to_dist_factor
+    )
+
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
+    for i in range(6):
+        net.cell(i).branch(0).loc(0.0).stimulate(current)
+
+    net.cell(6).branch(0).loc(0.0).record()
+
+    voltages = jx.integrate(net, voltage_solver=voltage_solver)
+
+    voltages_220825 = jnp.asarray(
+        [
+            [
+                -70.0,
+                -60.545816,
+                -43.6644382,
+                24.86102435,
+                -31.43772064,
+                -70.9692522,
+                -72.00071344,
+                -70.26104491,
+                -68.33966916,
+                -66.40784433,
+                -64.59078174,
+            ]
+        ]
+    )
+
+    max_error = np.max(np.abs(voltages[:, ::40] - voltages_220825))
+    tolerance = 1e-8
+    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

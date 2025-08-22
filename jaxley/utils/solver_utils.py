@@ -123,7 +123,11 @@ def dhs_permutation_indices(
         new_node_order.append(
             [mapping_dict[int(n[0])], mapping_dict[int(n[1])], int(n[2])]
         )
-    new_node_order = jnp.asarray(new_node_order)
+    # We need `.reshape(-1, 3)` because `new_node_order` is empty for point-neurons.
+    # However, for networks, we still want to be able to concatenate this empty array
+    # with `(N, 3)` arrays (e.g., from morph detailed neurons). The line below ensures
+    # that `new_node_order` is of shape (0, 3) if it is empty.
+    new_node_order = jnp.asarray(new_node_order, dtype=int).reshape(-1, 3)
 
     lowers_and_uppers = jnp.concatenate([lowers, uppers])
     return lowers_and_uppers, new_node_order
