@@ -161,11 +161,17 @@ class Network(Module):
             # Branchpoints.
             branchpoints = cell._branchpoints.copy()
             branchpoints.index = branchpoints.index + offset
-            self._branchpoints.append(branchpoints)
+            # This if-case avoids a warning later, at `pd.concat(self._branchpoints)`:
+            # Pandas warns if some of the concatenated elements are all empty.
+            if len(branchpoints) > 0:
+                self._branchpoints.append(branchpoints)
 
             offset += cell._n_nodes  # Compartment-offset.
         self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
-        self._branchpoints = pd.concat(self._branchpoints)
+        if len(self._branchpoints) > 0:
+            self._branchpoints = pd.concat(self._branchpoints)
+        else:
+            self._branchpoints: pd.DataFrame = pd.DataFrame(columns=["x", "y", "z"])
         self._n_nodes = offset
 
         # off_diagonal_inds
