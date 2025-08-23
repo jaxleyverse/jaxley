@@ -1,4 +1,4 @@
-# 0.11.3 (pre-release)
+# 0.11.3
 
 ### 🛠️ Internal updates
 
