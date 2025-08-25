@@ -4,6 +4,8 @@
 
 import jax
 import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 from jaxley.channels import Channel
 
@@ -18,7 +20,7 @@ class LIF(Channel):
     differentiable.
     """
 
-    def __init__(self, name: str | None = None):
+    def __init__(self, name: str | None = None) -> None:
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
@@ -29,7 +31,9 @@ class LIF(Channel):
         self.current_name = f"{self.name}_current"
         self.channel_states = {"v": -70.0}
 
-    def update_states(self, states, dt, v, params):
+    def update_states(
+        self, states: dict[str, ArrayLike], dt: ArrayLike, v: ArrayLike, params: dict[str, ArrayLike]
+    ) -> dict[str, ArrayLike]:
         """Reset the voltage when a spike occurs and log the spike"""
         g = params[f"{self.name}_g"]
         vth = params[f"{self.name}_vth"]
@@ -56,8 +60,10 @@ class LIF(Channel):
         )
         return {"v": v}
 
-    def compute_current(self, states, v, params):
+    def compute_current(
+        self, states: dict[str, ArrayLike], v: ArrayLike, params: dict[str, ArrayLike]
+    ) -> Array:
         return jnp.zeros((1,))
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(self, states, v, params, delta_t) -> dict:
         return {}
