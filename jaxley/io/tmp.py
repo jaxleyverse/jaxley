@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
+from warnings import warn
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
 from jaxley.utils.cell_utils import rev_solid_props
@@ -15,6 +16,38 @@ from jaxley.utils.cell_utils import rev_solid_props
 ################################### Helper functions ####################################
 #########################################################################################
 
+# def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
+#     """Determine from which root to traverse the graph dfs and orient edges accordingly.
+
+#     For this, the graph is traversed depth first along the undirected edges. If edges
+#     in the directed graph are oriented in the wrong direction, they are flipped.
+
+#     Args:
+#         G: Directed graph in which to flip edges along the dfs traversal.
+#         source: The source node to start the traversal from. If `None`, the first leaf
+#             node is used.
+
+#     Returns:
+#         The graph with the edges oriented in dfs fashion.
+#     """
+#     # reorder graph depth-first TODO: Which order to choose?
+#     leaf = next(n for n in G.nodes if G.degree(n) == 1)
+#     source = leaf if source is None else source
+
+#     if "is_comp" in G.nodes[source]:
+#         # branchpoints cannot act as solve roots since they have to be replaced by a
+#         # set of edges. For this branchpoints need a parent node for the order to be
+#         # uniquely determined. For details see `_replace_branchpoints_with_edges``.
+#         assert (
+#             G.nodes[source]["is_comp"] or G.degree(source) == 1
+#         ), "Source cannot be a branchpoint."
+
+#     for u, v in nx.dfs_edges(G.to_undirected(), source):
+#         if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
+#             G.add_edge(u, v, **G.get_edge_data(v, u))
+#             G.remove_edge(v, u)
+
+#     return G
 
 def pandas_to_nx(
     node_attrs: pd.DataFrame, edge_attrs: pd.DataFrame, global_attrs: pd.Series
@@ -33,7 +66,7 @@ def pandas_to_nx(
         edge_attrs.reset_index(),
         source="level_0",
         target="level_1",
-        edge_attr=True,
+        edge_attr=True if edge_attrs.columns.size > 0 else None,
         create_using=nx.DiGraph(),
     )
     G.add_nodes_from((n, dict(d)) for n, d in node_attrs.iterrows())
@@ -226,13 +259,15 @@ def _find_swc_tracing_interruptions(G: nx.DiGraph) -> list[tuple[int, int]]:
     Returns:
         An array of edges where tracing is discontinous.
     """
-    degree_is_2 = lambda n: G.out_degree(n) + G.in_degree(n) == 2
+    def not_branching(n):
+        nn_ids = [G.nodes[n]["id"] for n in nx.all_neighbors(G, n)]
+        return len(nn_ids) == 2 and all([id == nn_ids[0] for id in nn_ids[1:]])
 
     interrupt_edges = []
     for n in G.nodes:
         if len(parents := list(G.predecessors(n))) > 0:
             parent = parents[0]
-            if parent != n - 1 and degree_is_2(n) and degree_is_2(parent):
+            if parent != n - 1 and not_branching(n) and not_branching(parent):
                 interrupt_edges.append((parent, n))
     return interrupt_edges
 
@@ -451,17 +486,27 @@ def branch_comps_from_nodes(
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # branches originating from branchpoint with different type id start at first branch
-    # node, i.e. have attrs set to those of first branch node.
-    is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
-    if np.any(~is_branch_id) and is_branch_id[1] and ignore_branchpoint:
-        next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
-        # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
-        next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
-        branch_nodes.loc[~is_branch_id] = next2branchpoint_attrs.values
+    # # branches originating from branchpoint with different type id start at first branch
+    # # node, i.e. have attrs set to those of first branch node.
+    # is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
+    # if np.any(~is_branch_id) and is_branch_id[1] and ignore_branchpoint:
+    #     next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
+    #     # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
+    #     next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
+    #     branch_nodes.loc[~is_branch_id] = next2branchpoint_attrs.values
 
     branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
     branch_len = max(branch_nodes["l"])
+
+    if branch_len < 1e-8:
+        warn(
+            "Found a branch with length 0. To avoid NaN while integrating the "
+            "ODE, we capped this length to 0.1 um. The underlying cause for the "
+            "branch with length 0 is likely a strange SWC file. The "
+            "most common reason for this is that the SWC contains a soma "
+            "traced by a single point, and a dendrite that connects to the soma "
+            "has no further child nodes."
+        )
     comp_len = branch_len / ncomp
     comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
@@ -565,18 +610,27 @@ def build_compartment_graph(
         ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
         max_len=max_len,
     )
+
     nodes_df = nx_to_pandas(G)[0].astype(float)
 
-    # identify somatic branchpoints. A somatic branchpoint is a branchpoint at which at
-    # least two connecting branches are somatic. In that case (and in the case of a
-    # single-point soma), non-somatic branches are assumed to start from their first
-    # traced point, not from the soma.
-    soma_nodes = [n for n in G.nodes if G.nodes[n]["id"] == 1]
-    single_soma = len(soma_nodes) == 1
-    is_soma_branchpoint = (
-        lambda n: len([n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]) >= 2
-    )
-    soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
+    # threshold radius
+    if min_radius is None:
+        assert (
+            nodes_df["r"] > 0.0
+        ).all(), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
+    else:
+        nodes_df["r"] = np.maximum(nodes_df["r"], min_radius)
+
+    # # identify somatic branchpoints. A somatic branchpoint is a branchpoint at which at
+    # # least two connecting branches are somatic. In that case (and in the case of a
+    # # single-point soma), non-somatic branches are assumed to start from their first
+    # # traced point, not from the soma.
+    # soma_nodes = [n for n in G.nodes if G.nodes[n]["id"] == 1]
+    # single_soma = len(soma_nodes) == 1
+    # is_soma_branchpoint = (
+    #     lambda n: len([n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]) >= 2
+    # )
+    # soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
 
     # create new set of indices which arent already used as node indices to label comps
     num_additional_inds = len(branches) * ncomp
@@ -596,8 +650,8 @@ def build_compartment_graph(
 
         node_attrs = nodes_df.loc[branch]
 
-        has_somatic_branchpoint = np.any(np.isin(branch, soma_branchpoints))
-        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp, has_somatic_branchpoint)
+        # has_somatic_branchpoint = np.any(np.isin(branch, soma_branchpoints))
+        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp, False)
         comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
@@ -622,14 +676,6 @@ def build_compartment_graph(
 
     bool_cols = ["is_comp"]
     comp_df[bool_cols] = comp_df[bool_cols].astype(bool)
-
-    # threshold radius
-    if min_radius is None:
-        assert (
-            comp_df["r"] > 0.0
-        ).all(), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
-    else:
-        comp_df["r"] = np.maximum(comp_df["r"], min_radius)
 
     # drop duplicated branchpoint nodes and replace with original branchpoint node attrs
     comp_df = comp_df.drop_duplicates(subset=["node", "is_comp"])
@@ -694,57 +740,23 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
 
 
-def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
-    """Determine from which root to traverse the graph dfs and orient edges accordingly.
-
-    For this, the graph is traversed depth first along the undirected edges. If edges
-    in the directed graph are oriented in the wrong direction, they are flipped.
-
-    Args:
-        G: Directed graph in which to flip edges along the dfs traversal.
-        source: The source node to start the traversal from. If `None`, the first leaf
-            node is used.
-
-    Returns:
-        The graph with the edges oriented in dfs fashion.
-    """
-    # reorder graph depth-first TODO: Which order to choose?
-    leaf = next(n for n in G.nodes if G.degree(n) == 1)
-    source = leaf if source is None else source
-
-    if "is_comp" in G.nodes[source]:
-        # branchpoints cannot act as solve roots since they have to be replaced by a
-        # set of edges. For this branchpoints need a parent node for the order to be
-        # uniquely determined. For details see `_replace_branchpoints_with_edges``.
-        assert (
-            G.nodes[source]["is_comp"] or G.degree(source) == 1
-        ), "Source cannot be a branchpoint."
-
-    for u, v in nx.dfs_edges(G.to_undirected(), source):
-        if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
-            G.add_edge(u, v, **G.get_edge_data(v, u))
-            G.remove_edge(v, u)
-
-    return G
-
-
 def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
-    """Replace branchpoint nodes with edges connecting parent and children and remove tips.
+    """Replace branchpoint nodes with edges connecting its neighbours.
 
-    Removes all non-compartment nodes. Branchpoints and tips are stored in the global
-    graph attribute `branchpoints_and_tips`.
+    Removes all non-compartment nodes and connects up its neighbours. The node with the 
+    lowest node_index will become the parent. Branchpoints and tips are stored in the 
+    global graph attribute `branchpoints_and_tips`.
 
-    This depends on the directionality of the edges! To ensure that the edges are
-    correctly oriented, you can use `_set_graph_direction()` to reorder the graph
-    before calling this function. [(x) = branchpoint, (1) = compartment]
+    This is somewhat arbitrary and can result in somewhat different graphs. See below:
+    [(x) = branchpoint, (1) = compartment]
 
                 Example 1             |            Example 2
     ----------------------------------|----------------------------------
-     (1) --> (x) --> (2)  (1) --> (2) | (1) <-- (x) <-- (2)  (1) <-- (2)
+     (1) --> (x) --> (2)  (1) --> (2) | (2) <-- (x) <-- (1)  (2) <-- (1)
               |            |          |          |                    |
               v            v          |          v                    v
              (3)          (3)         |         (3)                  (3)
-
+    
     Args:
         G: The graph to replace branchpoints with edges.
 
@@ -757,37 +769,22 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
     xyz_of = lambda n: [G.nodes[n][key] for key in ["x", "y", "z"]]
 
-    branchpoints_tips = {}
-    for n in G.nodes:
-        if not G.nodes[n]["is_comp"]:
-            parents = list(G.predecessors(n))
-            children = list(G.successors(n))
-            branchpoints_tips[n] = {
-                **G.nodes[n],
-                "xyz_children": [xyz_of(c) for c in children],
-            }
-            if len(parents) == 0:  # root node
-                branchpoints_tips[n]["xyz_parent"] = float("nan")
-            else:  # branchpoint node or tip node (no children)
-                parent = parents[0]
-                branchpoints_tips[n]["xyz_parent"] = xyz_of(parent)
-                for child in children:
-                    G.add_edges_from([(parent, child)], **branch_edge_attrs)
-                G.remove_edge(parent, n)
-        else:
-            G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
-            G.nodes[n]["branch_index"] = int(G.nodes[n]["branch_index"])
-            del G.nodes[n]["is_comp"]  # del `is_comp`
-
-    # TODO: keep disconnected branchpoint / tip nodes in graph?
-    #  instead of adding them as a global attribute?
+    branchpoints_tips = {n: d for n, d in G.nodes(data=True) if not d["is_comp"]}
     for n in branchpoints_tips:
-        # for child in  list(G.successors(n)):
-        #     G.remove_edge(n, child)
+        neighbours = sorted(nx.all_neighbors(G, n))
+        if len(neighbours) > 1:
+            for next in neighbours[1:]:
+                G.add_edge(neighbours[0], next, **branch_edge_attrs)
+        
+        branchpoints_tips[n]["xyz_connected"] = [xyz_of(c) for c in neighbours]
         G.remove_node(n)
 
+    # remove is_comp attr from nodes
+    for n in G.nodes:
+        del G.nodes[n]["is_comp"]
+
     cols = ["x", "y", "z", "radius", "cell_index"]
-    cols += G.graph["group_names"] + ["xyz_parent", "xyz_children"]
+    cols += G.graph["group_names"] + ["xyz_connected"]
     G.graph["branchpoints_and_tips"] = pd.DataFrame(branchpoints_tips).T[cols]
 
     return G
@@ -824,25 +821,25 @@ def _replace_edges_with_branchpoints(G: nx.DiGraph) -> nx.DiGraph:
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
     closest_node = lambda n_xyz: (node_xyz - n_xyz).abs().sum(axis=1).idxmin()
 
-    for idx, (r, row) in zip(new_inds, branchpoints_tips.iterrows()):
-        idx = r if r not in G.nodes else idx
-        G.add_node(idx, **row.drop(["xyz_children", "xyz_parent"]).to_dict())
+    # for idx, (r, row) in zip(new_inds, branchpoints_tips.iterrows()):
+    #     idx = r if r not in G.nodes else idx
+    #     G.add_node(idx, **row.drop(["xyz_children", "xyz_parent"]).to_dict())
 
-        if np.isnan(row["xyz_parent"]).all():  # root node
-            child_nodes = [closest_node(c) for c in row["xyz_children"]]
-            G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
-        elif len(row["xyz_children"]) == 0:  # tip node
-            parent_node = closest_node(row["xyz_parent"])
-            G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
-        else:  # branchpoint nodes
-            parent_node = closest_node(row["xyz_parent"])
-            child_nodes = [closest_node(c) for c in row["xyz_children"]]
+    #     if np.isnan(row["xyz_parent"]).all():  # root node
+    #         child_nodes = [closest_node(c) for c in row["xyz_children"]]
+    #         G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
+    #     elif len(row["xyz_children"]) == 0:  # tip node
+    #         parent_node = closest_node(row["xyz_parent"])
+    #         G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
+    #     else:  # branchpoint nodes
+    #         parent_node = closest_node(row["xyz_parent"])
+    #         child_nodes = [closest_node(c) for c in row["xyz_children"]]
 
-            G.remove_edges_from([(parent_node, c) for c in child_nodes])
-            G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
-            G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
+    #         G.remove_edges_from([(parent_node, c) for c in child_nodes])
+    #         G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
+    #         G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
 
-    del G.graph["branchpoints_and_tips"]
+    # del G.graph["branchpoints_and_tips"]
     return G
 
 
@@ -978,7 +975,6 @@ def from_graph(
 
     comp_graph = _add_jaxley_meta_data(comp_graph)
     # edge direction matters from here on out
-    comp_graph = _set_graph_direction(comp_graph, source=solve_root)
     solve_graph = _replace_branchpoints_with_edges(comp_graph)
     module = _build_module(solve_graph)
     return module
