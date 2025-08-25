@@ -16,39 +16,6 @@ from jaxley.utils.cell_utils import rev_solid_props
 ################################### Helper functions ####################################
 #########################################################################################
 
-# def _set_graph_direction(G: nx.DiGraph, source=None) -> nx.DiGraph:
-#     """Determine from which root to traverse the graph dfs and orient edges accordingly.
-
-#     For this, the graph is traversed depth first along the undirected edges. If edges
-#     in the directed graph are oriented in the wrong direction, they are flipped.
-
-#     Args:
-#         G: Directed graph in which to flip edges along the dfs traversal.
-#         source: The source node to start the traversal from. If `None`, the first leaf
-#             node is used.
-
-#     Returns:
-#         The graph with the edges oriented in dfs fashion.
-#     """
-#     # reorder graph depth-first TODO: Which order to choose?
-#     leaf = next(n for n in G.nodes if G.degree(n) == 1)
-#     source = leaf if source is None else source
-
-#     if "is_comp" in G.nodes[source]:
-#         # branchpoints cannot act as solve roots since they have to be replaced by a
-#         # set of edges. For this branchpoints need a parent node for the order to be
-#         # uniquely determined. For details see `_replace_branchpoints_with_edges``.
-#         assert (
-#             G.nodes[source]["is_comp"] or G.degree(source) == 1
-#         ), "Source cannot be a branchpoint."
-
-#     for u, v in nx.dfs_edges(G.to_undirected(), source):
-#         if (u, v) not in G.edges and (v, u) in G.edges:  # flip edge direction
-#             G.add_edge(u, v, **G.get_edge_data(v, u))
-#             G.remove_edge(v, u)
-
-#     return G
-
 def pandas_to_nx(
     node_attrs: pd.DataFrame, edge_attrs: pd.DataFrame, global_attrs: pd.Series
 ) -> nx.DiGraph:
@@ -446,7 +413,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     return G
 
 
-def branch_comps_from_nodes(
+def compartmentalize(
     branch_nodes: pd.DataFrame, ncomp: int, ignore_branchpoint: bool = False
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
@@ -486,14 +453,14 @@ def branch_comps_from_nodes(
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # # branches originating from branchpoint with different type id start at first branch
-    # # node, i.e. have attrs set to those of first branch node.
-    # is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
-    # if np.any(~is_branch_id) and is_branch_id[1] and ignore_branchpoint:
-    #     next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
-    #     # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
-    #     next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
-    #     branch_nodes.loc[~is_branch_id] = next2branchpoint_attrs.values
+    # branches originating from branchpoint with different type id start at first branch
+    # node, i.e. have attrs set to those of first branch node.
+    is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
+    if np.any(~is_branch_id) and is_branch_id[1] and ignore_branchpoint:
+        next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
+        # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
+        next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
+        branch_nodes.loc[~is_branch_id] = next2branchpoint_attrs.values
 
     branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
     branch_len = max(branch_nodes["l"])
@@ -621,16 +588,16 @@ def build_compartment_graph(
     else:
         nodes_df["r"] = np.maximum(nodes_df["r"], min_radius)
 
-    # # identify somatic branchpoints. A somatic branchpoint is a branchpoint at which at
-    # # least two connecting branches are somatic. In that case (and in the case of a
-    # # single-point soma), non-somatic branches are assumed to start from their first
-    # # traced point, not from the soma.
-    # soma_nodes = [n for n in G.nodes if G.nodes[n]["id"] == 1]
-    # single_soma = len(soma_nodes) == 1
-    # is_soma_branchpoint = (
-    #     lambda n: len([n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]) >= 2
-    # )
-    # soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
+    # identify somatic branchpoints. A somatic branchpoint is a branchpoint at which at
+    # least two connecting branches are somatic. In that case (and in the case of a
+    # single-point soma), non-somatic branches are assumed to start from their first
+    # traced point, not from the soma.
+    soma_nodes = [n for n in G.nodes if G.nodes[n]["id"] == 1]
+    single_soma = len(soma_nodes) == 1
+    is_soma_branchpoint = (
+        lambda n: len([n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]) >= 2
+    )
+    soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
 
     # create new set of indices which arent already used as node indices to label comps
     num_additional_inds = len(branches) * ncomp
@@ -650,8 +617,8 @@ def build_compartment_graph(
 
         node_attrs = nodes_df.loc[branch]
 
-        # has_somatic_branchpoint = np.any(np.isin(branch, soma_branchpoints))
-        comp_attrs = branch_comps_from_nodes(node_attrs, ncomp, False)
+        has_somatic_branchpoint = np.any(np.isin(branch, soma_branchpoints))
+        comp_attrs = compartmentalize(node_attrs, ncomp, has_somatic_branchpoint)
         comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
