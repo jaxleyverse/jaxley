@@ -486,30 +486,20 @@ def compartmentalize_branch(
 
     # Create node indices and attributes for branch-tips/branchpoints and comps
     # is_comp, comp_len, comp_id, x, y, z, r, area, volume, res_in, res_out
-    cols = [
-        "is_comp",
-        "l",
-        "id",
-        "x",
-        "y",
-        "z",
-        "r",
-        "area",
-        "volume",
-        "resistive_load_in",
-        "resistive_load_out",
-    ]
-    is_comp = np.array([False, *[True] * ncomp, False])
+    cone_prop_cols = ["r", "area", "volume", "resistive_load_in", "resistive_load_out"]
+    cols = ["l", "x", "y", "z"] + cone_prop_cols
     comp_attrs = pd.DataFrame(np.full((ncomp + 2, len(cols)), np.nan), columns=cols)
+
+    comp_attrs["id"] = np.array([0, *[branch_id] * ncomp, 0], dtype=int)
+    is_comp = np.array([False, *[True] * ncomp, False], dtype=bool)
     comp_attrs["is_comp"] = is_comp
-    comp_attrs.loc[is_comp, "id"] = branch_id
     comp_attrs.loc[is_comp, "l"] = comp_len
 
     tip_cols = ["id", "x", "y", "z", "r"]
-    comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]].values
+    comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]]
 
     # Interpolate xyz along branch
-    comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
+    comp_centers = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
     comp_centers = np.array([0, *comp_centers, branch_len])
     x_at_centers = lambda x: np.interp(comp_centers, ls, x)
     comp_attrs[["x", "y", "z"]] = np.apply_along_axis(x_at_centers, axis=0, arr=xyz)
@@ -518,12 +508,9 @@ def compartmentalize_branch(
     comp_tips = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
 
     # compute radius, area, volume, res_in, res_out
-    frustum_props = np.array(
-        [compute_cone_props(ls, rs, x1, x2) for x1, x2 in comp_tips]
-    )
-    comp_attrs.loc[
-        is_comp, ["r", "area", "volume", "resistive_load_in", "resistive_load_out"]
-    ] = frustum_props
+    cone_props = np.array([compute_cone_props(ls, rs, x1, x2) for x1, x2 in comp_tips])
+    comp_attrs.loc[is_comp, cone_prop_cols] = cone_props
+
     return comp_attrs
 
 
@@ -624,7 +611,6 @@ def build_compartment_graph(
     # create new set of indices which arent already used as node indices to label comps
     num_additional_inds = len(branches) * ncomp
     existing_inds = nodes_df.index
-
     proposed_node_inds = propose_new_inds(existing_inds, num_additional_inds)
 
     # collect comps and comp_edges
@@ -633,16 +619,14 @@ def build_compartment_graph(
         # ensure node_index increases monotonically along branch. Required for branch.loc()
         branch = branch[::-1] if branch[0] < branch[-1] else branch
 
-        comp_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
-        comp_inds = np.array([branch[0], *comp_inds, branch[-1]])
-        branch_inds = np.array([float("nan"), *[branch_idx] * ncomp, float("nan")])
-
         branch_nodes = nodes_df.loc[branch]
 
         has_somatic_branch_pt = np.any(np.isin(branch, soma_branchpoints))
         comp_attrs = compartmentalize_branch(branch_nodes, ncomp, has_somatic_branch_pt)
-        comp_attrs["node"] = comp_inds
-        comp_attrs["branch"] = branch_inds
+
+        comp_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
+        comp_attrs["node"] = np.array([branch[0], *comp_inds, branch[-1]], dtype=int)
+        comp_attrs["branch"] = [float("nan"), *[branch_idx] * ncomp, float("nan")]
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
         # we therefore remove one tip node / branchpoint node, i.e. [0,s,0] -> [s,0]
@@ -650,7 +634,7 @@ def build_compartment_graph(
 
         # Store edges, nodes, and xyzr in branch-wise manner
         intra_branch_edges = np.stack(
-            [comp_attrs.values[:-1, 0], comp_attrs.values[1:, 0]]
+            [comp_attrs["node"].iloc[:-1], comp_attrs["node"].iloc[1:]]
         ).T
         comp_edges.append(intra_branch_edges.astype(int).tolist())
         comps.append(comp_attrs)
@@ -659,14 +643,6 @@ def build_compartment_graph(
         xyzr.append(branch_nodes[["x", "y", "z", "r"]].values)
 
     comp_df = pd.concat(comps)
-
-    int_cols = ["node", "id"]  # branch cols are floats due to branchpoints
-    comp_df[int_cols] = (
-        comp_df[int_cols].infer_objects(copy=False).fillna(0).astype(int)
-    )
-
-    bool_cols = ["is_comp"]
-    comp_df[bool_cols] = comp_df[bool_cols].astype(bool)
 
     # drop duplicated branchpoint nodes and replace with original branchpoint node attrs
     comp_df = comp_df.drop_duplicates(subset=["node", "is_comp"])
