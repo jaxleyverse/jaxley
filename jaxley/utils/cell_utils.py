@@ -11,108 +11,101 @@ from jax.typing import ArrayLike
 from jaxley.utils.misc_utils import cumsum_leading_zero
 
 
-def trapz_integral(
-    xp: np.ndarray,
-    fp: np.ndarray,
-    x1: Optional[float] = None,
-    x2: Optional[float] = None,
-) -> float:
-    """Trapezoidally integrate a function between two points.
-
-    Args:
-        xp: The x-values of the function.
-        fp: The y-values of the function.
-        x1: The lower bound of the integration. If `None`, the first point of `xp` is used.
-        x2: The upper bound of the integration. If `None`, the last point of `xp` is used.
-
-    Returns:
-        The integral of the function between x1 and x2.
-    """
-    x1 = xp[0] if x1 is None else x1
-    x2 = xp[-1] if x2 is None else x2
-
-    # Find indices for the segment [x1, x2]
-    mask = (xp >= x1) & (xp <= x2)
-    x_seg = xp[mask]
-    fp_seg = fp[mask]
-
-    # Add boundary points if needed
-    if x1 not in x_seg:
-        r1 = np.interp(x1, xp, fp)
-        x_seg = np.insert(x_seg, 0, x1)
-        fp_seg = np.insert(fp_seg, 0, r1)
-
-    if x2 not in x_seg:
-        r2 = np.interp(x2, xp, fp)
-        x_seg = np.append(x_seg, x2)
-        fp_seg = np.append(fp_seg, r2)
-
-    # Trapezoidal integration
-    integral = np.trapezoid(fp_seg, x_seg)
-
-    return integral
+def surface_area_segments(ls, r1, r2, dr):
+    """Surface area of truncated cone segments."""
+    slant_height = np.sqrt(ls**2 + dr**2)
+    return 2 * np.pi * (r1 + r2) / 2 * slant_height
 
 
-def rev_solid_props(
-    ls: np.ndarray,
-    rs: np.ndarray,
-    l_start: Optional[float] = None,
-    l_end: Optional[float] = None,
-) -> Tuple[float, float, float]:
-    """
-    Calculate properties of a solid of revolution given length and radius coordinates.
+def volume_segments(ls, r1, r2):
+    """Volume of truncated cone segments."""
+    return (np.pi * ls / 3) * (r1**2 + r1 * r2 + r2**2)
 
-    Args:
-        ls: array of length coordinates along the path
-        rs: array of radius coordinates
-        l_start: optional start position for integration (default: min(ls))
-        l_end: optional end position for integration (default: max(ls))
 
-    Returns:
-        average_radius, surface_area, volume
-    """
-    if len(ls) != len(rs):
-        raise ValueError("ls and rs must have the same length")
+def resistive_load_segments(ls, r1, r2, dr):
+    """Resistive load using truncated cone approximation."""
+    segment_integrals = np.empty_like(ls)
+    is_constant = np.isclose(dr, 0)
 
-    # Set integration bounds
-    l_start = ls[0] if l_start is None else l_start
-    l_end = ls[-1] if l_end is None else l_end
+    # Constant-radius segments: simple cylinder
+    segment_integrals[is_constant] = ls[is_constant] / (r1[is_constant] ** 2)
 
-    # Calculate derivatives dr/dl for surface area calculation
-    # Use central differences where possible, forward/backward at endpoints
-    dr_dl = np.zeros_like(rs)
-
-    # Forward difference at start
-    if len(rs) > 1:
-        dl = ls[1] - ls[0]
-        dr_dl[0] = (rs[1] - rs[0]) / dl if dl > 0 else 0
-
-    # Central differences in middle
-    for i in range(1, len(rs) - 1):
-        dr_dl[i] = (rs[i + 1] - rs[i - 1]) / (ls[i + 1] - ls[i - 1])
-
-    # Backward difference at end
-    if len(rs) > 1:
-        dl = ls[-1] - ls[-2]
-        dr_dl[-1] = (rs[-1] - rs[-2]) / dl if dl > 0 else 0
-
-    # a) Surface Area: SA = 2π ∫ r * sqrt(1 + (dr/dl)²) dl
-    surface_integrand = 2 * np.pi * rs * np.sqrt(1 + dr_dl**2)
-    surface_area = trapz_integral(ls, surface_integrand, l_start, l_end)
-
-    # b) Volume: V = π ∫ r² dl
-    volume_integrand = np.pi * rs**2
-    volume = trapz_integral(ls, volume_integrand, l_start, l_end)
-
-    # c) Average Radius: r_avg = ∫ r dl / ∫ dl = ∫ r dl / L
-    # where L is the integration length
-    radius_integrand = rs
-    integration_length = l_end - l_start
-    average_radius = (
-        trapz_integral(ls, radius_integrand, l_start, l_end) / integration_length
+    # Varying-radius segments: truncated cone integral
+    segment_integrals[~is_constant] = (
+        ls[~is_constant]
+        / dr[~is_constant]
+        * (1 / r1[~is_constant] - 1 / r2[~is_constant])
     )
 
-    return average_radius, surface_area, volume
+    return np.sum(segment_integrals) / np.pi
+
+
+def average_radius(lengths, r1, r2):
+    """Average radius weighted by segment length."""
+    return np.sum((r1 + r2) / 2 * lengths) / np.sum(lengths)
+
+
+def compute_cone_props(ls, rs, l_start=None, l_end=None):
+    """
+    Given positions ls and radii rs along a path, compute average radius,
+    surface area, volume, resistive load at start and end segments.
+
+    Returns:
+        avg_r: float
+        surface_area: float
+        volume: float
+        res_in: float
+        res_out: float
+    """
+    # Handle default bounds
+    l1 = ls[0] if l_start is None else l_start
+    l2 = ls[-1] if l_end is None else l_end
+
+    # TODO: Add handling spherical compartments? Check if this even needs a special case?
+
+    assert l1 < l2, "Invalid integration bounds"
+
+    # Select segment within bounds
+    mask = (ls >= l1) & (ls <= l2)
+    l_seg = ls[mask]
+    r_seg = rs[mask]
+
+    # Add boundary points via interpolation
+    if l1 < l_seg[0]:
+        r1 = np.interp(l1, ls, rs)
+        l_seg = np.insert(l_seg, 0, l1)
+        r_seg = np.insert(r_seg, 0, r1)
+
+    if l2 > l_seg[-1]:
+        r2 = np.interp(l2, ls, rs)
+        l_seg = np.append(l_seg, l2)
+        r_seg = np.append(r_seg, r2)
+
+    # add midpoint
+    l_mid = (l_seg[-1] + l_seg[0]) / 2
+    r_mid = np.interp(l_mid, ls, rs)
+    mid_idx = np.searchsorted(l_seg, l_mid)
+    l_seg = np.insert(l_seg, mid_idx, l_mid)
+    r_seg = np.insert(r_seg, mid_idx, r_mid)
+
+    # Compute segment lengths and properties
+    dl = np.diff(l_seg)
+    r1s = r_seg[:-1]
+    r2s = r_seg[1:]
+    dr = r2s - r1s
+
+    # Compute quantities
+    surface_area = np.sum(surface_area_segments(dl, r1s, r2s, dr))
+    volume = np.sum(volume_segments(dl, r1s, r2s))
+    avg_r = average_radius(dl, r1s, r2s)
+    res_in = resistive_load_segments(
+        dl[:mid_idx], r1s[:mid_idx], r2s[:mid_idx], dr[:mid_idx]
+    )
+    res_out = resistive_load_segments(
+        dl[mid_idx:], r1s[mid_idx:], r2s[mid_idx:], dr[mid_idx:]
+    )
+
+    return avg_r, surface_area, volume, res_in, res_out
 
 
 def radius_from_xyzr(

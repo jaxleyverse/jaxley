@@ -10,11 +10,12 @@ import pandas as pd
 from warnings import warn
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
-from jaxley.utils.cell_utils import rev_solid_props
+from jaxley.utils.cell_utils import compute_cone_props
 
 #########################################################################################
 ################################### Helper functions ####################################
 #########################################################################################
+
 
 def pandas_to_nx(
     node_attrs: pd.DataFrame, edge_attrs: pd.DataFrame, global_attrs: pd.Series
@@ -226,6 +227,7 @@ def _find_swc_tracing_interruptions(G: nx.DiGraph) -> list[tuple[int, int]]:
     Returns:
         An array of edges where tracing is discontinous.
     """
+
     def not_branching(n):
         nn_ids = [G.nodes[n]["id"] for n in nx.all_neighbors(G, n)]
         return len(nn_ids) == 2 and all([id == nn_ids[0] for id in nn_ids[1:]])
@@ -413,7 +415,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     return G
 
 
-def compartmentalize(
+def compartmentalize_branch(
     branch_nodes: pd.DataFrame, ncomp: int, ignore_branchpoint: bool = False
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
@@ -453,17 +455,23 @@ def compartmentalize(
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # branches originating from branchpoint with different type id start at first branch
+    # TODO: IMPROVE THIS, i.e. what if len(nodes) <= 2?
+    # branches attached to a branchpoint with different type id start at first branch
     # node, i.e. have attrs set to those of first branch node.
     is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
-    if np.any(~is_branch_id) and is_branch_id[1] and ignore_branchpoint:
+    if (np.any(~is_branch_id) and is_branch_id[1]) or ignore_branchpoint:
         next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
         # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
         next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
-        branch_nodes.loc[~is_branch_id] = next2branchpoint_attrs.values
+        branch_nodes.loc[~is_branch_id, ["r", "id"]] = next2branchpoint_attrs[
+            ["r", "id"]
+        ].values
 
     branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
     branch_len = max(branch_nodes["l"])
+    ls = branch_nodes["l"].values
+    rs = branch_nodes["r"].values
+    xyz = branch_nodes[["x", "y", "z"]].values
 
     if branch_len < 1e-8:
         warn(
@@ -475,34 +483,48 @@ def compartmentalize(
             "has no further child nodes."
         )
     comp_len = branch_len / ncomp
-    comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
 
     # Create node indices and attributes for branch-tips/branchpoints and comps
-    # is_comp, comp_id, comp_len, x, y, z, r
-    comp_attrs = [
-        [False, branch_nodes["id"].iloc[0], 0],  # branch tip
-        *[[True, branch_id, comp_len]] * ncomp,  # comps
-        [False, branch_nodes["id"].iloc[-1], 0],  # branch tip
+    # is_comp, comp_len, comp_id, x, y, z, r, area, volume, res_in, res_out
+    cols = [
+        "is_comp",
+        "l",
+        "id",
+        "x",
+        "y",
+        "z",
+        "r",
+        "area",
+        "volume",
+        "resistive_load_in",
+        "resistive_load_out",
     ]
+    is_comp = np.array([False, *[True] * ncomp, False])
+    comp_attrs = pd.DataFrame(np.full((ncomp + 2, len(cols)), np.nan), columns=cols)
+    comp_attrs["is_comp"] = is_comp
+    comp_attrs.loc[is_comp, "id"] = branch_id
+    comp_attrs.loc[is_comp, "l"] = comp_len
+
+    tip_cols = ["id", "x", "y", "z", "r"]
+    comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]].values
 
     # Interpolate xyz along branch
-    x = np.array([0, *comp_centers, branch_len])
-    xp = branch_nodes["l"].values
-    fp_xyz = branch_nodes[["x", "y", "z"]].values
+    comp_centers = list(np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp))
+    comp_centers = np.array([0, *comp_centers, branch_len])
+    x_at_centers = lambda x: np.interp(comp_centers, ls, x)
+    comp_attrs[["x", "y", "z"]] = np.apply_along_axis(x_at_centers, axis=0, arr=xyz)
 
-    interpolated_coords = np.column_stack([np.interp(x, xp, fp) for fp in fp_xyz.T])
-
-    # trapezoidal integration of r between compartment tips
     comp_ends = np.linspace(0, branch_len, ncomp + 1)
     comp_tips = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
-    fp_r = branch_nodes["r"].values
 
-    frustum_props = [rev_solid_props(xp, fp_r, x1, x2) for x1, x2 in comp_tips]
-    # radius, area, volume
-    frustum_props = np.array([[fp_r[0], 0, 0], *frustum_props, [fp_r[-1], 0, 0]])
-
-    # Combine interpolated coordinates with existing attributes
-    return np.hstack([comp_attrs, interpolated_coords, frustum_props])
+    # compute radius, area, volume, res_in, res_out
+    frustum_props = np.array(
+        [compute_cone_props(ls, rs, x1, x2) for x1, x2 in comp_tips]
+    )
+    comp_attrs.loc[
+        is_comp, ["r", "area", "volume", "resistive_load_in", "resistive_load_out"]
+    ] = frustum_props
+    return comp_attrs
 
 
 def propose_new_inds(existing_inds: List[int], num_additional_inds: int) -> List[int]:
@@ -615,31 +637,33 @@ def build_compartment_graph(
         comp_inds = np.array([branch[0], *comp_inds, branch[-1]])
         branch_inds = np.array([float("nan"), *[branch_idx] * ncomp, float("nan")])
 
-        node_attrs = nodes_df.loc[branch]
+        branch_nodes = nodes_df.loc[branch]
 
-        has_somatic_branchpoint = np.any(np.isin(branch, soma_branchpoints))
-        comp_attrs = compartmentalize(node_attrs, ncomp, has_somatic_branchpoint)
-        comp_attrs = np.hstack([comp_inds[:, None], branch_inds[:, None], comp_attrs])
+        has_somatic_branch_pt = np.any(np.isin(branch, soma_branchpoints))
+        comp_attrs = compartmentalize_branch(branch_nodes, ncomp, has_somatic_branch_pt)
+        comp_attrs["node"] = comp_inds
+        comp_attrs["branch"] = branch_inds
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
         # we therefore remove one tip node / branchpoint node, i.e. [0,s,0] -> [s,0]
-        comp_attrs = comp_attrs[1:] if branch[0] == branch[-1] else comp_attrs
+        comp_attrs = comp_attrs.iloc[1:] if branch[0] == branch[-1] else comp_attrs
 
         # Store edges, nodes, and xyzr in branch-wise manner
-        intra_branch_edges = np.stack([comp_attrs[:-1, 0], comp_attrs[1:, 0]]).T
+        intra_branch_edges = np.stack(
+            [comp_attrs.values[:-1, 0], comp_attrs.values[1:, 0]]
+        ).T
         comp_edges.append(intra_branch_edges.astype(int).tolist())
         comps.append(comp_attrs)
 
         # store xyzr for each node in branch
-        xyzr.append(node_attrs[["x", "y", "z", "r"]].values)
+        xyzr.append(branch_nodes[["x", "y", "z", "r"]].values)
 
-    comps = np.concatenate(comps)
-    comp_inds_cols = ["node", "branch", "is_comp"]
-    comp_cols = ["id", "l", "x", "y", "z", "r", "area", "volume"]
-    comp_df = pd.DataFrame(comps, columns=comp_inds_cols + comp_cols)
+    comp_df = pd.concat(comps)
 
     int_cols = ["node", "id"]  # branch cols are floats due to branchpoints
-    comp_df[int_cols] = comp_df[int_cols].astype(int)
+    comp_df[int_cols] = (
+        comp_df[int_cols].infer_objects(copy=False).fillna(0).astype(int)
+    )
 
     bool_cols = ["is_comp"]
     comp_df[bool_cols] = comp_df[bool_cols].astype(bool)
@@ -710,8 +734,8 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
 def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
     """Replace branchpoint nodes with edges connecting its neighbours.
 
-    Removes all non-compartment nodes and connects up its neighbours. The node with the 
-    lowest node_index will become the parent. Branchpoints and tips are stored in the 
+    Removes all non-compartment nodes and connects up its neighbours. The node with the
+    lowest node_index will become the parent. Branchpoints and tips are stored in the
     global graph attribute `branchpoints_and_tips`.
 
     This is somewhat arbitrary and can result in somewhat different graphs. See below:
@@ -723,7 +747,7 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
               |            |          |          |                    |
               v            v          |          v                    v
              (3)          (3)         |         (3)                  (3)
-    
+
     Args:
         G: The graph to replace branchpoints with edges.
 
@@ -742,7 +766,7 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
         if len(neighbours) > 1:
             for next in neighbours[1:]:
                 G.add_edge(neighbours[0], next, **branch_edge_attrs)
-        
+
         branchpoints_tips[n]["xyz_connected"] = [xyz_of(c) for c in neighbours]
         G.remove_node(n)
 
