@@ -496,7 +496,7 @@ def compartmentalize_branch(
     comp_attrs.loc[is_comp, "l"] = comp_len
 
     tip_cols = ["id", "x", "y", "z", "r"]
-    comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]]
+    comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]].values
 
     # Interpolate xyz along branch
     comp_centers = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
@@ -941,7 +941,6 @@ def from_graph(
     """
 
     comp_graph = _add_jaxley_meta_data(comp_graph)
-    # edge direction matters from here on out
     solve_graph = _replace_branchpoints_with_edges(comp_graph)
     module = _build_module(solve_graph)
     return module
