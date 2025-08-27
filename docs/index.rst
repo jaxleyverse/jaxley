@@ -130,6 +130,7 @@ If you use ``Jaxley``, consider citing the `corresponding paper <https://www.bio
 
    advanced_tutorials
    how_to_guide
+   examples
    jaxley
 
 .. toctree::

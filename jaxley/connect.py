@@ -151,13 +151,13 @@ def sparse_connect(
     p: float,
     random_post_comp: bool = False,
 ):
-    """Sparsely (densely) connect cells of a network with synapses.
+    """Sparsely connect cells of a network with synapses.
 
     Connections are from branch 0 location 0 of the pre-synaptic cell to branch 0
     location 0 of the post-synaptic cell unless random_post_comp=True.
 
     NOTE: This function does not generate sparse random connectivity with random graph
-    generation methodology, cells may be connected multiple times and p=1.0 does
+    generation methodology. Cells may be connected multiple times and p=1.0 does
     not fully connect.
 
     Args:
