@@ -2,12 +2,11 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Optional
-from warnings import warn
 
-import jax
 import jax.numpy as jnp
 
 from jaxley.channels import Channel
+from jaxley.solver_gate import heaviside
 
 
 class Fire(Channel):
@@ -26,10 +25,6 @@ class Fire(Channel):
         self.channel_params = {f"{self.name}_vth": -50, f"{self.name}_vreset": -70}
         self.channel_states = {f"{self.name}_spikes": False}
         self.current_name = f"{self.name}_fire"
-        warn(
-            "The `Fire` channel does not support surrogate gradients. Its gradient "
-            "will be zero after every spike."
-        )
 
     def update_states(self, states, dt, v, params):
         """Reset the voltage when a spike occurs and log the spike"""
@@ -37,8 +32,9 @@ class Fire(Channel):
         vreset = params[f"{prefix}_vreset"]
         vth = params[f"{prefix}_vth"]
 
-        spike_occurred = v > vth
-        v = jax.lax.select(spike_occurred, vreset, v)
+        spike_occurred = heaviside(v - vth)
+        v = (v * (1 - heaviside(v - vth))) + (vreset * heaviside(v - vth))
+
         return {"v": v, f"{self.name}_spikes": spike_occurred}
 
     def compute_current(self, states, v, params):
