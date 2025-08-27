@@ -1,3 +1,11 @@
+# 0.11.4 (pre-release)
+
+### 📚 Documentation
+
+- add an example on fitting a morphologically detailed cell with gradient descent (#705,
+@michaeldeistler)
+
+
 # 0.11.3
 
 ### 🛠️ Internal updates
