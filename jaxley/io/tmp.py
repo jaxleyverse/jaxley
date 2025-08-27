@@ -416,7 +416,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
 
 
 def compartmentalize_branch(
-    branch_nodes: pd.DataFrame, ncomp: int, ignore_branchpoint: bool = False
+    branch_nodes: pd.DataFrame, ncomp: int, ignore_branchpoints: bool = False
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
 
@@ -433,7 +433,7 @@ def compartmentalize_branch(
         branch_nodes: DataFrame of node attributes for nodes in a branch.
             needs to include morph attributes `id`, `x`, `y`, `z`, `r`.
         ncomp: Number of compartments per branch.
-        ignore_branchpoint: Whether to consider the branchpoint part of the neurite or
+        ignore_branchpoints: Whether to consider the branchpoint part of the neurite or
         not. This is for example relevant if the branch extends from a single point soma
         or somatic branchpoint. In these cases, the somatic SWC node is _not_ considered
         to be part of the dendrite.
@@ -442,36 +442,37 @@ def compartmentalize_branch(
         DataFrame of compartments and compartment attributes.
     """
     # TODO: This should be reusable for `set_ncomp()`
-    node_inds_in_branch = branch_nodes.index.tolist()
 
-    compute_edge_lens = lambda x: (x.diff(axis=0).fillna(0) ** 2).sum(axis=1) ** 0.5
-    edge_lens = compute_edge_lens(branch_nodes[["x", "y", "z"]])
-    branch_nodes["l"] = edge_lens.cumsum()  # path length
+    # all nodes in a branch must have the same id. since branchpoints can have a
+    # different id (attached at the ends), the node after the branchpoint det. branch id
+    branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
+    not_branch_id = (branch_nodes["id"] != branch_id).values
+    branch_nodes.loc[not_branch_id, "id"] = branch_id
+
+    # if branchpoint has a different id, its radius is assumed to be equal to that
+    # of the neighbouring node.
+    if not_branch_id[0] and len(branch_nodes) > 2:
+        branch_nodes.loc[branch_nodes.index[0], "r"] = branch_nodes["r"].values[1]
+    if not_branch_id[-1] and len(branch_nodes) > 2:
+        branch_nodes.loc[branch_nodes.index[-1], "r"] = branch_nodes["r"].values[-2]
+    if ignore_branchpoints and len(branch_nodes) > 2:
+        branch_nodes.loc[not_branch_id, "l"] = 0
+
+    edge_lens = (branch_nodes[["x", "y", "z"]].diff(axis=0) ** 2).sum(axis=1) ** 0.5
+    branch_nodes["l"] = edge_lens.fillna(0).cumsum()  # path length
 
     # handle single point branches / somata
+    node_inds_in_branch = branch_nodes.index.tolist()
     if len(node_inds_in_branch) == 1:
         # duplicate node to compartmentalize it along its "length", i.e. l = 2*r
         branch_nodes = branch_nodes.loc[node_inds_in_branch * 2]
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # branches attached to a branchpoint with different type id start at first branch
-    # node, i.e. have attrs set to those of first branch node.
-    branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
-    not_branch_id = (branch_nodes["id"] != branch_id).values
-    if np.any(not_branch_id[[0, -1]]) and len(not_branch_id) > 2 or ignore_branchpoint:
-        next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
-        # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
-        next2branchpoint_attrs = next2branchpoint_attrs.iloc[not_branch_id[[0, -1]]]
-
-        # if ignore_branchpoint, i.e. branchpoint is somatic, then we set l = 0
-        attrs = ["r", "id", "l"] if ignore_branchpoint else ["r", "id"]
-        branch_nodes.loc[not_branch_id, attrs] = next2branchpoint_attrs[attrs].values
-
-    branch_len = max(branch_nodes["l"])
     ls = branch_nodes["l"].values
     rs = branch_nodes["r"].values
     xyz = branch_nodes[["x", "y", "z"]].values
+    branch_len = max(ls)
 
     if branch_len < 1e-8:
         warn(
@@ -609,8 +610,8 @@ def build_compartment_graph(
     soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
 
     # create new set of indices which arent already used as node indices to label comps
-    num_additional_inds = len(branches) * ncomp
     existing_inds = nodes_df.index
+    num_additional_inds = len(branches) * ncomp
     proposed_node_inds = propose_new_inds(existing_inds, num_additional_inds)
 
     # collect comps and comp_edges
