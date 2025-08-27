@@ -455,19 +455,19 @@ def compartmentalize_branch(
         # Setting l = 2*r ensures A_cylinder = 2*pi*r*l = 4*pi*r^2 = A_sphere.
         branch_nodes["l"] = np.array([0, 2 * branch_nodes["r"].iloc[0]])
 
-    # TODO: IMPROVE THIS, i.e. what if len(nodes) <= 2?
     # branches attached to a branchpoint with different type id start at first branch
     # node, i.e. have attrs set to those of first branch node.
-    is_branch_id = (branch_nodes["id"] == branch_nodes["id"].iloc[1]).values
-    if (np.any(~is_branch_id) and is_branch_id[1]) or ignore_branchpoint:
+    branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
+    not_branch_id = (branch_nodes["id"] != branch_id).values
+    if np.any(not_branch_id[[0, -1]]) and len(not_branch_id) > 2 or ignore_branchpoint:
         next2branchpoint_attrs = branch_nodes.iloc[[1, -2]]
         # if branchpoint has a different id, set attrs equal to neighbour of branchpoint
-        next2branchpoint_attrs = next2branchpoint_attrs.iloc[~is_branch_id[[0, -1]]]
-        branch_nodes.loc[~is_branch_id, ["r", "id"]] = next2branchpoint_attrs[
-            ["r", "id"]
-        ].values
+        next2branchpoint_attrs = next2branchpoint_attrs.iloc[not_branch_id[[0, -1]]]
 
-    branch_id = branch_nodes["id"].iloc[1]  # node after branchpoint det. branch id
+        # if ignore_branchpoint, i.e. branchpoint is somatic, then we set l = 0
+        attrs = ["r", "id", "l"] if ignore_branchpoint else ["r", "id"]
+        branch_nodes.loc[not_branch_id, attrs] = next2branchpoint_attrs[attrs].values
+
     branch_len = max(branch_nodes["l"])
     ls = branch_nodes["l"].values
     rs = branch_nodes["r"].values
