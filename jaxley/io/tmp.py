@@ -434,9 +434,9 @@ def compartmentalize_branch(
             needs to include morph attributes `id`, `x`, `y`, `z`, `r`.
         ncomp: Number of compartments per branch.
         ignore_branchpoints: Whether to consider the branchpoint part of the neurite or
-        not. This is for example relevant if the branch extends from a single point soma
-        or somatic branchpoint. In these cases, the somatic SWC node is _not_ considered
-        to be part of the dendrite.
+        not if it has a different id. This is for example relevant if the branch extends 
+        from a single point soma or somatic branchpoint. In these cases, the somatic SWC 
+        node is _not_ considered to be part of the dendrite.
 
     Returns:
         DataFrame of compartments and compartment attributes.
@@ -455,10 +455,12 @@ def compartmentalize_branch(
         branch_nodes.loc[branch_nodes.index[0], "r"] = branch_nodes["r"].values[1]
     if not_branch_id[-1] and len(branch_nodes) > 2:
         branch_nodes.loc[branch_nodes.index[-1], "r"] = branch_nodes["r"].values[-2]
-    if ignore_branchpoints and len(branch_nodes) > 2:
-        branch_nodes.loc[not_branch_id, "l"] = 0
 
+    # set edge lengths to 0 for branchpoints of different id if ignore_branchpoints
     edge_lens = (branch_nodes[["x", "y", "z"]].diff(axis=0) ** 2).sum(axis=1) ** 0.5
+    if ignore_branchpoints and len(branch_nodes) > 2:
+        edge_lens.loc[not_branch_id] = 0  # ignore branchpoints
+
     branch_nodes["l"] = edge_lens.fillna(0).cumsum()  # path length
 
     # handle single point branches / somata
