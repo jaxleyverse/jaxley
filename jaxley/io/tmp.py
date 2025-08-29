@@ -434,8 +434,8 @@ def compartmentalize_branch(
             needs to include morph attributes `id`, `x`, `y`, `z`, `r`.
         ncomp: Number of compartments per branch.
         ignore_branchpoints: Whether to consider the branchpoint part of the neurite or
-        not if it has a different id. This is for example relevant if the branch extends 
-        from a single point soma or somatic branchpoint. In these cases, the somatic SWC 
+        not if it has a different id. This is for example relevant if the branch extends
+        from a single point soma or somatic branchpoint. In these cases, the somatic SWC
         node is _not_ considered to be part of the dendrite.
 
     Returns:
@@ -624,9 +624,13 @@ def build_compartment_graph(
 
         branch_nodes = nodes_df.loc[branch]
 
+        # Compute the compartmentalization of the branch.
         has_somatic_branch_pt = np.any(np.isin(branch, soma_branchpoints))
         comp_attrs = compartmentalize_branch(branch_nodes, ncomp, has_somatic_branch_pt)
 
+        # Attach branchpoint and tip nodes to the branch.
+        # Since branchpoints / tips have the same node_index as in the original graph
+        # there is no need to keep track of branch connectivity.
         comp_inds = proposed_node_inds[branch_idx * ncomp : (branch_idx + 1) * ncomp]
         comp_attrs["node"] = np.array([branch[0], *comp_inds, branch[-1]], dtype=int)
         comp_attrs["branch"] = [float("nan"), *[branch_idx] * ncomp, float("nan")]
@@ -647,7 +651,7 @@ def build_compartment_graph(
 
     comp_df = pd.concat(comps)
 
-    # drop duplicated branchpoint nodes and replace with original branchpoint node attrs
+    # drop duplicated branchpoint nodes and fill with original attrs of branchpoint node
     comp_df = comp_df.drop_duplicates(subset=["node", "is_comp"])
     comp_df = comp_df.set_index("node")
     xyzr_cols = ["x", "y", "z", "r"]
@@ -785,31 +789,30 @@ def _replace_edges_with_branchpoints(G: nx.DiGraph) -> nx.DiGraph:
         The graph with branchpoints and tips.
     """
     branchpoints_tips = G.graph["branchpoints_and_tips"]
-    new_inds = propose_new_inds(list(G.nodes), len(branchpoints_tips))
     node_xyz = nx_to_pandas(G)[0][["x", "y", "z"]]
-
     branch_edge_attrs = {"comp_edge": True, "synapse": False, "branch_edge": True}
-    closest_node = lambda n_xyz: (node_xyz - n_xyz).abs().sum(axis=1).idxmin()
 
-    # for idx, (r, row) in zip(new_inds, branchpoints_tips.iterrows()):
-    #     idx = r if r not in G.nodes else idx
-    #     G.add_node(idx, **row.drop(["xyz_children", "xyz_parent"]).to_dict())
+    for node, data in branchpoints_tips.iterrows():
+        data_dict = data.to_dict()
+        xyz_connected_nodes = data_dict.pop("xyz_connected")
 
-    #     if np.isnan(row["xyz_parent"]).all():  # root node
-    #         child_nodes = [closest_node(c) for c in row["xyz_children"]]
-    #         G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
-    #     elif len(row["xyz_children"]) == 0:  # tip node
-    #         parent_node = closest_node(row["xyz_parent"])
-    #         G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
-    #     else:  # branchpoint nodes
-    #         parent_node = closest_node(row["xyz_parent"])
-    #         child_nodes = [closest_node(c) for c in row["xyz_children"]]
+        G.add_node(node, **data_dict)
 
-    #         G.remove_edges_from([(parent_node, c) for c in child_nodes])
-    #         G.add_edges_from([(parent_node, idx)], **branch_edge_attrs)
-    #         G.add_edges_from([(idx, c) for c in child_nodes], **branch_edge_attrs)
+        branch_point_neighbours = []
+        for xyz in xyz_connected_nodes:
+            dist2nodes = node_xyz.apply(lambda x: np.linalg.norm(x - xyz), axis=1)
+            closest_node = dist2nodes.idxmin()
+            branch_point_neighbours.append(closest_node)
+            edge = (node, closest_node) if node < closest_node else (closest_node, node)
+            G.add_edge(*edge, **branch_edge_attrs)
 
-    # del G.graph["branchpoints_and_tips"]
+        # remove edges between branchpoint neighbours that does no
+        for n1 in branch_point_neighbours:
+            for n2 in branch_point_neighbours:
+                if (n1, n2) in G.edges:
+                    G.remove_edge(n1, n2)
+
+    del G.graph["branchpoints_and_tips"]
     return G
 
 
@@ -831,7 +834,7 @@ def _compute_branch_parents(
     Returns:
         The parent structure of the branch graph for each cell.
     """
-    branch_edge_inds = edge_df.index[edge_df["branch_edge"]]
+    branch_edge_inds = edge_df.index[edge_df["branch_edge"] if len(edge_df) > 0 else []]
     parent_inds = branch_edge_inds.get_level_values(0)
     child_inds = branch_edge_inds.get_level_values(1)
 
@@ -850,7 +853,7 @@ def _compute_branch_parents(
     for branch_inds in node_df.groupby("cell_index")["branch_index"].unique():
         root_branch_idx = branch_inds[0]
         parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
-        acc_parents.append([-1] + parents.tolist())
+        acc_parents.append([-1] + parents.astype(int).tolist())
     return acc_parents
 
 
@@ -889,7 +892,7 @@ def _build_module(G: nx.DiGraph) -> Module:
     # set column-wise. preserves cols not in df.
     module.nodes[node_df.columns] = node_df
 
-    synapse_edges = edge_df[edge_df.synapse]
+    synapse_edges = edge_df[edge_df.synapse if len(edge_df) > 0 else []]
     module.edges = synapse_edges if not synapse_edges.empty else module.edges
 
     # add all the extra attrs
@@ -898,6 +901,7 @@ def _build_module(G: nx.DiGraph) -> Module:
     module.group_names = global_attrs["group_names"]
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
+    module.branchpoints_and_tips = global_attrs["branchpoints_and_tips"]
 
     return module
 
