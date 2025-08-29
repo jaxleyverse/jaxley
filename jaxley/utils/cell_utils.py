@@ -1,6 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import List
+from typing import List, Optional, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -9,6 +9,196 @@ from jax import Array, vmap
 from jax.typing import ArrayLike
 
 from jaxley.utils.misc_utils import cumsum_leading_zero
+
+
+def surface_area_segments(ls, r1, r2, dr):
+    """Surface area of truncated cone segments."""
+    slant_height = np.sqrt(ls**2 + dr**2)
+    return 2 * np.pi * (r1 + r2) / 2 * slant_height
+
+
+def volume_segments(ls, r1, r2):
+    """Volume of truncated cone segments."""
+    return (np.pi * ls / 3) * (r1**2 + r1 * r2 + r2**2)
+
+
+def resistive_load_segments(ls, r1, r2, dr):
+    """Resistive load using truncated cone approximation."""
+    segment_integrals = np.empty_like(ls)
+    is_constant = np.isclose(dr, 0)
+
+    # Constant-radius segments: simple cylinder
+    segment_integrals[is_constant] = ls[is_constant] / (r1[is_constant] ** 2)
+
+    # Varying-radius segments: truncated cone integral
+    segment_integrals[~is_constant] = (
+        ls[~is_constant]
+        / dr[~is_constant]
+        * (1 / r1[~is_constant] - 1 / r2[~is_constant])
+    )
+
+    return np.sum(segment_integrals) / np.pi
+
+
+def average_radius(lengths, r1, r2):
+    """Average radius weighted by segment length."""
+    return np.sum((r1 + r2) / 2 * lengths) / np.sum(lengths)
+
+
+def compute_cone_props(ls, rs, l_start=None, l_end=None):
+    """
+    Given positions ls and radii rs along a path, compute average radius,
+    surface area, volume, resistive load at start and end segments.
+
+    Returns:
+        avg_r: float
+        surface_area: float
+        volume: float
+        res_in: float
+        res_out: float
+    """
+    # Handle default bounds
+    l1 = ls[0] if l_start is None else l_start
+    l2 = ls[-1] if l_end is None else l_end
+
+    # TODO: Add handling spherical compartments? Check if this even needs a special case?
+
+    assert l1 < l2, "Invalid integration bounds"
+
+    # Add boundary points via interpolation
+    l1_l2 = jnp.array([l1, l2])
+    r1_r2 = np.interp(l1_l2, ls, rs)
+    i1_i2 = np.searchsorted(ls, l1_l2)
+    ls = np.insert(ls, i1_i2, l1_l2)
+    rs = np.insert(rs, i1_i2, r1_r2)
+
+    # Select segment within bounds
+    mask = (ls >= l1) & (ls <= l2)
+    l_seg = ls[mask]
+    r_seg = rs[mask]
+
+    # add midpoint
+    lmid = (l1 + l2) / 2
+    rmid = np.interp(lmid, ls, rs)
+    mid = np.searchsorted(l_seg, lmid)
+    l_seg = np.insert(l_seg, mid, lmid)
+    r_seg = np.insert(r_seg, mid, rmid)
+
+    # Compute segment lengths and properties
+    dl = np.diff(l_seg)
+    r1s = r_seg[:-1]
+    r2s = r_seg[1:]
+    dr = r2s - r1s
+
+    # Compute quantities
+    surface_area = np.sum(surface_area_segments(dl, r1s, r2s, dr))
+    volume = np.sum(volume_segments(dl, r1s, r2s))
+    avg_r = average_radius(dl, r1s, r2s)
+    res_in = resistive_load_segments(dl[:mid], r1s[:mid], r2s[:mid], dr[:mid])
+    res_out = resistive_load_segments(dl[mid:], r1s[mid:], r2s[mid:], dr[mid:])
+
+    return avg_r, surface_area, volume, res_in, res_out
+
+
+def radius_from_xyzr(
+    xyzr: np.ndarray,
+    min_radius: Optional[float],
+) -> float:
+    """Return the radius of a compartment given its SWC file xyzr.
+
+    Args:
+        radius_fns: Functions which, given compartment locations return the radius.
+        branch_indices: The indices of the branches for which to return the radiuses.
+        min_radius: If passed, the radiuses are clipped to be at least as large.
+        ncomp: The number of compartments that every branch is discretized into.
+    """
+    xyz = xyzr[:, :3]
+    radius = xyzr[:, 3]
+    if len(xyzr) > 1:
+        deltas = np.diff(xyz, axis=0)
+        dists = np.linalg.norm(deltas, axis=1)
+        weights = np.zeros(len(dists) + 1)
+        weights[1:] += dists
+        weights[:-1] += dists
+        weights /= np.sum(weights)
+        avg_radius = np.sum(radius * weights)
+    else:
+        avg_radius = radius.mean()
+
+    if min_radius is None:
+        assert (
+            avg_radius > 0.0
+        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
+    else:
+        avg_radius = (
+            min_radius
+            if (avg_radius < min_radius or np.isnan(avg_radius))
+            else avg_radius
+        )
+
+    return avg_radius
+
+
+def split_xyzr_into_equal_length_segments(
+    xyzr: np.ndarray, ncomp: int
+) -> List[np.ndarray]:
+    """Split xyzr into equal-length segments by inserting interpolated points as needed.
+
+    This function was written by ChatGPT, based on the prompt:
+    ```I have an array of shape 100x3. The 3 indicate x, y, z coordinates. I want to
+    split this array into 4 segments, each with equal euclidean length. To have
+    euclidean length exactly equal, I would like to insert additional points into
+    the 100x3 array (to make it length 100 + 4 segments - 1). These points should be
+    linear interpolation of neighboring points. In the final split array, the newly
+    inserted nodes should be the last point of one segment and the first point of
+    another segment.```
+
+    Args:
+        points: Array of 3D coordinates representing a path.
+        num_segments: Number of segments to split the path into.
+
+    Returns:
+        A list of `num_segments` arrays, each containing the 3D coordinates
+        of one segment. The segments have (approximately) equal Euclidean
+        length, and split points are interpolated between original points.
+    """
+    if len(xyzr) == 1:
+        return [xyzr] * ncomp
+
+    # Compute distances between consecutive points
+    xyz = xyzr[:, :3]
+
+    # Compute distances and cumulative distances
+    deltas = np.diff(xyz, axis=0)
+    dists = np.linalg.norm(deltas, axis=1)
+    cum_dists = np.concatenate([[0], np.cumsum(dists)])
+    total_length = cum_dists[-1]
+
+    # Target cumulative distances where we want to split
+    target_dists = np.linspace(0, total_length, ncomp + 1)
+
+    # Find insertion indices and interpolation factors
+    idxs = np.searchsorted(cum_dists, target_dists, side="right") - 1
+    idxs = np.clip(idxs, 0, len(xyz) - 2)  # Ensure valid indices
+    local_dist = target_dists - cum_dists[idxs]
+    segment_lens = dists[idxs]
+    frac = (local_dist / segment_lens)[:, None]  # shape (n, 1)
+
+    # Interpolate split points
+    split_points = xyzr[idxs] + frac * (xyzr[idxs + 1] - xyzr[idxs])
+
+    # Build final list of points with inserted nodes
+    all_points = [split_points[0]]
+    compartment_xyzrs = []
+
+    for i in range(1, len(split_points)):
+        # Collect original points between splits.
+        mask = (cum_dists > target_dists[i - 1]) & (cum_dists < target_dists[i])
+        between_points = xyzr[mask]
+        segment = np.vstack([all_points[-1], *between_points, split_points[i]])
+        compartment_xyzrs.append(segment)
+        all_points.append(split_points[i])
+    return compartment_xyzrs
 
 
 def equal_segments(branch_property: list, ncomp_per_branch: int):
