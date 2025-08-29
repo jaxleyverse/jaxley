@@ -65,28 +65,24 @@ def compute_cone_props(ls, rs, l_start=None, l_end=None):
 
     assert l1 < l2, "Invalid integration bounds"
 
+    # Add boundary points via interpolation
+    l1_l2 = jnp.array([l1, l2])
+    r1_r2 = np.interp(l1_l2, ls, rs)
+    i1_i2 = np.searchsorted(ls, l1_l2)
+    ls = np.insert(ls, i1_i2, l1_l2)
+    rs = np.insert(rs, i1_i2, r1_r2)
+
     # Select segment within bounds
     mask = (ls >= l1) & (ls <= l2)
     l_seg = ls[mask]
     r_seg = rs[mask]
 
-    # Add boundary points via interpolation
-    if l1 < l_seg[0]:
-        r1 = np.interp(l1, ls, rs)
-        l_seg = np.insert(l_seg, 0, l1)
-        r_seg = np.insert(r_seg, 0, r1)
-
-    if l2 > l_seg[-1]:
-        r2 = np.interp(l2, ls, rs)
-        l_seg = np.append(l_seg, l2)
-        r_seg = np.append(r_seg, r2)
-
     # add midpoint
-    l_mid = (l_seg[-1] + l_seg[0]) / 2
-    r_mid = np.interp(l_mid, ls, rs)
-    mid_idx = np.searchsorted(l_seg, l_mid)
-    l_seg = np.insert(l_seg, mid_idx, l_mid)
-    r_seg = np.insert(r_seg, mid_idx, r_mid)
+    lmid = (l1 + l2) / 2
+    rmid = np.interp(lmid, ls, rs)
+    mid = np.searchsorted(l_seg, lmid)
+    l_seg = np.insert(l_seg, mid, lmid)
+    r_seg = np.insert(r_seg, mid, rmid)
 
     # Compute segment lengths and properties
     dl = np.diff(l_seg)
@@ -98,12 +94,8 @@ def compute_cone_props(ls, rs, l_start=None, l_end=None):
     surface_area = np.sum(surface_area_segments(dl, r1s, r2s, dr))
     volume = np.sum(volume_segments(dl, r1s, r2s))
     avg_r = average_radius(dl, r1s, r2s)
-    res_in = resistive_load_segments(
-        dl[:mid_idx], r1s[:mid_idx], r2s[:mid_idx], dr[:mid_idx]
-    )
-    res_out = resistive_load_segments(
-        dl[mid_idx:], r1s[mid_idx:], r2s[mid_idx:], dr[mid_idx:]
-    )
+    res_in = resistive_load_segments(dl[:mid], r1s[:mid], r2s[:mid], dr[:mid])
+    res_out = resistive_load_segments(dl[mid:], r1s[mid:], r2s[mid:], dr[mid:])
 
     return avg_r, surface_area, volume, res_in, res_out
 

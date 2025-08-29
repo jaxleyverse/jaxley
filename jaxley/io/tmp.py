@@ -756,6 +756,10 @@ def _replace_branchpoints_with_edges(G: nx.DiGraph) -> nx.DiGraph:
     # remove is_comp attr from nodes
     for n in G.nodes:
         del G.nodes[n]["is_comp"]
+        # set indices to integers
+        G.nodes[n]["branch_index"] = int(G.nodes[n]["branch_index"])
+        G.nodes[n]["comp_index"] = int(G.nodes[n]["comp_index"])
+        G.nodes[n]["cell_index"] = int(G.nodes[n]["cell_index"])
 
     cols = ["x", "y", "z", "radius", "cell_index"]
     cols += G.graph["group_names"] + ["xyz_connected"]
