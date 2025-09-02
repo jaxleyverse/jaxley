@@ -315,8 +315,9 @@ class Network(Module):
             states_updated = synapse_type.update_states(
                 synapse_states,
                 delta_t,
-                voltages[pre_inds],
-                voltages[post_inds],
+                states,
+                pre_inds,
+                post_inds,
                 synapse_params,
             )
 
