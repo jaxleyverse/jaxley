@@ -1,3 +1,11 @@
+# 0.11.5 (pre-release)
+
+### 🐛 Bug fixes
+
+- bugfix for `.delete()` when multiple channels have the same `current_name` (#713,
+@michaeldeistler)
+
+
 # 0.11.4
 
 ### 🐛 Bug fixes

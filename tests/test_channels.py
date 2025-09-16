@@ -403,6 +403,12 @@ def test_delete_channel(SimpleBranch):
     branch3.insert(K())
     branch3.delete(K())
 
+    branch4 = SimpleBranch(ncomp=3)
+    branch4.insert(CaL())
+    branch4.insert(CaT())
+    branch4.delete(CaL())
+    branch4.delete(CaT())
+
     def channel_present(view, channel, partial=False):
         states_and_params = list(channel.channel_states.keys()) + list(
             channel.channel_params.keys()
