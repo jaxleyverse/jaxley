@@ -209,6 +209,33 @@ def test_init_states(SimpleCell):
     assert np.abs(v[0, 0] - v[0, -1]) < 0.02
 
 
+def test_init_states_with_groups_in_net():
+    """PR #711: we had issues with the interaction of groups, nets, and init_states."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=2)
+    cell1 = jx.Cell(branch, [-1, 0, 1])
+    cell2 = jx.Cell(branch, [-1, 0, 1, 2])
+    cell3 = jx.Cell(branch, [-1, 0])
+    net = jx.Network([cell1, cell2, cell3])
+
+    net.cell(0).branch(1).add_to_group("apical")
+    net.cell(1).branch(3).add_to_group("apical")
+    net.cell(2).branch(1).add_to_group("apical")
+
+    net.apical.insert(HH())
+    net.cell(0).branch(1).set("v", -80.0)
+    net.cell(1).branch(3).set("v", -90.0)
+    net.cell(2).branch(1).set("v", -100.0)
+
+    net.init_states()
+    init_state = net.nodes["HH_m"].to_numpy()[[2, 3, 12, 13, 16, 17]]
+    true_init_state = np.asarray(
+        [0.00804324, 0.00804324, 0.00210994, 0.00210994, 0.00053298, 0.00053298]
+    )
+    error = np.max(np.abs(true_init_state - init_state))
+    assert error < 1e-4, "init_states error is too big for networks."
+
+
 class KCA11(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
