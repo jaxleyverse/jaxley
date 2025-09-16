@@ -1841,9 +1841,7 @@ class Module(ABC):
 
         for channel in self.base.channels + self.base.pumps:
             name = channel._name
-            channel_indices = channel_nodes.loc[channel_nodes[name]][
-                "global_comp_index"
-            ].to_numpy()
+            channel_indices = channel_nodes.loc[channel_nodes[name]].index.to_numpy()
             voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())

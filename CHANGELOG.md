@@ -1,5 +1,10 @@
 # 0.11.4 (pre-release)
 
+### 🐛 Bug fixes
+
+- bugfix for indexing when `init_states()` is run on a `jx.Network` (#711,
+@michaeldeistler)
+
 ### 📚 Documentation
 
 - add an example on fitting a morphologically detailed cell with gradient descent (#705,
