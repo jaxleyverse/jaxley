@@ -1,4 +1,4 @@
-# 0.11.4 (pre-release)
+# 0.11.4
 
 ### 🐛 Bug fixes
 
