@@ -2246,7 +2246,39 @@ class Module(ABC):
         """Remove a channel or pump from the module.
 
         Args:
-            channel: The channel to remove."""
+            channel: The channel to remove.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        The example below inserts two channels and then deletes the sodium channel:
+
+        ::
+
+            from jaxley.channels import Na, K
+
+            cell = jx.Cell()
+            cell.insert(Na())
+            cell.insert(K())
+
+            cell.delete(Na())
+
+        The example below inserts two channels and then deletes both of them:
+
+        ::
+
+            from jaxley.channels import Na, K
+
+            cell = jx.Cell()
+            cell.insert(Na())
+            cell.insert(K())
+
+            # Loop over all channels and delete each one. Note: The `list(...)` is
+            # important here because `.delete()` modifies the `.channels`.
+            for channel in list(net.channels):
+                cell.delete(channel)
+
+        """
         name = channel._name
         channel_names = [c._name for c in self.channels + self.pumps]
         all_channel_names = [c._name for c in self.base.channels]
@@ -2254,6 +2286,17 @@ class Module(ABC):
         if name in channel_names:
             channel_cols = list(channel.channel_params.keys())
             channel_cols += list(channel.channel_states.keys())
+
+            # We have to be careful to not remove a column if other channels
+            # also have that state. For example, if two channels have a shared state,
+            # then, we should not remove this column even if one of the channels
+            # is deleted.
+            remaining_params = []
+            for channel_in_module in self.base.channels:
+                if channel_in_module._name != name:
+                    remaining_params += list(channel_in_module.channel_params.keys())
+            channel_cols = [x for x in channel_cols if x not in remaining_params]
+
             self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
             self.base.nodes.loc[self._nodes_in_view, name] = False
 
@@ -2270,8 +2313,13 @@ class Module(ABC):
                         "`cell.delete(HH())` (ie you forgot to initialize the channel "
                         "via round brackets: `HH()`."
                     )
-                self.base.membrane_current_names.remove(channel.current_name)
+
                 self.base.nodes.drop(columns=channel_cols + [name], inplace=True)
+
+            # Re-compute the current names.
+            self.base.membrane_current_names = list(
+                np.unique([channel.current_name for channel in self.base.channels])
+            )
         else:
             raise ValueError(f"Channel {name} not found in the module.")
 
