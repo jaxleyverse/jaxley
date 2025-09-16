@@ -1629,12 +1629,13 @@ class Module(ABC):
         for inds, key in zip(
             self.indices_set_by_trainables, self.trainable_param_names
         ):
+            first_inds = inds[:, 0] if inds.ndim >= 2 else inds
             # Determine if this is a node or edge parameter
             if key in self.nodes.columns:
                 # Fetch current values from nodes DataFrame
-                values = self.nodes.loc[inds.flatten(), key].to_numpy()
+                values = jnp.array(self.nodes.loc[first_inds, key])
             elif key in self.edges.columns:
-                values = self.edges.loc[inds.flatten(), key].to_numpy()
+                values = jnp.array(self.edges.loc[first_inds, key])
             else:
                 raise KeyError(f"Parameter '{key}' not found in nodes or edges.")
             trainable_params.append({key: values})
