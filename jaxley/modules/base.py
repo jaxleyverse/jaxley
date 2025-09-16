@@ -186,6 +186,7 @@ class Module(ABC):
         # For trainable parameters.
         self.indices_set_by_trainables: list[ArrayLike] = []
         self.trainable_params: list[dict[str, Array]] = []
+        self.trainable_param_names: list[str] = []
         self.allow_make_trainable: bool = True
         self.num_trainable_params: int = 0
 
@@ -1473,6 +1474,7 @@ class Module(ABC):
         else:
             new_params = jnp.nanmean(param_vals, axis=1)
         self.base.trainable_params.append({key: new_params})
+        self.base.trainable_param_names.append(key)
         self.base.indices_set_by_trainables.append(indices_per_param)
         self.base.num_trainable_params += num_created_parameters
         if verbose:
@@ -1561,10 +1563,14 @@ class Module(ABC):
             trainables_and_inds = self._filter_trainables(is_viewed=False)
             self.base.indices_set_by_trainables = trainables_and_inds[0]
             self.base.trainable_params = trainables_and_inds[1]
+            self.base.trainable_param_names = [
+                list(p.keys())[0] for p in trainables_and_inds[1]
+            ]
             self.base.num_trainable_params -= self.num_trainable_params
         else:
             self.base.indices_set_by_trainables = []
             self.base.trainable_params = []
+            self.base.trainable_param_names = []
             self.base.num_trainable_params = 0
         self._update_view()
 
@@ -1619,7 +1625,20 @@ class Module(ABC):
             A list of all trainable parameters in the form of
                 [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
         """
-        return self.trainable_params
+        trainable_params = []
+        for inds, key in zip(
+            self.indices_set_by_trainables, self.trainable_param_names
+        ):
+            # Determine if this is a node or edge parameter
+            if key in self.nodes.columns:
+                # Fetch current values from nodes DataFrame
+                values = self.nodes.loc[inds.flatten(), key].to_numpy()
+            elif key in self.edges.columns:
+                values = self.edges.loc[inds.flatten(), key].to_numpy()
+            else:
+                raise KeyError(f"Parameter '{key}' not found in nodes or edges.")
+            trainable_params.append({key: values})
+        return trainable_params
 
     @only_allow_module
     def get_all_parameters(self, pstate: list[dict]) -> dict[str, Array]:
