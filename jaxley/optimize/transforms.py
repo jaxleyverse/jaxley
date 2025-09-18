@@ -51,20 +51,26 @@ class SigmoidTransform(Transform):
 class SoftplusTransform(Transform):
     """Softplus transformation."""
 
-    def __init__(self, lower: ArrayLike) -> None:
+    def __init__(self, lower: ArrayLike, threshold: float = 20.0) -> None:
         """This transform maps any value bijectively to the interval [lower, inf).
 
         Args:
             lower (ArrayLike): Lower bound of the interval.
+            threshold (float, optional): Threshold to use linearity for numerical stability.
         """
         super().__init__()
         self.lower = lower
+        self.threshold = threshold
 
     def forward(self, x: ArrayLike) -> Array:
-        return jnp.log1p(save_exp(x)) + self.lower
+        return jnp.where(x > self.threshold, x, jnp.log1p(save_exp(x))) + self.lower
 
     def inverse(self, y: ArrayLike) -> Array:
-        return jnp.log(save_exp(y - self.lower) - 1.0)
+        return jnp.where(
+            y > self.lower + self.threshold,
+            jnp.log(save_exp(y - self.lower) - 1.0),
+            -jnp.log1p(-y + self.lower),
+        )
 
 
 class NegSoftplusTransform(SoftplusTransform):
