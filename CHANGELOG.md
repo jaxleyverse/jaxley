@@ -1,11 +1,19 @@
+# 0.11.5 (pre-release)
+
+### ??? Bug fixes
+
+- safe softplus, use linear function above certain threshold. This avoids an unwanted clipping 
+operation due to the save_exp (#714 @matthijspals)
+
+
 # 0.11.4
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - bugfix for indexing when `init_states()` is run on a `jx.Network` (#711,
 @michaeldeistler)
 
-### 📚 Documentation
+### ???? Documentation
 
 - add an example on fitting a morphologically detailed cell with gradient descent (#705,
 @michaeldeistler)
@@ -13,11 +21,11 @@
 
 # 0.11.3
 
-### 🛠️ Internal updates
+### ??????? Internal updates
 
 -  follow jax typing practices with Array and ArrayLike (#693, @alexpejovic)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - fix for networks that mix point neurons and morphologically detailed neurons (#702,
 @michaeldeistler)
@@ -27,43 +35,43 @@ over to `jx.Network`) (#703, @michaeldeistler)
 
 # 0.11.2
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - Bugfix for `Network`s on `GPU`: since `v0.9.0`, networks had been very slow on GPU
 because the voltage equations of cells had been processed in sequence, not in parallel.
 This is now solved, giving a large speed-up for networks consisting of many cells (#691,
 @michaeldeistler, thanks to @VENOM314 for reporting)
 
-### 📚 Documentation
+### ???? Documentation
 
 - Remove all content from the old mkdocs documentation website (#689, @michaeldeistler)
 
 
 # 0.11.1
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - bugfix for `set_ncomp()` when the cell consists of a single branch (#686,
 @michaeldeistler)
 
-### 🛠️ Internal updates
+### ??????? Internal updates
 
 - fix all typos in the codebase by using the `typos` project (#682, @alexpejovic)
 
 
 # 0.11.0
 
-### 🧩 New features
+### ???? New features
 
 - simple conductance synapse added (#659, @kyralianaka)
 
-### 📚 Documentation
+### ???? Documentation
 
 - add a how-to guide on converting `NMODL` files to `Jaxley`, see
 [here](https://jaxley.readthedocs.io/en/latest/how_to_guide/import_channels_from_neuron.html)
 (#669, @michaeldeistler, special thanks to @r-makarov for building the tool)
 
-### 🛠️ Internal updates
+### ??????? Internal updates
 
 - changes to how the membrane area from SWC files is computed when the radius within a
 compartment is not constant. This fix can have an impact on simulation results. The
@@ -77,7 +85,7 @@ updated computation of membrane area matches that of the NEURON simulator (#662,
 
 # 0.10.0
 
-### 🧩 New features
+### ???? New features
 
 - functionality to compute the pathwise distance between compartments (#648,
 @michaeldeistler):
@@ -87,12 +95,12 @@ path_dists = distance_pathwise(cell.soma.branch(0).comp(0), cell)
 cell.nodes["path_dist_from_soma"] = path_dists
 ```
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - fixed synapse recording indices to be within type (#643, @kyralianaka)
 - Fix inheriting from a Module #590 (#642, @jnsbck)
 
-### 🛠️ Internal updates
+### ??????? Internal updates
 
 - `module.distance()` is now deprecated in favor of `jx.morphology.distance_direct()`
 (#648, @michaeldeistler)
@@ -100,7 +108,7 @@ cell.nodes["path_dist_from_soma"] = path_dists
 
 # 0.9.0
 
-### ✨ Highlights
+### ??? Highlights
 
 - This PR implements a new solver, which is now used by default (#625,
 @michaeldeistler). The new solver has the following advantages:
@@ -119,7 +127,7 @@ from jaxley.morphology import morph_connect
 cell = morph_connect(cell1.branch(1).loc(0.0), cell2.branch(2).loc(1.0))
 ```
 
-### 🧩 New features
+### ???? New features
 
 - the default SWC reader has changed. To use the previous SWC reader, run
 `jx.read_swc(..., backend="custom")`. However, note that we will remove this reader
@@ -133,13 +141,13 @@ runtime, see [here](https://github.com/jax-ml/jax/issues/26145) (#623, @michaeld
 [the how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/set_ncomp.html)
 (#625, @michaeldeistler)
 
-### 📚 Documentation
+### ???? Documentation
 
 - Introduce the `how-to guide` on the website (#612, @michaeldeistler)
 - reorganize the advanced tutorials into subgroups (#612, @michaeldeistler)
 - split the morphology handling tutorials into two notebooks (#612, @michaeldeistler)
 
-### 🛠️ Internal updates
+### ??????? Internal updates
 
 - improvements to graph-backend for more flexibility in modifying morphologies (#613,
 @michaeldeistler)
@@ -155,12 +163,12 @@ with flywire, which highjacks `type_id > 4` to indicate synaptic contacts (#612,
 by default. To get them, do `net.copy_node_property_to_edges("global_comp_index")`
 (#625, @michaeldeistler)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - `ChainTransform` forward now working as mirror to inverse (#628, @kyralianaka)
 - allow `data_set` with vectors of values (#606, @chaseking)
 
-### 🎉 New Contributors
+### ???? New Contributors
 
 - @chaseking made their first contribution in #606
 
@@ -179,18 +187,18 @@ by default. To get them, do `net.copy_node_property_to_edges("global_comp_index"
 
 # 0.8.0
 
-### 🧩 New features
+### ???? New features
 
 - add leaky integrate-and-fire neurons (#564, @jnsbck), Izhikevich neurons, and
 rate-based neurons (#601, @michaeldeistler)
 
-### 🛠️ Minor updates
+### ??????? Minor updates
 
 - make `delta` and `v_th` in `IonotropicSynapse` trainable parameters (#599, @jnsbck)
 - make random postsnaptic compartment selection optional in connectivity functions
 (#489, @kyralianaka)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - Fix bug for `groups` when `.set_ncomp` was run (#587, @michaeldeistler)
 - allow `.distance` to be jitted (#603, @michaeldeistler)
@@ -198,7 +206,7 @@ rate-based neurons (#601, @michaeldeistler)
 
 # 0.7.0
 
-### 🧩 New Features
+### ???? New Features
 
 - Allow ion diffusion with `cell.diffuse()` and add tutorials (#438, @michaeldeistler):
 ```python
@@ -212,11 +220,11 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 ```
 - Introduce ion pumps (#438, @michaeldeistler)
 
-### 🛠️ Minor changes
+### ??????? Minor changes
 
 - rename `delete_channel()` to `delete()` (#438, @michaeldeistler)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - Fix for simulation of morphologies with inhomogeneous numbers of compartments (#438,
 @michaeldeistler)
@@ -230,7 +238,7 @@ cell.set("axial_diffusion_CaCon_i", 1.0)
 - make random post compartment selection optional in connectivity functions (#489,
 @kyralianaka)
 
-### 🎉 New Contributors
+### ???? New Contributors
 
 - @Kartik-Sama made their first contribution in #582
 
@@ -257,7 +265,7 @@ versions of `JAX` can be made equally fast as older versions by setting
 `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning of
 your jupyter notebook (#570, @michaeldeistler).
 
-### 🧩 New Features
+### ???? New Features
 
 - Add ability to record synaptic currents (#523, @ntolley). Recordings can be turned on
 with
@@ -298,7 +306,7 @@ different numbers of post-synaptic partners. (#514, @jnsbck)
   [tutorial](https://jaxley.readthedocs.io/en/latest/tutorials/08_importing_morphologies.html)
   for more details.
 
-### 🛠️ Code Health
+### ??????? Code Health
 
 - changelog added to CI (#537, #558, @jnsbck)
 
@@ -313,19 +321,19 @@ different numbers of post-synaptic partners. (#514, @jnsbck)
 - Allow inspecting the version via `import jaxley as jx; print(jx.__version__)` (#577,
 @michaeldeistler).
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - Fixed inconsistency with *type* assertions arising due to `numpy` functions returning
 different `dtypes` on platforms like Windows (#567, @Kartik-Sama)
 
-### 🎉 New Contributors
+### ???? New Contributors
 
 - @ntolley made their first contribution in #523
 
 
 # 0.5.0
 
-### 🛠️ API changes
+### ??????? API changes
 
 - Synapse views no longer exist (#447, #453, @jnsbck). Previous code such as
 ```python
@@ -365,7 +373,7 @@ transforms = [
 tf = jt.ParamTransform(transforms)
 ```
 
-### 🧩 New features
+### ???? New features
 
 - Added a new `delete_channel()` method (#521, @jnsbck)
 - Allow to write trainables to the module (#470, @michaeldeistler):
@@ -384,14 +392,14 @@ net[r_greater_1].nodes.vis()
 - check if recordings are empty (#460, @deezer257)
 - enable `clamp` to be jitted and vmapped with `data_clamp()` (#374, @kyralianaka)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - allow for cells that were read from swc to be pickled (#525, @jnsbck)
 - fix units of `compute_current()` in channels (#461, @michaeldeistler)
 - fix issues with plotting when the morphology has a different number of compartments
 (#513, @jnsbck)
 
-### 📚 Documentation
+### ???? Documentation
 
 - new tutorial on synapse indexing (#464, @michaeldeistler, @zinaStef)
 - new tutorial on parameter sharing (#464, @michaeldeistler, @zinaStef)
@@ -410,7 +418,7 @@ net[r_greater_1].nodes.vis()
 - automated tests to check if tutorials can be run (#480, @jnsbck)
 - add helpers to deprecate functions and kwargs (#516, @jnsbck)
 
-### 🎉 New Contributors
+### ???? New Contributors
 
 - @simoneeb made their first contribution in #473
 - @zinaStef made their first contribution in #464
@@ -420,7 +428,7 @@ net[r_greater_1].nodes.vis()
 
 # 0.4.0
 
-### 🧩 New features
+### ???? New features
 
 - Changing the number of compartments: `cell.branch(0).set_ncomp(4)` (#436, #440, #445,
 @michaeldeistler, @jnsbck)
@@ -429,7 +437,7 @@ net[r_greater_1].nodes.vis()
 - Speed optimization for `jx.integrate(..., voltage_solver="jaxley.stone")` (#442,
 @michaeldeistler)
 
-### 📚 Documentation
+### ???? Documentation
 
 - new website powered by sphinx:
 [`jaxley.readthedocs.io`](https://jaxley.readthedocs.io/) (#434, #435, @michaeldeistler)
@@ -437,7 +445,7 @@ net[r_greater_1].nodes.vis()
 
 # v0.3.0
 
-### 🧩 New features
+### ???? New features
 
 - New solver: `jx.integrate(..., voltage_solver="jax.sparse")` which has very low
 compile time (#418, @michaeldeistler)
@@ -445,7 +453,7 @@ compile time (#418, @michaeldeistler)
 the number of compartments after initialization is not yet supported, #418, #426, 
 @michaeldeistler)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - Bugfix for capacitances and their interplay with axial conductances (Thanks @Tunenip,
 #426, @michaeldeistler)
@@ -461,13 +469,13 @@ the number of compartments after initialization is not yet supported, #418, #426
 
 # v0.2.0
 
-### 🧩 New features
+### ???? New features
 
 - Cranck-Nicolson solver (#413, @michaeldeistler)
 - Forward Euler solver for compartments and branches (#413, @michaeldeistler)
 - Add option to access `states` in `channel.init_state` (#416, @michaeldeistler)
 
-### 🐛 Bug fixes
+### ???? Bug fixes
 
 - Bugfix for interpolation of x, y, z values (#411, @jnsbck)
 
