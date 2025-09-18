@@ -26,7 +26,7 @@ def test_joint_inverse():
 
     params = [
         {"param_array_1": jnp.asarray(np.linspace(-1, 1, 4))},
-        {"param_array_2": jnp.asarray(np.linspace(-4, 1, 4))},
+        {"param_array_2": jnp.asarray(np.linspace(-4, 1, 24))},
         {"param_array_3": jnp.asarray(np.linspace(-1, 4, 4))},
     ]
 

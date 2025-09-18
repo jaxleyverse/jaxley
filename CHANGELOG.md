@@ -1,3 +1,11 @@
+# 0.11.5 (pre-release)
+
+### 🐛 Bug fixes
+
+- safe softplus, use linear function above certain threshold. This avoids an unwanted clipping 
+operation due to the save_exp (#714 @matthijspals)
+
+
 # 0.11.4
 
 ### 🐛 Bug fixes
