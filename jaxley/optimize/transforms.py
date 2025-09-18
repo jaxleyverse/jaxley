@@ -65,12 +65,12 @@ class SoftplusTransform(Transform):
     def forward(self, x: ArrayLike) -> Array:
         return jnp.where(x > self.threshold, x, jnp.log1p(save_exp(x))) + self.lower
 
-    def inverse(self, y: ArrayLike) -> Array:
-        return jnp.where(
-            y > self.lower + self.threshold,
-            jnp.log(save_exp(y - self.lower) - 1.0),
-            -jnp.log1p(-y + self.lower),
-        )
+    def inverse(self, y):
+        """Inverse of the forward mapping."""
+        linear_mask = y > self.lower + self.threshold
+        linear_inv = y - self.lower
+        softplus_inv = jnp.log(save_exp(y - self.lower) - 1.0)
+        return jnp.where(linear_mask, linear_inv, softplus_inv)
 
 
 class NegSoftplusTransform(SoftplusTransform):
