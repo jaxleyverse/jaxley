@@ -6,7 +6,7 @@ import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Iterator
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
@@ -572,13 +572,12 @@ class Module(ABC):
         >>> cell.scope("global").branch(2).scope("local").comp(0)
         View with 2 different channels. Use `.nodes` for details.
 
-        
+
         Accessing compartments of a branch with respect to the global scope:
 
         >>> cell.scope("global").branch(2).scope("global").comp(6)
         View with 2 different channels. Use `.nodes` for details.
         """
-
 
         view = self.view
         view.set_scope(scope)
@@ -818,7 +817,7 @@ class Module(ABC):
         >>> cell = jx.Cell([comp], parents=[-1])
         >>> [len(comp.channels) for comp in cell.comps]
         [1]
-        
+
         Iterating over the compartments of a network:
         TODO IS THIS A BUG?
 
