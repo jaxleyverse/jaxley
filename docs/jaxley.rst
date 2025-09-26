@@ -8,6 +8,7 @@ Modules
    :toctree: reference/_autosummary
    :nosignatures:
 
+   jaxley.Module
    jaxley.Compartment
    jaxley.Branch
    jaxley.Cell
