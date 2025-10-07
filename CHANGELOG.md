@@ -2,8 +2,13 @@
 
 ### 🐛 Bug fixes
 
-- safe softplus, use linear function above certain threshold. This avoids an unwanted clipping 
-operation due to the save_exp (#714 @matthijspals)
+- safe softplus, use linear function above certain threshold. This avoids an unwanted
+clipping  operation due to the save_exp (#714 @matthijspals)
+
+### 📚 Documentation
+
+- typo fixes for several tutorial notebooks (#721, @michaeldeistler, thanks @martricks
+for reporting)
 
 
 # 0.11.4
