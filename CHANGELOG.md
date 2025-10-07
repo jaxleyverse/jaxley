@@ -2,6 +2,8 @@
 
 ### 🐛 Bug fixes
 
+- bugfix for `.delete()` when multiple channels have the same `current_name` or a
+shared parameter/state (#713, @michaeldeistler)
 - safe softplus, use linear function above certain threshold. This avoids an unwanted
 clipping  operation due to the save_exp (#714 @matthijspals)
 
