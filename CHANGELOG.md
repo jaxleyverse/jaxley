@@ -1,5 +1,9 @@
 # 0.11.6 (pre-release)
 
+### 🧩 New features
+
+- add step function that allows stepping through a simulation with a vector-valued state function (#719 @matthijspals)
+
 ### 🛠️ Internal updates
 
 -  separate getting the currents from `get_all_states()` (#727, @michaeldeistler). To
