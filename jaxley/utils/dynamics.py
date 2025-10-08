@@ -40,7 +40,7 @@ def get_all_states_no_currents(module, pstate):
     """Get all states from the module, excluding currents"""
     states = module._get_states_from_nodes_and_edges()
     # Override with the initial states set by `.make_trainable()`.
-    
+
     # TODO: do we need to do this every time we call the step function?
     for parameter in pstate:
         key = parameter["key"]
@@ -91,7 +91,6 @@ def build_step_dynamics_fn(
     # Initialize the external inputs and their indices.
     external_inds = module.external_inds.copy()
 
-    
     # Get the full parameter state including observables
     # ----------------------------------------------------------
     pstate = params_to_pstate(params, module.indices_set_by_trainables)
@@ -117,9 +116,7 @@ def build_step_dynamics_fn(
     if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
         filter_indices = jnp.array(module._branchpoints.index.to_numpy(), dtype=int)
         all_indices = jnp.arange(original_length)
-        keep_indices = jnp.setdiff1d(
-            all_indices, filter_indices, assume_unique=True
-        )
+        keep_indices = jnp.setdiff1d(all_indices, filter_indices, assume_unique=True)
         branch_filter_applied = True
     else:
         keep_indices = jnp.arange(original_length)
@@ -184,7 +181,6 @@ def build_step_dynamics_fn(
         )
         return restored_states
 
-    
     def step_dynamics_fn(
         states_vec: Array,
         params: list[dict[str, Array]],
@@ -207,16 +203,15 @@ def build_step_dynamics_fn(
         Returns:
             Updated states vectorised.
         """
-        if externals is None: # saver than {} default argument
+        if externals is None:  # saver than {} default argument
             externals = {}
-
 
         # restore full state pytree from vector
         state = unravel_restore_fn(states_vec)
-        
+
         # add params to all_params
         # TODO: no idea if this is the best way to do this
-        # alternatively we somehow update all_params from 
+        # alternatively we somehow update all_params from
         # the above code directly with the passed params?
         pstate = params_to_pstate(params, module.indices_set_by_trainables)
         if param_state is not None:
