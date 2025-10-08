@@ -181,8 +181,9 @@ def build_step_dynamics_fn(
     
     def step_dynamics_fn(
         states_vec: Array,
-        params: Dict,
-        externals: Dict,
+        params: Dict= {},
+        param_state: Dict = None,
+        externals: Dict= {},
         external_inds: Dict = external_inds,
         delta_t: float = 0.025,
     ) -> Array:
@@ -190,7 +191,8 @@ def build_step_dynamics_fn(
 
         Args:
             states_vec: Current state of the neuron model vectorised.
-            all_params: Current parameters of the neuron model.
+            all_params: trainable params of the neuron model.
+            param_state: Parameters returned by `data_set`.. Defaults to None.
             externals: External inputs.
             external_inds: External indices. Defaults to `module.external_inds`.
             delta_t: Time step. Defaults to 0.025.
@@ -206,7 +208,6 @@ def build_step_dynamics_fn(
         # no idea if this is the best way to do this
         # alternatively we somehow update all_params from 
         # the above code directly with the passed params?
-
         pstate = params_to_pstate(params, module.indices_set_by_trainables)
         if param_state is not None:
             pstate += param_state
