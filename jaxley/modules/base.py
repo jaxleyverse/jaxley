@@ -542,7 +542,7 @@ class Module(ABC):
             cell.set_scope("global")
             cell.branch(2).comp(6).insert(K())
 
-        Note that we are inserting into the same compartment in both cases. 
+        Note that we are inserting into the same compartment in both cases.
         Since there are 3 compartments per branch, the global index of the
         first compartment in the third branch is six. Locally, the first
         compartment is naturally 0.
