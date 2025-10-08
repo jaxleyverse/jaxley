@@ -1221,6 +1221,7 @@ class Module(ABC):
         Setting the parameter of a synapse for all synapses within a network:
 
         .. code-block:: python
+
             net.select(edges="all").set("IonotropicSynapse_gS", 5e-4)
 
         """
