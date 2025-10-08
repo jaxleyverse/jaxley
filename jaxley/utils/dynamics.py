@@ -54,10 +54,13 @@ def get_all_states_no_currents(module, pstate):
     return states
 
 
-def build_init_and_step_dynamics_fn(
+def build_step_dynamics_fn(
     module: Module,
     voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
+    delta_t: float = 0.025,
+    params: Dict = {},
+    param_state: Dict = None,
 ) -> Tuple[Callable, Callable]:
     """Return ``init_fn`` and ``step_fn`` which initialize modules and run update steps.
 
@@ -82,120 +85,106 @@ def build_init_and_step_dynamics_fn(
     # Initialize the external inputs and their indices.
     external_inds = module.external_inds.copy()
 
-    def init_dynamics_fn(
-        params: list[dict[str, Array]],
-        all_states: dict | None = None,
-        param_state: list[dict] | None = None,
-        delta_t: float = 0.025,
-    ) -> Tuple[Dict, Dict, Callable, Callable]:
-        """Initializes the parameters and states of the neuron model."""
+    
+    # Get the full parameter state including observables
+    # ----------------------------------------------------------
+    pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    if param_state is not None:
+        pstate += param_state
 
-        # Get the full parameter state including observables
-        # ----------------------------------------------------------
-        pstate = params_to_pstate(params, module.indices_set_by_trainables)
-        if param_state is not None:
-            pstate += param_state
+    all_params = module.get_all_parameters(pstate)
+    all_states = get_all_states_no_currents(module, pstate)
 
-        all_params = module.get_all_parameters(pstate)
-        all_states = (
-            get_all_states_no_currents(module, pstate)
-            if all_states is None
-            else all_states
+    base_keys = list(all_states.keys())
+    all_states = add_currents_to_states(module, all_states, delta_t, all_params)
+    added_keys = [k for k in all_states.keys() if k not in base_keys]
+
+    # Remove observables from states
+    # ----------------------------------------------------------
+
+    # first remove currents
+    all_states = remove_currents_from_states(all_states, added_keys)
+
+    # remove branchpoints if needed
+    original_length = len(leaves(all_states)[0])
+
+    if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
+        filter_indices = jnp.array(module._branchpoints.index.to_numpy(), dtype=int)
+        all_indices = jnp.arange(original_length)
+        keep_indices = jnp.setdiff1d(
+            all_indices, filter_indices, assume_unique=True
         )
+        branch_filter_applied = True
+    else:
+        keep_indices = jnp.arange(original_length)
+        branch_filter_applied = False
 
-        base_keys = list(all_states.keys())
-        all_states = add_currents_to_states(module, all_states, delta_t, all_params)
-        added_keys = [k for k in all_states.keys() if k not in base_keys]
+    all_states = tree_map(lambda x: jnp.take(x, keep_indices, axis=0), all_states)
+    filtered_length = len(leaves(all_states)[0])
 
-        # Remove observables from states
-        # ----------------------------------------------------------
+    # remove NaNs (appear if some states are not defined on all compartments)
+    nan_mask_tree = tree_map(jnp.isnan, all_states)
+    nan_indices_tree = tree_map(lambda m: jnp.where(~m)[0], nan_mask_tree)
 
-        # first remove currents
-        all_states = remove_currents_from_states(all_states, added_keys)
+    def take_by_idx(x, idx):
+        if getattr(x, "ndim", None) is None or x.ndim == 0:
+            return x
+        return jnp.take(x, idx, axis=0)
 
-        # remove branchpoints if needed
-        original_length = len(leaves(all_states)[0])
+    all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
 
-        if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
-            filter_indices = jnp.array(module._branchpoints.index.to_numpy(), dtype=int)
-            all_indices = jnp.arange(original_length)
-            keep_indices = jnp.setdiff1d(
-                all_indices, filter_indices, assume_unique=True
-            )
-            branch_filter_applied = True
-        else:
-            keep_indices = jnp.arange(original_length)
-            branch_filter_applied = False
+    # flatten to a vector
+    states_vec, unravel_fn = ravel_pytree(all_states_no_nans)
 
-        all_states = tree_map(lambda x: jnp.take(x, keep_indices, axis=0), all_states)
-        filtered_length = len(leaves(all_states)[0])
+    # Now we can create functions that convert between the full state pytree
+    # and the filtered state vector
+    # ----------------------------------------------------------
 
-        # remove NaNs (appear if some states are not defined on all compartments)
-        nan_mask_tree = tree_map(jnp.isnan, all_states)
-        nan_indices_tree = tree_map(lambda m: jnp.where(~m)[0], nan_mask_tree)
+    # ravel from pytree (post-step) to vector
+    def ravel_filter_fn(states):
+        filtered_states = remove_currents_from_states(states, added_keys)
+        filtered_states = tree_map(
+            lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
+        )
+        filtered_states = tree_map(take_by_idx, filtered_states, nan_indices_tree)
+        filtered_states_vec, _ = ravel_pytree(filtered_states)
+        return filtered_states_vec
 
-        def take_by_idx(x, idx):
-            if getattr(x, "ndim", None) is None or x.ndim == 0:
-                return x
-            return jnp.take(x, idx, axis=0)
+    # unravel from vector to full restored state pytree
+    def unravel_restore_fn(states_vec):
+        all_states_no_nans = unravel_fn(states_vec)
 
-        all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
+        def restore_leaf(filtered_array, nan_indices_leaf):
+            restored_array = jnp.full(filtered_length, jnp.nan)
+            restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
+            return restored_array
 
-        # flatten to a vector
-        filtered_states_vec, unravel_fn = ravel_pytree(all_states_no_nans)
+        all_states_with_nans = tree_map(
+            restore_leaf, all_states_no_nans, nan_indices_tree
+        )
+        if branch_filter_applied:
 
-        # Now we can create functions that convert between the full state pytree
-        # and the filtered state vector
-        # ----------------------------------------------------------
-
-        # ravel from pytree (post-step) to vector
-        def ravel_filter_fn(states):
-            filtered_states = remove_currents_from_states(states, added_keys)
-            filtered_states = tree_map(
-                lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
-            )
-            filtered_states = tree_map(take_by_idx, filtered_states, nan_indices_tree)
-            filtered_states_vec, _ = ravel_pytree(filtered_states)
-            return filtered_states_vec
-
-        # unravel from vector to full restored state pytree
-        def unravel_restore_fn(states_vec):
-            all_states_no_nans = unravel_fn(states_vec)
-
-            def restore_leaf(filtered_array, nan_indices_leaf):
-                restored_array = jnp.full(filtered_length, jnp.nan)
-                restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
+            def restore_branch_leaf(leaf):
+                restored_array = jnp.full(original_length, -1.0)
+                restored_array = restored_array.at[keep_indices].set(leaf)
                 return restored_array
 
-            all_states_with_nans = tree_map(
-                restore_leaf, all_states_no_nans, nan_indices_tree
-            )
-            if branch_filter_applied:
+            restored_states = tree_map(restore_branch_leaf, all_states_with_nans)
+        else:
+            restored_states = all_states_with_nans
 
-                def restore_branch_leaf(leaf):
-                    restored_array = jnp.full(original_length, -1.0)
-                    restored_array = restored_array.at[keep_indices].set(leaf)
-                    return restored_array
+        restored_states = add_currents_to_states(
+            module, restored_states, delta_t, all_params
+        )
+        return restored_states
 
-                restored_states = tree_map(restore_branch_leaf, all_states_with_nans)
-            else:
-                restored_states = all_states_with_nans
-
-            restored_states = add_currents_to_states(
-                module, restored_states, delta_t, all_params
-            )
-            return restored_states
-
-        return filtered_states_vec, all_params, unravel_restore_fn, ravel_filter_fn
-
+    
     def step_dynamics_fn(
         states_vec: Array,
-        all_params: Dict,
+        params: Dict,
         externals: Dict,
         external_inds: Dict = external_inds,
         delta_t: float = 0.025,
-        unravel_restore_fn: Callable = None,
-        ravel_filter_fn: Callable = None,
     ) -> Array:
         """Performs a single integration step with step size delta_t.
 
@@ -212,6 +201,8 @@ def build_init_and_step_dynamics_fn(
         """
 
         state = unravel_restore_fn(states_vec)
+        
+        # to do: add params to all_params
 
         state = module.step(
             state,
@@ -225,4 +216,4 @@ def build_init_and_step_dynamics_fn(
         states_vec = ravel_filter_fn(state)
         return states_vec
 
-    return init_dynamics_fn, step_dynamics_fn
+    return states_vec, step_dynamics_fn
