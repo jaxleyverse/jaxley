@@ -40,7 +40,7 @@ def get_all_states_no_currents(module, pstate):
     """Get all states from the module, excluding currents"""
     states = module._get_states_from_nodes_and_edges()
     # Override with the initial states set by `.make_trainable()`.
-
+    
     for parameter in pstate:
         key = parameter["key"]
         inds = parameter["indices"]
@@ -56,11 +56,11 @@ def get_all_states_no_currents(module, pstate):
 
 def build_step_dynamics_fn(
     module: Module,
+    params: list[dict[str, Array]],
+    param_state: list[dict] | None = None,
     voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
     delta_t: float = 0.025,
-    params: Dict = {},
-    param_state: Dict = None,
 ) -> Tuple[Callable, Callable]:
     """Return ``init_fn`` and ``step_fn`` which initialize modules and run update steps.
 
@@ -181,7 +181,7 @@ def build_step_dynamics_fn(
     
     def step_dynamics_fn(
         states_vec: Array,
-        params: Dict= {},
+        params: list[dict[str, Array]],
         param_state: Dict = None,
         externals: Dict= {},
         external_inds: Dict = external_inds,
