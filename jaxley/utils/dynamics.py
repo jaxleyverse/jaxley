@@ -41,6 +41,7 @@ def get_all_states_no_currents(module, pstate):
     states = module._get_states_from_nodes_and_edges()
     # Override with the initial states set by `.make_trainable()`.
     
+    # TODO: do we need to do this every time we call the step function?
     for parameter in pstate:
         key = parameter["key"]
         inds = parameter["indices"]
@@ -74,12 +75,17 @@ def build_step_dynamics_fn(
 
     Args:
         module: A `Module` object that e.g. a cell.
+        params: Trainable parameters of the neuron model.
+        param_state: Parameters returned by `data_set`.. Defaults to None.
         voltage_solver: Voltage solver used in step. Defaults to "jaxley.stone".
         solver: ODE solver. Defaults to "bwd_euler".
+        delta_t: Time step. Defaults to 0.025.
 
     Returns:
-        init_fn, step_fn: Functions that initialize the state and parameters, and
-            perform a single integration step, respectively.
+        states_vec: Initial state of the neuron model vectorised.
+        step_dynamics_fn: Function that performs a single integration step with step size delta_t.
+        unravel_restore_fn: Function to convert the state vector back to a pytree and restore observables.
+        ravel_filter_fn: Function to convert the full state pytree to a vector and filter observables.
     """
 
     # Initialize the external inputs and their indices.
@@ -182,9 +188,9 @@ def build_step_dynamics_fn(
     def step_dynamics_fn(
         states_vec: Array,
         params: list[dict[str, Array]],
-        param_state: Dict = None,
-        externals: Dict= {},
-        external_inds: Dict = external_inds,
+        param_state: dict[str, Array] | None = None,
+        externals: dict[str, Array] | None = None,
+        external_inds: dict[str, Array] = external_inds,
         delta_t: float = 0.025,
     ) -> Array:
         """Performs a single integration step with step size delta_t.
@@ -201,11 +207,15 @@ def build_step_dynamics_fn(
         Returns:
             Updated states vectorised.
         """
+        if externals is None: # saver than {} default argument
+            externals = {}
+
+
         # restore full state pytree from vector
         state = unravel_restore_fn(states_vec)
         
         # add params to all_params
-        # no idea if this is the best way to do this
+        # TODO: no idea if this is the best way to do this
         # alternatively we somehow update all_params from 
         # the above code directly with the passed params?
         pstate = params_to_pstate(params, module.indices_set_by_trainables)
@@ -228,4 +238,4 @@ def build_step_dynamics_fn(
         states_vec = ravel_filter_fn(state)
         return states_vec
 
-    return states_vec, step_dynamics_fn
+    return states_vec, step_dynamics_fn, unravel_restore_fn, ravel_filter_fn
