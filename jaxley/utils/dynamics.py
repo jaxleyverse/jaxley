@@ -199,11 +199,20 @@ def build_step_dynamics_fn(
         Returns:
             Updated states vectorised.
         """
-
+        # restore full state pytree from vector
         state = unravel_restore_fn(states_vec)
         
-        # to do: add params to all_params
+        # add params to all_params
+        # no idea if this is the best way to do this
+        # alternatively we somehow update all_params from 
+        # the above code directly with the passed params?
 
+        pstate = params_to_pstate(params, module.indices_set_by_trainables)
+        if param_state is not None:
+            pstate += param_state
+        all_params = module.get_all_parameters(pstate)
+
+        # step the dynamics
         state = module.step(
             state,
             delta_t,
@@ -213,6 +222,8 @@ def build_step_dynamics_fn(
             solver=solver,
             voltage_solver=voltage_solver,
         )
+
+        # convert back to vector and filter out observables
         states_vec = ravel_filter_fn(state)
         return states_vec
 
