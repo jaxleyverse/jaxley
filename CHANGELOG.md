@@ -1,4 +1,4 @@
-# 0.11.5 (pre-release)
+# 0.11.5
 
 ### 🐛 Bug fixes
 
@@ -11,6 +11,8 @@ clipping  operation due to the save_exp (#714 @matthijspals)
 
 - typo fixes for several tutorial notebooks (#721, @michaeldeistler, thanks @martricks
 for reporting)
+- update tutorial on building channel and synapse models: now includes pitfalls and
+recommendations (#723, @michaeldeistler)
 
 
 # 0.11.4
