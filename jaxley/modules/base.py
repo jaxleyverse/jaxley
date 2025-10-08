@@ -528,20 +528,25 @@ class Module(ABC):
 
         Using the default of accessing subcompartments by local index:
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch(comp, ncomp=3)
-        >>> cell = jx.Cell(branch, parents=[-1, 0, 0])
-        >>>
-        >>> cell.branch(2).comp(0).insert(Na())
-        >>> cell.branch(2).comp(0).insert(K())
-        >>> cell.branch(2).comp(0)
-        View with 2 different channels. Use `.nodes` for details.
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=3)
+            cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.branch(2).comp(0).insert(Na())
 
         Forcing accessing of subcompartments by global index:
 
-        >>> cell.set_scope("global")
-        >>> cell.branch(2).comp(6)
-        View with 2 different channels. Use `.nodes` for details.
+        .. code-block:: python
+
+            cell.set_scope("global")
+            cell.branch(2).comp(6).insert(K())
+
+        Note that we are inserting into the same compartment in both cases. 
+        Since there are 3 compartments per branch, the global index of the
+        first compartment in the third branch is six. Locally, the first
+        compartment is naturally 0.
+
         """
         assert scope in ["global", "local"], "Invalid scope."
         self._scope = scope
@@ -563,20 +568,21 @@ class Module(ABC):
 
         Accessing the local compartments of a branch:
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch(comp, ncomp=3)
-        >>> cell = jx.Cell(branch, parents=[-1, 0, 0])
-        >>>
-        >>> cell.branch(2).comp(0).insert(Na())
-        >>> cell.branch(2).comp(0).insert(K())
-        >>> cell.scope("global").branch(2).scope("local").comp(0)
-        View with 2 different channels. Use `.nodes` for details.
+        .. code-block:: python
 
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=3)
+            cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.scope("global").branch(2).scope("local").comp(0).insert(K())
 
         Accessing compartments of a branch with respect to the global scope:
 
-        >>> cell.scope("global").branch(2).scope("global").comp(6)
-        View with 2 different channels. Use `.nodes` for details.
+        .. code-block:: python
+
+            cell.scope("global").branch(2).scope("global").comp(6).insert(Na())
+
+        Note in both cases we are inserting into the same compartment. Check
+        the documentation for `set_scope()` for an explaination.
         """
 
         view = self.view
@@ -756,15 +762,18 @@ class Module(ABC):
 
         Iterating over the cells of a network:
 
-        >>> cell = jx.Cell()
-        >>> net = jx.Network([cell] * 4)
-        >>> net.cell(0).insert(Na())
-        >>> [len(cell.channels) for cell in net.cells]
-        [1, 0, 0, 0]
-        >>> net.cell(1).insert(Na())
-        >>> net.cell(1).insert(K())
-        >>> [len(cell.channels) for cell in net.cells]
-        [1, 2, 0, 0]
+        .. code-block:: python
+
+            cell = jx.Cell()
+            net = jx.Network([cell] * 4)
+            net.cell(0).insert(Na())
+            num_channels_per_cell = [len(cell.channels) for cell in net.cells]
+            net.cell(1).insert(Na())
+            net.cell(1).insert(K())
+            num_channels_per_cell = [len(cell.channels) for cell in net.cells]
+
+        ``num_channels_per_cell`` will change its value since we inserted new
+        channels into the cells.
 
         """
         yield from self._iter_submodules("cell")
@@ -780,12 +789,13 @@ class Module(ABC):
 
         Iterating over the branches of a cell:
 
-        >>> comp = jx.Compartment()
-        >>> branch1 = jx.Branch([comp] * 2)
-        >>> branch2 = jx.Branch([comp] * 3)
-        >>> cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
-        >>> [len(branch.nodes) for branch in cell.branches]
-        [2, 2, 3]
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch1 = jx.Branch([comp] * 2)
+            branch2 = jx.Branch([comp] * 3)
+            cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
+            nodes_per_branch = [len(branch.nodes) for branch in cell.branches]
 
         """
         yield from self._iter_submodules("branch")
@@ -803,34 +813,40 @@ class Module(ABC):
 
         Iterating over the compartments of a branch:
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch([comp] * 2)
-        >>> branch.comp(0).insert(Na())
-        >>> branch.comp(0).insert(K())
-        >>> [len(comp.channels) for comp in branch.comps]
-        [2, 0]
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 2)
+            branch.comp(0).insert(Na())
+            branch.comp(0).insert(K())
+            num_channels_per_comp = [len(comp.channels) for comp in branch.comps]
 
         Iterating over the compartments of a cell:
 
-        >>> comp = jx.Compartment()
-        >>> comp.insert(Na())
-        >>> cell = jx.Cell([comp], parents=[-1])
-        >>> [len(comp.channels) for comp in cell.comps]
-        [1]
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            cell = jx.Cell([comp], parents=[-1])
+            num_channels_per_comp = [len(comp.channels) for comp in cell.comps]
 
         Iterating over the compartments of a network:
-        TODO IS THIS A BUG?
 
-        >>> comp1 = jx.Compartment()
-        >>> comp1.insert(Na())
-        >>> comp2 = jx.Compartment()
-        >>> comp2.insert(K())
-        >>> comp2.insert(Na())
-        >>> net = jx.Network([comp1, comp1, comp2])
-        >>> [len(comp.channels) for comp in net.comps]
-        [2]
-        >>> [len(comp.channels) for comp in net.cells]
-        [1, 1, 2]
+        .. code-block:: python
+
+            comp1 = jx.Compartment()
+            comp1.insert(Na())
+            comp2 = jx.Compartment()
+            comp2.insert(K())
+            comp2.insert(Na())
+            net = jx.Network([comp1, comp1, comp2])
+            net.set_scope("global")
+            num_channels_per_comp = [len(comp.channels) for comp in net.comps]
+
+        Note above that you need to set the network scope to global in order to
+        get an iterator for all the compartments in the network. You could also
+        use net.cells to get an iterator for the compartments without setting
+        the scope to global.
 
         """
         yield from self._iter_submodules("comp")
@@ -1196,13 +1212,16 @@ class Module(ABC):
 
         Setting the parameter of channel within a compartment:
 
-        >>> comp = jx.Compartment()
-        >>> comp.insert(Na())
-        >>> comp.set("Na_gNa", jnp.array(0.008))
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            comp.set("Na_gNa", jnp.array(0.008))
 
         Setting the parameter of a synapse for all synapses within a network:
 
-        >>> net.select(edges="all").set("IonotropicSynapse_gS", 5e-4)
+        .. code-block:: python
+            net.select(edges="all").set("IonotropicSynapse_gS", 5e-4)
 
         """
         if key in [f"axial_diffusion_{ion_name}" for ion_name in self.diffusion_states]:
@@ -1330,22 +1349,15 @@ class Module(ABC):
 
         Changing how many compartments each branch in a cell consists of:
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch([comp] * 4)
-        >>> cell = jx.Cell([branch] * 3, parents=[-1,0,0])
-        >>> len(cell.nodes)
-        12
-        >>> cell.branch(0).set_ncomp(1)
-        >>> len(cell.nodes)
-        9
-        >>> cell.branch(1).set_ncomp(2)
-        >>> len(cell.nodes)
-        7
-        >>> cell.branch(2).set_ncomp(3)
-        >>> len(cell.nodes)
-        6
-        >>> cell.branch(3).set_ncomp(4)
-        7
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 4)
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.branch(0).set_ncomp(1)
+            cell.branch(1).set_ncomp(2)
+            cell.branch(2).set_ncomp(3)
+            cell.branch(3).set_ncomp(4)
 
         """
         assert len(self.base.externals) == 0, "No stimuli allowed!"
@@ -1545,16 +1557,15 @@ class Module(ABC):
 
         Making a channel parameter in a compartment trainable:
 
-        >>> comp = jx.Compartment()
-        >>> comp.insert(Na())
-        >>> params = {"Na_gNa": jnp.array(0.008)}
-        >>> comp.set("Na_gNa", params["Na_gNa"])
-        >>> comp.get_parameters()
-        []
-        >>> comp.make_trainable("Na_gNa")
-        Number of newly added trainable parameters: 1. Total number of trainable parameters: 1
-        >>> comp.get_parameters()
-        [{'Na_gNa': Array([0.008], dtype=float32)}]
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            params = {"Na_gNa": jnp.array(0.008)}
+            comp.set("Na_gNa", params["Na_gNa"])
+            empty_list = comp.get_parameters()
+            comp.make_trainable("Na_gNa")
+            parameters = comp.get_parameters()
 
         """
         if key in ["radius", "length"]:
@@ -1659,12 +1670,14 @@ class Module(ABC):
 
         Visualize a network after training its parameters:
 
-        >>> parameters = net.get_parameters()
-        >>> # Assume you have some training function that gives you new parameters
-        >>> new_parameters = train_network(net, parameters)
-        >>> net.write_trainables(new_parameters)
-        >>> net.vis()
-        >>> plt.show()
+        .. code-block:: python
+
+            parameters = net.get_parameters()
+            # Assume you have some training function that gives you new parameters
+            new_parameters = train_network(net, parameters)
+            net.write_trainables(new_parameters)
+            net.vis()
+            plt.show()
 
         """
         # We do not support views. Why? `jaxedges` does not have any NaN
@@ -2387,7 +2400,9 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
-    @only_allow_module
+    # Decorator is commented out due to documentation bug (issue #665)
+    # Once bug is fixed, decorator can be added back
+    # @only_allow_module
     def diffuse(self, state: str) -> None:
         """Diffuse a particular state across compartments with Fickian diffusion.
 
@@ -2399,22 +2414,20 @@ class Module(ABC):
 
         Diffuse calicum ions across a cell during training:
 
-        >>> current = jx.step_current(0.5, 3.0, 0.1, 0.025, 5.0)
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch(comp, ncomp=2)
-        >>> cell = jx.Cell(branch, parents=[-1, 0])
-        >>> cell.branch(0).comp(0).stimulate(current)
-        Added 1 external_states. See `.externals` for details.
-        >>> cell.insert(HH())
-        >>> cell.insert(CaNernstReversal())
-        >>> cell.diffuse("CaCon_i") # Diffuse calcium ions through the cell
-        >>> cell.branch(0).set("CaCon_i", 0.2)
-        >>> cell.branch(1).set("CaCon_i", 0.1)
-        >>> cell.record("CaCon_i")
-        Added 4 recordings. See `.recordings` for details.
-        >>> cacon_i = jx.integrate(cell, t_max=5.0)
-        >>> cacon_i[:,-1]
-        Array([0.19536038, 0.19988544, 0.10464586, 0.10011798], dtype=float32)
+        .. code-block:: python
+
+            current = jx.step_current(0.5, 3.0, 0.1, 0.025, 5.0)
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+            cell.branch(0).comp(0).stimulate(current)
+            cell.insert(HH())
+            cell.insert(CaNernstReversal())
+            cell.diffuse("CaCon_i") # Diffuse calcium ions through the cell
+            cell.branch(0).set("CaCon_i", 0.2)
+            cell.branch(1).set("CaCon_i", 0.1)
+            cell.record("CaCon_i")
+            concentrations_post_training = jx.integrate(cell, t_max=5.0)
 
         """
         self.base.diffusion_states.append(state)
@@ -3076,28 +3089,12 @@ class Module(ABC):
 
         Move an entire cell, which moves its branches accordingly:
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch([comp])
-        >>> cell = jx.Cell([branch] * 3, parents=[-1,0,0])
-        >>> cell.xyzr[0]
-        array([[ 0.,  0.,  0., nan],
-               [10.,  0.,  0., nan]])
-        >>> cell.xyzr[1]
-        array([[10.        ,  0.        ,  0.        ,         nan],
-               [19.701425  , -2.42535625,  0.        ,         nan]])
-        >>> cell.xyzr[2]
-        array([[10.        ,  0.        ,  0.        ,         nan],
-               [19.701425  ,  2.42535625,  0.        ,         nan]])
-        >>> cell.move(20.0, 30.0, 5.0)
-        >>> cell.xyzr[0]
-        array([[20., 30.,  5., nan],
-               [30., 30.,  5., nan]])
-        >>> cell.xyzr[1]
-        array([[30.        , 30.        ,  5.        ,         nan],
-               [39.701425  , 27.57464375,  5.        ,         nan]])
-        >>> cell.xyzr[2]
-        array([[30.        , 30.        ,  5.        ,         nan],
-               [39.701425  , 32.42535625,  5.        ,         nan]])
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp])
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.move(20.0, 30.0, 5.0)
 
         """
         for i in self._branches_in_view:
@@ -3134,28 +3131,12 @@ class Module(ABC):
 
         Move an entire cell, which moves its branches accordingly:
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch([comp])
-        >>> cell = jx.Cell([branch] * 3, parents=[-1,0,0])
-        >>> cell.xyzr[0]
-        array([[ 0.,  0.,  0., nan],
-               [10.,  0.,  0., nan]])
-        >>> cell.xyzr[1]
-        array([[10.        ,  0.        ,  0.        ,         nan],
-               [19.701425  , -2.42535625,  0.        ,         nan]])
-        >>> cell.xyzr[2]
-        array([[10.        ,  0.        ,  0.        ,         nan],
-               [19.701425  ,  2.42535625,  0.        ,         nan]])
-        >>> cell.move_to(20.0, 30.0, 5.0)
-        >>> cell.xyzr[0]
-        array([[20., 30.,  5., nan],
-               [30., 30.,  5., nan]])
-        >>> cell.xyzr[1]
-        array([[30.        , 30.        ,  5.        ,         nan],
-               [39.701425  , 27.57464375,  5.        ,         nan]])
-        >>> cell.xyzr[2]
-        array([[30.        , 30.        ,  5.        ,         nan],
-               [39.701425  , 32.42535625,  5.        ,         nan]])
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp])
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.move_to(20.0, 30.0, 5.0)
 
         """
         # Test if any coordinate values are NaN which would greatly affect moving

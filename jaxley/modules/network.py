@@ -428,29 +428,31 @@ class Network(Module):
         Example usage
         ^^^^^^^^^^^^^
 
-        >>> comp = jx.Compartment()
-        >>> branch = jx.Branch([comp] * 4)
-        >>> cell = jx.Cell([branch], parents=[-1])
-        >>> net = jx.Network([cell] * 3)
-        >>> connect(
-        ...     net.cell(0).branch(0).loc(0.0),
-        ...     net.cell(1).branch(0).loc(0.0),
-        ...     IonotropicSynapse(),
-        ... )
-        >>> connect(
-        ...     net.cell(0).branch(0).loc(0.0),
-        ...     net.cell(2).branch(0).loc(0.0),
-        ...     IonotropicSynapse(),
-        ... )
+        Arranging a network into layers and visualizing the difference it makes:
 
-        >>> # Non-arranged visualization of the network
-        >>> net.vis(detail="point")
-        >>> plt.show()
+        .. code-block:: python
 
-        >>> # Arranged visualization of the network
-        >>> net.arrange_in_layers([2, 1])
-        >>> net.vis(detail="point")
-        >>> plt.show()
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 4)
+            cell = jx.Cell([branch], parents=[-1])
+            net = jx.Network([cell] * 3)
+            connect(
+                net.cell(0).branch(0).loc(0.0),
+                net.cell(1).branch(0).loc(0.0),
+                IonotropicSynapse(),
+            )
+            connect(
+                net.cell(0).branch(0).loc(0.0),
+                net.cell(2).branch(0).loc(0.0),
+                IonotropicSynapse(),
+            )
+            # Non-arranged visualization of the network
+            net.vis(detail="point")
+            plt.show()
+            # Arranged visualization of the network
+            net.arrange_in_layers([2, 1])
+            net.vis(detail="point")
+            plt.show()
 
         """
         assert (
