@@ -39,9 +39,8 @@ def remove_currents_from_states(states, current_keys):
 def get_all_states_no_currents(module, pstate):
     """Get all states from the module, excluding currents"""
     states = module._get_states_from_nodes_and_edges()
-    # Override with the initial states set by `.make_trainable()`.
-
-    # TODO: do we need to do this every time we call the step function?
+     # Override with the initial states set by `.make_trainable()`.
+    # Now this is only done once at the start of the simulation.
     for parameter in pstate:
         key = parameter["key"]
         inds = parameter["indices"]
@@ -52,7 +51,9 @@ def get_all_states_no_currents(module, pstate):
             # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
             # `.set()` to work. This is done with `[:, None]`.
             states[key] = states[key].at[inds].set(set_param[:, None])
+
     return states
+
 
 
 def build_step_dynamics_fn(
@@ -94,12 +95,13 @@ def build_step_dynamics_fn(
     # Get the full parameter state including observables
     # ----------------------------------------------------------
     pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    #print(pstate)
     if param_state is not None:
         pstate += param_state
-
+    #print(pstate)
     all_params = module.get_all_parameters(pstate)
     all_states = get_all_states_no_currents(module, pstate)
-
+    
     base_keys = list(all_states.keys())
     all_states = add_currents_to_states(module, all_states, delta_t, all_params)
     added_keys = [k for k in all_states.keys() if k not in base_keys]
