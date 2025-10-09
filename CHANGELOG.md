@@ -1,3 +1,10 @@
+# 0.11.6 (pre-release)
+
+### 📚 Documentation
+
+- Added example usage to many user-facing Module functions (#716, @alexpejovic)
+
+
 # 0.11.5 (pre-release)
 
 ### 🐛 Bug fixes
