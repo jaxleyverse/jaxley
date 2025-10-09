@@ -453,23 +453,24 @@ def plot_morph(
             for xyzr1, xyzr2 in zip(xyzr[1:, :], xyzr[:-1, :]):
                 dxyz = xyzr2[:3] - xyzr1[:3]
                 length = np.sqrt(np.sum(dxyz**2))
-                points = create_cone_frustum_mesh(
-                    length,
-                    xyzr1[-1],
-                    xyzr2[-1],
-                    bottom_dome=True,
-                    top_dome=True,
-                    resolution=resolution,
-                )
-                plot_mesh(
-                    points,
-                    dxyz,
-                    xyzr1[:3],
-                    np.array(dims),
-                    color=color,
-                    ax=ax,
-                    **kwargs,
-                )
+                if length > 0:
+                    points = create_cone_frustum_mesh(
+                        length,
+                        xyzr1[-1],
+                        xyzr2[-1],
+                        bottom_dome=True,
+                        top_dome=True,
+                        resolution=resolution,
+                    )
+                    plot_mesh(
+                        points,
+                        dxyz,
+                        xyzr1[:3],
+                        np.array(dims),
+                        color=color,
+                        ax=ax,
+                        **kwargs,
+                    )
         else:
             points = create_cone_frustum_mesh(
                 0,

@@ -1,5 +1,10 @@
 # 0.11.6 (pre-release)
 
+### 🐛 Bug fixes
+
+- bugfix for `cell.vis(..., type="morph")` (#725, @michaeldeistler, thanks to
+Elisabeth Galyo for reporting)
+
 ### 📚 Documentation
 
 - Added example usage to many user-facing Module functions (#716, @alexpejovic)
