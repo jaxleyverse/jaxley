@@ -353,7 +353,11 @@ def test_diffusion_in_parts_of_cell_raises():
     """Assert the raise if one runs diffusion on parts of a cell."""
     cell = _build_calcium_cell()
 
-    with pytest.raises(AssertionError):
+    # Originally this should raise an AssertionError and not a TypeError.
+    # However, due to removing the @allow_only_module decorator on the diffuse()
+    # function in PR #716, this becomes a type error. If the decorator comes back
+    # in a later version, TypeError should be changed back to AssertionError.
+    with pytest.raises(TypeError):
         cell.branch(0).diffuse("CaCon_i")
 
 
@@ -371,7 +375,11 @@ def test_raise_ion_diffusion_in_one_cell_of_net2():
     cell1 = _build_calcium_cell()
     cell2 = _build_calcium_cell()
     net = jx.Network([cell1, cell2])
-    with pytest.raises(AssertionError):
+    # Originally this should raise an AssertionError and not a TypeError.
+    # However, due to removing the @allow_only_module decorator on the diffuse()
+    # function in PR #716, this becomes a type error. If the decorator comes back
+    # in a later version, TypeError should be changed back to AssertionError.
+    with pytest.raises(TypeError):
         net.cell(0).diffuse("CaCon_i")
 
 
