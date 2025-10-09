@@ -526,21 +526,22 @@ class Module(ABC):
         Example usage
         ^^^^^^^^^^^^^
 
-        Using the default of accessing subcompartments by local index:
+        Access the 0-th compartment of the 2nd branch of a cell:
 
         .. code-block:: python
 
             comp = jx.Compartment()
             branch = jx.Branch(comp, ncomp=3)
             cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.set_scope("local")     # this is also the default
             cell.branch(2).comp(0).insert(Na())
 
-        Forcing accessing of subcompartments by global index:
+        Access the sixth (global) compartment of the cell:
 
         .. code-block:: python
 
             cell.set_scope("global")
-            cell.branch(2).comp(6).insert(K())
+            cell.comp(6).insert(K())
 
         Note that we are inserting into the same compartment in both cases.
         Since there are 3 compartments per branch, the global index of the
@@ -566,7 +567,7 @@ class Module(ABC):
         Example usage
         ^^^^^^^^^^^^^
 
-        Accessing the local compartments of a branch:
+        Access the 0-th compartment of the 2nd branch of a cell:
 
         .. code-block:: python
 
@@ -575,15 +576,16 @@ class Module(ABC):
             cell = jx.Cell(branch, parents=[-1, 0, 0])
             cell.scope("global").branch(2).scope("local").comp(0).insert(K())
 
-        Accessing compartments of a branch with respect to the global scope:
+        Access the sixth (global) compartment of the cell:
 
         .. code-block:: python
 
-            cell.scope("global").branch(2).scope("global").comp(6).insert(Na())
+            cell.scope("global").comp(6).insert(Na())
 
-        Note in both cases we are inserting into the same compartment. Check
-        the documentation for `set_scope()` for an explaination.
-        """
+        Note in both cases we are inserting into the same compartment.         
+        Since there are 3 compartments per branch, the global index of the
+        first compartment in the third branch is six. Locally, the first
+        compartment is naturally 0."""
 
         view = self.view
         view.set_scope(scope)
@@ -767,13 +769,9 @@ class Module(ABC):
             cell = jx.Cell()
             net = jx.Network([cell] * 4)
             net.cell(0).insert(Na())
-            num_channels_per_cell = [len(cell.channels) for cell in net.cells]
             net.cell(1).insert(Na())
             net.cell(1).insert(K())
             num_channels_per_cell = [len(cell.channels) for cell in net.cells]
-
-        ``num_channels_per_cell`` will change its value since we inserted new
-        channels into the cells.
 
         """
         yield from self._iter_submodules("cell")
@@ -828,25 +826,26 @@ class Module(ABC):
             comp = jx.Compartment()
             comp.insert(Na())
             cell = jx.Cell([comp], parents=[-1])
+            cell.set_scope("global")
             num_channels_per_comp = [len(comp.channels) for comp in cell.comps]
 
         Iterating over the compartments of a network:
 
         .. code-block:: python
 
-            comp1 = jx.Compartment()
-            comp1.insert(Na())
-            comp2 = jx.Compartment()
-            comp2.insert(K())
-            comp2.insert(Na())
-            net = jx.Network([comp1, comp1, comp2])
+            cell1 = jx.Cell()
+            cell1.insert(Na())
+            cell2 = jx.Cell()
+            cell2.insert(K())
+            cell2.insert(Na())
+            net = jx.Network([cell1, cell1, cell2])
             net.set_scope("global")
             num_channels_per_comp = [len(comp.channels) for comp in net.comps]
 
-        Note above that you need to set the network scope to global in order to
-        get an iterator for all the compartments in the network. You could also
-        use net.cells to get an iterator for the compartments without setting
-        the scope to global.
+        Note above that you need to set the network and branch scopes to global 
+        in order to get an iterator for all the compartments in the network. 
+        You could also use, for example, net.cells in the network to get an
+        iterator for the compartments without setting the scope to global.
 
         """
         yield from self._iter_submodules("comp")
@@ -1210,13 +1209,13 @@ class Module(ABC):
         Example usage
         ^^^^^^^^^^^^^
 
-        Setting the parameter of channel within a compartment:
+        Setting the sodium maximal conductance of a compartment:
 
         .. code-block:: python
 
             comp = jx.Compartment()
             comp.insert(Na())
-            comp.set("Na_gNa", jnp.array(0.008))
+            comp.set("Na_gNa", 0.008)
 
         Setting the parameter of a synapse for all synapses within a network:
 
@@ -1561,12 +1560,8 @@ class Module(ABC):
         .. code-block:: python
 
             comp = jx.Compartment()
-            comp.insert(Na())
-            params = {"Na_gNa": jnp.array(0.008)}
-            comp.set("Na_gNa", params["Na_gNa"])
-            empty_list = comp.get_parameters()
-            comp.make_trainable("Na_gNa")
-            parameters = comp.get_parameters()
+            comp.make_trainable("radius")
+            parameters = comp.get_parameters()  # -> [{'radius': Array([1.], dtype=float32)}]
 
         """
         if key in ["radius", "length"]:
@@ -1669,7 +1664,7 @@ class Module(ABC):
         Example usage
         ^^^^^^^^^^^^^
 
-        Visualize a network after training its parameters:
+        Write new parameters to the model after training:
 
         .. code-block:: python
 
@@ -1677,8 +1672,7 @@ class Module(ABC):
             # Assume you have some training function that gives you new parameters
             new_parameters = train_network(net, parameters)
             net.write_trainables(new_parameters)
-            net.vis()
-            plt.show()
+            print(net.nodes) # outputs nodes of the model with the new parameters
 
         """
         # We do not support views. Why? `jaxedges` does not have any NaN
@@ -2428,7 +2422,7 @@ class Module(ABC):
             cell.branch(0).set("CaCon_i", 0.2)
             cell.branch(1).set("CaCon_i", 0.1)
             cell.record("CaCon_i")
-            concentrations_post_training = jx.integrate(cell, t_max=5.0)
+            simulated_concentrations = jx.integrate(cell, t_max=5.0)
 
         """
         self.base.diffusion_states.append(state)
@@ -3130,7 +3124,7 @@ class Module(ABC):
         Example usage
         ^^^^^^^^^^^^^
 
-        Move an entire cell, which moves its branches accordingly:
+        Move an entire cell to a specified location.:
 
         .. code-block:: python
 

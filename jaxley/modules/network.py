@@ -428,7 +428,7 @@ class Network(Module):
         Example usage
         ^^^^^^^^^^^^^
 
-        Arranging a network into layers and visualizing the difference it makes:
+        Arrange a network into layers and visualize it:
 
         .. code-block:: python
 
@@ -436,20 +436,6 @@ class Network(Module):
             branch = jx.Branch([comp] * 4)
             cell = jx.Cell([branch], parents=[-1])
             net = jx.Network([cell] * 3)
-            connect(
-                net.cell(0).branch(0).loc(0.0),
-                net.cell(1).branch(0).loc(0.0),
-                IonotropicSynapse(),
-            )
-            connect(
-                net.cell(0).branch(0).loc(0.0),
-                net.cell(2).branch(0).loc(0.0),
-                IonotropicSynapse(),
-            )
-            # Non-arranged visualization of the network
-            net.vis(detail="point")
-            plt.show()
-            # Arranged visualization of the network
             net.arrange_in_layers([2, 1])
             net.vis(detail="point")
             plt.show()
