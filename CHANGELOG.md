@@ -7,7 +7,7 @@ operation due to the save_exp (#714 @matthijspals)
 
 ### 🧩 New features
 
-- add step function that allows stepping through a simulation with a vector-valued state function
+- add step function that allows stepping through a simulation with a vector-valued state function (#719 @matthijspals)
 
 # 0.11.4
 
