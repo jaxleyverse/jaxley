@@ -582,7 +582,7 @@ class Module(ABC):
 
             cell.scope("global").comp(6).insert(Na())
 
-        Note in both cases we are inserting into the same compartment.         
+        Note in both cases we are inserting into the same compartment.
         Since there are 3 compartments per branch, the global index of the
         first compartment in the third branch is six. Locally, the first
         compartment is naturally 0."""
@@ -842,8 +842,8 @@ class Module(ABC):
             net.set_scope("global")
             num_channels_per_comp = [len(comp.channels) for comp in net.comps]
 
-        Note above that you need to set the network and branch scopes to global 
-        in order to get an iterator for all the compartments in the network. 
+        Note above that you need to set the network and branch scopes to global
+        in order to get an iterator for all the compartments in the network.
 
         """
         yield from self._iter_submodules("comp")
@@ -2420,6 +2420,10 @@ class Module(ABC):
             simulated_concentrations = jx.integrate(cell, t_max=5.0)
 
         """
+        assert not isinstance(
+            self, View
+        ), "You can only diffuse ions in the entire module."
+
         self.base.diffusion_states.append(state)
         self.base.nodes.loc[self._nodes_in_view, f"axial_diffusion_{state}"] = 1.0
 
