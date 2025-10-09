@@ -172,7 +172,9 @@ def test_volume_plotting(
     for module in [comp, branch, cell, net]:
         module.compute_xyz()
 
-    fname = os.path.join(os.path.dirname(__file__), "swc_files", "morph_ca1_n120.swc")
+    fname = os.path.join(
+        os.path.dirname(__file__), "swc_files", "morph_ca1_n120_250.swc"
+    )
     morph_cell = SimpleMorphCell(fname, ncomp=1)
 
     fig, ax = plt.subplots()
@@ -192,4 +194,10 @@ def test_volume_plotting(
     morph_cell.branch(1).vis(
         type="morph", dims=[0, 1, 2], resolution=6
     )  # plotting whole thing takes too long
+    plt.close()
+
+    # In #725, we had discovered a bug when `ncomp=2`. This test ensures that this
+    # bug does not resurface.
+    morph_cell = SimpleMorphCell(fname, ncomp=2)
+    morph_cell.vis(type="morph", dims=[0, 1], linewidth=0.0, resolution=6)
     plt.close()
