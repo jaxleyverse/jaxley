@@ -29,6 +29,15 @@ def add_currents_to_states(module, states, delta_t, all_params):
     return states
 
 
+def get_all_params_param_state(module, params, param_state):
+    """Convenience functions to combine params and param_state to get all_params."""
+    pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    if param_state is not None:
+        pstate += param_state
+    all_params = module.get_all_parameters(pstate)
+    return all_params, pstate
+
+
 def remove_currents_from_states(states, current_keys):
     """Remove the currents through channels and synapses from the states."""
     for key in current_keys:
@@ -77,14 +86,10 @@ def build_step_dynamics_fn(
 
     # Get the full parameter state including observables
     # ----------------------------------------------------------
-    pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    all_params, pstate = get_all_params_param_state(module, params, param_state)
 
-    if param_state is not None:
-        pstate += param_state
-
-    all_params = module.get_all_parameters(pstate)
     all_states = get_all_states_no_currents(module)
-    
+
     # Override with the initial states set by `.make_trainable()`.
     # If we don't do this, there are no gradients to trainable initial states.
     for parameter in pstate:
@@ -208,13 +213,7 @@ def build_step_dynamics_fn(
         state = unravel_restore_fn(states_vec)
 
         # add params to all_params
-        # TODO: no idea if this is the best way to do this
-        # alternatively we somehow update all_params from
-        # the above code directly with the passed params?
-        pstate = params_to_pstate(params, module.indices_set_by_trainables)
-        if param_state is not None:
-            pstate += param_state
-        all_params = module.get_all_parameters(pstate)
+        all_params, _ = get_all_params_param_state(module, params, param_state)
 
         # step the dynamics
         state = module.step(
