@@ -423,6 +423,23 @@ class Network(Module):
             within_layer_offset: Offset between cells within the same layer.
             between_layer_offset: Offset between layers.
             vertical_layers: If True, layers are arranged vertically.
+
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Arrange a network into layers and visualize it:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 4)
+            cell = jx.Cell([branch], parents=[-1])
+            net = jx.Network([cell] * 3)
+            net.arrange_in_layers([2, 1])
+            net.vis(detail="point")
+            plt.show()
+
         """
         assert (
             np.sum(layers) == self.shape[0]

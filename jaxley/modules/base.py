@@ -6,7 +6,7 @@ import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
@@ -521,7 +521,34 @@ class Module(ABC):
         Determines if global or local indices are used for viewing the module.
 
         Args:
-            scope: either "global" or "local"."""
+            scope: either "global" or "local".
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Access the 0-th compartment of the 2nd branch of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=3)
+            cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.set_scope("local")     # this is also the default
+            cell.branch(2).comp(0).insert(Na())
+
+        Access the sixth (global) compartment of the cell:
+
+        .. code-block:: python
+
+            cell.set_scope("global")
+            cell.comp(6).insert(K())
+
+        Note that we are inserting into the same compartment in both cases.
+        Since there are 3 compartments per branch, the global index of the
+        first compartment in the third branch is six. Locally, the first
+        compartment is naturally 0.
+
+        """
         assert scope in ["global", "local"], "Invalid scope."
         self._scope = scope
 
@@ -535,7 +562,31 @@ class Module(ABC):
             scope: either "global" or "local".
 
         Returns:
-            View with the specified scope."""
+            View with the specified scope.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Access the 0-th compartment of the 2nd branch of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=3)
+            cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.scope("global").branch(2).scope("local").comp(0).insert(K())
+
+        Access the sixth (global) compartment of the cell:
+
+        .. code-block:: python
+
+            cell.scope("global").comp(6).insert(Na())
+
+        Note in both cases we are inserting into the same compartment.
+        Since there are 3 compartments per branch, the global index of the
+        first compartment in the third branch is six. Locally, the first
+        compartment is naturally 0."""
+
         view = self.view
         view.set_scope(scope)
         return view
@@ -703,26 +754,98 @@ class Module(ABC):
             yield self._at_nodes(name, idx)
 
     @property
-    def cells(self):
+    def cells(self) -> Iterator[View]:
         """Iterate over all cells in the module.
 
-        Returns a generator that yields a View of each cell."""
+        Returns a generator that yields a View of each cell.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Iterating over the cells of a network:
+
+        .. code-block:: python
+
+            cell = jx.Cell()
+            net = jx.Network([cell] * 4)
+            net.cell(0).insert(Na())
+            net.cell(1).insert(Na())
+            net.cell(1).insert(K())
+            num_channels_per_cell = [len(cell.channels) for cell in net.cells]
+
+        """
         yield from self._iter_submodules("cell")
 
     @property
-    def branches(self):
+    def branches(self) -> Iterator[View]:
         """Iterate over all branches in the module.
 
-        Returns a generator that yields a View of each branch."""
+        Returns a generator that yields a View of each branch.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Iterating over the branches of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch1 = jx.Branch([comp] * 2)
+            branch2 = jx.Branch([comp] * 3)
+            cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
+            nodes_per_branch = [len(branch.nodes) for branch in cell.branches]
+
+        """
         yield from self._iter_submodules("branch")
 
     @property
-    def comps(self):
+    def comps(self) -> Iterator[View]:
         """Iterate over all compartments in the module.
         Can be called on any module, i.e. `net.comps`, `cell.comps` or
         `branch.comps`. `__iter__` does not allow for this.
 
-        Returns a generator that yields a View of each compartment."""
+        Returns a generator that yields a View of each compartment.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Iterating over the compartments of a branch:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 2)
+            branch.comp(0).insert(Na())
+            branch.comp(0).insert(K())
+            num_channels_per_comp = [len(comp.channels) for comp in branch.comps]
+
+        Iterating over the compartments of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            cell = jx.Cell([comp], parents=[-1])
+            cell.set_scope("global")
+            num_channels_per_comp = [len(comp.channels) for comp in cell.comps]
+
+        Iterating over the compartments of a network:
+
+        .. code-block:: python
+
+            cell1 = jx.Cell()
+            cell1.insert(Na())
+            cell2 = jx.Cell()
+            cell2.insert(K())
+            cell2.insert(Na())
+            net = jx.Network([cell1, cell1, cell2])
+            net.set_scope("global")
+            num_channels_per_comp = [len(comp.channels) for comp in net.comps]
+
+        Note above that you need to set the network and branch scopes to global
+        in order to get an iterator for all the compartments in the network.
+
+        """
         yield from self._iter_submodules("comp")
 
     def __iter__(self):
@@ -1080,6 +1203,24 @@ class Module(ABC):
             key: The name of the parameter to set.
             val: The value to set the parameter to. If it is `ArrayLike` then it
                 must be of shape `(len(num_compartments))`.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Setting the sodium maximal conductance of a compartment:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            comp.set("Na_gNa", 0.008)
+
+        Setting the parameter of a synapse for all synapses within a network:
+
+        .. code-block:: python
+
+            net.select(edges="all").set("IonotropicSynapse_gS", 5e-4)
+
         """
         if key in [f"axial_diffusion_{ion_name}" for ion_name in self.diffusion_states]:
             assert val > 0, (
@@ -1200,6 +1341,22 @@ class Module(ABC):
             groups.
             - Unless the morphology was read from an SWC file, when the radiuses of the
             compartments are not the same within the branch that is modified.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Changing how many compartments each branch in a cell consists of:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 4)
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.branch(0).set_ncomp(1)
+            cell.branch(1).set_ncomp(2)
+            cell.branch(2).set_ncomp(3)
+            cell.branch(3).set_ncomp(4)
+
         """
         assert len(self.base.externals) == 0, "No stimuli allowed!"
         assert len(self.base.recordings) == 0, "No recordings allowed!"
@@ -1392,6 +1549,18 @@ class Module(ABC):
                 current parameter value is averaged over all shared parameters.
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Making a channel parameter in a compartment trainable:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.make_trainable("radius")
+            parameters = comp.get_parameters()  # -> [{'radius': Array([1.], dtype=float32)}]
+
         """
         if key in ["radius", "length"]:
             # Add an additional warning if the neuron was read from SWC.
@@ -1489,6 +1658,20 @@ class Module(ABC):
 
         Args:
             trainable_params: The trainable parameters returned by `get_parameters()`.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Write new parameters to the model after training:
+
+        .. code-block:: python
+
+            parameters = net.get_parameters()
+            # Assume you have some training function that gives you new parameters
+            new_parameters = train_network(net, parameters)
+            net.write_trainables(new_parameters)
+            print(net.nodes) # outputs nodes of the model with the new parameters
+
         """
         # We do not support views. Why? `jaxedges` does not have any NaN
         # elements, whereas edges does. Because of this, we already need special
@@ -2210,13 +2393,37 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
-    @only_allow_module
+    # Decorator is commented out due to documentation bug (issue #665)
+    # Once bug is fixed, decorator can be added back
+    # @only_allow_module
     def diffuse(self, state: str) -> None:
         """Diffuse a particular state across compartments with Fickian diffusion.
 
         Args:
             state: Name of the state that should be diffused.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Diffuse calicum ions across a cell during training:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+            cell.insert(CaNernstReversal())
+            cell.diffuse("CaCon_i") # Diffuse calcium ions through the cell
+            cell.branch(0).set("CaCon_i", 0.2)
+            cell.branch(1).set("CaCon_i", 0.1)
+            cell.record("CaCon_i")
+            simulated_concentrations = jx.integrate(cell, t_max=5.0)
+
         """
+        assert not isinstance(
+            self, View
+        ), "You can only diffuse ions in the entire module."
+
         self.base.diffusion_states.append(state)
         self.base.nodes.loc[self._nodes_in_view, f"axial_diffusion_{state}"] = 1.0
 
@@ -2918,6 +3125,19 @@ class Module(ABC):
             update_nodes: Whether `.nodes` should be updated or not. Setting this to
                 `False` largely speeds up moving, especially for big networks, but
                 `.nodes` or `.show` will not show the new xyz coordinates.
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Move an entire cell, which moves its branches accordingly:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp])
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.move(20.0, 30.0, 5.0)
+
         """
         for i in self._branches_in_view:
             self.base.xyzr[i][:, :3] += np.array([x, y, z])
@@ -2946,6 +3166,20 @@ class Module(ABC):
             update_nodes: Whether `.nodes` should be updated or not. Setting this to
                 `False` largely speeds up moving, especially for big networks, but
                 `.nodes` or `.show` will not show the new xyz coordinates.
+
+
+        Example usage
+        ^^^^^^^^^^^^^
+
+        Move an entire cell to a specified location.:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp])
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.move_to(20.0, 30.0, 5.0)
+
         """
         # Test if any coordinate values are NaN which would greatly affect moving
         if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
