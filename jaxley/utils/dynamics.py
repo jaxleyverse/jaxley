@@ -36,24 +36,10 @@ def remove_currents_from_states(states, current_keys):
     return states
 
 
-def get_all_states_no_currents(module, pstate):
+def get_all_states_no_currents(module):
     """Get all states from the module, excluding currents"""
     states = module._get_states_from_nodes_and_edges()
-     # Override with the initial states set by `.make_trainable()`.
-    # Now this is only done once at the start of the simulation.
-    for parameter in pstate:
-        key = parameter["key"]
-        inds = parameter["indices"]
-        set_param = parameter["val"]
-        if key in states:  # Only initial states, not parameters.
-            # `inds` is of shape `(num_params, num_comps_per_param)`.
-            # `set_param` is of shape `(num_params,)`
-            # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
-            # `.set()` to work. This is done with `[:, None]`.
-            states[key] = states[key].at[inds].set(set_param[:, None])
-
     return states
-
 
 
 def build_step_dynamics_fn(
@@ -64,15 +50,12 @@ def build_step_dynamics_fn(
     solver: str = "bwd_euler",
     delta_t: float = 0.025,
 ) -> Tuple[Callable, Callable]:
-    """Return ``init_fn`` and ``step_fn`` which initialize modules and run update steps.
+    """Initialises and returns ``step_dynamics_fn`` which runs update steps.
 
-    This method can be used to gain additional control over the simulation workflow.
-    It exposes the ``step`` function, which can be used to perform step-by-step updates
-    of the differential equations.
-
-    Crucially this function returns a vectorized state representation containting
-    only true dynamical states (e.g. voltages and gating variables), and no observables
-    (e.g. currents).
+    Thi can be used used to perform step-by-step updates where states are vector
+    representations of the full state pytree of the module, and only contain
+    true dynamical states (e.g. voltages and gating variables), and no observables
+    (e.g. currents). This is useful for e.g. computing Jacobians and Kalman filters.
 
     Args:
         module: A `Module` object that e.g. a cell.
@@ -95,13 +78,26 @@ def build_step_dynamics_fn(
     # Get the full parameter state including observables
     # ----------------------------------------------------------
     pstate = params_to_pstate(params, module.indices_set_by_trainables)
-    #print(pstate)
+
     if param_state is not None:
         pstate += param_state
-    #print(pstate)
+
     all_params = module.get_all_parameters(pstate)
-    all_states = get_all_states_no_currents(module, pstate)
+    all_states = get_all_states_no_currents(module)
     
+    # Override with the initial states set by `.make_trainable()`.
+    # If we don't do this, there are no gradients to trainable initial states.
+    for parameter in pstate:
+        key = parameter["key"]
+        inds = parameter["indices"]
+        set_param = parameter["val"]
+        if key in all_states:  # Only initial states, not parameters.
+            # `inds` is of shape `(num_params, num_comps_per_param)`.
+            # `set_param` is of shape `(num_params,)`
+            # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
+            # `.set()` to work. This is done with `[:, None]`.
+            all_states[key] = all_states[key].at[inds].set(set_param[:, None])
+
     base_keys = list(all_states.keys())
     all_states = add_currents_to_states(module, all_states, delta_t, all_params)
     added_keys = [k for k in all_states.keys() if k not in base_keys]
@@ -185,7 +181,7 @@ def build_step_dynamics_fn(
 
     def step_dynamics_fn(
         states_vec: Array,
-        params: list[dict[str, Array]],
+        params: list[dict[str, Array]] | None = None,
         param_state: dict[str, Array] | None = None,
         externals: dict[str, Array] | None = None,
         external_inds: dict[str, Array] = external_inds,
