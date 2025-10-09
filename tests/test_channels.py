@@ -403,6 +403,12 @@ def test_delete_channel(SimpleBranch):
     branch3.insert(K())
     branch3.delete(K())
 
+    branch4 = SimpleBranch(ncomp=3)
+    branch4.insert(CaL())
+    branch4.insert(CaT())
+    branch4.delete(CaL())
+    branch4.delete(CaT())
+
     def channel_present(view, channel, partial=False):
         states_and_params = list(channel.channel_states.keys()) + list(
             channel.channel_params.keys()
@@ -447,6 +453,22 @@ def test_delete_channel(SimpleBranch):
     branch4.comp(2).delete(Leak())
     # assert no more Leak
     assert not channel_present(branch4, Leak())
+
+
+def test_no_removal_of_shared_params():
+    """If a param is present in a different channel, then it should not be removed."""
+    na1 = Na("Na1")
+    na1.channel_params["shared_gNa"] = na1.channel_params.pop("Na1_gNa")
+    na2 = Na("Na2")
+    na2.channel_params["shared_gNa"] = na2.channel_params.pop("Na2_gNa")
+
+    cell = jx.Cell()
+    cell.insert(na1)
+    cell.insert(na2)
+    cell.delete(na1)
+
+    # This fails if `shared_gNa` is no longer a column of `.nodes`.
+    _ = cell.nodes["shared_gNa"]
 
 
 @pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
