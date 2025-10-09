@@ -844,8 +844,6 @@ class Module(ABC):
 
         Note above that you need to set the network and branch scopes to global 
         in order to get an iterator for all the compartments in the network. 
-        You could also use, for example, net.cells in the network to get an
-        iterator for the compartments without setting the scope to global.
 
         """
         yield from self._iter_submodules("comp")
@@ -2411,12 +2409,9 @@ class Module(ABC):
 
         .. code-block:: python
 
-            current = jx.step_current(0.5, 3.0, 0.1, 0.025, 5.0)
             comp = jx.Compartment()
             branch = jx.Branch(comp, ncomp=2)
             cell = jx.Cell(branch, parents=[-1, 0])
-            cell.branch(0).comp(0).stimulate(current)
-            cell.insert(HH())
             cell.insert(CaNernstReversal())
             cell.diffuse("CaCon_i") # Diffuse calcium ions through the cell
             cell.branch(0).set("CaCon_i", 0.2)
