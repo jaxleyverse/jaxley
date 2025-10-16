@@ -124,11 +124,11 @@ def build_init_and_step_fn(
             pstate += param_state
 
         all_params = module.get_all_parameters(pstate)
-        all_states = (
-            module.get_all_states(pstate, all_params, delta_t)
-            if all_states is None
-            else all_states
-        )
+        if all_states is None:
+            all_states = module.get_all_states(pstate)
+            all_states = module.append_channel_currents_to_states(
+                all_states, all_params, delta_t
+            )
         return all_states, all_params
 
     def step_fn(

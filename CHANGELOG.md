@@ -1,5 +1,14 @@
 # 0.11.6 (pre-release)
 
+### 🛠️ Internal updates
+
+-  separate getting the currents from `get_all_states()` (#727, @michaeldeistler). To
+restore the previous behaviour, do:
+```python
+states = cell.get_all_states(pstate)
+states = cell.append_channel_currents_to_states(states, all_params, delta_t)
+```
+
 ### 🐛 Bug fixes
 
 - bugfix for `cell.vis(..., type="morph")` (#725, @michaeldeistler, thanks to
