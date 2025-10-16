@@ -19,22 +19,51 @@ import pytest
 from jax import jit, value_and_grad
 
 
-@pytest.mark.parametrize(
-    "branchpoint",
-    [True, False],
-)
-def test_dynamics_step_fn(branchpoint):
-
-    # Build a simple cell
-    ncomp_per_branch = 8
+@pytest.fixture()
+def hh_cell():
+    """Fixture to build a simple HH+Leak cell"""
     comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp_per_branch)
-    if branchpoint:
-        cell = jx.Cell(branch, parents=[-1, 0, 0])
-    else:
-        cell = jx.Cell(branch, parents=[-1])
+    branch = jx.Branch(comp, 3)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
     cell.insert(HH())
     cell.insert(Leak())
+    cell.to_jax()
+    return cell
+
+
+def test_cycle_consistency(hh_cell):
+    """Ensure that ravel/unravel of state vectors is consistent"""
+    cell = hh_cell
+    params = []
+
+    states_vec, _, unravel_fn, ravel_fn = build_step_dynamics_fn(
+        cell, solver="bwd_euler", delta_t=0.025, params=params
+    )
+
+    restored = unravel_fn(states_vec)
+    reraveled = ravel_fn(restored)
+
+    assert np.allclose(reraveled, states_vec)
+
+def test_jit(hh_cell):
+    """Verify that the JIT-compiled step function runs without errors"""
+    cell = hh_cell
+    params = []
+    states_vec, step_fn, _, _ = build_step_dynamics_fn(
+        cell, solver="bwd_euler", delta_t=0.025, params=params
+    )
+
+    @jit
+    def step_once(states_vec):
+        return step_fn(states_vec, params, externals={}, external_inds={}, delta_t=0.025)
+
+    result = step_once(states_vec)
+    assert result.shape == states_vec.shape
+
+
+def test_jit_and_grad(hh_cell):
+    """Test jitting the dynamics step function and gradients"""
+    cell = hh_cell
 
     # make some parameters trainable
     cell.make_trainable("Leak_gLeak")
@@ -50,28 +79,7 @@ def test_dynamics_step_fn(branchpoint):
     opt_params = transform.inverse(params)
     params = transform.forward(opt_params)
     cell.to_jax()
-
-    # get the step_dynamics_fn
-    states_vec, step_dynamics_fn, unravel_restore_fn, ravel_filter_fn = (
-        build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025, params=params)
-    )
-
-    # assert if branchpoint, the number of states is larger
-    if branchpoint:
-        assert len(unravel_restore_fn(states_vec)["v"]) == 25
-        assert len(unravel_restore_fn(states_vec)["i_HH"]) == 25
-    else:
-        assert len(unravel_restore_fn(states_vec)["v"]) == 8
-        assert len(unravel_restore_fn(states_vec)["i_HH"]) == 8
-
-    # assert cycle consistency
-    assert np.all(
-        ravel_filter_fn(unravel_restore_fn(states_vec)) == states_vec
-    )  # check if ravel and unravel are consistent
-
-    # Test jit and training
-    # ----------------------------------------------
-
+    
     # add some inputs
     externals = cell.externals.copy()
     external_inds = cell.external_inds.copy()
@@ -137,3 +145,33 @@ def test_dynamics_step_fn(branchpoint):
 
     assert np.all(abs(gradient[0]["Leak_gLeak"]) > 0)
     assert np.all(abs(gradient[1]["v"]) > 0)
+
+
+
+
+@pytest.mark.parametrize("branchpoint", [True, False], ids=["branchpoint", "no_branchpoint"])
+
+def test_build_step_dynamics_fn_branchpoints(branchpoint):
+    """Check state vector length changes with/without branchpoints"""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, 8)
+    parents = [-1, 0, 0] if branchpoint else [-1]
+    cell = jx.Cell(branch, parents=parents)
+    cell.insert(HH())
+    cell.insert(Leak())
+    cell.to_jax()    
+    params = []
+
+    states_vec, step_dynamics_fn, unravel_fn, _ = build_step_dynamics_fn(
+        cell, solver="bwd_euler", delta_t=0.025, params=params
+    )
+
+    v_len = len(unravel_fn(states_vec)["v"])
+    i_hh_len = len(unravel_fn(states_vec)["i_HH"])
+
+    if branchpoint:
+        assert v_len == 25 #should be n_branches * ncomp_per_branch + 1
+        assert i_hh_len == 25
+    else:
+        assert v_len == 8
+        assert i_hh_len == 8
