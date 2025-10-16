@@ -1,0 +1,139 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
+import jax
+
+import jaxley as jx
+import jaxley.optimize.transforms as jt
+from jaxley.channels import Leak
+from jaxley.channels.hh import HH
+from jaxley.integrate import add_stimuli
+from jaxley.utils.dynamics import build_step_dynamics_fn
+
+jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_platform_name", "cpu")
+import jax.numpy as jnp
+import numpy as np
+import optax
+import pytest
+from jax import jit, value_and_grad
+
+
+@pytest.mark.parametrize(
+    "branchpoint",
+    [True, False],
+)
+def test_dynamics_step_fn(branchpoint):
+
+    # Build a simple cell
+    ncomp_per_branch = 8
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp_per_branch)
+    if branchpoint:
+        cell = jx.Cell(branch, parents=[-1, 0, 0])
+    else:
+        cell = jx.Cell(branch, parents=[-1])
+    cell.insert(HH())
+    cell.insert(Leak())
+
+    # make some parameters trainable
+    cell.make_trainable("Leak_gLeak")
+    cell.make_trainable("v")
+    params = cell.get_parameters()
+    # Define parameter transform and apply it to the parameters.
+    transform = jx.ParamTransform(
+        [
+            {"Leak_gLeak": jt.SigmoidTransform(0.00001, 0.0002)},
+            {"v": jt.SigmoidTransform(-100, -30)},
+        ]
+    )
+    opt_params = transform.inverse(params)
+    params = transform.forward(opt_params)
+    cell.to_jax()
+
+    # get the step_dynamics_fn
+    states_vec, step_dynamics_fn, unravel_restore_fn, ravel_filter_fn = (
+        build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025, params=params)
+    )
+
+    # assert if branchpoint, the number of states is larger
+    if branchpoint:
+        assert len(unravel_restore_fn(states_vec)["v"]) == 25
+        assert len(unravel_restore_fn(states_vec)["i_HH"]) == 25
+    else:
+        assert len(unravel_restore_fn(states_vec)["v"]) == 8
+        assert len(unravel_restore_fn(states_vec)["i_HH"]) == 8
+
+    # assert cycle consistency
+    assert np.all(
+        ravel_filter_fn(unravel_restore_fn(states_vec)) == states_vec
+    )  # check if ravel and unravel are consistent
+
+    # Test jit and training
+    # ----------------------------------------------
+
+    # add some inputs
+    externals = cell.externals.copy()
+    external_inds = cell.external_inds.copy()
+    current = jx.step_current(
+        i_delay=1.0, i_dur=2.0, i_amp=0.08, delta_t=0.025, t_max=0.075
+    )
+    data_stimuli = None
+    data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
+    externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
+
+    def get_externals_now(externals, step):
+        externals_now = {}
+        for key in externals.keys():
+            externals_now[key] = externals[key][:, step]
+        return externals_now
+
+    target_voltage = -50.0
+    state_idx = -30
+
+    # Define the optimizer
+    optimizer = optax.adam(learning_rate=0.01)
+    opt_state = optimizer.init(opt_params)
+
+    def loss(opt_params):
+        params = transform.forward(opt_params)
+
+        # initialise and build the step function
+        states_vec, step_dynamics_fn, _, _ = build_step_dynamics_fn(
+            cell, solver="bwd_euler", delta_t=0.025, params=params
+        )
+
+        # JIT the step function for speed
+        @jit
+        def step_fn_vec_to_vec(states_vec, externals_now, params=None):
+            states_vec = step_dynamics_fn(
+                states_vec,
+                params,
+                externals=externals_now,
+                external_inds=external_inds,
+                delta_t=0.025,
+            )
+            return states_vec
+
+        states_vecs = [states_vec]
+
+        # Simulate the model
+        for step in range(3):
+            # Get inputs at this time step
+            externals_now = get_externals_now(externals, step)
+            # Step the ODE
+            states_vec = step_fn_vec_to_vec(states_vec, externals_now, params)
+            # Store the state
+            states_vecs.append(states_vec)
+        # Compute the loss at the last time step
+        loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
+        return loss
+
+    # Compute the gradient of the loss with respect to the parameters
+    grad_loss = value_and_grad(loss, argnums=0)
+    value, gradient = grad_loss(opt_params)
+
+    updates, opt_state = optimizer.update(gradient, opt_state)
+
+    assert np.all(abs(gradient[0]["Leak_gLeak"]) > 0)
+    assert np.all(abs(gradient[1]["v"]) > 0)
