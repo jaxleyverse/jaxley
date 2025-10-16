@@ -45,6 +45,7 @@ def test_cycle_consistency(hh_cell):
 
     assert np.allclose(reraveled, states_vec)
 
+
 def test_jit(hh_cell):
     """Verify that the JIT-compiled step function runs without errors"""
     cell = hh_cell
@@ -55,7 +56,9 @@ def test_jit(hh_cell):
 
     @jit
     def step_once(states_vec):
-        return step_fn(states_vec, params, externals={}, external_inds={}, delta_t=0.025)
+        return step_fn(
+            states_vec, params, externals={}, external_inds={}, delta_t=0.025
+        )
 
     result = step_once(states_vec)
     assert result.shape == states_vec.shape
@@ -79,7 +82,7 @@ def test_jit_and_grad(hh_cell):
     opt_params = transform.inverse(params)
     params = transform.forward(opt_params)
     cell.to_jax()
-    
+
     # add some inputs
     externals = cell.externals.copy()
     external_inds = cell.external_inds.copy()
@@ -147,10 +150,9 @@ def test_jit_and_grad(hh_cell):
     assert np.all(abs(gradient[1]["v"]) > 0)
 
 
-
-
-@pytest.mark.parametrize("branchpoint", [True, False], ids=["branchpoint", "no_branchpoint"])
-
+@pytest.mark.parametrize(
+    "branchpoint", [True, False], ids=["branchpoint", "no_branchpoint"]
+)
 def test_build_step_dynamics_fn_branchpoints(branchpoint):
     """Check state vector length changes with/without branchpoints"""
     comp = jx.Compartment()
@@ -159,7 +161,7 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
     cell = jx.Cell(branch, parents=parents)
     cell.insert(HH())
     cell.insert(Leak())
-    cell.to_jax()    
+    cell.to_jax()
     params = []
 
     states_vec, step_dynamics_fn, unravel_fn, _ = build_step_dynamics_fn(
@@ -170,7 +172,7 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
     i_hh_len = len(unravel_fn(states_vec)["i_HH"])
 
     if branchpoint:
-        assert v_len == 25 #should be n_branches * ncomp_per_branch + 1
+        assert v_len == 25  # should be n_branches * ncomp_per_branch + 1
         assert i_hh_len == 25
     else:
         assert v_len == 8
