@@ -583,6 +583,13 @@ def build_compartment_graph(
     """
     G = _add_missing_swc_attrs(swc_graph)
 
+    # # determine consistent traversal direction along graph
+    # root = next(n for n in G.nodes if G.degree(n) == 1) if root is None else root
+    # for e in nx.dfs_edges(G.to_undirected(), root):
+    #     if e not in G.edges:
+    #         G.add_edge(*e, **G.edges[e[::-1]])
+    #         G.remove_edge(*e[::-1])
+
     branches = list_branches(
         G,
         source=root,
@@ -620,7 +627,7 @@ def build_compartment_graph(
     comps, comp_edges, xyzr = [], [], []
     for branch_idx, branch in enumerate(branches):
         # ensure node_index increases monotonically along branch. Required for branch.loc()
-        branch = branch[::-1] if branch[0] < branch[-1] else branch
+        # branch = branch[::-1] if branch[0] < branch[-1] else branch
 
         branch_nodes = nodes_df.loc[branch]
 
@@ -703,6 +710,7 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     nodes_df = nodes_df.rename(jaxley_keys, axis=1)
 
     # new columns
+    # TODO: add only if attribute does not exist already
     is_comp = nodes_df["is_comp"]
     nodes_df.loc[is_comp, "capacitance"] = 1.0
     nodes_df.loc[is_comp, "v"] = -70.0

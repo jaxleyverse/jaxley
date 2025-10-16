@@ -73,7 +73,7 @@ def compute_cone_props(ls, rs, l_start=None, l_end=None):
     rs = np.insert(rs, i1_i2, r1_r2)
 
     # Select segment within bounds
-    mask = (ls >= l1) & (ls <= l2)
+    mask = (l1 <= ls) & (ls <= l2)
     l_seg = ls[mask]
     r_seg = rs[mask]
 
