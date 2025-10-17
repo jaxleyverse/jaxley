@@ -1695,7 +1695,10 @@ class Module(ABC):
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
         # trainable and so its value never gets used below.
-        all_states = self.base.get_all_states(pstate, all_params, delta_t=0.025)
+        all_states = self.base.get_all_states(pstate)
+        all_states = self.base.append_channel_currents_to_states(
+            all_states, all_params, delta_t=0.025
+        )
 
         # Loop only over the keys in `pstate` to avoid unnecessary computation.
         for parameter in pstate:
@@ -1926,19 +1929,19 @@ class Module(ABC):
         return states
 
     @only_allow_module
-    def get_all_states(
-        self, pstate: list[dict], all_params, delta_t: float
-    ) -> dict[str, Array]:
+    def get_all_states(self, pstate: list[dict]) -> dict[str, Array]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Get the full initial state of the module from jaxnodes and trainables.
 
+        Note that the returned states do _not_ yet contain the currents.
+        These can be appended to the states by running
+        `module.append_channel_currents_to_states`.
+
         Args:
             pstate: The state of the trainable parameters.
-            all_params: All parameters of the module.
-            delta_t: The time step.
 
         Returns:
-            A dictionary of all states of the module.
+            A dictionary of all states of the module (without currents).
         """
         states = self.base._get_states_from_nodes_and_edges()
 
@@ -1953,7 +1956,27 @@ class Module(ABC):
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
                 # `.set()` to work. This is done with `[:, None]`.
                 states[key] = states[key].at[inds].set(set_param[:, None])
+        return states
 
+    @only_allow_module
+    def append_channel_currents_to_states(
+        self, states, all_params, delta_t: float
+    ) -> dict[str, Array]:
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
+        """Return states that have additional entries for the currents.
+
+        In order to allow recording channel currents, Jaxley internally treats
+        membrane and synaptic currents as states. This function appends these
+        currents to the `states` dictionary returned by `get_all_states()`.
+
+        Args:
+            states: A dictionary which contains compartment states (but no currents).
+            all_params: All parameters of the module.
+            delta_t: The time step.
+
+        Returns:
+            A dictionary of all states of the module, including currents.
+        """
         # Add to the states the initial current through every channel.
         states, _ = self.base._channel_currents(
             states, delta_t, self.channels + self.pumps, self.nodes, all_params
