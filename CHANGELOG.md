@@ -35,6 +35,9 @@ for reporting)
 - update tutorial on building channel and synapse models: now includes pitfalls and
 recommendations (#723, @michaeldeistler)
 
+### 🧩 New features
+
+- add step function that allows stepping through a simulation with a vector-valued state function (#719 @matthijspals)
 
 # 0.11.4
 
