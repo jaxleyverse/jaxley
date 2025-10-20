@@ -12,25 +12,6 @@ from jaxley.modules import Module
 from jaxley.utils.cell_utils import params_to_pstate
 
 
-def add_currents_to_states(module, states, delta_t, all_params):
-    """Add the currents through channels and synapses to the states."""
-
-    # Add to the states the initial current through every channel.
-    states, _ = module.base._channel_currents(
-        states, delta_t, module.channels + module.pumps, module.nodes, all_params
-    )
-
-    # Add to the states the initial current through every synapse.
-    states, _ = module.base._synapse_currents(
-        states,
-        module.synapses,
-        all_params,
-        delta_t,
-        module.edges,
-    )
-    return states
-
-
 def get_all_params_param_state(module, params, param_state):
     """Convenience functions to combine params and param_state to get all_params."""
     pstate = params_to_pstate(params, module.indices_set_by_trainables)
@@ -44,12 +25,6 @@ def remove_currents_from_states(states, current_keys):
     """Remove the currents through channels and synapses from the states."""
     for key in current_keys:
         del states[key]
-    return states
-
-
-def get_all_states_no_currents(module):
-    """Get all states from the module, excluding currents"""
-    states = module._get_states_from_nodes_and_edges()
     return states
 
 
@@ -90,23 +65,14 @@ def build_step_dynamics_fn(
     # ----------------------------------------------------------
     all_params, pstate = get_all_params_param_state(module, params, param_state)
 
-    all_states = get_all_states_no_currents(module)
-
-    # Override with the initial states set by `.make_trainable()`.
-    # If we don't do this, there are no gradients to trainable initial states.
-    for parameter in pstate:
-        key = parameter["key"]
-        inds = parameter["indices"]
-        set_param = parameter["val"]
-        if key in all_states:  # Only initial states, not parameters.
-            # `inds` is of shape `(num_params, num_comps_per_param)`.
-            # `set_param` is of shape `(num_params,)`
-            # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
-            # `.set()` to work. This is done with `[:, None]`.
-            all_states[key] = all_states[key].at[inds].set(set_param[:, None])
+    all_states = module.get_all_states(pstate)
 
     base_keys = list(all_states.keys())
-    all_states = add_currents_to_states(module, all_states, delta_t, all_params)
+
+    all_states = module.append_channel_currents_to_states(
+        all_states, all_params, delta_t=delta_t
+    )
+
     added_keys = [k for k in all_states.keys() if k not in base_keys]
 
     # Remove observables from states
@@ -181,8 +147,8 @@ def build_step_dynamics_fn(
         else:
             restored_states = all_states_with_nans
 
-        restored_states = add_currents_to_states(
-            module, restored_states, delta_t, all_params
+        restored_states = module.append_channel_currents_to_states(
+            restored_states, all_params, delta_t=delta_t
         )
         return restored_states
 
