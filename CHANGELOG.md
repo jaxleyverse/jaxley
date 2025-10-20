@@ -14,27 +14,6 @@ states = cell.append_channel_currents_to_states(states, all_params, delta_t)
 - bugfix for `cell.vis(..., type="morph")` (#725, @michaeldeistler, thanks to
 Elisabeth Galyo for reporting)
 
-### 📚 Documentation
-
-- Added example usage to many user-facing Module functions (#716, @alexpejovic)
-
-
-# 0.11.5
-
-### 🐛 Bug fixes
-
-- bugfix for `.delete()` when multiple channels have the same `current_name` or a
-shared parameter/state (#713, @michaeldeistler)
-- safe softplus, use linear function above certain threshold. This avoids an unwanted
-clipping  operation due to the save_exp (#714 @matthijspals)
-
-### 📚 Documentation
-
-- typo fixes for several tutorial notebooks (#721, @michaeldeistler, thanks @martricks
-for reporting)
-- update tutorial on building channel and synapse models: now includes pitfalls and
-recommendations (#723, @michaeldeistler)
-
 ### 🧩 New features
 
 - add step function that allows stepping through a simulation with a vector-valued state function (#719 @matthijspals)
