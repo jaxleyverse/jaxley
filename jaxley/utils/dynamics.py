@@ -112,14 +112,14 @@ def build_step_dynamics_fn(
     all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
 
     # flatten to a vector
-    states_vec, unravel_fn = ravel_pytree(all_states_no_nans)
+    states_vec, states_to_pytree = ravel_pytree(all_states_no_nans)
 
     # Now we can create functions that convert between the full state pytree
     # and the filtered state vector
     # ----------------------------------------------------------
 
     # ravel from pytree (post-step) to vector
-    def ravel_filter_fn(states):
+    def full_pytree_to_states(states):
         filtered_states = remove_currents_from_states(states, added_keys)
         filtered_states = tree_map(
             lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
@@ -129,8 +129,8 @@ def build_step_dynamics_fn(
         return filtered_states_vec
 
     # unravel from vector to full restored state pytree
-    def unravel_restore_fn(states_vec):
-        all_states_no_nans = unravel_fn(states_vec)
+    def states_to_full_pytree(states_vec):
+        all_states_no_nans = states_to_pytree(states_vec)
 
         def restore_leaf(filtered_array, nan_indices_leaf):
             restored_array = jnp.full(filtered_length, jnp.nan)
@@ -156,7 +156,7 @@ def build_step_dynamics_fn(
         )
         return restored_states
 
-    def step_dynamics_fn(
+    def step_dynamics(
         states_vec: Array,
         params: list[dict[str, Array]] | None = None,
         param_state: dict[str, Array] | None = None,
@@ -183,7 +183,7 @@ def build_step_dynamics_fn(
             params = {}
 
         # restore full state pytree from vector
-        state = unravel_restore_fn(states_vec)
+        state = states_to_full_pytree(states_vec)
 
         # add params to all_params
         all_params, _ = get_all_params_param_state(module, params, param_state)
@@ -200,7 +200,13 @@ def build_step_dynamics_fn(
         )
 
         # convert back to vector and filter out observables
-        states_vec = ravel_filter_fn(state)
+        states_vec = full_pytree_to_states(state)
         return states_vec
 
-    return states_vec, step_dynamics_fn, unravel_fn, unravel_restore_fn, ravel_filter_fn
+    return (
+        states_vec,
+        step_dynamics,
+        states_to_pytree,
+        states_to_full_pytree,
+        full_pytree_to_states,
+    )
