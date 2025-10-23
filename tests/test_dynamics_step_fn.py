@@ -241,7 +241,7 @@ def test_jit_and_grad_pstate(hh_cell):
     cell = hh_cell
 
     params = None  # no trainable params as we are going to use pstate
-    pstate_values = jnp.array([-60, 0.0001])
+    pstate_values = jnp.array([-60, 0.0001]) # initial v and Leak_gLeak
 
     cell.to_jax()
 
@@ -271,8 +271,8 @@ def test_jit_and_grad_pstate(hh_cell):
     def loss(pstate_values):
 
         # initialise and build the step function
-        pstate = cell.data_set("Leak_gLeak", pstate_values[0], None)
-        pstate = cell.data_set("v", pstate_values[1], pstate)
+        pstate = cell.data_set("Leak_gLeak", pstate_values[1], None)
+        pstate = cell.data_set("v", pstate_values[0], pstate)
         (
             states_vec,
             step_dynamics_fn,
@@ -289,7 +289,7 @@ def test_jit_and_grad_pstate(hh_cell):
             states_vec, externals_now, params=None, pstate=pstate_values
         ):
             pstate = cell.data_set(
-                "Leak_gLeak", pstate_values[0], None
+                "Leak_gLeak", pstate_values[1], None
             )  # only update leak_gLeak
             states_vec = step_dynamics_fn(
                 states_vec,
