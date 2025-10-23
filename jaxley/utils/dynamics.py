@@ -61,23 +61,30 @@ def build_step_dynamics_fn(
 
     Example usage
     ^^^^^^^^^^^^^
-    # We can build a step dynamics function for a simple cell as follows. 
+    We can build a step dynamics function for a simple cell as follows. 
+    
     ::
-        # Build a simple cell
+        from jaxley.utils.dynamics import build_step_dynamics_fn
+        import jaxley as jx
+        from jaxley.channels import Leak
+        from jax import jacfwd
+
+        # build a simple cell
         comp = jx.Compartment()
         branch = jx.Branch(comp, 8)
         cell = jx.Cell(branch, parents=[-1, 0, 0])
         cell.insert(Leak())
+        cell.to_jax()
 
-        # states_vec, step_dynamics_fn, states_to_pytree, states_to_full_pytree, full_pytree_to_states = build_step_dynamics_fn(
+        # obtain the step function
+        states_vec, step_dynamics_fn, states_to_pytree, states_to_full_pytree, full_pytree_to_states = build_step_dynamics_fn(
                 cell, solver="bwd_euler", delta_t=0.025
             )
 
         # we can now step through the dynamics
         states_vec_next = step_dynamics_fn(states_vec)
 
-        # we can use this function to conveniently calculate jacobians
-        from jax import jacfwd
+        # we can use this function to conveniently calculate Jacobians
         jacobian = jacfwd(step_dynamics_fn)(states_vec)
 
         # we can convert the state vector back to a pytree
@@ -91,21 +98,21 @@ def build_step_dynamics_fn(
 
         
     
-    We can also add inputs, jit, and compute gradients w.r.t. parameters
+    We can also add inputs, jit, and compute gradients w.r.t. parameters of the above cell.
 
     ::
 
-        # Build a simple cell
-        comp = jx.Compartment()
-        branch = jx.Branch(comp, 8)
-        cell = jx.Cell(branch, parents=[-1, 0, 0])
-        cell.insert(HH())
-        cell.insert(Leak())
+        import jax.numpy as jnp
+        from jax import jit, value_and_grad
+        import optax
+        from jaxley.integrate import add_stimuli
+        import jaxley.optimize.transforms as jt
 
         # make some parameters trainable
         cell.make_trainable("Leak_gLeak")
         cell.make_trainable("v")
         params = cell.get_parameters()
+
         # Define parameter transform and apply it to the parameters.
         transform = jx.ParamTransform(
             [
@@ -127,13 +134,15 @@ def build_step_dynamics_fn(
         data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
         externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
 
+        # convenience function to get inputs at a given time step
         def get_externals_now(externals, step):
             externals_now = {}
             for key in externals.keys():
                 externals_now[key] = externals[key][:, step]
             return externals_now
 
-        target_voltage = -60.0
+        # set arbitrary optimisation target voltage for a given compartment
+        target_voltage = -55.0
         state_idx = -30
 
         # Define the optimizer
@@ -178,6 +187,7 @@ def build_step_dynamics_fn(
         grad_loss = value_and_grad(loss, argnums=0)
         value, gradient = grad_loss(opt_params)
 
+        # update parameters
         updates, opt_state = optimizer.update(gradient, opt_state)
     """
 
@@ -187,7 +197,7 @@ def build_step_dynamics_fn(
     # Get the full parameter state including observables
     # ----------------------------------------------------------
     if params is None:
-        params = {}
+        params = []
 
     all_params, pstate = get_all_params_param_state(module, params, param_state)
 
@@ -302,7 +312,7 @@ def build_step_dynamics_fn(
             externals = {}
 
         if params is None:
-            params = {}
+            params = []
 
         # restore full state pytree from vector
         state = states_to_full_pytree(states_vec)
