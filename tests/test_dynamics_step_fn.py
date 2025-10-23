@@ -36,12 +36,12 @@ def test_cycle_consistency(hh_cell):
     cell = hh_cell
     params = []
 
-    states_vec, _, _, unravel_fn, ravel_fn = build_step_dynamics_fn(
-        cell, solver="bwd_euler", delta_t=0.025, params=params
+    states_vec, _, _, states_to_full_pytree, full_pytree_to_states = (
+        build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025, params=params)
     )
 
-    restored = unravel_fn(states_vec)
-    reraveled = ravel_fn(restored)
+    restored = states_to_full_pytree(states_vec)
+    reraveled = full_pytree_to_states(restored)
 
     assert np.allclose(reraveled, states_vec)
 
@@ -50,13 +50,13 @@ def test_jit(hh_cell):
     """Verify that the JIT-compiled step function runs without errors"""
     cell = hh_cell
     params = []
-    states_vec, step_fn, _, _, _ = build_step_dynamics_fn(
+    states_vec, step_dynamics, _, _, _ = build_step_dynamics_fn(
         cell, solver="bwd_euler", delta_t=0.025, params=params
     )
 
     @jit
     def step_once(states_vec):
-        return step_fn(
+        return step_dynamics(
             states_vec, params, externals={}, external_inds={}, delta_t=0.025
         )
 
@@ -110,14 +110,14 @@ def test_jit_and_grad(hh_cell):
         params = transform.forward(opt_params)
 
         # initialise and build the step function
-        states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
+        states_vec, step_dynamics, _, _, _ = build_step_dynamics_fn(
             cell, solver="bwd_euler", delta_t=0.025, params=params
         )
 
         # JIT the step function for speed
         @jit
         def step_fn_vec_to_vec(states_vec, externals_now, params=None):
-            states_vec = step_dynamics_fn(
+            states_vec = step_dynamics(
                 states_vec,
                 params,
                 externals=externals_now,
@@ -196,14 +196,14 @@ def test_jit_and_grad_pstate(hh_cell):
         params = transform.forward(opt_params)
 
         # initialise and build the step function
-        states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
+        states_vec, step_dynamics, _, _, _ = build_step_dynamics_fn(
             cell, solver="bwd_euler", delta_t=0.025, params=params
         )
 
         # JIT the step function for speed
         @jit
         def step_fn_vec_to_vec(states_vec, externals_now, params=None):
-            states_vec = step_dynamics_fn(
+            states_vec = step_dynamics(
                 states_vec,
                 params,
                 externals=externals_now,
@@ -250,16 +250,19 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
     cell.to_jax()
     params = []
 
-    states_vec, _, _, unravel_fn, _ = build_step_dynamics_fn(
+    states_vec, _, states_to_pytree, states_to_full_pytree, _ = build_step_dynamics_fn(
         cell, solver="bwd_euler", delta_t=0.025, params=params
     )
 
-    v_len = len(unravel_fn(states_vec)["v"])
-    i_hh_len = len(unravel_fn(states_vec)["i_HH"])
+    v_len_full = len(states_to_full_pytree(states_vec)["v"])
+    v_len = len(states_to_pytree(states_vec)["v"])
+    i_hh_len = len(states_to_full_pytree(states_vec)["i_HH"])
 
     if branchpoint:
-        assert v_len == 25  # should be n_branches * ncomp_per_branch + 1
+        assert v_len == 24
+        assert v_len_full == 25  # should be n_branches * ncomp_per_branch + 1
         assert i_hh_len == 25
     else:
         assert v_len == 8
+        assert v_len_full == 8
         assert i_hh_len == 8
