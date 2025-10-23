@@ -35,10 +35,11 @@ def build_step_dynamics_fn(
     voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
     delta_t: float = 0.025,
-) -> Tuple[Callable, Callable]:
-    """Initialises and returns ``step_dynamics_fn`` which runs update steps.
+) -> Tuple[Array, Callable, Callable, Callable, Callable]:
+    """Initialises and returns ``step_dynamics`` which takes a vector-valued state 
+    and returns the state vector at the next time step.
 
-    Thi can be used used to perform step-by-step updates where states are vector
+    This can be used used to perform step-by-step updates where states are vector
     representations of the full state pytree of the module, and only contain
     true dynamical states (e.g. voltages and gating variables), and no observables
     (e.g. currents). This is useful for e.g. computing Jacobians and Kalman filters.
@@ -54,9 +55,88 @@ def build_step_dynamics_fn(
     Returns:
         states_vec: Initial state of the neuron model vectorised.
         step_dynamics_fn: Function that performs a single integration step with step size delta_t.
-        unravel_fn: Function to convert the state vector back to a pytree.
-        unravel_restore_fn: Function to convert the state vector back to a pytree and restore observables.
-        ravel_filter_fn: Function to convert the full state pytree to a vector and filter observables.
+        states_to_pytree: Function to convert the state vector back to a pytree.
+        states_to_full_pytree: Function to convert the state vector back to a pytree and restore observables.
+        full_pytree_to_states: Function to convert the full state pytree to a vector and filter observables.
+
+    Example usage
+    ^^^^^^^^^^^^^
+    The following allows you to do A
+
+    ::
+        test
+
+    
+    The following allows you to do B
+
+    ::
+
+        # Build a simple cell
+        ncomp_per_branch = 8
+        comp = jx.Compartment()
+        branch = jx.Branch(comp, ncomp_per_branch)
+        cell = jx.Cell(branch, parents=[-1, 0, 0])
+        cell.insert(HH())
+        cell.insert(Leak())
+
+        cell.to_jax()
+
+        # add some inputs
+        externals = cell.externals.copy()
+        external_inds = cell.external_inds.copy()
+        current = jx.step_current(
+            i_delay=1.0, i_dur=2.0, i_amp=0.08, delta_t=0.025, t_max=0.075
+        )
+        data_stimuli = None
+        data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
+        externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
+
+        def get_externals_now(externals, step):
+            externals_now = {}
+            for key in externals.keys():
+                externals_now[key] = externals[key][:, step]
+            return externals_now
+
+        target_voltage = -60.0
+        state_idx = -30
+
+        # Define the optimizer
+        optimizer = optax.adam(learning_rate=0.01)
+        opt_state = optimizer.init(opt_params)
+
+        def loss(opt_params):
+            params = transform.forward(opt_params)
+
+            # initialise and build the step function
+            states_vec, step_dynamics_fn, _, _ = build_step_dynamics_fn(
+                cell, solver="bwd_euler", delta_t=0.025, params=params
+            )
+
+            # JIT the step function for speed
+            @jit
+            def step_fn_vec_to_vec(states_vec, externals_now, params=None):
+                states_vec = step_dynamics_fn(
+                    states_vec,
+                    params,
+                    externals=externals_now,
+                    external_inds=external_inds,
+                    delta_t=0.025,
+                )
+                return states_vec
+
+            states_vecs = [states_vec]
+
+            # Simulate the model
+            for step in range(3):
+                # Get inputs at this time step
+                externals_now = get_externals_now(externals, step)
+                # Step the ODE
+                states_vec = step_fn_vec_to_vec(states_vec, externals_now, params)
+                # Store the state
+                states_vecs.append(states_vec)
+            # Compute the loss at the last time step
+            loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
+            return loss
     """
 
     # Initialize the external inputs and their indices.
