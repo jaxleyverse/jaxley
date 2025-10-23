@@ -64,36 +64,38 @@ def build_step_dynamics_fn(
     We can build a step dynamics function for a simple cell as follows.
 
     ::
+
+
         from jaxley.utils.dynamics import build_step_dynamics_fn
         import jaxley as jx
         from jaxley.channels import Leak
         from jax import jacfwd
 
-        # build a simple cell
+        # Build a simple cell
         comp = jx.Compartment()
         branch = jx.Branch(comp, 8)
         cell = jx.Cell(branch, parents=[-1, 0, 0])
         cell.insert(Leak())
         cell.to_jax()
 
-        # obtain the step function
+        # Obtain the step function
         states_vec, step_dynamics_fn, states_to_pytree, states_to_full_pytree, full_pytree_to_states = build_step_dynamics_fn(
                 cell, solver="bwd_euler", delta_t=0.025
             )
 
-        # we can now step through the dynamics
+        # We can now step through the dynamics
         states_vec_next = step_dynamics_fn(states_vec)
 
-        # we can use this function to conveniently calculate Jacobians
+        # We can use this function to conveniently calculate Jacobians
         jacobian = jacfwd(step_dynamics_fn)(states_vec)
 
-        # we can convert the state vector back to a pytree
+        # We can convert the state vector back to a pytree
         states_pytree = states_to_pytree(states_vec_next)
 
-        # or to a pytree that includes observables like currents and branchpoints
+        # Or to a pytree that includes observables like currents and branchpoints
         full_states_pytree = states_to_full_pytree(states_vec_next)
 
-        # we can also convert a full pytree back to a state vector
+        # We can also convert the full pytree back to a state vector
         states_vec_restored = full_pytree_to_states(full_states_pytree)
 
 
@@ -108,7 +110,7 @@ def build_step_dynamics_fn(
         from jaxley.integrate import add_stimuli
         import jaxley.optimize.transforms as jt
 
-        # make some parameters trainable
+        # Make some parameters trainable
         cell.make_trainable("Leak_gLeak")
         cell.make_trainable("v")
         params = cell.get_parameters()
@@ -124,7 +126,7 @@ def build_step_dynamics_fn(
         params = transform.forward(opt_params)
         cell.to_jax()
 
-        # add some inputs
+        # Add some inputs
         externals = cell.externals.copy()
         external_inds = cell.external_inds.copy()
         current = jx.step_current(
@@ -134,14 +136,14 @@ def build_step_dynamics_fn(
         data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
         externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
 
-        # convenience function to get inputs at a given time step
+        # Convenience function to get inputs at a given time step
         def get_externals_now(externals, step):
             externals_now = {}
             for key in externals.keys():
                 externals_now[key] = externals[key][:, step]
             return externals_now
 
-        # set arbitrary optimisation target voltage for a given compartment
+        # Set target voltage for a given compartment
         target_voltage = -55.0
         state_idx = -30
 
@@ -152,7 +154,7 @@ def build_step_dynamics_fn(
         def loss(opt_params):
             params = transform.forward(opt_params)
 
-            # initialise and build the step function
+            # Initialise and build the step function
             states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
                 cell, solver="bwd_euler", delta_t=0.025, params=params
             )
@@ -187,7 +189,7 @@ def build_step_dynamics_fn(
         grad_loss = value_and_grad(loss, argnums=0)
         value, gradient = grad_loss(opt_params)
 
-        # update parameters
+        # Update parameters
         updates, opt_state = optimizer.update(gradient, opt_state)
     """
 
@@ -214,10 +216,10 @@ def build_step_dynamics_fn(
     # Remove observables from states
     # ----------------------------------------------------------
 
-    # first remove currents
+    # First remove currents
     all_states = remove_currents_from_states(all_states, added_keys)
 
-    # remove branchpoints if needed
+    # Remove branchpoints if needed
     original_length = len(leaves(all_states)[0])
 
     if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
@@ -232,7 +234,7 @@ def build_step_dynamics_fn(
     all_states = tree_map(lambda x: jnp.take(x, keep_indices, axis=0), all_states)
     filtered_length = len(leaves(all_states)[0])
 
-    # remove NaNs (appear if some states are not defined on all compartments)
+    # Remove NaNs (appear if some states are not defined on all compartments)
     nan_mask_tree = tree_map(jnp.isnan, all_states)
     nan_indices_tree = tree_map(lambda m: jnp.where(~m)[0], nan_mask_tree)
 
@@ -243,14 +245,14 @@ def build_step_dynamics_fn(
 
     all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
 
-    # flatten to a vector
+    # Flatten to a vector
     states_vec, states_to_pytree = ravel_pytree(all_states_no_nans)
 
     # Now we can create functions that convert between the full state pytree
     # and the filtered state vector
     # ----------------------------------------------------------
 
-    # ravel from pytree (post-step) to vector
+    # Ravel from pytree (post-step) to vector
     def full_pytree_to_states(states):
         filtered_states = remove_currents_from_states(states, added_keys)
         filtered_states = tree_map(
@@ -260,7 +262,7 @@ def build_step_dynamics_fn(
         filtered_states_vec, _ = ravel_pytree(filtered_states)
         return filtered_states_vec
 
-    # unravel from vector to full restored state pytree
+    # Unravel from vector to full restored state pytree
     def states_to_full_pytree(states_vec):
         all_states_no_nans = states_to_pytree(states_vec)
 
@@ -314,13 +316,13 @@ def build_step_dynamics_fn(
         if params is None:
             params = []
 
-        # restore full state pytree from vector
+        # Restore full state pytree from vector
         state = states_to_full_pytree(states_vec)
 
-        # add params to all_params
+        # Add params to all_params
         all_params, _ = get_all_params_param_state(module, params, param_state)
 
-        # step the dynamics
+        # Step the dynamics
         state = module.step(
             state,
             delta_t,
@@ -331,7 +333,7 @@ def build_step_dynamics_fn(
             voltage_solver=voltage_solver,
         )
 
-        # convert back to vector and filter out observables
+        # Convert back to vector and filter out observables
         states_vec = full_pytree_to_states(state)
         return states_vec
 
