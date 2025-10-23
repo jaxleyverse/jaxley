@@ -54,9 +54,7 @@ def test_jit(hh_cell):
 
     @jit
     def step_once(states_vec):
-        return step_dynamics(
-            states_vec, externals={}, external_inds={}, delta_t=0.025
-        )
+        return step_dynamics(states_vec, externals={}, external_inds={}, delta_t=0.025)
 
     result = step_once(states_vec)
     assert result.shape == states_vec.shape
@@ -239,7 +237,7 @@ def test_jit_and_grad_pstate(hh_cell):
     cell = hh_cell
 
     params = None  # no trainable params as we are going to use pstate
-    pstate_values = jnp.array([-60, 0.0001]) # initial v and Leak_gLeak
+    pstate_values = jnp.array([-60, 0.0001])  # initial v and Leak_gLeak
 
     cell.to_jax()
 
