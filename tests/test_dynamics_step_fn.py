@@ -34,10 +34,9 @@ def hh_cell():
 def test_cycle_consistency(hh_cell):
     """Ensure that ravel/unravel of state vectors is consistent"""
     cell = hh_cell
-    params = []
 
     states_vec, _, _, states_to_full_pytree, full_pytree_to_states = (
-        build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025, params=params)
+        build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025)
     )
 
     restored = states_to_full_pytree(states_vec)
@@ -49,15 +48,14 @@ def test_cycle_consistency(hh_cell):
 def test_jit(hh_cell):
     """Verify that the JIT-compiled step function runs without errors"""
     cell = hh_cell
-    params = []
     states_vec, step_dynamics, _, _, _ = build_step_dynamics_fn(
-        cell, solver="bwd_euler", delta_t=0.025, params=params
+        cell, solver="bwd_euler", delta_t=0.025
     )
 
     @jit
     def step_once(states_vec):
         return step_dynamics(
-            states_vec, params, externals={}, external_inds={}, delta_t=0.025
+            states_vec, externals={}, external_inds={}, delta_t=0.025
         )
 
     result = step_once(states_vec)
@@ -338,10 +336,9 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
     cell.insert(HH())
     cell.insert(Leak())
     cell.to_jax()
-    params = []
 
     states_vec, _, states_to_pytree, states_to_full_pytree, _ = build_step_dynamics_fn(
-        cell, solver="bwd_euler", delta_t=0.025, params=params
+        cell, solver="bwd_euler", delta_t=0.025
     )
 
     v_len_full = len(states_to_full_pytree(states_vec)["v"])
