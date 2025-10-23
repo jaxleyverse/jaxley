@@ -236,6 +236,96 @@ def test_jit_and_grad_pstate(hh_cell):
     assert np.all(abs(gradient[1]["v"]) > 0)
 
 
+def test_jit_and_grad_pstate(hh_cell):
+    """Test jitting the dynamics step function and gradients wrt pstate"""
+    cell = hh_cell
+
+    params = None  # no trainable params as we are going to use pstate
+    pstate_values = jnp.array([-60, 0.0001])
+
+    cell.to_jax()
+
+    # add some inputs
+    externals = cell.externals.copy()
+    external_inds = cell.external_inds.copy()
+    current = jx.step_current(
+        i_delay=1.0, i_dur=2.0, i_amp=0.08, delta_t=0.025, t_max=0.075
+    )
+    data_stimuli = None
+    data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
+    externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
+
+    def get_externals_now(externals, step):
+        externals_now = {}
+        for key in externals.keys():
+            externals_now[key] = externals[key][:, step]
+        return externals_now
+
+    target_voltage = -50.0
+    state_idx = -30
+
+    # Define the optimizer
+    optimizer = optax.adam(learning_rate=0.01)
+    opt_state = optimizer.init(pstate_values)
+
+    def loss(pstate_values):
+
+        # initialise and build the step function
+        pstate = cell.data_set("Leak_gLeak", pstate_values[0], None)
+        pstate = cell.data_set("v", pstate_values[1], pstate)
+        (
+            states_vec,
+            step_dynamics_fn,
+            _,
+            _,
+            _,
+        ) = build_step_dynamics_fn(
+            cell, solver="bwd_euler", delta_t=0.025, params=params, param_state=pstate
+        )
+
+        # JIT the step function for speed
+        @jit
+        def step_fn_vec_to_vec(
+            states_vec, externals_now, params=None, pstate=pstate_values
+        ):
+            pstate = cell.data_set(
+                "Leak_gLeak", pstate_values[0], None
+            )  # only update leak_gLeak
+            states_vec = step_dynamics_fn(
+                states_vec,
+                params,
+                param_state=pstate,
+                externals=externals_now,
+                external_inds=external_inds,
+                delta_t=0.025,
+            )
+            return states_vec
+
+        states_vecs = [states_vec]
+
+        # Simulate the model
+        for step in range(3):
+            # Get inputs at this time step
+            externals_now = get_externals_now(externals, step)
+            # Step the ODE
+            states_vec = step_fn_vec_to_vec(
+                states_vec, externals_now, params, pstate_values
+            )
+            # Store the state
+            states_vecs.append(states_vec)
+        # Compute the loss at the last time step
+        loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
+        return loss
+
+    # Compute the gradient of the loss with respect to the parameters
+    grad_loss = value_and_grad(loss, argnums=0)
+    value, gradient = grad_loss(pstate_values)
+
+    updates, opt_state = optimizer.update(gradient, opt_state)
+    assert np.all(abs(gradient[0]) > 0)
+    assert np.all(abs(gradient[1]) > 0)
+
+
 @pytest.mark.parametrize(
     "branchpoint", [True, False], ids=["branchpoint", "no_branchpoint"]
 )
