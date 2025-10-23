@@ -36,7 +36,7 @@ def build_step_dynamics_fn(
     solver: str = "bwd_euler",
     delta_t: float = 0.025,
 ) -> Tuple[Array, Callable, Callable, Callable, Callable]:
-    """Initialises and returns ``step_dynamics`` which takes a vector-valued state 
+    """Initialises and returns ``step_dynamics`` which takes a vector-valued state
     and returns the state vector at the next time step.
 
     This can be used used to perform step-by-step updates where states are vector
@@ -61,8 +61,8 @@ def build_step_dynamics_fn(
 
     Example usage
     ^^^^^^^^^^^^^
-    We can build a step dynamics function for a simple cell as follows. 
-    
+    We can build a step dynamics function for a simple cell as follows.
+
     ::
         from jaxley.utils.dynamics import build_step_dynamics_fn
         import jaxley as jx
@@ -96,8 +96,8 @@ def build_step_dynamics_fn(
         # we can also convert a full pytree back to a state vector
         states_vec_restored = full_pytree_to_states(full_states_pytree)
 
-        
-    
+
+
     We can also add inputs, jit, and compute gradients w.r.t. parameters of the above cell.
 
     ::
