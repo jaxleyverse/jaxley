@@ -61,24 +61,60 @@ def build_step_dynamics_fn(
 
     Example usage
     ^^^^^^^^^^^^^
-    The following allows you to do A
-
+    # We can build a step dynamics function for a simple cell as follows. 
     ::
-        test
+        # Build a simple cell
+        comp = jx.Compartment()
+        branch = jx.Branch(comp, 8)
+        cell = jx.Cell(branch, parents=[-1, 0, 0])
+        cell.insert(Leak())
 
+        # states_vec, step_dynamics_fn, states_to_pytree, states_to_full_pytree, full_pytree_to_states = build_step_dynamics_fn(
+                cell, solver="bwd_euler", delta_t=0.025
+            )
+
+        # we can now step through the dynamics
+        states_vec_next = step_dynamics_fn(states_vec)
+
+        # we can use this function to conveniently calculate jacobians
+        from jax import jacfwd
+        jacobian = jacfwd(step_dynamics_fn)(states_vec)
+
+        # we can convert the state vector back to a pytree
+        states_pytree = states_to_pytree(states_vec_next)
+
+        # or to a pytree that includes observables like currents and branchpoints
+        full_states_pytree = states_to_full_pytree(states_vec_next)
+
+        # we can also convert a full pytree back to a state vector
+        states_vec_restored = full_pytree_to_states(full_states_pytree)
+
+        
     
-    The following allows you to do B
+    We can also add inputs, jit, and compute gradients w.r.t. parameters
 
     ::
 
         # Build a simple cell
-        ncomp_per_branch = 8
         comp = jx.Compartment()
-        branch = jx.Branch(comp, ncomp_per_branch)
+        branch = jx.Branch(comp, 8)
         cell = jx.Cell(branch, parents=[-1, 0, 0])
         cell.insert(HH())
         cell.insert(Leak())
 
+        # make some parameters trainable
+        cell.make_trainable("Leak_gLeak")
+        cell.make_trainable("v")
+        params = cell.get_parameters()
+        # Define parameter transform and apply it to the parameters.
+        transform = jx.ParamTransform(
+            [
+                {"Leak_gLeak": jt.SigmoidTransform(0.00001, 0.0002)},
+                {"v": jt.SigmoidTransform(-100, -30)},
+            ]
+        )
+        opt_params = transform.inverse(params)
+        params = transform.forward(opt_params)
         cell.to_jax()
 
         # add some inputs
@@ -108,7 +144,7 @@ def build_step_dynamics_fn(
             params = transform.forward(opt_params)
 
             # initialise and build the step function
-            states_vec, step_dynamics_fn, _, _ = build_step_dynamics_fn(
+            states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
                 cell, solver="bwd_euler", delta_t=0.025, params=params
             )
 
@@ -137,6 +173,12 @@ def build_step_dynamics_fn(
             # Compute the loss at the last time step
             loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
             return loss
+
+        # Compute the gradient of the loss with respect to the parameters
+        grad_loss = value_and_grad(loss, argnums=0)
+        value, gradient = grad_loss(opt_params)
+
+        updates, opt_state = optimizer.update(gradient, opt_state)
     """
 
     # Initialize the external inputs and their indices.
