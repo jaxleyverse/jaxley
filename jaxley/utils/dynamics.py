@@ -30,7 +30,7 @@ def remove_currents_from_states(states, current_keys):
 
 def build_step_dynamics_fn(
     module: Module,
-    params: list[dict[str, Array]],
+    params: list[dict[str, Array]] | None = None,
     param_state: list[dict] | None = None,
     voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
@@ -54,6 +54,7 @@ def build_step_dynamics_fn(
     Returns:
         states_vec: Initial state of the neuron model vectorised.
         step_dynamics_fn: Function that performs a single integration step with step size delta_t.
+        unravel_fn: Function to convert the state vector back to a pytree.
         unravel_restore_fn: Function to convert the state vector back to a pytree and restore observables.
         ravel_filter_fn: Function to convert the full state pytree to a vector and filter observables.
     """
@@ -63,6 +64,9 @@ def build_step_dynamics_fn(
 
     # Get the full parameter state including observables
     # ----------------------------------------------------------
+    if params is None:
+        params = {}
+
     all_params, pstate = get_all_params_param_state(module, params, param_state)
 
     all_states = module.get_all_states(pstate)
@@ -164,18 +168,19 @@ def build_step_dynamics_fn(
 
         Args:
             states_vec: Current state of the neuron model vectorised.
-            all_params: trainable params of the neuron model.
+            params: trainable params of the neuron model.
             param_state: Parameters returned by `data_set`.. Defaults to None.
             externals: External inputs.
             external_inds: External indices. Defaults to `module.external_inds`.
             delta_t: Time step. Defaults to 0.025.
-            unravel_restore_fn: Function to convert the state vector back to a pytree and restore observables.
-            ravel_filter_fn: Function to convert the full state pytree to a vector and filter observables.
         Returns:
-            Updated states vectorised.
+            states_vec at next time step.
         """
         if externals is None:  # saver than {} default argument
             externals = {}
+
+        if params is None:
+            params = {}
 
         # restore full state pytree from vector
         state = unravel_restore_fn(states_vec)
@@ -198,4 +203,4 @@ def build_step_dynamics_fn(
         states_vec = ravel_filter_fn(state)
         return states_vec
 
-    return states_vec, step_dynamics_fn, unravel_restore_fn, ravel_filter_fn
+    return states_vec, step_dynamics_fn, unravel_fn, unravel_restore_fn, ravel_filter_fn
