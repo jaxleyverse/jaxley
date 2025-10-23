@@ -8,23 +8,8 @@ from jax.flatten_util import ravel_pytree
 from jax.tree import leaves
 from jax.tree_util import tree_map
 
-from jaxley.modules import Module
 from jaxley.utils.cell_utils import params_to_pstate
-
-
-def _get_all_params_param_state(module: Module, params, param_state):
-    """Returns updated all parameters after applying trainables and ``param_state``.
-    
-    Args:
-        module: A ``jx.Module`` such as a ``jx.Cell`` or `jx.Network``.
-        params: Parameters returned by ``get_parameters()``.
-        param_state: Parameter state returned by ``data_set()``.
-    """
-    pstate = params_to_pstate(params, module.indices_set_by_trainables)
-    if param_state is not None:
-        pstate += param_state
-    all_params = module.get_all_parameters(pstate)
-    return all_params
+from jaxley.integrate import build_init_and_step_fn
 
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
@@ -40,13 +25,10 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
 
 
 def build_step_dynamics_fn(
-    module: Module,
-    params: list[dict[str, Array]] | None = None,
-    param_state: list[dict] | None = None,
+    module,
     voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
-    delta_t: float = 0.025,
-) -> Tuple[Array, Callable, Callable, Callable, Callable]:
+) -> Tuple[Callable, Callable, Callable]:
     r"""Returns a ``step_dynamics`` function updates a vector-valued state.
 
     This function differs from ``jx.integrate.build_init_and_step_fn`` in two ways:
@@ -232,23 +214,13 @@ def build_step_dynamics_fn(
         jacobian = jacfwd(step_dynamics_fn)(states_vec)
     """
 
-    # Initialize the external inputs and their indices.
-    external_inds = module.external_inds.copy()
-
-    # Get the full parameter state including observables
-    # ----------------------------------------------------------
-    if params is None:
-        params = []
-
-    all_params = _get_all_params_param_state(module, params, param_state)
-    all_states = module.get_all_states(param_state)
-
+    # Get the names of the currents that are artifially added.§
+    all_states = module.get_all_states()
     base_keys = list(all_states.keys())
 
-    all_states = module.append_channel_currents_to_states(
-        all_states, all_params, delta_t=delta_t
-    )
-
+    init_fn, step_fn = build_init_and_step_fn(
+        module, voltage_solver=voltage_solver, solver=solver)
+    all_states = init_fn()
     added_keys = [k for k in all_states.keys() if k not in base_keys]
 
     # Remove observables from states
@@ -301,7 +273,7 @@ def build_step_dynamics_fn(
         return filtered_states_vec
 
     # Unravel from vector to full restored state pytree
-    def states_to_full_pytree(states_vec):
+    def states_to_full_pytree(states_vec, all_params, delta_t):
         all_states_no_nans = states_to_pytree(states_vec)
 
         def restore_leaf(filtered_array, nan_indices_leaf):
@@ -328,12 +300,19 @@ def build_step_dynamics_fn(
         )
         return restored_states
 
+    def init_dynamics(
+        params: list[dict[str, Array]],
+        all_states: dict | None = None,
+        param_state: list[dict] | None = None,
+        delta_t: float = 0.025,
+    ) -> Tuple[Array, dict]:
+        state, params = init_fn(params, all_states, param_state, delta_t)
+        return full_pytree_to_states(state), params
+
     def step_dynamics(
         states_vec: Array,
-        params: list[dict[str, Array]] | None = None,
-        param_state: dict[str, Array] | None = None,
-        externals: dict[str, Array] | None = None,
-        external_inds: dict[str, Array] = external_inds,
+        all_params: dict,
+        externals: dict,
         delta_t: float = 0.025,
     ) -> Array:
         """Performs a single integration step with step size delta_t.
@@ -348,37 +327,9 @@ def build_step_dynamics_fn(
         Returns:
             states_vec at next time step.
         """
-        if externals is None:  # saver than {} default argument
-            externals = {}
-
-        if params is None:
-            params = []
-
-        # Restore full state pytree from vector
-        state = states_to_full_pytree(states_vec)
-
-        # Add params to all_params
-        all_params = _get_all_params_param_state(module, params, param_state)
-
-        # Step the dynamics
-        state = module.step(
-            state,
-            delta_t,
-            external_inds,
-            externals,
-            params=all_params,
-            solver=solver,
-            voltage_solver=voltage_solver,
-        )
-
-        # Convert back to vector and filter out observables
+        state = states_to_full_pytree(states_vec, all_params, delta_t)
+        state = step_fn(state, all_params, externals, delta_t)
         states_vec = full_pytree_to_states(state)
         return states_vec
 
-    return (
-        states_vec,
-        step_dynamics,
-        states_to_pytree,
-        states_to_full_pytree,
-        full_pytree_to_states,
-    )
+    return init_dynamics, step_dynamics, states_to_pytree
