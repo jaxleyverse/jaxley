@@ -23,7 +23,7 @@ Simulation
 
    jaxley.integrate
    jaxley.integrate.build_init_and_step_fn
-   jaxley.utils.dynamics.build_dynamics_step_fn
+   jaxley.utils.dynamics.build_step_dynamics_fn
 
 
 Morphologies
