@@ -296,26 +296,21 @@ def step_voltage_implicit_with_jax_spsolve(
 
 def step_voltage_explicit(
     voltages: ArrayLike,
-    voltage_terms: ArrayLike,
     constant_terms: ArrayLike,
-    axial_conductances: ArrayLike,
-    sinks,
-    sources,
-    types,
     delta_t: float,
 ) -> Array:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
-    update = _voltage_vectorfield(
-        voltages,
-        voltage_terms,
-        constant_terms,
-        axial_conductances,
-        sinks,
-        sources,
-        types,
-    )
-    new_voltates = voltages + delta_t * update
-    return new_voltates
+    # update = _voltage_vectorfield(
+    #     voltages,
+    #     voltage_terms,
+    #     constant_terms,
+    #     axial_conductances,
+    #     sinks,
+    #     sources,
+    #     types,
+    # )
+    voltages += + delta_t * constant_terms
+    return voltages
 
 
 def _voltage_vectorfield(
@@ -328,11 +323,6 @@ def _voltage_vectorfield(
     types,
 ) -> Array:
     """Evaluate the vectorfield of the nerve equation."""
-    if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
-        raise NotImplementedError(
-            f"Forward Euler is not implemented for branched morphologies."
-        )
-
     # Membrane current update.
     vecfield = -voltage_terms * voltages + constant_terms
 
