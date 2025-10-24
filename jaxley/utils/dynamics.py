@@ -24,8 +24,8 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
     return states
 
 
-def build_utils_for_dynamic_states(module) -> Tuple[Callable, Callable, Callable]:
-    r"""Returns three utility functions which can be used to convert states to a vector.
+def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
+    r"""Return functions which extract the dynamic (ODE) states of a ``jx.Module``.
 
     These utility functions are meant to be used together with 
     ``jx.integrate.build_init_and_step_fn``. The ``init_fn`` returned by
@@ -50,11 +50,25 @@ def build_utils_for_dynamic_states(module) -> Tuple[Callable, Callable, Callable
 
     Returns:
 
-        * **states_to_pytree** -  Function to convert the state vector back to a pytree.
-        * **states_to_full_pytree** -  Function to convert the state vector back to a
-          pytree and restore observables.
-        * **full_pytree_to_states** -  Function to convert the full state pytree to a
+        * **full_pytree_to_states** - Function to convert the full state pytree to a
           vector and filter observables.
+
+          * Args: all_states (Dict[str, Array])
+
+          * Returns: dynamic_states (Array).
+
+        * **states_to_full_pytree** - Function to convert the state vector back to a
+          pytree and restore observables.
+
+          * Args: dynamic_states (Array), all_params (Dict[str, Array]), delta_t (float).
+
+          * Returns: all_states (Dict[str, Array])
+
+        * **states_to_pytree** - Function to convert the state vector back to a pytree.
+
+          * Args: dynamic_states (Array).
+
+          * Returns: Only dynamic states, but as a dict of arrays (Dict[str, Array]).
 
     Example usage
     ^^^^^^^^^^^^^
