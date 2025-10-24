@@ -18,6 +18,7 @@ class TanhRateSynapse(Synapse):
         prefix = self._name
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,
+            f"{prefix}_count": 1.0,
             f"{prefix}_x_offset": -70.0,
             f"{prefix}_slope": 1.0,
         }
@@ -41,7 +42,7 @@ class TanhRateSynapse(Synapse):
         prefix = self._name
         current = (
             -1
-            * params[f"{prefix}_gS"]
+            * params[f"{prefix}_gS"] * params[f"{prefix}_count"]
             * jax.nn.relu(
                 (pre_voltage - params[f"{prefix}_x_offset"]) * params[f"{prefix}_slope"]
             )
