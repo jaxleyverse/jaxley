@@ -368,12 +368,7 @@ def integrate(
 
     def _body_fun(state, externals):
         state = step_fn(state, all_params, externals, external_inds, delta_t)
-        recs = jnp.asarray(
-            [
-                state[rec_state][rec_ind]
-                for rec_state, rec_ind in zip(rec_states, rec_inds)
-            ]
-        )
+        recs = jnp.asarray(state["v"][rec_inds])
         return state, recs
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
