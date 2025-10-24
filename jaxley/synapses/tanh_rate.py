@@ -4,7 +4,7 @@
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
-
+import jax
 from jaxley.synapses.synapse import Synapse
 
 
@@ -42,7 +42,7 @@ class TanhRateSynapse(Synapse):
         current = (
             -1
             * params[f"{prefix}_gS"]
-            * jnp.tanh(
+            * jax.nn.relu(
                 (pre_voltage - params[f"{prefix}_x_offset"]) * params[f"{prefix}_slope"]
             )
         )

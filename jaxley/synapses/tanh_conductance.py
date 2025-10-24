@@ -4,7 +4,7 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
-
+import jax
 from jaxley.synapses.synapse import Synapse
 
 
@@ -43,7 +43,7 @@ class TanhConductanceSynapse(Synapse):
     ) -> float:
         """Return updated synapse state and current."""
         prefix = self._name
-        tanh_pre_voltage = jnp.tanh(
+        tanh_pre_voltage = jax.nn.relu(
             (pre_voltage - params[f"{prefix}_x_offset"]) * params[f"{prefix}_slope"]
         )
         current = (
