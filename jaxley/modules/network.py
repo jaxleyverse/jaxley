@@ -336,6 +336,10 @@ class Network(Module):
     ) -> tuple[dict, tuple[Array, Array]]:
         voltages = states["v"]
 
+        current_states = {}
+        for name in self.synapse_current_names:
+            current_states[name] = jnp.zeros_like(voltages)
+
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["pre_index"].apply(list)
         post_syn_inds = grouped_syns["post_index"].apply(list)
@@ -616,6 +620,10 @@ class Network(Module):
         self._add_params_to_edges(synapse_type, indices)
         self.base.edges["controlled_by_param"] = 0
         self._edges_in_view = self.edges.index.to_numpy()
+
+        current_name = f"i_{synapse_type._name}"
+        if current_name not in self.base.synapse_current_names:
+            self.base.synapse_current_names.append(current_name)
 
     def _add_params_to_edges(self, synapse_type, indices):
         # Add parameters and states to the `.edges` table.

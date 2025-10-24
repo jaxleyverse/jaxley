@@ -175,6 +175,7 @@ class Module(ABC):
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
         self.membrane_current_names: List[str] = []
+        self.synapse_current_names: List[str] = []
 
         # List of all pumps.
         self.pumped_ions: List[str] = []

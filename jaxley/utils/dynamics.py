@@ -80,13 +80,13 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
 
         import jaxley as jx
         from jaxley.integrate import build_init_and_step_fn
-        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
 
         cell = jx.Cell()
         params = cell.get_parameters()
 
-        build_step_dynamics_fn()
-        build_init_and_step_fn()
+        init_fn, step_fn = build_init_and_step_fn(cell)
+        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_dynamic_state_utils(cell)
 
         all_states, all_params = init_fn(params)
 
@@ -100,17 +100,17 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
 
         import jaxley as jx
         from jaxley.integrate import build_init_and_step_fn
-        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
 
         cell = jx.Cell()
         params = cell.get_parameters()
 
         build_step_dynamics_fn()
-        build_init_and_step_fn()
+        build_dynamic_state_utils()
 
         all_states, all_params = init_fn(params)
 
-        dynamic_states = full_pytree_to_states(full_states_pytree)
+        dynamic_states = full_pytree_to_states(all_states)
 
         # Recover the names of states in the `dynamic_states`.
         states_pytree = states_to_pytree(dynamic_states)
@@ -121,20 +121,36 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
     ::
 
         from jax import jacfwd
+
         import jaxley as jx
-        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.integrate import build_init_and_step_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
         from jaxley.channels import Leak
 
         comp = jx.Compartment()
-        branch = jx.Branch(comp, 8)
+        branch = jx.Branch(comp, 2)
         cell = jx.Cell(branch, parents=[-1, 0, 0])
         cell.insert(Leak())
-        cell.to_jax()
+        params = cell.get_parameters()
 
-        states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
-            cell, solver="bwd_euler", delta_t=0.025
-        )
-        jacobian = jacfwd(step_dynamics_fn)(states_vec)
+        externals = cell.externals.copy()
+        external_inds = cell.external_inds.copy()
+
+        init_fn, step_fn = build_init_and_step_fn(cell)
+        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_dynamic_state_utils(cell)
+
+        all_states, all_params = init_fn(params)
+        dynamic_states = full_pytree_to_states(all_states)
+
+        def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t):
+            all_states = states_to_full_pytree(dynamic_states, all_params, delta_t)
+            all_states = step_fn(
+                all_states, all_params, externals, external_inds, delta_t=delta_t
+            )
+            dynamic_states = full_pytree_to_states(all_states)
+            return dynamic_states
+
+        jacobian = jacfwd(step_dynamics)(dynamic_states, all_params, externals, external_inds, delta_t=0.025)
 
     Example 4: Build a loss function based on input and parameters.
 
@@ -144,7 +160,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
 
         import jaxley as jx
         from jaxley.integrate import build_init_and_step_fn
-        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
         from jaxley.channels import Leak
 
         cell = jx.Cell()
@@ -164,7 +180,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
         params = cell.get_parameters()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_step_dynamics_fn(cell)
+        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_dynamic_state_utils(cell)
 
         def init_dynamics(params, param_state):
             all_states, all_params = init_fn(params, None, param_state)
@@ -205,15 +221,8 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
         loss = loss_fn(params, 1e-4)
     """
 
-    # # Get the names of the currents that are artifially added.§
     all_states = module.get_all_states([])
-    # base_keys = list(all_states.keys())
-
-    # init_fn, step_fn = build_init_and_step_fn(
-    #     module, voltage_solver=voltage_solver, solver=solver)
-    # all_states = init_fn()
-    # added_keys = [k for k in all_states.keys() if k not in base_keys]
-    added_keys = ["i_Leak"]
+    added_keys = module.membrane_current_names + module.synapse_current_names
 
     # Remove branchpoints if needed
     original_length = len(leaves(all_states)[0])
