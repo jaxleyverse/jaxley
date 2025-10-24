@@ -1292,7 +1292,7 @@ class Module(ABC):
         viewed_inds = self._nodes_in_view if is_node_param else self._edges_in_view
         if key in data.columns:
             not_nan = ~data[key].isna()
-            indices = jnp.asarray(viewed_inds[not_nan]).reshape(
+            indices = np.asarray(viewed_inds[not_nan]).reshape(
                 -1, 1
             )  # shape (n_comp, 1)
             val = jnp.broadcast_to(
