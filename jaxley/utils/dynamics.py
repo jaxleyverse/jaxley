@@ -24,22 +24,21 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
     return states
 
 
-def build_step_dynamics_fn(
-    module,
-    voltage_solver: str = "jaxley.dhs",
-    solver: str = "bwd_euler",
-) -> Tuple[Callable, Callable, Callable]:
-    r"""Returns a ``step_dynamics`` function updates a vector-valued state.
+def build_utils_for_dynamic_states(module) -> Tuple[Callable, Callable, Callable]:
+    r"""Returns three utility functions which can be used to convert states to a vector.
 
-    This function differs from ``jx.integrate.build_init_and_step_fn`` in two ways:
+    These utility functions are meant to be used together with 
+    ``jx.integrate.build_init_and_step_fn``. The ``init_fn`` returned by
+    ``build_init_and_step_fn`` returns an ``all_states``, which is a dictionary
+    of all states, including the voltages at branchpoints and the channel and synapse
+    currents. The utility functions returned by ``build_utils_for_dynamic_states()``
+    modify the ``all_states`` as follows:
 
-    - It returns states as a jax array, not as a dictionary of arrays.
-    - It does not contain entries for the channel currents and for the voltages at
-      branchpoints. In other words, this function only updates true dynamical states
-      (e.g., voltages and gating variables).
-
-    This is useful for, for example, computing Jacobians (see `Example 3` below) and
-    Kalman filters.
+    - They remove all channel currents, syanpse currents, and branchpoint voltages
+      (which can be computed from compartment voltages). As such, only "true" dynamic
+      states remain.
+    - They return the states as a flat array. This allows easier interoperability
+      with frameworks such as ``dynamax``.
 
     Args:
         module: A ``Module`` object that e.g. a cell.
@@ -51,9 +50,6 @@ def build_step_dynamics_fn(
 
     Returns:
 
-        * **states_vec** -  Initial state of the neuron model vectorised.
-        * **step_dynamics_fn** -  Function that performs a single integration step with
-          step size delta_t.
         * **states_to_pytree** -  Function to convert the state vector back to a pytree.
         * **states_to_full_pytree** -  Function to convert the state vector back to a
           pytree and restore observables.
@@ -62,138 +58,51 @@ def build_step_dynamics_fn(
 
     Example usage
     ^^^^^^^^^^^^^
-    Example 1: Build a step dynamics function for a simple cell.
+
+    Example 1: Use `full_pytree_to_states` to build a vector of dynamics states. Use
+    `states_to_full_pytree` to convert the vector back to the `states` dictionary.
 
     ::
 
         import jaxley as jx
-        from jaxley.channels import Leak
+        from jaxley.integrate import build_init_and_step_fn
         from jaxley.utils.dynamics import build_step_dynamics_fn
 
-        # Build a simple cell
-        comp = jx.Compartment()
-        branch = jx.Branch(comp, 8)
-        cell = jx.Cell(branch, parents=[-1, 0, 0])
-        cell.insert(Leak())
-        cell.to_jax()
+        cell = jx.Cell()
+        params = cell.get_parameters()
 
-        # Obtain the step function
-        (
-            states_vec,
-            step_dynamics_fn,
-            states_to_pytree,
-            states_to_full_pytree,
-            full_pytree_to_states
-        ) = build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025)
+        build_step_dynamics_fn()
+        build_init_and_step_fn()
 
-        # We can now step through the dynamics
-        states_vec_next = step_dynamics_fn(states_vec)
+        all_states, all_params = init_fn(params)
 
-        # We can use this function to conveniently calculate Jacobians
-        jacobian = jacfwd(step_dynamics_fn)(states_vec)
+        dynamic_states = full_pytree_to_states(all_states)
+        recovered_all_states = states_to_pytree(dynamic_states)
 
-        # We can convert the state vector back to a pytree
-        states_pytree = states_to_pytree(states_vec_next)
-
-        # Or to a pytree that includes observables like currents and branchpoints
-        full_states_pytree = states_to_full_pytree(states_vec_next)
-
-        # We can also convert the full pytree back to a state vector
-        states_vec_restored = full_pytree_to_states(full_states_pytree)
-
-    Example 2: Add stimuli, jit, and compute gradients w.r.t. parameters.
+    Example 2: Use `states_to_pytree` to idetify the names of states in the vector
+    valued dynamic states.
 
     ::
 
-        import jax.numpy as jnp
-        from jax import jit, value_and_grad
-        import optax
-        from jaxley.integrate import add_stimuli
-        import jaxley.optimize.transforms as jt
+        import jaxley as jx
+        from jaxley.integrate import build_init_and_step_fn
+        from jaxley.utils.dynamics import build_step_dynamics_fn
 
-        # Make some parameters trainable
-        cell.make_trainable("Leak_gLeak")
-        cell.make_trainable("v")
+        cell = jx.Cell()
         params = cell.get_parameters()
 
-        # Define parameter transform and apply it to the parameters.
-        transform = jx.ParamTransform(
-            [
-                {"Leak_gLeak": jt.SigmoidTransform(0.00001, 0.0002)},
-                {"v": jt.SigmoidTransform(-100, -30)},
-            ]
-        )
-        opt_params = transform.inverse(params)
-        params = transform.forward(opt_params)
-        cell.to_jax()
+        build_step_dynamics_fn()
+        build_init_and_step_fn()
 
-        # Add some inputs
-        externals = cell.externals.copy()
-        external_inds = cell.external_inds.copy()
-        current = jx.step_current(
-            i_delay=1.0, i_dur=2.0, i_amp=0.08, delta_t=0.025, t_max=0.075
-        )
-        data_stimuli = None
-        data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
-        externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
+        all_states, all_params = init_fn(params)
 
-        # Convenience function to get inputs at a given time step
-        def get_externals_now(externals, step):
-            externals_now = {}
-            for key in externals.keys():
-                externals_now[key] = externals[key][:, step]
-            return externals_now
+        dynamic_states = full_pytree_to_states(full_states_pytree)
 
-        # Set target voltage for a given compartment
-        target_voltage = -55.0
-        state_idx = -30
+        # Recover the names of states in the `dynamic_states`.
+        states_pytree = states_to_pytree(dynamic_states)
 
-        # Define the optimizer
-        optimizer = optax.adam(learning_rate=0.01)
-        opt_state = optimizer.init(opt_params)
-
-        def loss(opt_params):
-            params = transform.forward(opt_params)
-
-            # Initialise and build the step function
-            states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
-                cell, solver="bwd_euler", delta_t=0.025, params=params
-            )
-
-            # JIT the step function for speed
-            @jit
-            def step_fn_vec_to_vec(states_vec, externals_now, params=None):
-                states_vec = step_dynamics_fn(
-                    states_vec,
-                    params,
-                    externals=externals_now,
-                    external_inds=external_inds,
-                    delta_t=0.025,
-                )
-                return states_vec
-
-            states_vecs = [states_vec]
-
-            # Simulate the model
-            for step in range(3):
-                # Get inputs at this time step
-                externals_now = get_externals_now(externals, step)
-                # Step the ODE
-                states_vec = step_fn_vec_to_vec(states_vec, externals_now, params)
-                # Store the state
-                states_vecs.append(states_vec)
-            # Compute the loss at the last time step
-            loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
-            return loss
-
-        # Compute the gradient of the loss with respect to the parameters
-        grad_loss = value_and_grad(loss, argnums=0)
-        value, gradient = grad_loss(opt_params)
-
-        # Update parameters
-        updates, opt_state = optimizer.update(gradient, opt_state)
-
-    Example 3: Use this function to compute the Jacobian of a single update step.
+    Example 3: Build a `step_dynamics` function and use it to compute the Jacobian
+    of a single step.
 
     ::
 
@@ -212,22 +121,85 @@ def build_step_dynamics_fn(
             cell, solver="bwd_euler", delta_t=0.025
         )
         jacobian = jacfwd(step_dynamics_fn)(states_vec)
+
+    Example 4: Build a loss function based on input and parameters.
+
+    ::
+
+        import jax.numpy as jnp
+
+        import jaxley as jx
+        from jaxley.integrate import build_init_and_step_fn
+        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.channels import Leak
+
+        cell = jx.Cell()
+        cell.insert(Leak())
+        t_max = 3.0
+        delta_t = 0.025
+
+        cell.record()
+        cell.stimulate(jx.step_current(0, 1, 2, delta_t, t_max))
+
+        rec_inds = cell.recordings.rec_index.to_numpy()
+        rec_states = cell.recordings.state.to_numpy()
+        externals = cell.externals.copy()
+        external_inds = cell.external_inds.copy()
+
+        cell.make_trainable("radius")
+        params = cell.get_parameters()
+
+        init_fn, step_fn = build_init_and_step_fn(cell)
+        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_step_dynamics_fn(cell)
+
+        def init_dynamics(params, param_state):
+            all_states, all_params = init_fn(params, None, param_state)
+            recordings = [
+                all_states[rec_state][rec_ind][None]
+                for rec_state, rec_ind in zip(rec_states, rec_inds)
+            ]
+            dynamic_states = full_pytree_to_states(all_states)
+            return dynamic_states, all_params, recordings
+
+        def step_dynamics(dynamic_states, all_params, externals, external_inds):
+            all_states = states_to_full_pytree(dynamic_states, all_params, 0.025)
+            all_states = step_fn(
+                all_states, all_params, externals, external_inds, delta_t=delta_t
+            )
+            recs = jnp.asarray(
+                [
+                    all_states[rec_state][rec_ind]
+                    for rec_state, rec_ind in zip(rec_states, rec_inds)
+                ]
+            )
+            dynamic_states = full_pytree_to_states(all_states)
+            return dynamic_states, recs
+
+        def loss_fn(params, param_state_value):
+            param_state = cell.data_set("Leak_gLeak", param_state_value, None)
+            cell.to_jax()
+            dynamic_states, all_params, recordings = init_dynamics(params, param_state)
+            steps = int(t_max / delta_t)
+            for step in range(steps):
+                externals_now = {}
+                for key in externals.keys():
+                    externals_now[key] = externals[key][:, step]
+                dynamic_states, recs = step_dynamics(dynamic_states, all_params, externals_now, external_inds)
+                recordings.append(recs)
+            return jnp.mean(jnp.stack(recordings, axis=0).T)
+
+        loss = loss_fn(params, 1e-4)
     """
 
-    # Get the names of the currents that are artifially added.§
-    all_states = module.get_all_states()
-    base_keys = list(all_states.keys())
+    # # Get the names of the currents that are artifially added.§
+    all_states = module.get_all_states([])
+    # base_keys = list(all_states.keys())
 
-    init_fn, step_fn = build_init_and_step_fn(
-        module, voltage_solver=voltage_solver, solver=solver)
-    all_states = init_fn()
-    added_keys = [k for k in all_states.keys() if k not in base_keys]
-
-    # Remove observables from states
-    # ----------------------------------------------------------
-
-    # First remove currents
-    all_states = _remove_currents_from_states(all_states, added_keys)
+    # init_fn, step_fn = build_init_and_step_fn(
+    #     module, voltage_solver=voltage_solver, solver=solver)
+    # all_states = init_fn()
+    # added_keys = [k for k in all_states.keys() if k not in base_keys]
+    added_keys = ["i_Leak"]
 
     # Remove branchpoints if needed
     original_length = len(leaves(all_states)[0])
@@ -300,36 +272,4 @@ def build_step_dynamics_fn(
         )
         return restored_states
 
-    def init_dynamics(
-        params: list[dict[str, Array]],
-        all_states: dict | None = None,
-        param_state: list[dict] | None = None,
-        delta_t: float = 0.025,
-    ) -> Tuple[Array, dict]:
-        state, params = init_fn(params, all_states, param_state, delta_t)
-        return full_pytree_to_states(state), params
-
-    def step_dynamics(
-        states_vec: Array,
-        all_params: dict,
-        externals: dict,
-        delta_t: float = 0.025,
-    ) -> Array:
-        """Performs a single integration step with step size delta_t.
-
-        Args:
-            states_vec: Current state of the neuron model vectorised.
-            params: trainable params of the neuron model.
-            param_state: Parameters returned by `data_set`.. Defaults to None.
-            externals: External inputs.
-            external_inds: External indices. Defaults to `module.external_inds`.
-            delta_t: Time step. Defaults to 0.025.
-        Returns:
-            states_vec at next time step.
-        """
-        state = states_to_full_pytree(states_vec, all_params, delta_t)
-        state = step_fn(state, all_params, externals, delta_t)
-        states_vec = full_pytree_to_states(state)
-        return states_vec
-
-    return init_dynamics, step_dynamics, states_to_pytree
+    return full_pytree_to_states, states_to_full_pytree, states_to_pytree
