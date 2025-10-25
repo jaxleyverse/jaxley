@@ -8,9 +8,6 @@ from jax.flatten_util import ravel_pytree
 from jax.tree import leaves
 from jax.tree_util import tree_map
 
-from jaxley.utils.cell_utils import params_to_pstate
-from jaxley.integrate import build_init_and_step_fn
-
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
     """Remove the currents through channels and synapses from the states.
@@ -24,7 +21,7 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
     return states
 
 
-def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
+def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Callable]:
     r"""Return functions which extract the dynamic (ODE) states of a ``jx.Module``.
 
     These utility functions are meant to be used together with 
@@ -36,9 +33,11 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
 
     - They remove all channel currents, syanpse currents, and branchpoint voltages
       (which can be computed from compartment voltages). As such, only "true" dynamic
-      states remain.
+      states remain. This is handled by the returned functions ``remove_spurious`` and
+      ``add_spurious``.
     - They return the states as a flat array. This allows easier interoperability
-      with frameworks such as ``dynamax``.
+      with frameworks such as ``dynamax``. This is handled by the returned functions
+      ``flatten`` and ``unflatten``.
 
     Args:
         module: A ``Module`` object that e.g. a cell.
@@ -50,31 +49,42 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
 
     Returns:
 
-        * **full_pytree_to_states** - Function to convert the full state pytree to a
-          vector and filter observables.
+        * **remove_spurious** - Callable which removes the membrane currents, synaptic
+          currents, and branchpoint voltages from the states dict. The returned
+          states only include true "dynamic" states.
 
-          * Args: all_states (Dict[str, Array])
+          * Args: ``all_states`` (Dict[str, Array]). All states of the system which can
+            be recorded.
 
-          * Returns: dynamic_states (Array).
+          * Returns: Dynamic states of the system (Dict[str, Array]).
 
-        * **states_to_full_pytree** - Function to convert the state vector back to a
-          pytree and restore observables.
+        * **add_spurious** - Callable which adds membrane currents, synaptic currents,
+          and branchpoint voltages to the states dictionary.
 
-          * Args: dynamic_states (Array), all_params (Dict[str, Array]), delta_t (float).
+          * Args: ``dynamic_states`` (Dict[str, Array]),
+            ``all_params`` (Dict[str, Array]), ``delta_t`` (float).
 
-          * Returns: all_states (Dict[str, Array])
+          * Returns: All states of the system which can be recorded (Dict[str, Array]).
 
-        * **states_to_pytree** - Function to convert the state vector back to a pytree.
+        * **flatten** - Callable which flattens states as a pytree into a jnp.Array.
 
-          * Args: dynamic_states (Array).
+          * Args: ``dynamic_states`` (Dict[str, Array]). Contains all dynamic states.
 
-          * Returns: Only dynamic states, but as a dict of arrays (Dict[str, Array]).
+          * Returns: Dynamic states of the system as a flattened Array (Array).
+
+        * **unflatten** - Callable which converts the state vector back to a pytree.
+
+          * Args: ``flat_dynamic_states`` (Array). A flattened array including the
+            dynamic states of the system.
+
+          * Returns: Dynamic states as a dict of Arrays (Dict[str, Array]).
 
     Example usage
     ^^^^^^^^^^^^^
 
-    Example 1: Use `full_pytree_to_states` to build a vector of dynamics states. Use
-    `states_to_full_pytree` to convert the vector back to the `states` dictionary.
+    Example 1: Use the functions returned by `build_dynamic_state_utils` to build a
+    vector of dynamics states. Then convert the vector back to the
+    `all_states` dictionary.
 
     ::
 
@@ -86,36 +96,14 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
         params = cell.get_parameters()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_dynamic_state_utils(cell)
+        remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
 
         all_states, all_params = init_fn(params)
 
-        dynamic_states = full_pytree_to_states(all_states)
-        recovered_all_states = states_to_pytree(dynamic_states)
+        dynamic_states = flatten(remove_spurious(all_states))
+        recovered_all_states = add_spurious(unflatten(dynamic_states), all_params, delta_t=0.025)
 
-    Example 2: Use `states_to_pytree` to idetify the names of states in the vector
-    valued dynamic states.
-
-    ::
-
-        import jaxley as jx
-        from jaxley.integrate import build_init_and_step_fn
-        from jaxley.utils.dynamics import build_dynamic_state_utils
-
-        cell = jx.Cell()
-        params = cell.get_parameters()
-
-        build_step_dynamics_fn()
-        build_dynamic_state_utils()
-
-        all_states, all_params = init_fn(params)
-
-        dynamic_states = full_pytree_to_states(all_states)
-
-        # Recover the names of states in the `dynamic_states`.
-        states_pytree = states_to_pytree(dynamic_states)
-
-    Example 3: Build a `step_dynamics` function and use it to compute the Jacobian
+    Example 2: Build a `step_dynamics` function and use it to compute the Jacobian
     of a single step.
 
     ::
@@ -137,22 +125,22 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
         external_inds = cell.external_inds.copy()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_dynamic_state_utils(cell)
+        remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
 
         all_states, all_params = init_fn(params)
-        dynamic_states = full_pytree_to_states(all_states)
+        dynamic_states = flatten(remove_spurious(all_states))
 
         def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t):
-            all_states = states_to_full_pytree(dynamic_states, all_params, delta_t)
+            all_states = add_spurious(unflatten(dynamic_states), all_params, delta_t)
             all_states = step_fn(
                 all_states, all_params, externals, external_inds, delta_t=delta_t
             )
-            dynamic_states = full_pytree_to_states(all_states)
+            dynamic_states = flatten(remove_spurious(all_states))
             return dynamic_states
 
         jacobian = jacfwd(step_dynamics)(dynamic_states, all_params, externals, external_inds, delta_t=0.025)
 
-    Example 4: Build a loss function based on input and parameters.
+    Example 3: Build a loss function based on input and parameters.
 
     ::
 
@@ -180,7 +168,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
         params = cell.get_parameters()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        full_pytree_to_states, states_to_full_pytree, states_to_pytree = build_dynamic_state_utils(cell)
+        remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
 
         def init_dynamics(params, param_state):
             all_states, all_params = init_fn(params, None, param_state)
@@ -188,11 +176,11 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
                 all_states[rec_state][rec_ind][None]
                 for rec_state, rec_ind in zip(rec_states, rec_inds)
             ]
-            dynamic_states = full_pytree_to_states(all_states)
+            dynamic_states = flatten(remove_spurious(all_states))
             return dynamic_states, all_params, recordings
 
         def step_dynamics(dynamic_states, all_params, externals, external_inds):
-            all_states = states_to_full_pytree(dynamic_states, all_params, 0.025)
+            all_states = add_spurious(unflatten(dynamic_states), all_params, 0.025)
             all_states = step_fn(
                 all_states, all_params, externals, external_inds, delta_t=delta_t
             )
@@ -202,7 +190,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
                     for rec_state, rec_ind in zip(rec_states, rec_inds)
                 ]
             )
-            dynamic_states = full_pytree_to_states(all_states)
+            dynamic_states = flatten(remove_spurious(all_states))
             return dynamic_states, recs
 
         def loss_fn(params, param_state_value):
@@ -251,26 +239,58 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
     all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
 
     # Flatten to a vector
-    states_vec, states_to_pytree = ravel_pytree(all_states_no_nans)
+    _, unflatten = ravel_pytree(all_states_no_nans)
+
+    def flatten(all_states_no_nans: dict[str, Array]) -> Array:
+        """Convert the state vector back to a pytree.
+
+        Args: Dynamic states as dict of jnp.Arrays. Contains all dynamic states.
+
+        Returns: Flattened dynamic states as an jnp.Array.
+        """
+        states_vec, _ = ravel_pytree(all_states_no_nans)
+        return states_vec
 
     # Now we can create functions that convert between the full state pytree
     # and the filtered state vector
     # ----------------------------------------------------------
 
     # Ravel from pytree (post-step) to vector
-    def full_pytree_to_states(states):
+    def remove_spurious(states: (dict[str, Array])) -> dict[str, Array]:
+        r"""Remove the membrane currents, synaptic currents, and branchpoint voltages.
+         
+        Thus, the returned states only include true "dynamic" states.
+
+        Args:
+            all_states:. All states of the system which can
+            be recorded.
+
+        Returns: All dynamic states of the system.
+        """
         filtered_states = _remove_currents_from_states(states, added_keys)
         filtered_states = tree_map(
             lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
         )
         filtered_states = tree_map(take_by_idx, filtered_states, nan_indices_tree)
-        filtered_states_vec, _ = ravel_pytree(filtered_states)
-        return filtered_states_vec
+        return filtered_states
 
     # Unravel from vector to full restored state pytree
-    def states_to_full_pytree(states_vec, all_params, delta_t):
-        all_states_no_nans = states_to_pytree(states_vec)
+    def add_spurious(
+            all_states_no_nans: dict[str, Array],
+            all_params: dict[str, Array],
+            delta_t: float
+        ) -> dict[str, Array]:
+        """Add membrane currents, synaptic currents, and branchpoint voltages to states.
 
+        Args:
+            dynamic_states:
+            all_params:
+            delta_t: 
+
+        Returns:
+            ``all_states`` which can be passed to the ``step_fn`` (returned by
+            ``jx.integrate.build_init_and_step_fn``).
+        """
         def restore_leaf(filtered_array, nan_indices_leaf):
             restored_array = jnp.full(filtered_length, jnp.nan)
             restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
@@ -295,4 +315,4 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable]:
         )
         return restored_states
 
-    return full_pytree_to_states, states_to_full_pytree, states_to_pytree
+    return remove_spurious, add_spurious, flatten, unflatten
