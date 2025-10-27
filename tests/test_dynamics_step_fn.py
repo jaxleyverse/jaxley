@@ -4,11 +4,11 @@
 import jax
 
 import jaxley as jx
-from jaxley.modules import cell
 import jaxley.optimize.transforms as jt
 from jaxley.channels import Leak
 from jaxley.channels.hh import HH
-from jaxley.integrate import add_stimuli,build_init_and_step_fn
+from jaxley.integrate import add_stimuli, build_init_and_step_fn
+from jaxley.modules import cell
 from jaxley.utils.dynamics import build_dynamic_state_utils
 
 jax.config.update("jax_enable_x64", True)
@@ -37,7 +37,9 @@ def test_cycle_consistency(hh_cell):
     cell = hh_cell
 
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(
+        cell
+    )
     all_states, all_params = init_fn([])
     dynamic_states = flatten(remove_observables(all_states))
     restored = add_observables(unflatten(dynamic_states), all_params, delta_t=0.025)
@@ -50,15 +52,16 @@ def test_jit(hh_cell):
     """Verify that the JIT-compiled step function runs without errors"""
     cell = hh_cell
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(
+        cell
+    )
     all_states, all_params = init_fn([], None, None)
     dynamic_states = flatten(remove_observables(all_states))
+
     @jit
     def step_once(dynamic_states):
         all_states = add_observables(unflatten(dynamic_states), all_params, 0.025)
-        all_states = step_fn(
-            all_states, all_params, {}, {}, delta_t=0.025
-        )
+        all_states = step_fn(all_states, all_params, {}, {}, delta_t=0.025)
         dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states
 
@@ -74,6 +77,7 @@ def test_jit_and_grad(hh_cell):
     cell.make_trainable("Leak_gLeak")
     cell.make_trainable("v")
     params = cell.get_parameters()
+    
     # Define parameter transform and apply it to the parameters.
     transform = jx.ParamTransform(
         [
@@ -109,15 +113,22 @@ def test_jit_and_grad(hh_cell):
     opt_state = optimizer.init(opt_params)
 
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(
+        cell
+    )
 
     def init_dynamics(params, param_state):
         all_states, all_params = init_fn(params, None, param_state)
         dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states, all_params
+
     @jit
-    def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t=0.025):
-        all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=delta_t)
+    def step_dynamics(
+        dynamic_states, all_params, externals, external_inds, delta_t=0.025
+    ):
+        all_states = add_observables(
+            unflatten(dynamic_states), all_params, delta_t=delta_t
+        )
         all_states = step_fn(
             all_states, all_params, externals, external_inds, delta_t=delta_t
         )
@@ -136,7 +147,9 @@ def test_jit_and_grad(hh_cell):
             # Get inputs at this time step
             externals_now = get_externals_now(externals, step)
             # Step the ODE
-            dynamic_states = step_dynamics(dynamic_states, all_params, externals_now, external_inds, delta_t=0.025)
+            dynamic_states = step_dynamics(
+                dynamic_states, all_params, externals_now, external_inds, delta_t=0.025
+            )
             # Store the state
             dynamic_states_list.append(dynamic_states)
         # Compute the loss at the last time step
@@ -185,33 +198,37 @@ def test_jit_and_grad_pstate(hh_cell):
     optimizer = optax.adam(learning_rate=0.01)
     opt_state = optimizer.init(pstate_values)
 
-
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(
+        cell
+    )
 
     def init_dynamics(params, param_state):
         all_states, all_params = init_fn(params, None, param_state)
         dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states, all_params
-   
+
     @jit
-    def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t=0.025):
-        all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=delta_t)
+    def step_dynamics(
+        dynamic_states, all_params, externals, external_inds, delta_t=0.025
+    ):
+        all_states = add_observables(
+            unflatten(dynamic_states), all_params, delta_t=delta_t
+        )
         all_states = step_fn(
             all_states, all_params, externals, external_inds, delta_t=delta_t
         )
         dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states
 
-
     def loss(pstate_values):
 
         # initialise and build the step function
         pstate = cell.data_set("Leak_gLeak", pstate_values[1], None)
         pstate = cell.data_set("v", pstate_values[0], pstate)
-     
-        dynamic_states, all_params = init_dynamics([], pstate)
-        
+
+        dynamic_states, all_params = init_dynamics(params, pstate)
+
         dynamic_states_list = [dynamic_states]
 
         # Simulate the model
@@ -252,14 +269,15 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
 
     # get states and unflatten functions
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(
+        cell
+    )
     all_states, all_params = init_fn([])
     dynamic_states = flatten(remove_observables(all_states))
 
     # check lengths
     tree = unflatten(dynamic_states)
     full_tree = add_observables(tree, all_params, delta_t=0.025)
-
     v_len_full = len(full_tree["v"])
     v_len = len(tree["v"])
     i_hh_len = len(full_tree["i_HH"])
@@ -274,6 +292,4 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
         assert v_len == 8
         assert v_len_full == 8
         assert i_hh_len == 8
-        assert i_hh_m_nonzero == 8  
-
-
+        assert i_hh_m_nonzero == 8
