@@ -33,8 +33,8 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     - They remove all channel currents, syanpse currents, and branchpoint voltages
       (which can be computed from compartment voltages). As such, only "true" dynamic
-      states remain. This is handled by the returned functions ``remove_spurious`` and
-      ``add_spurious``.
+      states remain. This is handled by the returned functions ``remove_observables`` and
+      ``add_observables``.
     - They return the states as a flat array. This allows easier interoperability
       with frameworks such as ``dynamax``. This is handled by the returned functions
       ``flatten`` and ``unflatten``.
@@ -49,7 +49,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     Returns:
 
-        * ``remove_spurious(all_states)``
+        * ``remove_observables(all_states)``
 
           Callable which removes the membrane currents, synaptic currents, and
           branchpoint voltages from the states dict. The returned states only include
@@ -64,7 +64,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
             * Dynamic states of the system (Dict[str, Array]).
 
-        * ``add_spurious(dynamic_states_pytree, all_params, delta_t)``
+        * ``add_observables(dynamic_states_pytree, all_params, delta_t)``
 
           Callable which adds membrane currents, synaptic currents, and branchpoint
           voltages to the states dictionary.
@@ -121,12 +121,12 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         params = cell.get_parameters()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+        remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
 
         all_states, all_params = init_fn(params)
 
-        dynamic_states = flatten(remove_spurious(all_states))
-        recovered_all_states = add_spurious(unflatten(dynamic_states), all_params, delta_t=0.025)
+        dynamic_states = flatten(remove_observables(all_states))
+        recovered_all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=0.025)
 
     Example 2: Build a `step_dynamics` function and use it to compute the Jacobian
     of a single step.
@@ -150,17 +150,17 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         external_inds = cell.external_inds.copy()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+        remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
 
         all_states, all_params = init_fn(params)
-        dynamic_states = flatten(remove_spurious(all_states))
+        dynamic_states = flatten(remove_observables(all_states))
 
         def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t):
-            all_states = add_spurious(unflatten(dynamic_states), all_params, delta_t)
+            all_states = add_observables(unflatten(dynamic_states), all_params, delta_t)
             all_states = step_fn(
                 all_states, all_params, externals, external_inds, delta_t=delta_t
             )
-            dynamic_states = flatten(remove_spurious(all_states))
+            dynamic_states = flatten(remove_observables(all_states))
             return dynamic_states
 
         jacobian = jacfwd(step_dynamics)(dynamic_states, all_params, externals, external_inds, delta_t=0.025)
@@ -193,7 +193,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         params = cell.get_parameters()
 
         init_fn, step_fn = build_init_and_step_fn(cell)
-        remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+        remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
 
         def init_dynamics(params, param_state):
             all_states, all_params = init_fn(params, None, param_state)
@@ -201,11 +201,11 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
                 all_states[rec_state][rec_ind][None]
                 for rec_state, rec_ind in zip(rec_states, rec_inds)
             ]
-            dynamic_states = flatten(remove_spurious(all_states))
+            dynamic_states = flatten(remove_observables(all_states))
             return dynamic_states, all_params, recordings
 
         def step_dynamics(dynamic_states, all_params, externals, external_inds):
-            all_states = add_spurious(unflatten(dynamic_states), all_params, 0.025)
+            all_states = add_observables(unflatten(dynamic_states), all_params, 0.025)
             all_states = step_fn(
                 all_states, all_params, externals, external_inds, delta_t=delta_t
             )
@@ -215,7 +215,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
                     for rec_state, rec_ind in zip(rec_states, rec_inds)
                 ]
             )
-            dynamic_states = flatten(remove_spurious(all_states))
+            dynamic_states = flatten(remove_observables(all_states))
             return dynamic_states, recs
 
         def loss_fn(params, param_state_value):
@@ -281,7 +281,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     # ----------------------------------------------------------
 
     # Ravel from pytree (post-step) to vector
-    def remove_spurious(states: dict[str, Array]) -> dict[str, Array]:
+    def remove_observables(states: dict[str, Array]) -> dict[str, Array]:
         r"""Remove the membrane currents, synaptic currents, and branchpoint voltages.
 
         Thus, the returned states only include true "dynamic" states.
@@ -300,7 +300,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         return filtered_states
 
     # Unravel from vector to full restored state pytree
-    def add_spurious(
+    def add_observables(
         dynamic_states_pytree: dict[str, Array],
         all_params: dict[str, Array],
         delta_t: float,
@@ -341,4 +341,4 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         )
         return restored_states
 
-    return remove_spurious, add_spurious, flatten, unflatten
+    return remove_observables, add_observables, flatten, unflatten

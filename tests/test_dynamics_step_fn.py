@@ -37,11 +37,11 @@ def test_cycle_consistency(hh_cell):
     cell = hh_cell
 
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
     all_states, all_params = init_fn([])
-    dynamic_states = flatten(remove_spurious(all_states))
+    dynamic_states = flatten(remove_observables(all_states))
     restored = add_spurious(unflatten(dynamic_states), all_params, delta_t=0.025)
-    reraveled = flatten(remove_spurious(restored))
+    reraveled = flatten(remove_observables(restored))
 
     assert np.allclose(reraveled, dynamic_states)
 
@@ -53,16 +53,16 @@ def test_jit(hh_cell):
     #    cell, solver="bwd_euler", delta_t=0.025
     #)
     init_fn, step_fn = build_init_and_step_fn(cell, solver="bwd_euler")
-    remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
     all_states, all_params = init_fn([], None, None)
-    dynamic_states = flatten(remove_spurious(all_states))
+    dynamic_states = flatten(remove_observables(all_states))
     @jit
     def step_once(dynamic_states):
         all_states = add_spurious(unflatten(dynamic_states), all_params, 0.025)
         all_states = step_fn(
             all_states, all_params, {}, {}, delta_t=0.025
         )
-        dynamic_states = flatten(remove_spurious(all_states))
+        dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states
 
     result = step_once(dynamic_states)
@@ -112,11 +112,11 @@ def test_jit_and_grad(hh_cell):
     opt_state = optimizer.init(opt_params)
 
     init_fn, step_fn = build_init_and_step_fn(cell)
-    remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+    remove_observables, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
 
     def init_dynamics(params, param_state):
         all_states, all_params = init_fn(params, None, param_state)
-        dynamic_states = flatten(remove_spurious(all_states))
+        dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states, all_params
     @jit
     def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t=0.025):
@@ -124,14 +124,14 @@ def test_jit_and_grad(hh_cell):
         all_states = step_fn(
             all_states, all_params, externals, external_inds, delta_t=delta_t
         )
-        dynamic_states = flatten(remove_spurious(all_states))
+        dynamic_states = flatten(remove_observables(all_states))
         return dynamic_states
 
     def loss(opt_params):
         params = transform.forward(opt_params)
 
         dynamic_states, all_params = init_dynamics(params, None)
-   
+
         dynamic_states_list = [dynamic_states]
 
         # Simulate the model
@@ -361,3 +361,5 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
         assert v_len == 8
         assert v_len_full == 8
         assert i_hh_len == 8
+
+
