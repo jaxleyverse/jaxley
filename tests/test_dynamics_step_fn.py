@@ -77,7 +77,7 @@ def test_jit_and_grad(hh_cell):
     cell.make_trainable("Leak_gLeak")
     cell.make_trainable("v")
     params = cell.get_parameters()
-    
+
     # Define parameter transform and apply it to the parameters.
     transform = jx.ParamTransform(
         [

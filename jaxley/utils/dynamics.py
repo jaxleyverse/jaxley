@@ -27,14 +27,15 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     These utility functions are meant to be used together with
     ``jx.integrate.build_init_and_step_fn``. The ``init_fn`` returned by
     ``build_init_and_step_fn`` returns an ``all_states``, which is a dictionary
-    of all states, including the voltages at branchpoints and the channel and synapse
-    currents. The utility functions returned by ``build_utils_for_dynamic_states()``
-    modify the ``all_states`` as follows:
+    of all states, including observables: the voltages at branchpoints and the channel
+    and synapse currents. The utility functions returned by
+    ``build_utils_for_dynamic_states()`` modify the ``all_states`` as follows:
 
-    - They remove all channel currents, syanpse currents, and branchpoint voltages
-      (which can be computed from compartment voltages). As such, only "true" dynamic
-      states remain. This is handled by the returned functions ``remove_observables`` and
-      ``add_observables``.
+    - They remove all channel currents, synapse currents, and branchpoint voltages
+      (which can be computed from compartment voltages). Additionally, if states
+      are only defined on a subset of compartments, the NaN padding is removed.
+      As such, only "true" dynamic states remain. This is handled by the returned
+      functions ``remove_observables`` and ``add_observables``.
     - They return the states as a flat array. This allows easier interoperability
       with frameworks such as ``dynamax``. This is handled by the returned functions
       ``flatten`` and ``unflatten``.
@@ -51,9 +52,9 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
         * ``remove_observables(all_states)``
 
-          Callable which removes the membrane currents, synaptic currents, and
-          branchpoint voltages from the states dict. The returned states only include
-          true "dynamic" states.
+          Callable which removes the membrane currents, synaptic currents,
+          branchpoint voltages and NaN padding from the states dict.
+          The returned states only include true "dynamic" states.
 
           * Args:
 
@@ -317,6 +318,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
             ``jx.integrate.build_init_and_step_fn``).
         """
 
+        # First restore NaN padding
         def restore_leaf(filtered_array, nan_indices_leaf):
             restored_array = jnp.full(filtered_length, jnp.nan)
             restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
@@ -325,6 +327,8 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         all_states_with_nans = tree_map(
             restore_leaf, dynamic_states_pytree, nan_indices_tree
         )
+
+        # Restore branchpoint voltages if there were any branchpoints
         if branch_filter_applied:
 
             def restore_branch_leaf(leaf):
@@ -336,6 +340,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         else:
             restored_states = all_states_with_nans
 
+        # Add channel currents to the restored states
         restored_states = module.append_channel_currents_to_states(
             restored_states, all_params, delta_t=delta_t
         )
