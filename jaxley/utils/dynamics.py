@@ -11,7 +11,7 @@ from jax.tree_util import tree_map
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
     """Remove the currents through channels and synapses from the states.
-    
+
     Args:
         states: States (including currents) of the system.
         current_keys: The names of all channel currents.
@@ -24,7 +24,7 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
 def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Callable]:
     r"""Return functions which extract the dynamic (ODE) states of a ``jx.Module``.
 
-    These utility functions are meant to be used together with 
+    These utility functions are meant to be used together with
     ``jx.integrate.build_init_and_step_fn``. The ``init_fn`` returned by
     ``build_init_and_step_fn`` returns an ``all_states``, which is a dictionary
     of all states, including the voltages at branchpoints and the channel and synapse
@@ -49,35 +49,60 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     Returns:
 
-        * **remove_spurious** - Callable which removes the membrane currents, synaptic
-          currents, and branchpoint voltages from the states dict. The returned
-          states only include true "dynamic" states.
+        * ``remove_spurious(all_states)``
 
-          * Args: ``all_states`` (Dict[str, Array]). All states of the system which can
-            be recorded.
+          Callable which removes the membrane currents, synaptic currents, and
+          branchpoint voltages from the states dict. The returned states only include
+          true "dynamic" states.
 
-          * Returns: Dynamic states of the system (Dict[str, Array]).
+          * Args:
 
-        * **add_spurious** - Callable which adds membrane currents, synaptic currents,
-          and branchpoint voltages to the states dictionary.
+            * ``all_states`` (Dict[str, Array]): All states of the system which can
+              be recorded.
 
-          * Args: ``dynamic_states`` (Dict[str, Array]),
-            ``all_params`` (Dict[str, Array]), ``delta_t`` (float).
+          * Returns:
 
-          * Returns: All states of the system which can be recorded (Dict[str, Array]).
+            * Dynamic states of the system (Dict[str, Array]).
 
-        * **flatten** - Callable which flattens states as a pytree into a jnp.Array.
+        * ``add_spurious(dynamic_states_pytree, all_params, delta_t)``
 
-          * Args: ``dynamic_states`` (Dict[str, Array]). Contains all dynamic states.
+          Callable which adds membrane currents, synaptic currents, and branchpoint
+          voltages to the states dictionary.
 
-          * Returns: Dynamic states of the system as a flattened Array (Array).
+          * Args:
 
-        * **unflatten** - Callable which converts the state vector back to a pytree.
+            * ``dynamic_states_pytree`` (Dict[str, Array])
+            * ``all_params`` (Dict[str, Array])
+            * ``delta_t`` (float).
 
-          * Args: ``flat_dynamic_states`` (Array). A flattened array including the
-            dynamic states of the system.
+          * Returns:
 
-          * Returns: Dynamic states as a dict of Arrays (Dict[str, Array]).
+            * All states of the system which can be recorded (Dict[str, Array]).
+
+        * ``flatten(dynamic_states)``
+
+          Callable which flattens dynamic states as a pytree into a jnp.Array.
+
+          * Args:
+
+            *  ``dynamic_states`` (Dict[str, Array]): Contains all dynamic states.
+
+          * Returns:
+
+            * Dynamic states of the system as a flattened Array (Array).
+
+        * ``unflatten(flat_dynamic_states)``
+
+          Callable which converts the state vector back to a pytree.
+
+          * Args:
+
+            * ``flat_dynamic_states`` (Array): A flattened array including the
+              dynamic states of the system.
+
+          * Returns:
+
+            * Dynamic states as a dict of Arrays (Dict[str, Array]).
 
     Example usage
     ^^^^^^^^^^^^^
@@ -256,9 +281,9 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     # ----------------------------------------------------------
 
     # Ravel from pytree (post-step) to vector
-    def remove_spurious(states: (dict[str, Array])) -> dict[str, Array]:
+    def remove_spurious(states: dict[str, Array]) -> dict[str, Array]:
         r"""Remove the membrane currents, synaptic currents, and branchpoint voltages.
-         
+
         Thus, the returned states only include true "dynamic" states.
 
         Args:
@@ -276,28 +301,29 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     # Unravel from vector to full restored state pytree
     def add_spurious(
-            all_states_no_nans: dict[str, Array],
-            all_params: dict[str, Array],
-            delta_t: float
-        ) -> dict[str, Array]:
+        dynamic_states_pytree: dict[str, Array],
+        all_params: dict[str, Array],
+        delta_t: float,
+    ) -> dict[str, Array]:
         """Add membrane currents, synaptic currents, and branchpoint voltages to states.
 
         Args:
             dynamic_states:
             all_params:
-            delta_t: 
+            delta_t:
 
         Returns:
             ``all_states`` which can be passed to the ``step_fn`` (returned by
             ``jx.integrate.build_init_and_step_fn``).
         """
+
         def restore_leaf(filtered_array, nan_indices_leaf):
             restored_array = jnp.full(filtered_length, jnp.nan)
             restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
             return restored_array
 
         all_states_with_nans = tree_map(
-            restore_leaf, all_states_no_nans, nan_indices_tree
+            restore_leaf, dynamic_states_pytree, nan_indices_tree
         )
         if branch_filter_applied:
 
