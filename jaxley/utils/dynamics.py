@@ -8,28 +8,10 @@ from jax.flatten_util import ravel_pytree
 from jax.tree import leaves
 from jax.tree_util import tree_map
 
-from jaxley.modules import Module
-from jaxley.utils.cell_utils import params_to_pstate
-
-
-def _get_all_params_param_state(module: Module, params, param_state):
-    """Returns updated all parameters after applying trainables and ``param_state``.
-    
-    Args:
-        module: A ``jx.Module`` such as a ``jx.Cell`` or `jx.Network``.
-        params: Parameters returned by ``get_parameters()``.
-        param_state: Parameter state returned by ``data_set()``.
-    """
-    pstate = params_to_pstate(params, module.indices_set_by_trainables)
-    if param_state is not None:
-        pstate += param_state
-    all_params = module.get_all_parameters(pstate)
-    return all_params
-
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
     """Remove the currents through channels and synapses from the states.
-    
+
     Args:
         states: States (including currents) of the system.
         current_keys: The names of all channel currents.
@@ -39,25 +21,24 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
     return states
 
 
-def build_step_dynamics_fn(
-    module: Module,
-    params: list[dict[str, Array]] | None = None,
-    param_state: list[dict] | None = None,
-    voltage_solver: str = "jaxley.dhs",
-    solver: str = "bwd_euler",
-    delta_t: float = 0.025,
-) -> Tuple[Array, Callable, Callable, Callable, Callable]:
-    r"""Returns a ``step_dynamics`` function updates a vector-valued state.
+def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Callable]:
+    r"""Return functions which extract the dynamic (ODE) states of a ``jx.Module``.
 
-    This function differs from ``jx.integrate.build_init_and_step_fn`` in two ways:
+    These utility functions are meant to be used together with
+    ``jx.integrate.build_init_and_step_fn``. The ``init_fn`` returned by
+    ``build_init_and_step_fn`` returns an ``all_states``, which is a dictionary
+    of all states, including observables: the voltages at branchpoints and the channel
+    and synapse currents. The utility functions returned by
+    ``build_utils_for_dynamic_states()`` modify the ``all_states`` as follows:
 
-    - It returns states as a jax array, not as a dictionary of arrays.
-    - It does not contain entries for the channel currents and for the voltages at
-      branchpoints. In other words, this function only updates true dynamical states
-      (e.g., voltages and gating variables).
-
-    This is useful for, for example, computing Jacobians (see `Example 3` below) and
-    Kalman filters.
+    - They remove all channel currents, synapse currents, and branchpoint voltages
+      (which can be computed from compartment voltages). Additionally, if states
+      are only defined on a subset of compartments, the NaN padding is removed.
+      As such, only "true" dynamic states remain. This is handled by the returned
+      functions ``remove_observables`` and ``add_observables``.
+    - They return the states as a flat array. This allows easier interoperability
+      with frameworks such as ``dynamax``. This is handled by the returned functions
+      ``flatten`` and ``unflatten``.
 
     Args:
         module: A ``Module`` object that e.g. a cell.
@@ -69,193 +50,193 @@ def build_step_dynamics_fn(
 
     Returns:
 
-        * **states_vec** -  Initial state of the neuron model vectorised.
-        * **step_dynamics_fn** -  Function that performs a single integration step with
-          step size delta_t.
-        * **states_to_pytree** -  Function to convert the state vector back to a pytree.
-        * **states_to_full_pytree** -  Function to convert the state vector back to a
-          pytree and restore observables.
-        * **full_pytree_to_states** -  Function to convert the full state pytree to a
-          vector and filter observables.
+        * ``remove_observables(all_states)``
+
+          Callable which removes the membrane currents, synaptic currents,
+          branchpoint voltages and NaN padding from the states dict.
+          The returned states only include true "dynamic" states.
+
+          * Args:
+
+            * ``all_states`` (Dict[str, Array]): All states of the system which can
+              be recorded.
+
+          * Returns:
+
+            * Dynamic states of the system (Dict[str, Array]).
+
+        * ``add_observables(dynamic_states_pytree, all_params, delta_t)``
+
+          Callable which adds membrane currents, synaptic currents, and branchpoint
+          voltages to the states dictionary.
+
+          * Args:
+
+            * ``dynamic_states_pytree`` (Dict[str, Array])
+            * ``all_params`` (Dict[str, Array])
+            * ``delta_t`` (float).
+
+          * Returns:
+
+            * All states of the system which can be recorded (Dict[str, Array]).
+
+        * ``flatten(dynamic_states)``
+
+          Callable which flattens dynamic states as a pytree into a jnp.Array.
+
+          * Args:
+
+            *  ``dynamic_states`` (Dict[str, Array]): Contains all dynamic states.
+
+          * Returns:
+
+            * Dynamic states of the system as a flattened Array (Array).
+
+        * ``unflatten(flat_dynamic_states)``
+
+          Callable which converts the state vector back to a pytree.
+
+          * Args:
+
+            * ``flat_dynamic_states`` (Array): A flattened array including the
+              dynamic states of the system.
+
+          * Returns:
+
+            * Dynamic states as a dict of Arrays (Dict[str, Array]).
 
     Example usage
     ^^^^^^^^^^^^^
-    Example 1: Build a step dynamics function for a simple cell.
+
+    Example 1: Use the functions returned by `build_dynamic_state_utils` to build a
+    vector of dynamics states. Then convert the vector back to the
+    `all_states` dictionary.
 
     ::
 
         import jaxley as jx
-        from jaxley.channels import Leak
-        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.integrate import build_init_and_step_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
 
-        # Build a simple cell
-        comp = jx.Compartment()
-        branch = jx.Branch(comp, 8)
-        cell = jx.Cell(branch, parents=[-1, 0, 0])
-        cell.insert(Leak())
-        cell.to_jax()
-
-        # Obtain the step function
-        (
-            states_vec,
-            step_dynamics_fn,
-            states_to_pytree,
-            states_to_full_pytree,
-            full_pytree_to_states
-        ) = build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025)
-
-        # We can now step through the dynamics
-        states_vec_next = step_dynamics_fn(states_vec)
-
-        # We can use this function to conveniently calculate Jacobians
-        jacobian = jacfwd(step_dynamics_fn)(states_vec)
-
-        # We can convert the state vector back to a pytree
-        states_pytree = states_to_pytree(states_vec_next)
-
-        # Or to a pytree that includes observables like currents and branchpoints
-        full_states_pytree = states_to_full_pytree(states_vec_next)
-
-        # We can also convert the full pytree back to a state vector
-        states_vec_restored = full_pytree_to_states(full_states_pytree)
-
-    Example 2: Add stimuli, jit, and compute gradients w.r.t. parameters.
-
-    ::
-
-        import jax.numpy as jnp
-        from jax import jit, value_and_grad
-        import optax
-        from jaxley.integrate import add_stimuli
-        import jaxley.optimize.transforms as jt
-
-        # Make some parameters trainable
-        cell.make_trainable("Leak_gLeak")
-        cell.make_trainable("v")
+        cell = jx.Cell()
         params = cell.get_parameters()
 
-        # Define parameter transform and apply it to the parameters.
-        transform = jx.ParamTransform(
-            [
-                {"Leak_gLeak": jt.SigmoidTransform(0.00001, 0.0002)},
-                {"v": jt.SigmoidTransform(-100, -30)},
-            ]
-        )
-        opt_params = transform.inverse(params)
-        params = transform.forward(opt_params)
-        cell.to_jax()
+        init_fn, step_fn = build_init_and_step_fn(cell)
+        remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
 
-        # Add some inputs
-        externals = cell.externals.copy()
-        external_inds = cell.external_inds.copy()
-        current = jx.step_current(
-            i_delay=1.0, i_dur=2.0, i_amp=0.08, delta_t=0.025, t_max=0.075
-        )
-        data_stimuli = None
-        data_stimuli = cell.branch(0).comp(0).data_stimulate(current, data_stimuli)
-        externals, external_inds = add_stimuli(externals, external_inds, data_stimuli)
+        all_states, all_params = init_fn(params)
 
-        # Convenience function to get inputs at a given time step
-        def get_externals_now(externals, step):
-            externals_now = {}
-            for key in externals.keys():
-                externals_now[key] = externals[key][:, step]
-            return externals_now
+        dynamic_states = flatten(remove_observables(all_states))
+        recovered_all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=0.025)
 
-        # Set target voltage for a given compartment
-        target_voltage = -55.0
-        state_idx = -30
-
-        # Define the optimizer
-        optimizer = optax.adam(learning_rate=0.01)
-        opt_state = optimizer.init(opt_params)
-
-        def loss(opt_params):
-            params = transform.forward(opt_params)
-
-            # Initialise and build the step function
-            states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
-                cell, solver="bwd_euler", delta_t=0.025, params=params
-            )
-
-            # JIT the step function for speed
-            @jit
-            def step_fn_vec_to_vec(states_vec, externals_now, params=None):
-                states_vec = step_dynamics_fn(
-                    states_vec,
-                    params,
-                    externals=externals_now,
-                    external_inds=external_inds,
-                    delta_t=0.025,
-                )
-                return states_vec
-
-            states_vecs = [states_vec]
-
-            # Simulate the model
-            for step in range(3):
-                # Get inputs at this time step
-                externals_now = get_externals_now(externals, step)
-                # Step the ODE
-                states_vec = step_fn_vec_to_vec(states_vec, externals_now, params)
-                # Store the state
-                states_vecs.append(states_vec)
-            # Compute the loss at the last time step
-            loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
-            return loss
-
-        # Compute the gradient of the loss with respect to the parameters
-        grad_loss = value_and_grad(loss, argnums=0)
-        value, gradient = grad_loss(opt_params)
-
-        # Update parameters
-        updates, opt_state = optimizer.update(gradient, opt_state)
-
-    Example 3: Use this function to compute the Jacobian of a single update step.
+    Example 2: Build a `step_dynamics` function and use it to compute the Jacobian
+    of a single step.
 
     ::
 
         from jax import jacfwd
+
         import jaxley as jx
-        from jaxley.utils.dynamics import build_step_dynamics_fn
+        from jaxley.integrate import build_init_and_step_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
         from jaxley.channels import Leak
 
         comp = jx.Compartment()
-        branch = jx.Branch(comp, 8)
+        branch = jx.Branch(comp, 2)
         cell = jx.Cell(branch, parents=[-1, 0, 0])
         cell.insert(Leak())
-        cell.to_jax()
+        params = cell.get_parameters()
 
-        states_vec, step_dynamics_fn, _, _, _ = build_step_dynamics_fn(
-            cell, solver="bwd_euler", delta_t=0.025
-        )
-        jacobian = jacfwd(step_dynamics_fn)(states_vec)
+        externals = cell.externals.copy()
+        external_inds = cell.external_inds.copy()
+
+        init_fn, step_fn = build_init_and_step_fn(cell)
+        remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+
+        all_states, all_params = init_fn(params)
+        dynamic_states = flatten(remove_observables(all_states))
+
+        def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t):
+            all_states = add_observables(unflatten(dynamic_states), all_params, delta_t)
+            all_states = step_fn(
+                all_states, all_params, externals, external_inds, delta_t=delta_t
+            )
+            dynamic_states = flatten(remove_observables(all_states))
+            return dynamic_states
+
+        jacobian = jacfwd(step_dynamics)(dynamic_states, all_params, externals, external_inds, delta_t=0.025)
+
+    Example 3: Build a loss function based on input and parameters.
+
+    ::
+
+        import jax.numpy as jnp
+
+        import jaxley as jx
+        from jaxley.integrate import build_init_and_step_fn
+        from jaxley.utils.dynamics import build_dynamic_state_utils
+        from jaxley.channels import Leak
+
+        cell = jx.Cell()
+        cell.insert(Leak())
+        t_max = 3.0
+        delta_t = 0.025
+
+        cell.record()
+        cell.stimulate(jx.step_current(0, 1, 2, delta_t, t_max))
+
+        rec_inds = cell.recordings.rec_index.to_numpy()
+        rec_states = cell.recordings.state.to_numpy()
+        externals = cell.externals.copy()
+        external_inds = cell.external_inds.copy()
+
+        cell.make_trainable("radius")
+        params = cell.get_parameters()
+
+        init_fn, step_fn = build_init_and_step_fn(cell)
+        remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+
+        def init_dynamics(params, param_state):
+            all_states, all_params = init_fn(params, None, param_state)
+            recordings = [
+                all_states[rec_state][rec_ind][None]
+                for rec_state, rec_ind in zip(rec_states, rec_inds)
+            ]
+            dynamic_states = flatten(remove_observables(all_states))
+            return dynamic_states, all_params, recordings
+
+        def step_dynamics(dynamic_states, all_params, externals, external_inds):
+            all_states = add_observables(unflatten(dynamic_states), all_params, 0.025)
+            all_states = step_fn(
+                all_states, all_params, externals, external_inds, delta_t=delta_t
+            )
+            recs = jnp.asarray(
+                [
+                    all_states[rec_state][rec_ind]
+                    for rec_state, rec_ind in zip(rec_states, rec_inds)
+                ]
+            )
+            dynamic_states = flatten(remove_observables(all_states))
+            return dynamic_states, recs
+
+        def loss_fn(params, param_state_value):
+            param_state = cell.data_set("Leak_gLeak", param_state_value, None)
+            cell.to_jax()
+            dynamic_states, all_params, recordings = init_dynamics(params, param_state)
+            steps = int(t_max / delta_t)
+            for step in range(steps):
+                externals_now = {}
+                for key in externals.keys():
+                    externals_now[key] = externals[key][:, step]
+                dynamic_states, recs = step_dynamics(dynamic_states, all_params, externals_now, external_inds)
+                recordings.append(recs)
+            return jnp.mean(jnp.stack(recordings, axis=0).T)
+
+        loss = loss_fn(params, 1e-4)
     """
 
-    # Initialize the external inputs and their indices.
-    external_inds = module.external_inds.copy()
-
-    # Get the full parameter state including observables
-    # ----------------------------------------------------------
-    if params is None:
-        params = []
-
-    all_params = _get_all_params_param_state(module, params, param_state)
-    all_states = module.get_all_states(param_state)
-
-    base_keys = list(all_states.keys())
-
-    all_states = module.append_channel_currents_to_states(
-        all_states, all_params, delta_t=delta_t
-    )
-
-    added_keys = [k for k in all_states.keys() if k not in base_keys]
-
-    # Remove observables from states
-    # ----------------------------------------------------------
-
-    # First remove currents
-    all_states = _remove_currents_from_states(all_states, added_keys)
+    all_states = module.get_all_states([])
+    added_keys = module.membrane_current_names + module.synapse_current_names
 
     # Remove branchpoints if needed
     original_length = len(leaves(all_states)[0])
@@ -284,34 +265,70 @@ def build_step_dynamics_fn(
     all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
 
     # Flatten to a vector
-    states_vec, states_to_pytree = ravel_pytree(all_states_no_nans)
+    _, unflatten = ravel_pytree(all_states_no_nans)
+
+    def flatten(all_states_no_nans: dict[str, Array]) -> Array:
+        """Convert the state vector back to a pytree.
+
+        Args: Dynamic states as dict of jnp.Arrays. Contains all dynamic states.
+
+        Returns: Flattened dynamic states as an jnp.Array.
+        """
+        states_vec, _ = ravel_pytree(all_states_no_nans)
+        return states_vec
 
     # Now we can create functions that convert between the full state pytree
     # and the filtered state vector
     # ----------------------------------------------------------
 
     # Ravel from pytree (post-step) to vector
-    def full_pytree_to_states(states):
+    def remove_observables(states: dict[str, Array]) -> dict[str, Array]:
+        r"""Remove the membrane currents, synaptic currents, and branchpoint voltages.
+
+        Thus, the returned states only include true "dynamic" states.
+
+        Args:
+            all_states:. All states of the system which can
+            be recorded.
+
+        Returns: All dynamic states of the system.
+        """
         filtered_states = _remove_currents_from_states(states, added_keys)
         filtered_states = tree_map(
             lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
         )
         filtered_states = tree_map(take_by_idx, filtered_states, nan_indices_tree)
-        filtered_states_vec, _ = ravel_pytree(filtered_states)
-        return filtered_states_vec
+        return filtered_states
 
     # Unravel from vector to full restored state pytree
-    def states_to_full_pytree(states_vec):
-        all_states_no_nans = states_to_pytree(states_vec)
+    def add_observables(
+        dynamic_states_pytree: dict[str, Array],
+        all_params: dict[str, Array],
+        delta_t: float,
+    ) -> dict[str, Array]:
+        """Add membrane currents, synaptic currents, and branchpoint voltages to states.
 
+        Args:
+            dynamic_states:
+            all_params:
+            delta_t:
+
+        Returns:
+            ``all_states`` which can be passed to the ``step_fn`` (returned by
+            ``jx.integrate.build_init_and_step_fn``).
+        """
+
+        # First restore NaN padding
         def restore_leaf(filtered_array, nan_indices_leaf):
             restored_array = jnp.full(filtered_length, jnp.nan)
             restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
             return restored_array
 
         all_states_with_nans = tree_map(
-            restore_leaf, all_states_no_nans, nan_indices_tree
+            restore_leaf, dynamic_states_pytree, nan_indices_tree
         )
+
+        # Restore branchpoint voltages if there were any branchpoints
         if branch_filter_applied:
 
             def restore_branch_leaf(leaf):
@@ -323,62 +340,10 @@ def build_step_dynamics_fn(
         else:
             restored_states = all_states_with_nans
 
+        # Add channel currents to the restored states
         restored_states = module.append_channel_currents_to_states(
             restored_states, all_params, delta_t=delta_t
         )
         return restored_states
 
-    def step_dynamics(
-        states_vec: Array,
-        params: list[dict[str, Array]] | None = None,
-        param_state: dict[str, Array] | None = None,
-        externals: dict[str, Array] | None = None,
-        external_inds: dict[str, Array] = external_inds,
-        delta_t: float = 0.025,
-    ) -> Array:
-        """Performs a single integration step with step size delta_t.
-
-        Args:
-            states_vec: Current state of the neuron model vectorised.
-            params: trainable params of the neuron model.
-            param_state: Parameters returned by `data_set`.. Defaults to None.
-            externals: External inputs.
-            external_inds: External indices. Defaults to `module.external_inds`.
-            delta_t: Time step. Defaults to 0.025.
-        Returns:
-            states_vec at next time step.
-        """
-        if externals is None:  # saver than {} default argument
-            externals = {}
-
-        if params is None:
-            params = []
-
-        # Restore full state pytree from vector
-        state = states_to_full_pytree(states_vec)
-
-        # Add params to all_params
-        all_params = _get_all_params_param_state(module, params, param_state)
-
-        # Step the dynamics
-        state = module.step(
-            state,
-            delta_t,
-            external_inds,
-            externals,
-            params=all_params,
-            solver=solver,
-            voltage_solver=voltage_solver,
-        )
-
-        # Convert back to vector and filter out observables
-        states_vec = full_pytree_to_states(state)
-        return states_vec
-
-    return (
-        states_vec,
-        step_dynamics,
-        states_to_pytree,
-        states_to_full_pytree,
-        full_pytree_to_states,
-    )
+    return remove_observables, add_observables, flatten, unflatten
