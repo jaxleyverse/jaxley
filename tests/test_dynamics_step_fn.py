@@ -170,7 +170,7 @@ def test_jit_and_grad_pstate(hh_cell):
     """Test jitting the dynamics step function and gradients wrt pstate"""
     cell = hh_cell
 
-    params = None  # no trainable params as we are going to use pstate
+    params = []  # no trainable params as we are going to use pstate
     pstate_values = jnp.array([-60, 0.0001])  # initial v and Leak_gLeak
 
     cell.to_jax()
