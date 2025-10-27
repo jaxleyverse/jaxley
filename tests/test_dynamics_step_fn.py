@@ -4,6 +4,7 @@
 import jax
 
 import jaxley as jx
+from jaxley.modules import cell
 import jaxley.optimize.transforms as jt
 from jaxley.channels import Leak
 from jaxley.channels.hh import HH
@@ -110,38 +111,39 @@ def test_jit_and_grad(hh_cell):
     optimizer = optax.adam(learning_rate=0.01)
     opt_state = optimizer.init(opt_params)
 
+    init_fn, step_fn = build_init_and_step_fn(cell)
+    remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+
+    def init_dynamics(params, param_state):
+        all_states, all_params = init_fn(params, None, param_state)
+        dynamic_states = flatten(remove_spurious(all_states))
+        return dynamic_states, all_params
+    @jit
+    def step_dynamics(dynamic_states, all_params, externals, external_inds, delta_t=0.025):
+        all_states = add_spurious(unflatten(dynamic_states), all_params, delta_t=delta_t)
+        all_states = step_fn(
+            all_states, all_params, externals, external_inds, delta_t=delta_t
+        )
+        dynamic_states = flatten(remove_spurious(all_states))
+        return dynamic_states
+
     def loss(opt_params):
         params = transform.forward(opt_params)
 
-        # initialise and build the step function
-        states_vec, step_dynamics, _, _, _ = build_step_dynamics_fn(
-            cell, solver="bwd_euler", delta_t=0.025, params=params
-        )
-
-        # JIT the step function for speed
-        @jit
-        def step_fn_vec_to_vec(states_vec, externals_now, params=None):
-            states_vec = step_dynamics(
-                states_vec,
-                params,
-                externals=externals_now,
-                external_inds=external_inds,
-                delta_t=0.025,
-            )
-            return states_vec
-
-        states_vecs = [states_vec]
+        dynamic_states, all_params = init_dynamics(params, None)
+   
+        dynamic_states_list = [dynamic_states]
 
         # Simulate the model
         for step in range(3):
             # Get inputs at this time step
             externals_now = get_externals_now(externals, step)
             # Step the ODE
-            states_vec = step_fn_vec_to_vec(states_vec, externals_now, params)
+            dynamic_states = step_dynamics(dynamic_states, all_params, externals_now, external_inds, delta_t=0.025)
             # Store the state
-            states_vecs.append(states_vec)
+            dynamic_states_list.append(dynamic_states)
         # Compute the loss at the last time step
-        loss = jnp.mean((states_vecs[-1][state_idx] - target_voltage) ** 2)
+        loss = jnp.mean((dynamic_states_list[-1][state_idx] - target_voltage) ** 2)
         return loss
 
     # Compute the gradient of the loss with respect to the parameters
