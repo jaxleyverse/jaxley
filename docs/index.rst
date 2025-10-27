@@ -84,7 +84,7 @@ This will install ``Jaxley`` with CPU support. If you want GPU support, follow t
 
 .. code-block:: none
 
-   pip install -U "jax[cuda12]"
+   pip install -U "jax[cuda13]"
 
 
 Feedback and Contributions
