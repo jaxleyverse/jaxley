@@ -7,8 +7,8 @@ import jaxley as jx
 import jaxley.optimize.transforms as jt
 from jaxley.channels import Leak
 from jaxley.channels.hh import HH
-from jaxley.integrate import add_stimuli
-from jaxley.utils.dynamics import build_step_dynamics_fn
+from jaxley.integrate import add_stimuli,build_init_and_step_fn
+from jaxley.utils.dynamics import build_dynamic_state_utils
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -35,29 +35,37 @@ def test_cycle_consistency(hh_cell):
     """Ensure that ravel/unravel of state vectors is consistent"""
     cell = hh_cell
 
-    states_vec, _, _, states_to_full_pytree, full_pytree_to_states = (
-        build_step_dynamics_fn(cell, solver="bwd_euler", delta_t=0.025)
-    )
+    init_fn, step_fn = build_init_and_step_fn(cell)
+    remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+    all_states, all_params = init_fn([])
+    dynamic_states = flatten(remove_spurious(all_states))
+    restored = add_spurious(unflatten(dynamic_states), all_params, delta_t=0.025)
+    reraveled = flatten(remove_spurious(restored))
 
-    restored = states_to_full_pytree(states_vec)
-    reraveled = full_pytree_to_states(restored)
-
-    assert np.allclose(reraveled, states_vec)
+    assert np.allclose(reraveled, dynamic_states)
 
 
 def test_jit(hh_cell):
     """Verify that the JIT-compiled step function runs without errors"""
     cell = hh_cell
-    states_vec, step_dynamics, _, _, _ = build_step_dynamics_fn(
-        cell, solver="bwd_euler", delta_t=0.025
-    )
-
+    #states_vec, step_dynamics, _, _, _ = build_dynamic_state_utils(
+    #    cell, solver="bwd_euler", delta_t=0.025
+    #)
+    init_fn, step_fn = build_init_and_step_fn(cell, solver="bwd_euler")
+    remove_spurious, add_spurious, flatten, unflatten = build_dynamic_state_utils(cell)
+    all_states, all_params = init_fn([], None, None)
+    dynamic_states = flatten(remove_spurious(all_states))
     @jit
-    def step_once(states_vec):
-        return step_dynamics(states_vec, externals={}, external_inds={}, delta_t=0.025)
+    def step_once(dynamic_states):
+        all_states = add_spurious(unflatten(dynamic_states), all_params, 0.025)
+        all_states = step_fn(
+            all_states, all_params, {}, {}, delta_t=0.025
+        )
+        dynamic_states = flatten(remove_spurious(all_states))
+        return dynamic_states
 
-    result = step_once(states_vec)
-    assert result.shape == states_vec.shape
+    result = step_once(dynamic_states)
+    assert result.shape == dynamic_states.shape
 
 
 def test_jit_and_grad(hh_cell):
