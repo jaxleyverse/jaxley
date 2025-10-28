@@ -240,11 +240,10 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     # Remove branchpoints if needed
 
-    # only consider membrane states
+    # We should only consider membrane states
     membrane_states_keys = module.jaxnodes.keys()
     original_length = len(all_states["v"]) 
 
-    # only filter key if it is in membrane_states_keys
     if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
         filter_indices = jnp.array(module._branchpoints.index.to_numpy(), dtype=int)
         all_indices = jnp.arange(original_length)
@@ -254,7 +253,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         keep_indices = jnp.arange(original_length)
         branch_filter_applied = False
 
-
+    # Function to filter membrane states
     def filter_membrane_state(key_name, x):
         if key_name in membrane_states_keys and getattr(x, "ndim", None) and x.ndim > 0:
             y = jnp.take(x, keep_indices, axis=0)
@@ -314,7 +313,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     # Unravel from vector to full restored state pytree
 
     def restore_leaf_by_key(key, filtered_array, nan_indices_leaf):
-        """Restore NaN padding only for membrane state keys."""
+        """Restore NaN padding only for membrane state keys"""
         if key in membrane_states_keys and getattr(filtered_array, "ndim", None) and filtered_array.ndim > 0:
             restored_array = jnp.full(filtered_length, jnp.nan)
             restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
@@ -322,14 +321,14 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         return filtered_array  
 
     def selective_restore_nan(tree1, tree2, fn):
-        """tree_map_with_path version of a 2-tree map (like tree_multimap)."""
+        """Restore NaN padding only for membrane state keys"""
         return tree_map_with_path(
             lambda path, x1, x2: fn(get_key_name(path), x1, x2),
             tree1, tree2
         )
     
     def restore_branch_leaf_by_key(key, leaf):
-        """Restore full-length array only for membrane state keys."""
+        """Restore full-length array only for membrane state keys"""
         if key in membrane_states_keys and getattr(leaf, "ndim", None) and leaf.ndim > 0:
             restored_array = jnp.full(original_length, -1.0)
             restored_array = restored_array.at[keep_indices].set(leaf)
@@ -392,7 +391,7 @@ def selective_filter(tree, fn):
     )
 
 def get_key_name(path):
-    """Extract string name from JAX path elements."""
+    """Extract string name from JAX path elements"""
     if not path:
         return None
     last = path[-1]
