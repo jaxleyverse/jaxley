@@ -80,26 +80,25 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
             * All states of the system which can be recorded (Dict[str, Array]).
 
-        * ``flatten(dynamic_states)``
+        * ``flatten(dynamic_states_pytree)``
 
           Callable which flattens dynamic states as a pytree into a jnp.Array.
 
           * Args:
 
-            *  ``dynamic_states`` (Dict[str, Array]): Contains all dynamic states.
+            *  ``dynamic_states_pytree`` (Dict[str, Array]): All dynamic states.
 
           * Returns:
 
             * Dynamic states of the system as a flattened Array (Array).
 
-        * ``unflatten(flat_dynamic_states)``
+        * ``unflatten(*args)``
 
           Callable which converts the state vector back to a pytree.
 
           * Args:
 
-            * ``flat_dynamic_states`` (Array): A flattened array including the
-              dynamic states of the system.
+            * The dynamic states of the system as a flat jax array (Array).
 
           * Returns:
 
@@ -236,11 +235,12 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     """
 
     all_states = module.get_all_states([])
+
+    # Get the names of all keys that will be removed by `remove_observables()`.
     added_keys = module.membrane_current_names + module.synapse_current_names
 
-    # Remove branchpoints if needed
+    # Remove branchpoints if needed.
     original_length = len(leaves(all_states)[0])
-
     if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
         filter_indices = jnp.array(module._branchpoints.index.to_numpy(), dtype=int)
         all_indices = jnp.arange(original_length)
@@ -262,45 +262,44 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
             return x
         return jnp.take(x, idx, axis=0)
 
-    all_states_no_nans = tree_map(take_by_idx, all_states, nan_indices_tree)
+    dynamic_states_pytree = tree_map(take_by_idx, all_states, nan_indices_tree)
 
-    # Flatten to a vector
-    _, unflatten = ravel_pytree(all_states_no_nans)
+    # Get the unflatten function.
+    _, unflatten = ravel_pytree(dynamic_states_pytree)
 
-    def flatten(all_states_no_nans: dict[str, Array]) -> Array:
+    def flatten(dynamic_states_pytree: dict[str, Array]) -> Array:
         """Convert the state vector back to a pytree.
 
-        Args: Dynamic states as dict of jnp.Arrays. Contains all dynamic states.
+        Args:
+            dynamic_states_pytree: Dynamic states as dict of jnp.Arrays. Contains all
+                dynamic states.
 
-        Returns: Flattened dynamic states as an jnp.Array.
+        Returns:
+            Flattened dynamic states as an jnp.Array
         """
-        states_vec, _ = ravel_pytree(all_states_no_nans)
+        states_vec, _ = ravel_pytree(dynamic_states_pytree)
         return states_vec
 
-    # Now we can create functions that convert between the full state pytree
-    # and the filtered state vector
-    # ----------------------------------------------------------
-
-    # Ravel from pytree (post-step) to vector
-    def remove_observables(states: dict[str, Array]) -> dict[str, Array]:
+    def remove_observables(all_states: dict[str, Array]) -> dict[str, Array]:
         r"""Remove the membrane currents, synaptic currents, and branchpoint voltages.
 
         Thus, the returned states only include true "dynamic" states.
 
         Args:
-            all_states:. All states of the system which can
-            be recorded.
+            all_states:. All observalbe states of the system, including membrane
+                and synaptic currents, branchpoint voltages, and NaN-padded states
+                in cases where some mechanisms exist only in some compartments.
 
-        Returns: All dynamic states of the system.
+        Returns:
+            All dynamic states of the system.
         """
-        filtered_states = _remove_currents_from_states(states, added_keys)
+        filtered_states = _remove_currents_from_states(all_states, added_keys)
         filtered_states = tree_map(
             lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
         )
         filtered_states = tree_map(take_by_idx, filtered_states, nan_indices_tree)
         return filtered_states
 
-    # Unravel from vector to full restored state pytree
     def add_observables(
         dynamic_states_pytree: dict[str, Array],
         all_params: dict[str, Array],
@@ -309,16 +308,18 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         """Add membrane currents, synaptic currents, and branchpoint voltages to states.
 
         Args:
-            dynamic_states:
-            all_params:
-            delta_t:
+            dynamic_states_pytree: Contains all dynamic states of the module,
+                formatted as a dictionary of jax arrays.
+            all_params: Contains _all_ parameters that are needed to simulate the
+                system.
+            delta_t: The time step.
 
         Returns:
             ``all_states`` which can be passed to the ``step_fn`` (returned by
             ``jx.integrate.build_init_and_step_fn``).
         """
 
-        # First restore NaN padding
+        # Step 1: First restore NaN padding.
         def restore_leaf(filtered_array, nan_indices_leaf):
             restored_array = jnp.full(filtered_length, jnp.nan)
             restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
@@ -328,7 +329,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
             restore_leaf, dynamic_states_pytree, nan_indices_tree
         )
 
-        # Restore branchpoint voltages if there were any branchpoints
+        # Step 2: Restore branchpoint voltages if there were any branchpoints
         if branch_filter_applied:
 
             def restore_branch_leaf(leaf):
@@ -340,7 +341,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         else:
             restored_states = all_states_with_nans
 
-        # Add channel currents to the restored states
+        # Step 3: Add channel currents to the restored states
         restored_states = module.append_channel_currents_to_states(
             restored_states, all_params, delta_t=delta_t
         )
