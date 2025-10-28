@@ -264,7 +264,6 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     # Apply it
     all_states = selective_filter(all_states, filter_membrane_state)
     filtered_length = len(all_states["v"]) #len(leaves(all_states)[0])
-    print("original length:", original_length, "filtered length:", filtered_length)
     
     # Remove NaNs (appear if some states are not defined on all compartments)
     nan_mask_tree = tree_map(jnp.isnan, all_states)
