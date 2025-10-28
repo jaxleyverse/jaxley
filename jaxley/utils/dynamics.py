@@ -239,8 +239,6 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     added_keys = module.membrane_current_names + module.synapse_current_names
 
     # Remove branchpoints if needed
-
-    # We should only consider membrane states
     membrane_states_keys = module.jaxnodes.keys()
     original_length = len(all_states["v"]) 
 
@@ -253,26 +251,21 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         keep_indices = jnp.arange(original_length)
         branch_filter_applied = False
 
-    # Function to filter membrane states
-    def filter_membrane_state(key_name, x):
-        if key_name in membrane_states_keys and getattr(x, "ndim", None) and x.ndim > 0:
-            y = jnp.take(x, keep_indices, axis=0)
-            return y
-        return x
-
-    # Apply it
-    all_states = selective_filter(all_states, filter_membrane_state)
+    all_states = tree_map_leaves_with_valid_key(all_states, lambda x: jnp.take(x, keep_indices, axis=0), valid_keys=membrane_states_keys)
     filtered_length = len(all_states["v"]) #len(leaves(all_states)[0])
     
     # Remove NaNs (appear if some states are not defined on all compartments)
     nan_mask_tree = tree_map(jnp.isnan, all_states)
     nan_indices_tree = tree_map(lambda m: jnp.where(~m)[0], nan_mask_tree)
 
-    def remove_nans_by_key(key, x):
-        if key in membrane_states_keys:
-            return jnp.take(x, nan_indices_tree[key], axis=0)
-        return x
-    all_states_no_nans = selective_filter(all_states, remove_nans_by_key)
+
+
+    def take_by_idx(x, idx):
+        if getattr(x, "ndim", None) is None or x.ndim == 0:
+            return x
+        return jnp.take(x, idx, axis=0)
+
+    all_states_no_nans = tree_map_leaves_with_valid_key_2_trees(all_states, nan_indices_tree, take_by_idx, valid_keys=membrane_states_keys)
 
     # Flatten to a vector
     _, unflatten = ravel_pytree(all_states_no_nans)
@@ -305,9 +298,10 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         """
         filtered_states = _remove_currents_from_states(states, added_keys)
 
-        filtered_states = selective_filter(filtered_states, filter_membrane_state)
+        filtered_states = tree_map_leaves_with_valid_key(filtered_states, lambda x: jnp.take(x, keep_indices, axis=0), valid_keys=membrane_states_keys)
 
-        filtered_states = selective_filter(filtered_states, remove_nans_by_key)
+        filtered_states = tree_map_leaves_with_valid_key_2_trees(filtered_states, nan_indices_tree, take_by_idx, valid_keys=membrane_states_keys)
+
         return filtered_states
 
     # Unravel from vector to full restored state pytree
@@ -381,14 +375,54 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     return remove_observables, add_observables, flatten, unflatten
 
 
+def tree_map_leaves_with_valid_key(tree, fn, valid_keys=None):
+    """Apply fn(key, leaf) selectively to pytree leaves.
 
+    Args:
+        tree: Pytree of arrays or scalars.
+        fn: Callable(key, leaf) → new leaf (applied if key ∈ valid_keys or if valid_keys is None).
+        valid_keys: Optional iterable of keys to include.
+        else_fn: Optional fallback for keys *not* in valid_keys (default: identity).
 
+    Returns:
+        Pytree with transformed leaves.
+    """
 
-def selective_filter(tree, fn):
+    valid_keys = set(valid_keys) if valid_keys is not None else None
+
     return tree_map_with_path(
-        lambda path, x: fn(get_key_name(path), x),
-        tree
+        lambda path, leaf: (
+            fn(leaf)
+            if (valid_keys is None or get_key_name(path) in valid_keys)
+            else leaf
+        ),
+        tree,
     )
+
+def tree_map_leaves_with_valid_key_2_trees(tree1, tree2, fn, valid_keys=None):
+    """Apply fn selectively to pytree leaves from two trees.
+
+    Args:
+        tree1: Primary pytree (e.g., arrays).
+        tree2: Secondary pytree (same structure as tree1).
+        fn: Callable(leaf1, leaf2) -> new leaf (or key-aware: fn(key, leaf1, leaf2))
+        valid_keys: Optional iterable of keys to include; else leaves are unchanged.
+
+    Returns:
+        Pytree with transformed leaves.
+    """
+    valid_keys = set(valid_keys) if valid_keys is not None else None
+
+    def wrapper(path, leaf1, leaf2):
+        key = get_key_name(path)
+        if valid_keys is None or key in valid_keys:
+            # Call fn with just (leaf1, leaf2)
+            return fn(leaf1, leaf2)
+        else:
+            return leaf1  # leave unchanged
+
+    return tree_map_with_path(wrapper, tree1, tree2)
+
 
 def get_key_name(path):
     """Extract string name from JAX path elements"""
