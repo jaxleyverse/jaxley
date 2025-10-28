@@ -8,7 +8,7 @@ pip install jaxley
 ```
 This will install `Jaxley` with CPU support. If you want GPU support, follow the instructions on the [`JAX` github repository](https://github.com/google/jax) to install `JAX` with GPU support (in addition to installing `Jaxley`). For example, for NVIDIA GPUs, run
 ```sh
-pip install -U "jax[cuda12]"
+pip install -U "jax[cuda13]"
 ```
 
 ## Install from source
