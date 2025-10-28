@@ -23,17 +23,48 @@ def build_init_and_step_fn(
     """Return ``init_fn`` and ``step_fn`` which initialize modules and run update steps.
 
     This method can be used to gain additional control over the simulation workflow.
-    It exposes the ``step`` function, which can be used to perform step-by-step updates
+    It exposes a step function, which can be used to perform step-by-step updates
     of the differential equations.
 
     Args:
-        module: A `Module` object that e.g. a cell.
-        voltage_solver: Voltage solver used in step. Defaults to "jaxley.stone".
+        module: A ``jx.Module`` object that, for example a ``jx.Cell``.
+        voltage_solver: Voltage solver used in step. Defaults to "jaxley.dhs".
         solver: ODE solver. Defaults to "bwd_euler".
 
     Returns:
-        init_fn, step_fn: Functions that initialize the state and parameters, and
-            perform a single integration step, respectively.
+
+        * ``init_fn(params, all_states=None, param_state=None, delta_t=0.025)``
+
+          Callable which initializes the states and parameters.
+
+          * Args:
+
+            * ``params`` (list[dict]): returned by `.get_parameters()`.
+            * ``all_states`` (dict | None = None): typically `None`.
+            * ``param_state`` (list[dict] | None = None): returned by `.data_set()`.
+            * ``delta_t`` (float = 0.025): the time step.
+
+          * Returns:
+
+            * ``all_states`` (dict).
+            * ``all_params`` (dict), which can be passed to the `step_fn`.
+
+        * ``step_fn(all_states, all_params, external_inds, externals, delta_t=0.025)``
+
+          Callable which performs a single integration step.
+
+          * Args:
+
+            * ``all_states`` (dict): returned by `init_fn()`.
+            * ``all_params`` (dict): returned by `init_fn()`.
+            * ``externals`` (dict): obtained with `module.externals.copy()` but using
+              only the external input at the current time step (see examples below).
+            * ``external_inds`` (dict): obtained with `module.external_inds.copy()`.
+            * ``delta_t`` (float): the time step.
+
+          * Returns:
+
+            * Updated ``all_states``  (dict).
 
     Example usage
     ^^^^^^^^^^^^^
