@@ -319,42 +319,14 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     # Unravel from vector to full restored state pytree
 
-    def restore_leaf_by_key(key, filtered_array, nan_indices_leaf):
-        """Restore NaN padding only for membrane state keys"""
-        if (
-            key in membrane_states_keys
-            and getattr(filtered_array, "ndim", None)
-            and filtered_array.ndim > 0
-        ):
-            restored_array = jnp.full(filtered_length, jnp.nan)
-            restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
-            return restored_array
-        return filtered_array
-
-    def selective_restore_nan(tree1, tree2, fn):
-        """Restore NaN padding only for membrane state keys"""
-        return tree_map_with_path(
-            lambda path, x1, x2: fn(get_key_name(path), x1, x2), tree1, tree2
-        )
-
-    def restore_branch_leaf_by_key(key, leaf):
-        """Restore full-length array only for membrane state keys"""
-        if (
-            key in membrane_states_keys
-            and getattr(leaf, "ndim", None)
-            and leaf.ndim > 0
-        ):
-            restored_array = jnp.full(original_length, -1.0)
-            restored_array = restored_array.at[keep_indices].set(leaf)
-            return restored_array
-        return leaf
-
     def restore_leaf(filtered_array, nan_indices_leaf):
+        """Restore NaN padding"""
         restored_array = jnp.full(filtered_length, jnp.nan)
         restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
         return restored_array
 
     def restore_branch_leaf(leaf):
+        """Restore branchpoint voltages"""
         restored_array = jnp.full(original_length, -1.0)
         restored_array = restored_array.at[keep_indices].set(leaf)
         return restored_array
@@ -377,13 +349,6 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         """
 
         # First restore NaN padding
-
-        # all_states_with_nans = selective_restore_nan(dynamic_states_pytree, nan_indices_tree, restore_leaf_by_key)
-        # all_states_with_nans = selective_restore_nan(
-        #    dynamic_states_pytree, nan_indices_tree,
-        #    restore_leaf_by_key
-        # )
-
         all_states_with_nans = tree_map_with_path(
             lambda path, leaf: (
                 restore_leaf(leaf, nan_indices_tree[get_key_name(path)])
@@ -415,13 +380,13 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
 
 def is_valid_membrane_leaf(key, leaf, valid_keys):
-    """Check if the leaf is a membrane state array that should be processed."""
+    """Check if the leaf is non-zero and its key is in valid_keys"""
     return key in valid_keys and getattr(leaf, "ndim", None) and leaf.ndim > 0
 
 
 def tree_map_leaves_with_valid_key(tree, fn, valid_keys=None):
     """
-    Apply fn(leaf, ...) selectively to leaves that satisfy valid_check_fn(key, leaf)
+    Apply fn(leaf) selectively to leaves that satisfy is_valid_membrane_leaf(key, leaf, valid_keys).
     """
     return tree_map_with_path(
         lambda path, leaf: (
@@ -434,26 +399,15 @@ def tree_map_leaves_with_valid_key(tree, fn, valid_keys=None):
 
 
 def tree_map_leaves_with_valid_key_2_trees(tree1, tree2, fn, valid_keys=None):
-    """Apply fn selectively to pytree leaves from two trees.
-
-    Args:
-        tree1: Primary pytree (e.g., arrays).
-        tree2: Secondary pytree (same structure as tree1).
-        fn: Callable(leaf1, leaf2) -> new leaf (or key-aware: fn(key, leaf1, leaf2))
-        valid_keys: Optional iterable of keys to include; else leaves are unchanged.
-
-    Returns:
-        Pytree with transformed leaves.
-    """
+    """Apply fn(leaf1, leaf2) selectively to leaves that satisfy is_valid_membrane_leaf(key, leaf1, valid_keys)."""
     valid_keys = set(valid_keys) if valid_keys is not None else None
 
     def wrapper(path, leaf1, leaf2):
         key = get_key_name(path)
         if is_valid_membrane_leaf(key, leaf1, valid_keys):
-            # Call fn with just (leaf1, leaf2)
             return fn(leaf1, leaf2)
         else:
-            return leaf1  # leave unchanged
+            return leaf1
 
     return tree_map_with_path(wrapper, tree1, tree2)
 
