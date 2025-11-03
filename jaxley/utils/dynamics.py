@@ -80,26 +80,25 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
             * All states of the system which can be recorded (Dict[str, Array]).
 
-        * ``flatten(dynamic_states)``
+        * ``flatten(dynamic_states_pytree)``
 
           Callable which flattens dynamic states as a pytree into a jnp.Array.
 
           * Args:
 
-            *  ``dynamic_states`` (Dict[str, Array]): Contains all dynamic states.
+            *  ``dynamic_states_pytree`` (Dict[str, Array]): All dynamic states.
 
           * Returns:
 
             * Dynamic states of the system as a flattened Array (Array).
 
-        * ``unflatten(flat_dynamic_states)``
+        * ``unflatten(*args)``
 
           Callable which converts the state vector back to a pytree.
 
           * Args:
 
-            * ``flat_dynamic_states`` (Array): A flattened array including the
-              dynamic states of the system.
+            * The dynamic states of the system as a flat jax array (Array).
 
           * Returns:
 
@@ -294,11 +293,13 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
         Thus, the returned states only include true "dynamic" states.
 
-        Args:
-            all_states:. All states of the system which can
-            be recorded.
+         Args:
+            all_states:. All observalbe states of the system, including membrane
+                and synaptic currents, branchpoint voltages, and NaN-padded states
+                in cases where some mechanisms exist only in some compartments.
 
-        Returns: All dynamic states of the system.
+        Returns:
+            All dynamic states of the system.
         """
         filtered_states = _remove_currents_from_states(states, added_keys)
 
@@ -339,9 +340,11 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         """Add membrane currents, synaptic currents, and branchpoint voltages to states.
 
         Args:
-            dynamic_states:
-            all_params:
-            delta_t:
+            dynamic_states_pytree: Contains all dynamic states of the module,
+                formatted as a dictionary of jax arrays.
+            all_params: Contains _all_ parameters that are needed to simulate the
+                system.
+            delta_t: The time step.
 
         Returns:
             ``all_states`` which can be passed to the ``step_fn`` (returned by

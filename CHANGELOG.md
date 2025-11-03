@@ -21,6 +21,7 @@ Elisabeth Galyo for reporting)
 ### 📚 Documentation
 
 - Added example usage to many user-facing Module functions (#716, @alexpejovic)
+- Update GPU installation instructions to use CUDA 13 (#732, @michaeldeistler)
 
 
 # 0.11.5
