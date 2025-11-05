@@ -7,12 +7,12 @@ import jaxley as jx
 import jaxley.optimize.transforms as jt
 from jaxley.channels import Leak
 from jaxley.channels.hh import HH
+from jaxley.connect import fully_connect
 from jaxley.integrate import add_stimuli, build_init_and_step_fn
 from jaxley.modules import cell
 from jaxley.synapses.ionotropic import IonotropicSynapse
-from jaxley.utils.dynamics import build_dynamic_state_utils
-from jaxley.connect import fully_connect
 from jaxley.synapses.test import TestSynapse
+from jaxley.utils.dynamics import build_dynamic_state_utils
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -208,7 +208,7 @@ def test_jit_and_grad_network():
         return externals_now
 
     target_voltage = -50.0
-    state_idx = -30
+    state_idx = 0
 
     # Define the optimizer
     optimizer = optax.adam(learning_rate=0.01)
@@ -263,11 +263,10 @@ def test_jit_and_grad_network():
     value, gradient = grad_loss(opt_params)
 
     updates, opt_state = optimizer.update(gradient, opt_state)
-
+    print(value)
+    print(gradient)
     assert np.all(abs(gradient[0]["Leak_gLeak"]) > 0)
     assert np.all(abs(gradient[1]["v"]) > 0)
-
-
 
 
 def test_jit_and_grad_pstate(hh_cell):
