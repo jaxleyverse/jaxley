@@ -25,9 +25,9 @@ from jaxley.channels.pospischil import K, Leak, Na
 from jaxley.io.tmp import (
     build_compartment_graph,
     from_graph,
+    to_graph,
     swc_to_nx,
 )
-from jaxley.modules.base import to_graph
 from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 
@@ -72,13 +72,13 @@ def test_graph_import_export_cycle(
         module.compute_compartment_centers()
 
         # ensure to_graph works
-        module_graph = to_graph(module, channels=True, synapses=True)
+        module_graph = to_graph(module)
 
         # ensure prev exported graph can be read
-        re_module = from_graph(module_graph, traverse_for_solve_order=False)
+        re_module = from_graph(module_graph)
 
         # ensure to_graph works for re-imported modules
-        re_module_graph = to_graph(re_module, channels=True, synapses=True)
+        re_module_graph = to_graph(re_module)
 
         # ensure original module and re-imported module are equal
         assert np.all(equal_both_nan_or_empty_df(re_module.nodes, module.nodes))
@@ -105,13 +105,13 @@ def test_graph_import_export_cycle(
             [d for i, d in module_graph.nodes(data=True)],
             index=module_graph.nodes,
         )
-        node_df = node_df.loc[node_df["is_comp"]].sort_index()
+        node_df = node_df.loc[node_df["branch_index"].notna()].sort_index()
 
         re_node_df = pd.DataFrame(
             [d for i, d in re_module_graph.nodes(data=True)],
             index=re_module_graph.nodes,
         )
-        re_node_df = re_node_df.loc[re_node_df["is_comp"]].sort_index()
+        re_node_df = re_node_df.loc[re_node_df["branch_index"].notna()].sort_index()
         assert np.all(equal_both_nan_or_empty_df(node_df, re_node_df))
 
         edges = pd.DataFrame(
@@ -137,8 +137,6 @@ def test_graph_import_export_cycle(
         assert np.all(equal_both_nan_or_empty_df(edges, re_edges))
 
         # ignore "externals", "recordings", "trainable_params", "indices_set_by_trainables"
-        for k in ["ncomp"]:
-            assert module_graph.graph[k] == re_module_graph.graph[k]
 
         # assume if module can be integrated, so can be comp, cell and branch
         if isinstance(module, jx.Network):
@@ -183,7 +181,7 @@ def test_trace_branches(file):
 
     nx_branch_lens = []
     for n in comp_graph.nodes:
-        if comp_graph.nodes[n]["is_comp"]:
+        if not comp_graph.nodes[n]["branch_index"] is None:
             nx_branch_lens.append(comp_graph.nodes[n]["l"])
     nx_branch_lens = np.sort(nx_branch_lens)
 

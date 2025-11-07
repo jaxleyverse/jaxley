@@ -416,7 +416,11 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
 
 
 def compartmentalize_branch(
-    branch_nodes: pd.DataFrame, ncomp: int, ignore_branchpoints: bool = False
+    branch_nodes: pd.DataFrame,
+    ncomp: int,
+    ignore_branchpoints: bool = False,
+    interp_attrs: Optional[List[str]] = None,
+    const_attrs: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
 
@@ -437,11 +441,24 @@ def compartmentalize_branch(
         not if it has a different id. This is for example relevant if the branch extends
         from a single point soma or somatic branchpoint. In these cases, the somatic SWC
         node is _not_ considered to be part of the dendrite.
+        interp_attrs: Additional attributes to interpolate along the branch.
+            Cannot include `x`, `y`, `z`, `r`.
+        const_attrs: Additional attributes to set to that of the first branch node.
+            Cannot include `id`.
 
     Returns:
         DataFrame of compartments and compartment attributes.
     """
     # TODO: This should be reusable for `set_ncomp()`
+    interp_attrs = interp_attrs or []
+    const_attrs = const_attrs or []
+
+    for attr in set(interp_attrs + const_attrs + ["x", "y", "z", "r", "id"]):
+        assert attr in branch_nodes.columns, f"Branch nodes must contain '{attr}'."
+
+    for attr in ["x", "y", "z", "r"]:
+        assert attr not in interp_attrs, f"{attr} cannot be an interp_attr."
+    assert "id" not in const_attrs, "id cannot be a const_attr."
 
     # all nodes in a branch must have the same id. since branchpoints can have a
     # different id (attached at the ends), the node after the branchpoint det. branch id
@@ -473,7 +490,6 @@ def compartmentalize_branch(
 
     ls = branch_nodes["l"].values
     rs = branch_nodes["r"].values
-    xyz = branch_nodes[["x", "y", "z"]].values
     branch_len = max(ls)
 
     if branch_len < 1e-8:
@@ -490,7 +506,7 @@ def compartmentalize_branch(
     # Create node indices and attributes for branch-tips/branchpoints and comps
     # is_comp, comp_len, comp_id, x, y, z, r, area, volume, res_in, res_out
     cone_prop_cols = ["r", "area", "volume", "resistive_load_in", "resistive_load_out"]
-    cols = ["l", "x", "y", "z"] + cone_prop_cols
+    cols = ["l", "x", "y", "z"] + cone_prop_cols + interp_attrs + const_attrs
     comp_attrs = pd.DataFrame(np.full((ncomp + 2, len(cols)), np.nan), columns=cols)
 
     comp_attrs["id"] = np.array([0, *[branch_id] * ncomp, 0], dtype=int)
@@ -500,18 +516,24 @@ def compartmentalize_branch(
     tip_cols = ["id", "x", "y", "z", "r"]
     comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]].values
 
-    # Interpolate xyz along branch
+    # Interpolate attrs along branch
     comp_centers = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
     comp_centers = np.array([0, *comp_centers, branch_len])
-    x_at_centers = lambda x: np.interp(comp_centers, ls, x)
-    comp_attrs[["x", "y", "z"]] = np.apply_along_axis(x_at_centers, axis=0, arr=xyz)
-
     comp_ends = np.linspace(0, branch_len, ncomp + 1)
     comp_tips = np.stack([comp_ends[:-1], comp_ends[1:]], axis=1)
+
+    interp1d = lambda x: np.interp(comp_centers, ls, x)
+    interp_arr = branch_nodes[["x", "y", "z"] + interp_attrs].values
+    comp_attrs[["x", "y", "z"] + interp_attrs] = np.apply_along_axis(
+        interp1d, axis=0, arr=interp_arr
+    )
 
     # compute radius, area, volume, res_in, res_out
     cone_props = np.array([compute_cone_props(ls, rs, x1, x2) for x1, x2 in comp_tips])
     comp_attrs.loc[is_comp, cone_prop_cols] = cone_props
+
+    # set const attrs
+    comp_attrs[const_attrs] = branch_nodes[const_attrs].iloc[0].values
 
     return comp_attrs
 
@@ -581,13 +603,6 @@ def build_compartment_graph(
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
     """
     G = _add_missing_swc_attrs(swc_graph)
-
-    # # determine consistent traversal direction along graph
-    # root = next(n for n in G.nodes if G.degree(n) == 1) if root is None else root
-    # for e in nx.dfs_edges(G.to_undirected(), root):
-    #     if e not in G.edges:
-    #         G.add_edge(*e, **G.edges[e[::-1]])
-    #         G.remove_edge(*e[::-1])
 
     branches, branchpoints, _ = list_branches(
         G,
@@ -701,7 +716,9 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     """
     nodes_df, edge_df, global_attrs = nx_to_pandas(G)
     # TODO: make channels and synapses dicts?
-    module_global_attrs = pd.Series({"channels": [], "synapses": [], "group_names": []})
+    module_global_attrs = pd.Series(
+        {"channels": [], "synapses": [], "group_names": [], "pumps": []}
+    )
     module_global_attrs["branchpoints_and_tips"] = pd.DataFrame([])
     global_attrs = pd.concat([global_attrs, module_global_attrs])
 
@@ -732,6 +749,7 @@ def _add_jaxley_meta_data(G: nx.DiGraph) -> nx.DiGraph:
     nodes_df.loc[is_comp, "comp_index"] = pd.Series(
         range(sum(is_comp)), dtype=pd.Int64Dtype()
     )
+    nodes_df["branch_index"] = nodes_df["branch_index"].astype(pd.Int64Dtype())
     nodes_df["cell_index"] = 0
 
     return pandas_to_nx(nodes_df, edge_df, global_attrs)
@@ -844,6 +862,15 @@ def to_graph(module, insert_branchpoints: bool = False):
     edges.index.names = (None, None)
     edges["synapse"] = False
 
+    synapse_edges = module.edges.set_index(["pre_index", "post_index"], drop=True)
+    synapse_edges.index.names = (None, None)
+    synapse_edges["synapse"] = True
+
+    edges = edges.combine_first(synapse_edges)
+    idx_cols = ["index_within_type", "synapse", "type_ind", "global_edge_index"]
+    edges[idx_cols] = edges[idx_cols].astype(pd.Int64Dtype())
+    edges["synapse"] = edges["synapse"].astype(bool)
+
     nodes = module.nodes.drop(
         columns=[col for col in module.nodes.columns if "local_" in col]
     )
@@ -864,6 +891,7 @@ def to_graph(module, insert_branchpoints: bool = False):
         "synapses",
         "group_names",
         "branchpoints_and_tips",
+        "pumps",
     ]
     for attr in global_attrs:
         G.graph[attr] = getattr(
@@ -930,14 +958,21 @@ def _build_module(G: nx.DiGraph) -> Module:
     Returns:
         The Module built from the graph.
     """
+    # TODO: use insert and _append_multiple_synapses to add synapses, channels and pumps to the module
+    # then initialize the params and states appropriately afterwards
     node_df, edge_df, global_attrs = nx_to_pandas(G)
+
+    comp_edge_df = edge_df[edge_df.synapse == False if len(edge_df) > 0 else []]
+    synapse_edge_df = edge_df[edge_df.synapse == True if len(edge_df) > 0 else []]
+    synapse_edge_df = synapse_edge_df.reset_index(names=["pre_index", "post_index"])
+    synapse_edge_df = synapse_edge_df.drop(columns=["synapse"], errors="ignore")
 
     nodes_per_branch = node_df["branch_index"].value_counts()
     assert (
         nodes_per_branch.nunique() == 1
     ), "`from_graph()` does not support a varying number of compartments in each branch."
 
-    acc_parents = _compute_branch_parents(node_df, edge_df)
+    acc_parents = _compute_branch_parents(node_df, comp_edge_df)
     module = _build_module_scaffold(
         node_df, parent_branches=acc_parents, xyzr=global_attrs["xyzr"]
     )
@@ -953,14 +988,21 @@ def _build_module(G: nx.DiGraph) -> Module:
 
     # set column-wise. preserves cols not in df.
     module.nodes[node_df.columns] = node_df
-
-    synapse_edges = edge_df[edge_df.synapse if len(edge_df) > 0 else []]
-    module.edges = synapse_edges if not synapse_edges.empty else module.edges
+    module.edges = synapse_edge_df if not synapse_edge_df.empty else module.edges
 
     # add all the extra attrs
     module.synapses = global_attrs["synapses"]
     module.channels = global_attrs["channels"]
+    module.pumps = global_attrs["pumps"]
+    module.pumped_ions = [p.ion_name for p in module.pumps]
     module.group_names = global_attrs["group_names"]
+    module.synapse_current_names = [f"i_{s._name}" for s in module.synapses]
+    module.synapse_param_names = [
+        k for s in module.synapses for k in s.synapse_params.keys()
+    ]
+    module.synapse_state_names = [
+        k for s in module.synapses for k in s.synapse_states.keys()
+    ]
     module.membrane_current_names = [c.current_name for c in module.channels]
     module.synapse_names = [s._name for s in module.synapses]
     module.branchpoints_and_tips = global_attrs["branchpoints_and_tips"]
@@ -971,7 +1013,6 @@ def _build_module(G: nx.DiGraph) -> Module:
 # TODO: add kwarg functionality
 def from_graph(
     comp_graph: nx.DiGraph,
-    assign_groups: bool = True,
 ):
     """Return a Jaxley module from a compartmentalized networkX graph.
 
