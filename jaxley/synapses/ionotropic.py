@@ -52,7 +52,7 @@ class IonotropicSynapse(Synapse):
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
-        pre_voltage = states[pre_indicies]
+        pre_voltage = all_states["v"][pre_indicies]
 
         prefix = self._name
         v_th = params[f"{prefix}_v_th"]

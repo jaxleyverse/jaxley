@@ -33,8 +33,7 @@ class TestSynapse(Synapse):
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
-        pre_voltage = states[pre_indicies]
-        post_voltage = states[post_indicies]
+        pre_voltage = all_states["v"][pre_indicies]
 
         prefix = self._name
         v_th = -35.0
