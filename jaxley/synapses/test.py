@@ -4,6 +4,7 @@
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
+from jax import Array
 
 from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
@@ -24,13 +25,17 @@ class TestSynapse(Synapse):
 
     def update_states(
         self,
-        states: Dict,
+        states: dict[str, Array],
+        all_states: dict,
+        pre_indicies: Array,
+        post_indicies: Array,
+        params: dict[str, Array],
         delta_t: float,
-        pre_voltage: float,
-        post_voltage: float,
-        params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
+        pre_voltage = states[pre_indicies]
+        post_voltage = states[post_indicies]
+
         prefix = self._name
         v_th = -35.0
         delta = 10.0

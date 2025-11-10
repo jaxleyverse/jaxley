@@ -58,6 +58,7 @@ class Synapse:
         return self
 
     def update_states(
+        self,
         states: dict[str, Array],
         all_states: dict,
         pre_indicies: Array,
