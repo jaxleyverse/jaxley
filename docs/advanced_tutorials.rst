@@ -37,7 +37,6 @@ Channels and models
 
    tutorials/11_ion_dynamics.ipynb
    tutorials/12_simplified_models.ipynb
-   tutorials/14_surrogate_gradients.ipynb
 
 
 Training and optimization
