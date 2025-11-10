@@ -314,11 +314,11 @@ class Network(Module):
             # State updates.
             states_updated = synapse_type.update_states(
                 synapse_states,
-                delta_t,
                 states,
                 pre_inds,
                 post_inds,
                 synapse_params,
+                delta_t,
             )
 
             # Rebuild state.

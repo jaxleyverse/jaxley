@@ -17,6 +17,11 @@ class Fire(Channel):
 
     Note that, after the voltage is reset by this channel, other channels (or external
     currents), can still modify the membrane voltage `within the same time step`.
+
+    Note as well that this function implements a surrogate gradient through the
+    use of the `heavisdie` function in `update_states()`. This allows the user
+    to perform gradient descent on networks using this channel despite the `Fire`
+    mechanism being non-differentiable.
     """
 
     def __init__(self, name: Optional[str] = None):

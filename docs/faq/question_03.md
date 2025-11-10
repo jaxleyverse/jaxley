@@ -18,4 +18,4 @@ For these models, `Jaxley` is flexible and accurate. For example, it can flexibl
 
 `Jaxley` also supports networks of these neurons.
 
-Note that, for LIF and Izhikevich neuron models, `Jaxley` does not yet support surrogate gradient descent, which is required for efficient training due to the discontinuity of spikes in these models.
+Note that, for LIF neurons, `Jaxley` additionally supports surrogate gradient descent as of version 0.11.7, which is required for efficient training due to the discontinuity of spikes in these models. Note that for the Izhikevich model, surrogate gradients are not supported by default, but one can modify the Izhikevich model to include support. See the tutorial linked above.
