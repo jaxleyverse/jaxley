@@ -71,7 +71,7 @@ def solve_inf_gate_exponential(
 def heaviside(x: ArrayLike, at_zero: ArrayLike = 1.0, grad_scale: float = 10.0):
     """Compute the heaviside step function with a custom derivative.
 
-    Jaxley implementation of `jax.numpy.heaviside`, which includes a custom
+    Jaxley implementation of ``jax.numpy.heaviside``, which includes a custom
     derivative.
 
     The custom derivative is $\\frac{1}{(g|x| + 1)^2}$ where g is ``grad_scale``.
@@ -82,11 +82,11 @@ def heaviside(x: ArrayLike, at_zero: ArrayLike = 1.0, grad_scale: float = 10.0):
     you can only take the gradient of this function when both are scalar values.
 
     Args:
-        x: input array or scalar. ``complex`` dtype are not supported.
-        at_zero: scalar or array. Specifies the return values when ``x`` is ``0``. ``complex``
-            dtype are not supported. ``x`` and ``at_zero`` must either have same shape or
-            broadcast compatible.
-        grad_scale: specifies the flatness of the gradient curve. Larger values
+        x: Input array or scalar. ``complex`` dtype are not supported.
+        at_zero: Scalar or array. Specifies the return values when ``x`` is ``0``.
+            ``complex`` dtype are not supported. ``x`` and ``at_zero`` must either
+            have same shape or broadcast compatible.
+        grad_scale: Specifies the flatness of the gradient curve. Larger values
             correspond to being closer to the 'real' gradient, however makes function
             more susceptible to exploding/vanishing gradients.
 
