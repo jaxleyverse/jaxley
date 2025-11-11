@@ -22,7 +22,6 @@ class SpikeSynapse(Synapse):
         prefix = self._name
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
-            f"{prefix}_e_syn": 0.0,  # mV
             f"{prefix}_s_decay": 10.0,  # unitless
         }
         self.synapse_states = {f"{prefix}_s": 0.0}
@@ -57,4 +56,4 @@ class SpikeSynapse(Synapse):
         """Return updated synapse state and current."""
         prefix = self._name
         g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
-        return g_syn * (post_voltage - params[f"{prefix}_e_syn"])
+        return g_syn
