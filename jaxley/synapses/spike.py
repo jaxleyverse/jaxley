@@ -30,8 +30,8 @@ class SpikeSynapse(Synapse):
         self,
         states: dict[str, Array],
         all_states: dict,
-        pre_indicies: Array,
-        post_indicies: Array,
+        pre_index: Array,
+        post_index: Array,
         params: dict[str, Array],
         delta_t: float,
     ) -> dict:
@@ -41,7 +41,7 @@ class SpikeSynapse(Synapse):
         s_decay = params[f"{prefix}_s_decay"]
 
         if "Fire_spikes" in all_states.keys():
-            spike_states = all_states["Fire_spikes"][pre_indicies]
+            spike_states = all_states["Fire_spikes"][pre_index]
             spike = spike_states
         else:
             spike = 0.0

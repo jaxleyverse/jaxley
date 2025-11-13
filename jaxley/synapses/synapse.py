@@ -61,8 +61,8 @@ class Synapse:
         self,
         states: dict[str, Array],
         all_states: dict,
-        pre_indicies: Array,
-        post_indicies: Array,
+        pre_index: Array,
+        post_index: Array,
         params: dict[str, Array],
         delta_t: float,
     ) -> dict[str, Array]:

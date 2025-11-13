@@ -46,13 +46,13 @@ class IonotropicSynapse(Synapse):
         self,
         states: dict[str, Array],
         all_states: dict,
-        pre_indicies: Array,
-        post_indicies: Array,
+        pre_index: Array,
+        post_index: Array,
         params: dict[str, Array],
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
-        pre_voltage = all_states["v"][pre_indicies]
+        pre_voltage = all_states["v"][pre_index]
 
         prefix = self._name
         v_th = params[f"{prefix}_v_th"]

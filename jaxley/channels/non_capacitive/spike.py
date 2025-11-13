@@ -43,7 +43,7 @@ class Fire(Channel):
         return {"v": v, f"{self.name}_spikes": spike_occurred}
 
     def compute_current(self, states, v, params):
-        return jnp.zeros((1,))
+        return 0
 
     def init_state(self, states, v, params, delta_t):
         return {}

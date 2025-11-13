@@ -10,7 +10,7 @@ from jaxley.synapses.test import TestSynapse
 
 __all__ = [
     "IonotropicSynapse",
-    "SpikeSynapse"
+    "SpikeSynapse",
     "Synapse",
     "TanhConductanceSynapse",
     "TanhRateSynapse",
