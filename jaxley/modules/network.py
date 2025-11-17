@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 import itertools
 from copy import deepcopy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 from warnings import warn
 
 import jax.numpy as jnp
@@ -308,16 +308,19 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            pre_indices = np.asarray(pre_syn_inds[synapse_names[i]])
+            post_indices = np.asarray(post_syn_inds[synapse_names[i]])
 
             # State updates.
-            states_updated = synapse_type.update_states(
+            states_updated = vmap(
+                synapse_type.update_states, in_axes=(0, None, 0, 0, 0, None)
+            )(
                 synapse_states,
-                delta_t,
-                voltages[pre_inds],
-                voltages[post_inds],
+                states,
+                pre_indices,
+                post_indices,
                 synapse_params,
+                delta_t,
             )
 
             # Rebuild state.
@@ -371,9 +374,8 @@ class Network(Module):
             post_v_and_perturbed = jnp.stack(
                 [voltages[post_inds], voltages[post_inds] + diff]
             )
-            synapse_currents = vmap(
-                synapse_type.compute_current, in_axes=(None, 0, 0, None)
-            )(
+            comp_cur_fn = vmap(synapse_type.compute_current, in_axes=(0, 0, 0, 0))
+            synapse_currents = vmap(comp_cur_fn, in_axes=(None, 0, 0, None))(
                 synapse_states,
                 pre_v_and_perturbed,
                 post_v_and_perturbed,

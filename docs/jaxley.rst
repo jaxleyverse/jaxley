@@ -127,3 +127,18 @@ Graph backend
    jaxley.io.graph.vis_compartment_graph
    jaxley.io.graph.from_graph
    jaxley.modules.base.to_graph
+
+
+Utilities
+---------
+
+.. autosummary::
+   :toctree: reference/_autosummary
+   :nosignatures:
+
+   jaxley.solver_gate.save_exp
+   jaxley.solver_gate.solve_gate_implicit
+   jaxley.solver_gate.solve_gate_exponential
+   jaxley.solver_gate.exponential_euler
+   jaxley.solver_gate.solve_inf_gate_exponential
+   jaxley.solver_gate.heaviside

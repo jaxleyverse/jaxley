@@ -9,7 +9,8 @@ from typing import Optional
 import pytest
 
 import jaxley as jx
-from jaxley.synapses import IonotropicSynapse
+from jaxley.channels import Fire, Leak
+from jaxley.synapses import IonotropicSynapse, SpikeSynapse
 from tests.test_regression import generate_regression_report, load_json
 
 
@@ -188,6 +189,53 @@ def SimpleMorphCell():
 
     yield get_or_build_cell
     cells = {}
+
+
+@pytest.fixture(scope="session")
+def SpikeNet(SimpleCell):
+    """Fixture for creating or retrieving a Network with SpikeSynapses."""
+    spike_nets = {}
+
+    def get_or_build_net(
+        ncells: int,
+        nbranches: int,
+        ncomp: int,
+        connect: bool = False,
+        copy: bool = True,
+        force_init: bool = False,
+    ) -> jx.Network:
+        """Create or retrieve a network.
+
+        If a network with the same number of cells, branches, compartments, and
+        connections already exists, it is returned.
+
+        Args:
+            ncells: Number of cells in the network.
+            nbranches: Number of branches in each cell.
+            ncomp: Number of compartments in each branch.
+            connect: Whether to connect the first two cells in the network.
+            copy: Whether to return a copy of the network. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Network()."""
+        if key := (ncells, nbranches, ncomp, connect) not in spike_nets or force_init:
+            net = jx.Network(
+                [SimpleCell(nbranches=nbranches, ncomp=ncomp, force_init=force_init)]
+                * ncells
+            )
+            net.select(nodes="all").insert(Fire())
+            net.select(nodes="all").insert(Leak())
+            if connect:
+                half = ncells // 2
+                jx.fully_connect(
+                    net.cell(range(half)), net.cell(range(half, ncells)), SpikeSynapse()
+                )
+            spike_nets[key] = net
+        return deepcopy(spike_nets[key]) if copy and not force_init else spike_nets[key]
+
+    yield get_or_build_net
+    spike_nets = {}
 
 
 def pytest_collection_modifyitems(config, items):
