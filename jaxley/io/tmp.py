@@ -67,7 +67,7 @@ def nx_to_pandas(
 
 
 def compute_xyz(
-    G: nx.DiGraph,
+    G: nx.Graph,
     length: float = 1.0,
     spread: float = np.pi / 8,
     spread_decay: float = 0.9,
@@ -90,11 +90,12 @@ def compute_xyz(
         A dictionary mapping node indices to xyz coordinates.
     """
     # TODO: Replace compute_xyz with this or vice versa, redundant!
-    root = next(n for n, d in G.in_degree() if d == 0)
+    root = next(n for n, d in G.degree() if d == 1)
     pos = {root: (0.0, 0.0, 0.0)}
 
     def recurse(node, depth=1, theta=0.0, phi=np.pi / 2):
-        children = [n for n in G.successors(node) if n not in pos]
+        neighbors = list(G.neighbors(node))
+        children = [n for n in neighbors if n not in pos]
         if not children:
             return
         n = len(children)
@@ -305,7 +306,7 @@ def list_branches(
         else:
             branches[-1].append(n2)
             # non-continous node indices which are not branchpoints, i.e. edges where node
-            # indices are > 1 apart, signal that a branch was interruped during tracing
+            # indices are > 1 apart, signal that a branch was interrupted during tracing
             if np.abs(n2 - n1) != 1:
                 swc_interupts.append((n1, n2))
 
@@ -337,7 +338,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
     defaults = {"id": 0, "r": 1}
 
     available_keys = G.nodes[next(iter(G.nodes()))].keys()
-    xyz = graph_io_new.compute_xyz(G) if "x" not in available_keys else {}
+    xyz = compute_xyz(G) if "x" not in available_keys else {}
     for n, (x, y, z) in xyz.items():
         # xyz is needed to compute compartment lengths
         G.nodes[n]["x"] = x
@@ -352,7 +353,7 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
 def compartmentalize_branch(
     branch_nodes: pd.DataFrame,
     ncomp: int,
-    ignore_branchpoints: bool = False,
+    ignore_branchpoints: Tuple[bool, bool] = (False, False),
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
 
@@ -370,7 +371,7 @@ def compartmentalize_branch(
             needs to include morph attributes `id`, `x`, `y`, `z`, `r`.
         ncomp: Number of compartments per branch.
         ignore_branchpoints: Whether to consider the branchpoint part of the neurite or
-        not if it has a different id. This is for example relevant if the branch extends
+        not. This is for example relevant if the branch extends
         from a single point soma or somatic branchpoint. In these cases, the somatic SWC
         node is _not_ considered to be part of the dendrite.
         interp_attrs: Additional attributes to interpolate along the branch.
@@ -381,7 +382,7 @@ def compartmentalize_branch(
     Returns:
         DataFrame of compartments and compartment attributes.
     """
-    # TODO: This should be reusable for `set_ncomp()`
+    # TODO: This function should be reusable for `set_ncomp()`
     for attr in set(["x", "y", "z", "r", "id"]):
         assert attr in branch_nodes.columns, f"Branch nodes must contain '{attr}'."
 
@@ -398,11 +399,13 @@ def compartmentalize_branch(
     if not_branch_id[-1] and len(branch_nodes) > 2:
         branch_nodes.loc[branch_nodes.index[-1], "r"] = branch_nodes["r"].values[-2]
 
+    inds = branch_nodes.index
+    inds = inds[1:] if ignore_branchpoints[0] else inds
+    inds = inds[:-1] if ignore_branchpoints[1] else inds
+    branch_nodes = branch_nodes.loc[inds]
+
     # set edge lengths to 0 for branchpoints of different id if ignore_branchpoints
     edge_lens = (branch_nodes[["x", "y", "z"]].diff(axis=0) ** 2).sum(axis=1) ** 0.5
-    if ignore_branchpoints and len(branch_nodes) > 2:
-        edge_lens.loc[not_branch_id] = 0  # ignore branchpoints
-
     branch_nodes["l"] = edge_lens.fillna(0).cumsum()  # path length
 
     # handle single point branches / somata
@@ -546,10 +549,11 @@ def build_compartment_graph(
     # traced point, not from the soma.
     soma_nodes = [n for n in G.nodes if G.nodes[n]["id"] == 1]
     single_soma = len(soma_nodes) == 1
-    is_soma_branchpoint = (
-        lambda n: len([n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]) >= 2
-    )
-    soma_branchpoints = [n for n in soma_nodes if is_soma_branchpoint(n) or single_soma]
+    soma_branchpoints = [n for n in soma_nodes if G.degree(n) > 2 or single_soma]
+    somatic_nns = lambda n: [n for n in G.neighbors(n) if G.nodes[n]["id"] == 1]
+    somatic_branchpoints = [
+        n for n in soma_branchpoints if len(somatic_nns(n)) >= 2 or single_soma
+    ]
 
     # create new set of indices which arent already used as node indices to label comps
     existing_inds = nodes_df.index
@@ -562,8 +566,10 @@ def build_compartment_graph(
         branch_nodes = nodes_df.loc[branch]
 
         # Compute the compartmentalization of the branch.
-        has_somatic_branch_pt = np.any(np.isin(branch, soma_branchpoints))
-        comp_attrs = compartmentalize_branch(branch_nodes, ncomp, has_somatic_branch_pt)
+        not_soma = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0] != 1
+        ignore_somatic_bpt = [not_soma and branch[0] in somatic_branchpoints]
+        ignore_somatic_bpt += [not_soma and branch[-1] in somatic_branchpoints]
+        comp_attrs = compartmentalize_branch(branch_nodes, ncomp, ignore_somatic_bpt)
 
         # Attach branchpoint and tip nodes to the branch.
         # Since branchpoints / tips have the same node_index as in the original graph
@@ -732,7 +738,7 @@ def _insert_branchpoints(G: nx.Graph) -> nx.Graph:
     """
     branchpoint_edges = G.graph["branchpoints_and_tips"].pop("edges")
     branchpoints_tips = G.graph["branchpoints_and_tips"].T.to_dict()
-    del G.graph["branchpoints_and_tips"]
+    G.graph["branchpoints_and_tips"] = pd.DataFrame()
 
     updated_G = G.copy()
     edge_attrs = {"comp_edge": True, "synapse": False}
@@ -792,7 +798,13 @@ def to_graph(module, insert_branchpoints: bool = False):
     nodes = nodes.combine_first(module._branchpoints)
     nodes = nodes.drop(columns=["type"])
 
-    G = pandas_to_nx(nodes, edges, pd.Series())
+    # module type
+    # TODO: refactor (also in Module._init_view)
+    modules = ["compartment", "branch", "cell", "network"]
+    module_inheritance = [c.__name__.lower() for c in module.__class__.__mro__]
+    module_type = next((t for t in modules if t in module_inheritance), None)
+
+    G = pandas_to_nx(nodes, edges, pd.Series({"module": module_type}))
     G = _extract_branchpoints(G)
 
     global_attrs = [
@@ -829,11 +841,11 @@ def _compute_branch_parents(
     Returns:
         The parent structure of the branch graph for each cell.
     """
-    brach_index_of = lambda x: node_df["branch_index"].loc[x].values
+    branch_index_of = lambda x: node_df["branch_index"].loc[x].values
     if edge_df.empty:  # for single compartment graphs
         return [-1]
     node_i, node_j = np.stack(edge_df.index).T
-    is_branch_edge = brach_index_of(node_i) != brach_index_of(node_j)
+    is_branch_edge = branch_index_of(node_i) != branch_index_of(node_j)
     branch_edge_inds = edge_df.index[is_branch_edge]
     parent_inds = branch_edge_inds.get_level_values(0)
     child_inds = branch_edge_inds.get_level_values(1)
@@ -860,7 +872,7 @@ def _compute_branch_parents(
 def _build_module(G: nx.DiGraph) -> Module:
     """Build a Module from a compartmentalized morphology.
 
-    This function builds a Module from a nx.DiGraph that has been compartmentalized.
+    This function builds a Module from a nx.Graph that has been compartmentalized.
 
     Args:
         G: The graph to build the Module from.
@@ -871,6 +883,14 @@ def _build_module(G: nx.DiGraph) -> Module:
     # TODO: use insert and _append_multiple_synapses to add synapses, channels and pumps to the module
     # then initialize the params and states appropriately afterwards
     node_df, edge_df, global_attrs = nx_to_pandas(G)
+
+    # ensure edges in edges are always from smaller index to larger index
+    if len(edge_df) > 0:
+        inds = np.stack(edge_df.index)
+        new_inds = np.where(
+            (inds[:, 0] < inds[:, 1])[:, np.newaxis], inds, inds[:, ::-1]
+        )
+        edge_df.index = pd.MultiIndex.from_tuples(new_inds.tolist())
 
     comp_edge_df = edge_df[edge_df.synapse == False if len(edge_df) > 0 else []]
     synapse_edge_df = edge_df[edge_df.synapse == True if len(edge_df) > 0 else []]
@@ -883,8 +903,13 @@ def _build_module(G: nx.DiGraph) -> Module:
     ), "`from_graph()` does not support a varying number of compartments in each branch."
 
     acc_parents = _compute_branch_parents(node_df, comp_edge_df)
+    return_type = global_attrs["module"] if "module" in global_attrs else "cell"
+
     module = _build_module_scaffold(
-        node_df, parent_branches=acc_parents, xyzr=global_attrs["xyzr"]
+        node_df,
+        parent_branches=acc_parents,
+        xyzr=global_attrs["xyzr"],
+        return_type=return_type,
     )
 
     node_df.columns = [
@@ -968,7 +993,7 @@ def from_graph(
 
 def _build_module_scaffold(
     idxs: pd.DataFrame,
-    return_type: Optional[str] = None,
+    return_type: str = "cell",
     parent_branches: Optional[List[np.ndarray]] = None,
     xyzr: List[np.ndarray] = [],
 ) -> Union[Network, Cell, Branch, Compartment]:
@@ -986,21 +1011,17 @@ def _build_module_scaffold(
     Returns:
         A skeleton module with the correct number of compartments, branches, cells, or
         networks."""
-    return_types = ["compartment", "branch", "cell", "network"]
-    build_cache = {k: [] for k in return_types}
-
-    if return_type is None:  # infer return type from idxs
-        return_type = _infer_module_type_from_inds(idxs)
+    build_cache = {k: [] for k in ["compartment", "branch", "cell", "network"]}
 
     comp = Compartment()
     build_cache["compartment"] = [comp]
 
-    if return_type in return_types[1:]:
+    if return_type in ["branch", "cell", "network"]:
         ncomps = idxs["branch_index"].value_counts().iloc[0]
         branch = Branch([comp for _ in range(ncomps)])
         build_cache["branch"] = [branch]
 
-    if return_type in return_types[2:]:
+    if return_type in ["cell", "network"]:
         branch_counter = 0
         for cell_id, cell_groups in idxs.groupby("cell_index"):
             num_branches = cell_groups["branch_index"].nunique()
@@ -1016,21 +1037,12 @@ def _build_module_scaffold(
             build_cache["cell"].append(cell)
             branch_counter += num_branches
 
-    if return_type in return_types[3:]:
+    if return_type == "network":
         build_cache["network"] = [Network(build_cache["cell"])]
 
     module = build_cache[return_type][0]
     build_cache.clear()
     return module
-
-
-def _infer_module_type_from_inds(idxs: pd.DataFrame) -> str:
-    """Return type (comp, branch, cell, ...) given dataframe of indices."""
-    nuniques = idxs[["cell_index", "branch_index", "comp_index"]].nunique()
-    nuniques.index = ["cell", "branch", "compartment"]
-    nuniques = pd.concat([pd.Series({"network": 1}), nuniques])
-    return_type = nuniques.loc[nuniques == 1].index[-1]
-    return return_type
 
 
 ########################################################################################

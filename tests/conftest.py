@@ -186,7 +186,12 @@ def SimpleMorphCell():
             #     ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
             # )
             swc_graph = swc_to_nx(fname)
-            comp_graph = build_compartment_graph(swc_graph, ncomp=ncomp, max_len=max_branch_len, ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions)
+            comp_graph = build_compartment_graph(
+                swc_graph,
+                ncomp=ncomp,
+                max_len=max_branch_len,
+                ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
+            )
             cells[key] = from_graph(comp_graph)
 
         return deepcopy(cells[key]) if copy and not force_init else cells[key]

@@ -175,8 +175,11 @@ def test_trace_branches(file):
     swc_graph = swc_to_nx(fname)
 
     # pre-processing
+    ignore_swc_interrupts = False
+    if file in ["morph_somatic_branchpoint.swc", "morph_non_somatic_branchpoint.swc"]:
+        ignore_swc_interrupts = True
     comp_graph = build_compartment_graph(
-        swc_graph, ncomp=1, ignore_swc_tracing_interruptions=False
+        swc_graph, ncomp=1, ignore_swc_tracing_interruptions=ignore_swc_interrupts
     )
 
     nx_branch_lens = []
@@ -412,7 +415,7 @@ def test_trim_dendrites_of_swc():
     # - if it is a soma.
     nodes_to_keep = []
     for node in comp_graph.nodes:
-        degree = comp_graph.in_degree(node) + comp_graph.out_degree(node)
+        degree = comp_graph.degree(node)
 
         condition1 = degree > 1
         condition2 = comp_graph.nodes[node]["l"] > 250.0
