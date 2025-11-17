@@ -58,11 +58,13 @@ class Synapse:
         return self
 
     def update_states(
+        self,
         states: dict[str, Array],
-        delta_t: float,
-        pre_voltage: ArrayLike,
-        post_voltage: ArrayLike,
+        all_states: dict,
+        pre_index: Array,
+        post_index: Array,
         params: dict[str, Array],
+        delta_t: float,
     ) -> dict[str, Array]:
         """ODE update step.
 
