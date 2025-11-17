@@ -96,17 +96,17 @@ We welcome any feedback on how ``Jaxley`` is working for your neuron models and 
 Citation
 --------
 
-If you use ``Jaxley``, consider citing the `corresponding paper <https://www.biorxiv.org/content/10.1101/2024.08.21.608979>`_:
+If you use ``Jaxley``, consider citing the `corresponding paper <https://www.nature.com/articles/s41592-025-02895-w>`_:
 
 .. code-block:: none
    
-   @article{deistler2024differentiable,
-      doi = {10.1101/2024.08.21.608979},
-      year = {2024},
-      publisher = {Cold Spring Harbor Laboratory},
-      author = {Deistler, Michael and Kadhim, Kyra L. and Pals, Matthijs and Beck, Jonas and Huang, Ziwei and Gloeckler, Manuel and Lappalainen, Janne K. and Schr{\"o}der, Cornelius and Berens, Philipp and Gon{\c c}alves, Pedro J. and Macke, Jakob H.},
-      title = {Differentiable simulation enables large-scale training of detailed biophysical models of neural dynamics},
-      journal = {bioRxiv}
+   @article{deistler2025jaxley,
+      title={Jaxley: differentiable simulation enables large-scale training of detailed biophysical models of neural dynamics},
+      author={Deistler, Michael and Kadhim, Kyra L and Pals, Matthijs and Beck, Jonas and Huang, Ziwei and Gloeckler, Manuel and Lappalainen, Janne K and Schr{\"o}der, Cornelius and Berens, Philipp and Gon{\c{c}}alves, Pedro J and others},
+      journal={Nature Methods},
+      pages={1--9},
+      year={2025},
+      publisher={Nature Publishing Group US New York}
    }
 
 .. toctree::
