@@ -83,7 +83,7 @@ We welcome any feedback on how Jaxley is working for your neuron models and are 
 
 ## Citation
 
-If you use `Jaxley`, consider citing the [corresponding paper](https://www.biorxiv.org/content/10.1101/2024.08.21.608979):
+If you use `Jaxley`, consider citing the [corresponding paper](https://www.nature.com/articles/s41592-025-02895-w):
 
 ```
 @article{deistler2025jaxley,
