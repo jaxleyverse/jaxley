@@ -25,7 +25,7 @@ class Rate(Channel):
         return {"v": exponential_euler(v, dt, 0.0, tau)}
 
     def compute_current(self, states, v, params):
-        return jnp.zeros((1,))
+        return 0
 
     def init_state(self, states, v, params, delta_t):
         return {}
