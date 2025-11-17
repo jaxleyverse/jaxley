@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import functools
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
@@ -1038,7 +1038,7 @@ class Module(ABC):
             sum([list(ch.channel_states) for ch in self.channels], []) if states else []
         )
 
-        if not param_names is None:
+        if param_names is not None:
             cols = (
                 inds + [c for c in cols if c in param_names]
                 if params
@@ -2416,7 +2416,7 @@ class Module(ABC):
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
         if verbose:
             print(
-                f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
+                f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
     def _update_view(self):
@@ -2915,7 +2915,7 @@ class Module(ABC):
                 state_vals["linear_terms"] += [ion_linear_term]
                 state_vals["constant_terms"] += [ion_const_term]
                 state_vals["axial_conductances"] += [
-                    params[f"axial_conductances"][ion_name]
+                    params["axial_conductances"][ion_name]
                 ]
 
         # Stack all states such that they can be handled by `vmap` in the solve.
@@ -3128,7 +3128,7 @@ class Module(ABC):
                 states, channel_state_names, channel_indices
             )
 
-            states_updated = channel.update_states(
+            states_updated = vmap(channel.update_states, in_axes=[0, None, 0, 0])(
                 channel_states, delta_t, voltages[channel_indices], channel_params
             )
             # Rebuild state. This has to be done within the loop over channels to allow
@@ -3237,7 +3237,8 @@ class Module(ABC):
         v_and_perturbed = jnp.stack(
             [modified_state[indices], modified_state[indices] + diff]
         )
-        membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
+        comp_cur_fn = vmap(channel.compute_current, in_axes=(0, 0, 0))
+        membrane_currents = vmap(comp_cur_fn, in_axes=(None, 0, None))(
             channel_states, v_and_perturbed, channel_params
         )
         voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
@@ -3400,7 +3401,7 @@ class Module(ABC):
                     num_children_of_parent = num_children[parents[b]]
                     if num_children_of_parent > 1:
                         y_offset = (
-                            ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                            (index_of_child[b] / (num_children_of_parent - 1)) - 0.5
                         ) * y_offset_multiplier[levels[b]]
                     else:
                         y_offset = 0.0
