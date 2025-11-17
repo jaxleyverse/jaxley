@@ -167,7 +167,7 @@ class AdEx(Channel):
         Like Izhikevich, AdEx integrates voltage directly in update_states,
         so compute_current returns zero to avoid double-integration.
         """
-        return jnp.zeros((1,))
+        return 0
 
     def init_state(
         self,
