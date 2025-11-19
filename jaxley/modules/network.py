@@ -289,15 +289,15 @@ class Network(Module):
     ) -> Dict:
         voltages = states["v"]
 
-        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_index"].apply(list)
-        post_syn_inds = grouped_syns["post_index"].apply(list)
-        synapse_names = list(grouped_syns.indices.keys())
+        # grouped_syns = edges.groupby("type", sort=False, group_keys=False)
+        # pre_syn_inds = grouped_syns["pre_index"].apply(list)
+        # post_syn_inds = grouped_syns["post_index"].apply(list)
+        # synapse_names = list(grouped_syns.indices.keys())
 
         for i, synapse_type in enumerate(syn_channels):
-            assert (
-                synapse_names[i] == synapse_type._name
-            ), "Mixup in the ordering of synapses. Please create an issue on Github."
+            # assert (
+            #     synapse_names[i] == synapse_type._name
+            # ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
 
@@ -308,8 +308,11 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            # pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
+            # post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+
+            pre_inds = self.pre_syn_inds
+            post_inds = self.post_syn_inds
 
             # State updates.
             states_updated = synapse_type.update_states(
@@ -336,20 +339,11 @@ class Network(Module):
     ) -> tuple[dict, tuple[Array, Array]]:
         voltages = states["v"]
 
-        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
-        pre_syn_inds = grouped_syns["pre_index"].apply(list)
-        post_syn_inds = grouped_syns["post_index"].apply(list)
-        synapse_names = list(grouped_syns.indices.keys())
-
-        syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
+        syn_linear_terms = jnp.zeros_like(voltages)
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
-        diff = 1e-3
         for i, synapse_type in enumerate(syn_channels):
-            assert (
-                synapse_names[i] == synapse_type._name
-            ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
 
@@ -361,51 +355,41 @@ class Network(Module):
                 synapse_states[s] = states[s]
 
             # Get pre and post indexes of the current synapse type.
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            pre_inds = self.pre_syn_inds
+            post_inds = self.post_syn_inds
 
             # Compute slope and offset of the current through every synapse.
-            pre_v_and_perturbed = jnp.stack(
-                [voltages[pre_inds], voltages[pre_inds] + diff]
-            )
-            post_v_and_perturbed = jnp.stack(
-                [voltages[post_inds], voltages[post_inds] + diff]
-            )
-            synapse_currents = vmap(
-                synapse_type.compute_current, in_axes=(None, 0, 0, None)
-            )(
+            pre_v_and_perturbed = voltages[pre_inds]
+            post_v_and_perturbed = voltages[post_inds]
+            linear, constant = synapse_type.compute_current(
                 synapse_states,
                 pre_v_and_perturbed,
                 post_v_and_perturbed,
                 synapse_params,
             )
-            synapse_currents_dist = convert_point_process_to_distributed(
-                synapse_currents, params["area"][post_inds]
-            )
+            # synapse_currents_dist = convert_point_process_to_distributed(
+            #     synapse_currents, params["area"][post_inds]
+            # )
 
             # Split into voltage and constant terms.
-            voltage_term = (synapse_currents_dist[1] - synapse_currents_dist[0]) / diff
-            constant_term = (
-                synapse_currents_dist[0] - voltage_term * voltages[post_inds]
-            )
+            # constant_term = synapse_currents_dist
 
             # Gather slope and offset for every postsynaptic compartment.
-            gathered_syn_currents = gather_synapes(
+            gathered_syn_currents = vmap(gather_synapes, in_axes=(None, None, 0))(
                 len(voltages),
                 post_inds,
-                voltage_term,
-                constant_term,
+                jnp.stack([linear, constant]),
             )
-            syn_voltage_terms += gathered_syn_currents[0]
+            syn_linear_terms += gathered_syn_currents[0]
             syn_constant_terms -= gathered_syn_currents[1]
 
             # Add the synaptic currents through every compartment as state.
             # `post_syn_currents` is a `ArrayLike` of as many elements as there are
             # compartments in the network.
             # `[0]` because we only use the non-perturbed voltage.
-            states[f"i_{synapse_type._name}"] = synapse_currents[0]
+            states[f"i_{synapse_type._name}"] = syn_linear_terms
 
-        return states, (syn_voltage_terms, syn_constant_terms)
+        return states, (syn_linear_terms, syn_constant_terms)
 
     def arrange_in_layers(
         self,

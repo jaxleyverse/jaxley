@@ -1292,7 +1292,7 @@ class Module(ABC):
         viewed_inds = self._nodes_in_view if is_node_param else self._edges_in_view
         if key in data.columns:
             not_nan = ~data[key].isna()
-            indices = jnp.asarray(viewed_inds[not_nan]).reshape(
+            indices = np.asarray(viewed_inds[not_nan]).reshape(
                 -1, 1
             )  # shape (n_comp, 1)
             val = jnp.broadcast_to(
@@ -2607,188 +2607,27 @@ class Module(ABC):
             delta_t,
             self.edges,
         )
-
-        # Voltage steps.
         cm = params["capacitance"]  # Abbreviation.
 
-        # Arguments used by all solvers.
-        state_vals = {
-            "states": [u["v"]],
-            "linear_terms": [(linear_terms["v"] + v_syn_linear_terms) / cm],
-            "constant_terms": [(const_terms["v"] + i_ext + v_syn_const_terms) / cm],
-            # The axial conductances have already been divided by `cm` in the
-            # `cell_utils.py` in the `compute_axial_conductances` method.
-            "axial_conductances": [params["axial_conductances"]["v"]],
-        }
+        u["v"] = step_voltage_implicit_with_dhs_solve(
+            u["v"],
+            (linear_terms["v"] + v_syn_linear_terms) / cm,
+            (const_terms["v"] + i_ext + v_syn_const_terms) / cm,
+            params["axial_conductances"]["v"],
+            self._internal_node_inds,
+            np.asarray(self._comp_edges["sink"].to_list()),
+            self._n_nodes,
+            self._dhs_solve_indexer,
+            True if voltage_solver.endswith("gpu") else False,
+            delta_t,
+        )
 
-        for ion_name in self.pumped_ions:
-            if ion_name not in self.diffusion_states:
-                # If an ion is pumped but _not_ diffused, we update the state of the ion
-                # (i.e., its concentration) with implicit Euler. We could also use
-                # exponential-euler here, but we use implicit Euler for consistency with
-                # the case of the ion being diffused. TODO: In the long run, we should
-                # give the user the option to specify the solver.
-                #
-                # Implicit Euler for diagonal system (i.e. all compartments are
-                # independent):
-                #
-                # v_dot = const + v * linear
-                # v_n = v_{n+1} - dt * (const + v_{n+1} * linear)
-                # ...
-                # v_{n+1} = (v_n + dt * const) / (1 - dt * linear)
-                u[ion_name] = (u[ion_name] + delta_t * const_terms[ion_name]) / (
-                    1 + delta_t * linear_terms[ion_name]
-                )
-
-        for ion_name in self.diffusion_states:
-            if ion_name not in self.pumped_ions:
-                # Ions that are not pumped have no active component.
-                ion_linear_term = jnp.zeros_like(u[ion_name])
-                ion_const_term = jnp.zeros_like(u[ion_name])
-            else:
-                ion_linear_term = linear_terms[ion_name]
-                ion_const_term = const_terms[ion_name]
-            # Append the states of the pumps if they are diffusing (the user must
-            # manually specify ion diffusion with `cell.diffuse(ion_state_name)`). Note
-            # that these values are _not_ divided by the capacitance `cm`.
-            if ion_name in self.diffusion_states:
-                state_vals["states"] += [u[ion_name]]
-                state_vals["linear_terms"] += [ion_linear_term]
-                state_vals["constant_terms"] += [ion_const_term]
-                state_vals["axial_conductances"] += [
-                    params[f"axial_conductances"][ion_name]
-                ]
-
-        # Stack all states such that they can be handled by `vmap` in the solve.
-        for state_name in [
-            "states",
-            "linear_terms",
-            "constant_terms",
-            "axial_conductances",
-        ]:
-            state_vals[state_name] = jnp.stack(state_vals[state_name])
-
-        # Clamp for channels and synapses.
-        for key in externals.keys():
-            if key not in ["i", "v"]:
-                u[key] = u[key].at[external_inds[key]].set(externals[key])
-
-        # Add solver specific arguments.
-        if solver == "fwd_euler":
-            solver_kwargs = {
-                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "sources": np.asarray(self._comp_edges["source"].to_list()),
-                "types": np.asarray(self._comp_edges["type"].to_list()),
-            }
-        elif voltage_solver == "jax.sparse":
-            solver_kwargs = {
-                "internal_node_inds": self._internal_node_inds,
-                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "data_inds": self._data_inds,
-                "indices": self._indices_jax_spsolve,
-                "indptr": self._indptr_jax_spsolve,
-                "n_nodes": self._n_nodes,
-            }
-            step_voltage_implicit = step_voltage_implicit_with_jax_spsolve
-        elif voltage_solver.startswith("jaxley.dhs"):
-            solver_kwargs = {
-                "internal_node_inds": self._internal_node_inds,
-                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "n_nodes": self._n_nodes,
-                "solve_indexer": self._dhs_solve_indexer,
-                "optimize_for_gpu": True if voltage_solver.endswith("gpu") else False,
-            }
-            step_voltage_implicit = step_voltage_implicit_with_dhs_solve
-        elif voltage_solver == "jaxley.stone":
-            # Our custom sparse solver requires a different format of all conductance
-            # values to perform triangulation and backsubstution optimally.
-            #
-            # Currently, the forward Euler solver also uses this format. However,
-            # this is only for historical reasons and we are planning to change this in
-            # the future.
-            solver_kwargs = {
-                "internal_node_inds": self._internal_node_inds,
-                "n_nodes": self._n_nodes,
-                "sinks": np.asarray(self._comp_edges["sink"].to_list()),
-                "sources": np.asarray(self._comp_edges["source"].to_list()),
-                "types": np.asarray(self._comp_edges["type"].to_list()),
-            }
-            step_voltage_implicit = step_voltage_implicit_with_stone
-
-        if solver in ["bwd_euler", "crank_nicolson"]:
-            # Crank-Nicolson advances by half a step of backward and half a step of
-            # forward Euler.
-            dt = delta_t / 2 if solver == "crank_nicolson" else delta_t
-
-            if voltage_solver == "jax.sparse":
-                # The `jax.sparse` solver does not allow `vmap` (because it uses) the
-                # scipy sparse solver, so we just loop here.
-                num_ions = state_vals["states"].shape[0]
-                updated_states = []
-                for ion_ind in range(num_ions):
-                    updated_states.append(
-                        step_voltage_implicit(
-                            state_vals["states"][ion_ind],
-                            state_vals["linear_terms"][ion_ind],
-                            state_vals["constant_terms"][ion_ind],
-                            state_vals["axial_conductances"][ion_ind],
-                            *solver_kwargs.values(),
-                            dt,
-                        )
-                    )
-                updated_states = jnp.stack(updated_states)
-            else:
-                # The following if-case is a bit ugly and, technically, not needed.
-                # However, running a `vmapped` version of the implicit solver induces
-                # significant computation cost, even if the leading dimension of the
-                # `vmap` is 1 (as is the case if one has no diffusion). To ensure
-                # fast runtime and compile time, the following if-case avoids the `vmap`
-                # if one does not use diffusion.
-                if len(self.diffusion_states) == 0:
-                    updated_states = step_voltage_implicit(
-                        state_vals["states"][0],
-                        state_vals["linear_terms"][0],
-                        state_vals["constant_terms"][0],
-                        state_vals["axial_conductances"][0],
-                        *solver_kwargs.values(),
-                        dt,
-                    )
-                    # Add `vmap` dimension.
-                    updated_states = jnp.expand_dims(updated_states, axis=0)
-                else:
-                    nones = [None] * len(solver_kwargs)
-                    vmapped = vmap(
-                        step_voltage_implicit, in_axes=(0, 0, 0, 0, *nones, None)
-                    )
-                    updated_states = vmapped(
-                        *state_vals.values(), *solver_kwargs.values(), dt
-                    )
-            if solver == "crank_nicolson":
-                # The forward Euler step in Crank-Nicolson can be performed easily as
-                # `V_{n+1} = 2 * V_{n+1/2} - V_n`. See also NEURON book Chapter 4.
-                updated_states = 2 * updated_states - state_vals["states"]
-        elif solver == "fwd_euler":
-            nones = [None] * len(solver_kwargs)
-            vmapped = vmap(step_voltage_explicit, in_axes=(0, 0, 0, 0, *nones, None))
-            updated_states = vmapped(
-                *state_vals.values(), *solver_kwargs.values(), delta_t
-            )
-        else:
-            raise ValueError(
-                f"You specified `solver={solver}`. The only allowed solvers are "
-                "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
-            )
-
-        u["v"] = updated_states[0]
-
-        # Assign the diffused ion states.
-        for counter, ion_name in enumerate(self.diffusion_states):
-            u[ion_name] = updated_states[counter + 1]
-
-        # Clamp for voltages.
-        if "v" in externals.keys():
-            u["v"] = u["v"].at[external_inds["v"]].set(externals["v"])
-
+        # # Voltage steps.
+        # u["v"] = step_voltage_explicit(
+        #     u["v"],
+        #     (const_terms["v"] + i_ext + v_syn_const_terms) / cm,
+        #     delta_t
+        # )
         return u
 
     def _step_channels(
@@ -2800,9 +2639,6 @@ class Module(ABC):
         params: dict[str, Array],
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """One step of integration of the channels and of computing their current."""
-        states = self._step_channels_state(
-            states, delta_t, channels, channel_nodes, params
-        )
         states, current_terms = self._channel_currents(
             states, delta_t, channels, channel_nodes, params
         )
@@ -2928,10 +2764,6 @@ class Module(ABC):
         The linear and constant components are inferred by running the `compute_current`
         twice. They are later used for implicit Euler.
         """
-        # Run with two different voltages that are `diff` apart to infer the slope and
-        # offset.
-        diff = 1e-3
-
         channel_param_names = list(channel.channel_params.keys())
         channel_state_names = list(channel.channel_states.keys())
 
@@ -2946,14 +2778,11 @@ class Module(ABC):
         for s in channel_state_names:
             channel_states[s] = states[s][indices]
 
-        v_and_perturbed = jnp.stack(
-            [modified_state[indices], modified_state[indices] + diff]
+        membrane_currents = channel.compute_current(
+            channel_states, modified_state[indices], channel_params
         )
-        membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
-            channel_states, v_and_perturbed, channel_params
-        )
-        voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
-        constant_term = membrane_currents[0] - voltage_term * modified_state[indices]
+        constant_term = membrane_currents
+        voltage_term = jnp.zeros_like(constant_term)
         return membrane_currents[0], voltage_term, -constant_term
 
     def _step_synapse(

@@ -34,6 +34,7 @@ class IonotropicSynapse(Synapse):
         prefix = self._name
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
+            f"{prefix}_count": 1.0,
             f"{prefix}_e_syn": 0.0,  # mV
             f"{prefix}_k_minus": 0.025,
             f"{prefix}_v_th": -35.0,  # mV
@@ -66,5 +67,9 @@ class IonotropicSynapse(Synapse):
         self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
     ) -> float:
         prefix = self._name
-        g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
-        return g_syn * (post_voltage - params[f"{prefix}_e_syn"])
+        # linear = tanh_pre_voltage * params[f"{prefix}_gS"] * params[f"{prefix}_count"]
+        # constant = linear * params[f"{prefix}_e_syn"]
+        # return linear, constant
+        linear = params[f"{prefix}_gS"] * states[f"{prefix}_s"] * params[f"{prefix}_count"]
+        constant = linear * params[f"{prefix}_e_syn"]
+        return linear, constant
