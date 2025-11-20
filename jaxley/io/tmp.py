@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
-from jaxley.utils.cell_utils import compute_cone_props
 
 #########################################################################################
 ################################### Helper functions ####################################
@@ -126,6 +125,93 @@ def compute_xyz(
     recurse(root, theta=0.0, phi=np.pi / 2)
     return pos
 
+def surface_area_segments(ls, r1, r2, dr):
+    """Surface area of truncated cone segments."""
+    slant_height = np.sqrt(ls**2 + dr**2)
+    return 2 * np.pi * (r1 + r2) / 2 * slant_height
+
+
+def volume_segments(ls, r1, r2):
+    """Volume of truncated cone segments."""
+    return (np.pi * ls / 3) * (r1**2 + r1 * r2 + r2**2)
+
+
+def resistive_load_segments(ls, r1, r2, dr):
+    """Resistive load using truncated cone approximation."""
+    segment_integrals = np.empty_like(ls)
+    is_constant = np.isclose(dr, 0)
+
+    # Constant-radius segments: simple cylinder
+    segment_integrals[is_constant] = ls[is_constant] / (r1[is_constant] ** 2)
+
+    # Varying-radius segments: truncated cone integral
+    segment_integrals[~is_constant] = (
+        ls[~is_constant]
+        / dr[~is_constant]
+        * (1 / r1[~is_constant] - 1 / r2[~is_constant])
+    )
+
+    return np.sum(segment_integrals) / np.pi
+
+
+def average_radius(lengths, r1, r2):
+    """Average radius weighted by segment length."""
+    return np.sum((r1 + r2) / 2 * lengths) / np.sum(lengths)
+
+
+def compute_cone_props(ls, rs, l_start=None, l_end=None):
+    """
+    Given positions ls and radii rs along a path, compute average radius,
+    surface area, volume, resistive load at start and end segments.
+
+    Returns:
+        avg_r: float
+        surface_area: float
+        volume: float
+        res_in: float
+        res_out: float
+    """
+    # Handle default bounds
+    l1 = ls[0] if l_start is None else l_start
+    l2 = ls[-1] if l_end is None else l_end
+
+    # TODO: Add handling spherical compartments? Check if this even needs a special case?
+
+    assert l1 < l2, "Invalid integration bounds"
+
+    # Add boundary points via interpolation
+    l1_l2 = np.array([l1, l2])
+    r1_r2 = np.interp(l1_l2, ls, rs)
+    i1_i2 = np.searchsorted(ls, l1_l2)
+    ls = np.insert(ls, i1_i2, l1_l2)
+    rs = np.insert(rs, i1_i2, r1_r2)
+
+    # Select segment within bounds
+    mask = (l1 <= ls) & (ls <= l2)
+    l_seg = ls[mask]
+    r_seg = rs[mask]
+
+    # add midpoint
+    lmid = (l1 + l2) / 2
+    rmid = np.interp(lmid, ls, rs)
+    mid = np.searchsorted(l_seg, lmid)
+    l_seg = np.insert(l_seg, mid, lmid)
+    r_seg = np.insert(r_seg, mid, rmid)
+
+    # Compute segment lengths and properties
+    dl = np.diff(l_seg)
+    r1s = r_seg[:-1]
+    r2s = r_seg[1:]
+    dr = r2s - r1s
+
+    # Compute quantities
+    surface_area = np.sum(surface_area_segments(dl, r1s, r2s, dr))
+    volume = np.sum(volume_segments(dl, r1s, r2s))
+    avg_r = average_radius(dl, r1s, r2s)
+    res_in = resistive_load_segments(dl[:mid], r1s[:mid], r2s[:mid], dr[:mid])
+    res_out = resistive_load_segments(dl[mid:], r1s[mid:], r2s[mid:], dr[mid:])
+
+    return avg_r, surface_area, volume, res_in, res_out
 
 ########################################################################################
 ################################### BUILD SWC GRAPH ####################################
@@ -828,44 +914,61 @@ def to_graph(module, insert_branchpoints: bool = False):
 ########################################################################################
 
 
-# TODO: Remove this along with branch_edges attr in nodes in favour of comp_edges
-def _compute_branch_parents(
-    node_df: pd.DataFrame, edge_df: pd.DataFrame
-) -> List[List[int]]:
-    """Compute the parent structure of the branch graph (for each cell).
+def comp_to_branch_graph(G: nx.Graph, relabel_nodes: bool = True) -> nx.Graph:
+    """Converts a compartment graph to a branch graph.
+
+    Branch graphs are created by contracting all nodes with the same branch_index within
+    each cell, such that only one node per branch_index is left. The node with the lowest
+    index is chosen as the root of the branch.
 
     Args:
-        node_df: The node dataframe of the graph.
-        edge_df: The edge dataframe of the graph.
+        G: The compartment graph to convert.
+        relabel_nodes: Whether to relabel the nodes with the branch_index or to keep
+            the orignal node index.
 
     Returns:
-        The parent structure of the branch graph for each cell.
+        The branch graph.
     """
-    branch_index_of = lambda x: node_df["branch_index"].loc[x].values
-    if edge_df.empty:  # for single compartment graphs
-        return [-1]
-    node_i, node_j = np.stack(edge_df.index).T
-    is_branch_edge = branch_index_of(node_i) != branch_index_of(node_j)
-    branch_edge_inds = edge_df.index[is_branch_edge]
-    parent_inds = branch_edge_inds.get_level_values(0)
-    child_inds = branch_edge_inds.get_level_values(1)
+    node_df = nx_to_pandas(G)[0]
+    branch_graph = G.copy()
+    
+    for _, cell_df in node_df.groupby("cell_index"):
+        for _, branch_df in cell_df.groupby("branch_index"):
+            root, *branch_nodes = sorted(branch_df.index)
+            for n in branch_nodes:
+                branch_graph = nx.contracted_nodes(branch_graph, root, n, self_loops=False, copy=False)
+    
+    if relabel_nodes:
+        branch_labels = nx.get_node_attributes(branch_graph, "branch_index")
+        branch_graph = nx.relabel_nodes(branch_graph, branch_labels)
+    return branch_graph
 
-    branch_edges = pd.DataFrame(
-        {
-            "parent_branch": node_df["branch_index"].loc[parent_inds].values,
-            "child_branch": node_df["branch_index"].loc[child_inds].values,
-        }
-    )
+
+def _compute_branch_parents(G: nx.Graph) -> list[list[int]]:
+    """Computes the parent branches for each branch in a compartment graph.
+
+    Args:
+        G: The compartment graph without branchpoints and tips.
+        root: The root node of the branch graph.
+
+    Returns:
+        The parent branches for each branch in the branch graph.
+    """
+
+    branch_graph = comp_to_branch_graph(G)
+    branch_df = nx_to_pandas(branch_graph)[0]
 
     acc_parents = []
-    parent_branch_inds = branch_edges.set_index("child_branch").sort_index()[
-        "parent_branch"
-    ]
+    for _, cell_df in branch_df.groupby("cell_index"):
+        branch_graph_of_cell = branch_graph.subgraph(cell_df["branch_index"].values)
 
-    for branch_inds in node_df.groupby("cell_index")["branch_index"].unique():
-        root_branch_idx = branch_inds[0]
-        parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
-        acc_parents.append([-1] + parents.astype(int).tolist())
+        branch_inds = sorted(cell_df["branch_index"].unique())
+        pos_of_branch = {idx: pos for pos, idx in enumerate(branch_inds)}
+        
+        parent_list = [-1] * len(branch_inds)
+        for parent, child in nx.bfs_edges(branch_graph_of_cell, np.min(branch_inds)):
+            parent_list[pos_of_branch[child]] = pos_of_branch[parent]
+        acc_parents.append(parent_list)
     return acc_parents
 
 
@@ -892,7 +995,6 @@ def _build_module(G: nx.DiGraph) -> Module:
         )
         edge_df.index = pd.MultiIndex.from_tuples(new_inds.tolist())
 
-    comp_edge_df = edge_df[edge_df.synapse == False if len(edge_df) > 0 else []]
     synapse_edge_df = edge_df[edge_df.synapse == True if len(edge_df) > 0 else []]
     synapse_edge_df = synapse_edge_df.reset_index(names=["pre_index", "post_index"])
     synapse_edge_df = synapse_edge_df.drop(columns=["synapse"], errors="ignore")
@@ -902,7 +1004,7 @@ def _build_module(G: nx.DiGraph) -> Module:
         nodes_per_branch.nunique() == 1
     ), "`from_graph()` does not support a varying number of compartments in each branch."
 
-    acc_parents = _compute_branch_parents(node_df, comp_edge_df)
+    acc_parents = _compute_branch_parents(G)
     return_type = global_attrs["module"] if "module" in global_attrs else "cell"
 
     module = _build_module_scaffold(
