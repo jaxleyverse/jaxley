@@ -197,10 +197,12 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
         def init_dynamics(params, param_state):
             all_states, all_params = init_fn(params, None, param_state)
-            recordings = [
-                all_states[rec_state][rec_ind][None]
-                for rec_state, rec_ind in zip(rec_states, rec_inds)
-            ]
+            recordings = [jnp.asarray(
+                [
+                    all_states[rec_state][rec_ind]
+                    for rec_state, rec_ind in zip(rec_states, rec_inds)
+                ]
+            )]
             dynamic_states = flatten(remove_observables(all_states))
             return dynamic_states, all_params, recordings
 
