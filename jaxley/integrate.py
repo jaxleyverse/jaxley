@@ -102,10 +102,12 @@ def build_init_and_step_fn(
         # Initialize.
         init_fn, step_fn = build_init_and_step_fn(cell)
         states, params = init_fn(params)
-        recordings = [
-            states[rec_state][rec_ind][None]
-            for rec_state, rec_ind in zip(rec_states, rec_inds)
-        ]
+        recordings = [jnp.asarray(
+            [
+                all_states[rec_state][rec_ind]
+                for rec_state, rec_ind in zip(rec_states, rec_inds)
+            ]
+        )]
 
         # Loop over the ODE. The `step_fn` can be jitted for improving speed.
         steps = int(t_max / delta_t)  # Steps to integrate
