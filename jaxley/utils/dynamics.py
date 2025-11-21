@@ -252,7 +252,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         keep_indices = jnp.arange(original_length)
         branch_filter_applied = False
 
-    all_states = tree_map_leaves_with_valid_key(
+    all_states = _tree_map_leaves_with_valid_key(
         all_states,
         lambda x: jnp.take(x, keep_indices, axis=0),
         valid_keys=membrane_states_keys,
@@ -268,7 +268,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
             return x
         return jnp.take(x, idx, axis=0)
 
-    all_states_no_nans = tree_map_leaves_with_valid_key_2_trees(
+    all_states_no_nans = _tree_map_leaves_with_valid_key_2_trees(
         all_states, nan_indices_tree, take_by_idx, valid_keys=membrane_states_keys
     )
 
@@ -305,13 +305,13 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         """
         filtered_states = _remove_currents_from_states(states, added_keys)
 
-        filtered_states = tree_map_leaves_with_valid_key(
+        filtered_states = _tree_map_leaves_with_valid_key(
             filtered_states,
             lambda x: jnp.take(x, keep_indices, axis=0),
             valid_keys=membrane_states_keys,
         )
 
-        filtered_states = tree_map_leaves_with_valid_key_2_trees(
+        filtered_states = _tree_map_leaves_with_valid_key_2_trees(
             filtered_states,
             nan_indices_tree,
             take_by_idx,
@@ -356,9 +356,9 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         # First restore NaN padding
         all_states_with_nans = tree_map_with_path(
             lambda path, leaf: (
-                restore_leaf(leaf, nan_indices_tree[get_key_name(path)])
-                if is_valid_membrane_leaf(
-                    get_key_name(path), leaf, membrane_states_keys
+                restore_leaf(leaf, nan_indices_tree[_get_key_name(path)])
+                if _is_valid_membrane_leaf(
+                    _get_key_name(path), leaf, membrane_states_keys
                 )
                 else leaf
             ),
@@ -367,7 +367,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
         # Restore branchpoint voltages if there were any branchpoints
         if branch_filter_applied:
-            restored_states = tree_map_leaves_with_valid_key(
+            restored_states = _tree_map_leaves_with_valid_key(
                 all_states_with_nans,
                 restore_branch_leaf,
                 valid_keys=membrane_states_keys,
@@ -384,32 +384,35 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     return remove_observables, add_observables, flatten, unflatten
 
 
-def is_valid_membrane_leaf(key, leaf, valid_keys):
+def _is_valid_membrane_leaf(key: str, leaf, valid_keys):
     """Check if the leaf is non-zero and its key is in valid_keys"""
     return key in valid_keys and getattr(leaf, "ndim", None) and leaf.ndim > 0
 
 
-def tree_map_leaves_with_valid_key(tree, fn, valid_keys=None):
+def _tree_map_leaves_with_valid_key(tree, fn, valid_keys=None):
     """
     Apply fn(leaf) selectively to leaves that satisfy is_valid_membrane_leaf(key, leaf, valid_keys).
     """
     return tree_map_with_path(
         lambda path, leaf: (
             fn(leaf)
-            if is_valid_membrane_leaf(get_key_name(path), leaf, valid_keys)
+            if _is_valid_membrane_leaf(_get_key_name(path), leaf, valid_keys)
             else leaf
         ),
         tree,
     )
 
 
-def tree_map_leaves_with_valid_key_2_trees(tree1, tree2, fn, valid_keys=None):
-    """Apply fn(leaf1, leaf2) selectively to leaves that satisfy is_valid_membrane_leaf(key, leaf1, valid_keys)."""
+def _tree_map_leaves_with_valid_key_2_trees(tree1, tree2, fn, valid_keys=None):
+    """Apply ``fn(leaf1, leaf2)`` selectively to filtered leaves.
+     
+    We first check if leaves satisfy ``is_valid_membrane_leaf(key, leaf1, valid_keys)``.
+    If they do, we perform ``fn(leaf1, leaf2)``."""
     valid_keys = set(valid_keys) if valid_keys is not None else None
 
     def wrapper(path, leaf1, leaf2):
-        key = get_key_name(path)
-        if is_valid_membrane_leaf(key, leaf1, valid_keys):
+        key = _get_key_name(path)
+        if _is_valid_membrane_leaf(key, leaf1, valid_keys):
             return fn(leaf1, leaf2)
         else:
             return leaf1
@@ -417,7 +420,7 @@ def tree_map_leaves_with_valid_key_2_trees(tree1, tree2, fn, valid_keys=None):
     return tree_map_with_path(wrapper, tree1, tree2)
 
 
-def get_key_name(path):
+def _get_key_name(path):
     """Extract string name from JAX path elements"""
     if not path:
         return None
