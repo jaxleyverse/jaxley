@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.flatten_util import ravel_pytree
 from jax.tree import leaves
-from jax.tree_util import tree_map
+from jax.tree_util import tree_map, tree_map_with_path
 
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
@@ -235,12 +235,12 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     """
 
     all_states = module.get_all_states([])
-
-    # Get the names of all keys that will be removed by `remove_observables()`.
     added_keys = module.membrane_current_names + module.synapse_current_names
 
-    # Remove branchpoints if needed.
-    original_length = len(leaves(all_states)[0])
+    # Remove branchpoints if needed
+    membrane_states_keys = module.jaxnodes.keys()
+    original_length = len(all_states["v"])
+
     if hasattr(module, "_branchpoints") and len(module._branchpoints.index) > 0:
         filter_indices = jnp.array(module._branchpoints.index.to_numpy(), dtype=int)
         all_indices = jnp.arange(original_length)
@@ -250,8 +250,12 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         keep_indices = jnp.arange(original_length)
         branch_filter_applied = False
 
-    all_states = tree_map(lambda x: jnp.take(x, keep_indices, axis=0), all_states)
-    filtered_length = len(leaves(all_states)[0])
+    all_states = tree_map_leaves_with_valid_key(
+        all_states,
+        lambda x: jnp.take(x, keep_indices, axis=0),
+        valid_keys=membrane_states_keys,
+    )
+    filtered_length = len(all_states["v"])  # len(leaves(all_states)[0])
 
     # Remove NaNs (appear if some states are not defined on all compartments)
     nan_mask_tree = tree_map(jnp.isnan, all_states)
@@ -262,30 +266,34 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
             return x
         return jnp.take(x, idx, axis=0)
 
-    dynamic_states_pytree = tree_map(take_by_idx, all_states, nan_indices_tree)
+    all_states_no_nans = tree_map_leaves_with_valid_key_2_trees(
+        all_states, nan_indices_tree, take_by_idx, valid_keys=membrane_states_keys
+    )
 
-    # Get the unflatten function.
-    _, unflatten = ravel_pytree(dynamic_states_pytree)
+    # Flatten to a vector
+    _, unflatten = ravel_pytree(all_states_no_nans)
 
-    def flatten(dynamic_states_pytree: dict[str, Array]) -> Array:
+    def flatten(all_states_no_nans: dict[str, Array]) -> Array:
         """Convert the state vector back to a pytree.
 
-        Args:
-            dynamic_states_pytree: Dynamic states as dict of jnp.Arrays. Contains all
-                dynamic states.
+        Args: Dynamic states as dict of jnp.Arrays. Contains all dynamic states.
 
-        Returns:
-            Flattened dynamic states as an jnp.Array
+        Returns: Flattened dynamic states as an jnp.Array.
         """
-        states_vec, _ = ravel_pytree(dynamic_states_pytree)
+        states_vec, _ = ravel_pytree(all_states_no_nans)
         return states_vec
 
-    def remove_observables(all_states: dict[str, Array]) -> dict[str, Array]:
+    # Now we can create functions that convert between the full state pytree
+    # and the filtered state vector
+    # ----------------------------------------------------------
+
+    # Ravel from pytree (post-step) to vector
+    def remove_observables(states: dict[str, Array]) -> dict[str, Array]:
         r"""Remove the membrane currents, synaptic currents, and branchpoint voltages.
 
         Thus, the returned states only include true "dynamic" states.
 
-        Args:
+         Args:
             all_states:. All observalbe states of the system, including membrane
                 and synaptic currents, branchpoint voltages, and NaN-padded states
                 in cases where some mechanisms exist only in some compartments.
@@ -293,12 +301,36 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         Returns:
             All dynamic states of the system.
         """
-        filtered_states = _remove_currents_from_states(all_states, added_keys)
-        filtered_states = tree_map(
-            lambda x: jnp.take(x, keep_indices, axis=0), filtered_states
+        filtered_states = _remove_currents_from_states(states, added_keys)
+
+        filtered_states = tree_map_leaves_with_valid_key(
+            filtered_states,
+            lambda x: jnp.take(x, keep_indices, axis=0),
+            valid_keys=membrane_states_keys,
         )
-        filtered_states = tree_map(take_by_idx, filtered_states, nan_indices_tree)
+
+        filtered_states = tree_map_leaves_with_valid_key_2_trees(
+            filtered_states,
+            nan_indices_tree,
+            take_by_idx,
+            valid_keys=membrane_states_keys,
+        )
+
         return filtered_states
+
+    # Unravel from vector to full restored state pytree
+
+    def restore_leaf(filtered_array, nan_indices_leaf):
+        """Restore NaN padding"""
+        restored_array = jnp.full(filtered_length, jnp.nan)
+        restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
+        return restored_array
+
+    def restore_branch_leaf(leaf):
+        """Restore branchpoint voltages"""
+        restored_array = jnp.full(original_length, -1.0)
+        restored_array = restored_array.at[keep_indices].set(leaf)
+        return restored_array
 
     def add_observables(
         dynamic_states_pytree: dict[str, Array],
@@ -319,32 +351,77 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
             ``jx.integrate.build_init_and_step_fn``).
         """
 
-        # Step 1: First restore NaN padding.
-        def restore_leaf(filtered_array, nan_indices_leaf):
-            restored_array = jnp.full(filtered_length, jnp.nan)
-            restored_array = restored_array.at[nan_indices_leaf].set(filtered_array)
-            return restored_array
-
-        all_states_with_nans = tree_map(
-            restore_leaf, dynamic_states_pytree, nan_indices_tree
+        # First restore NaN padding
+        all_states_with_nans = tree_map_with_path(
+            lambda path, leaf: (
+                restore_leaf(leaf, nan_indices_tree[get_key_name(path)])
+                if is_valid_membrane_leaf(
+                    get_key_name(path), leaf, membrane_states_keys
+                )
+                else leaf
+            ),
+            dynamic_states_pytree,
         )
 
-        # Step 2: Restore branchpoint voltages if there were any branchpoints
+        # Restore branchpoint voltages if there were any branchpoints
         if branch_filter_applied:
-
-            def restore_branch_leaf(leaf):
-                restored_array = jnp.full(original_length, -1.0)
-                restored_array = restored_array.at[keep_indices].set(leaf)
-                return restored_array
-
-            restored_states = tree_map(restore_branch_leaf, all_states_with_nans)
+            restored_states = tree_map_leaves_with_valid_key(
+                all_states_with_nans,
+                restore_branch_leaf,
+                valid_keys=membrane_states_keys,
+            )
         else:
             restored_states = all_states_with_nans
 
-        # Step 3: Add channel currents to the restored states
+        # Add channel currents to the restored states
         restored_states = module.append_channel_currents_to_states(
             restored_states, all_params, delta_t=delta_t
         )
         return restored_states
 
     return remove_observables, add_observables, flatten, unflatten
+
+
+def is_valid_membrane_leaf(key, leaf, valid_keys):
+    """Check if the leaf is non-zero and its key is in valid_keys"""
+    return key in valid_keys and getattr(leaf, "ndim", None) and leaf.ndim > 0
+
+
+def tree_map_leaves_with_valid_key(tree, fn, valid_keys=None):
+    """
+    Apply fn(leaf) selectively to leaves that satisfy is_valid_membrane_leaf(key, leaf, valid_keys).
+    """
+    return tree_map_with_path(
+        lambda path, leaf: (
+            fn(leaf)
+            if is_valid_membrane_leaf(get_key_name(path), leaf, valid_keys)
+            else leaf
+        ),
+        tree,
+    )
+
+
+def tree_map_leaves_with_valid_key_2_trees(tree1, tree2, fn, valid_keys=None):
+    """Apply fn(leaf1, leaf2) selectively to leaves that satisfy is_valid_membrane_leaf(key, leaf1, valid_keys)."""
+    valid_keys = set(valid_keys) if valid_keys is not None else None
+
+    def wrapper(path, leaf1, leaf2):
+        key = get_key_name(path)
+        if is_valid_membrane_leaf(key, leaf1, valid_keys):
+            return fn(leaf1, leaf2)
+        else:
+            return leaf1
+
+    return tree_map_with_path(wrapper, tree1, tree2)
+
+
+def get_key_name(path):
+    """Extract string name from JAX path elements"""
+    if not path:
+        return None
+    last = path[-1]
+    if hasattr(last, "key"):  # DictKey
+        return str(last.key)
+    elif hasattr(last, "idx"):  # SequenceKey
+        return str(last.idx)
+    return str(last)
