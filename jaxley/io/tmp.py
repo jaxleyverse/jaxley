@@ -439,7 +439,6 @@ def _add_missing_swc_attrs(G) -> nx.DiGraph:
 def compartmentalize_branch(
     branch_nodes: pd.DataFrame,
     ncomp: int,
-    ignore_branchpoints: Tuple[bool, bool] = (False, False),
 ) -> pd.DataFrame:
     """Interpolate or integrate node attributes along branch.
 
@@ -456,14 +455,6 @@ def compartmentalize_branch(
         branch_nodes: DataFrame of node attributes for nodes in a branch.
             needs to include morph attributes `id`, `x`, `y`, `z`, `r`.
         ncomp: Number of compartments per branch.
-        ignore_branchpoints: Whether to consider the branchpoint part of the neurite or
-        not. This is for example relevant if the branch extends
-        from a single point soma or somatic branchpoint. In these cases, the somatic SWC
-        node is _not_ considered to be part of the dendrite.
-        interp_attrs: Additional attributes to interpolate along the branch.
-            Cannot include `x`, `y`, `z`, `r`.
-        const_attrs: Additional attributes to set to that of the first branch node.
-            Cannot include `id`.
 
     Returns:
         DataFrame of compartments and compartment attributes.
@@ -471,24 +462,6 @@ def compartmentalize_branch(
     # TODO: This function should be reusable for `set_ncomp()`
     for attr in set(["x", "y", "z", "r", "id"]):
         assert attr in branch_nodes.columns, f"Branch nodes must contain '{attr}'."
-
-    # all nodes in a branch must have the same id. since branchpoints can have a
-    # different id (attached at the ends), the node after the branchpoint det. branch id
-    branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
-    not_branch_id = (branch_nodes["id"] != branch_id).values
-    branch_nodes.loc[not_branch_id, "id"] = branch_id
-
-    # if branchpoint has a different id, its radius is assumed to be equal to that
-    # of the neighbouring node.
-    if not_branch_id[0] and len(branch_nodes) > 2:
-        branch_nodes.loc[branch_nodes.index[0], "r"] = branch_nodes["r"].values[1]
-    if not_branch_id[-1] and len(branch_nodes) > 2:
-        branch_nodes.loc[branch_nodes.index[-1], "r"] = branch_nodes["r"].values[-2]
-
-    inds = branch_nodes.index
-    inds = inds[1:] if ignore_branchpoints[0] else inds
-    inds = inds[:-1] if ignore_branchpoints[1] else inds
-    branch_nodes = branch_nodes.loc[inds]
 
     # set edge lengths to 0 for branchpoints of different id if ignore_branchpoints
     edge_lens = (branch_nodes[["x", "y", "z"]].diff(axis=0) ** 2).sum(axis=1) ** 0.5
@@ -523,6 +496,7 @@ def compartmentalize_branch(
     cols = ["l", "x", "y", "z"] + cone_prop_cols
     comp_attrs = pd.DataFrame(np.full((ncomp + 2, len(cols)), np.nan), columns=cols)
 
+    branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
     comp_attrs["id"] = np.array([0, *[branch_id] * ncomp, 0], dtype=int)
     is_comp = np.array([False, *[True] * ncomp, False], dtype=bool)
     comp_attrs.loc[is_comp, "l"] = comp_len
@@ -655,7 +629,29 @@ def build_compartment_graph(
         not_soma = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0] != 1
         ignore_somatic_bpt = [not_soma and branch[0] in somatic_branchpoints]
         ignore_somatic_bpt += [not_soma and branch[-1] in somatic_branchpoints]
-        comp_attrs = compartmentalize_branch(branch_nodes, ncomp, ignore_somatic_bpt)
+        
+        # TODO: Make this work with xyzr (id) attrs! Modifiy xyzr (i.e. radius) before 
+        # appending to xyzr attr
+        
+        # different id (attached at the ends), the node after the branchpoint det. branch id
+        branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
+        not_branch_id = (branch_nodes["id"] != branch_id).values
+        branch_nodes.loc[not_branch_id, "id"] = branch_id
+
+        # if branchpoint has a different id, its radius is assumed to be equal to that
+        # of the neighbouring node.
+        if not_branch_id[0] and len(branch_nodes) > 2:
+            branch_nodes.loc[branch_nodes.index[0], "r"] = branch_nodes["r"].values[1]
+        if not_branch_id[-1] and len(branch_nodes) > 2:
+            branch_nodes.loc[branch_nodes.index[-1], "r"] = branch_nodes["r"].values[-2]
+
+        # NOTE: This will introduce gaps in the xyzr attribute!
+        inds = branch_nodes.index
+        inds = inds[1:] if ignore_somatic_bpt[0] else inds
+        inds = inds[:-1] if ignore_somatic_bpt[1] else inds
+        branch_nodes = branch_nodes.loc[inds]
+
+        comp_attrs = compartmentalize_branch(branch_nodes, ncomp)
 
         # Attach branchpoint and tip nodes to the branch.
         # Since branchpoints / tips have the same node_index as in the original graph
@@ -673,7 +669,7 @@ def build_compartment_graph(
         comp_edges += [np.stack([node_inds.iloc[:-1], node_inds.iloc[1:]]).T.tolist()]
         comps.append(comp_attrs)
 
-        # store xyzr for each node in branch
+        # store xyzr for each node in branch        
         xyzr.append(branch_nodes[["x", "y", "z", "r"]].values)
 
     comp_df = pd.concat(comps)
