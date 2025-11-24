@@ -1,6 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import List, Optional, Tuple
+from typing import List
 
 import jax.numpy as jnp
 import numpy as np
@@ -9,106 +9,6 @@ from jax import Array, vmap
 from jax.typing import ArrayLike
 
 from jaxley.utils.misc_utils import cumsum_leading_zero
-
-def radius_from_xyzr(
-    xyzr: np.ndarray,
-    min_radius: Optional[float],
-) -> float:
-    """Return the radius of a compartment given its SWC file xyzr.
-
-    Args:
-        radius_fns: Functions which, given compartment locations return the radius.
-        branch_indices: The indices of the branches for which to return the radiuses.
-        min_radius: If passed, the radiuses are clipped to be at least as large.
-        ncomp: The number of compartments that every branch is discretized into.
-    """
-    xyz = xyzr[:, :3]
-    radius = xyzr[:, 3]
-    if len(xyzr) > 1:
-        deltas = np.diff(xyz, axis=0)
-        dists = np.linalg.norm(deltas, axis=1)
-        weights = np.zeros(len(dists) + 1)
-        weights[1:] += dists
-        weights[:-1] += dists
-        weights /= np.sum(weights)
-        avg_radius = np.sum(radius * weights)
-    else:
-        avg_radius = radius.mean()
-
-    if min_radius is None:
-        assert (
-            avg_radius > 0.0
-        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
-    else:
-        avg_radius = (
-            min_radius
-            if (avg_radius < min_radius or np.isnan(avg_radius))
-            else avg_radius
-        )
-
-    return avg_radius
-
-
-def split_xyzr_into_equal_length_segments(
-    xyzr: np.ndarray, ncomp: int
-) -> List[np.ndarray]:
-    """Split xyzr into equal-length segments by inserting interpolated points as needed.
-
-    This function was written by ChatGPT, based on the prompt:
-    ```I have an array of shape 100x3. The 3 indicate x, y, z coordinates. I want to
-    split this array into 4 segments, each with equal euclidean length. To have
-    euclidean length exactly equal, I would like to insert additional points into
-    the 100x3 array (to make it length 100 + 4 segments - 1). These points should be
-    linear interpolation of neighboring points. In the final split array, the newly
-    inserted nodes should be the last point of one segment and the first point of
-    another segment.```
-
-    Args:
-        points: Array of 3D coordinates representing a path.
-        num_segments: Number of segments to split the path into.
-
-    Returns:
-        A list of `num_segments` arrays, each containing the 3D coordinates
-        of one segment. The segments have (approximately) equal Euclidean
-        length, and split points are interpolated between original points.
-    """
-    if len(xyzr) == 1:
-        return [xyzr] * ncomp
-
-    # Compute distances between consecutive points
-    xyz = xyzr[:, :3]
-
-    # Compute distances and cumulative distances
-    deltas = np.diff(xyz, axis=0)
-    dists = np.linalg.norm(deltas, axis=1)
-    cum_dists = np.concatenate([[0], np.cumsum(dists)])
-    total_length = cum_dists[-1]
-
-    # Target cumulative distances where we want to split
-    target_dists = np.linspace(0, total_length, ncomp + 1)
-
-    # Find insertion indices and interpolation factors
-    idxs = np.searchsorted(cum_dists, target_dists, side="right") - 1
-    idxs = np.clip(idxs, 0, len(xyz) - 2)  # Ensure valid indices
-    local_dist = target_dists - cum_dists[idxs]
-    segment_lens = dists[idxs]
-    frac = (local_dist / segment_lens)[:, None]  # shape (n, 1)
-
-    # Interpolate split points
-    split_points = xyzr[idxs] + frac * (xyzr[idxs + 1] - xyzr[idxs])
-
-    # Build final list of points with inserted nodes
-    all_points = [split_points[0]]
-    compartment_xyzrs = []
-
-    for i in range(1, len(split_points)):
-        # Collect original points between splits.
-        mask = (cum_dists > target_dists[i - 1]) & (cum_dists < target_dists[i])
-        between_points = xyzr[mask]
-        segment = np.vstack([all_points[-1], *between_points, split_points[i]])
-        compartment_xyzrs.append(segment)
-        all_points.append(split_points[i])
-    return compartment_xyzrs
 
 
 def equal_segments(branch_property: list, ncomp_per_branch: int):
