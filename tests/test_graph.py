@@ -27,6 +27,7 @@ from jaxley.io.tmp import (
     from_graph,
     to_graph,
     swc_to_nx,
+    load_swc,
 )
 from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
@@ -172,7 +173,8 @@ def test_trace_branches(file):
     """Test whether all branch lengths match NEURON."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
-    swc_graph = swc_to_nx(fname)
+    swc_df = load_swc(fname)
+    swc_graph = swc_to_nx(swc_df)
 
     # pre-processing
     ignore_swc_interrupts = False
@@ -209,7 +211,8 @@ def test_from_graph_vs_NEURON(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    swc_graph = swc_to_nx(fname)
+    swc_df = load_swc(fname)
+    swc_graph = swc_to_nx(swc_df)
     comp_graph = build_compartment_graph(
         swc_graph,
         ncomp=ncomp,
@@ -405,7 +408,9 @@ def test_trim_dendrites_of_swc():
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
-    swc_graph = swc_to_nx(fname)
+
+    swc_df = load_swc(fname)
+    swc_graph = swc_to_nx(swc_df)
     comp_graph = build_compartment_graph(swc_graph, ncomp=1)
 
     # Next, we loop over all nodes. We want to keep nodes only if they made any of the

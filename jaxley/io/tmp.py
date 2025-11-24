@@ -65,6 +65,86 @@ def nx_to_pandas(
     return node_df, edge_df, pd.Series(G.graph)
 
 
+def load_swc(
+    fname: str, num_lines: Optional[int] = None, convert: callable = lambda x: x
+) -> pd.DataFrame:
+    """Read a SWC morphology file into a pandas DataFrame.
+
+    Args:
+        fname: Path to the SWC file
+        num_lines: Number of lines to read from the file. If None, all lines are read.
+        convert: Function to convert the SWC file to the desired units.
+            The function is applied to each row of the SWC file / dataframe (excl. index)
+            using pd.DataFrame.apply, i.e. [id, x, y, z, r, p].
+
+    Returns:
+        A pandas DataFrame of the SWC file.
+    """
+    columns = ["id", "x", "y", "z", "r", "p"]
+    swc = pd.read_csv(fname, sep=", ", header=None, names=columns, index_col=0)
+    swc = swc.iloc[:num_lines].apply(convert, axis=1)
+    return swc
+
+
+def nx_to_swc(G: nx.Graph) -> pd.DataFrame:
+    """Convert a NetworkX Graph to a pandas DataFrame.
+
+    Args:
+        G: NetworkX Graph
+
+    Returns:
+        A pandas DataFrame of the SWC file.
+    """
+    swc = nx_to_pandas(G)[0]
+
+    pos_of_node = {idx: pos for pos, idx in enumerate(swc.index)}
+
+    swc["p"] = [-1] * len(swc.index)
+    for parent, child in nx.bfs_edges(G, np.min(swc.index)):
+        swc.loc[child, "p"] = pos_of_node[parent]
+
+    return swc
+
+
+def swc_to_nx(
+    swc: pd.DataFrame,
+    relevant_ids: Optional[List[int]] = None,
+) -> nx.Graph:
+    """Read a SWC morphology (loaded as pandas DataFrame) into a NetworkX DiGraph.
+
+    The graph is read such that each entry in the swc file becomes a graph node
+    with the column attributes (id, x, y, z, r). Then each node is connected to its
+    designated parent via an edge.
+
+    Args:
+        swc: pandas DataFrame of the SWC file.
+        relevant_ids: List of ids to include in the graph. Defaults to [1, 2, 3, 4].
+            All other ids are set to 0.
+
+    Returns:
+        A networkx DiGraph of the traced morphology in the swc file. It has attributes:
+        nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0}
+        edges: {}
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    ::
+
+        from jaxley.io.graph load_swc, swc_to_nx
+        swc_graph = swc_to_nx(load_swc("path_to_swc.swc"))
+    """
+    relevant_ids = relevant_ids or [1, 2, 3, 4]
+
+    graph = nx.Graph()
+    fmt_id = lambda id: int(id) if id in relevant_ids else 0
+    for i, id, x, y, z, r, p in swc.tolist():  # tolist: np.float64 -> float
+        graph.add_node(int(i), **{"id": fmt_id(id), "x": x, "y": y, "z": z, "r": r})
+        if p != -1:
+            graph.add_edge(int(p), int(i))
+    return graph
+
+
 def compute_xyz(
     G: nx.Graph,
     length: float = 1.0,
@@ -124,6 +204,7 @@ def compute_xyz(
 
     recurse(root, theta=0.0, phi=np.pi / 2)
     return pos
+
 
 def surface_area_segments(ls, r1, r2, dr):
     """Surface area of truncated cone segments."""
@@ -213,51 +294,10 @@ def compute_cone_props(ls, rs, l_start=None, l_end=None):
 
     return avg_r, surface_area, volume, res_in, res_out
 
+
 ########################################################################################
 ################################### BUILD SWC GRAPH ####################################
 ########################################################################################
-
-
-def swc_to_nx(
-    fname: str,
-    num_lines: Optional[int] = None,
-    relevant_ids: Optional[List[int]] = None,
-) -> nx.Graph:
-    """Read a SWC morphology file into a NetworkX DiGraph.
-
-    The graph is read such that each entry in the swc file becomes a graph node
-    with the column attributes (id, x, y, z, r). Then each node is connected to its
-    designated parent via an edge.
-
-    Args:
-        fname: Path to the SWC file
-        num_lines: Number of lines to read from the file. If None, all lines are read.
-        relevant_ids: List of ids to include in the graph. Defaults to [1, 2, 3, 4].
-            All other ids are set to 0.
-
-    Returns:
-        A networkx DiGraph of the traced morphology in the swc file. It has attributes:
-        nodes: {'id': 1, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 1.0}
-        edges: {}
-
-    Example usage
-    ^^^^^^^^^^^^^
-
-    ::
-
-        from jaxley.io.graph swc_to_nx
-        swc_graph = swc_to_nx("path_to_swc.swc")
-    """
-    i_id_xyzr_p = np.loadtxt(fname)[:num_lines]
-    relevant_ids = relevant_ids or [1, 2, 3, 4]
-
-    graph = nx.Graph()
-    fmt_id = lambda id: int(id) if id in relevant_ids else 0
-    for i, id, x, y, z, r, p in i_id_xyzr_p.tolist():  # tolist: np.float64 -> float
-        graph.add_node(int(i), **{"id": fmt_id(id), "x": x, "y": y, "z": z, "r": r})
-        if p != -1:
-            graph.add_edge(int(p), int(i))
-    return graph
 
 
 def split_branches(
@@ -322,6 +362,7 @@ def list_branches(
     max_len: Optional[float] = None,
     ignore_swc_tracing_interruptions: bool = True,
     return_branchpoints: bool = False,
+    order_ascending: bool = True,
 ) -> list[list[int]]:
     """Get all uninterrupted paths in the traced morphology (i.e. branches).
 
@@ -360,6 +401,8 @@ def list_branches(
             tracing order. If False, this will result in split branches at these points.
         return_branchpoints: Whether to return the branchpoints and edges between them
             seperately.
+        order_ascending: Whether to ensure that the branch indices increase along the branch.
+            This is important for the computation of the resistive load.
 
     Returns:
         A list of linear paths in the graph. Each path is represented as list of nodes.
@@ -403,6 +446,15 @@ def list_branches(
     # max_len splitting only after accounting for interrupted branches
     if max_len is not None:
         branches = split_long_branches(G, branches, max_len)
+
+    # TODO: fix for cases list [324, 1, 2, 3]
+    if order_ascending:
+        branches = [b if b[0] <= b[-1] else b[::-1] for b in branches]
+
+    # TODO: if commented out, tests fail. Why? This would mean that branch ordering
+    # matters somehow! Needed to match old graph pipeline.
+    # ensure branches with higher branch index also have higher node indices
+    branches = sorted(branches, key=lambda b: np.median(b))
 
     branch_tips = sum([[b[0], b[-1]] for b in branches], [])
     branchpoints_tips = sorted(set(branch_tips))
@@ -518,6 +570,13 @@ def compartmentalize_branch(
     cone_props = np.array([compute_cone_props(ls, rs, x1, x2) for x1, x2 in comp_tips])
     comp_attrs.loc[is_comp, cone_prop_cols] = cone_props
 
+    # TODO: Proper handling of this!!! ALSO CHECK IF THIS IS EVEN CORRECT HANDLING
+    if len(node_inds_in_branch) == 1:
+        rads = comp_attrs.loc[is_comp, "r"]
+        comp_attrs.loc[is_comp, "volume"] = (
+            4 / 3 * np.pi * rads**3 / ncomp
+        )  # Volume of a sphere.
+
     return comp_attrs
 
 
@@ -624,33 +683,28 @@ def build_compartment_graph(
     comps, comp_edges, xyzr = [], [], []
     for branch_idx, branch in enumerate(branches):
         branch_nodes = nodes_df.loc[branch]
+        first_node, last_node = branch[0], branch[-1]
 
-        # Compute the compartmentalization of the branch.
-        not_soma = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0] != 1
-        ignore_somatic_bpt = [not_soma and branch[0] in somatic_branchpoints]
-        ignore_somatic_bpt += [not_soma and branch[-1] in somatic_branchpoints]
-        
-        # TODO: Make this work with xyzr (id) attrs! Modifiy xyzr (i.e. radius) before 
+        # TODO: Make this work with xyzr (id) attrs! Modifiy xyzr (i.e. radius) before
         # appending to xyzr attr
-        
-        # different id (attached at the ends), the node after the branchpoint det. branch id
-        branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
-        not_branch_id = (branch_nodes["id"] != branch_id).values
-        branch_nodes.loc[not_branch_id, "id"] = branch_id
 
         # if branchpoint has a different id, its radius is assumed to be equal to that
         # of the neighbouring node.
+        branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
+        not_branch_id = (branch_nodes["id"] != branch_id).values
         if not_branch_id[0] and len(branch_nodes) > 2:
-            branch_nodes.loc[branch_nodes.index[0], "r"] = branch_nodes["r"].values[1]
+            branch_nodes.loc[first_node, "r"] = branch_nodes["r"].values[1]
         if not_branch_id[-1] and len(branch_nodes) > 2:
-            branch_nodes.loc[branch_nodes.index[-1], "r"] = branch_nodes["r"].values[-2]
+            branch_nodes.loc[last_node, "r"] = branch_nodes["r"].values[-2]
 
-        # NOTE: This will introduce gaps in the xyzr attribute!
+        # NOTE: Introduces gaps in self.xyzr! But needed for set_ncomp tests to pass!
         inds = branch_nodes.index
-        inds = inds[1:] if ignore_somatic_bpt[0] else inds
-        inds = inds[:-1] if ignore_somatic_bpt[1] else inds
+        not_soma = branch_id != 1
+        inds = inds[1:] if not_soma and first_node in somatic_branchpoints else inds
+        inds = inds[:-1] if not_soma and last_node in somatic_branchpoints else inds
         branch_nodes = branch_nodes.loc[inds]
 
+        # Compute the compartmentalization of the branch.
         comp_attrs = compartmentalize_branch(branch_nodes, ncomp)
 
         # Attach branchpoint and tip nodes to the branch.
@@ -662,14 +716,14 @@ def build_compartment_graph(
 
         # single soma branches lead to self looping edges, since branch[0] == branch[-1]
         # we therefore remove one tip node / branchpoint node, i.e. [0,s,0] -> [s,0]
-        comp_attrs = comp_attrs.iloc[1:] if branch[0] == branch[-1] else comp_attrs
+        comp_attrs = comp_attrs.iloc[1:] if first_node == last_node else comp_attrs
 
         # Store edges, nodes, and xyzr in branch-wise manner
         node_inds = comp_attrs["node"]
         comp_edges += [np.stack([node_inds.iloc[:-1], node_inds.iloc[1:]]).T.tolist()]
         comps.append(comp_attrs)
 
-        # store xyzr for each node in branch        
+        # store xyzr for each node in branch
         xyzr.append(branch_nodes[["x", "y", "z", "r"]].values)
 
     comp_df = pd.concat(comps)
@@ -927,13 +981,15 @@ def comp_to_branch_graph(G: nx.Graph, relabel_nodes: bool = True) -> nx.Graph:
     """
     node_df = nx_to_pandas(G)[0]
     branch_graph = G.copy()
-    
+
     for _, cell_df in node_df.groupby("cell_index"):
         for _, branch_df in cell_df.groupby("branch_index"):
             root, *branch_nodes = sorted(branch_df.index)
             for n in branch_nodes:
-                branch_graph = nx.contracted_nodes(branch_graph, root, n, self_loops=False, copy=False)
-    
+                branch_graph = nx.contracted_nodes(
+                    branch_graph, root, n, self_loops=False, copy=False
+                )
+
     if relabel_nodes:
         branch_labels = nx.get_node_attributes(branch_graph, "branch_index")
         branch_graph = nx.relabel_nodes(branch_graph, branch_labels)
@@ -960,7 +1016,7 @@ def _compute_branch_parents(G: nx.Graph) -> list[list[int]]:
 
         branch_inds = sorted(cell_df["branch_index"].unique())
         pos_of_branch = {idx: pos for pos, idx in enumerate(branch_inds)}
-        
+
         parent_list = [-1] * len(branch_inds)
         for parent, child in nx.bfs_edges(branch_graph_of_cell, np.min(branch_inds)):
             parent_list[pos_of_branch[child]] = pos_of_branch[parent]
@@ -1075,8 +1131,7 @@ def from_graph(
 
     ::
 
-        from jaxley.io.graph import swc_to_nx, build_compartment_graph, from_graph
-        swc_graph = swc_to_nx("path_to_swc.swc")
+        from jaxley.io.graph import build_compartment_graph, from_graph
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
         cell = from_graph(comp_graph)
     """
