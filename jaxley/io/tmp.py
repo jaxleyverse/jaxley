@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.patches import Circle
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
 
@@ -65,24 +67,34 @@ def nx_to_pandas(
     return node_df, edge_df, pd.Series(G.graph)
 
 
-def load_swc(
-    fname: str, num_lines: Optional[int] = None, convert: callable = lambda x: x
+def read_swc(
+    fname: str, num_lines: Optional[int] = None, converters: Optional[callable] = None
 ) -> pd.DataFrame:
     """Read a SWC morphology file into a pandas DataFrame.
 
     Args:
         fname: Path to the SWC file
         num_lines: Number of lines to read from the file. If None, all lines are read.
-        convert: Function to convert the SWC file to the desired units.
-            The function is applied to each row of the SWC file / dataframe (excl. index)
-            using pd.DataFrame.apply, i.e. [id, x, y, z, r, p].
+        converters: Functions that can be applied to each column [id, x, y, z, r, p] of
+            the SWC file i.e. to convert the swc file to the desired units.
+            See here: http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
 
     Returns:
         A pandas DataFrame of the SWC file.
     """
-    columns = ["id", "x", "y", "z", "r", "p"]
-    swc = pd.read_csv(fname, sep=", ", header=None, names=columns, index_col=0)
-    swc = swc.iloc[:num_lines].apply(convert, axis=1)
+    swc = pd.read_csv(
+        fname,
+        sep=r"\s+",
+        comment="#",
+        names=["id", "x", "y", "z", "r", "p"],
+        nrows=num_lines,
+        skipinitialspace=True,
+        index_col=0,
+    )
+
+    converters = converters or {}
+    for col, func in converters.items():
+        swc[col] = swc[col].apply(func)
     return swc
 
 
@@ -131,18 +143,23 @@ def swc_to_nx(
 
     ::
 
-        from jaxley.io.graph load_swc, swc_to_nx
-        swc_graph = swc_to_nx(load_swc("path_to_swc.swc"))
+        from jaxley.io.graph read_swc, swc_to_nx
+        swc_graph = swc_to_nx(read_swc("path_to_swc.swc"))
     """
     relevant_ids = relevant_ids or [1, 2, 3, 4]
+    swc["id"] = swc["id"].apply(lambda id: id if id in relevant_ids else 0)
 
     graph = nx.Graph()
-    fmt_id = lambda id: int(id) if id in relevant_ids else 0
-    for i, id, x, y, z, r, p in swc.tolist():  # tolist: np.float64 -> float
-        graph.add_node(int(i), **{"id": fmt_id(id), "x": x, "y": y, "z": z, "r": r})
+    for i, (id, x, y, z, r, p) in swc.iterrows():  # tolist: np.float64 -> float
+        graph.add_node(i, id=id, x=x, y=y, z=z, r=r)
         if p != -1:
-            graph.add_edge(int(p), int(i))
+            graph.add_edge(p, i)
     return graph
+
+
+#########################################################################################
+################################## Morph Attributes #####################################
+#########################################################################################
 
 
 def compute_xyz(
@@ -296,7 +313,7 @@ def compute_cone_props(ls, rs, l_start=None, l_end=None):
 
 
 ########################################################################################
-################################### BUILD SWC GRAPH ####################################
+################################ BUILD COMPARTMENT GRAPH ###############################
 ########################################################################################
 
 
@@ -757,7 +774,7 @@ def build_compartment_graph(
 
 
 ########################################################################################
-################################ BUILD SOLVE GRAPH #####################################
+################################## BUILD MODULE ########################################
 ########################################################################################
 
 
@@ -811,7 +828,7 @@ def _extract_branchpoints(G: nx.Graph) -> nx.Graph:
     """Move branchpoints to graph.graph and contract branchpoint nodes with their neighbour.
 
     Removes all branchpoint and tip nodes by contracting it into the neighbour with the
-    lowest node_index. All branchpoints and tips are moved to the global graph attribute
+    lowest branch_index. All branchpoints and tips are moved to the global graph attribute
     `branchpoints_and_tips`.
 
     Choosing the lowest node is somewhat arbitrary and can result in different graphs.
@@ -837,7 +854,9 @@ def _extract_branchpoints(G: nx.Graph) -> nx.Graph:
 
     updated_G = G.copy()
     for n in list(branchpoints_tips.keys()):
-        branchpoint_edges = sorted(G.edges(n))
+        nn_nodes = list(G.neighbors(n))
+        nn_ordered = np.argsort([G.nodes[nn]["branch_index"] for nn in nn_nodes])
+        branchpoint_edges = [(n, nn_nodes[i]) for i in nn_ordered]
         branchpoints_tips[n]["edges"] = branchpoint_edges
         rm_edge = branchpoint_edges[0]
         rm_edge = rm_edge[::-1] if n == rm_edge[0] else rm_edge
@@ -872,6 +891,8 @@ def _insert_branchpoints(G: nx.Graph) -> nx.Graph:
     Returns:
         The graph with branchpoints and tips.
     """
+    # TODO: make this work for morphologies generated by to_graph, i.e. which do not
+    # have a `branchpoints_and_tips` attribute.
     branchpoint_edges = G.graph["branchpoints_and_tips"].pop("edges")
     branchpoints_tips = G.graph["branchpoints_and_tips"].T.to_dict()
     G.graph["branchpoints_and_tips"] = pd.DataFrame()
@@ -899,7 +920,261 @@ def _insert_branchpoints(G: nx.Graph) -> nx.Graph:
     return updated_G
 
 
-def to_graph(module, insert_branchpoints: bool = False):
+def comp_to_branch_graph(G: nx.Graph, relabel_nodes: bool = True) -> nx.Graph:
+    """Converts a compartment graph to a branch graph.
+
+    Branch graphs are created by contracting all nodes with the same branch_index within
+    each cell, such that only one node per branch_index is left. The node with the lowest
+    index is chosen as the root of the branch.
+
+    Args:
+        G: The compartment graph to convert.
+        relabel_nodes: Whether to relabel the nodes with the branch_index or to keep
+            the orignal node index.
+
+    Returns:
+        The branch graph.
+    """
+    node_df = nx_to_pandas(G)[0]
+    branch_graph = G.copy()
+
+    cell_dfs = (
+        node_df.groupby("cell_index")
+        if "cell_index" in node_df.columns
+        else [(None, node_df)]
+    )
+
+    for _, cell_df in cell_dfs:
+        for _, branch_df in cell_df.groupby("branch_index"):
+            root, *branch_nodes = sorted(branch_df.index)
+            for n in branch_nodes:
+                branch_graph = nx.contracted_nodes(
+                    branch_graph, root, n, self_loops=False, copy=False
+                )
+
+    if relabel_nodes:
+        branch_labels = nx.get_node_attributes(branch_graph, "branch_index")
+        branch_labels = {n: i for n, i in branch_labels.items() if i is not None}
+        branch_graph = nx.relabel_nodes(branch_graph, branch_labels)
+    return branch_graph
+
+
+def _compute_branch_parents(G: nx.Graph) -> list[list[int]]:
+    """Computes the parent branches for each branch in a compartment graph.
+
+    Args:
+        G: The compartment graph without branchpoints and tips.
+        root: The root node of the branch graph.
+
+    Returns:
+        The parent branches for each branch in the branch graph.
+    """
+
+    # TODO: Make work for comp_graphs with branchpoints and tips?
+    branch_graph = comp_to_branch_graph(G)
+    branch_df = nx_to_pandas(branch_graph)[0]
+
+    cell_dfs = (
+        branch_df.groupby("cell_index")
+        if "cell_index" in branch_df.columns
+        else [(None, branch_df)]
+    )
+
+    acc_parents = []
+    for _, cell_df in cell_dfs:
+        branch_graph_of_cell = branch_graph.subgraph(cell_df["branch_index"].values)
+
+        branch_inds = sorted(cell_df["branch_index"].unique())
+        pos_of_branch = {idx: pos for pos, idx in enumerate(branch_inds)}
+
+        parent_list = [-1] * len(branch_inds)
+        for parent, child in nx.bfs_edges(branch_graph_of_cell, np.min(branch_inds)):
+            parent_list[pos_of_branch[child]] = pos_of_branch[parent]
+        acc_parents.append(parent_list)
+    return acc_parents
+
+
+def _build_module(G: nx.DiGraph, assign_groups: bool = True) -> Module:
+    """Build a Module from a compartmentalized morphology.
+
+    This function builds a Module from a nx.Graph that has been compartmentalized.
+
+    Args:
+        G: The graph to build the Module from.
+        assign_groups: Whether to assign groups to the compartments based on their id.
+
+    Returns:
+        The Module built from the graph.
+    """
+    # TODO: use insert and _append_multiple_synapses to add synapses, channels and pumps to the module
+    # then initialize the params and states appropriately afterwards
+    node_df, edge_df, global_attrs = nx_to_pandas(G)
+
+    # ensure edges in edges are always from smaller index to larger index
+    if len(edge_df) > 0:
+        inds = np.stack(edge_df.index)
+        new_inds = np.where(
+            (inds[:, 0] < inds[:, 1])[:, np.newaxis], inds, inds[:, ::-1]
+        )
+        edge_df.index = pd.MultiIndex.from_tuples(new_inds.tolist())
+
+    synapse_edge_df = edge_df[edge_df.synapse == True if len(edge_df) > 0 else []]
+    synapse_edge_df = synapse_edge_df.reset_index(names=["pre_index", "post_index"])
+    synapse_edge_df = synapse_edge_df.drop(columns=["synapse"], errors="ignore")
+
+    nodes_per_branch = node_df["branch_index"].value_counts()
+    assert (
+        nodes_per_branch.nunique() == 1
+    ), "`from_graph()` does not support a varying number of compartments in each branch."
+
+    acc_parents = _compute_branch_parents(G)
+    return_type = global_attrs["module"] if "module" in global_attrs else "cell"
+
+    module = _build_module_scaffold(
+        node_df,
+        parent_branches=acc_parents,
+        xyzr=global_attrs["xyzr"],
+        return_type=return_type,
+    )
+
+    node_df.columns = [
+        "global_" + col if "local" not in col and "index" in col else col
+        for col in node_df.columns
+    ]
+
+    # jaxley expects contiguous indices, but since we drop branchpoints in
+    # _extract_branchpoints, we need to re-assign the indices here
+    node_df.index = module.nodes.index
+
+    # set column-wise. preserves cols not in df.
+    if not assign_groups:
+        node_df = node_df.drop(columns=global_attrs["group_names"], errors="ignore")
+        global_attrs["group_names"] = []
+
+    module.nodes[node_df.columns] = node_df
+    module.edges = synapse_edge_df if not synapse_edge_df.empty else module.edges
+
+    # add all the extra attrs
+    module.synapses = global_attrs["synapses"]
+    module.channels = global_attrs["channels"]
+    module.pumps = global_attrs["pumps"]
+    module.pumped_ions = [p.ion_name for p in module.pumps]
+    module.group_names = global_attrs["group_names"]
+    module.synapse_current_names = [f"i_{s._name}" for s in module.synapses]
+    module.synapse_param_names = [
+        k for s in module.synapses for k in s.synapse_params.keys()
+    ]
+    module.synapse_state_names = [
+        k for s in module.synapses for k in s.synapse_states.keys()
+    ]
+    module.membrane_current_names = [c.current_name for c in module.channels]
+    module.synapse_names = [s._name for s in module.synapses]
+    module.branchpoints_and_tips = global_attrs["branchpoints_and_tips"]
+
+    return module
+
+
+# TODO: add kwarg functionality
+def from_graph(
+    comp_graph: nx.DiGraph,
+    assign_groups: bool = True,
+):
+    """Return a Jaxley module from a compartmentalized networkX graph.
+
+    This method is currently limited to graphs that have the same number of
+    compartments in each branch. If this is not the case then the method will raise
+    an `AssertionError`.
+
+    Args:
+        comp_graph: The compartment graph built with `build_compartment_graph()` or
+            with `to_graph()`.
+        assign_groups: Whether to assign groups to the compartments based on their id.
+
+    Return:
+        A `jx.Module` representing the graph.
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    ::
+
+        from jaxley.io.graph import build_compartment_graph, from_graph
+        comp_graph = build_compartment_graph(swc_graph, ncomp=1)
+        cell = from_graph(comp_graph)
+    """
+
+    if not "channels" in comp_graph.graph:
+        comp_graph = _add_jaxley_meta_data(comp_graph)
+    if comp_graph.graph["branchpoints_and_tips"].empty:
+        comp_graph = _extract_branchpoints(comp_graph)
+    module = _build_module(comp_graph, assign_groups=assign_groups)
+    return module
+
+
+def _build_module_scaffold(
+    idxs: pd.DataFrame,
+    return_type: str = "cell",
+    parent_branches: Optional[List[np.ndarray]] = None,
+    xyzr: List[np.ndarray] = [],
+) -> Union[Network, Cell, Branch, Compartment]:
+    """Builds a skeleton module from a DataFrame of indices.
+
+    This is useful for instantiating a module that can be filled with data later.
+
+    Args:
+        idxs: DataFrame containing cell_index, branch_index, comp_index, i.e.
+            Module.nodes or View.view.
+        return_type: Type of module to return. If None, the type is inferred from the
+            number of unique values in the indices. I.e. only 1 unique cell_index
+                and 1 unique branch_index -> return_type = "jx.Branch".
+
+    Returns:
+        A skeleton module with the correct number of compartments, branches, cells, or
+        networks."""
+    build_cache = {k: [] for k in ["compartment", "branch", "cell", "network"]}
+
+    comp = Compartment()
+    build_cache["compartment"] = [comp]
+
+    if return_type in ["branch", "cell", "network"]:
+        ncomps = idxs["branch_index"].value_counts().iloc[0]
+        branch = Branch([comp for _ in range(ncomps)])
+        build_cache["branch"] = [branch]
+
+    if return_type in ["cell", "network"]:
+        branch_counter = 0
+        for cell_id, cell_groups in idxs.groupby("cell_index"):
+            num_branches = cell_groups["branch_index"].nunique()
+            default_parents = np.arange(num_branches) - 1  # ignores morphology
+            parents = (
+                default_parents if parent_branches is None else parent_branches[cell_id]
+            )
+            cell = Cell(
+                [branch] * num_branches,
+                parents,
+                xyzr=xyzr[branch_counter : branch_counter + num_branches],
+            )
+            build_cache["cell"].append(cell)
+            branch_counter += num_branches
+
+    if return_type == "network":
+        build_cache["network"] = [Network(build_cache["cell"])]
+
+    module = build_cache[return_type][0]
+    build_cache.clear()
+    return module
+
+
+def to_graph(module: Module, insert_branchpoints: bool = False) -> nx.Graph:
+    """Convert a Module to a NetworkX graph.
+
+    Args:
+        module: The Module to convert.
+        insert_branchpoints: Whether to insert branchpoints into the graph.
+
+    Returns:
+        A NetworkX graph.
+    """
     # check needed to work modules that were not imported via from_graph
     # TODO: branchpoints_and_tips should be a Module attribute, then this check is not needed
     if module.branchpoints_and_tips is None:
@@ -960,300 +1235,66 @@ def to_graph(module, insert_branchpoints: bool = False):
 
 
 ########################################################################################
-################################ MODULE FROM GRAPH #####################################
-########################################################################################
-
-
-def comp_to_branch_graph(G: nx.Graph, relabel_nodes: bool = True) -> nx.Graph:
-    """Converts a compartment graph to a branch graph.
-
-    Branch graphs are created by contracting all nodes with the same branch_index within
-    each cell, such that only one node per branch_index is left. The node with the lowest
-    index is chosen as the root of the branch.
-
-    Args:
-        G: The compartment graph to convert.
-        relabel_nodes: Whether to relabel the nodes with the branch_index or to keep
-            the orignal node index.
-
-    Returns:
-        The branch graph.
-    """
-    node_df = nx_to_pandas(G)[0]
-    branch_graph = G.copy()
-
-    for _, cell_df in node_df.groupby("cell_index"):
-        for _, branch_df in cell_df.groupby("branch_index"):
-            root, *branch_nodes = sorted(branch_df.index)
-            for n in branch_nodes:
-                branch_graph = nx.contracted_nodes(
-                    branch_graph, root, n, self_loops=False, copy=False
-                )
-
-    if relabel_nodes:
-        branch_labels = nx.get_node_attributes(branch_graph, "branch_index")
-        branch_graph = nx.relabel_nodes(branch_graph, branch_labels)
-    return branch_graph
-
-
-def _compute_branch_parents(G: nx.Graph) -> list[list[int]]:
-    """Computes the parent branches for each branch in a compartment graph.
-
-    Args:
-        G: The compartment graph without branchpoints and tips.
-        root: The root node of the branch graph.
-
-    Returns:
-        The parent branches for each branch in the branch graph.
-    """
-
-    branch_graph = comp_to_branch_graph(G)
-    branch_df = nx_to_pandas(branch_graph)[0]
-
-    acc_parents = []
-    for _, cell_df in branch_df.groupby("cell_index"):
-        branch_graph_of_cell = branch_graph.subgraph(cell_df["branch_index"].values)
-
-        branch_inds = sorted(cell_df["branch_index"].unique())
-        pos_of_branch = {idx: pos for pos, idx in enumerate(branch_inds)}
-
-        parent_list = [-1] * len(branch_inds)
-        for parent, child in nx.bfs_edges(branch_graph_of_cell, np.min(branch_inds)):
-            parent_list[pos_of_branch[child]] = pos_of_branch[parent]
-        acc_parents.append(parent_list)
-    return acc_parents
-
-
-def _build_module(G: nx.DiGraph) -> Module:
-    """Build a Module from a compartmentalized morphology.
-
-    This function builds a Module from a nx.Graph that has been compartmentalized.
-
-    Args:
-        G: The graph to build the Module from.
-
-    Returns:
-        The Module built from the graph.
-    """
-    # TODO: use insert and _append_multiple_synapses to add synapses, channels and pumps to the module
-    # then initialize the params and states appropriately afterwards
-    node_df, edge_df, global_attrs = nx_to_pandas(G)
-
-    # ensure edges in edges are always from smaller index to larger index
-    if len(edge_df) > 0:
-        inds = np.stack(edge_df.index)
-        new_inds = np.where(
-            (inds[:, 0] < inds[:, 1])[:, np.newaxis], inds, inds[:, ::-1]
-        )
-        edge_df.index = pd.MultiIndex.from_tuples(new_inds.tolist())
-
-    synapse_edge_df = edge_df[edge_df.synapse == True if len(edge_df) > 0 else []]
-    synapse_edge_df = synapse_edge_df.reset_index(names=["pre_index", "post_index"])
-    synapse_edge_df = synapse_edge_df.drop(columns=["synapse"], errors="ignore")
-
-    nodes_per_branch = node_df["branch_index"].value_counts()
-    assert (
-        nodes_per_branch.nunique() == 1
-    ), "`from_graph()` does not support a varying number of compartments in each branch."
-
-    acc_parents = _compute_branch_parents(G)
-    return_type = global_attrs["module"] if "module" in global_attrs else "cell"
-
-    module = _build_module_scaffold(
-        node_df,
-        parent_branches=acc_parents,
-        xyzr=global_attrs["xyzr"],
-        return_type=return_type,
-    )
-
-    node_df.columns = [
-        "global_" + col if "local" not in col and "index" in col else col
-        for col in node_df.columns
-    ]
-
-    # jaxley expects contiguous indices, but since we drop branchpoints in
-    # _extract_branchpoints, we need to re-assign the indices here
-    node_df.index = module.nodes.index
-
-    # set column-wise. preserves cols not in df.
-    module.nodes[node_df.columns] = node_df
-    module.edges = synapse_edge_df if not synapse_edge_df.empty else module.edges
-
-    # add all the extra attrs
-    module.synapses = global_attrs["synapses"]
-    module.channels = global_attrs["channels"]
-    module.pumps = global_attrs["pumps"]
-    module.pumped_ions = [p.ion_name for p in module.pumps]
-    module.group_names = global_attrs["group_names"]
-    module.synapse_current_names = [f"i_{s._name}" for s in module.synapses]
-    module.synapse_param_names = [
-        k for s in module.synapses for k in s.synapse_params.keys()
-    ]
-    module.synapse_state_names = [
-        k for s in module.synapses for k in s.synapse_states.keys()
-    ]
-    module.membrane_current_names = [c.current_name for c in module.channels]
-    module.synapse_names = [s._name for s in module.synapses]
-    module.branchpoints_and_tips = global_attrs["branchpoints_and_tips"]
-
-    return module
-
-
-# TODO: add kwarg functionality
-def from_graph(
-    comp_graph: nx.DiGraph,
-):
-    """Return a Jaxley module from a compartmentalized networkX graph.
-
-    This method is currently limited to graphs that have the same number of
-    compartments in each branch. If this is not the case then the method will raise
-    an `AssertionError`.
-
-    Args:
-        comp_graph: The compartment graph built with `build_compartment_graph()` or
-            with `to_graph()`.
-        assign_groups: Whether to assign groups to the nodes.
-        solve_root: The root node to traverse the graph for identifying the solve
-            order.
-        traverse_for_solve_order: Whether to traverse the graph for identifying the
-            solve order. Should only be set to `False` if you are confident that the
-            `comp_graph` is in a form in which it can be solved (i.e. its branch
-            indices, compartment indices, and node names are correct). Typically, this
-            is the case only if you exported a module to a `comp_graph` via `to_graph`,
-            did not modify the graph, and now re-import it as a module with
-            `from_graph`.
-
-    Return:
-        A `jx.Module` representing the graph.
-
-    Example usage
-    ^^^^^^^^^^^^^
-
-    ::
-
-        from jaxley.io.graph import build_compartment_graph, from_graph
-        comp_graph = build_compartment_graph(swc_graph, ncomp=1)
-        cell = from_graph(comp_graph)
-    """
-
-    if not "channels" in comp_graph.graph:
-        comp_graph = _add_jaxley_meta_data(comp_graph)
-    if comp_graph.graph["branchpoints_and_tips"].empty:
-        comp_graph = _extract_branchpoints(comp_graph)
-    module = _build_module(comp_graph)
-    return module
-
-
-def _build_module_scaffold(
-    idxs: pd.DataFrame,
-    return_type: str = "cell",
-    parent_branches: Optional[List[np.ndarray]] = None,
-    xyzr: List[np.ndarray] = [],
-) -> Union[Network, Cell, Branch, Compartment]:
-    """Builds a skeleton module from a DataFrame of indices.
-
-    This is useful for instantiating a module that can be filled with data later.
-
-    Args:
-        idxs: DataFrame containing cell_index, branch_index, comp_index, i.e.
-            Module.nodes or View.view.
-        return_type: Type of module to return. If None, the type is inferred from the
-            number of unique values in the indices. I.e. only 1 unique cell_index
-                and 1 unique branch_index -> return_type = "jx.Branch".
-
-    Returns:
-        A skeleton module with the correct number of compartments, branches, cells, or
-        networks."""
-    build_cache = {k: [] for k in ["compartment", "branch", "cell", "network"]}
-
-    comp = Compartment()
-    build_cache["compartment"] = [comp]
-
-    if return_type in ["branch", "cell", "network"]:
-        ncomps = idxs["branch_index"].value_counts().iloc[0]
-        branch = Branch([comp for _ in range(ncomps)])
-        build_cache["branch"] = [branch]
-
-    if return_type in ["cell", "network"]:
-        branch_counter = 0
-        for cell_id, cell_groups in idxs.groupby("cell_index"):
-            num_branches = cell_groups["branch_index"].nunique()
-            default_parents = np.arange(num_branches) - 1  # ignores morphology
-            parents = (
-                default_parents if parent_branches is None else parent_branches[cell_id]
-            )
-            cell = Cell(
-                [branch] * num_branches,
-                parents,
-                xyzr=xyzr[branch_counter : branch_counter + num_branches],
-            )
-            build_cache["cell"].append(cell)
-            branch_counter += num_branches
-
-    if return_type == "network":
-        build_cache["network"] = [Network(build_cache["cell"])]
-
-    module = build_cache[return_type][0]
-    build_cache.clear()
-    return module
-
-
-########################################################################################
 #################################### VISUALIZATION #####################################
 ########################################################################################
 
 
-def vis_compartment_graph(
-    comp_graph: nx.DiGraph,
-    ax=None,
-    font_size: float = 7.0,
-    node_size: float = 150.0,
-    arrowsize: float = 10.0,
-    comp_color: str = "r",
-    branchpoint_color: str = "orange",
-):
-    """Visualize a compartment graph.
+def graph_vis(
+    graph: nx.Graph,
+    dims: Tuple[int, int] = (0, 1),
+    ax: Optional[Axes] = None,
+    show_radii: bool = False,
+    jitter: float = 0.0,
+    scale_radii: float = 1.0,
+    radii_kwargs: Optional[Dict[str, Any]] = None,
+    **kwargs,
+) -> Axes:
+    """
+    Visualize a graph using NetworkX, with optional display of node radii as circles.
 
     Args:
-        comp_graph: A compartment graph generated with `build_compartment_graph()` or
-            with `to_graph()`.
-        ax: Matplotlib axis.
-        font_size: The fontsize for the node names.
-        node_size: The size of each node.
-        arrowsize: The size of the arrow.
-        comp_color: The color of the compartments.
-        branchpoint_color: The color of the compartments.
+        graph: The graph to visualize.
+        dims: Dimensions of xyz to use for visualization (default (0,1) - xy plane).
+        ax: Matplotlib Axes to plot on. If None, a new one is created.
+        show_radii: Whether to show radii as circles around nodes.
+        jitter: Amount of positional jitter/noise to add to node positions.
+            Can be helpful if nodes overlap.
+        scale_radii: Scaling factor for node radii when drawing circles.
+        radii_kwargs: Additional keyword arguments for Circle patches.
+        kwargs: Additional keyword arguments for nx.draw.
 
-    Example usage
-    ^^^^^^^^^^^^^
-
-    ::
-
-        from jaxley.io.graph import to_graph, vis_compartment_graph
-        cell = jx.read_swc("path_to_swc.swc", ncomp=1)
-        comp_graph = to_graph(cell)
-        vis_compartment_graph(comp_graph)
+    Returns:
+        The matplotlib Axes with the plot.
     """
-    cmap = lambda x: branchpoint_color if x else comp_color
-    colors = [
-        cmap(pd.isna(comp_graph.nodes[n].get("branch_index", True)))
-        for n in comp_graph.nodes
-    ]
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(4, 4))
 
-    pos = {k: (v["x"], v["y"]) for k, v in comp_graph.nodes.items()}
+    if radii_kwargs is None:
+        radii_kwargs = {}
 
-    ax = plt.subplots(1, 1, figsize=(4, 4))[1] if ax is None else ax
+    def add_jitter(x: Any) -> Any:
+        """Add uniform random jitter to a numpy array."""
+        return x + np.random.uniform(-jitter, jitter, size=len(x))
 
-    nx.draw(
-        comp_graph,
-        pos=pos,
-        with_labels=True,
-        font_size=font_size,
-        node_size=node_size,
-        ax=ax,
-        node_color=colors,
-        arrowsize=arrowsize,
-    )
+    # Build 2D position dictionary for nx.draw
+    pos = {
+        k: add_jitter(np.array([data["xyz"[d]] for d in dims]))
+        for k, data in graph.nodes(data=True)
+    }
+
+    nx.draw(graph, pos=pos, ax=ax, **kwargs)
+
+    if show_radii:
+        patch_kwargs = dict(edgecolor="C3", facecolor="none", linewidth=1.0, zorder=3)
+        patch_kwargs.update(radii_kwargs)
+
+        for k, data in graph.nodes(data=True):
+            r = data.get("radius", data.get("r", None))
+            if r is not None:
+                R = float(r) * float(scale_radii)
+                ax.add_patch(Circle(pos[k], R, **patch_kwargs))
+
+    return ax
 
 
 ########################################################################################

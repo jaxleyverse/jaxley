@@ -25,9 +25,9 @@ from jaxley.channels.pospischil import K, Leak, Na
 from jaxley.io.tmp import (
     build_compartment_graph,
     from_graph,
-    to_graph,
+    read_swc,
     swc_to_nx,
-    load_swc,
+    to_graph,
 )
 from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
@@ -173,7 +173,7 @@ def test_trace_branches(file):
     """Test whether all branch lengths match NEURON."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
-    swc_df = load_swc(fname)
+    swc_df = read_swc(fname)
     swc_graph = swc_to_nx(swc_df)
 
     # pre-processing
@@ -211,7 +211,7 @@ def test_from_graph_vs_NEURON(file):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    swc_df = load_swc(fname)
+    swc_df = read_swc(fname)
     swc_graph = swc_to_nx(swc_df)
     comp_graph = build_compartment_graph(
         swc_graph,
@@ -409,7 +409,7 @@ def test_trim_dendrites_of_swc():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
 
-    swc_df = load_swc(fname)
+    swc_df = read_swc(fname)
     swc_graph = swc_to_nx(swc_df)
     comp_graph = build_compartment_graph(swc_graph, ncomp=1)
 

@@ -3,7 +3,7 @@
 
 from typing import List, Optional
 
-from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
+import jaxley.io as io
 from jaxley.modules import Cell
 
 
@@ -34,7 +34,10 @@ def read_swc(
             file will be used to generate groups `soma`, `axon`, `basal`, `apical`. See
             here:
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-        backend: The backend to use. Currently only `graph` is supported.
+        backend: The backend to use. Currently we support `graph` and `neuron` backends.
+            The `graph` backend uses the `NetworkX` module to read the SWC file and
+            construct the compartment graph. The `neuron` backend uses `NEURON`'s
+            `h.Import3d_SWC_read()` to do this.
         ignore_swc_tracing_interruptions: Whether to ignore discontinuities in the swc
             tracing order. If False, this will result in split branches at these points.
         relevant_type_ids: All type ids that are not in this list will be ignored for
@@ -46,22 +49,28 @@ def read_swc(
         A `Cell` object."""
 
     if backend == "graph":
-        swc_graph = to_swc_graph(fname)
-        comp_graph = build_compartment_graph(
+        swc_df = io.tmp.read_swc(fname)
+        swc_graph = io.tmp.swc_to_nx(swc_df, relevant_ids=relevant_type_ids)
+        comp_graph = io.tmp.build_compartment_graph(
             swc_graph,
             ncomp=ncomp,
-            root=None,
             min_radius=min_radius,
             max_len=max_branch_len,
             ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
-            relevant_type_ids=relevant_type_ids,
         )
-        module = from_graph(
+        module = io.tmp.from_graph(
             comp_graph,
             assign_groups=assign_groups,
-            solve_root=None,
-            traverse_for_solve_order=True,  # Traverse to fix potential tracing errors.
         )
-        return module
+    elif backend == "neuron":
+        io.neuron._load_swc_into_neuron(fname)
+        swc_graph = io.neuron.h_allsec_to_nx(relevant_ids=relevant_type_ids)
+        comp_graph = io.neuron.build_compartment_graph(ncomp=ncomp)
+        module = io.tmp.from_graph(
+            comp_graph,
+            assign_groups=assign_groups,
+        )
     else:
-        raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")
+        raise ValueError(f"Unknown backend: {backend}. Use either `neuron` or `graph`.")
+
+    return module
