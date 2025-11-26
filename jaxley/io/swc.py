@@ -4,6 +4,7 @@
 from typing import List, Optional
 
 import jaxley.io as io
+from jaxley.io.neuron import assert_NEURON
 from jaxley.modules import Cell
 
 
@@ -62,7 +63,23 @@ def read_swc(
             comp_graph,
             assign_groups=assign_groups,
         )
+    elif backend == "legacy":
+        swc_graph = io.graph.to_swc_graph(fname)
+        comp_graph = io.graph.build_compartment_graph(
+            swc_graph,
+            ncomp=ncomp,
+            min_radius=min_radius,
+            max_len=max_branch_len,
+            ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
+        )
+        module = io.graph.from_graph(
+            comp_graph,
+            assign_groups=assign_groups,
+        )
     elif backend == "neuron":
+        # Check if NEURON is available
+        assert_NEURON()
+
         io.neuron._load_swc_into_neuron(fname)
         swc_graph = io.neuron.h_allsec_to_nx(relevant_ids=relevant_type_ids)
         comp_graph = io.neuron.build_compartment_graph(ncomp=ncomp)

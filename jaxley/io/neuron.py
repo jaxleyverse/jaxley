@@ -1,17 +1,34 @@
+# This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
+# licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+
 from collections import deque
 from typing import Any, Callable, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
 import pandas as pd
-from neuron import h, rxd
 from scipy.spatial.distance import cdist
 
 import jaxley.io.tmp as graph_io_new
 
-# Load NEURON stdlib and import3d
-h.load_file("stdlib.hoc")
-h.load_file("import3d.hoc")
+try:
+    from neuron import h, rxd
+
+    # Load NEURON stdlib and import3d
+    h.load_file("stdlib.hoc")
+    h.load_file("import3d.hoc")
+    NEURON_AVAILABLE = True
+except ImportError:
+    NEURON_AVAILABLE = False
+
+
+def assert_NEURON():
+    if not NEURON_AVAILABLE:
+        raise ImportError(
+            "NEURON is not installed. Install it with: pip install neuron\n"
+            "Or install Jaxley with dev dependencies: pip install Jaxley[dev]"
+        )
+
 
 unpack_dict = lambda d, keys: np.array([d[k] for k in keys])
 
@@ -70,7 +87,12 @@ def _load_swc_into_neuron(fname: str) -> None:
 
     Args:
         fname: Path to SWC file
+
+    Raises:
+        ImportError: If NEURON is not installed
     """
+    assert_NEURON()
+
     # Clear existing sections
     for sec in h.allsec():
         h.delete_section(sec=sec)
@@ -109,7 +131,12 @@ def h_allsec_to_nx(
 
     Returns:
         A nx.Graph with the node and edge attributes.
+
+    Raises:
+        ImportError: If NEURON is not installed
     """
+    assert_NEURON()
+
     # Map section types to SWC type IDs
     relevant_ids = relevant_ids or [1, 2, 3, 4]
     type2id = {"soma": 1, "axon": 2, "dend": 3, "apic": 4}
@@ -187,7 +214,12 @@ def build_compartment_graph(
 
     Returns:
         A nx.Graph with the node and edge attributes.
+
+    Raises:
+        ImportError: If NEURON is not installed
     """
+    assert_NEURON()
+
     for sec in h.allsec():
         sec.nseg = ncomp
 

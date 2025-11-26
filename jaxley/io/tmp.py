@@ -12,6 +12,7 @@ from matplotlib.axes import Axes
 from matplotlib.patches import Circle
 
 from jaxley.modules import Branch, Cell, Compartment, Module, Network
+from jaxley.utils.misc_utils import cumsum_leading_zero
 
 #########################################################################################
 ################################### Helper functions ####################################
@@ -360,16 +361,19 @@ def split_long_branches(
         are of similar length.
     """
     xyz = nx_to_pandas(G)[0][["x", "y", "z"]]
-    path_len = lambda df: df.diff().apply(np.linalg.norm, axis=1).fillna(0).cumsum()
 
     splits = []
     for branch in branches:
-        lens = path_len(xyz.loc[branch])
-        num_splits = int(lens.max() // max_len) + 1
-
-        for seg in np.linspace(0, lens.max(), num_splits + 1)[1:-1]:
-            is_less = lens <= seg
-            splits.append((lens.index[is_less][-1], lens.index[~is_less][0]))
+        branch_xyz = xyz.loc[branch]
+        lens = np.linalg.norm(np.diff(branch_xyz.values, axis=0), axis=1)
+        lens = cumsum_leading_zero(lens)
+        if lens.max() > max_len:
+            num_splits = int(lens.max() // max_len) + 1
+            for seg in np.linspace(0, lens.max(), num_splits + 1)[1:-1]:
+                is_less = lens <= seg
+                splits.append(
+                    (branch_xyz.index[is_less][-1], branch_xyz.index[~is_less][0])
+                )
     return split_branches(branches, splits)
 
 
@@ -533,8 +537,9 @@ def compartmentalize_branch(
         assert attr in branch_nodes.columns, f"Branch nodes must contain '{attr}'."
 
     # set edge lengths to 0 for branchpoints of different id if ignore_branchpoints
-    edge_lens = (branch_nodes[["x", "y", "z"]].diff(axis=0) ** 2).sum(axis=1) ** 0.5
-    branch_nodes["l"] = edge_lens.fillna(0).cumsum()  # path length
+    branch_xyz = branch_nodes[["x", "y", "z"]].values
+    edge_lens = np.linalg.norm(np.diff(branch_xyz, axis=0), axis=1)
+    branch_nodes["l"] = cumsum_leading_zero(edge_lens)  # path length
 
     # handle single point branches / somata
     node_inds_in_branch = branch_nodes.index.tolist()
@@ -563,15 +568,21 @@ def compartmentalize_branch(
     # is_comp, comp_len, comp_id, x, y, z, r, area, volume, res_in, res_out
     cone_prop_cols = ["r", "area", "volume", "resistive_load_in", "resistive_load_out"]
     cols = ["l", "x", "y", "z"] + cone_prop_cols
-    comp_attrs = pd.DataFrame(np.full((ncomp + 2, len(cols)), np.nan), columns=cols)
+    n_rows = ncomp + 2
 
-    branch_id = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
-    comp_attrs["id"] = np.array([0, *[branch_id] * ncomp, 0], dtype=int)
-    is_comp = np.array([False, *[True] * ncomp, False], dtype=bool)
-    comp_attrs.loc[is_comp, "l"] = comp_len
+    is_comp = np.zeros(n_rows, dtype=bool)
+    is_comp[1:-1] = True
+
+    data = {col: np.full(n_rows, np.nan) for col in cols}
+    data["id"] = np.zeros(n_rows, dtype=int)
+
+    data["id"][is_comp] = branch_nodes["id"].iloc[1 if len(branch_nodes) > 1 else 0]
+    data["l"][is_comp] = comp_len
 
     tip_cols = ["id", "x", "y", "z", "r"]
-    comp_attrs.loc[~is_comp, tip_cols] = branch_nodes[tip_cols].iloc[[0, -1]].values
+    tip_data = branch_nodes[tip_cols].iloc[[0, -1]].values
+    for i, col in enumerate(tip_cols):
+        data[col][~is_comp] = tip_data[:, i]
 
     # Interpolate attrs along branch
     comp_centers = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
@@ -581,18 +592,23 @@ def compartmentalize_branch(
 
     interp1d = lambda x: np.interp(comp_centers, ls, x)
     interp_arr = branch_nodes[["x", "y", "z"]].values
-    comp_attrs[["x", "y", "z"]] = np.apply_along_axis(interp1d, axis=0, arr=interp_arr)
+    # Update arrays directly instead of DataFrame assignment
+    for i, col in enumerate(["x", "y", "z"]):
+        data[col] = np.apply_along_axis(interp1d, axis=0, arr=interp_arr[:, i])
 
     # compute radius, area, volume, res_in, res_out
     cone_props = np.array([compute_cone_props(ls, rs, x1, x2) for x1, x2 in comp_tips])
-    comp_attrs.loc[is_comp, cone_prop_cols] = cone_props
+    # Update arrays directly instead of pandas .loc
+    for i, col in enumerate(cone_prop_cols):
+        data[col][is_comp] = cone_props[:, i]
 
     # TODO: Proper handling of this!!! ALSO CHECK IF THIS IS EVEN CORRECT HANDLING
     if len(node_inds_in_branch) == 1:
-        rads = comp_attrs.loc[is_comp, "r"]
-        comp_attrs.loc[is_comp, "volume"] = (
-            4 / 3 * np.pi * rads**3 / ncomp
-        )  # Volume of a sphere.
+        rads = data["r"][is_comp]
+        data["volume"][is_comp] = 4 / 3 * np.pi * rads**3 / ncomp  # Volume of a sphere.
+
+    # Create DataFrame only at the end (single operation)
+    comp_attrs = pd.DataFrame(data, columns=["id"] + cols)
 
     return comp_attrs
 
@@ -662,14 +678,12 @@ def build_compartment_graph(
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
     """
     G = _add_missing_swc_attrs(swc_graph)
-
     branches = list_branches(
         G,
         source=root,
         ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
         max_len=max_len,
     )
-
     nodes_df = nx_to_pandas(G)[0]
 
     # threshold radius
@@ -1127,15 +1141,19 @@ def _build_module_scaffold(
         return_type: Type of module to return. If None, the type is inferred from the
             number of unique values in the indices. I.e. only 1 unique cell_index
                 and 1 unique branch_index -> return_type = "jx.Branch".
+        parent_branches: List of branch parents for each cell.
+        xyzr: List of xyzr arrays for each branch.
 
     Returns:
         A skeleton module with the correct number of compartments, branches, cells, or
         networks."""
+    # NOTE: This is super slow on the first call and there is quite some overhead!
     build_cache = {k: [] for k in ["compartment", "branch", "cell", "network"]}
 
     comp = Compartment()
     build_cache["compartment"] = [comp]
 
+    # only works for graphs with the same number of compartments in each branch
     if return_type in ["branch", "cell", "network"]:
         ncomps = idxs["branch_index"].value_counts().iloc[0]
         branch = Branch([comp for _ in range(ncomps)])
@@ -1146,12 +1164,13 @@ def _build_module_scaffold(
         for cell_id, cell_groups in idxs.groupby("cell_index"):
             num_branches = cell_groups["branch_index"].nunique()
             default_parents = np.arange(num_branches) - 1  # ignores morphology
-            parents = (
-                default_parents if parent_branches is None else parent_branches[cell_id]
-            )
             cell = Cell(
-                [branch] * num_branches,
-                parents,
+                branch,
+                parents=(
+                    default_parents
+                    if parent_branches is None
+                    else parent_branches[cell_id]
+                ),
                 xyzr=xyzr[branch_counter : branch_counter + num_branches],
             )
             build_cache["cell"].append(cell)
