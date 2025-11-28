@@ -124,7 +124,7 @@ def test_branch(voltage_solver, SimpleBranch):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
 def test_branch_uneven_radiuses(SimpleBranch, solver):
     dt = 0.025  # ms
     current = jx.step_current(
@@ -166,7 +166,7 @@ def test_branch_uneven_radiuses(SimpleBranch, solver):
                 -73.95041,
             ]
         )
-    else:
+    elif solver == "bwd_euler":
         voltages_240920 = jnp.asarray(
             [
                 -70.0,
@@ -178,6 +178,20 @@ def test_branch_uneven_radiuses(SimpleBranch, solver):
                 -75.89996029,
                 -75.16066305,
                 -74.07568059,
+            ]
+        )
+    elif solver == "exp_euler":
+        voltages_240920 = jnp.asarray(
+            [
+                -70.0,
+                -64.34219201,
+                -61.63662697,
+                -56.63523508,
+                24.81208212,
+                -43.40164684,
+                -75.86083949,
+                -75.074402,
+                -73.9642574,
             ]
         )
     tolerance = 1e-5
@@ -222,9 +236,15 @@ def test_cell(voltage_solver, SimpleCell):
 
 
 @pytest.mark.parametrize(
-    "voltage_solver", ["jaxley.dhs.cpu", "jaxley.dhs.gpu", "jax.sparse"]
+    ("solver", "voltage_solver"),
+    [
+        ("exp_euler", "jaxley.dhs.cpu"),
+        ("bwd_euler", "jaxley.dhs.cpu"),
+        ("bwd_euler", "jaxley.dhs.gpu"),
+        ("bwd_euler", "jax.sparse"),
+    ],
 )
-def test_complex_cell(voltage_solver, SimpleBranch):
+def test_complex_cell(solver, voltage_solver, SimpleBranch):
     """Test cell with a variety of channels, pumps, diffusion, and comps per branch."""
     dt = 0.025  # ms
     current = jx.step_current(
@@ -263,26 +283,50 @@ def test_complex_cell(voltage_solver, SimpleBranch):
         # allowed_nodes_per_level=32.
         cell._init_solver_jaxley_dhs_solve(allowed_nodes_per_level=4)
 
-    recordings = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
-    voltages_240225 = jnp.asarray(
-        [
-            [-70.0, -53.80348826, 22.07746319, -47.29564472, -75.61534365],
-            [-70.0, -61.74865308, 34.1167336, -28.89225642, -75.73529806],
-            [-70.0, -52.99907533, 20.9735932, -47.83940886, -75.66904041],
-            [-70.0, -60.86487129, 35.11018305, -33.89819309, -75.76933684],
-        ]
+    recordings = jx.integrate(
+        cell, delta_t=dt, solver=solver, voltage_solver=voltage_solver
     )
-    cacon_240225 = (
-        jnp.asarray(
+    if solver == "bwd_euler":
+        voltages_240225 = jnp.asarray(
             [
-                [5.0, 5.04797687, 6.45337663, 12.1139712, 11.86289905],
-                [5.0, 5.0063692, 5.02944485, 5.72251137, 7.49644484],
-                [5.0, 5.00170413, 5.00819813, 5.20138788, 5.87906979],
-                [5.0, 5.00020329, 5.00223143, 5.03325016, 5.27678607],
+                [-70.0, -53.80348826, 22.07746319, -47.29564472, -75.61534365],
+                [-70.0, -61.74865308, 34.1167336, -28.89225642, -75.73529806],
+                [-70.0, -52.99907533, 20.9735932, -47.83940886, -75.66904041],
+                [-70.0, -60.86487129, 35.11018305, -33.89819309, -75.76933684],
             ]
         )
-        * 1e-5
-    )
+        cacon_240225 = (
+            jnp.asarray(
+                [
+                    [5.0, 5.04797687, 6.45337663, 12.1139712, 11.86289905],
+                    [5.0, 5.0063692, 5.02944485, 5.72251137, 7.49644484],
+                    [5.0, 5.00170413, 5.00819813, 5.20138788, 5.87906979],
+                    [5.0, 5.00020329, 5.00223143, 5.03325016, 5.27678607],
+                ]
+            )
+            * 1e-5
+        )
+    elif solver == "exp_euler":
+        voltages_240225 = jnp.asarray(
+            [
+                [-70.0, -53.55452142, 21.13901627, -48.20357832, -75.6448509],
+                [-70.0, -61.69771809, 35.67210388, -30.15944641, -75.78881567],
+                [-70.0, -52.73817351, 20.19064452, -48.66482447, -75.69069244],
+                [-70.0, -60.78322238, 34.73394294, -35.26744226, -75.78570985],
+            ]
+        )
+        cacon_240225 = (
+            jnp.asarray(
+                [
+                    [5.0, 5.04730406, 6.46758895, 12.03443943, 11.6843175],
+                    [5.0, 5.00640777, 5.02906018, 5.73289659, 7.5193134],
+                    [5.0, 5.00169556, 5.00804323, 5.20273641, 5.88671648],
+                    [5.0, 5.00018699, 5.0022025, 5.0321199, 5.27616742],
+                ]
+            )
+            * 1e-5
+        )
+
     max_error_ca = np.max(np.abs(recordings[4:, ::50] - cacon_240225))
     max_error_v = np.max(np.abs(recordings[:4, ::50] - voltages_240225))
     tolerance_ca = 1e-10
@@ -360,9 +404,15 @@ def test_net(voltage_solver, SimpleCell):
 
 
 @pytest.mark.parametrize(
-    "voltage_solver", ["jaxley.dhs.cpu", "jaxley.dhs.gpu", "jax.sparse"]
+    ("solver", "voltage_solver"),
+    [
+        ("exp_euler", "jaxley.dhs.cpu"),
+        ("bwd_euler", "jaxley.dhs.cpu"),
+        ("bwd_euler", "jaxley.dhs.gpu"),
+        ("bwd_euler", "jax.sparse"),
+    ],
 )
-def test_complex_net(voltage_solver, SimpleCell):
+def test_complex_net(solver, voltage_solver, SimpleCell):
     cell = SimpleCell(5, 4)
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
@@ -406,25 +456,44 @@ def test_complex_net(voltage_solver, SimpleCell):
 
     net.cell(6).branch(0).loc(0.0).record()
 
-    voltages = jx.integrate(net, voltage_solver=voltage_solver)
+    voltages = jx.integrate(net, solver=solver, voltage_solver=voltage_solver)
 
-    voltages_300724 = jnp.asarray(
-        [
+    if solver == "bwd_euler":
+        voltages_300724 = jnp.asarray(
             [
-                -70.0,
-                -64.5478417407739,
-                -61.37506280116741,
-                -58.27492707181707,
-                -51.53610508254835,
-                31.739248535280243,
-                -23.276048469250686,
-                -73.58311542313007,
-                -75.5489796956953,
-                -74.69162422333675,
-                -73.52874849932951,
+                [
+                    -70.0,
+                    -64.5478417407739,
+                    -61.37506280116741,
+                    -58.27492707181707,
+                    -51.53610508254835,
+                    31.739248535280243,
+                    -23.276048469250686,
+                    -73.58311542313007,
+                    -75.5489796956953,
+                    -74.69162422333675,
+                    -73.52874849932951,
+                ]
             ]
-        ]
-    )
+        )
+    elif solver == "exp_euler":
+        voltages_300724 = jnp.asarray(
+            [
+                [
+                    -70.0,
+                    -64.51627513,
+                    -61.32392753,
+                    -58.18359883,
+                    -51.12297594,
+                    30.01897216,
+                    -25.61618818,
+                    -74.71960812,
+                    -75.47476833,
+                    -74.58344978,
+                    -73.39313656,
+                ]
+            ]
+        )
 
     max_error = np.max(np.abs(voltages[:, ::40] - voltages_300724))
     tolerance = 1e-8

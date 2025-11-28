@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from jax import Array, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from jax.scipy.linalg import expm
 from jax.typing import ArrayLike
 from matplotlib.axes import Axes
 
@@ -22,6 +23,7 @@ from jaxley.channels import Channel
 from jaxley.pumps import Pump
 from jaxley.solver_voltage import (
     step_voltage_explicit,
+    step_voltage_exponential,
     step_voltage_implicit_with_dhs_solve,
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_stone,
@@ -206,6 +208,10 @@ class Module(ABC):
         # For debugging the solver. Will be empty by default and only filled if
         # `self._init_morph_for_debugging` is run.
         self.debug_states = {}
+
+        self.solver_customizers = {
+            "exp_euler": {"exp_euler_transition": None},
+        }
 
         # needs to be set at the end
         self.base: Module = self
@@ -1060,6 +1066,7 @@ class Module(ABC):
         self._init_solver_jaxley_dhs_solve(
             allowed_nodes_per_level=allowed_nodes_per_level
         )
+        self._init_solver_jaxley_exp_euler_solve()
         self.initialized_solver = True
 
     def _init_solver_jax_spsolve(self):
@@ -1911,6 +1918,266 @@ class Module(ABC):
         )
         return params
 
+    def _init_solver_jaxley_exp_euler_solve(self):
+        solve_indexer = {}
+        df = self._comp_edges
+
+        # Comp-to-comp. These lead to off-diagonals on the G matrix.
+        df_offdiags = df.query("type == 0")
+        solve_indexer["offdiag_inds"] = df_offdiags.index.to_numpy()
+        sink_offdiags = df_offdiags["sink"].to_numpy()
+        source_offdiags = df_offdiags["source"].to_numpy()
+
+        # Diagonals.
+        #
+        # The equations are:
+        # dv1 / dt = gA (v2 - v1) + gB (v0 - v1)
+        # Thus, the diagonal is gA + gB, but these terms are not explicitly part of the
+        # `.comp_edges` table as "self-connections". Instead, we extract them from
+        # the conductance between, e.g., v1 and v2. Notably, as you will see below,
+        # a similar conductance also comes up for branchpoints, so we directly
+        # include them here.
+        df_diags = df.query("type in [0, 1, 2]")
+        solve_indexer["diag_inds"] = df_diags.index.to_numpy()
+        solve_indexer["diag_sinks"] = df_diags["sink"].to_numpy()
+        sink_diags = np.arange(self._n_nodes)  # `._n_nodes` includes the branchpoints.
+        source_diags = np.arange(self._n_nodes)
+
+        # Branchpoints.
+        # The branchpoint voltage vBP is a weighted average of all neighboring
+        # compartments:
+        #
+        # v_BP = (g1 v1 + g2 v2) / (g1 + g2)
+        #
+        # Here, g1 and g2 are the `compartment-to-branchpoint` conductances.
+        #
+        # The branchpoint voltages influence the states as follows:
+        #
+        # v1 = gX (vBP - v1) + gY (v0 - v1) + ...
+        #
+        # Here, gX is a branchpoint-to-compartment conductance, and gY is an example
+        # for a compartment-to-compartment conductance.
+        #
+        # Now, substitute the branchpoint voltage in to the second equation:
+        #
+        # v1 = gX (g1 v1 + g2 v2 - v1) + gY (v0 - v1) + ...
+        # v1 = gX g1 v1 + gX g2 v2 - gX v1 + gY (v0 - v1) + ...
+        # (for simplicity in notation, we neglect the normalizer for v_BP, but it is
+        # of course implemented below).
+        #
+        # In the code below, we build the `gX g1` and `gX g2` terms. Notably, the
+        # `-gX v1` term is already accounted for in the `Diagonals` section above,
+        # because we consider also `comp_edges` of type [1, 2] there.
+        #
+        # Step 1) First, we obtain the normalizers (g1 + g2) for every branchpoint.
+        # To achive this, we group by branchpoints, and add each comp-to-bp conductance.
+        to_bp = df.query("type in [3, 4]").copy()
+        to_bp["group"] = to_bp.groupby("sink").ngroup()
+        solve_indexer["comp_to_bp_inds"] = to_bp.index.to_numpy()
+        solve_indexer["comp_to_bp_group_sinks"] = to_bp["group"].to_numpy()
+
+        # Step 3) For every compartment, we have have to weigh the impact from
+        # the branchpoint with the branchpoint-to-compartment conductance gX.
+        # First: Extract all bp-to-comp condcutances:
+        df_bp_to_comp = df.query("type in [1, 2]")
+        solve_indexer["bp_to_comp_inds"] = df_bp_to_comp.index.to_numpy()
+
+        # We will perform an outer join that matches all compartments to their
+        # branchpoint. To this end, we match all cases where the source of a bp-to-comp
+        # conductance (i.e., a branchpoint) matches the sink of a comp-to-bp
+        # conductance.
+        df_bp_to_comp = df_bp_to_comp.set_index("source", drop=False)
+        df_bp_to_comp["index"] = np.arange(len(df_bp_to_comp))
+        to_bp = to_bp.set_index("sink", drop=False)
+        to_bp["index"] = np.arange(len(to_bp))
+        bp_conns = df_bp_to_comp.join(
+            to_bp, how="outer", lsuffix="_left", rsuffix="_right"
+        )[["sink_left", "source_right", "index_left", "index_right"]]
+        bp_conns = bp_conns.rename(
+            columns={"sink_left": "sink", "source_right": "source"}
+        )
+        # Now, compute gX * g1 / (g1 + g2).
+        solve_indexer["bp_to_comp_inds_expanded"] = bp_conns["index_left"].to_numpy()
+        solve_indexer["comp_to_bp_inds_expanded"] = bp_conns["index_right"].to_numpy()
+        sink_branchpoint = bp_conns["sink"].to_numpy()
+        source_branchpoint = bp_conns["source"].to_numpy()
+
+        # Step 4: Concatenate diagonals, comp-to-comps, and branchpoint influences.
+        solve_indexer["rows"] = jnp.concatenate(
+            [sink_diags, sink_offdiags, sink_branchpoint]
+        )
+        solve_indexer["cols"] = jnp.concatenate(
+            [source_diags, source_offdiags, source_branchpoint]
+        )
+
+        # Save the exponential Euler solve indexer.
+        self._exp_euler_solve_indexer = solve_indexer
+
+    def customize_solver_exp_euler(
+        self,
+        exp_euler_transition: Optional[Array] = None,
+    ):
+        """Sets internal attributes which customize the exponential Euler solver.
+
+        This function only takes effect when `jx.integrate(..., solver='exp_euler').
+
+        The current state of these arguments is stored in `module.solver_customizers`
+
+        Args:
+            exp_euler_transition: A matrix of shape (ncomp x ncomp), where `ncomp` is
+                the number of compartments. This matrix is returned by
+                `module.build_exp_euler_transition_matrix(delta_t)`. If passed, the
+                matrix will _not_ be computed at the beginning of `jx.integrate()`.
+                This can provide massive speed-ups, but it requires that the
+                capacitance, axial resistivity, length, and radius or every compartment
+                is known upfront (i.e., they are not being optimized or considered
+                as free parameters). To revert back to using computing the matrix
+                automatically within `jx.integrate()`, run
+                `module.customize_solver_exp_euler(exp_euler_transition=None)`.
+
+        Example usage:
+        ^^^^^^^^^^^^^^
+
+        Optimize solver speed by pre-computing the exponential Euler transition matrix:
+
+        .. code-block:: python
+
+            delta_t = 0.025
+            cell = jx.Cell()
+            cell.customize_solver_exp_euler(
+                exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
+            )
+            v = jx.integrate(cell, delta_t=delta_t, t_max=100.0)
+        """
+        if exp_euler_transition is not None:
+            self.solver_customizers["exp_euler"][
+                "exp_euler_transition"
+            ] = exp_euler_transition
+
+    def _compute_transition_matrix(
+        self, axial_conductances: Array
+    ) -> Tuple[Array, Array, Array]:
+        """Compute the conductance matrix G such that dv/dt = G * v_{t}.
+
+        For the linear ODE dv/dt = G * v_{t}, we can perform an exponential Euler step
+        of size dt via: v(t + dt) = e^{G * dt} * v(t).
+
+        To obtain the matrix, the code below runs three subroutines:
+        1) Extract all compartment-to-compartment conductances.
+        2) Fill the diagonal.
+        3) Deal with branchpoints.
+
+        Args:
+            axial_conductances: An array which contains the the axial conductances
+                for every compartment edge (including those from and to branchpoints).
+                Shape (C,), where C is the number of edges. To obtain this term,
+                run `module.get_all_parameters()["axial_conductances"]["v"]`.
+
+        Returns:
+            Values, row indices, and column indices for the matrix. The indices can
+            include entries for branchpoints (but the corresponding values should then
+            be zero).
+        """
+        indexer = self._exp_euler_solve_indexer
+
+        # Comp-to-comp. These lead to off-diagonals on the G matrix.
+        g_offdiags = axial_conductances[indexer["offdiag_inds"]]
+
+        # Diagonals.
+        # This includes branchpoints (for easier handling of networks), but they will
+        # just be zero.
+        g_diags = jnp.zeros(self._n_nodes)
+        axial_conds_diag_influencers = axial_conductances[indexer["diag_inds"]]
+        g_diags = g_diags.at[indexer["diag_sinks"]].add(-axial_conds_diag_influencers)
+
+        # Branchpoints.
+        if len(indexer["comp_to_bp_inds"]) > 0:
+            g_comp_to_bp = axial_conductances[indexer["comp_to_bp_inds"]]
+            normalizers = jnp.zeros(np.max(indexer["comp_to_bp_group_sinks"] + 1))
+            normalizers = normalizers.at[indexer["comp_to_bp_group_sinks"]].add(
+                g_comp_to_bp
+            )
+            normalizers = normalizers[indexer["comp_to_bp_group_sinks"]]
+
+            # Step 2) Normalize the compartment-to-branchpoint conductances. In the
+            # notation from above:
+            # g1 / (g1 + g2)
+            g_norm = g_comp_to_bp / normalizers
+
+            # Step 3) For every compartment, we have have to weigh the impact from
+            # the branchpoint with the branchpoint-to-compartment conductance gX.
+            # First: Extract all bp-to-comp condcutances:
+            g_bp_to_comp = axial_conductances[indexer["bp_to_comp_inds"]]
+            # Now, compute gX * g1 / (g1 + g2).
+            g_branchpoint = (
+                g_bp_to_comp[indexer["bp_to_comp_inds_expanded"]]
+                * g_norm[indexer["comp_to_bp_inds_expanded"]]
+            )
+        else:
+            g_branchpoint = jnp.asarray([])
+        # Step 4: Concatenate diagonals, comp-to-comps, and branchpoint influences.
+        vals = jnp.concatenate([g_diags, g_offdiags, g_branchpoint])
+        rows = indexer["rows"]
+        cols = indexer["cols"]
+        return vals, rows, cols
+
+    def build_exp_euler_transition_matrix(
+        self,
+        delta_t: float,
+        axial_conductances: Optional[Array] = None,
+    ) -> Array:
+        """Compute the exponential of the transition matrix of the voltage diffusion.
+
+        For the linear ODE dv/dt = G * v_{t}, we can perform an exponential Euler step
+        of size dt via: v(t + dt) = e^{G * dt} * v(t).
+
+        The returned matrix is already stripped of entries for branchpoints. I.e., it
+        has shape (ncomp x ncomp). It is meant to be applied to
+        `voltages[self._internal_node_inds]`.
+
+        Args:
+            delta_t: The time step used to compute the matrix exponential e^{G * dt}.
+            axial_conductances: An array which contains the the axial conductances
+                for every compartment edge (including those from and to branchpoints),
+                for voltage and for all diffused ions. Shape (N+1, C), where N is the
+                number of diffused ions (+1 for voltage), and C is the number of edges.
+                To obtain this term, run `module.get_all_parameters()`.
+
+        Returns:
+            The transition matrix for the voltage and every diffused state as a matrix
+            of shape (N+1, M, M), where N is the number of diffused states and M is the
+            number of compartments.
+        """
+        if axial_conductances is None:
+            axial_conductances = self.get_all_parameters(pstate=[])[
+                "axial_conductances"
+            ]
+
+        # vmap across voltage and all diffused ions.
+        axial_conds = jnp.asarray(list(axial_conductances.values()))
+        vals, rows, cols = vmap(self._compute_transition_matrix)(axial_conds)
+
+        # Instantiate a dense matrix (for voltage and every diffused ion) such that
+        # we can perform a matrix exponential.
+        idx = self._internal_node_inds
+
+        def build_dense(vals: Array, rows: Array, cols: Array, n: int) -> Array:
+            """Instatiate the transition matrix and exclude branchpoints."""
+            # [np.ix_(idx, idx)] excludes branchpoints.
+            return jnp.zeros((n, n)).at[(rows, cols)].add(vals)[np.ix_(idx, idx)]
+
+        # `ncomp` excludes the number of branchpoints, because the transition matrix
+        # is defined only on "compartment" states.
+        transition_matrix = vmap(build_dense, in_axes=(0, 0, 0, None))(
+            vals, rows, cols, self._n_nodes
+        )
+
+        # Compute the matrix exponential for voltage and every diffused ion.
+        transition_matrix_exp = vmap(lambda M: expm(M * delta_t, max_squarings=16))(
+            transition_matrix
+        )
+        return transition_matrix_exp
+
     @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> dict[str, Array]:
         """Return states as they are set in the `.nodes` and `.edges` tables.
@@ -2676,12 +2943,17 @@ class Module(ABC):
         # Add solver specific arguments.
         if solver == "fwd_euler":
             solver_kwargs = {
-                "internal_node_inds": self._internal_node_inds,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                 "sources": np.asarray(self._comp_edges["source"].to_list()),
                 "types": np.asarray(self._comp_edges["type"].to_list()),
                 "n_nodes": self._n_nodes,
             }
+        elif solver == "exp_euler":
+            solver_kwargs = {
+                "matrix_exponential": params["exp_euler_transition"],
+                "internal_node_inds": self._internal_node_inds,
+            }
+        # From here on: Implicit Euler schemes.
         elif voltage_solver == "jax.sparse":
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
@@ -2775,10 +3047,32 @@ class Module(ABC):
             updated_states = vmapped(
                 *state_vals.values(), *solver_kwargs.values(), delta_t
             )
+        elif solver == "exp_euler":
+            # Why the if-case? See explanation in `if solver in ["bwd_euler", ...]`.
+            if len(self.diffusion_states) == 0:
+                updated_states = step_voltage_exponential(
+                    state_vals["states"][0],
+                    state_vals["linear_terms"][0],
+                    state_vals["constant_terms"][0],
+                    state_vals["axial_conductances"][0],
+                    solver_kwargs["matrix_exponential"][0],
+                    solver_kwargs["internal_node_inds"],
+                    delta_t,
+                )
+                # Add `vmap` dimension.
+                updated_states = jnp.expand_dims(updated_states, axis=0)
+            else:
+                nones = [None] * (len(solver_kwargs) - 1)
+                vmapped = vmap(
+                    step_voltage_exponential, in_axes=(0, 0, 0, 0, 0, *nones, None)
+                )
+                updated_states = vmapped(
+                    *state_vals.values(), *solver_kwargs.values(), delta_t
+                )
         else:
             raise ValueError(
                 f"You specified `solver={solver}`. The only allowed solvers are "
-                "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
+                "['bwd_euler', 'fwd_euler', 'crank_nicolson', 'exp_euler']."
             )
 
         u["v"] = updated_states[0]
@@ -3382,6 +3676,7 @@ class View(Module):
         self.initialized_solver = pointer.initialized_solver
         self.initialized_syns = pointer.initialized_syns
         self.allow_make_trainable = pointer.allow_make_trainable
+        self.solver_customizers = pointer.solver_customizers
 
         # attrs affected by view
         # indices need to be update first, since they are used in the following

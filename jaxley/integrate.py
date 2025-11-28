@@ -29,7 +29,8 @@ def build_init_and_step_fn(
     Args:
         module: A `Module` object that e.g. a cell.
         voltage_solver: Voltage solver used in step. Defaults to "jaxley.stone".
-        solver: ODE solver. Defaults to "bwd_euler".
+        solver: ODE solver. One of
+            { "bwd_euler" | "crank_nicolson" "| "fwd_euler" | "exp_euler" }.
 
     Returns:
         init_fn, step_fn: Functions that initialize the state and parameters, and
@@ -254,7 +255,12 @@ def integrate(
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler",
-            "crank_nicolson"].
+            "crank_nicolson", "exp_euler"]. The solvers can be customized before
+            running `jx.integrate` with the `module.customize_solver_...` methods.
+            For example: `cell.customize_solver_bwd_euler(voltage_solver='jaxley.dhs')`.
+            Note that `exp_euler` is still experimental: It does not work for
+            morphologies that have zero channels, and it is not yet optimized for
+            networks.
         voltage_solver: Algorithm to solve quasi-tridiagonal linear system describing
             the voltage equations. The different options only take effect when
             `solver` is either `bwd_euler` or `crank_nicolson`. The options for
@@ -305,7 +311,6 @@ def integrate(
 
         cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=16)
         v = jx.integrate(cell, voltage_solver="jaxley.dhs.gpu")
-
     """
     if voltage_solver == "jaxley.dhs":
         # Automatically infer the voltage solver.
@@ -365,6 +370,15 @@ def integrate(
         module, voltage_solver=voltage_solver, solver=solver
     )
     all_states, all_params = init_fn(params, all_states, param_state, delta_t)
+
+    if solver == "exp_euler":
+        exp_matrix = module.solver_customizers["exp_euler"]["exp_euler_transition"]
+        if exp_matrix is None:
+            exp_matrix = module.build_exp_euler_transition_matrix(
+                delta_t=delta_t,
+                axial_conductances=all_params["axial_conductances"],
+            )
+        all_params["exp_euler_transition"] = exp_matrix
 
     def _body_fun(state, externals):
         state = step_fn(state, all_params, externals, external_inds, delta_t)

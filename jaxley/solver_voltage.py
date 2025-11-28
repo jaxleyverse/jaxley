@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from typing import Any, Dict
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from jax import Array
@@ -9,7 +10,9 @@ from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
-import jax
+
+from jaxley.solver_gate import exponential_euler
+
 
 def step_voltage_implicit_with_dhs_solve(
     voltages,
@@ -299,7 +302,6 @@ def step_voltage_explicit(
     voltage_terms: ArrayLike,
     constant_terms: ArrayLike,
     axial_conductances: ArrayLike,
-    internal_node_inds,
     sinks,
     sources,
     types,
@@ -312,7 +314,6 @@ def step_voltage_explicit(
         voltage_terms,
         constant_terms,
         axial_conductances,
-        internal_node_inds,
         sinks,
         sources,
         types,
@@ -327,51 +328,95 @@ def _voltage_vectorfield(
     voltage_terms: ArrayLike,
     constant_terms: ArrayLike,
     axial_conductances: ArrayLike,
-    internal_node_inds,
     sinks,
     sources,
     types,
     n_nodes,
 ) -> Array:
     """Evaluate the vectorfield of the nerve equation."""
-    # if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
-    #     raise NotImplementedError(
-    #         f"Forward Euler is not implemented for branched morphologies."
-    #     )
-
     # Membrane current update.
     vecfield = -voltage_terms * voltages + constant_terms
-    # jax.debug.print("vecfield={}", vecfield)
 
-    # # includes comps and branchpoints.
-    # voltages = jnp.zeros(n_nodes)
-    # print("voltages", voltages)
-    # voltages = voltages.at[internal_node_inds].add(voltages)
-
-    # Compute branchpoint voltages.
+    # Compute branchpoint voltages. The voltages at branchpoints are a weighted
+    # average of all neighboring compartments: vBP = (g1 v1 + g2 v2) / (g1 + g2)
     condition = np.isin(types, [3, 4])
-    sink_comp_inds = sinks[condition]
-    source_comp_inds = sources[condition]
-    voltages = voltages.at[sink_comp_inds].set(0.0)
-    # jax.debug.print("init={}", voltages)
-    voltages = voltages.at[sink_comp_inds].add(axial_conductances[condition] * voltages[source_comp_inds])
-    summed_axials = jnp.ones(n_nodes)
-    summed_axials = summed_axials.at[sink_comp_inds].set(0.0)
-    summed_axials = summed_axials.at[sink_comp_inds].add(axial_conductances[condition])
-    # jax.debug.print("voltages={}", voltages)
-    # jax.debug.print("summed_axials={}", summed_axials)
-    voltages = voltages / summed_axials
-    # jax.debug.print("after bp update={}", voltages)
+    if np.sum(condition) > 0:
+        sink_comp_inds = sinks[condition]
+        source_comp_inds = sources[condition]
+        # Set set the voltages at branchpoints to zero.
+        voltages = voltages.at[sink_comp_inds].set(0.0)
+        # Compute all terms that influence the branchpoints: g1 v1 + g2 v2
+        voltages = voltages.at[sink_comp_inds].add(
+            axial_conductances[condition] * voltages[source_comp_inds]
+        )
+        # Compute the normalizer for the branchpoint: (g1 + g2)
+        # Initialize at one such that we can also just divide the compartment voltages
+        # by it.
+        summed_axials = jnp.ones(n_nodes)
+        summed_axials = summed_axials.at[sink_comp_inds].set(0.0)
+        summed_axials = summed_axials.at[sink_comp_inds].add(
+            axial_conductances[condition]
+        )
+        voltages = voltages / summed_axials
 
-    # Update compartment voltages.
+    # Update compartment voltages with the impact from other compartments and from
+    # branchpoints.
     condition = np.isin(types, [0, 1, 2])
-    sink_comp_inds = sinks[condition]
-    source_comp_inds = sources[condition]
-    vecfield = vecfield.at[sinks].add(
-        (voltages[sources] - voltages[sinks]) * axial_conductances
-    )
-
+    if np.sum(condition) > 0:
+        sink_comp_inds = sinks[condition]
+        source_comp_inds = sources[condition]
+        vecfield = vecfield.at[sinks].add(
+            (voltages[sources] - voltages[sinks]) * axial_conductances
+        )
     return vecfield
+
+
+def step_voltage_exponential(
+    voltages: ArrayLike,
+    voltage_terms: ArrayLike,
+    constant_terms: ArrayLike,
+    axial_conductances: ArrayLike,
+    matrix_exponential,
+    internal_node_inds,
+    delta_t: float,
+) -> Array:
+    """Solve one timestep of branched nerve equations with exponential Euler.
+
+    This performs Lie-Trotter splitting for the voltages:
+
+    dv/dt = G * v + g_channel * (E - V)
+
+    v_{t+1} = exp(dt * G) * exp_euler(channel_terms, v_{t})
+
+    I.e., with Lie-Trotter splitting, we first perform an update of the term related to
+    the channels, and then update the 'diffusive' term G * v.
+
+    Args:
+        voltages: The voltages (including branchpoint voltages).
+        voltage_terms: The linear part of the channels terms, i.e., g_channel.
+        constant_terms: The constant part of the channel terms, i.e., g_channel * E
+        axial_conductances: Unused (because we use the `matrix_exponential`).
+        matrix_exponential: The matrix exp(G * dt).
+        internal_node_inds: Indexes into all compartments.
+        delta_t: Time step.
+
+    Returns:
+        The updated voltages (including branchpoint voltages).
+    """
+    # Update of the channels. This requires a `jnp.where` because: some compartments
+    # might not have _any_ channels. In that case, their `voltate_terms = 0`, which
+    # causes tau = inf. This if-case solves this.
+    tau_is_inf = voltage_terms == 0
+    v_tau_not_inf = exponential_euler(
+        voltages, delta_t, constant_terms / voltage_terms, 1.0 / voltage_terms
+    )
+    v_tau_is_inf = voltages + constant_terms * delta_t
+    voltages = jnp.where(tau_is_inf, v_tau_is_inf, v_tau_not_inf)
+
+    # Update of the diffusion matrix.
+    return voltages.at[internal_node_inds].set(
+        matrix_exponential @ voltages[internal_node_inds]
+    )
 
 
 def step_voltage_implicit_with_stone(
@@ -391,9 +436,7 @@ def step_voltage_implicit_with_stone(
         raise NotImplementedError(
             f"The stone solver is not implemented for branched morphologies."
         )
-
     axial_conductances = delta_t * axial_conductances
-    print("axial_conductances", axial_conductances)
 
     # Build diagonals.
     diags = delta_t * voltage_terms
