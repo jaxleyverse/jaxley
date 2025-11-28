@@ -336,11 +336,28 @@ def _voltage_vectorfield(
     # Membrane current update.
     vecfield = -voltage_terms * voltages + constant_terms
 
-    # Current through segments within the same branch.
-    if len(sinks) > 0:
-        vecfield = vecfield.at[sinks].add(
-            (voltages[sources] - voltages[sinks]) * axial_conductances
-        )
+    # includes comps and branchpoints.
+    voltages = jnp.zeros(n_nodes)
+    voltages = voltages.at[internal_node_inds].add(voltages)
+
+    # Compute branchpoint voltages.
+    condition = types.isin([3, 4])
+    sink_comp_inds = sinks[condition]
+    source_comp_inds = sources[condition]
+    # Compute voltage as weighted average across all neighboring compartments.
+    voltages = voltages.at[sink_comp_inds].add(
+        axial_conductances[source_comp_inds] * voltages[source_comp_inds]
+    )
+    summed_axials = jnp.zeros(n_nodes).at[sink_comp_inds].add(axial_conductances[source_comp_inds])
+    voltages = voltages.at[sink_comp_inds].divide(summed_axials)
+
+    # Update compartment voltages.
+    condition = types.isin([0, 1, 2])
+    sink_comp_inds = sinks[condition]
+    source_comp_inds = sources[condition]
+    vecfield = vecfield.at[sinks].add(
+        (voltages[sources] - voltages[sinks]) * axial_conductances
+    )
 
     return vecfield
 
