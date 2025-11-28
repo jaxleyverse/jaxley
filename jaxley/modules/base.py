@@ -2676,9 +2676,11 @@ class Module(ABC):
         # Add solver specific arguments.
         if solver == "fwd_euler":
             solver_kwargs = {
+                "internal_node_inds": self._internal_node_inds,
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                 "sources": np.asarray(self._comp_edges["source"].to_list()),
                 "types": np.asarray(self._comp_edges["type"].to_list()),
+                "n_nodes": self._n_nodes,
             }
         elif voltage_solver == "jax.sparse":
             solver_kwargs = {

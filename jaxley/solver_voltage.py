@@ -9,7 +9,7 @@ from jax.experimental.sparse.linalg import spsolve as jax_spsolve
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
-
+import jax
 
 def step_voltage_implicit_with_dhs_solve(
     voltages,
@@ -299,9 +299,11 @@ def step_voltage_explicit(
     voltage_terms: ArrayLike,
     constant_terms: ArrayLike,
     axial_conductances: ArrayLike,
+    internal_node_inds,
     sinks,
     sources,
     types,
+    n_nodes,
     delta_t: float,
 ) -> Array:
     """Solve one timestep of branched nerve equations with explicit (forward) Euler."""
@@ -310,9 +312,11 @@ def step_voltage_explicit(
         voltage_terms,
         constant_terms,
         axial_conductances,
+        internal_node_inds,
         sinks,
         sources,
         types,
+        n_nodes,
     )
     new_voltates = voltages + delta_t * update
     return new_voltates
@@ -323,36 +327,44 @@ def _voltage_vectorfield(
     voltage_terms: ArrayLike,
     constant_terms: ArrayLike,
     axial_conductances: ArrayLike,
+    internal_node_inds,
     sinks,
     sources,
     types,
+    n_nodes,
 ) -> Array:
     """Evaluate the vectorfield of the nerve equation."""
-    if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
-        raise NotImplementedError(
-            f"Forward Euler is not implemented for branched morphologies."
-        )
+    # if np.sum(np.isin(types, [1, 2, 3, 4])) > 0:
+    #     raise NotImplementedError(
+    #         f"Forward Euler is not implemented for branched morphologies."
+    #     )
 
     # Membrane current update.
     vecfield = -voltage_terms * voltages + constant_terms
+    # jax.debug.print("vecfield={}", vecfield)
 
-    # includes comps and branchpoints.
-    voltages = jnp.zeros(n_nodes)
-    voltages = voltages.at[internal_node_inds].add(voltages)
+    # # includes comps and branchpoints.
+    # voltages = jnp.zeros(n_nodes)
+    # print("voltages", voltages)
+    # voltages = voltages.at[internal_node_inds].add(voltages)
 
     # Compute branchpoint voltages.
-    condition = types.isin([3, 4])
+    condition = np.isin(types, [3, 4])
     sink_comp_inds = sinks[condition]
     source_comp_inds = sources[condition]
-    # Compute voltage as weighted average across all neighboring compartments.
-    voltages = voltages.at[sink_comp_inds].add(
-        axial_conductances[source_comp_inds] * voltages[source_comp_inds]
-    )
-    summed_axials = jnp.zeros(n_nodes).at[sink_comp_inds].add(axial_conductances[source_comp_inds])
-    voltages = voltages.at[sink_comp_inds].divide(summed_axials)
+    voltages = voltages.at[sink_comp_inds].set(0.0)
+    # jax.debug.print("init={}", voltages)
+    voltages = voltages.at[sink_comp_inds].add(axial_conductances[condition] * voltages[source_comp_inds])
+    summed_axials = jnp.ones(n_nodes)
+    summed_axials = summed_axials.at[sink_comp_inds].set(0.0)
+    summed_axials = summed_axials.at[sink_comp_inds].add(axial_conductances[condition])
+    # jax.debug.print("voltages={}", voltages)
+    # jax.debug.print("summed_axials={}", summed_axials)
+    voltages = voltages / summed_axials
+    # jax.debug.print("after bp update={}", voltages)
 
     # Update compartment voltages.
-    condition = types.isin([0, 1, 2])
+    condition = np.isin(types, [0, 1, 2])
     sink_comp_inds = sinks[condition]
     source_comp_inds = sources[condition]
     vecfield = vecfield.at[sinks].add(
