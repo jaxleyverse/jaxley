@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from __future__ import annotations
 
+import functools
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -66,6 +67,7 @@ def only_allow_module(func):
     Decorates methods of Module that cannot be called on Views of Modules instances.
     and have to be called on the Module itself."""
 
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         module_name = self.base.__class__.__name__
         method_name = func.__name__
@@ -529,8 +531,7 @@ class Module(ABC):
         Args:
             scope: either "global" or "local".
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Access the 0-th compartment of the 2nd branch of a cell:
 
@@ -570,8 +571,7 @@ class Module(ABC):
         Returns:
             View with the specified scope.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Access the 0-th compartment of the 2nd branch of a cell:
 
@@ -765,8 +765,7 @@ class Module(ABC):
 
         Returns a generator that yields a View of each cell.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Iterating over the cells of a network:
 
@@ -788,8 +787,7 @@ class Module(ABC):
 
         Returns a generator that yields a View of each branch.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Iterating over the branches of a cell:
 
@@ -812,8 +810,7 @@ class Module(ABC):
 
         Returns a generator that yields a View of each compartment.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Iterating over the compartments of a branch:
 
@@ -859,8 +856,7 @@ class Module(ABC):
 
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         .. code-block:: python
 
@@ -1211,8 +1207,7 @@ class Module(ABC):
             val: The value to set the parameter to. If it is `ArrayLike` then it
                 must be of shape `(len(num_compartments))`.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Setting the sodium maximal conductance of a compartment:
 
@@ -1349,8 +1344,7 @@ class Module(ABC):
             - Unless the morphology was read from an SWC file, when the radiuses of the
             compartments are not the same within the branch that is modified.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Changing how many compartments each branch in a cell consists of:
 
@@ -1557,8 +1551,7 @@ class Module(ABC):
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Making a channel parameter in a compartment trainable:
 
@@ -1666,8 +1659,7 @@ class Module(ABC):
         Args:
             trainable_params: The trainable parameters returned by `get_parameters()`.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Write new parameters to the model after training:
 
@@ -1829,24 +1821,29 @@ class Module(ABC):
 
         pstate can be obtained by calling `params_to_pstate()`.
 
-        .. code-block:: python
-
-            params = module.get_parameters() # i.e. [0, 1, 2]
-            pstate = params_to_pstate(params, module.indices_set_by_trainables)
-            module.to_jax() # needed for call to module.jaxnodes
-
         Args:
             pstate: The state of the trainable parameters. pstate takes the form
-                [{
-                    "key": "gNa", "indices": jnp.array([0, 1, 2]),
-                    "val": jnp.array([0.1, 0.2, 0.3])
-                }, ...].
+
+                .. code-block:: python
+
+                    [{
+                        "key": "gNa", "indices": jnp.array([0, 1, 2]),
+                        "val": jnp.array([0.1, 0.2, 0.3])
+                    }, ...]
             voltage_solver: The voltage solver that is used. Since `jax.sparse` and
                 `jaxley.xyz` require different formats of the axial conductances, this
                 function will default to different building methods.
 
         Returns:
             A dictionary of all module parameters.
+
+        .. rubric:: Example usage
+        
+        .. code-block:: python
+
+            params = module.get_parameters() # i.e. [0, 1, 2]
+            pstate = params_to_pstate(params, module.indices_set_by_trainables)
+            module.to_jax() # needed for call to module.jaxnodes
         """
         params = {}
         for key in [
@@ -2013,6 +2010,7 @@ class Module(ABC):
         # Save the exponential Euler solve indexer.
         self._exp_euler_solve_indexer = solve_indexer
 
+    @only_allow_module
     def customize_solver_exp_euler(
         self,
         exp_euler_transition: Optional[Array] = None,
@@ -2035,8 +2033,7 @@ class Module(ABC):
                 automatically within `jx.integrate()`, run
                 `module.customize_solver_exp_euler(exp_euler_transition=None)`.
 
-        Example usage:
-        ^^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Optimize solver speed by pre-computing the exponential Euler transition matrix:
 
@@ -2054,6 +2051,7 @@ class Module(ABC):
                 "exp_euler_transition"
             ] = exp_euler_transition
 
+    @only_allow_module
     def _compute_transition_matrix(
         self, axial_conductances: Array
     ) -> Tuple[Array, Array, Array]:
@@ -2121,6 +2119,7 @@ class Module(ABC):
         cols = indexer["cols"]
         return vals, rows, cols
 
+    @only_allow_module
     def build_exp_euler_transition_matrix(
         self,
         delta_t: float,
@@ -2683,17 +2682,14 @@ class Module(ABC):
         for key in channel.channel_states:
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
-    # Decorator is commented out due to documentation bug (issue #665)
-    # Once bug is fixed, decorator can be added back
-    # @only_allow_module
+    @only_allow_module
     def diffuse(self, state: str) -> None:
         """Diffuse a particular state across compartments with Fickian diffusion.
 
         Args:
             state: Name of the state that should be diffused.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Diffuse calicum ions across a cell during training:
 
@@ -2745,8 +2741,7 @@ class Module(ABC):
         Args:
             channel: The channel to remove.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         The example below inserts two channels and then deletes the sodium channel:
 
@@ -3445,8 +3440,7 @@ class Module(ABC):
                 `False` largely speeds up moving, especially for big networks, but
                 `.nodes` or `.show` will not show the new xyz coordinates.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Move an entire cell, which moves its branches accordingly:
 
@@ -3487,8 +3481,7 @@ class Module(ABC):
                 `.nodes` or `.show` will not show the new xyz coordinates.
 
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Move an entire cell to a specified location.:
 
@@ -4081,8 +4074,7 @@ def to_graph(
         A networkx compartment. Has the same structure as a graph built with
         `build_compartment_graph()`.
 
-    Example usage
-    ^^^^^^^^^^^^^
+    .. rubric:: Example usage
 
     ::
 
