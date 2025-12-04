@@ -471,7 +471,7 @@ def test_no_removal_of_shared_params():
     _ = cell.nodes["shared_gNa"]
 
 
-@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
 def test_lif(solver):
     cell = jx.Cell()
     cell.insert(Leak())
@@ -489,7 +489,7 @@ def test_lif(solver):
     assert np.sum(v[1]) == 6.0
 
 
-@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
 def test_izhikevich(solver):
     cell = jx.Cell()
     cell.insert(Izhikevich())

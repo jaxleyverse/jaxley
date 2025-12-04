@@ -1,4 +1,22 @@
-# 0.11.6 (pre-release)
+# 0.12.0 (pre-release)
+
+### 🧩 New features
+
+- Exponential Euler solver (#743, @michaeldeistler):
+```python
+jx.integrate(cell, solver="exp_euler")
+```
+This solver is slow on CPU, but can be very performant on GPU, especially when length,
+radius, axial resistivity, and capacitance do not change across simulations (i.e.,
+they are no parameters). In that case, the transition matrix for exponential Euler can
+be precomputed (and it is no longer computed at every call to `jx.integrate`):
+```python
+cell.customize_solver_exp_euler(
+    exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
+)  # Pre-compute the update matrix. Has to be rerun for new values of radius, l, ra, C.
+jx.integrate(cell, solver="exp_euler")
+```
+- Forward Euler solver for branched morphologies (#743, @michaeldeistler).
 
 ### 🛠️ Internal updates
 
@@ -19,6 +37,8 @@ Elisabeth Galyo for reporting)
 - Added example usage to many user-facing Module functions (#716, @alexpejovic)
 - Update GPU installation instructions to use CUDA 13 (#732, @michaeldeistler)
 - Update citation (#739, @michaeldeistler)
+- new how-to guide on choosing a solver (#743, @michaeldeistler)
+- fixes for documentation rendering (#743, @michaeldeistler)
 
 
 # 0.11.5

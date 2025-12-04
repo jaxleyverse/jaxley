@@ -15,6 +15,7 @@ The `how-to guide` provides brief answers to specific questions.
    how_to_guide/set_ncomp.ipynb
    how_to_guide/edit_morphologies.ipynb
    how_to_guide/ion_diffusion.ipynb
+   how_to_guide/choose_solver.ipynb
 
 Could not find what you were looking for? Please create a **New discussion** on our
 `discussion forum <https://github.com/jaxleyverse/jaxley/discussions>`_.
