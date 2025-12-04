@@ -1838,7 +1838,7 @@ class Module(ABC):
             A dictionary of all module parameters.
 
         .. rubric:: Example usage
-        
+
         .. code-block:: python
 
             params = module.get_parameters() # i.e. [0, 1, 2]
