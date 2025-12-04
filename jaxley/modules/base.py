@@ -2148,6 +2148,7 @@ class Module(ABC):
             number of compartments.
         """
         if axial_conductances is None:
+            self.to_jax()  # `.get_all_parameters()` requires `.jaxnodes`.
             axial_conductances = self.get_all_parameters(pstate=[])[
                 "axial_conductances"
             ]

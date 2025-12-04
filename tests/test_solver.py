@@ -52,3 +52,21 @@ def test_fwd_euler_and_crank_nicolson(SimpleNet):
     assert np.max(np.abs(bwd_v - fwd_v)) < 12.0
     assert np.max(np.abs(bwd_v - crank_v)) < 6.0
     assert np.max(np.abs(bwd_v - exp_v)) < 4.0
+
+
+def test_exp_euler_solver_customization(SimpleCell):
+    cell = SimpleCell(2, 3)
+    delta_t = 0.025
+
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=delta_t, t_max=5.0
+    )
+    cell.branch(0).comp(0).stimulate(current)
+    cell.branch(0).comp(1).record()
+    cell.insert(HH())
+
+    cell.customize_solver_exp_euler(
+        exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
+    )
+    v = jx.integrate(cell, solver="exp_euler")
+    assert np.invert(np.any(np.isnan(v)))
