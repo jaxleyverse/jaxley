@@ -18,9 +18,6 @@ jx.integrate(cell, solver="exp_euler")
 ```
 - Forward Euler solver for branched morphologies (#743, @michaeldeistler).
 
-
-# 0.11.6 (pre-release)
-
 ### 🛠️ Internal updates
 
 -  separate getting the currents from `get_all_states()` (#727, @michaeldeistler). To
@@ -40,6 +37,8 @@ Elisabeth Galyo for reporting)
 - Added example usage to many user-facing Module functions (#716, @alexpejovic)
 - Update GPU installation instructions to use CUDA 13 (#732, @michaeldeistler)
 - Update citation (#739, @michaeldeistler)
+- new how-to guide on choosing a solver (#743, @michaeldeistler)
+- fixes for documentation rendering (#743, @michaeldeistler)
 
 
 # 0.11.5
