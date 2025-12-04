@@ -255,12 +255,8 @@ def integrate(
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler",
-            "crank_nicolson", "exp_euler"]. The solvers can be customized before
-            running `jx.integrate` with the `module.customize_solver_...` methods.
-            For example: `cell.customize_solver_bwd_euler(voltage_solver='jaxley.dhs')`.
-            Note that `exp_euler` is still experimental: It does not work for
-            morphologies that have zero channels, and it is not yet optimized for
-            networks.
+            "crank_nicolson", "exp_euler"]. Note that `exp_euler` is still
+            experimental and is not yet optimized for networks.
         voltage_solver: Algorithm to solve quasi-tridiagonal linear system describing
             the voltage equations. The different options only take effect when
             `solver` is either `bwd_euler` or `crank_nicolson`. The options for
@@ -311,6 +307,7 @@ def integrate(
 
         cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=16)
         v = jx.integrate(cell, voltage_solver="jaxley.dhs.gpu")
+
     """
     if voltage_solver == "jaxley.dhs":
         # Automatically infer the voltage solver.
