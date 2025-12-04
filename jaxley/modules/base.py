@@ -2175,7 +2175,15 @@ class Module(ABC):
         transition_matrix_exp = vmap(lambda M: expm(M * delta_t, max_squarings=16))(
             transition_matrix
         )
-        return transition_matrix_exp
+        matrix = transition_matrix_exp[0]
+        # return matrix
+
+        from jax.experimental.sparse import BCOO
+        thr = 1e-5
+        mask = jnp.abs(matrix) < thr
+        matrix = matrix.at[mask].set(0.0)
+        sparse = BCOO.fromdense(matrix)
+        return sparse
 
     @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> dict[str, Array]:
@@ -3050,7 +3058,7 @@ class Module(ABC):
                     state_vals["linear_terms"][0],
                     state_vals["constant_terms"][0],
                     state_vals["axial_conductances"][0],
-                    solver_kwargs["matrix_exponential"][0],
+                    solver_kwargs["matrix_exponential"],
                     solver_kwargs["internal_node_inds"],
                     delta_t,
                 )
