@@ -1,4 +1,4 @@
-# 0.12.0 (pre-release)
+# 0.12.0
 
 ### 🧩 New features
 
