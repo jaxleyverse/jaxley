@@ -4,6 +4,7 @@
 from typing import Callable, Dict, Optional
 
 import jax.numpy as jnp
+from jax import Array
 from jax.nn import sigmoid
 
 from jaxley.synapses.synapse import Synapse
@@ -109,11 +110,12 @@ class ConductanceSynapse(Synapse):
 
     def update_states(
         self,
-        states: Dict,
+        states: dict[str, Array],
+        all_states: dict,
+        pre_index: Array,
+        post_index: Array,
+        params: dict[str, Array],
         delta_t: float,
-        pre_voltage: float,
-        post_voltage: float,
-        params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
         return {}

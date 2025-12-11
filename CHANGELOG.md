@@ -9,10 +9,6 @@
 from jaxley.synapses import CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse
 ```
 
-### 📚 Documentation
-
-- New tutorial added for simple SNNs (#735, @alexpejovic)
-
 ### API changes
 
 - Synapses now take different arguments in order to be able to fetch the pre-
@@ -29,6 +25,11 @@ import jax.numpy as jnp
 from jaxley.synapses import CurrentSynapse
 connect(..., CurrentSynapse(jnp.tanh))
 ```
+
+### 📚 Documentation
+
+- New tutorial added for simple SNNs (#735, @alexpejovic)
+- Improved documentation for synapses (#748, @michaeldeistler)
 
 
 # 0.12.0
