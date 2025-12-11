@@ -80,9 +80,10 @@ Synapses
    :nosignatures:
 
    jaxley.synapses.Synapse
+   jaxley.synapses.CurrentSynapse
+   jaxley.synapses.ConductanceSynapse
+   jaxley.synapses.DynamicSynapse
    jaxley.synapses.IonotropicSynapse
-   jaxley.synapses.TanhRateSynapse
-   jaxley.synapses.TanhConductanceSynapse
 
 
 Connectivity

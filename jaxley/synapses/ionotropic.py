@@ -3,25 +3,51 @@
 
 from typing import Dict, Optional, Tuple
 
+from jax.nn import sigmoid
+
 import jax.numpy as jnp
 
-from jaxley.solver_gate import save_exp
+from jaxley.solver_gate import save_exp, exponential_euler
 from jaxley.synapses.synapse import Synapse
 
 
 class IonotropicSynapse(Synapse):
-    """
-    Compute synaptic current and update synapse state for a generic ionotropic synapse.
+    r"""An ionotropic (state-based) synapse.
+
+    This synapse is similar to the ``DynamicSynapse``, but its time constant is
+    voltage dependent. In addition, this synapse only supports a sigmoidal activation
+    function.
+
+    This synapse implements the following equations:
+
+    .. math::
+
+        I = \overline{g}\, \cdot s\, \cdot (E - V_{\text{post}})
+
+    .. math::
+
+        \tau (V_{\text{pre}}) \, \cdot s = s_{\infty}(V_{\text{pre}}) - s
+
+    .. math::
+
+        s_{\infty}(V_{\text{pre}}) = \sigma\!\left(\frac{V_{\text{pre}} - V_{\text{thr}}}{\Delta}\right)
+
+    .. math::
+
+        \tau(V_{\text{pre}})\, = \frac{1 - s_{\infty}(V_{\text{pre}})}{k_{-}},
 
     The synapse state "s" is the probability that a postsynaptic receptor channel is
     open, and this depends on the amount of neurotransmitter released, which is in turn
-    dependent on the presynaptic voltage.
+    dependent on the presynaptic voltage. This synapse has a time constant which is
+    voltage dependent.
 
     The synaptic parameters are:
-        - gS: the maximal conductance across the postsynaptic membrane (uS)
-        - e_syn: the reversal potential across the postsynaptic membrane (mV)
-        - k_minus: the rate constant of neurotransmitter unbinding from the postsynaptic
-            receptor (s^-1)
+        - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
+        - ``e_syn``: the reversal potential :math:`E` (mV).
+        - ``k_minus``: the rate constant :math:`1/\tau` (:math:`s^{-1}`).
+        - ``v_th``: the threshold at which the synapse becomes active
+          :math:`V_{\text{thr}}` (mV).
+        - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
 
     Details of this implementation can be found in the following book chapter:
         L. F. Abbott and E. Marder, "Modeling Small Networks," in Methods in Neuronal
@@ -54,12 +80,15 @@ class IonotropicSynapse(Synapse):
         v_th = params[f"{prefix}_v_th"]
         delta = params[f"{prefix}_delta"]
 
-        s_inf = 1.0 / (1.0 + save_exp((v_th - pre_voltage) / delta))
-        tau_s = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
+        s_inf = sigmoid((v_th - pre_voltage) / delta)
+        s_tau = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
 
-        slope = -1.0 / tau_s
-        exp_term = save_exp(slope * delta_t)
-        new_s = states[f"{prefix}_s"] * exp_term + s_inf * (1.0 - exp_term)
+        new_s = exponential_euler(
+            states[f"{prefix}_s"],
+            delta_t,
+            s_inf,
+            s_tau
+        )
         return {f"{prefix}_s": new_s}
 
     def compute_current(
