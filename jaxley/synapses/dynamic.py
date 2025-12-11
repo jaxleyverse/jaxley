@@ -3,8 +3,8 @@
 
 from typing import Callable, Dict, Optional, Tuple
 
-from jax.nn import sigmoid
 import jax.numpy as jnp
+from jax.nn import sigmoid
 
 from jaxley.solver_gate import exponential_euler, save_exp
 from jaxley.synapses.synapse import Synapse
@@ -87,6 +87,23 @@ class DynamicSynapse(Synapse):
 
         # Connect neurons with the `DynamicSynapse`.
         connect(net.cell(0), net.cell(1), DynamicSynapse(relu))
+
+    Insert a synapse with a custom nonlinearity.
+
+    ::
+
+        import jaxley as jx
+        from jaxley.connect import connect
+        from jaxley.synapses import DynamicSynapse
+
+        cell = jx.Cell()
+        net = jx.Network([cell for _ in range(2)])
+
+        def nonlinearity(x):
+            return x ** 2
+
+        # Connect neurons with the `DynamicSynapse`.
+        connect(net.cell(0), net.cell(1), DynamicSynapse(nonlinearity))
     """
 
     def __init__(self, nonlinearity: Callable = sigmoid, name: Optional[str] = None):

@@ -2,9 +2,9 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 from typing import Callable, Dict, Optional
-from jax.nn import sigmoid
 
 import jax.numpy as jnp
+from jax.nn import sigmoid
 
 from jaxley.synapses.synapse import Synapse
 
@@ -76,6 +76,23 @@ class ConductanceSynapse(Synapse):
 
         # Connect neurons with the `ConductanceSynapse`.
         connect(net.cell(0), net.cell(1), ConductanceSynapse(relu))
+
+    Insert a synapse with a custom nonlinearity.
+
+    ::
+
+        import jaxley as jx
+        from jaxley.connect import connect
+        from jaxley.synapses import ConductanceSynapse
+
+        cell = jx.Cell()
+        net = jx.Network([cell for _ in range(2)])
+
+        def nonlinearity(x):
+            return x ** 2
+
+        # Connect neurons with the `ConductanceSynapse`.
+        connect(net.cell(0), net.cell(1), ConductanceSynapse(nonlinearity))
     """
 
     def __init__(self, nonlinearity: Callable = sigmoid, name: Optional[str] = None):

@@ -3,11 +3,10 @@
 
 from typing import Dict, Optional, Tuple
 
+import jax.numpy as jnp
 from jax.nn import sigmoid
 
-import jax.numpy as jnp
-
-from jaxley.solver_gate import save_exp, exponential_euler
+from jaxley.solver_gate import exponential_euler
 from jaxley.synapses.synapse import Synapse
 
 
@@ -80,14 +79,14 @@ class IonotropicSynapse(Synapse):
         v_th = params[f"{prefix}_v_th"]
         delta = params[f"{prefix}_delta"]
 
-        s_inf = sigmoid((v_th - pre_voltage) / delta)
+        s_inf = sigmoid((pre_voltage - v_th) / delta)
         s_tau = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
 
         new_s = exponential_euler(
             states[f"{prefix}_s"],
             delta_t,
             s_inf,
-            s_tau
+            s_tau,
         )
         return {f"{prefix}_s": new_s}
 
