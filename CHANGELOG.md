@@ -1,3 +1,28 @@
+# 1.0.0
+
+### 🧩 New features
+
+- A larger and more flexible set of synapse dynamics (#747, @michaeldeistler):
+```python
+from jaxley.synapses import CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse
+```
+
+### API changes
+
+- Removed the `TanhConductanceSynapse` (#747, @michaeldeistler). Replace it with:
+```python
+import jax.numpy as jnp
+from jaxley.synapses import ConductanceSynapse
+connect(..., ConductanceSynapse(jnp.tanh))
+```
+- Removed the `TanhRateSynapse` (#747, @michaeldeistler). Replace it with:
+```python
+import jax.numpy as jnp
+from jaxley.synapses import CurrentSynapse
+connect(..., CurrentSynapse(jnp.tanh))
+```
+
+
 # 0.12.0
 
 ### 🧩 New features
