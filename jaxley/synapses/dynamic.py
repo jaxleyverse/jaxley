@@ -38,7 +38,7 @@ class DynamicSynapse(Synapse):
     The synaptic parameters are:
         - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
         - ``e_syn``: the reversal potential :math:`E` (mV).
-        - ``k_minus``: the rate constant :math:`1/\tau` (:math:`s^{-1}`).
+        - ``k_minus``: the rate constant :math:`1/\tau` (:math:`ms^{-1}`).
         - ``v_th``: the threshold at which the synapse becomes active
           :math:`V_{\text{thr}}` (mV).
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
@@ -112,7 +112,7 @@ class DynamicSynapse(Synapse):
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
             f"{prefix}_e_syn": 0.0,  # mV
-            f"{prefix}_k_minus": 0.025,
+            f"{prefix}_k_minus": 0.025,  # 1/ms
             f"{prefix}_v_th": -35.0,  # mV
             f"{prefix}_delta": 10.0,  # mV
         }

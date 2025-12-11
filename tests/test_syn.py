@@ -10,6 +10,7 @@ from typing import List
 
 import numpy as np
 import pytest
+from jax.nn import relu
 
 import jaxley as jx
 from jaxley.channels import HH, Leak
@@ -75,3 +76,33 @@ def test_synapse_correctness(SimpleNet, synapse):
 
     v = jx.integrate(net)
     assert v[0, int(i_delay * 40)] < v[0, int((i_delay + i_dur) * 40)]
+
+
+@pytest.mark.parametrize(
+    "synapse", [CurrentSynapse, ConductanceSynapse, DynamicSynapse]
+)
+def test_synapse_relu_nonlinearity(SimpleNet, synapse):
+    net = SimpleNet(2, 1, 1)
+    connect(net.cell(0), net.cell(1), synapse(relu))
+    net.insert(Leak())
+    net.cell(1).record()
+    net.cell(0).stimulate(jx.step_current(5.0, 10.0, 0.1, 0.025, 20.0))
+    v = jx.integrate(net)
+    assert v[0, int(5.0 * 40)] < v[0, int((15.0) * 40)]
+
+
+@pytest.mark.parametrize(
+    "synapse", [CurrentSynapse, ConductanceSynapse, DynamicSynapse]
+)
+def test_synapse_custom_nonlinearity(SimpleNet, synapse):
+    net = SimpleNet(2, 1, 1)
+
+    def nonlinearity(x):
+        return x**2
+
+    connect(net.cell(0), net.cell(1), synapse(nonlinearity))
+    net.insert(Leak())
+    net.cell(1).record()
+    net.cell(0).stimulate(jx.step_current(5.0, 10.0, 0.1, 0.025, 20.0))
+    v = jx.integrate(net)
+    assert v[0, int(5.0 * 40)] < v[0, int((15.0) * 40)]

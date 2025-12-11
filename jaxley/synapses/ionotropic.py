@@ -43,7 +43,7 @@ class IonotropicSynapse(Synapse):
     The synaptic parameters are:
         - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
         - ``e_syn``: the reversal potential :math:`E` (mV).
-        - ``k_minus``: the rate constant :math:`1/\tau` (:math:`s^{-1}`).
+        - ``k_minus``: the rate constant :math:`1/\tau` (:math:`ms^{-1}`).
         - ``v_th``: the threshold at which the synapse becomes active
           :math:`V_{\text{thr}}` (mV).
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
@@ -51,7 +51,6 @@ class IonotropicSynapse(Synapse):
     Details of this implementation can be found in the following book chapter:
         L. F. Abbott and E. Marder, "Modeling Small Networks," in Methods in Neuronal
         Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.
-
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -60,7 +59,7 @@ class IonotropicSynapse(Synapse):
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
             f"{prefix}_e_syn": 0.0,  # mV
-            f"{prefix}_k_minus": 0.025,
+            f"{prefix}_k_minus": 0.025,  # 1/ms
             f"{prefix}_v_th": -35.0,  # mV
             f"{prefix}_delta": 10.0,  # mV
         }
