@@ -4,6 +4,7 @@
 from typing import Callable, Dict, Optional, Tuple
 
 import jax.numpy as jnp
+from jax import Array
 from jax.nn import sigmoid
 
 from jaxley.solver_gate import exponential_euler, save_exp
@@ -11,7 +12,7 @@ from jaxley.synapses.synapse import Synapse
 
 
 class DynamicSynapse(Synapse):
-    r"""A dynamic (state-based) synapse.
+    r"""A state-based synapse with fixed time constant.
 
     Unlike the ``ConductanceSynapse``, this synapse contains a synaptic state. However,
     unlike in the ``IonotropicSynapse``, the synaptic state approaches its steady-state
@@ -25,7 +26,7 @@ class DynamicSynapse(Synapse):
 
     .. math::
 
-        \tau\, \cdot s = \sigma\!\left(\frac{V_{\text{pre}} - V_{\text{thr}}}{\Delta}\right) - s,
+        \tau \frac{\text{d}s}{\text{d}t} = \sigma\!\left(\frac{V_{\text{pre}} - V_{\text{thr}}}{\Delta}\right) - s,
 
     where :math:`\mathrm{\sigma}(\cdot)` is a nonlinearity such as a ReLU, Sigmoid,
     or TanH. By default, it is a sigmoid, but it can be modified by the user.
@@ -38,13 +39,13 @@ class DynamicSynapse(Synapse):
     The synaptic parameters are:
         - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
         - ``e_syn``: the reversal potential :math:`E` (mV).
-        - ``k_minus``: the rate constant :math:`1/\tau` (:math:`ms^{-1}`).
+        - ``tau``: the time constant :math:`\tau` (:math:`ms`).
         - ``v_th``: the threshold at which the synapse becomes active
           :math:`V_{\text{thr}}` (mV).
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
 
     The synaptic state is:
-        - ``s``: the activity level of the synapse :math:`\in [0, 1]`.
+        - ``s``: the activity level of the synapse.
 
     .. rubric:: Example usage
 
@@ -66,7 +67,7 @@ class DynamicSynapse(Synapse):
         # Set parameters.
         net.set("DynamicSynapse_gS", 0.0001)  # Maximal conductance.
         net.set("DynamicSynapse_e_syn", 10.0)  # Reversal potential.
-        net.set("DynamicSynapse_k_minus", 0.1)  # tau = 10.0 ms
+        net.set("DynamicSynapse_tau", 4.0)  # Time constant.
         net.set("DynamicSynapse_v_th", -40.0)  # Threshold.
         net.set("DynamicSynapse_delta", 10.0)  # 1 / slope of activation.
 
@@ -112,7 +113,7 @@ class DynamicSynapse(Synapse):
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
             f"{prefix}_e_syn": 0.0,  # mV
-            f"{prefix}_k_minus": 0.025,  # 1/ms
+            f"{prefix}_tau": 5.0,  # ms
             f"{prefix}_v_th": -35.0,  # mV
             f"{prefix}_delta": 10.0,  # mV
         }
@@ -121,20 +122,23 @@ class DynamicSynapse(Synapse):
 
     def update_states(
         self,
-        states: Dict,
+        states: dict[str, Array],
+        all_states: dict,
+        pre_index: Array,
+        post_index: Array,
+        params: dict[str, Array],
         delta_t: float,
-        pre_voltage: float,
-        post_voltage: float,
-        params: Dict,
     ) -> Dict:
         """Return updated synapse state and current."""
+        pre_voltage = all_states["v"][pre_index]
+
         prefix = self._name
         v_th = params[f"{prefix}_v_th"]
         delta = params[f"{prefix}_delta"]
         s = states[f"{prefix}_s"]
 
         s_inf = self.nonlinearity((pre_voltage - v_th) / delta)
-        s_tau = 1.0 / params[f"{prefix}_k_minus"]
+        s_tau = params[f"{prefix}_tau"]
 
         new_s = exponential_euler(s, delta_t, s_inf, s_tau)
         return {f"{prefix}_s": new_s}

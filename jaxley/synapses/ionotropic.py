@@ -4,18 +4,15 @@
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
-<<<<<<< HEAD
 from jax import Array
-=======
 from jax.nn import sigmoid
->>>>>>> 71c39321 (unify the synapses)
 
 from jaxley.solver_gate import exponential_euler
 from jaxley.synapses.synapse import Synapse
 
 
 class IonotropicSynapse(Synapse):
-    r"""An ionotropic (state-based) synapse.
+    r"""A state-based synapse with voltage dependent time constant.
 
     This synapse is similar to the ``DynamicSynapse``, but its time constant is
     voltage dependent. In addition, this synapse only supports a sigmoidal activation
@@ -29,7 +26,7 @@ class IonotropicSynapse(Synapse):
 
     .. math::
 
-        \tau (V_{\text{pre}}) \, \cdot s = s_{\infty}(V_{\text{pre}}) - s
+        \tau (V_{\text{pre}}) \frac{\text{d}s}{\text{d}t} = s_{\infty}(V_{\text{pre}}) - s
 
     .. math::
 
@@ -51,6 +48,9 @@ class IonotropicSynapse(Synapse):
         - ``v_th``: the threshold at which the synapse becomes active
           :math:`V_{\text{thr}}` (mV).
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
+
+    The synaptic state is:
+        - ``s``: the activity level of the synapse :math:`\in [0, 1]`.
 
     Details of this implementation can be found in the following book chapter:
         L. F. Abbott and E. Marder, "Modeling Small Networks," in Methods in Neuronal
