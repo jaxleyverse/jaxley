@@ -15,10 +15,10 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import connect
 from jaxley.synapses import (
-    IonotropicSynapse,
-    Synapse,
     ConductanceSynapse,
     CurrentSynapse,
+    IonotropicSynapse,
+    Synapse,
     TestSynapse,
 )
 

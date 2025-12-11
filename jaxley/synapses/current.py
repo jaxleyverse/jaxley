@@ -116,5 +116,5 @@ class CurrentSynapse(Synapse):
         activation = self.nonlinearity(
             (pre_voltage - params[f"{prefix}_v_th"]) / params[f"{prefix}_delta"]
         )
-        current = params[f"{prefix}_gS"] * activation
+        current = -params[f"{prefix}_gS"] * activation
         return current

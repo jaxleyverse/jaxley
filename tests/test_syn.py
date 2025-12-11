@@ -9,11 +9,19 @@ jax.config.update("jax_platform_name", "cpu")
 from typing import List
 
 import numpy as np
+import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.channels import HH, Leak
 from jaxley.connect import connect
-from jaxley.synapses import IonotropicSynapse, Synapse, TestSynapse
+from jaxley.synapses import (
+    ConductanceSynapse,
+    CurrentSynapse,
+    DynamicSynapse,
+    IonotropicSynapse,
+    Synapse,
+    TestSynapse,
+)
 
 
 def test_set_and_querying_params_one_type(SimpleNet):
@@ -49,3 +57,21 @@ def test_set_and_querying_params_one_type(SimpleNet):
         assert net.edges[p][0] == 0.32
         assert net.edges[p][1] == 0.18
         assert np.all(net.edges[p].to_numpy()[np.asarray([2, 3])] == 0.12)
+
+
+@pytest.mark.parametrize(
+    "synapse", [CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse]
+)
+def test_synapse_correctness(SimpleNet, synapse):
+    net = SimpleNet(2, 1, 1)
+    connect(net.cell(0), net.cell(1), synapse())
+    net.insert(Leak())
+    net.cell(1).record()
+
+    i_delay = 5.0
+    i_dur = 10.0
+    i_amp = 0.1
+    net.cell(0).stimulate(jx.step_current(i_delay, i_dur, i_amp, 0.025, 20.0))
+
+    v = jx.integrate(net)
+    assert v[0, int(i_delay * 40)] < v[0, int((i_delay + i_dur) * 40)]
