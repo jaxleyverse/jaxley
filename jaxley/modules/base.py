@@ -2462,6 +2462,7 @@ class Module(ABC):
         self.base.recordings = pd.concat([self.base.recordings, new_recs])
         has_duplicates = self.base.recordings.duplicated()
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
+        self.base.recordings = self.base.recordings.reset_index(drop=True)
         if verbose:
             print(
                 f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.recordings` for details."
