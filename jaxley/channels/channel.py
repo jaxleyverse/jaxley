@@ -109,3 +109,12 @@ class Channel:
     ):
         """Initialize states of channel."""
         return {}
+
+    def init_params(
+        self,
+        states: Dict[str, jnp.ndarray],
+        v: jnp.ndarray,
+        params: Dict[str, jnp.ndarray],
+    ):
+        """Initialize the maximal conductances given the temperature."""
+        return {}
