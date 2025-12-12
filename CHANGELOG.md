@@ -9,6 +9,7 @@
 
 - `Fire` channels now implement a surrogate gradient (#735, @alexpejovic)
 - New `SpikeSynapse` added, which detects `Fire` channel spikes (#735, @alexpejovic)
+- Enable synapses to modify any post-synaptic state, not just voltage ().
 
 ### 📚 Documentation
 
