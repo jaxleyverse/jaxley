@@ -3,7 +3,9 @@
 ### 🛠️ API changes
 
 - Synapses now take different arguments in order to be able to fetch the pre-
-  and post-synaptic states of the network (#735, @alexpejovic)
+and post-synaptic states of the network (#735, @alexpejovic)
+- Stimuli and clamps must now be a tuple of time and current. To adhere to this,
+``jx.step_current()`` directly returns such a tuple (#749, @michaeldeistler).
 
 ### 🧩 New features
 
