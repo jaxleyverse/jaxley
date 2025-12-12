@@ -2445,7 +2445,7 @@ class Module(ABC):
         self.base.debug_states["child_inds"] = self.base._child_inds
         self.base.debug_states["par_inds"] = self.base._par_inds
 
-    def record(self, state: str = "v", verbose=True):
+    def record(self, state: str = "v", prefix="", verbose=True):
         comp_states, edge_states = self._get_state_names()
         if state in comp_states:
             in_view = self._nodes_in_view
@@ -2458,6 +2458,7 @@ class Module(ABC):
 
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
+        new_recs["prefix"] = prefix
         self.base.recordings = pd.concat([self.base.recordings, new_recs])
         has_duplicates = self.base.recordings.duplicated()
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
