@@ -2465,7 +2465,16 @@ class Module(ABC):
         (or that should be learned), please use `data_stimulate()`.
 
         Args:
-            current: Current in `nA`.
+            current: A tuple of a time vector and the current in `nA`.
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            cell = jx.Cell()
+            time, current = jx.step_current(10.0, 80.0, 0.1, 0.025, 100.0)
+            cell.stimulate((time, current))
+            v = jx.integrate(cell)
         """
         self._external_input("i", current, verbose=verbose)
 
@@ -2474,22 +2483,42 @@ class Module(ABC):
 
         Args:
             state_name: The name of the state to clamp.
-            state_array: Array of values to clamp the state to.
+            state_array: A tuple of a time vector and an array of values to clamp the
+                state to.
             verbose: If True, prints details about the clamping.
 
-        This function sets external states for the compartments.
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            cell = jx.Cell()
+            time, current = jx.step_current(10.0, 80.0, 0.1, 0.025, 100.0)
+            cell.clamp("v", (time, current))
+            v = jx.integrate(cell)
         """
         self._external_input(state_name, state_array, verbose=verbose)
 
     def _external_input(
         self,
         key: str,
-        values: ArrayLike | None,
+        time_and_values: ArrayLike | None,
         verbose: bool = True,
     ):
+        """Function used by `stimulate` and `clamp` to set the external inputs.
+
+        Args:
+            values: A tuple of a time vector and an array of values.
+        """
         comp_states, edge_states = self._get_state_names()
         if key not in comp_states + edge_states:
             raise KeyError(f"{key} is not a recognized state in this module.")
+        
+        time_vec, values = time_and_values
+
+        # Sometimes, one might want to stimulate multiple compartments at once. This is
+        # allowed if the user passes either just a single stimulus (in which case
+        # we `jnp.repeat` it below) or when the user passes N stimuli (for N
+        # compartments).
         values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
         batch_size = values.shape[0]
         num_inserted = (
@@ -2502,6 +2531,7 @@ class Module(ABC):
             num_inserted,
         ], "Number of comps and stimuli do not match."
 
+        # Save the external inputs as part of the module.
         if key in self.base.externals.keys():
             self.base.externals[key] = jnp.concatenate(
                 [self.base.externals[key], values]
@@ -2516,6 +2546,8 @@ class Module(ABC):
             else:
                 self.base.externals[key] = values
                 self.base.external_inds[key] = self._edges_in_view
+
+        # Possible info for the user.
         if verbose:
             print(
                 f"Added {num_inserted} external_states. See `.externals` for details."

@@ -142,3 +142,5 @@ Utilities
    jaxley.solver_gate.exponential_euler
    jaxley.solver_gate.solve_inf_gate_exponential
    jaxley.solver_gate.heaviside
+   jaxley.step_current
+   jaxley.datapoint_to_step_currents
