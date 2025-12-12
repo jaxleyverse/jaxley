@@ -25,6 +25,7 @@ class HH(Channel):
             f"{prefix}_eNa": 50.0,
             f"{prefix}_eK": -77.0,
             f"{prefix}_eLeak": -54.3,
+            f"{prefix}_tadj": 1.0,
             f"celsius": 37.0,
         }
         self.channel_states = {
@@ -56,9 +57,9 @@ class HH(Channel):
         prefix = self._name
         m, h, n = states[f"{prefix}_m"], states[f"{prefix}_h"], states[f"{prefix}_n"]
 
-        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
-        gK = params[f"{prefix}_gK"] * n**4  # S/cm^2
-        gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
+        gNa = params[f"{prefix}_tadj"] * params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
+        gK = params[f"{prefix}_tadj"] * params[f"{prefix}_gK"] * n**4  # S/cm^2
+        gLeak = params[f"{prefix}_tadj"] * params[f"{prefix}_gLeak"]  # S/cm^2
 
         return (
             gNa * (v - params[f"{prefix}_eNa"])
@@ -84,15 +85,18 @@ class HH(Channel):
             f"{prefix}_n": alpha_n / (alpha_n + beta_n),
         }
 
-    def init_params(self, states, v, params):
+    def init_params(
+        self,
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
+    ):
         """Initialize the maximal conductances given the temperature."""
         prefix = self._name
         q10 = 2.3
         t = params["celsius"]
-        gna = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gNa"]
-        gk = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gK"]
-        gleak = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gLeak"]
-        return {f"{prefix}_gNa": gna, f"{prefix}_gK": gk, f"{prefix}_gLeak": gleak}
+        tadj = q10 ** ((t - 37.0) / 10.0)
+        return {f"{prefix}_tadj": tadj}
 
     @staticmethod
     def m_gate(v):

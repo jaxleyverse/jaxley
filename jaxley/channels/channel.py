@@ -112,9 +112,9 @@ class Channel:
 
     def init_params(
         self,
-        states: Dict[str, jnp.ndarray],
-        v: jnp.ndarray,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
     ):
         """Initialize the maximal conductances given the temperature."""
         return {}
