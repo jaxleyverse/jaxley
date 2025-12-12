@@ -2349,7 +2349,7 @@ class Module(ABC):
         # that by allowing an input `params` and `pstate` to this function.
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
-        params = self.base.get_all_parameters([], voltage_solver="jaxley.thomas")
+        params = self.base.get_all_parameters([])
 
         for channel in self.base.channels:
             name = channel._name
