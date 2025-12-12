@@ -344,6 +344,14 @@ class Network(Module):
         post_syn_inds = grouped_syns["post_index"].apply(list)
         synapse_names = list(grouped_syns.indices.keys())
 
+        # Compute current through channels.
+        syn_linear_terms = {}
+        syn_const_terms = {}
+        for name in ["v"] + self.pumped_ions:
+            modified_state = states[name]
+            syn_linear_terms[name] = jnp.zeros_like(states[name])
+            syn_const_terms[name] = jnp.zeros_like(states[name])
+
         syn_voltage_terms = jnp.zeros_like(voltages)
         syn_constant_terms = jnp.zeros_like(voltages)
         # Run with two different voltages that are `diff` apart to infer the slope and
@@ -400,6 +408,15 @@ class Network(Module):
             )
             syn_voltage_terms += gathered_syn_currents[0]
             syn_constant_terms -= gathered_syn_currents[1]
+
+            if isinstance(synapse_type, Synapse):
+                modified_state_name = "v"
+            else:
+                modified_state_name = synapse_type.ion_name
+            modified_state = states[modified_state_name]
+
+            syn_linear_terms[modified_state_name] += syn_linear_term
+            syn_const_terms[modified_state_name] += syn_const_term
 
             # Add the synaptic currents through every compartment as state.
             # `post_syn_currents` is a `ArrayLike` of as many elements as there are
