@@ -14,6 +14,7 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.utils import verbose_recordings
 
 
 def test_record_and_stimulate_api(SimpleCell):
@@ -134,3 +135,17 @@ def test_empty_recordings(SimpleComp):
     # Check if a ValueError is raised when integrating an empty compartment
     with pytest.raises(ValueError):
         v = jx.integrate(comp, delta_t=0.025, t_max=10.0)
+
+
+def test_verbose_recordings(SimpleNet):
+    net = SimpleNet(2, 1, 2, connect=True)
+    net.cell(0).branch(0).comp(0).record(prefix="cellular_")
+    net.cell(1).branch(0).comp(0).record(prefix="cellular_")
+    net.IonotropicSynapse.edge(0).record("IonotropicSynapse_s", prefix="synaptic_")
+    recs = jx.integrate(net, t_max=10.0)
+    recs = verbose_recordings(recs, net.recordings)
+    assert list(recs.keys()) == ["cellular_v_0", "cellular_v_2", "synaptic_IonotropicSynapse_s_0"]
+    assert len(recs["cellular_v_0"].shape) == 1
+    assert recs["cellular_v_0"][0] == -70.0
+    assert recs["cellular_v_2"][0] == -70.0
+    assert recs["synaptic_IonotropicSynapse_s_0"][0] == 0.2
