@@ -21,7 +21,7 @@ def step_current(
     Args:
         i_delay: Delay in ms until the stimulus turns on.
         i_dur: Duration of the stimulus in ms.
-        i_amp: Stimulus amplitude in mV.
+        i_amp: Stimulus amplitude.
         delta_t: Time step in ms.
         t_max: Maximal time.
         i_offset: An offset that is added to the baseline current.
@@ -69,7 +69,7 @@ def datapoint_to_step_currents(
     Args:
         i_delay: Delay in ms until the stimulus turns on.
         i_dur: Duration of the stimulus in ms.
-        i_amp: An array of N stimulus amplitudes in mV.
+        i_amp: An array of N stimulus amplitudes.
         delta_t: Time step in ms.
         t_max: Maximal time.
         i_offset: An offset that is added to the baseline current.
