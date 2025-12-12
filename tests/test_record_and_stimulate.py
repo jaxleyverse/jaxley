@@ -144,7 +144,11 @@ def test_verbose_recordings(SimpleNet):
     net.IonotropicSynapse.edge(0).record("IonotropicSynapse_s", prefix="synaptic_")
     recs = jx.integrate(net, t_max=10.0)
     recs = verbose_recordings(recs, net.recordings)
-    assert list(recs.keys()) == ["cellular_v_0", "cellular_v_2", "synaptic_IonotropicSynapse_s_0"]
+    assert list(recs.keys()) == [
+        "cellular_v_0",
+        "cellular_v_2",
+        "synaptic_IonotropicSynapse_s_0",
+    ]
     assert len(recs["cellular_v_0"].shape) == 1
     assert recs["cellular_v_0"][0] == -70.0
     assert recs["cellular_v_2"][0] == -70.0
