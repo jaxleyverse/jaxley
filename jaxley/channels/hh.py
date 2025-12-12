@@ -83,9 +83,9 @@ class HH(Channel):
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
             f"{prefix}_n": alpha_n / (alpha_n + beta_n),
         }
-    
+
     def init_params(self, states, v, params):
-        """Initialize the parameters given the temperature."""
+        """Initialize the maximal conductances given the temperature."""
         prefix = self._name
         q10 = 2.3
         t = params["celsius"]
@@ -93,7 +93,6 @@ class HH(Channel):
         gk = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gK"]
         gleak = q10 ** ((t - 37.0) / 10.0) * params[f"{prefix}_gLeak"]
         return {f"{prefix}_gNa": gna, f"{prefix}_gK": gk, f"{prefix}_gLeak": gleak}
-
 
     @staticmethod
     def m_gate(v):

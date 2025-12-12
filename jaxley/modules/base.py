@@ -2367,9 +2367,7 @@ class Module(ABC):
                 params, channel_param_names, channel_indices
             )
 
-            init_params = channel.init_params(
-                channel_states, voltages, channel_params
-            )
+            init_params = channel.init_params(channel_states, voltages, channel_params)
 
             # `init_params` might not return all channel states. Only the ones that are
             # returned are updated here.
