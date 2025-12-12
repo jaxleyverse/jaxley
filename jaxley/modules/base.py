@@ -203,6 +203,8 @@ class Module(ABC):
         # E.g. `self.external)inds = {"v": jnp.asarray([0,1]), "i": jnp.asarray([2,3])}`
         self.external_inds: dict[str, ArrayLike] = {}
 
+        self.external_state_names: list = []
+
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
         self._radius_generating_fns = None  # Defined by `.read_swc()`.
@@ -2481,6 +2483,24 @@ class Module(ABC):
         """
         self._external_input(state_name, state_array, verbose=verbose)
 
+    def external_state(
+        self, state_name: str, state_array: ArrayLike, verbose: bool = True
+    ):
+        """Adds an external state to every compartment.
+        
+        The external state added here can be accessed by the channels and synapses.
+        Because of this, it can be useful to test receptors (which can be
+        implemented as a ``Channel`` that uses the ``external_state``).
+
+        For those compartments for which it is not specified the external state is
+        `NaN`.
+
+        Args:
+            state_name: The name of the state that is provided.
+        """
+        self.base.external_state_names.append(state_name)
+        self._external_input(state_name, state_array, verbose=verbose)
+
     def _external_input(
         self,
         key: str,
@@ -2488,13 +2508,14 @@ class Module(ABC):
         verbose: bool = True,
     ):
         comp_states, edge_states = self._get_state_names()
-        if key not in comp_states + edge_states:
-            raise KeyError(f"{key} is not a recognized state in this module.")
         values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
         batch_size = values.shape[0]
-        num_inserted = (
-            len(self._nodes_in_view) if key in comp_states else len(self._edges_in_view)
-        )
+        if key in comp_states or key in self.base.external_state_names:
+            num_inserted = len(self._nodes_in_view)
+        elif key in edge_states:
+            num_inserted = len(self._edges_in_view)
+        else:
+            raise KeyError(f"{key} is not a recognized state in this module.")
         is_multiple = num_inserted == batch_size
         values = values if is_multiple else jnp.repeat(values, num_inserted, axis=0)
         assert batch_size in [
@@ -2855,6 +2876,11 @@ class Module(ABC):
             i_ext = self._get_external_input(u["v"], i_inds, i_current, params["area"])
         else:
             i_ext = 0.0
+
+        # Add an external state.
+        for external_state in self.external_state_names:
+            u[external_state] = jnp.zeros_like(u["v"])
+            u = u.at[external_inds[external_state]].set(external_state[external_state[external_state]])
 
         # Steps of the channel & pump states and computes the current through these
         # channels and pumps.
