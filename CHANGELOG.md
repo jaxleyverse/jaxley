@@ -9,6 +9,11 @@
 
 - `Fire` channels now implement a surrogate gradient (#735, @alexpejovic)
 - New `SpikeSynapse` added, which detects `Fire` channel spikes (#735, @alexpejovic)
+- Channels can now have an `init_params` method. You can then initialize parameters
+depending on one another with:
+```python
+cell.init_params()
+```
 
 ### 📚 Documentation
 
