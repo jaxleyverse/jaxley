@@ -228,10 +228,6 @@ def build_compartment_graph(
     # Dummy cytosolic region
     cyt = rxd.Region(h.allsec(), name="cyt")
 
-    # Create a dummy species to get access to segment volumes
-    ca = rxd.Species(cyt, name="ca", d=0)
-    seg2ca_node = {str(node.segment): node for node in ca.nodes}
-
     # collect node data and assign segment indices
     graph_attrs = {"xyzr": [], "branchpoints_and_tips": []}
     segments = {}
@@ -247,9 +243,12 @@ def build_compartment_graph(
         r3d = np.array([sec.diam3d(i) / 2 for i in range(n3d)])
         xyzr = np.array([x3d, y3d, z3d, r3d]).T
 
+        seg_bounds = np.linspace(1e-10, 1.0, sec.nseg + 1) # 0.0 needs a small offset otherwise sec(x).ri() returns weird values
         for seg_idx, seg in enumerate(sec):
+            seg_start = seg_bounds[seg_idx]
+            seg_end = seg_bounds[seg_idx + 1]
+
             seg_name = str(seg)
-            node = seg2ca_node.get(seg_name)
             radius = seg.diam / 2
             length = sec.L / sec.nseg
             type_name = sec_name.split("[")[0]
@@ -262,6 +261,10 @@ def build_compartment_graph(
             else:
                 parent = f"{seg_name}"
 
+            # TODO: why does seg.volume() not account for this!?
+            is_single_point_soma = type_name == "soma" and n3d == 3
+            v_sphere = lambda: (4 / 3) * np.pi * radius**3
+
             segments[seg_name] = {
                 "seg_name": seg_name,
                 "sec_name": sec_name,
@@ -271,10 +274,10 @@ def build_compartment_graph(
                 "z": np.interp(seg.x, norm_arc, z3d),
                 "r": radius,
                 "l": length,
-                "area": node.surface_area,  # seg.area()
-                "volume": node.volume,
-                "resistive_load_in": length / 2 / radius**2 / np.pi,
-                "resistive_load_out": length / 2 / radius**2 / np.pi,
+                "area": seg.area(),
+                "volume": seg.volume() if not is_single_point_soma else v_sphere(),
+                "resistive_load_in": sec(seg_start).ri() / sec.Ra * 1e2, 
+                "resistive_load_out": sec(seg_end).ri() / sec.Ra * 1e2, 
                 "parent": parent,
             }
             graph_attrs["xyzr"].append(xyzr)
