@@ -49,7 +49,7 @@ def read_swc(
     Returns:
         A `Cell` object."""
 
-    if backend == "graph":
+    if backend.lower() == "graph":
         swc_df = io.tmp.read_swc(fname)
         swc_graph = io.tmp.swc_to_nx(swc_df, relevant_ids=relevant_type_ids)
         comp_graph = io.tmp.build_compartment_graph(
@@ -63,7 +63,7 @@ def read_swc(
             comp_graph,
             assign_groups=assign_groups,
         )
-    elif backend == "legacy":
+    elif backend.lower() == "legacy":
         swc_graph = io.graph.to_swc_graph(fname)
         comp_graph = io.graph.build_compartment_graph(
             swc_graph,
@@ -76,7 +76,7 @@ def read_swc(
             comp_graph,
             assign_groups=assign_groups,
         )
-    elif backend == "neuron":
+    elif backend.lower() == "neuron":
         # Check if NEURON is available
         assert_NEURON()
 
