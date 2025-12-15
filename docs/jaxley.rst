@@ -137,7 +137,6 @@ Utilities
    :toctree: reference/_autosummary
    :nosignatures:
 
-   jaxley.utils.verbose_recordings
    jaxley.solver_gate.save_exp
    jaxley.solver_gate.solve_gate_implicit
    jaxley.solver_gate.solve_gate_exponential
