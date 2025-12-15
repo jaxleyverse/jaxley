@@ -2338,6 +2338,45 @@ class Module(ABC):
                 # no issues with overriding states).
                 self.nodes.loc[channel_indices, key] = val
 
+    @only_allow_module
+    def init_params(self):
+        """Run `channel.init_params()` to initialize parameters."""
+        # Update states of the channels.
+        channel_nodes = self.base.nodes
+        states = self.base._get_states_from_nodes_and_edges()
+
+        # We do not use any `pstate` for initializing. In principle, we could change
+        # that by allowing an input `params` and `pstate` to this function.
+        # `voltage_solver` could also be `jax.sparse` here, because both of them
+        # build the channel parameters in the same way.
+        params = self.base.get_all_parameters([])
+
+        for channel in self.base.channels:
+            name = channel._name
+            channel_indices = channel_nodes.loc[channel_nodes[name]][
+                "global_comp_index"
+            ].to_numpy()
+            voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
+
+            channel_param_names = list(channel.channel_params.keys())
+            channel_state_names = list(channel.channel_states.keys())
+            channel_states = query_channel_states_and_params(
+                states, channel_state_names, channel_indices
+            )
+            channel_params = query_channel_states_and_params(
+                params, channel_param_names, channel_indices
+            )
+
+            init_params = channel.init_params(channel_states, voltages, channel_params)
+
+            # `init_params` might not return all channel states. Only the ones that are
+            # returned are updated here.
+            for key, val in init_params.items():
+                # Note that we are overriding `self.nodes` here, but `self.nodes` is
+                # not used above to actually compute the current states (so there are
+                # no issues with overriding states).
+                self.nodes.loc[channel_indices, key] = val
+
     def _init_morph_for_debugging(self):
         """Instandiates row and column inds which can be used to solve the voltage eqs.
 
