@@ -109,3 +109,12 @@ class Channel:
     ):
         """Initialize states of channel."""
         return {}
+
+    def init_params(
+        self,
+        states: dict[str, ArrayLike],
+        v: ArrayLike,
+        params: dict[str, ArrayLike],
+    ):
+        """Initialize the maximal conductances given the temperature."""
+        return {}

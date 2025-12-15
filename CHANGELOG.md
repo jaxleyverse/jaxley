@@ -8,6 +8,11 @@
 ```python
 from jaxley.synapses import CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse
 ```
+- Channels can now have an `init_params` method. You can then initialize parameters
+depending on one another with:
+```python
+cell.init_params()
+```
 
 ### API changes
 

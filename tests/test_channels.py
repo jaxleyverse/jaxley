@@ -643,3 +643,11 @@ def test_multicompartment_adex(SimpleCell):
     cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 100.0, dt, t_max))
     recordings = jx.integrate(cell, delta_t=dt)
     assert np.invert(np.any(np.isnan(recordings)))
+
+
+def test_init_params():
+    cell = jx.Cell()
+    cell.insert(HH())
+    cell.set("temperature", 27.0)  # Reduce temperature by 10 degrees.
+    cell.init_params()
+    assert np.all(np.abs(cell.nodes["tadj"] - 1 / 2.3) < 1e-8)
