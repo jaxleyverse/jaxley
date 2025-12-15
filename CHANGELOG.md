@@ -1,18 +1,35 @@
 # 1.0.0 (pre-release)
 
-### 🛠️ API changes
-
-- Synapses now take different arguments in order to be able to fetch the pre-
-  and post-synaptic states of the network (#735, @alexpejovic)
-
 ### 🧩 New features
 
 - `Fire` channels now implement a surrogate gradient (#735, @alexpejovic)
 - New `SpikeSynapse` added, which detects `Fire` channel spikes (#735, @alexpejovic)
+- A larger and more flexible set of synapse dynamics (#748, @michaeldeistler):
+```python
+from jaxley.synapses import CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse
+```
+
+### API changes
+
+- Synapses now take different arguments in order to be able to fetch the pre-
+  and post-synaptic states of the network (#735, @alexpejovic)
+- Removed the `TanhConductanceSynapse` (#748, @michaeldeistler). Replace it with:
+```python
+import jax.numpy as jnp
+from jaxley.synapses import ConductanceSynapse
+connect(..., ConductanceSynapse(jnp.tanh))
+```
+- Removed the `TanhRateSynapse` (#748, @michaeldeistler). Replace it with:
+```python
+import jax.numpy as jnp
+from jaxley.synapses import CurrentSynapse
+connect(..., CurrentSynapse(jnp.tanh))
+```
 
 ### 📚 Documentation
 
 - New tutorial added for simple SNNs (#735, @alexpejovic)
+- Improved documentation for synapses (#748, @michaeldeistler)
 
 
 # 0.13.0
