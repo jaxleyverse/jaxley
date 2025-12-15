@@ -26,7 +26,7 @@ class HH(Channel):
             f"{prefix}_eK": -77.0,
             f"{prefix}_eLeak": -54.3,
             f"{prefix}_tadj": 1.0,
-            f"celsius": 37.0,
+            f"temperature": 37.0,  # Celsius.
         }
         self.channel_states = {
             f"{prefix}_m": 0.2,
@@ -94,7 +94,7 @@ class HH(Channel):
         """Initialize the maximal conductances given the temperature."""
         prefix = self._name
         q10 = 2.3
-        t = params["celsius"]
+        t = params["temperature"]
         tadj = q10 ** ((t - 37.0) / 10.0)
         return {f"{prefix}_tadj": tadj}
 
