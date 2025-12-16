@@ -1,7 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import Callable, Tuple
 import warnings
+from typing import Callable, Tuple
 
 import jax.numpy as jnp
 from jax import Array
