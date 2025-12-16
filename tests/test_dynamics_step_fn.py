@@ -85,7 +85,7 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
 
 def test_jit_and_grad_network():
     """A full gradient step on a network.
-    
+
     This implicitly tests also:
     1) Whether the `step_dynamics` function can be jitted.
     2) Whether .make_trainable() works.
