@@ -20,7 +20,8 @@ jx.integrate(cell, solver="exp_euler")
 
 ### 🧩 New features
 
-- add step function that allows stepping through a simulation with a vector-valued state function (#719 @matthijspals)
+- add step function that allows stepping through a simulation with a vector-valued 
+state function (#719 @matthijspals, @michaeldeistler)
 
 ### 🛠️ Internal updates
 
