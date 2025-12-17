@@ -773,11 +773,9 @@ class Module(ABC):
 
             cell = jx.Cell()
             net = jx.Network([cell] * 4)
-            net.cell(0).insert(Na())
-            net.cell(1).insert(Na())
-            net.cell(1).insert(K())
-            num_channels_per_cell = [len(cell.channels) for cell in net.cells]
 
+            for cell in net.cells:
+                print("Radius of cell: ", len(cell.nodes["radius"]))
         """
         yield from self._iter_submodules("cell")
 
@@ -1756,15 +1754,18 @@ class Module(ABC):
     def add_to_group(self, group_name: str):
         """Add a view of the module to a group.
 
-        Groups can then be indexed. For example:
+        Args:
+            group_name: The name of the group.
+
+        .. rubric:: Example usage
+
+        Define an excitatory group and use it to set parameters.
 
         .. code-block:: python
 
+            # net = ...
             net.cell(0).add_to_group("excitatory")
             net.excitatory.set("radius", 0.1)
-
-        Args:
-            group_name: The name of the group.
         """
         if group_name not in self.base.group_names:
             channel_names = [channel._name for channel in self.base.channels]
@@ -1803,6 +1804,18 @@ class Module(ABC):
         Returns:
             A list of all trainable parameters in the form of
                 [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            import jaxley as jx
+
+            cell = jx.Cell()
+            cell.make_trainable("radius")
+
+            params = module.get_parameters()
+            v = jx.integrate(cell, params=params, t_max=10.0)
         """
         return self.trainable_params
 
@@ -1836,14 +1849,6 @@ class Module(ABC):
 
         Returns:
             A dictionary of all module parameters.
-
-        .. rubric:: Example usage
-
-        .. code-block:: python
-
-            params = module.get_parameters() # i.e. [0, 1, 2]
-            pstate = params_to_pstate(params, module.indices_set_by_trainables)
-            module.to_jax() # needed for call to module.jaxnodes
         """
         params = {}
         for key in [
@@ -2015,23 +2020,23 @@ class Module(ABC):
         self,
         exp_euler_transition: Optional[Array] = None,
     ):
-        """Sets internal attributes which customize the exponential Euler solver.
+        r"""Sets internal attributes which customize the exponential Euler solver.
 
-        This function only takes effect when `jx.integrate(..., solver='exp_euler').
+        This function only takes effect when ``jx.integrate(..., solver='exp_euler')``.
 
-        The current state of these arguments is stored in `module.solver_customizers`
+        The current state of these arguments is stored in ``module.solver_customizers``.
 
         Args:
-            exp_euler_transition: A matrix of shape (ncomp x ncomp), where `ncomp` is
+            exp_euler_transition: A matrix of shape (ncomp x ncomp), where ``ncomp`` is
                 the number of compartments. This matrix is returned by
-                `module.build_exp_euler_transition_matrix(delta_t)`. If passed, the
-                matrix will _not_ be computed at the beginning of `jx.integrate()`.
+                ``module.build_exp_euler_transition_matrix(delta_t)``. If passed, the
+                matrix will _not_ be computed at the beginning of ``jx.integrate()``.
                 This can provide massive speed-ups, but it requires that the
                 capacitance, axial resistivity, length, and radius or every compartment
                 is known upfront (i.e., they are not being optimized or considered
                 as free parameters). To revert back to using computing the matrix
-                automatically within `jx.integrate()`, run
-                `module.customize_solver_exp_euler(exp_euler_transition=None)`.
+                automatically within ``jx.integrate()``, run
+                ``module.customize_solver_exp_euler(exp_euler_transition=None)``.
 
         .. rubric:: Example usage
 
@@ -2125,14 +2130,23 @@ class Module(ABC):
         delta_t: float,
         axial_conductances: Optional[Array] = None,
     ) -> Array:
-        """Compute the exponential of the transition matrix of the voltage diffusion.
+        r"""Compute the exponential of the transition matrix of the voltage diffusion.
 
-        For the linear ODE dv/dt = G * v_{t}, we can perform an exponential Euler step
-        of size dt via: v(t + dt) = e^{G * dt} * v(t).
+        For the linear ODE
 
-        The returned matrix is already stripped of entries for branchpoints. I.e., it
-        has shape (ncomp x ncomp). It is meant to be applied to
-        `voltages[self._internal_node_inds]`.
+        .. math::
+
+            \frac{dv}{dt} = G \, v(t),
+
+        an exponential Euler step of size :math:`dt` is given by
+
+        .. math::
+
+            v(t + dt) = e^{G \, dt} \, v(t).
+
+        The returned matrix is already stripped of entries corresponding to
+        branch points, i.e. it has shape ``(ncomp, ncomp)``. It is intended to be
+        applied to ``voltages[self._internal_node_inds]``.
 
         Args:
             delta_t: The time step used to compute the matrix exponential e^{G * dt}.
@@ -2692,17 +2706,21 @@ class Module(ABC):
 
         .. rubric:: Example usage
 
-        Diffuse calicum ions across a cell during training:
+        Diffuse calicum ions across a cell:
 
         .. code-block:: python
+
+            import jaxley as jx
+            from jaxley.pumps import CaNernstReversal
 
             comp = jx.Compartment()
             branch = jx.Branch(comp, ncomp=2)
             cell = jx.Cell(branch, parents=[-1, 0])
+
             cell.insert(CaNernstReversal())
             cell.diffuse("CaCon_i") # Diffuse calcium ions through the cell
+
             cell.branch(0).set("CaCon_i", 0.2)
-            cell.branch(1).set("CaCon_i", 0.1)
             cell.record("CaCon_i")
             simulated_concentrations = jx.integrate(cell, t_max=5.0)
 

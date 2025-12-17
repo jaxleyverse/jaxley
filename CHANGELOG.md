@@ -1,3 +1,11 @@
+# 1.0.0 (pre-release)
+
+### 📚 Documentation
+
+- Improved examples in documentation (#759, @michaeldeistler)
+- Manually remove some functions from the documentation (#759, @michaeldeistler)
+
+
 # 0.12.0
 
 ### 🧩 New features
