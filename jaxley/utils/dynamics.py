@@ -104,7 +104,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     Example usage
     ^^^^^^^^^^^^^
 
-    Example 1: Use the functions returned by `build_dynamic_state_utils` to build a
+    Example 1: Use the functions returned by ``build_dynamic_state_utils`` to build a
     vector of dynamics states. Then convert the vector back to the
     `all_states` dictionary.
 
@@ -125,7 +125,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         dynamic_states = flatten(remove_observables(all_states))
         recovered_all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=0.025)
 
-    Example 2: Build a `step_dynamics` function and use it to compute the Jacobian
+    Example 2: Build a ``step_dynamics`` function and use it to compute the Jacobian
     of a single step.
 
     ::
