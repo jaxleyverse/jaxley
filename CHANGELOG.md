@@ -1,3 +1,10 @@
+# 0.13.0 (pre-release)
+
+### 📚 Documentation
+
+- Improved examples in documentation (#757, @michaeldeistler)
+
+
 # 0.12.0
 
 ### 🧩 New features

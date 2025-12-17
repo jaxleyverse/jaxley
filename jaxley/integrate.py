@@ -124,10 +124,10 @@ def build_init_and_step_fn(
         if param_state is not None:
             pstate += param_state
 
-        all_params = module.get_all_parameters(pstate)
+        all_params = module._get_all_parameters(pstate)
         if all_states is None:
-            all_states = module.get_all_states(pstate)
-            all_states = module.append_channel_currents_to_states(
+            all_states = module._get_all_states(pstate)
+            all_states = module._append_channel_currents_to_states(
                 all_states, all_params, delta_t
             )
         return all_states, all_params

@@ -360,14 +360,14 @@ def test_group_trainable_corresponds_to_set():
     params[0]["radius"] = params[0]["radius"].at[:].set(2.5)
     net1.to_jax()
     pstate = params_to_pstate(params, net1.indices_set_by_trainables)
-    all_parameters1 = net1.get_all_parameters(pstate)
+    all_parameters1 = net1._get_all_parameters(pstate)
 
     net2 = build_net()
     net2.test.set("radius", 2.5)
     params = net2.get_parameters()
     net2.to_jax()
     pstate = params_to_pstate(params, net2.indices_set_by_trainables)
-    all_parameters2 = net2.get_all_parameters(pstate)
+    all_parameters2 = net2._get_all_parameters(pstate)
 
     assert np.allclose(all_parameters1["radius"], all_parameters2["radius"])
 
@@ -571,7 +571,7 @@ def test_param_sharing_w_different_group_sizes():
     params[0]["radius"] = params[0]["radius"].at[:].set([2, 3, 4])
     branch1.to_jax()
     pstate = params_to_pstate(params, branch1.indices_set_by_trainables)
-    params1 = branch1.get_all_parameters(pstate)
+    params1 = branch1._get_all_parameters(pstate)
 
     # set
     branch2 = jx.Branch(ncomp=6)
@@ -579,7 +579,7 @@ def test_param_sharing_w_different_group_sizes():
     params = branch2.get_parameters()
     branch2.to_jax()
     pstate = params_to_pstate(params, branch2.indices_set_by_trainables)
-    params2 = branch2.get_all_parameters(pstate)
+    params2 = branch2._get_all_parameters(pstate)
 
     assert np.array_equal(params1["radius"], params2["radius"], equal_nan=True)
 
