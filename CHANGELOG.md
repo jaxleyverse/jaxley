@@ -27,6 +27,8 @@ recovered_all_states = add_observables(unflatten(dynamic_states), all_params, de
 
 - Improved documentation for ``build_init_and_step_fn``
 (#719, @matthijspals, @michaeldeistler)
+- Improved examples in documentation (#759, @michaeldeistler)
+- Manually remove some functions from the documentation (#759, @michaeldeistler)
 
 
 # 0.12.0
