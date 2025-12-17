@@ -1,3 +1,34 @@
+# 0.13.0 (pre-release)
+
+### 🧩 New features
+
+- Add utilities to process the ``all_states`` dictionary such that it only contains
+"true" ODE states (i.e., it removes branchpoint states, membrane states that are NaN
+because the channel does not exist there, and ionic currents). In addition, the
+utilities can flatten the states to a vector (#719, @matthijspals, @michaeldeistler):
+```python
+import jaxley as jx
+from jaxley.integrate import build_init_and_step_fn
+from jaxley.utils.dynamics import build_dynamic_state_utils
+
+cell = jx.Cell()
+params = cell.get_parameters()
+
+init_fn, step_fn = build_init_and_step_fn(cell)
+remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+
+all_states, all_params = init_fn(params)
+
+dynamic_states = flatten(remove_observables(all_states))
+recovered_all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=0.025)
+```
+
+### 📚 Documentation
+
+- Improved documentation for ``build_init_and_step_fn``
+(#719, @matthijspals, @michaeldeistler)
+
+
 # 0.12.0
 
 ### 🧩 New features
@@ -17,11 +48,6 @@ cell.customize_solver_exp_euler(
 jx.integrate(cell, solver="exp_euler")
 ```
 - Forward Euler solver for branched morphologies (#743, @michaeldeistler).
-
-### 🧩 New features
-
-- add step function that allows stepping through a simulation with a vector-valued 
-state function (#719 @matthijspals, @michaeldeistler)
 
 ### 🛠️ Internal updates
 
