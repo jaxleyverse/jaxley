@@ -44,13 +44,13 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
     .. warning::
 
-    If a membrane current is used as a state by another channel (for example,
-    the calcium current ``i_ca`` used in the ``channel_states`` of a
-    calcium-dependent potassium channel), then this current will be included
-    in the returned "true" ODE states. Similarly, if there are ``channel_states``
-    that are directly computed based on other states (e.g., the calcium reversal
-    potential via the nernst equation), they also be considered "true" ODE states. We
-    recommend removing such currents manually.
+        If a membrane current is used as a state by another channel (for example,
+        the calcium current ``i_ca`` used in the ``channel_states`` of a
+        calcium-dependent potassium channel), then this current will be included
+        in the returned "true" ODE states. Similarly, if there are ``channel_states``
+        that are directly computed based on other states (e.g., the calcium reversal
+        potential via the nernst equation), they are also considered "true" ODE states.
+        Please remove such states manually if desired.
 
     Args:
         module: A ``Module`` object, e.g., a ``jx.Cell``.
