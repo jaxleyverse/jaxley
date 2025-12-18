@@ -17,6 +17,7 @@ from jaxley.channels import Leak
 from jaxley.channels.hh import HH
 from jaxley.connect import fully_connect
 from jaxley.integrate import add_stimuli, build_init_and_step_fn
+from jaxley.pumps import CaNernstReversal, CaPump
 from jaxley.synapses.ionotropic import IonotropicSynapse
 from jaxley.synapses.test import TestSynapse
 from jaxley.utils.dynamics import build_dynamic_state_utils
@@ -29,6 +30,8 @@ def test_cycle_consistency():
     cell = jx.Cell(branch, parents=[-1, 0, 0])
     cell.insert(HH())
     cell.insert(Leak())
+    cell.insert(CaNernstReversal())
+    cell.insert(CaPump())
     cell.to_jax()
 
     init_fn, step_fn = build_init_and_step_fn(cell)

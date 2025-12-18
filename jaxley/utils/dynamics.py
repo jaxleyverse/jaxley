@@ -42,6 +42,16 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
       with frameworks such as ``dynamax``. This is handled by the returned functions
       ``flatten`` and ``unflatten``.
 
+    .. warning::
+
+    If a membrane current is used as a state by another channel (for example,
+    the calcium current ``i_ca`` used in the ``channel_states`` of a
+    calcium-dependent potassium channel), then this current will be included
+    in the returned "true" ODE states. Similarly, if there are ``channel_states``
+    that are directly computed based on other states (e.g., the calcium reversal
+    potential via the nernst equation), they also be considered "true" ODE states. We
+    recommend removing such currents manually.
+
     Args:
         module: A ``Module`` object, e.g., a ``jx.Cell``.
 
@@ -234,7 +244,18 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
     """
 
     all_states = module.get_all_states([])
-    added_keys = module.membrane_current_names + module.synapse_current_names
+    names_of_currents = module.membrane_current_names + module.synapse_current_names
+
+    # Currents that are also used as membrane states (e.g., the calcium current
+    # ``i_ca`` used in the ``channel_states`` of a calcium-dependent potassium channel),
+    # then we treat it as a "true" state. If we would not do this, the
+    # ``add_observables`` method below would be very tricky to implement (because
+    # states depend on currents and currents depend on states).
+    names_of_currents = [
+        current
+        for current in names_of_currents
+        if current not in list(all_states.keys())
+    ]
 
     # Keys corresponding to membrane states and not to synapse states.
     membrane_states_keys = module.jaxnodes.keys()
@@ -328,7 +349,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         Returns:
             All dynamic states of the system.
         """
-        filtered_states = _remove_currents_from_states(states, added_keys)
+        filtered_states = _remove_currents_from_states(states, names_of_currents)
 
         # Removes branchpoints, only from membrane states (...=membrane_states_keys).
         # More explanation above when `_tree_map_leaves_with_valid_key` is called.
