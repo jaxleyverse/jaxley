@@ -336,10 +336,6 @@ class Network(Module):
     ) -> tuple[dict, tuple[Array, Array]]:
         voltages = states["v"]
 
-        current_states = {}
-        for name in self.synapse_current_names:
-            current_states[name] = jnp.zeros_like(voltages)
-
         grouped_syns = edges.groupby("type", sort=False, group_keys=False)
         pre_syn_inds = grouped_syns["pre_index"].apply(list)
         post_syn_inds = grouped_syns["post_index"].apply(list)
@@ -403,9 +399,9 @@ class Network(Module):
             syn_voltage_terms += gathered_syn_currents[0]
             syn_constant_terms -= gathered_syn_currents[1]
 
-            # Add the synaptic currents through every compartment as state.
-            # `post_syn_currents` is a `ArrayLike` of as many elements as there are
-            # compartments in the network.
+            # Add the synaptic currents through every synapse as a state.
+            # `synapse_currents` is a `ArrayLike` of as many elements as there are
+            # synapses in the network.
             # `[0]` because we only use the non-perturbed voltage.
             states[f"i_{synapse_type._name}"] = synapse_currents[0]
 
@@ -427,7 +423,6 @@ class Network(Module):
             within_layer_offset: Offset between cells within the same layer.
             between_layer_offset: Offset between layers.
             vertical_layers: If True, layers are arranged vertically.
-
 
         Example usage
         ^^^^^^^^^^^^^
