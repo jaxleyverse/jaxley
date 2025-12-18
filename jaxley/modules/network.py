@@ -424,8 +424,7 @@ class Network(Module):
             between_layer_offset: Offset between layers.
             vertical_layers: If True, layers are arranged vertically.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         Arrange a network into layers and visualize it:
 
