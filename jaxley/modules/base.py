@@ -1865,6 +1865,10 @@ class Module(ABC):
             for channel_params in channel.channel_params:
                 params[channel_params] = self.base.jaxnodes[channel_params]
 
+        for synapse in self.base.synapses:
+            for key in synapse.node_params:
+                params[key] = self.base.jaxnodes[key]
+
         for synapse_params in self.base.synapse_param_names:
             params[synapse_params] = self.base.jaxedges[synapse_params]
 
@@ -2191,6 +2195,9 @@ class Module(ABC):
         for channel in self.base.channels + self.base.pumps:
             for channel_states in channel.channel_states:
                 states[channel_states] = self.base.jaxnodes[channel_states]
+        for synapse in self.base.synapses:
+            for key in synapse.node_states:
+                states[key] = self.base.jaxnodes[key]
         for synapse_states in self.base.synapse_state_names:
             states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
@@ -4268,5 +4275,12 @@ def to_graph(
         if not syn_edges.empty:
             for (i, j), edge_data in syn_edges.iterrows():
                 module_graph.add_edge(i, j, **edge_data.to_dict())
+    else:
+        for s in module.synapses:
+            nodes = nodes.drop(c.name, axis=1)
+            # errors="ignore" because some channels might have the same parameter or
+            # state name (if the channels share parameters).
+            nodes = nodes.drop(list(s.node_params), axis=1, errors="ignore")
+            nodes = nodes.drop(list(s.node_states), axis=1, errors="ignore")
 
     return module_graph

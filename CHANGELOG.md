@@ -21,6 +21,8 @@ recs = jx.integrate(cell)
 cell.write_recordings(recs)
 print(cell.branch(0).comp(1).recording("v"))  # Only the recording in branch 0, comp 1.
 ```
+- Synapses can now use the states and parameters of pre- and post-synaptic
+compartments (#765, @michaeldeistler)
 
 ### API changes
 
@@ -37,6 +39,21 @@ connect(..., ConductanceSynapse(jnp.tanh))
 import jax.numpy as jnp
 from jaxley.synapses import CurrentSynapse
 connect(..., CurrentSynapse(jnp.tanh))
+```
+- Synapses have a new API (#765, @michaeldeistler). The `update_states` method and the
+`compute_current` method should both receive all of the following arguments, in that
+order:
+```python
+self,
+synapse_states: dict[str, Array],
+synapse_params: dict[str, Array],
+pre_voltage: Array,
+post_voltage: Array,
+pre_states: dict[str, Array],
+post_states: dict[str, Array],
+pre_params: dict[str, Array],
+post_params: dict[str, Array],
+delta_t: float,
 ```
 
 ### 📚 Documentation
