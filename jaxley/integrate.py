@@ -371,12 +371,12 @@ def integrate(
     for key in externals.keys():
         externals[key] = externals[key].T  # Shape `(time, num_stimuli)`.
 
-    if module.recordings.empty:
+    if module.rec_info.empty:
         raise ValueError("No recordings are set. Please set them.")
 
     # Group the recordings by state so that each recorded state is read with a
     # single vectorized gather.
-    rec_info = module.recordings.reset_index(drop=True)
+    rec_info = module.rec_info.reset_index(drop=True)
     rec_groups = []
     concat_positions = []
     for state_name, group in rec_info.groupby("state", sort=False):
