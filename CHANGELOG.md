@@ -55,6 +55,7 @@ pre_params: dict[str, Array],
 post_params: dict[str, Array],
 delta_t: float,
 ```
+- `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
 
 ### 📚 Documentation
 

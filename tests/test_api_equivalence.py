@@ -260,8 +260,8 @@ def test_api_init_step_to_integrate(SimpleCell):
     params = cell.get_parameters()
     states, params = init_fn(params)
     step_fn_ = jax.jit(step_fn)
-    rec_inds = cell.recordings.rec_index.to_numpy()
-    rec_states = cell.recordings.state.to_numpy()
+    rec_inds = cell.rec_info.rec_index.to_numpy()
+    rec_states = cell.rec_info.state.to_numpy()
 
     steps = int(4.0 / delta_t)  # Steps to integrate
     recordings = [

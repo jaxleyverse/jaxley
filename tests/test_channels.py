@@ -594,4 +594,4 @@ def test_init_params():
     cell.insert(HH())
     cell.set("temperature", 27.0)  # Reduce temperature by 10 degrees.
     cell.init_params()
-    assert np.all(np.abs(cell.nodes["tadj"] - 1 / 2.3) < 1e-8)
+    assert np.all(np.abs(cell.nodes["HH_tadj"] - 1 / 2.3) < 1e-8)
