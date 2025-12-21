@@ -372,10 +372,10 @@ def integrate(
     for key in externals.keys():
         externals[key] = externals[key].T  # Shape `(time, num_stimuli)`.
 
-    if module.recordings.empty:
+    if module.rec_info.empty:
         raise ValueError("No recordings are set. Please set them.")
-    rec_inds = module.recordings.rec_index.to_numpy()
-    rec_states = module.recordings.state.to_numpy()
+    rec_inds = module.rec_info.rec_index.to_numpy()
+    rec_states = module.rec_info.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
