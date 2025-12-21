@@ -42,6 +42,8 @@ connect(..., CurrentSynapse(jnp.tanh))
 
 - New tutorial added for simple SNNs (#735, @alexpejovic)
 - Improved documentation for synapses (#748, @michaeldeistler)
+- How-to guide on connecting synapses to pre-defined spike trains (#764,
+@michaeldeistler)
 
 
 # 0.12.0
