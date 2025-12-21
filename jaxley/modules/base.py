@@ -194,7 +194,7 @@ class Module(ABC):
         self.num_trainable_params: int = 0
 
         # For recordings.
-        self.recordings: pd.DataFrame = pd.DataFrame().from_dict({})
+        self.rec_info: pd.DataFrame = pd.DataFrame().from_dict({})
 
         # For stimuli or clamps.
         # E.g. `self.externals = {"v": zeros(1000,2), "i": ones(1000, 2)}`
@@ -1360,7 +1360,7 @@ class Module(ABC):
 
         """
         assert len(self.base.externals) == 0, "No stimuli allowed!"
-        assert len(self.base.recordings) == 0, "No recordings allowed!"
+        assert len(self.base.rec_info) == 0, "No recordings allowed!"
         assert len(self.base.trainable_params) == 0, "No trainables allowed!"
 
         assert self.base._module_type != "network", "This is not allowed for networks."
@@ -2458,13 +2458,70 @@ class Module(ABC):
 
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
-        self.base.recordings = pd.concat([self.base.recordings, new_recs])
-        has_duplicates = self.base.recordings.duplicated()
-        self.base.recordings = self.base.recordings.loc[~has_duplicates]
+        self.base.rec_info = pd.concat([self.base.rec_info, new_recs])
+        has_duplicates = self.base.rec_info.duplicated()
+        self.base.rec_info = self.base.rec_info.loc[~has_duplicates]
+        self.base.rec_info = self.base.rec_info.reset_index(drop=True)
         if verbose:
             print(
                 f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.recordings` for details."
             )
+
+    @only_allow_module
+    def write_recordings(self, recordings: Array):
+        """Write recordings returned by ``jx.integrate`` into the module.
+
+        After having run ``write_recordings()``, the recordings can be accesses via
+        ``module.recording()``.
+
+        Args:
+            recordings: An array of shape (N, T), where N is the number of recorded
+                states and T is time. N must match ``len(module.rec_indices)``.
+                This array is usually returned by ``jx.integrate()``.
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+
+            cell.record("v")
+            v = jx.integrate(cell, t_max=10.0)
+
+            cell.write_recordings(v)
+            cell.branch(0).comp(0).recording("v")
+
+        """
+        self.base._rec_array = recordings
+
+    def recording(self, state: str = "v"):
+        """Returns all available recordings in the viewed part of the module.
+
+        This function can only run after ``module.write_recordings()`` has been run.
+
+        Args:
+            recordings: The state that should be returned.
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+
+            cell.record("v")
+            v = jx.integrate(cell, t_max=10.0)
+
+            cell.write_recordings(v)
+            cell.branch(0).comp(0).recording("v")
+        """
+        # Query and return all recordings that were made for the nodes/edges in the
+        # `View` and that match the `state`.
+        rec_inds = self.rec_info.query(f"state in '{state}'").index.to_numpy()
+        return self.base._rec_array[rec_inds]
 
     def _update_view(self):
         """Update the attrs of the view after changes in the base module."""
@@ -2484,13 +2541,11 @@ class Module(ABC):
     def delete_recordings(self):
         """Removes all recordings from the module."""
         if isinstance(self, View):
-            base_recs = self.base.recordings
-            self.base.recordings = base_recs[
-                ~base_recs.isin(self.recordings).all(axis=1)
-            ]
+            base_recs = self.base.rec_info
+            self.base.rec_info = base_recs[~base_recs.isin(self.rec_info).all(axis=1)]
             self._update_view()
         else:
-            self.base.recordings = pd.DataFrame().from_dict({})
+            self.base.rec_info = pd.DataFrame().from_dict({})
 
     def stimulate(self, current: ArrayLike | None = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
@@ -3745,8 +3800,8 @@ class View(Module):
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)
 
-        ptr_recs = pointer.recordings
-        self.recordings = (
+        ptr_recs = pointer.rec_info
+        self.rec_info = (
             pd.DataFrame()
             if ptr_recs.empty
             else ptr_recs.loc[ptr_recs["rec_index"].isin(self._comps_in_view)]

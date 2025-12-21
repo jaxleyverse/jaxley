@@ -13,6 +13,13 @@ depending on one another with:
 ```python
 cell.init_params()
 ```
+- Methods to simplify assigning recordings to their location in the cell or network
+(#750, @michaeldeistler):
+```python
+recs = jx.integrate(cell)
+cell.write_recordings(recs)
+print(cell.branch(0).comp(1).recording("v"))  # Only the recording in branch 0, comp 1.
+```
 
 ### API changes
 

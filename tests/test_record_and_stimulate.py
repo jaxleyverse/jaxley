@@ -134,3 +134,23 @@ def test_empty_recordings(SimpleComp):
     # Check if a ValueError is raised when integrating an empty compartment
     with pytest.raises(ValueError):
         v = jx.integrate(comp, delta_t=0.025, t_max=10.0)
+
+
+def test_write_recordings(SimpleNet):
+    net = SimpleNet(2, 1, 2, connect=True)
+    net.cell(0).branch(0).comp(0).record()
+    net.cell(1).branch(0).comp(0).record()
+    net.IonotropicSynapse.edge(0).record("IonotropicSynapse_s")
+    recs = jx.integrate(net, t_max=10.0)
+
+    net.write_recordings(recs)
+    assert net.cell(0).branch(0).comp(0).recording().shape == (1, 401)
+    assert net.cell(1).branch(0).comp(0).recording("v").shape == (1, 401)
+    assert net.IonotropicSynapse.edge(0).recording("IonotropicSynapse_s").shape == (
+        1,
+        401,
+    )
+
+    assert net.cell(0).branch(0).comp(0).recording()[0, 0] == -70.0
+    assert net.cell(1).branch(0).comp(0).recording("v")[0, 0] == -70.0
+    assert net.IonotropicSynapse.edge(0).recording("IonotropicSynapse_s")[0, 0] == 0.2
