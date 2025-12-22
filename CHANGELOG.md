@@ -2,12 +2,13 @@
 
 ### 🧩 New features
 
-- `Fire` channels now implement a surrogate gradient (#735, @alexpejovic)
-- New `SpikeSynapse` added, which detects `Fire` channel spikes (#735, @alexpejovic)
 - A larger and more flexible set of synapse dynamics (#748, @michaeldeistler):
 ```python
 from jaxley.synapses import CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse
 ```
+- `Fire` channels now implement a surrogate gradient (#735, @alexpejovic)
+- New `SpikeSynapse` added, which detects `Fire` channel spikes (#735, @alexpejovic)
+- New `AlphaSynapse` added (#764, @michaeldeistler)
 - Channels can now have an `init_params` method. You can then initialize parameters
 depending on one another with:
 ```python
@@ -42,6 +43,8 @@ connect(..., CurrentSynapse(jnp.tanh))
 
 - New tutorial added for simple SNNs (#735, @alexpejovic)
 - Improved documentation for synapses (#748, @michaeldeistler)
+- How-to guide on connecting synapses to pre-defined spike trains (#764,
+@michaeldeistler)
 
 
 # 0.13.0
