@@ -29,19 +29,6 @@ class Channel:
             "michael.deistler@uni-tuebingen.de or create an issue on Github: "
             "https://github.com/jaxleyverse/jaxley/issues. Thank you!"
         )
-        if (
-            not hasattr(self, "current_is_in_mA_per_cm2")
-            or not self.current_is_in_mA_per_cm2
-        ):
-            raise ValueError(
-                "The channel you are using is deprecated. "
-                "In Jaxley version 0.5.0, we changed the unit of the current returned "
-                "by `compute_current` of channels from `uA/cm^2` to `mA/cm^2`. Please "
-                "update your channel model (by dividing the resulting current by 1000) "
-                "and set `self.current_is_in_mA_per_cm2=True` as the first line "
-                f"in the `__init__()` method of your channel. {contact}"
-            )
-
         self._name = name if name else self.__class__.__name__
 
     @property
@@ -81,19 +68,40 @@ class Channel:
         }
         return self
 
-    def update_states(self, states, dt, v, params) -> tuple[Array, tuple[Array, Array]]:
-        """Return the updated states."""
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ) -> dict[str, Array]:
+        """Return the updated states.
+        
+        Args:
+            states: All states of the compartment.
+            params: Parameters of the channel (conductances in `S/cm2`).
+            voltage: Voltage of the compartment in mV.
+            delta_t: The time step in ms.
+            
+        Returns:
+            A dictionary of updated state values.
+        """
         raise NotImplementedError
 
     def compute_current(
-        self, states: dict[str, Array], v: float, params: dict[str, Array]
-    ):
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ) -> Array:
         """Given channel states and voltage, return the current through the channel.
 
         Args:
             states: All states of the compartment.
-            v: Voltage of the compartment in mV.
             params: Parameters of the channel (conductances in `S/cm2`).
+            voltage: Voltage of the compartment in mV.
+            delta_t: The time step in ms.
 
         Returns:
             Current in `uA/cm2`.
@@ -102,19 +110,42 @@ class Channel:
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
         delta_t: float,
-    ):
-        """Initialize states of channel."""
+    ) -> dict[str, Array]:
+        """Initialize states of channel.
+        
+        Args:
+            states: All states of the compartment.
+            params: Parameters of the channel (conductances in `S/cm2`).
+            voltage: Voltage of the compartment in mV.
+            delta_t: The time step in ms.
+
+        Returns:
+            A initial state that is written into ``module.nodes`` when the user runs
+            ``module.init_states()``.
+        """
         return {}
 
     def init_params(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
-    ):
-        """Initialize the maximal conductances given the temperature."""
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ) -> dict[str, Array]:
+        """Initialize the maximal conductances given the temperature.
+        
+        Args:
+            states: All states of the compartment.
+            params: Parameters of the channel (conductances in `S/cm2`).
+            voltage: Voltage of the compartment in mV.
+            delta_t: The time step in ms.
+
+        Returns:
+            Initial parameters that are written into ``module.nodes`` when the user runs
+            ``module.init_params()``.
+        """
         return {}

@@ -49,15 +49,12 @@ Channels
 
    jaxley.channels.Channel
    jaxley.channels.HH
-   jaxley.channels.Izhikevich
-   jaxley.channels.Rate
-   jaxley.channels.Fire
    jaxley.channels.Na
    jaxley.channels.K
    jaxley.channels.Leak
-   jaxley.channels.Km
-   jaxley.channels.CaL
-   jaxley.channels.CaT
+   jaxley.channels.Izhikevich
+   jaxley.channels.Rate
+   jaxley.channels.Fire
 
 
 Pumps

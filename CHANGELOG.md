@@ -55,6 +55,32 @@ pre_params: dict[str, Array],
 post_params: dict[str, Array],
 delta_t: float,
 ```
+- Channels have a new API (#766, @michaeldeistler). The `update_states` method and the
+`compute_current` method should both receive all of the following arguments, in that
+order:
+```python
+self,
+channel_states: dict[str, Array],
+channel_params: dict[str, Array],
+voltage: Array,
+delta_t: float,
+```
+- The default `Na`, `K`, and `Leak` channels have been changed (#766,
+@michaeldeistler). To recover the old channels, do:
+```text
+pip install jaxley-mech
+```
+```python
+from jaxley_mech.channels.pospischil import Na, K, Leak
+```
+- All Pospischil type channels have been moved to the `jaxley-mech` repository (#766,
+@michaeldeistler). To get access to these channels, do:
+```text
+pip install jaxley-mech
+```
+```python
+from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
+```
 - `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
 
 ### 📚 Documentation
