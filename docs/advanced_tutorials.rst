@@ -29,8 +29,8 @@ Morphologies
    tutorials/13_graph_backend.ipynb
 
 
-Channels and models
--------------------
+Models, channels & synapses
+---------------------------
 
 .. toctree::
    :maxdepth: 1

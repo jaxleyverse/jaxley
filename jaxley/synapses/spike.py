@@ -8,13 +8,51 @@ from jaxley.synapses.synapse import Synapse
 
 
 class SpikeSynapse(Synapse):
-    """
-    Compute synaptic current for a synapse within a network of LIF neurons.
+    r"""Synapse to be used in networks of LIF neurons.
 
-    Note that the presynaptic neurons to this synapse must have Fire channels,
-    as this is the mechanism which allows this synapse to detect presynaptic spikes.
-    If the presynaptic neuron has no Fire channels, there will always be zero
-    synaptic current.
+    This synapse is meant to be used in networks of LIF neurons, together with
+    the `Fire` channel. After the pre-synaptic neuron has `Fire_spikes=1.0` (a spike),
+    the state of the synapse gets increased immediately and then decays exponentially.
+
+    This synapse implements the following equations:
+
+    .. math::
+
+        I = \overline{g}\, \cdot s
+
+    .. math::
+
+        \tau \frac{\text{d}s}{\text{d}t} = -s
+
+    .. math::
+
+        s \leftarrow s + 1 \quad \text{if } \, \text{Fire}_{\text{pre}} = 1
+
+    The synaptic parameters are:
+        - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
+        - ``decay_tau``: The time constant of the decay :math:`\tau` (ms).
+
+    The synaptic state is:
+        - ``s``: the activity level of the synapse.
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    .. code-block:: python
+
+        from jaxley.channels import Leak, Fire
+        from jaxley.connect import fully_connect
+        from jaxley.synapse import SpikeSynapse
+
+        cell = jx.Cell()
+        net = jx.Network([cell for _ in range(5)])
+
+        net.insert(Leak())
+        net.insert(Fire())
+        fully_connect(net.cell("all"), net.cell("all"), SpikeSynapse())
+
+        net.record("v")
+        v = jx.integrate(net, t_max=100.0, delta_t=0.025)
     """
 
     def __init__(self, name: str | None = None):
