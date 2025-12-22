@@ -84,6 +84,8 @@ Synapses
    jaxley.synapses.ConductanceSynapse
    jaxley.synapses.DynamicSynapse
    jaxley.synapses.IonotropicSynapse
+   jaxley.synapses.SpikeSynapse
+   jaxley.synapses.ExpDecaySynapse
 
 
 Connectivity

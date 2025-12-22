@@ -8,11 +8,59 @@ from jaxley.synapses.synapse import Synapse
 
 
 class ExpDecaySynapse(Synapse):
-    """Synapse which decays exponentially after a pre-synaptic spike.
+    r"""Synapse which decays exponentially after a pre-synaptic binary spike.
 
     This synapse requires that the pre-synaptic neuron has a binary voltage of either
     zero or one. After a pre-synaptic one (a spike), the state of the synapse gets
     increased immediately and then decays exponentially.
+
+    This synapse implements the following equations:
+
+    .. math::
+
+        I = \overline{g}\, \cdot s
+
+    .. math::
+
+        \tau \frac{\text{d}s}{\text{d}t} = -s
+
+    .. math::
+
+        s \leftarrow s + 1 \quad \text{if } \, \text{Fire}_{\text{pre}} = 1
+
+    The synaptic parameters are:
+        - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
+        - ``decay_tau``: The time constant of the decay :math:`\tau` (ms).
+
+    The synaptic state is:
+        - ``s``: the activity level of the synapse.
+
+    Example usage
+    ^^^^^^^^^^^^^
+
+    .. code-block:: python
+
+        import jaxley as jx
+        from jaxley.connect import connect
+        from jaxley.synapses import ExpDecaySynapse
+        from jaxley.channels import Leak
+
+        dummy = jx.Cell()
+        cell = jx.read_swc("morph_ca1_n120.swc", ncomp=1)
+        net = jx.Network([dummy, cell])
+        net.cell(1).insert(Leak())
+
+        # Connect pre-synaptic dummy to the morphologically detailed cell.
+        connect(net.cell(0), net.cell(1).branch(5).comp(0), ExpDecaySynapse())
+        net.set("ExpDecaySynapse_gS", 0.1)  # Synaptic strength.
+        net.set("ExpDecaySynapse_decay_tau", 5.0)  # decay time in ms
+
+        # Clamp the voltage of the pre-synaptic cell to the spike train.
+        net.cell(0).set("v", 0.0)  # Initial state.
+        net.cell(0).clamp("v", spike_train)
+
+        net.cell(1).branch(5).comp(0).record()
+        v = jx.integrate(net, delta_t=dt)
     """
 
     def __init__(self, name: str | None = None):
