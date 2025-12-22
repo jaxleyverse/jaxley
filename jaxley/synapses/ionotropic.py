@@ -62,34 +62,36 @@ class IonotropicSynapse(Synapse):
         prefix = self._name
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
-            f"{prefix}_e_syn": 0.0,  # mV
             f"{prefix}_k_minus": 0.025,  # 1/ms
             f"{prefix}_v_th": -35.0,  # mV
             f"{prefix}_delta": 10.0,  # mV
         }
         self.synapse_states = {f"{prefix}_s": 0.2}
+        self.node_params = {f"{prefix}_e_syn": 0.0}
+        self.node_states = {}
 
     def update_states(
         self,
-        states: dict[str, Array],
-        all_states: dict,
-        pre_index: Array,
-        post_index: Array,
-        params: dict[str, Array],
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
-        pre_voltage = all_states["v"][pre_index]
-
         prefix = self._name
-        v_th = params[f"{prefix}_v_th"]
-        delta = params[f"{prefix}_delta"]
+        v_th = synapse_params[f"{prefix}_v_th"]
+        delta = synapse_params[f"{prefix}_delta"]
 
         s_inf = sigmoid((pre_voltage - v_th) / delta)
-        s_tau = (1.0 - s_inf) / params[f"{prefix}_k_minus"]
+        s_tau = (1.0 - s_inf) / synapse_params[f"{prefix}_k_minus"]
 
         new_s = exponential_euler(
-            states[f"{prefix}_s"],
+            synapse_states[f"{prefix}_s"],
             delta_t,
             s_inf,
             s_tau,
@@ -97,8 +99,17 @@ class IonotropicSynapse(Synapse):
         return {f"{prefix}_s": new_s}
 
     def compute_current(
-        self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
     ) -> float:
         prefix = self._name
-        g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
-        return g_syn * (post_voltage - params[f"{prefix}_e_syn"])
+        g_syn = synapse_params[f"{prefix}_gS"] * synapse_states[f"{prefix}_s"]
+        return g_syn * (post_voltage - post_params[f"{prefix}_e_syn"])

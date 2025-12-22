@@ -97,26 +97,40 @@ class CurrentSynapse(Synapse):
             f"{prefix}_delta": 10.0,  # mV
         }
         self.synapse_states = {}
+        self.node_params = {}
+        self.node_states = {}
         self.nonlinearity = nonlinearity
 
     def update_states(
         self,
-        states: dict[str, Array],
-        all_states: dict,
-        pre_index: Array,
-        post_index: Array,
-        params: dict[str, Array],
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
         return {}
 
     def compute_current(
-        self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
     ) -> float:
         prefix = self._name
         activation = self.nonlinearity(
-            (pre_voltage - params[f"{prefix}_v_th"]) / params[f"{prefix}_delta"]
+            (pre_voltage - synapse_params[f"{prefix}_v_th"]) / synapse_params[f"{prefix}_delta"]
         )
-        current = -params[f"{prefix}_gS"] * activation
+        current = -synapse_params[f"{prefix}_gS"] * activation
         return current

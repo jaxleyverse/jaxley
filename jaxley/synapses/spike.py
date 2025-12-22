@@ -63,35 +63,44 @@ class SpikeSynapse(Synapse):
             f"{prefix}_s_decay": 10.0,  # unitless
         }
         self.synapse_states = {f"{prefix}_s": 0.0}
+        self.node_parmas = {}
+        self.node_states = {"Fire_spikes": 0.0}
 
     def update_states(
         self,
-        states: dict[str, Array],
-        all_states: dict,
-        pre_index: Array,
-        post_index: Array,
-        params: dict[str, Array],
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
         delta_t: float,
     ) -> dict:
         """Return updated synapse state and current."""
         prefix = self._name
-        s = states[f"{prefix}_s"]
-        s_decay = params[f"{prefix}_s_decay"]
+        s = synapse_states[f"{prefix}_s"]
+        s_decay = synapse_params[f"{prefix}_s_decay"]
 
-        if "Fire_spikes" in all_states.keys():
-            spike_states = all_states["Fire_spikes"][pre_index]
-            spike = spike_states
-        else:
-            spike = 0.0
-
+        spike = pre_states["Fire_spikes"]
         new_s = (spike * 1.0) + ((1 - spike) * (s - (s_decay * s * delta_t)))
 
         return {f"{prefix}_s": new_s}
 
     def compute_current(
-        self, states: dict, pre_voltage: float, post_voltage: float, params: dict
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
     ) -> float:
         """Return updated synapse state and current."""
         prefix = self._name
-        g_syn = params[f"{prefix}_gS"] * states[f"{prefix}_s"]
+        g_syn = synapse_params[f"{prefix}_gS"] * synapse_states[f"{prefix}_s"]
         return g_syn
