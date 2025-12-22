@@ -22,19 +22,22 @@ class TestSynapse(Synapse):
         prefix = self._name
         self.synapse_params = {f"{prefix}_gC": 1e-4}
         self.synapse_states = {f"{prefix}_c": 0.2}
+        self.node_params = {}
+        self.node_states = {}
 
     def update_states(
         self,
-        states: dict[str, Array],
-        all_states: dict,
-        pre_index: Array,
-        post_index: Array,
-        params: dict[str, Array],
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
-        pre_voltage = all_states["v"][pre_index]
-
         prefix = self._name
         v_th = -35.0
         delta = 10.0
@@ -46,13 +49,22 @@ class TestSynapse(Synapse):
         s_inf = s_bar
         slope = -1.0 / tau_s
         exp_term = save_exp(slope * delta_t)
-        new_s = states[f"{prefix}_c"] * exp_term + s_inf * (1.0 - exp_term)
+        new_s = synapse_states[f"{prefix}_c"] * exp_term + s_inf * (1.0 - exp_term)
         return {f"{prefix}_c": new_s}
 
     def compute_current(
-        self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
     ) -> float:
         prefix = self._name
         e_syn = 0.0
-        g_syn = params[f"{prefix}_gC"] * states[f"{prefix}_c"]
+        g_syn = synapse_params[f"{prefix}_gC"] * synapse_states[f"{prefix}_c"]
         return g_syn * (post_voltage - e_syn)

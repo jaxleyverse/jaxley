@@ -32,10 +32,12 @@ class ConductanceSynapse(Synapse):
 
     The synaptic parameters are:
         - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
-        - ``e_syn``: the reversal potential :math:`E` (mV).
         - ``v_th``: the threshold at which the synapse becomes active
           :math:`V_{\text{thr}}` (mV).
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
+
+    The inserted cellular parameters are:
+        - ``e_syn``: The synaptic reversal potential :math:`E` (mV).
 
     The synaptic state is:
         - ``s``: the activity level of the synapse :math:`\in [0, 1]`.
@@ -101,31 +103,44 @@ class ConductanceSynapse(Synapse):
         prefix = self._name
         self.synapse_params = {
             f"{prefix}_gS": 1e-4,  # uS
-            f"{prefix}_e_syn": 0.0,  # mV
             f"{prefix}_v_th": -35.0,  # mV
             f"{prefix}_delta": 10.0,  # mV
         }
         self.synapse_states = {}
+        self.node_params = {f"{prefix}_e_syn": 0.0}
+        self.node_states = {}
         self.nonlinearity = nonlinearity
 
     def update_states(
         self,
-        states: dict[str, Array],
-        all_states: dict,
-        pre_index: Array,
-        post_index: Array,
-        params: dict[str, Array],
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
         delta_t: float,
     ) -> Dict:
         """Return updated synapse state and current."""
         return {}
 
     def compute_current(
-        self, states: Dict, pre_voltage: float, post_voltage: float, params: Dict
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
     ) -> float:
         prefix = self._name
         activation = self.nonlinearity(
-            (pre_voltage - params[f"{prefix}_v_th"]) / params[f"{prefix}_delta"]
+            (pre_voltage - synapse_params[f"{prefix}_v_th"]) / synapse_params[f"{prefix}_delta"]
         )
-        g_syn = params[f"{prefix}_gS"] * activation
-        return g_syn * (post_voltage - params[f"{prefix}_e_syn"])
+        g_syn = synapse_params[f"{prefix}_gS"] * activation
+        return g_syn * (post_voltage - post_params[f"{prefix}_e_syn"])
