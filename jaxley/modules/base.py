@@ -2326,7 +2326,7 @@ class Module(ABC):
             )
 
             init_state = channel.init_state(
-                channel_states, voltages, channel_params, delta_t
+                channel_states, channel_params, voltages, delta_t
             )
 
             # `init_state` might not return all channel states. Only the ones that are
@@ -2366,7 +2366,9 @@ class Module(ABC):
                 params, channel_param_names, channel_indices
             )
 
-            init_params = channel.init_params(channel_states, voltages, channel_params)
+            init_params = channel.init_params(
+                channel_states, channel_params, voltages, delta_t=0.025
+            )
 
             # `init_params` might not return all channel states. Only the ones that are
             # returned are updated here.
@@ -3229,7 +3231,7 @@ class Module(ABC):
                 states, channel_state_names, channel_indices
             )
 
-            states_updated = vmap(channel.update_states, in_axes=[0, None, 0, 0])(
+            states_updated = vmap(channel.update_states, in_axes=[0, 0, 0, None])(
                 channel_states, channel_params, voltages[channel_indices], delta_t
             )
             # Rebuild state. This has to be done within the loop over channels to allow

@@ -76,13 +76,13 @@ class Channel:
         delta_t: float,
     ) -> dict[str, Array]:
         """Return the updated states.
-        
+
         Args:
             states: All states of the compartment.
             params: Parameters of the channel (conductances in `S/cm2`).
             voltage: Voltage of the compartment in mV.
             delta_t: The time step in ms.
-            
+
         Returns:
             A dictionary of updated state values.
         """
@@ -116,7 +116,7 @@ class Channel:
         delta_t: float,
     ) -> dict[str, Array]:
         """Initialize states of channel.
-        
+
         Args:
             states: All states of the compartment.
             params: Parameters of the channel (conductances in `S/cm2`).
@@ -137,7 +137,7 @@ class Channel:
         delta_t: float,
     ) -> dict[str, Array]:
         """Initialize the maximal conductances given the temperature.
-        
+
         Args:
             states: All states of the compartment.
             params: Parameters of the channel (conductances in `S/cm2`).

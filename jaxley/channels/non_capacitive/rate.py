@@ -4,6 +4,7 @@
 from typing import Optional
 
 import jax.numpy as jnp
+from jax import Array
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler
@@ -19,13 +20,31 @@ class Rate(Channel):
         self.channel_states = {}
         self.current_name = f"{self.name}_rate"
 
-    def update_states(self, states, dt, v, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Voltages get pulled towards zero."""
         tau = params[f"{self.name}_tau"]
-        return {"v": exponential_euler(v, dt, 0.0, tau)}
+        return {"v": exponential_euler(voltage, delta_t, 0.0, tau)}
 
-    def compute_current(self, states, v, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return 0
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return {}

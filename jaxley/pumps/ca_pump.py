@@ -30,9 +30,9 @@ class CaPump(Pump):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
@@ -40,8 +40,9 @@ class CaPump(Pump):
     def compute_current(
         self,
         states: dict[str, Array],
-        modified_state,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -73,9 +74,9 @@ class CaPump(Pump):
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
         delta_t: float,
     ):
         """Initialize states of channel."""

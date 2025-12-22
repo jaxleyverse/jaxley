@@ -87,9 +87,12 @@ pip install jaxley-mech
 from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 ```
 - `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
+- Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
+@michaeldeistler)
 
 ### 📚 Documentation
 
+- How-to guide on upgrading to version `1.0` (#766, @michaeldeistler)
 - New tutorial added for simple SNNs (#735, @alexpejovic)
 - Improved documentation for synapses (#748, @michaeldeistler)
 - How-to guide on connecting synapses to pre-defined spike trains (#764,

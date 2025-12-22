@@ -107,9 +107,9 @@ class CaFaradayConcentrationChange(Pump):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update states if necessary (but this mechanism has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
@@ -117,8 +117,9 @@ class CaFaradayConcentrationChange(Pump):
     def compute_current(
         self,
         states: dict[str, Array],
-        modified_state,
         params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Return change of calcium concentration as the calcium current."""
         # 2.0 is valence of calcium.
@@ -126,9 +127,9 @@ class CaFaradayConcentrationChange(Pump):
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
         delta_t: float,
     ):
         """Initialize states of channel."""

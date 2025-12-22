@@ -6,6 +6,7 @@ from warnings import warn
 
 import jax
 import jax.numpy as jnp
+from jax import Array
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler
@@ -30,7 +31,13 @@ class Izhikevich(Channel):
             "gradient will be zero after every spike."
         )
 
-    def update_states(self, states, dt, v, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Reset the voltage when a spike occurs and log the spike"""
         a = params[f"{self.name}_a"]
         b = params[f"{self.name}_b"]
@@ -39,20 +46,32 @@ class Izhikevich(Channel):
         u = states[f"{self.name}_u"]
 
         # Update the recovery variable u with exponential Euler.
-        u = exponential_euler(u, dt, b * v, 1 / a)
+        u = exponential_euler(u, delta_t, b * voltage, 1 / a)
 
         # Update voltages with Forward Euler because the vectorfield is nonlinear in v.
-        dv = (0.04 * v**2) + (5 * v) + 140 - u
-        v = v + dt * dv
+        dv = (0.04 * voltage**2) + (5 * voltage) + 140 - u
+        voltage = voltage + delta_t * dv
 
-        condition = v >= 30.0
-        v = jax.lax.select(condition, c, v)
+        condition = voltage >= 30.0
+        voltage = jax.lax.select(condition, c, voltage)
         u = jax.lax.select(condition, u + d, u)
-        return {f"{self.name}_u": u, "v": v}
+        return {f"{self.name}_u": u, "v": voltage}
 
-    def compute_current(self, states, v, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return 0
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         prefix = self.name
-        return {f"{self.name}_u": params[f"{prefix}_b"] * v}
+        return {f"{self.name}_u": params[f"{prefix}_b"] * voltage}

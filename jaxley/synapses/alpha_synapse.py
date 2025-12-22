@@ -43,7 +43,7 @@ class AlphaSynapse(Synapse):
         - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
         - ``tau_decay``: The decay time constant :math:`\tau_{\text{rise}}` (ms).
         - ``tau_rise``: The rise time constant :math:`\tau_{\text{decay}}` (ms).
-    
+
     The inserted cellular parameters are:
         - ``e_syn``: The synaptic reversal potential :math:`E` (mV).
 

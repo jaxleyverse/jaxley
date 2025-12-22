@@ -153,11 +153,11 @@ class HH(Channel):
         t = params["temperature"]
         tadj = q10 ** ((t - 37.0) / 10.0)
         return {f"{prefix}_tadj": tadj}
-    
+
 
 class Na(Channel):
     """Sodium channel based on Sterratt, Graham, Gillies & Einevoll.
-    
+
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
@@ -235,7 +235,7 @@ class Na(Channel):
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         gNa = params[f"{prefix}_tadj"] * params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
         return gNa * (voltage - params[f"{prefix}_eNa"])
-            
+
     def init_state(
         self,
         states: dict[str, Array],
@@ -269,7 +269,7 @@ class Na(Channel):
 
 class K(Channel):
     """Potassium channel based on Sterratt, Graham, Gillies & Einevoll.
-    
+
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
@@ -375,7 +375,7 @@ class K(Channel):
 
 class Leak(Channel):
     """Leak channel.
-    
+
     The following parameters are registered in ``channel_params``:
 
     .. list-table::

@@ -4,6 +4,7 @@
 from typing import Optional
 
 import jax.numpy as jnp
+from jax import Array
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import heaviside
@@ -31,19 +32,39 @@ class Fire(Channel):
         self.channel_states = {f"{self.name}_spikes": False}
         self.current_name = f"{self.name}_fire"
 
-    def update_states(self, states, dt, v, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Reset the voltage when a spike occurs and log the spike"""
         prefix = self._name
         vreset = params[f"{prefix}_vreset"]
         vth = params[f"{prefix}_vth"]
 
-        spike_occurred = heaviside(v - vth)
-        v = (v * (1 - heaviside(v - vth))) + (vreset * heaviside(v - vth))
+        spike_occurred = heaviside(voltage - vth)
+        voltage = (voltage * (1 - heaviside(voltage - vth))) + (
+            vreset * heaviside(voltage - vth)
+        )
 
-        return {"v": v, f"{self.name}_spikes": spike_occurred}
+        return {"v": voltage, f"{self.name}_spikes": spike_occurred}
 
-    def compute_current(self, states, v, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return 0
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return {}

@@ -4,6 +4,7 @@
 from typing import Optional
 
 import jax.numpy as jnp
+from jax import Array
 
 from jaxley.pumps import Pump
 
@@ -31,23 +32,41 @@ class CaNernstReversal(Pump):
         self.current_name = f"i_Ca"
         self.META = {"ion": "Ca"}
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update internal calcium concentration based on calcium current and decay."""
         R, T, F = (
             self.channel_constants["R"],
             self.channel_constants["T"],
             self.channel_constants["F"],
         )
-        Cai = u["CaCon_i"]
-        Cao = u["CaCon_e"]
+        Cai = states["CaCon_i"]
+        Cao = states["CaCon_e"]
         C = R * T / (2 * F) * 1000  # mV
         vCa = C * jnp.log(Cao / Cai)
         return {"eCa": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         return {}

@@ -401,8 +401,12 @@ class Network(Module):
             post_v_and_perturbed = jnp.stack(
                 [voltages[post_inds], voltages[post_inds] + diff]
             )
-            comp_cur_fn = vmap(synapse_type.compute_current, in_axes=(0, 0, 0, 0, 0, 0, 0, 0, None))
-            synapse_currents = vmap(comp_cur_fn, in_axes=(None, None, 0, 0, None, None, None, None, None))(
+            comp_cur_fn = vmap(
+                synapse_type.compute_current, in_axes=(0, 0, 0, 0, 0, 0, 0, 0, None)
+            )
+            synapse_currents = vmap(
+                comp_cur_fn, in_axes=(None, None, 0, 0, None, None, None, None, None)
+            )(
                 synapse_states,
                 synapse_params,
                 pre_v_and_perturbed,
@@ -595,7 +599,7 @@ class Network(Module):
         self.base.synapse_names.append(synapse_type._name)
         self.base.synapse_param_names += list(synapse_type.synapse_params.keys())
         self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
-        self.base.synapses.append(synapse_type)        
+        self.base.synapses.append(synapse_type)
 
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
