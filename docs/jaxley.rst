@@ -85,7 +85,7 @@ Synapses
    jaxley.synapses.DynamicSynapse
    jaxley.synapses.IonotropicSynapse
    jaxley.synapses.SpikeSynapse
-   jaxley.synapses.ExpDecaySynapse
+   jaxley.synapses.AlphaSynapse
 
 
 Connectivity

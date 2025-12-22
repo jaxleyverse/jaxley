@@ -16,10 +16,10 @@ import jaxley as jx
 from jaxley.channels import HH, Leak
 from jaxley.connect import connect
 from jaxley.synapses import (
+    AlphaSynapse,
     ConductanceSynapse,
     CurrentSynapse,
     DynamicSynapse,
-    ExpDecaySynapse,
     IonotropicSynapse,
     Synapse,
     TestSynapse,
@@ -145,9 +145,9 @@ def test_predefined_spike_trains():
     net.cell(1).insert(Leak())
 
     # Connect pre-synaptic dummy to the morphologically detailed cell.
-    connect(net.cell(0), net.cell(1).branch(3).comp(0), ExpDecaySynapse())
-    net.set("ExpDecaySynapse_gS", 0.1)  # Synaptic strength.
-    net.set("ExpDecaySynapse_decay_tau", 5.0)  # decay time in ms
+    connect(net.cell(0), net.cell(1).branch(3).comp(0), AlphaSynapse())
+    net.set("AlphaSynapse_gS", 0.1)  # Synaptic strength.
+    net.set("AlphaSynapse_tau_decay", 5.0)  # decay time in ms
 
     # Clamp the voltage of the pre-synaptic cell to the spike train.
     net.cell(0).set("v", 0.0)  # Initial state.
