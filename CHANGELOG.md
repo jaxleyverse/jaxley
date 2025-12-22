@@ -1,5 +1,10 @@
 # 1.0.0 (pre-release)
 
+⚠️ Version `1.0.0` makes multiple changes which might brake your code when upgrading. 
+Please read
+[this how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/upgrade_to_v1.html)
+on how to upgrade to version `1.0.0`.
+
 ### 🧩 New features
 
 - A larger and more flexible set of synapse dynamics (#748, @michaeldeistler):
