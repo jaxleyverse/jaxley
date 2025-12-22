@@ -32,10 +32,12 @@ class ConductanceSynapse(Synapse):
 
     The synaptic parameters are:
         - ``gS``: the maximal conductance :math:`\overline{g}` (uS).
-        - ``e_syn``: the reversal potential :math:`E` (mV).
         - ``v_th``: the threshold at which the synapse becomes active
           :math:`V_{\text{thr}}` (mV).
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
+
+    The inserted cellular parameters are:
+        - ``e_syn``: The synaptic reversal potential :math:`E` (mV).
 
     The synaptic state is:
         - ``s``: the activity level of the synapse :math:`\in [0, 1]`.
