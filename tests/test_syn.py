@@ -6,6 +6,7 @@ import jax
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
 
+import os
 
 import numpy as np
 import pytest
@@ -15,6 +16,7 @@ import jaxley as jx
 from jaxley.channels import HH, Leak
 from jaxley.connect import connect
 from jaxley.synapses import (
+    AlphaSynapse,
     ConductanceSynapse,
     CurrentSynapse,
     DynamicSynapse,
@@ -117,3 +119,41 @@ def test_synapse_nonlinearity(SimpleNet, synapse, nonlinearity):
 
     # Voltage should increase after synaptic current arrives
     assert v[0, int(5.0 * 40)] < v[0, int(15.0 * 40)]
+
+
+def test_predefined_spike_trains():
+    """This runs the following how-to guide:
+    https://jaxley.readthedocs.io/en/latest/how_to_guide/predefined_spike_trains.html
+    """
+    # Generate pre-synaptic spike train.
+    _ = np.random.seed(42)
+
+    t_max = 100.0  # ms
+    dt = 0.025  # ms
+    time_steps = int(t_max // dt)
+
+    firing_rate = 50  # Hz
+    spike_prob = firing_rate * dt / 1000
+
+    spike_train = np.random.binomial(1, spike_prob, size=time_steps)
+
+    dummy = jx.Cell()
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
+    cell = jx.read_swc(fname, ncomp=1)
+    net = jx.Network([dummy, cell])
+    net.cell(1).insert(Leak())
+
+    # Connect pre-synaptic dummy to the morphologically detailed cell.
+    connect(net.cell(0), net.cell(1).branch(3).comp(0), AlphaSynapse())
+    net.set("AlphaSynapse_gS", 0.1)  # Synaptic strength.
+    net.set("AlphaSynapse_tau_decay", 5.0)  # decay time in ms
+
+    # Clamp the voltage of the pre-synaptic cell to the spike train.
+    net.cell(0).set("v", 0.0)  # Initial state.
+    net.cell(0).clamp("v", spike_train)
+
+    net.cell(1).branch(3).comp(0).record()
+    v = jx.integrate(net, delta_t=dt)
+
+    assert np.invert(np.any(np.isnan(v)))
