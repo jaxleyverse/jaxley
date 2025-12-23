@@ -45,29 +45,6 @@ def exponential_euler(
     return x * exp_term + x_inf * (1.0 - exp_term)
 
 
-def solve_inf_gate_exponential(
-    x: ArrayLike,
-    dt: float,
-    s_inf: ArrayLike,
-    tau_s: ArrayLike,
-):
-    """solves dx/dt = (s_inf - x) / tau_s
-    via exponential Euler
-
-    Args:
-        x (ArrayLike): gate variable
-        dt (float): time_delta
-        s_inf (ArrayLike): _description_
-        tau_s (ArrayLike): _description_
-
-    Returns:
-        _type_: updated gate
-    """
-    slope = -1.0 / tau_s
-    exp_term = save_exp(slope * dt)
-    return x * exp_term + s_inf * (1.0 - exp_term)
-
-
 def heaviside(x: ArrayLike, at_zero: ArrayLike = 1.0, grad_scale: float = 10.0):
     """Compute the heaviside step function with a custom derivative.
 

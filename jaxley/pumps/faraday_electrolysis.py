@@ -94,6 +94,27 @@ class CaFaradayConcentrationChange(Pump):
     The update is fully passive (i.e., there is no active pump). As such, it is even
     possible that ion concentration can become negative (because we do not enforce
     that calcium currents stop when no more ions are available).
+
+    This channel does not have any parameters.
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``i_Ca``
+         - 1e-8
+         - The calcium current.
+         - mA/cm²
+       * - ``CaCon_i``
+         - 5e-5
+         - The intracellular calcium concentration.
+         - mM
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -107,9 +128,9 @@ class CaFaradayConcentrationChange(Pump):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update states if necessary (but this mechanism has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
@@ -117,8 +138,9 @@ class CaFaradayConcentrationChange(Pump):
     def compute_current(
         self,
         states: dict[str, Array],
-        modified_state,
         params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Return change of calcium concentration as the calcium current."""
         # 2.0 is valence of calcium.
@@ -126,9 +148,9 @@ class CaFaradayConcentrationChange(Pump):
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
         delta_t: float,
     ):
         """Initialize states of channel."""

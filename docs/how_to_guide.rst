@@ -13,6 +13,7 @@ General features
 .. toctree::
    :maxdepth: 1
 
+   how_to_guide/upgrade_to_v1.ipynb
    how_to_guide/save_and_load.ipynb
    how_to_guide/choose_solver.ipynb
 

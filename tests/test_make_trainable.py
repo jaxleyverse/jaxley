@@ -12,9 +12,10 @@ from copy import copy
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.pospischil import K, Na
 
 import jaxley as jx
-from jaxley.channels import HH, K, Na
+from jaxley.channels import HH
 from jaxley.connect import connect, fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
 from jaxley.utils.cell_utils import params_to_pstate
