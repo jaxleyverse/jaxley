@@ -45,7 +45,9 @@ class AlphaSynapse(Synapse):
         - ``tau_rise``: The rise time constant :math:`\tau_{\text{decay}}` (ms).
 
     The inserted cellular parameters are:
-        - ``e_syn``: The synaptic reversal potential :math:`E` (mV).
+        - ``e_syn``: The synaptic reversal potential :math:`E` (mV). This synapse uses
+          the pre-synaptic reveral potential to compute the current, thereby directly
+          enforcing Dale's law.
 
     The synaptic state is:
         - ``r``: Intermediate state representing the rising phase.
@@ -136,4 +138,4 @@ class AlphaSynapse(Synapse):
         """Return updated synapse state and current."""
         prefix = self._name
         g_syn = synapse_params[f"{prefix}_gS"] * synapse_states[f"{prefix}_s"]
-        return g_syn * (post_voltage - post_params[f"{prefix}_e_syn"])
+        return g_syn * (post_voltage - pre_params[f"{prefix}_e_syn"])

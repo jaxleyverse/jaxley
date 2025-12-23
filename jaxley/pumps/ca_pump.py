@@ -10,7 +10,7 @@ from jaxley.pumps.pump import Pump
 
 class CaPump(Pump):
     """Calcium dynamics based on Destexhe et al. 1994.
-    
+
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
