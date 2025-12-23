@@ -11,7 +11,7 @@ from jaxley.pumps import Pump
 
 class CaNernstReversal(Pump):
     """Compute Calcium reversal from inner and outer concentration of calcium.
-    
+
     This Pump has no additional parameters.
 
     The following states are registered in ``channel_states``:

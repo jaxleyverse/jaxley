@@ -14,7 +14,7 @@ from jaxley.solver_gate import exponential_euler
 
 class Izhikevich(Channel):
     """Izhikevich neuron model.
-    
+
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
