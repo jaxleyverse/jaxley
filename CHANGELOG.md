@@ -97,6 +97,7 @@ from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 - Improved documentation for synapses (#748, @michaeldeistler)
 - How-to guide on connecting synapses to pre-defined spike trains (#764,
 @michaeldeistler)
+- Improved documentation for channels (#766, @michaeldeistler)
 
 
 # 0.13.0

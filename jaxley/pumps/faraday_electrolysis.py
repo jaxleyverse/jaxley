@@ -94,6 +94,27 @@ class CaFaradayConcentrationChange(Pump):
     The update is fully passive (i.e., there is no active pump). As such, it is even
     possible that ion concentration can become negative (because we do not enforce
     that calcium currents stop when no more ions are available).
+
+    This channel does not have any parameters.
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``i_Ca``
+         - 1e-8
+         - The calcium current.
+         - mA/cm²
+       * - ``CaCon_i``
+         - 5e-5
+         - The intracellular calcium concentration.
+         - mM
     """
 
     def __init__(self, name: Optional[str] = None):

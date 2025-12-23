@@ -23,10 +23,43 @@ class Fire(Channel):
     use of the ``heaviside`` function in ``update_states()``. This allows the user
     to perform gradient descent on networks using this channel despite the ``Fire``
     mechanism being non-differentiable.
+
+    The following parameters are registered in ``channel_params``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``Fire_vth``
+         - -50.0
+         - Threshold for firing.
+         - mV
+       * - ``Fire_vreset``
+         - -70.0
+         - The reset for the voltage after a spike.
+         - mV
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``Fire_spikes``
+         - False
+         - Whether or not a spike occured.
+         - 1
     """
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {f"{self.name}_vth": -50, f"{self.name}_vreset": -70}
         self.channel_states = {f"{self.name}_spikes": False}

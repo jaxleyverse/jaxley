@@ -15,55 +15,68 @@ class HH(Channel):
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Default
          - Description
+         - Unit
        * - ``HH_gNa``
          - 0.12
-         - Maximal sodium conductance (S/cm²).
+         - Maximal sodium conductance.
+         - S/cm²
        * - ``HH_gK``
          - 0.036
-         - Maximal potassium conductance (S/cm²).
+         - Maximal potassium conductance.
+         - S/cm²
        * - ``HH_gLeak``
          - 0.0003
-         - Leak conductance (S/cm²).
+         - Leak conductance.
+         - S/cm²
        * - ``HH_eNa``
          - 50.0
-         - Sodium reversal potential (mV).
+         - Sodium reversal potential.
+         - mV
        * - ``HH_eK``
          - -77.0
-         - Potassium reversal potential (mV).
+         - Potassium reversal potential.
+         - mV
        * - ``HH_eLeak``
          - -54.3
-         - Leak reversal potential (mV).
+         - Leak reversal potential.
+         - mV
        * - ``HH_tadj``
          - 1.0
          - Temperature adjustment factor (Q10 scaling).
+         - 1
        * - ``temperature``
          - 37.0
-         - Absolute temperature in degrees Celsius.
+         - Absolute temperature.
+         - °C
 
     The following dynamic gating variables are registered in ``channel_states``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Initial value
          - Description
+         - Unit
        * - ``HH_m``
          - 0.2
          - Sodium activation gate.
+         - 1
        * - ``HH_h``
          - 0.2
          - Sodium inactivation gate.
+         - 1
        * - ``HH_n``
          - 0.2
          - Potassium activation gate.
+         - 1
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -161,37 +174,48 @@ class Na(Channel):
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Default
          - Description
+         - Unit
        * - ``Na_gNa``
          - 0.12
-         - Maximal sodium conductance (S/cm²).
+         - Maximal sodium conductance.
+         - S/cm²
        * - ``Na_eNa``
          - 50.0
-         - Sodium reversal potential (mV).
+         - Sodium reversal potential.
+         - mV
        * - ``Na_tadj``
          - 1.0
          - Temperature adjustment factor (Q10 scaling).
+         - 1
        * - ``temperature``
          - 37.0
-         - Absolute temperature in degrees Celsius.
+         - Absolute temperature.
+         - °C
 
     The following dynamic gating variables are registered in ``channel_states``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Initial value
          - Description
+         - Unit
        * - ``Na_m``
          - 0.2
          - Sodium activation gate.
+         - 1
+       * - ``Na_h``
+         - 0.2
+         - Sodium inactivation gate.
+         - 1
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -273,37 +297,44 @@ class K(Channel):
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Default
          - Description
+         - Unit
        * - ``K_gK``
          - 0.036
-         - Maximal potassium conductance (S/cm²).
+         - Maximal potassium conductance.
+         - S/cm²
        * - ``K_eK``
          - -77.0
-         - Potassium reversal potential (mV).
+         - Potassium reversal potential.
+         - mV
        * - ``K_tadj``
          - 1.0
          - Temperature adjustment factor (Q10 scaling).
+         - 1
        * - ``temperature``
          - 37.0
-         - Absolute temperature in degrees Celsius.
+         - Absolute temperature.
+         - °C
 
     The following dynamic gating variables are registered in ``channel_states``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Initial value
          - Description
+         - Unit
        * - ``K_n``
          - 0.2
          - Potassium activation gate.
+         - 1
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -379,24 +410,29 @@ class Leak(Channel):
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
-       :widths: 30 15 55
+       :widths: 25 15 50 10
        :header-rows: 1
 
        * - Name
          - Default
          - Description
+         - Unit
        * - ``Leak_gLeak``
          - 0.0003
-         - Leak conductance (S/cm²).
+         - Leak conductance.
+         - (S/cm²)
        * - ``Leak_eLeak``
          - -54.3
-         - Leak reversal potential (mV).
+         - Leak reversal potential.
+         - mV
        * - ``Leak_tadj``
          - 1.0
          - Temperature adjustment factor (Q10 scaling).
+         - 1
        * - ``temperature``
          - 37.0
-         - Absolute temperature in degrees Celsius.
+         - Absolute temperature.
+         - °C
 
     This channel has no internal states.
     """

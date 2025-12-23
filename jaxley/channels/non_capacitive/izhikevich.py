@@ -13,10 +13,52 @@ from jaxley.solver_gate import exponential_euler
 
 
 class Izhikevich(Channel):
-    """Izhikevich neuron model."""
+    """Izhikevich neuron model.
+    
+    The following parameters are registered in ``channel_params``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``a``
+         - 0.02
+         - Time scale of the recovery variable ``u``.
+         - 1/ms
+       * - ``b``
+         - 0.2
+         - Sensitivity of the recovery variable ``u`` to the membrane potential ``v``.
+         - 1/ms
+       * - ``c``
+         - -65.0
+         - After-spike reset value of the membrane potential ``v``.
+         - mV
+       * - ``d``
+         - 8
+         - After-spike increment of the recovery variable ``u``.
+         - mV/ms
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``u``
+         - 0.02
+         - Recovery variable.
+         - mV/ms
+    """
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self.name}_a": 0.02,

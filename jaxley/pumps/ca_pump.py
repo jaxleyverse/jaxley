@@ -9,7 +9,54 @@ from jaxley.pumps.pump import Pump
 
 
 class CaPump(Pump):
-    """Calcium dynamics based on Destexhe et al. 1994."""
+    """Calcium dynamics based on Destexhe et al. 1994.
+    
+    The following parameters are registered in ``channel_params``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``CaPump_gamma``
+         - 0.05
+         - Fraction of free calcium (not buffered).
+         - 1
+       * - ``CaPump_decay``
+         - 80.0
+         - Buffering time constant.
+         - ms
+       * - ``CaPump_depth``
+         - 0.1
+         - Depth of shell.
+         - um
+       * - ``CaPump_minCaCon_i``
+         - 1e-4
+         - Minimum intracellular concentration.
+         - mM
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``i_Ca``
+         - 1e-8
+         - The calcium current.
+         - mA/cm²
+       * - ``CaCon_i``
+         - 5e-5
+         - The intracellular calcium concentration.
+         - mM
+    """
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)

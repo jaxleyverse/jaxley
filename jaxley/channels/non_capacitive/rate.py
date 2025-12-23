@@ -11,10 +11,27 @@ from jaxley.solver_gate import exponential_euler
 
 
 class Rate(Channel):
-    """Rate-based, unit-less, neuron model."""
+    """Rate-based, unit-less, neuron model.
+    
+    The following parameters are registered in ``channel_params``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``tau``
+         - 1
+         - Time constant of the neuron (unitless).
+         - 1
+
+    The channel has no internal states.
+    """
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {f"{self.name}_tau": 1.0}
         self.channel_states = {}

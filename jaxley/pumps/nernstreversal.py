@@ -10,7 +10,33 @@ from jaxley.pumps import Pump
 
 
 class CaNernstReversal(Pump):
-    """Compute Calcium reversal from inner and outer concentration of calcium."""
+    """Compute Calcium reversal from inner and outer concentration of calcium.
+    
+    This Pump has no additional parameters.
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``eCa``
+         - 0.0
+         - The reversal potential of calcium.
+         - mV
+       * - ``CaCon_i``
+         - 5e-5
+         - The intracellular calcium concentration.
+         - mM
+       * - ``CaCon_e``
+         - 2.0
+         - The extracellular calcium concentration.
+         - mM
+    """
 
     def __init__(
         self,
