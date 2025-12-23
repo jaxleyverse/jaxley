@@ -110,7 +110,7 @@ def test_jit_and_grad_network():
     # Define parameter transform and apply it to the parameters.
     transform = jx.ParamTransform(
         [
-            {"Leak_gLeak": jt.SigmoidTransform(0.00001, 0.0002)},
+            {"Leak_gLeak": jt.SigmoidTransform(0.00001, 0.0005)},
             {"v": jt.SigmoidTransform(-100, -30)},
         ]
     )
