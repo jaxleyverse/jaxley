@@ -12,7 +12,7 @@ from jaxley.solver_gate import exponential_euler
 
 class Rate(Channel):
     """Rate-based, unit-less, neuron model.
-    
+
     The following parameters are registered in ``channel_params``:
 
     .. list-table::
