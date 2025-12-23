@@ -37,7 +37,9 @@ class ConductanceSynapse(Synapse):
         - ``delta``: The inverse of the slope of the activation :math:`\Delta` (mV).
 
     The inserted cellular parameters are:
-        - ``e_syn``: The synaptic reversal potential :math:`E` (mV).
+        - ``e_syn``: The synaptic reversal potential :math:`E` (mV). This synapse uses
+          the pre-synaptic reveral potential to compute the current, thereby directly
+          enforcing Dale's law.
 
     The synaptic state is:
         - ``s``: the activity level of the synapse :math:`\in [0, 1]`.
@@ -144,4 +146,4 @@ class ConductanceSynapse(Synapse):
             / synapse_params[f"{prefix}_delta"]
         )
         g_syn = synapse_params[f"{prefix}_gS"] * activation
-        return g_syn * (post_voltage - post_params[f"{prefix}_e_syn"])
+        return g_syn * (post_voltage - pre_params[f"{prefix}_e_syn"])
