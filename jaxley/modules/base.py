@@ -2326,7 +2326,7 @@ class Module(ABC):
             )
 
             init_state = channel.init_state(
-                channel_states, voltages, channel_params, delta_t
+                channel_states, channel_params, voltages, delta_t
             )
 
             # `init_state` might not return all channel states. Only the ones that are
@@ -2366,7 +2366,9 @@ class Module(ABC):
                 params, channel_param_names, channel_indices
             )
 
-            init_params = channel.init_params(channel_states, voltages, channel_params)
+            init_params = channel.init_params(
+                channel_states, channel_params, voltages, delta_t=0.025
+            )
 
             # `init_params` might not return all channel states. Only the ones that are
             # returned are updated here.
@@ -3229,8 +3231,8 @@ class Module(ABC):
                 states, channel_state_names, channel_indices
             )
 
-            states_updated = vmap(channel.update_states, in_axes=[0, None, 0, 0])(
-                channel_states, delta_t, voltages[channel_indices], channel_params
+            states_updated = vmap(channel.update_states, in_axes=[0, 0, 0, None])(
+                channel_states, channel_params, voltages[channel_indices], delta_t
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
@@ -3338,9 +3340,9 @@ class Module(ABC):
         v_and_perturbed = jnp.stack(
             [modified_state[indices], modified_state[indices] + diff]
         )
-        comp_cur_fn = vmap(channel.compute_current, in_axes=(0, 0, 0))
-        membrane_currents = vmap(comp_cur_fn, in_axes=(None, 0, None))(
-            channel_states, v_and_perturbed, channel_params
+        comp_cur_fn = vmap(channel.compute_current, in_axes=(0, 0, 0, None))
+        membrane_currents = vmap(comp_cur_fn, in_axes=(None, None, 0, None))(
+            channel_states, channel_params, v_and_perturbed, delta_t
         )
         voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
         constant_term = membrane_currents[0] - voltage_term * modified_state[indices]

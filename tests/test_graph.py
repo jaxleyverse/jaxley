@@ -17,11 +17,11 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import pytest
+from jaxley_mech.channels.pospischil import K, Leak, Na
 
 import jaxley as jx
 from jaxley import connect
 from jaxley.channels import HH
-from jaxley.channels.pospischil import K, Leak, Na
 from jaxley.io.graph import (
     _add_missing_graph_attrs,
     build_compartment_graph,

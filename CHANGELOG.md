@@ -1,5 +1,10 @@
 # 1.0.0 (pre-release)
 
+⚠️ Version `1.0.0` makes multiple changes which might brake your code when upgrading. 
+Please read
+[this how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/upgrade_to_v1.html)
+on how to upgrade to version `1.0.0`.
+
 ### 🧩 New features
 
 - A larger and more flexible set of synapse dynamics (#748, @michaeldeistler):
@@ -55,14 +60,44 @@ pre_params: dict[str, Array],
 post_params: dict[str, Array],
 delta_t: float,
 ```
+- Channels have a new API (#766, @michaeldeistler). The `update_states` method and the
+`compute_current` method should both receive all of the following arguments, in that
+order:
+```python
+self,
+channel_states: dict[str, Array],
+channel_params: dict[str, Array],
+voltage: Array,
+delta_t: float,
+```
+- The default `Na`, `K`, and `Leak` channels have been changed (#766,
+@michaeldeistler). To recover the old channels, do:
+```text
+pip install jaxley-mech
+```
+```python
+from jaxley_mech.channels.pospischil import Na, K, Leak
+```
+- All Pospischil type channels have been moved to the `jaxley-mech` repository (#766,
+@michaeldeistler). To get access to these channels, do:
+```text
+pip install jaxley-mech
+```
+```python
+from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
+```
 - `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
+- Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
+@michaeldeistler)
 
 ### 📚 Documentation
 
+- How-to guide on upgrading to version `1.0` (#766, @michaeldeistler)
 - New tutorial added for simple SNNs (#735, @alexpejovic)
 - Improved documentation for synapses (#748, @michaeldeistler)
 - How-to guide on connecting synapses to pre-defined spike trains (#764,
 @michaeldeistler)
+- Improved documentation for channels (#766, @michaeldeistler)
 
 
 # 0.13.0

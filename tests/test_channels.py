@@ -12,22 +12,11 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.pospischil import CaL, CaT, K, Km, Leak, Na
 
 import jaxley as jx
-from jaxley.channels import (
-    HH,
-    CaL,
-    CaT,
-    Channel,
-    Fire,
-    Izhikevich,
-    K,
-    Km,
-    Leak,
-    Na,
-    Rate,
-)
-from jaxley.solver_gate import exponential_euler, save_exp, solve_inf_gate_exponential
+from jaxley.channels import HH, Channel, Fire, Izhikevich, Rate
+from jaxley.solver_gate import exponential_euler, save_exp
 
 
 class CaPump(Channel):
@@ -54,11 +43,17 @@ class CaPump(Channel):
             "mechanism": "Calcium dynamics",
         }
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        ica = u["i_Ca"] / 1_000.0
-        cai = u["CaCon_i"]
+        ica = states["i_Ca"] / 1_000.0
+        cai = states["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
         depth = params[f"{prefix}_depth"]
@@ -71,15 +66,27 @@ class CaPump(Channel):
 
         cai_tau = decay
         cai_inf = minCai + decay * drive_channel
-        new_cai = exponential_euler(cai, dt, cai_inf, cai_tau)
+        new_cai = exponential_euler(cai, delta_t, cai_inf, cai_tau)
 
         return {f"CaCon_i": new_cai}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -102,24 +109,42 @@ class CaNernstReversal(Channel):
         self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update internal calcium concentration based on calcium current and decay."""
         R, T, F = (
             self.channel_constants["R"],
             self.channel_constants["T"],
             self.channel_constants["F"],
         )
-        Cai = u["CaCon_i"]
-        Cao = u["CaCon_e"]
+        Cai = states["CaCon_i"]
+        Cao = states["CaCon_e"]
         C = R * T / (2 * F) * 1000  # mV
         vCa = C * jnp.log(Cao / Cai)
         return {"eCa": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -252,9 +277,9 @@ class KCA11(Channel):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update state."""
         prefix = self._name
@@ -263,24 +288,36 @@ class KCA11(Channel):
             (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
         )
         cai = states["CaCon_i"]
-        new_m = solve_inf_gate_exponential(m, dt, *self.m_gate(v, cai, q10))
+        new_m = exponential_euler(m, delta_t, *self.m_gate(voltage, cai, q10))
         return {f"{prefix}_m": new_m}
 
-    def compute_current(self, states: dict[str, Array], v, params: dict[str, Array]):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Return current."""
         prefix = self._name
         m = states[f"{prefix}_m"]
         g = 0.03 * m * 1000  # mS/cm^2
-        return g * (v + 80.0)
+        return g * (voltage + 80.0)
 
-    def init_state(self, states, v, params, dt):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         q10 = params[f"{prefix}_q10_ch"] ** (
             (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
         )
         cai = states["CaCon_i"]
-        m_inf, _ = self.m_gate(v, cai, q10)
+        m_inf, _ = self.m_gate(voltage, cai, q10)
         return {f"{prefix}_m": m_inf}
 
     @staticmethod
@@ -334,13 +371,25 @@ def test_multiple_channel_currents(SimpleCell):
             self.channel_states = {"cumulative": 0.0}
             self.current_name = f"i_User"
 
-        def update_states(self, states, dt, v, params):
+        def update_states(
+            self,
+            states: dict[str, Array],
+            params: dict[str, Array],
+            voltage: Array,
+            delta_t: float,
+        ):
             state = states["cumulative"]
             state += states["i_Dummy"] * 0.001
             return {"cumulative": state}
 
-        def compute_current(self, states, v, params):
-            return 0.01 * jnp.ones_like(v)
+        def compute_current(
+            self,
+            states: dict[str, Array],
+            params: dict[str, Array],
+            voltage: Array,
+            delta_t: float,
+        ):
+            return 0.01 * jnp.ones_like(voltage)
 
     class Dummy1(Channel):
         def __init__(self, name: Optional[str] = None):
@@ -350,11 +399,23 @@ def test_multiple_channel_currents(SimpleCell):
             self.channel_states = {}
             self.current_name = f"i_Dummy"
 
-        def update_states(self, states, dt, v, params):
+        def update_states(
+            self,
+            states: dict[str, Array],
+            params: dict[str, Array],
+            voltage: Array,
+            delta_t: float,
+        ):
             return {}
 
-        def compute_current(self, states, v, params):
-            return 0.01 * jnp.ones_like(v)
+        def compute_current(
+            self,
+            states: dict[str, Array],
+            params: dict[str, Array],
+            voltage: Array,
+            delta_t: float,
+        ):
+            return 0.01 * jnp.ones_like(voltage)
 
     class Dummy2(Channel):
         def __init__(self, name: Optional[str] = None):
@@ -364,11 +425,23 @@ def test_multiple_channel_currents(SimpleCell):
             self.channel_states = {}
             self.current_name = f"i_Dummy"
 
-        def update_states(self, states, dt, v, params):
+        def update_states(
+            self,
+            states: dict[str, Array],
+            params: dict[str, Array],
+            voltage: Array,
+            delta_t: float,
+        ):
             return {}
 
-        def compute_current(self, states, v, params):
-            return 0.01 * jnp.ones_like(v)
+        def compute_current(
+            self,
+            states: dict[str, Array],
+            params: dict[str, Array],
+            voltage: Array,
+            delta_t: float,
+        ):
+            return 0.01 * jnp.ones_like(voltage)
 
     dt = 0.025  # ms
     t_max = 5.0  # ms

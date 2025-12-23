@@ -4,6 +4,7 @@
 from typing import Optional
 
 import jax.numpy as jnp
+from jax import Array
 
 from jaxley.channels import Channel
 from jaxley.solver_gate import heaviside
@@ -22,28 +23,81 @@ class Fire(Channel):
     use of the ``heaviside`` function in ``update_states()``. This allows the user
     to perform gradient descent on networks using this channel despite the ``Fire``
     mechanism being non-differentiable.
+
+    The following parameters are registered in ``channel_params``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``Fire_vth``
+         - -50.0
+         - Threshold for firing.
+         - mV
+       * - ``Fire_vreset``
+         - -70.0
+         - The reset for the voltage after a spike.
+         - mV
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``Fire_spikes``
+         - False
+         - Whether or not a spike occured.
+         - 1
     """
 
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {f"{self.name}_vth": -50, f"{self.name}_vreset": -70}
         self.channel_states = {f"{self.name}_spikes": False}
         self.current_name = f"{self.name}_fire"
 
-    def update_states(self, states, dt, v, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Reset the voltage when a spike occurs and log the spike"""
         prefix = self._name
         vreset = params[f"{prefix}_vreset"]
         vth = params[f"{prefix}_vth"]
 
-        spike_occurred = heaviside(v - vth)
-        v = (v * (1 - heaviside(v - vth))) + (vreset * heaviside(v - vth))
+        spike_occurred = heaviside(voltage - vth)
+        voltage = (voltage * (1 - heaviside(voltage - vth))) + (
+            vreset * heaviside(voltage - vth)
+        )
 
-        return {"v": v, f"{self.name}_spikes": spike_occurred}
+        return {"v": voltage, f"{self.name}_spikes": spike_occurred}
 
-    def compute_current(self, states, v, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return 0
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         return {}
