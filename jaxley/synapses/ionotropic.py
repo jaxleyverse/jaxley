@@ -112,4 +112,4 @@ class IonotropicSynapse(Synapse):
     ) -> float:
         prefix = self._name
         g_syn = synapse_params[f"{prefix}_gS"] * synapse_states[f"{prefix}_s"]
-        return g_syn * (post_voltage - post_params[f"{prefix}_e_syn"])
+        return g_syn * (post_voltage - pre_params[f"{prefix}_e_syn"])
