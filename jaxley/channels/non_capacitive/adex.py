@@ -53,7 +53,6 @@ class AdEx(Channel):
     """
 
     def __init__(self, name: Optional[str] = None, surrogate_warning=True):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
 
         prefix = self._name
@@ -94,7 +93,11 @@ class AdEx(Channel):
             )
 
     def update_states(
-        self, states: dict[str, Array], dt: float, v: Array, params: dict[str, Array]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ) -> dict[str, Array]:
         """
         Update adaptation variable, integrate voltage, and handle spike reset.
@@ -104,9 +107,9 @@ class AdEx(Channel):
 
         Args:
             states: Current state dictionary
-            dt: Time step (ms)
-            v: Membrane potential (mV)
             params: Parameter dictionary
+            voltage: Membrane potential (mV)
+            delta_t: Time step (ms)
 
         Returns:
             Dictionary with updated states: v, w, spikes
@@ -130,36 +133,40 @@ class AdEx(Channel):
         w = states[f"{prefix}_w"]
 
         # Update adaptation variable with exponential Euler
-        w = exponential_euler(w, dt, a * (v - E_L), tau_w)
+        w = exponential_euler(w, delta_t, a * (voltage - E_L), tau_w)
 
         # Leak current
-        i_leak = g_L * (v - E_L)
+        i_leak = g_L * (voltage - E_L)
 
         # Exponential spike current (clamped to prevent overflow)
-        exp_arg = (v - v_T) / delta_T
+        exp_arg = (voltage - v_T) / delta_T
         exp_arg = jnp.minimum(exp_arg, 10.0)  # Clamp at exp(10) ≈ 22000
         i_exp = g_L * delta_T * save_exp(exp_arg)
 
         # Total derivative
         dv = (-i_leak + i_exp - w) / C_m
         # Forward Euler
-        v = v + dt * dv
+        voltage = voltage + delta_t * dv
 
         # Check for spike and reset
         spike_occurred = (
-            v >= v_threshold
+            voltage >= v_threshold
         )  # ToDo: replace this with heaviside function in v1.0.0
-        v = jax.lax.select(spike_occurred, v_reset, v)
+        voltage = jax.lax.select(spike_occurred, v_reset, voltage)
         w = jax.lax.select(spike_occurred, w + b, w)
 
         return {
-            "v": v,
+            "v": voltage,
             f"{prefix}_w": w,
             f"{prefix}_spikes": spike_occurred.astype(jnp.float32),
         }
 
     def compute_current(
-        self, states: dict[str, Array], v: Array, params: dict[str, Array]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ) -> Array:
         """
         Return zero current since all dynamics are handled in update_states.
@@ -172,8 +179,8 @@ class AdEx(Channel):
     def init_state(
         self,
         states: dict[str, Array],
-        v: Array,
         params: dict[str, Array],
+        voltage: Array,
         delta_t: float,
     ) -> dict[str, Array]:
         """ """

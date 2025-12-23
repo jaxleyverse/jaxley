@@ -140,7 +140,8 @@ class ConductanceSynapse(Synapse):
     ) -> float:
         prefix = self._name
         activation = self.nonlinearity(
-            (pre_voltage - synapse_params[f"{prefix}_v_th"]) / synapse_params[f"{prefix}_delta"]
+            (pre_voltage - synapse_params[f"{prefix}_v_th"])
+            / synapse_params[f"{prefix}_delta"]
         )
         g_syn = synapse_params[f"{prefix}_gS"] * activation
         return g_syn * (post_voltage - post_params[f"{prefix}_e_syn"])

@@ -130,7 +130,8 @@ class CurrentSynapse(Synapse):
     ) -> float:
         prefix = self._name
         activation = self.nonlinearity(
-            (pre_voltage - synapse_params[f"{prefix}_v_th"]) / synapse_params[f"{prefix}_delta"]
+            (pre_voltage - synapse_params[f"{prefix}_v_th"])
+            / synapse_params[f"{prefix}_delta"]
         )
         current = -synapse_params[f"{prefix}_gS"] * activation
         return current

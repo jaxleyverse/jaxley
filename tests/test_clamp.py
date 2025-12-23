@@ -13,9 +13,10 @@ from typing import Optional
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jaxley_mech.channels.pospischil import CaL, CaT, Channel, K, Km, Leak, Na
 
 import jaxley as jx
-from jaxley.channels import HH, CaL, CaT, Channel, K, Km, Leak, Na
+from jaxley.channels import HH
 
 
 def test_clamp_pointneuron(SimpleComp):

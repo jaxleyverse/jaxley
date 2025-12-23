@@ -27,17 +27,27 @@ class Dummy1(Channel):
         self.channel_states = {"Dummy_s": 0.0}
         self.current_name = f"i_Dummy1"
 
-    @staticmethod
-    def update_states(u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update state."""
-        dummy_state = u["Dummy_s"]
+        dummy_state = states["Dummy_s"]
         print("dummy_state1", dummy_state)
         return {"Dummy_s": dummy_state + 0.01}
 
-    @staticmethod
-    def compute_current(u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Return current."""
-        return jnp.zeros_like(voltages)
+        return jnp.zeros_like(voltage)
 
 
 class Dummy2(Channel):
@@ -50,17 +60,27 @@ class Dummy2(Channel):
         self.channel_states = {"Dummy_s": 0.0}
         self.current_name = f"i_Dummy2"
 
-    @staticmethod
-    def update_states(u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update state."""
-        dummy_state = u["Dummy_s"]
+        dummy_state = states["Dummy_s"]
         print("dummy_state2", dummy_state)
         return {"Dummy_s": dummy_state + 0.01}
 
-    @staticmethod
-    def compute_current(u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Return current."""
-        return jnp.zeros_like(voltages)
+        return jnp.zeros_like(voltage)
 
 
 class CaHVA(Channel):
@@ -85,33 +105,43 @@ class CaHVA(Channel):
 
     def update_states(
         self,
-        u: dict[str, ArrayLike],
-        dt: float,
-        voltages: float,
+        states: dict[str, Array],
         params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update state of gating variables."""
         prefix = self._name
-        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        m_new = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
-        h_new = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
-        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": u["eCa"]}
+        ms, hs = states[f"{prefix}_m"], states[f"{prefix}_h"]
+        m_new = solve_gate_exponential(ms, delta_t, *self.m_gate(voltage))
+        h_new = solve_gate_exponential(hs, delta_t, *self.h_gate(voltage))
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": states["eCa"]}
 
     def compute_current(
-        self, u: dict[str, ArrayLike], voltages, params: dict[str, ArrayLike]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the channel."""
         prefix = self._name
-        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        ms, hs = states[f"{prefix}_m"], states[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCaHVA"] * (ms**2) * hs * 1000
-        current = ca_cond * (voltages - u["eCa"])
+        current = ca_cond * (voltage - states["eCa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(voltages)
-        alpha_h, beta_h = self.h_gate(voltages)
+        alpha_m, beta_m = self.m_gate(voltage)
+        alpha_h, beta_h = self.h_gate(voltage)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
@@ -156,11 +186,17 @@ class CaPump(Channel):
             "mechanism": "Calcium dynamics",
         }
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        ica = u["i_Ca"] / 1_000.0
-        cai = u["CaCon_i"]
+        ica = states["i_Ca"] / 1_000.0
+        cai = states["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
         depth = params[f"{prefix}_depth"]
@@ -173,15 +209,27 @@ class CaPump(Channel):
 
         cai_tau = decay
         cai_inf = minCai + decay * drive_channel
-        new_cai = exponential_euler(cai, dt, cai_inf, cai_tau)
+        new_cai = exponential_euler(cai, delta_t, cai_inf, cai_tau)
 
         return {f"CaCon_i": new_cai}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
