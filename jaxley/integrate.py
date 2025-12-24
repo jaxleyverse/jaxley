@@ -354,8 +354,7 @@ def integrate(
 
     assert module.initialized, "Module is not initialized, run `._initialize()`."
 
-    if not module.is_integratable:
-        module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+    module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
     # Initialize the external inputs and their indices.
     externals = module.externals.copy()

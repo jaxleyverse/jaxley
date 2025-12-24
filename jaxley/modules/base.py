@@ -1008,14 +1008,16 @@ class Module(ABC):
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
 
 
-        # Gather synaptic indicies
-        grouped_syns = self.base.edges.groupby("type", sort=False, group_keys=False)
-        self.pre_syn_inds = grouped_syns["pre_index"].apply(list)
-        self.post_syn_inds = grouped_syns["post_index"].apply(list)
-        self.synapse_names = list(grouped_syns.indices.keys())
+        if not self.is_integratable:
+            # Gather synaptic indicies
+            grouped_syns = self.base.edges.groupby("type", sort=False, group_keys=False)
+            self.pre_syn_inds = grouped_syns["pre_index"].apply(list)
+            self.post_syn_inds = grouped_syns["post_index"].apply(list)
+            self.synapse_names = list(grouped_syns.indices.keys())
 
-        # Show that .to_jax() has been run
+        # Show that synapses have been gathered
         self.is_integratable = True
+
 
     def show(
         self,
