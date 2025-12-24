@@ -123,6 +123,10 @@ class Network(Module):
         nbranchpoints = jnp.asarray([len(cell._par_inds) for cell in cells])
         self._cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
+        # List of pre- and post-synpatic indicies
+        self.pre_syn_inds: pd.Series | None = None
+        self.post_syn_inds: pd.Series | None = None
+
         # Channels.
         self._gather_channels_from_constituents(cells)
 
@@ -290,6 +294,9 @@ class Network(Module):
         voltages = states["v"]
 
         for i, synapse_type in enumerate(syn_channels):
+            assert (
+                self.synapse_names[i] == synapse_type._name
+            ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
 
@@ -352,6 +359,9 @@ class Network(Module):
         # offset.
         diff = 1e-3
         for i, synapse_type in enumerate(syn_channels):
+            assert (
+                self.synapse_names[i] == synapse_type._name
+            ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
 
@@ -363,8 +373,8 @@ class Network(Module):
                 synapse_states[s] = states[s]
 
             # Get pre and post indexes of the current synapse type.
-            pre_inds = self.pre_syn_inds
-            post_inds = self.post_syn_inds
+            pre_inds = np.asarray(self.pre_syn_inds[self.synapse_names[i]])
+            post_inds = np.asarray(self.post_syn_inds[self.synapse_names[i]])
 
             pre_states = {}
             post_states = {}

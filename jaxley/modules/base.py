@@ -984,9 +984,9 @@ class Module(ABC):
         they can be processed on GPU/TPU and such that the simulation can be
         differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
 
-        WARNING: if you call `.to_jax()` and make changes to the Module, you
-        be able to call `.integrate()` on the Module unless you call `.to_jax()`
-        again after making all your changes.
+        WARNING: after the first `.to_jax()` or `.integrate()` call on a Module,
+        every change to the Module will require another `.to_jax()` call in order
+        for the `.integrate()` function to work properly.
         """
         self.base.jaxnodes = {}
         for key, value in self.base.nodes.to_dict(orient="list").items():
@@ -1009,10 +1009,12 @@ class Module(ABC):
 
 
         # Gather synaptic indicies
-        grouped_syns = edges.groupby("type", sort=False, group_keys=False)
+        grouped_syns = self.base.edges.groupby("type", sort=False, group_keys=False)
         self.pre_syn_inds = grouped_syns["pre_index"].apply(list)
         self.post_syn_inds = grouped_syns["post_index"].apply(list)
+        self.synapse_names = list(grouped_syns.indices.keys())
 
+        # Show that .to_jax() has been run
         self.is_integratable = True
 
     def show(
