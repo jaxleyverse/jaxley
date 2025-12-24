@@ -3863,6 +3863,8 @@ class View(Module):
         # TODO FROM #447:
         self.debug_states = pointer.debug_states
 
+        self.is_integratable: bool = False
+
         if len(self.nodes) == 0:
             raise ValueError("Nothing in view. Check your indices.")
 
