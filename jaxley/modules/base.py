@@ -217,7 +217,7 @@ class Module(ABC):
         }
 
         # Checks if to_jax() has already been called on module
-        self.is_integratable: bool = False
+        self.has_gathered_synapses: bool = False
 
         # needs to be set at the end
         self.base: Module = self
@@ -1008,7 +1008,7 @@ class Module(ABC):
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
 
 
-        if not self.is_integratable:
+        if not self.has_gathered_synapses:
             # Gather synaptic indicies
             grouped_syns = self.base.edges.groupby("type", sort=False, group_keys=False)
             self.pre_syn_inds = grouped_syns["pre_index"].apply(list)
@@ -1016,7 +1016,7 @@ class Module(ABC):
             self.synapse_names = list(grouped_syns.indices.keys())
 
         # Show that synapses have been gathered
-        self.is_integratable = True
+        self.has_gathered_synapses = True
 
 
     def show(
