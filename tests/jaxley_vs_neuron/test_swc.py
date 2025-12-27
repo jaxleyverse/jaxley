@@ -79,6 +79,9 @@ def test_swc_voltages(file, SimpleMorphCell):
         max_branch_len=2_000.0,
         ignore_swc_tracing_interruptions=False,
     )
+    if file == "morph_variable_radiuses_within_branch.swc":
+        cell = jx.Branch([cell])
+        cell = jx.Cell([cell], [-1])
 
     pathlengths = []
     for branch in cell.branches:
@@ -155,5 +158,7 @@ def test_swc_voltages(file, SimpleMorphCell):
     voltages_neuron = np.asarray([voltage_recs[key] for key in voltage_recs])
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
+    print(f"Errors: {errors}")
+
     ###################### check ################
-    assert all(errors < 0.5), f"Error {np.max(errors)} > 0.5. Voltages do not match."
+    assert all(errors < 0.3), f"Error {np.max(errors)} > 0.3. Voltages do not match."

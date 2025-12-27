@@ -9,6 +9,7 @@ from typing import Optional
 import pytest
 
 import jaxley as jx
+from jaxley.io.tmp import build_compartment_graph, from_graph, read_swc, swc_to_nx
 from jaxley.synapses import IonotropicSynapse
 from tests.test_regression import generate_regression_report, load_json
 
@@ -184,6 +185,7 @@ def SimpleMorphCell():
                 backend=swc_backend,
                 ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
             )
+
         return deepcopy(cells[key]) if copy and not force_init else cells[key]
 
     yield get_or_build_cell
