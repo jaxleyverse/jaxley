@@ -266,13 +266,20 @@ def build_compartment_graph(
         swc_graph = to_swc_graph("path_to_swc.swc")
         comp_graph = build_compartment_graph(swc_graph, ncomp=1)
     """
-    swc_graph, branch_edge_indices, all_type_ids, soma_ignore_inds = _trace_branches(
+    (
+        swc_graph,
+        branch_edge_indices,
+        all_type_ids,
+        soma_ignore_inds,
+        single_point_soma,
+    ) = _trace_branches(
         swc_graph,
         root=root,
         max_len=max_len,
         ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
         relevant_type_ids=relevant_type_ids,
     )
+    # for node in swc_graph.nodes:
     comp_offset = 0
 
     # See docstring for why `comp_graph` a directed graph.
@@ -289,12 +296,15 @@ def build_compartment_graph(
         path_lens = np.cumsum(np.concatenate([[0], branch_edge_inds[:, 2]]))
 
         # [:, :2] because `branch_edge_inds` contains `(start_node, end_note, length)`.
-        branch_nodes = _branch_e2n(branch_edge_inds[:, :2])
+        swc_node_inds_in_branch = _branch_e2n(branch_edge_inds[:, :2])
 
         # `branch_data` is a pd.DataFrame which contains all SWC nodes of the current
         # branch.
-        branch_data = pd.DataFrame([swc_graph.nodes[i] for i in branch_nodes])
-        branch_data["node_index"] = branch_nodes
+        branch_data = pd.DataFrame(
+            [swc_graph.nodes[i] for i in swc_node_inds_in_branch]
+        )
+        branch_data["node_index"] = swc_node_inds_in_branch
+        branch_data["swc_index"] = swc_node_inds_in_branch
         branch_data["l"] = path_lens
 
         # errors="ignore" because user-defined graphs might not have the `p` attribute.
@@ -304,7 +314,8 @@ def build_compartment_graph(
         if branch_data.loc[0, "id"] != branch_data.loc[1, "id"]:
             branch_data.loc[0, ["r", "id"]] = branch_data.loc[1, ["r", "id"]]
 
-        xyzr = branch_data[["x", "y", "z", "r"]].to_numpy()
+        xyzr = branch_data[["x", "y", "z", "r", "swc_index"]].to_numpy()
+        branch_data = branch_data.drop(columns=["swc_index"])
 
         # `soma_ignore_inds` tracks all node indices which are part of a single-point-
         # soma or of a somatic branchpoint. In these cases, the somatic SWC node
@@ -416,7 +427,7 @@ def build_compartment_graph(
     # Here, we assume that the SWC file was all from a single neuron. However, this is
     # fine anyways because we assert that it is a tree.
     nx.set_node_attributes(comp_graph, 0, "cell_index")
-    return comp_graph
+    return comp_graph, single_point_soma
 
 
 def _trace_branches(
@@ -460,6 +471,7 @@ def _trace_branches(
 
     # Handle special case of a single soma node.
     soma_idxs = _get_soma_idxs(swc_graph)
+    single_point_soma = False
     if len(soma_idxs) == 1:
         soma = soma_idxs[0]
 
@@ -479,6 +491,7 @@ def _trace_branches(
         swc_graph = nx.relabel_nodes(swc_graph, {i: i + 1 for i in swc_graph.nodes})
         soma_ignore_inds.append(1)
         soma_ignore_inds.append(soma + 1)
+        single_point_soma = True
 
     undir_swc_graph = swc_graph.to_undirected()
 
@@ -585,7 +598,7 @@ def _trace_branches(
         for b in additional_branchpoints:
             undir_swc_graph.nodes[b]["type"] = "branchpoint"
 
-    return undir_swc_graph, branch_edges, type_inds, soma_ignore_inds
+    return undir_swc_graph, branch_edges, type_inds, soma_ignore_inds, single_point_soma
 
 
 def _split_branches(
@@ -931,6 +944,8 @@ def from_graph(
     assign_groups: bool = True,
     solve_root: Optional[int] = None,
     traverse_for_solve_order: bool = True,
+    num_swc_nodes: Optional[int] = None,
+    single_point_soma: bool = False,
 ):
     """Return a Jaxley module from a compartmentalized networkX graph.
 
@@ -951,6 +966,8 @@ def from_graph(
             is the case only if you exported a module to a `comp_graph` via `to_graph`,
             did not modify the graph, and now re-import it as a module with
             `from_graph`.
+        num_swc_nodes: The number of nodes (i.e., lines) in the SWC file. If passed,
+            we build a lookup table `swc_to_comp` as an attribute of `jx.Cell`.
 
     Return:
         A `jx.Module` representing the graph.
@@ -975,7 +992,18 @@ def from_graph(
 
     solve_graph = _remove_branch_points(comp_graph)
     solve_graph = _add_meta_data(solve_graph)
+
     module = _build_module(solve_graph, assign_groups=assign_groups)
+
+    if num_swc_nodes is not None:
+        swc_to_comp = -1 * np.ones(num_swc_nodes + 1).astype(int)
+        for node in solve_graph.nodes:
+            swc_ind = solve_graph.nodes[node]["xyzr"][:, -1].astype(int)
+            comp_ind = solve_graph.nodes[node]["comp_index"]
+            if single_point_soma:
+                swc_ind -= 1
+            swc_to_comp[swc_ind] = comp_ind
+        module.swc_to_comp = swc_to_comp
     return module
 
 
