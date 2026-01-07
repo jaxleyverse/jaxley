@@ -16,6 +16,7 @@ def read_swc(
     backend: str = "graph",
     ignore_swc_tracing_interruptions: bool = True,
     relevant_type_ids: Optional[List[int]] = None,
+    scale_factor: Optional[float] = None,
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
@@ -44,6 +45,39 @@ def read_swc(
 
     Returns:
         A `Cell` object."""
+    
+    if scale_factor is not None:
+        inp = fname
+        out = f"um_{fname}"
+        with open(inp, "r") as f:
+            lines = f.readlines()
+
+        out_lines = []
+        for line in lines:
+            if line.startswith("#") or not line.strip():
+                out_lines.append(line)
+                continue
+
+            parts = line.split()
+            # parts: [id, type, x, y, z, radius, parent]
+
+            # scale x, y, z, radius (indices 2–5)
+            for i in range(2, 6):
+                parts[i] = float(parts[i]) * scale_factor
+
+            # cap radius to minimum
+            parts[5] = max(parts[5], min_radius)
+
+            # back to strings
+            parts = [str(p) for p in parts]
+            out_lines.append(" ".join(parts) + "\n")
+
+        with open(out, "w") as f:
+            f.writelines(out_lines)
+
+        fname = out
+
+        print("Conversion to um finished.")
 
     if backend == "graph":
         swc_graph = to_swc_graph(fname)
