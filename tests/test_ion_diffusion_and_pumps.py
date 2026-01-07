@@ -14,9 +14,10 @@ import jax.numpy as jnp
 import numpy as np
 from jaxley_mech.channels.l5pc import CaHVA, CaLVA
 from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
+from jaxley_mech.channels.pospischil import K, Leak, Na
 
 import jaxley as jx
-from jaxley.channels import HH, K, Leak, Na
+from jaxley.channels import HH
 from jaxley.channels.channel import Channel
 from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump, Pump
 
@@ -46,9 +47,9 @@ class NaPump(Pump):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"NaCon_i": states["NaCon_i"], "i_Na": states["i_Na"]}
@@ -56,8 +57,9 @@ class NaPump(Pump):
     def compute_current(
         self,
         states: dict[str, Array],
-        modified_state,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -77,9 +79,9 @@ class NaPump(Pump):
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        modified_state: Array,
         delta_t: float,
     ):
         """Initialize states of channel."""
@@ -105,24 +107,42 @@ class NaNernstReversal(Channel):
         self.current_name = f"i_Na"
         self.META = {"ion": "Na"}
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Update internal calcium concentration based on calcium current and decay."""
         R, T, F = (
             self.channel_constants["R"],
             self.channel_constants["T"],
             self.channel_constants["F"],
         )
-        Nai = u["NaCon_i"]
-        Nao = u["NaCon_e"]
+        Nai = states["NaCon_i"]
+        Nao = states["NaCon_e"]
         C = R * T / (2 * F) * 1000  # mV
         vNa = C * jnp.log(Nao / Nai)
         return {"eNa": vNa, "NaCon_i": Nai, "NaCon_e": Nao}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -152,9 +172,9 @@ class CaPump2(Pump):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
@@ -162,8 +182,9 @@ class CaPump2(Pump):
     def compute_current(
         self,
         states: dict[str, Array],
-        modified_state,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -183,9 +204,9 @@ class CaPump2(Pump):
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        modified_state: Array,
         delta_t: float,
     ):
         """Initialize states of channel."""

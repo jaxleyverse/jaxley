@@ -50,7 +50,7 @@ def plot_graph(
                 # Single point somata are drawn as circles with appropriate radius.
                 circle = Circle(
                     (points[0, 0], points[1, 0]),
-                    radius=coords_of_branch[0, -1],
+                    radius=coords_of_branch[0, -2],
                     facecolor=color,
                     **kwargs,
                 )

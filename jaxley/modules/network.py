@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 import itertools
 from copy import deepcopy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 from warnings import warn
 
 import jax.numpy as jnp
@@ -308,16 +308,34 @@ class Network(Module):
             for s in synapse_state_names:
                 synapse_states[s] = states[s]
 
-            pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
-            post_inds = np.asarray(post_syn_inds[synapse_names[i]])
+            pre_indices = np.asarray(pre_syn_inds[synapse_names[i]])
+            post_indices = np.asarray(post_syn_inds[synapse_names[i]])
+
+            pre_states = {}
+            post_states = {}
+            for key in synapse_type.node_states:
+                pre_states[key] = states[key][pre_indices]
+                post_states[key] = states[key][post_indices]
+
+            pre_params = {}
+            post_params = {}
+            for key in synapse_type.node_params:
+                pre_params[key] = params[key][pre_indices]
+                post_params[key] = params[key][post_indices]
 
             # State updates.
-            states_updated = synapse_type.update_states(
+            states_updated = vmap(
+                synapse_type.update_states, in_axes=(0, 0, 0, 0, 0, 0, 0, 0, None)
+            )(
                 synapse_states,
-                delta_t,
-                voltages[pre_inds],
-                voltages[post_inds],
                 synapse_params,
+                states["v"][pre_indices],
+                states["v"][post_indices],
+                pre_states,
+                post_states,
+                pre_params,
+                post_params,
+                delta_t,
             )
 
             # Rebuild state.
@@ -364,6 +382,18 @@ class Network(Module):
             pre_inds = np.asarray(pre_syn_inds[synapse_names[i]])
             post_inds = np.asarray(post_syn_inds[synapse_names[i]])
 
+            pre_states = {}
+            post_states = {}
+            for key in synapse_type.node_states:
+                pre_states[key] = states[key][pre_inds]
+                post_states[key] = states[key][post_inds]
+
+            pre_params = {}
+            post_params = {}
+            for key in synapse_type.node_params:
+                pre_params[key] = params[key][pre_inds]
+                post_params[key] = params[key][post_inds]
+
             # Compute slope and offset of the current through every synapse.
             pre_v_and_perturbed = jnp.stack(
                 [voltages[pre_inds], voltages[pre_inds] + diff]
@@ -371,13 +401,21 @@ class Network(Module):
             post_v_and_perturbed = jnp.stack(
                 [voltages[post_inds], voltages[post_inds] + diff]
             )
+            comp_cur_fn = vmap(
+                synapse_type.compute_current, in_axes=(0, 0, 0, 0, 0, 0, 0, 0, None)
+            )
             synapse_currents = vmap(
-                synapse_type.compute_current, in_axes=(None, 0, 0, None)
+                comp_cur_fn, in_axes=(None, None, 0, 0, None, None, None, None, None)
             )(
                 synapse_states,
+                synapse_params,
                 pre_v_and_perturbed,
                 post_v_and_perturbed,
-                synapse_params,
+                pre_states,
+                post_states,
+                pre_params,
+                post_params,
+                delta_t,
             )
             synapse_currents_dist = convert_point_process_to_distributed(
                 synapse_currents, params["area"][post_inds]
@@ -595,6 +633,12 @@ class Network(Module):
         # Define new synapses. Each row is one synapse.
         pre_nodes = pd.DataFrame({"pre_index": pre_nodes.index})
         post_nodes = pd.DataFrame({"post_index": post_nodes.index})
+
+        for key, value in synapse_type.node_params.items():
+            self.base.nodes[key] = value
+        for key, value in synapse_type.node_states.items():
+            self.base.nodes[key] = value
+
         new_rows = pd.concat(
             [
                 global_edge_index,

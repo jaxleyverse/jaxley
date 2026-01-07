@@ -49,15 +49,12 @@ Channels
 
    jaxley.channels.Channel
    jaxley.channels.HH
-   jaxley.channels.Izhikevich
-   jaxley.channels.Rate
-   jaxley.channels.Fire
    jaxley.channels.Na
    jaxley.channels.K
    jaxley.channels.Leak
-   jaxley.channels.Km
-   jaxley.channels.CaL
-   jaxley.channels.CaT
+   jaxley.channels.Izhikevich
+   jaxley.channels.Rate
+   jaxley.channels.Fire
 
 
 Pumps
@@ -81,9 +78,12 @@ Synapses
    :nosignatures:
 
    jaxley.synapses.Synapse
+   jaxley.synapses.CurrentSynapse
+   jaxley.synapses.ConductanceSynapse
+   jaxley.synapses.DynamicSynapse
    jaxley.synapses.IonotropicSynapse
-   jaxley.synapses.TanhRateSynapse
-   jaxley.synapses.TanhConductanceSynapse
+   jaxley.synapses.SpikeSynapse
+   jaxley.synapses.AlphaSynapse
 
 
 Connectivity
@@ -128,3 +128,18 @@ Graph backend
    jaxley.io.graph.vis_compartment_graph
    jaxley.io.graph.from_graph
    jaxley.modules.base.to_graph
+
+
+Utilities
+---------
+
+.. autosummary::
+   :toctree: reference/_autosummary
+   :nosignatures:
+
+   jaxley.solver_gate.save_exp
+   jaxley.solver_gate.solve_gate_implicit
+   jaxley.solver_gate.solve_gate_exponential
+   jaxley.solver_gate.exponential_euler
+   jaxley.solver_gate.solve_inf_gate_exponential
+   jaxley.solver_gate.heaviside

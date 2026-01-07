@@ -88,8 +88,8 @@ def build_init_and_step_fn(
         params = cell.get_parameters()
 
         cell.to_jax()
-        rec_inds = cell.recordings.rec_index.to_numpy()
-        rec_states = cell.recordings.state.to_numpy()
+        rec_inds = cell.rec_info.rec_index.to_numpy()
+        rec_states = cell.rec_info.state.to_numpy()
         externals = cell.externals.copy()
         external_inds = cell.external_inds.copy()
 
@@ -372,10 +372,10 @@ def integrate(
     for key in externals.keys():
         externals[key] = externals[key].T  # Shape `(time, num_stimuli)`.
 
-    if module.recordings.empty:
+    if module.rec_info.empty:
         raise ValueError("No recordings are set. Please set them.")
-    rec_inds = module.recordings.rec_index.to_numpy()
-    rec_states = module.recordings.state.to_numpy()
+    rec_inds = module.rec_info.rec_index.to_numpy()
+    rec_states = module.rec_info.state.to_numpy()
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:

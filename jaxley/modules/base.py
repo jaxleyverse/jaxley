@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import functools
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
@@ -195,7 +195,7 @@ class Module(ABC):
         self.num_trainable_params: int = 0
 
         # For recordings.
-        self.recordings: pd.DataFrame = pd.DataFrame().from_dict({})
+        self.rec_info: pd.DataFrame = pd.DataFrame().from_dict({})
 
         # For stimuli or clamps.
         # E.g. `self.externals = {"v": zeros(1000,2), "i": ones(1000, 2)}`
@@ -1038,7 +1038,7 @@ class Module(ABC):
             sum([list(ch.channel_states) for ch in self.channels], []) if states else []
         )
 
-        if not param_names is None:
+        if param_names is not None:
             cols = (
                 inds + [c for c in cols if c in param_names]
                 if params
@@ -1359,7 +1359,7 @@ class Module(ABC):
 
         """
         assert len(self.base.externals) == 0, "No stimuli allowed!"
-        assert len(self.base.recordings) == 0, "No recordings allowed!"
+        assert len(self.base.rec_info) == 0, "No recordings allowed!"
         assert len(self.base.trainable_params) == 0, "No trainables allowed!"
 
         assert self.base._module_type != "network", "This is not allowed for networks."
@@ -1848,6 +1848,10 @@ class Module(ABC):
             for channel_params in channel.channel_params:
                 params[channel_params] = self.base.jaxnodes[channel_params]
 
+        for synapse in self.base.synapses:
+            for key in synapse.node_params:
+                params[key] = self.base.jaxnodes[key]
+
         for synapse_params in self.base.synapse_param_names:
             params[synapse_params] = self.base.jaxedges[synapse_params]
 
@@ -2183,6 +2187,9 @@ class Module(ABC):
         for channel in self.base.channels + self.base.pumps:
             for channel_states in channel.channel_states:
                 states[channel_states] = self.base.jaxnodes[channel_states]
+        for synapse in self.base.synapses:
+            for key in synapse.node_states:
+                states[key] = self.base.jaxnodes[key]
         for synapse_states in self.base.synapse_state_names:
             states[synapse_states] = self.base.jaxedges[synapse_states]
         return states
@@ -2319,12 +2326,53 @@ class Module(ABC):
             )
 
             init_state = channel.init_state(
-                channel_states, voltages, channel_params, delta_t
+                channel_states, channel_params, voltages, delta_t
             )
 
             # `init_state` might not return all channel states. Only the ones that are
             # returned are updated here.
             for key, val in init_state.items():
+                # Note that we are overriding `self.nodes` here, but `self.nodes` is
+                # not used above to actually compute the current states (so there are
+                # no issues with overriding states).
+                self.nodes.loc[channel_indices, key] = val
+
+    @only_allow_module
+    def init_params(self):
+        """Run `channel.init_params()` to initialize parameters."""
+        # Update states of the channels.
+        channel_nodes = self.base.nodes
+        states = self.base._get_states_from_nodes_and_edges()
+
+        # We do not use any `pstate` for initializing. In principle, we could change
+        # that by allowing an input `params` and `pstate` to this function.
+        # `voltage_solver` could also be `jax.sparse` here, because both of them
+        # build the channel parameters in the same way.
+        params = self.base.get_all_parameters([])
+
+        for channel in self.base.channels:
+            name = channel._name
+            channel_indices = channel_nodes.loc[channel_nodes[name]][
+                "global_comp_index"
+            ].to_numpy()
+            voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
+
+            channel_param_names = list(channel.channel_params.keys())
+            channel_state_names = list(channel.channel_states.keys())
+            channel_states = query_channel_states_and_params(
+                states, channel_state_names, channel_indices
+            )
+            channel_params = query_channel_states_and_params(
+                params, channel_param_names, channel_indices
+            )
+
+            init_params = channel.init_params(
+                channel_states, channel_params, voltages, delta_t=0.025
+            )
+
+            # `init_params` might not return all channel states. Only the ones that are
+            # returned are updated here.
+            for key, val in init_params.items():
                 # Note that we are overriding `self.nodes` here, but `self.nodes` is
                 # not used above to actually compute the current states (so there are
                 # no issues with overriding states).
@@ -2411,13 +2459,70 @@ class Module(ABC):
 
         new_recs = pd.DataFrame(in_view, columns=["rec_index"])
         new_recs["state"] = state
-        self.base.recordings = pd.concat([self.base.recordings, new_recs])
-        has_duplicates = self.base.recordings.duplicated()
-        self.base.recordings = self.base.recordings.loc[~has_duplicates]
+        self.base.rec_info = pd.concat([self.base.rec_info, new_recs])
+        has_duplicates = self.base.rec_info.duplicated()
+        self.base.rec_info = self.base.rec_info.loc[~has_duplicates]
+        self.base.rec_info = self.base.rec_info.reset_index(drop=True)
         if verbose:
             print(
-                f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
+                f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.recordings` for details."
             )
+
+    @only_allow_module
+    def write_recordings(self, recordings: Array):
+        """Write recordings returned by ``jx.integrate`` into the module.
+
+        After having run ``write_recordings()``, the recordings can be accesses via
+        ``module.recording()``.
+
+        Args:
+            recordings: An array of shape (N, T), where N is the number of recorded
+                states and T is time. N must match ``len(module.rec_indices)``.
+                This array is usually returned by ``jx.integrate()``.
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+
+            cell.record("v")
+            v = jx.integrate(cell, t_max=10.0)
+
+            cell.write_recordings(v)
+            cell.branch(0).comp(0).recording("v")
+
+        """
+        self.base._rec_array = recordings
+
+    def recording(self, state: str = "v"):
+        """Returns all available recordings in the viewed part of the module.
+
+        This function can only run after ``module.write_recordings()`` has been run.
+
+        Args:
+            recordings: The state that should be returned.
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+
+            cell.record("v")
+            v = jx.integrate(cell, t_max=10.0)
+
+            cell.write_recordings(v)
+            cell.branch(0).comp(0).recording("v")
+        """
+        # Query and return all recordings that were made for the nodes/edges in the
+        # `View` and that match the `state`.
+        rec_inds = self.rec_info.query(f"state in '{state}'").index.to_numpy()
+        return self.base._rec_array[rec_inds]
 
     def _update_view(self):
         """Update the attrs of the view after changes in the base module."""
@@ -2437,13 +2542,11 @@ class Module(ABC):
     def delete_recordings(self):
         """Removes all recordings from the module."""
         if isinstance(self, View):
-            base_recs = self.base.recordings
-            self.base.recordings = base_recs[
-                ~base_recs.isin(self.recordings).all(axis=1)
-            ]
+            base_recs = self.base.rec_info
+            self.base.rec_info = base_recs[~base_recs.isin(self.rec_info).all(axis=1)]
             self._update_view()
         else:
-            self.base.recordings = pd.DataFrame().from_dict({})
+            self.base.rec_info = pd.DataFrame().from_dict({})
 
     def stimulate(self, current: ArrayLike | None = None, verbose: bool = True):
         """Insert a stimulus into the compartment.
@@ -2915,7 +3018,7 @@ class Module(ABC):
                 state_vals["linear_terms"] += [ion_linear_term]
                 state_vals["constant_terms"] += [ion_const_term]
                 state_vals["axial_conductances"] += [
-                    params[f"axial_conductances"][ion_name]
+                    params["axial_conductances"][ion_name]
                 ]
 
         # Stack all states such that they can be handled by `vmap` in the solve.
@@ -3128,8 +3231,8 @@ class Module(ABC):
                 states, channel_state_names, channel_indices
             )
 
-            states_updated = channel.update_states(
-                channel_states, delta_t, voltages[channel_indices], channel_params
+            states_updated = vmap(channel.update_states, in_axes=[0, 0, 0, None])(
+                channel_states, channel_params, voltages[channel_indices], delta_t
             )
             # Rebuild state. This has to be done within the loop over channels to allow
             # multiple channels which modify the same state.
@@ -3237,8 +3340,9 @@ class Module(ABC):
         v_and_perturbed = jnp.stack(
             [modified_state[indices], modified_state[indices] + diff]
         )
-        membrane_currents = vmap(channel.compute_current, in_axes=(None, 0, None))(
-            channel_states, v_and_perturbed, channel_params
+        comp_cur_fn = vmap(channel.compute_current, in_axes=(0, 0, 0, None))
+        membrane_currents = vmap(comp_cur_fn, in_axes=(None, None, 0, None))(
+            channel_states, channel_params, v_and_perturbed, delta_t
         )
         voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
         constant_term = membrane_currents[0] - voltage_term * modified_state[indices]
@@ -3400,7 +3504,7 @@ class Module(ABC):
                     num_children_of_parent = num_children[parents[b]]
                     if num_children_of_parent > 1:
                         y_offset = (
-                            ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                            (index_of_child[b] / (num_children_of_parent - 1)) - 0.5
                         ) * y_offset_multiplier[levels[b]]
                     else:
                         y_offset = 0.0
@@ -3701,8 +3805,8 @@ class View(Module):
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)
 
-        ptr_recs = pointer.recordings
-        self.recordings = (
+        ptr_recs = pointer.rec_info
+        self.rec_info = (
             pd.DataFrame()
             if ptr_recs.empty
             else ptr_recs.loc[ptr_recs["rec_index"].isin(self._comps_in_view)]
@@ -4169,5 +4273,12 @@ def to_graph(
         if not syn_edges.empty:
             for (i, j), edge_data in syn_edges.iterrows():
                 module_graph.add_edge(i, j, **edge_data.to_dict())
+    else:
+        for s in module.synapses:
+            nodes = nodes.drop(c.name, axis=1)
+            # errors="ignore" because some channels might have the same parameter or
+            # state name (if the channels share parameters).
+            nodes = nodes.drop(list(s.node_params), axis=1, errors="ignore")
+            nodes = nodes.drop(list(s.node_states), axis=1, errors="ignore")
 
     return module_graph

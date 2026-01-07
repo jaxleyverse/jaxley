@@ -16,9 +16,10 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from jaxley_mech.channels.l5pc import *
+from jaxley_mech.channels.pospischil import K, Leak, Na
 
 import jaxley as jx
-from jaxley.channels import HH, K, Leak, Na
+from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
 

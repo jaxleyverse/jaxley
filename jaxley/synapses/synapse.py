@@ -20,6 +20,8 @@ class Synapse:
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
+        self.node_params = {}
+        self.node_states = {}
 
     @property
     def name(self) -> Optional[str]:
@@ -58,11 +60,16 @@ class Synapse:
         return self
 
     def update_states(
-        states: dict[str, Array],
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
         delta_t: float,
-        pre_voltage: ArrayLike,
-        post_voltage: ArrayLike,
-        params: dict[str, Array],
     ) -> dict[str, Array]:
         """ODE update step.
 
@@ -78,10 +85,15 @@ class Synapse:
         raise NotImplementedError
 
     def compute_current(
-        states: dict[str, Array],
-        pre_voltage: ArrayLike,
-        post_voltage: ArrayLike,
-        params: dict[str, Array],
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
     ) -> Array:
         """Return current through one synapse in `nA`.
 

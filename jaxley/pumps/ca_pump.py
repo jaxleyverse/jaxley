@@ -9,7 +9,54 @@ from jaxley.pumps.pump import Pump
 
 
 class CaPump(Pump):
-    """Calcium dynamics based on Destexhe et al. 1994."""
+    """Calcium dynamics based on Destexhe et al. 1994.
+
+    The following parameters are registered in ``channel_params``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``CaPump_gamma``
+         - 0.05
+         - Fraction of free calcium (not buffered).
+         - 1
+       * - ``CaPump_decay``
+         - 80.0
+         - Buffering time constant.
+         - ms
+       * - ``CaPump_depth``
+         - 0.1
+         - Depth of shell.
+         - um
+       * - ``CaPump_minCaCon_i``
+         - 1e-4
+         - Minimum intracellular concentration.
+         - mM
+
+    The following states are registered in ``channel_states``:
+
+    .. list-table::
+       :widths: 25 15 50 10
+       :header-rows: 1
+
+       * - Name
+         - Default
+         - Description
+         - Unit
+       * - ``i_Ca``
+         - 1e-8
+         - The calcium current.
+         - mA/cm²
+       * - ``CaCon_i``
+         - 5e-5
+         - The intracellular calcium concentration.
+         - mM
+    """
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
@@ -30,9 +77,9 @@ class CaPump(Pump):
     def update_states(
         self,
         states: dict[str, Array],
-        dt,
-        v,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Update states if necessary (but this pump has no states to update)."""
         return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
@@ -40,8 +87,9 @@ class CaPump(Pump):
     def compute_current(
         self,
         states: dict[str, Array],
-        modified_state,
         params: dict[str, Array],
+        modified_state: Array,
+        delta_t: float,
     ):
         """Return change of calcium concentration based on calcium current and decay."""
         prefix = self._name
@@ -73,9 +121,9 @@ class CaPump(Pump):
 
     def init_state(
         self,
-        states: dict[str, ArrayLike],
-        v: ArrayLike,
-        params: dict[str, ArrayLike],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
         delta_t: float,
     ):
         """Initialize states of channel."""

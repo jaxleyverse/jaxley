@@ -47,7 +47,8 @@ def read_swc(
 
     if backend == "graph":
         swc_graph = to_swc_graph(fname)
-        comp_graph = build_compartment_graph(
+        num_swc_nodes = len(swc_graph.nodes)
+        comp_graph, single_point_soma = build_compartment_graph(
             swc_graph,
             ncomp=ncomp,
             root=None,
@@ -61,6 +62,8 @@ def read_swc(
             assign_groups=assign_groups,
             solve_root=None,
             traverse_for_solve_order=True,  # Traverse to fix potential tracing errors.
+            num_swc_nodes=num_swc_nodes,
+            single_point_soma=single_point_soma,
         )
         return module
     else:

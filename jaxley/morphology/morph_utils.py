@@ -43,8 +43,8 @@ def morph_delete(module_view) -> "Cell":
     )
 
     # Assert that there are no recordings, stimuli, and trainables.
-    assert len(module_view.base.recordings) == 0, (
-        f"Found {len(module_view.base.recordings)} recordings. This is not "
+    assert len(module_view.base.rec_info) == 0, (
+        f"Found {len(module_view.base.rec_info)} recordings. This is not "
         f"supported. Please run `cell.delete_recordings()`."
     )
     assert len(module_view.base.externals) == 0, (
@@ -124,8 +124,8 @@ def morph_connect(module_view1, module_view2) -> "Cell":
 
     # Assert that there are no recordings, stimuli, and trainables.
     for view in [module_view1, module_view2]:
-        assert len(view.base.recordings) == 0, (
-            f"Found {len(view.base.recordings)} recordings. This is not "
+        assert len(view.base.rec_info) == 0, (
+            f"Found {len(view.base.rec_info)} recordings. This is not "
             f"supported. Please run `cell.delete_recordings()`."
         )
         assert len(view.base.externals) == 0, (

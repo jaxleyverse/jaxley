@@ -1,3 +1,105 @@
+# 1.0.0 (pre-release)
+
+⚠️ Version `1.0.0` makes multiple changes which might brake your code when upgrading. 
+Please read
+[this how-to guide](https://jaxley.readthedocs.io/en/latest/how_to_guide/upgrade_to_v1.html)
+on how to upgrade to version `1.0.0`.
+
+### 🧩 New features
+
+- A larger and more flexible set of synapse dynamics (#748, @michaeldeistler):
+```python
+from jaxley.synapses import CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse
+```
+- `Fire` channels now implement a surrogate gradient (#735, @alexpejovic)
+- New `SpikeSynapse` added, which detects `Fire` channel spikes (#735, @alexpejovic)
+- New `AlphaSynapse` added (#764, @michaeldeistler)
+- Channels can now have an `init_params` method. You can then initialize parameters
+depending on one another with:
+```python
+cell.init_params()
+```
+- Methods to simplify assigning recordings to their location in the cell or network
+(#750, @michaeldeistler):
+```python
+recs = jx.integrate(cell)
+cell.write_recordings(recs)
+print(cell.branch(0).comp(1).recording("v"))  # Only the recording in branch 0, comp 1.
+```
+- Synapses can now use the states and parameters of pre- and post-synaptic
+compartments (#765, @michaeldeistler)
+
+### API changes
+
+- Synapses now take different arguments in order to be able to fetch the pre-
+  and post-synaptic states of the network (#735, @alexpejovic)
+- Removed the `TanhConductanceSynapse` (#748, @michaeldeistler). Replace it with:
+```python
+import jax.numpy as jnp
+from jaxley.synapses import ConductanceSynapse
+connect(..., ConductanceSynapse(jnp.tanh))
+```
+- Removed the `TanhRateSynapse` (#748, @michaeldeistler). Replace it with:
+```python
+import jax.numpy as jnp
+from jaxley.synapses import CurrentSynapse
+connect(..., CurrentSynapse(jnp.tanh))
+```
+- Synapses have a new API (#765, @michaeldeistler). The `update_states` method and the
+`compute_current` method should both receive all of the following arguments, in that
+order:
+```python
+self,
+synapse_states: dict[str, Array],
+synapse_params: dict[str, Array],
+pre_voltage: Array,
+post_voltage: Array,
+pre_states: dict[str, Array],
+post_states: dict[str, Array],
+pre_params: dict[str, Array],
+post_params: dict[str, Array],
+delta_t: float,
+```
+- Channels have a new API (#766, @michaeldeistler). The `update_states` method and the
+`compute_current` method should both receive all of the following arguments, in that
+order:
+```python
+self,
+channel_states: dict[str, Array],
+channel_params: dict[str, Array],
+voltage: Array,
+delta_t: float,
+```
+- The default `Na`, `K`, and `Leak` channels have been changed (#766,
+@michaeldeistler). To recover the old channels, do:
+```text
+pip install jaxley-mech
+```
+```python
+from jaxley_mech.channels.pospischil import Na, K, Leak
+```
+- All Pospischil type channels have been moved to the `jaxley-mech` repository (#766,
+@michaeldeistler). To get access to these channels, do:
+```text
+pip install jaxley-mech
+```
+```python
+from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
+```
+- `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
+- Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
+@michaeldeistler)
+
+### 📚 Documentation
+
+- How-to guide on upgrading to version `1.0` (#766, @michaeldeistler)
+- New tutorial added for simple SNNs (#735, @alexpejovic)
+- Improved documentation for synapses (#748, @michaeldeistler)
+- How-to guide on connecting synapses to pre-defined spike trains (#764,
+@michaeldeistler)
+- Improved documentation for channels (#766, @michaeldeistler)
+
+
 # 0.13.0
 
 ### 🧩 New features

@@ -598,7 +598,7 @@ def test_view_equals_module(SimpleComp, SimpleBranch):
     assert (
         branch.comp(1).trainable_params == [] and branch.comp(0).trainable_params != []
     )
-    assert branch.comp(1).recordings.empty and not branch.comp(0).recordings.empty
+    assert branch.comp(1).rec_info.empty and not branch.comp(0).rec_info.empty
     assert branch.comp(1).externals == {} and branch.comp(0).externals != {}
 
     # convert to dict so order of cols and index dont matter for __eq__
@@ -606,7 +606,7 @@ def test_view_equals_module(SimpleComp, SimpleBranch):
 
     assert comp.trainable_params == branch.comp(0).trainable_params
     assert comp.indices_set_by_trainables == branch.comp(0).indices_set_by_trainables
-    assert np.all(comp.recordings == branch.comp(0).recordings)
+    assert np.all(comp.rec_info == branch.comp(0).rec_info)
     assert np.all(
         [
             np.all([np.all(v1 == v2), k1 == k2])
