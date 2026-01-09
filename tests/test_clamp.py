@@ -245,8 +245,6 @@ def test_multiple_data_clamps(SimpleNet):
     data_clamps = net.cell(0).data_clamp("cell1_m", m1, None)
     data_clamps = net.cell(1).data_clamp("cell2_m", m2, data_clamps)
     soln2 = jx.integrate(net, delta_t=0.1, data_clamps=data_clamps)
-    
+
     assert np.all(soln1 == 0.2)
     assert np.all(soln2 == 0.2)
-
-

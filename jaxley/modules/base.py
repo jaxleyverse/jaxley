@@ -2516,7 +2516,7 @@ class Module(ABC):
     def data_stimulate(
         self,
         current: ArrayLike,
-        data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+        data_stimuli: tuple[List, List, pd.DataFrame] | None = None,
         verbose: bool = False,
     ) -> tuple[Array, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
@@ -2559,7 +2559,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_external_input: tuple[ArrayLike, pd.DataFrame] | None,
+        data_external_input: tuple[List, List, pd.DataFrame] | None,
         view: pd.DataFrame,
         verbose: bool = False,
     ):
@@ -2589,7 +2589,7 @@ class Module(ABC):
         if data_external_input is not None:
             external_state_names = data_external_input[0]
             external_state_names.append(state_name)
-            external_input = data_external_input[1] 
+            external_input = data_external_input[1]
             external_input.append(state_array)
             inds = data_external_input[2]
         else:
