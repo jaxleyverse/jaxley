@@ -1,6 +1,6 @@
 ### 🐛 Bug fixes
 
-- Allow data_clamp to clamp multiple different states without silently only clamping the last state (# , @kyralianaka)
+- Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka)
 
 
 # 0.13.0
