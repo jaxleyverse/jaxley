@@ -218,12 +218,13 @@ def add_stimuli(
     if "i" in externals.keys() or data_stimuli is not None:
         if "i" in externals.keys():
             if data_stimuli is not None:
-                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
+                all_currents = jnp.concatenate(data_stimuli[1])
+                externals["i"] = jnp.concatenate([externals["i"], all_currents])
                 external_inds["i"] = jnp.concatenate(
                     [external_inds["i"], data_stimuli[2].index.to_numpy()]
                 )
         else:
-            externals["i"] = data_stimuli[1]
+            externals["i"] = jnp.concatenate(data_stimuli[1])
             external_inds["i"] = data_stimuli[2].index.to_numpy()
 
     return externals, external_inds
@@ -246,15 +247,16 @@ def add_clamps(
     """
     # If a clamp is inserted, add it to the external inputs.
     if data_clamps is not None:
-        state_name, clamps, inds = data_clamps
-        if state_name in externals.keys():
-            externals[state_name] = jnp.concatenate([externals[state_name], clamps])
-            external_inds[state_name] = jnp.concatenate(
-                [external_inds[state_name], inds.index.to_numpy()]
-            )
-        else:
-            externals[state_name] = clamps
-            external_inds[state_name] = inds.index.to_numpy()
+        state_names, clamps, inds = data_clamps
+        for name, clamp in zip(state_names, clamps):
+            if name in externals.keys():
+                externals[name] = jnp.concatenate([externals[name], clamp])
+                external_inds[name] = jnp.concatenate(
+                    [external_inds[name], inds.index.to_numpy()]
+                )
+            else:
+                externals[name] = clamp
+                external_inds[name] = inds.index.to_numpy()
 
     return externals, external_inds
 
