@@ -225,3 +225,28 @@ def test_data_clamp_and_clamp(SimpleComp):
 
     assert np.all(s[0, 1:] == -60.0)
     assert np.all(s[1, 1:] == -50.0)
+
+
+def test_multiple_data_clamps(SimpleNet):
+    """Test that data clamps can be added to different states."""
+    net = SimpleNet(2, 1, 1)
+    net.cell(0).insert(HH(name="cell1"))
+    net.cell(1).insert(HH(name="cell2"))
+
+    net.cell(0).record("cell1_m")
+
+    time = np.arange(200, step=0.1)
+    m1 = np.zeros_like(time) + 0.2
+    m2 = np.zeros_like(time) + 0.3
+
+    data_clamps = net.cell(0).data_clamp("cell1_m", m1, None)
+    soln1 = jx.integrate(net, delta_t=0.1, data_clamps=data_clamps)
+
+    data_clamps = net.cell(0).data_clamp("cell1_m", m1, None)
+    data_clamps = net.cell(1).data_clamp("cell2_m", m2, data_clamps)
+    soln2 = jx.integrate(net, delta_t=0.1, data_clamps=data_clamps)
+    
+    assert np.all(soln1 == 0.2)
+    assert np.all(soln2 == 0.2)
+
+
