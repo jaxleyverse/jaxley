@@ -218,14 +218,14 @@ def add_stimuli(
     if "i" in externals.keys() or data_stimuli is not None:
         if "i" in externals.keys():
             if data_stimuli is not None:
+                # Current stimuli can all be stacked because it's the same state var
                 all_currents = jnp.concatenate(data_stimuli[1])
                 externals["i"] = jnp.concatenate([externals["i"], all_currents])
-                external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[2].index.to_numpy()]
-                )
+                all_inds = jnp.concatenate(data_stimuli[2])
+                external_inds["i"] = jnp.concatenate([external_inds["i"], all_inds])
         else:
             externals["i"] = jnp.concatenate(data_stimuli[1])
-            external_inds["i"] = data_stimuli[2].index.to_numpy()
+            external_inds["i"] = jnp.concatenate(data_stimuli[2])
 
     return externals, external_inds
 
@@ -248,15 +248,13 @@ def add_clamps(
     # If a clamp is inserted, add it to the external inputs.
     if data_clamps is not None:
         state_names, clamps, inds = data_clamps
-        for name, clamp in zip(state_names, clamps):
+        for name, clamp, ind in zip(state_names, clamps, inds):
             if name in externals.keys():
                 externals[name] = jnp.concatenate([externals[name], clamp])
-                external_inds[name] = jnp.concatenate(
-                    [external_inds[name], inds.index.to_numpy()]
-                )
+                external_inds[name] = jnp.concatenate([external_inds[name], ind])
             else:
                 externals[name] = clamp
-                external_inds[name] = inds.index.to_numpy()
+                external_inds[name] = ind
 
     return externals, external_inds
 

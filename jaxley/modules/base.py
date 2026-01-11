@@ -2559,7 +2559,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_external_input: tuple[List, List, pd.DataFrame] | None,
+        data_external_input: tuple[List, List, List] | None,
         view: pd.DataFrame,
         verbose: bool = False,
     ):
@@ -2587,17 +2587,14 @@ class Module(ABC):
         ], "Number of comps and clamps do not match."
 
         if data_external_input is not None:
-            external_state_names = data_external_input[0]
+            external_state_names, external_input, inds = data_external_input
             external_state_names.append(state_name)
-            external_input = data_external_input[1]
             external_input.append(state_array)
-            inds = data_external_input[2]
+            inds.append(view.index.to_numpy())
         else:
             external_state_names = [state_name]
             external_input = [state_array]
-            inds = pd.DataFrame().from_dict({})
-
-        inds = pd.concat([inds, view])
+            inds = [view.index.to_numpy()]
 
         if verbose:
             if state_name == "i":
