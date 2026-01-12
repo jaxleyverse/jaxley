@@ -11,15 +11,17 @@ from jax.tree_util import tree_map, tree_map_with_path
 
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
-    """Remove the currents through channels and synapses from the states.
+    """Copies states without the currents through channels and synapses.
 
     Args:
         states: States (including currents) of the system.
         current_keys: The names of all channel currents.
     """
-    for key in current_keys:
-        del states[key]
-    return states
+    return {
+        key: states[key]
+        for key in states.keys()
+        if key not in current_keys
+    }
 
 
 def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Callable]:
