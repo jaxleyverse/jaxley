@@ -18,8 +18,8 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
         current_keys: The names of all channel currents.
     """
     return {
-        key: states[key]
-        for key in states.keys()
+        key: value
+        for key, value in states.items()
         if key not in current_keys
     }
 
