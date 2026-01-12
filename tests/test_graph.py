@@ -433,3 +433,36 @@ def test_trim_dendrites_of_swc():
     )
     v = jx.integrate(cell)
     assert np.invert(np.any(np.isnan(v))), "Found a NaN in the voltage."
+
+@pytest.mark.parametrize(
+    "file",
+    [
+        "morph_ca1_n120_single_point_soma.swc",
+        "morph_ca1_n120.swc",
+        "morph_l5pc_with_axon.swc",
+    ],
+)
+def test_from_graph_inhom_compartments(file):
+    """Check whether reconstructed compartments match original compartments."""
+
+    dirname = os.path.dirname(__file__)
+    fname = os.path.join(dirname, "swc_files", file)
+    cell = jx.read_swc(fname, ncomp=1)
+
+    comp_graph = to_graph(cell, channels=True, synapses=True)
+    reconstructed_cell = from_graph(comp_graph)
+    graph2 = to_graph(reconstructed_cell, channels=True, synapses=True)
+
+
+    def node_match(a, b):
+        for key in a.keys():
+            try :
+                if a[key] != b[key]:
+                    return False
+            except ValueError:
+                if (a[key]).all() != (b[key]).all():
+                    return False
+
+        return True
+
+    assert nx.is_isomorphic(comp_graph, graph2, node_match=node_match)
