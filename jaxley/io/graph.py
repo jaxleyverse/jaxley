@@ -1033,10 +1033,7 @@ def _build_module(
     parent_branch_inds = branch_edges_df.set_index("child_branch_index").sort_index()[
         "parent_branch_index"
     ]
-    assert np.std(node_df.groupby("branch_index").size().to_numpy()) < 1e-8, (
-        "`from_graph()` does not support a varying number of compartments in each "
-        "branch."
-    )
+
     for branch_inds in node_df.groupby("cell_index")["branch_index"].unique():
         root_branch_idx = branch_inds[0]
         parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
@@ -1109,12 +1106,15 @@ def _build_module_scaffold(
     comp = Compartment()
     build_cache["compartment"] = [comp]
 
-    if return_type in return_types[1:]:
-        ncomps = idxs["branch_index"].value_counts().iloc[0]
-        branch = Branch([comp for _ in range(ncomps)])
-        build_cache["branch"] = [branch]
+    if return_type == return_types[1]:
+        branches = []
+        # size per branch, ordered by branch_index (stable / deterministic)
+        counts_by_branch = idxs.groupby("branch_index").size().sort_index()
+        for _, ncomps in counts_by_branch.items():
+            branches.append(Branch([comp for _ in range(int(ncomps))]))
+        build_cache["branch"] = branches
 
-    if return_type in return_types[2:]:
+    elif return_type in return_types[2:]:
         branch_counter = 0
         for cell_id, cell_groups in idxs.groupby("cell_index"):
             num_branches = cell_groups["branch_index"].nunique()
@@ -1122,8 +1122,16 @@ def _build_module_scaffold(
             parents = (
                 default_parents if parent_branches is None else parent_branches[cell_id]
             )
+
+            branches = []
+            # size per branch, ordered by branch_index (stable / deterministic)
+            counts_by_branch = cell_groups.groupby("branch_index").size().sort_index()
+
+            for _, ncomps in counts_by_branch.items():
+                branches.append(Branch([comp for _ in range(int(ncomps))]))
+
             cell = Cell(
-                [branch] * num_branches,
+                branches,
                 parents,
                 xyzr=xyzr[branch_counter : branch_counter + num_branches],
             )
