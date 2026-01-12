@@ -17,11 +17,7 @@ def _remove_currents_from_states(states: dict[str, Array], current_keys: list[st
         states: States (including currents) of the system.
         current_keys: The names of all channel currents.
     """
-    return {
-        key: value
-        for key, value in states.items()
-        if key not in current_keys
-    }
+    return {key: value for key, value in states.items() if key not in current_keys}
 
 
 def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Callable]:
