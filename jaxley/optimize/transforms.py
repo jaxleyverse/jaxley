@@ -20,8 +20,22 @@ class Transform(ABC):
         pass
 
     @abstractmethod
-    def inverse(self, x: ArrayLike) -> Array:
+    def inverse(self, y: ArrayLike) -> Array:
         pass
+
+
+class IdentityTransform(Transform):
+    """Identity transformation."""
+
+    def __init__(self) -> None:
+        """This transform does nothing to its input."""
+        super().__init__()
+
+    def forward(self, x: ArrayLike) -> Array:
+        return x
+
+    def inverse(self, y: ArrayLike) -> Array:
+        return y
 
 
 class SigmoidTransform(Transform):
