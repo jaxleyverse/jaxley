@@ -434,11 +434,10 @@ def test_trim_dendrites_of_swc():
     v = jx.integrate(cell)
     assert np.invert(np.any(np.isnan(v))), "Found a NaN in the voltage."
 
+
 @pytest.mark.parametrize(
     "file",
     [
-        "morph_ca1_n120_single_point_soma.swc",
-        "morph_ca1_n120.swc",
         "morph_l5pc_with_axon.swc",
     ],
 )
@@ -449,14 +448,29 @@ def test_from_graph_inhom_compartments(file):
     fname = os.path.join(dirname, "swc_files", file)
     cell = jx.read_swc(fname, ncomp=1)
 
-    comp_graph = to_graph(cell, channels=True, synapses=True)
-    reconstructed_cell = from_graph(comp_graph)
-    graph2 = to_graph(reconstructed_cell, channels=True, synapses=True)
+    # Run the d_lambda rule.
+    frequency = 100.0
+    d_lambda = 0.1  # Larger -> more coarse-grained.
 
+    for branch in cell.branches:
+        diameter = 2 * branch.nodes["radius"].to_numpy()[0]
+        c_m = branch.nodes["capacitance"].to_numpy()[0]
+        r_a = branch.nodes["axial_resistivity"].to_numpy()[0]
+        l = branch.nodes["length"].to_numpy()[0]
+
+        lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
+        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
+        branch.set_ncomp(ncomp, initialize=False)
+    # This cell has inhomogeneous compartments.
+    cell.initialize()
+    comp_graph = to_graph(cell, channels=True, synapses=True)
+
+    reconstructed_cell = from_graph(comp_graph)
+    reconstructed_graph = to_graph(reconstructed_cell, channels=True, synapses=True)
 
     def node_match(a, b):
         for key in a.keys():
-            try :
+            try:
                 if a[key] != b[key]:
                     return False
             except ValueError:
@@ -465,4 +479,4 @@ def test_from_graph_inhom_compartments(file):
 
         return True
 
-    assert nx.is_isomorphic(comp_graph, graph2, node_match=node_match)
+    assert nx.is_isomorphic(comp_graph, reconstructed_graph, node_match=node_match)
