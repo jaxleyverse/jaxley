@@ -934,10 +934,6 @@ def from_graph(
 ):
     """Return a Jaxley module from a compartmentalized networkX graph.
 
-    This method is currently limited to graphs that have the same number of
-    compartments in each branch. If this is not the case then the method will raise
-    an `AssertionError`.
-
     Args:
         comp_graph: The compartment graph built with `build_compartment_graph()` or
             with `to_graph()`.
@@ -1033,10 +1029,7 @@ def _build_module(
     parent_branch_inds = branch_edges_df.set_index("child_branch_index").sort_index()[
         "parent_branch_index"
     ]
-    assert np.std(node_df.groupby("branch_index").size().to_numpy()) < 1e-8, (
-        "`from_graph()` does not support a varying number of compartments in each "
-        "branch."
-    )
+
     for branch_inds in node_df.groupby("cell_index")["branch_index"].unique():
         root_branch_idx = branch_inds[0]
         parents = parent_branch_inds.loc[branch_inds[1:]] - root_branch_idx
@@ -1122,11 +1115,28 @@ def _build_module_scaffold(
             parents = (
                 default_parents if parent_branches is None else parent_branches[cell_id]
             )
-            cell = Cell(
-                [branch] * num_branches,
-                parents,
-                xyzr=xyzr[branch_counter : branch_counter + num_branches],
-            )
+
+            # size per branch, ordered by branch_index (stable / deterministic)
+            counts_by_branch = cell_groups.groupby("branch_index").size().sort_index()
+
+            hom = np.all(counts_by_branch.values == counts_by_branch.values[0])
+            if hom:
+                cell = Cell(
+                    build_cache["branch"] * num_branches,
+                    parents,
+                    xyzr=xyzr[branch_counter : branch_counter + num_branches],
+                )
+            else:
+                branches = []
+                for _, ncomps in counts_by_branch.items():
+                    branches.append(Branch([comp for _ in range(int(ncomps))]))
+
+                cell = Cell(
+                    branches,
+                    parents,
+                    xyzr=xyzr[branch_counter : branch_counter + num_branches],
+                )
+
             build_cache["cell"].append(cell)
             branch_counter += num_branches
 
