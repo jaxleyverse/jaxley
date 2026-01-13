@@ -3,7 +3,7 @@
 ### 🧩 New features
 
 - Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
-
+- Add handling of inhomogeneous branches (#779,@NicolasRR)
 
 # 0.13.0
 

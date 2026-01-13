@@ -472,8 +472,14 @@ def test_from_graph_inhom_compartments(file):
         for key in a.keys():
             v1, v2 = a[key], b[key]
 
-            if not np.equal(v1, v2).all():
-                return False
+            if isinstance(v1, float) or (
+                isinstance(v1, np.ndarray) and np.issubdtype(v1.dtype, np.floating)
+            ):
+                if not np.isclose(v1, v2, atol=1e-5, equal_nan=True).all():
+                    return False
+            else:
+                if not np.equal(v1, v2).all():
+                    return False
 
         return True
 
