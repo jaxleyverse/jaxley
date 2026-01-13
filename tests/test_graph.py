@@ -438,7 +438,7 @@ def test_trim_dendrites_of_swc():
 @pytest.mark.parametrize(
     "file",
     [
-        "morph_l5pc_with_axon.swc",
+        "morph_ca1_n120_250.swc",
     ],
 )
 def test_from_graph_inhom_compartments(file):
@@ -470,12 +470,10 @@ def test_from_graph_inhom_compartments(file):
 
     def node_match(a, b):
         for key in a.keys():
-            try:
-                if a[key] != b[key]:
-                    return False
-            except ValueError:
-                if (a[key]).all() != (b[key]).all():
-                    return False
+            v1, v2 = a[key], b[key]
+
+            if not np.equal(v1, v2).all():
+                return False
 
         return True
 

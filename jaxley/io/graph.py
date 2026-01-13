@@ -1119,8 +1119,14 @@ def _build_module_scaffold(
             # size per branch, ordered by branch_index (stable / deterministic)
             counts_by_branch = cell_groups.groupby("branch_index").size().sort_index()
 
-            inhom = np.std(counts_by_branch.values) > 1e-8
-            if inhom:
+            hom = np.all(counts_by_branch.values == counts_by_branch.values[0])
+            if hom:
+                cell = Cell(
+                    build_cache["branch"] * num_branches,
+                    parents,
+                    xyzr=xyzr[branch_counter : branch_counter + num_branches],
+                )
+            else:
                 branches = []
                 for _, ncomps in counts_by_branch.items():
                     branches.append(Branch([comp for _ in range(int(ncomps))]))
@@ -1130,12 +1136,7 @@ def _build_module_scaffold(
                     parents,
                     xyzr=xyzr[branch_counter : branch_counter + num_branches],
                 )
-            else:
-                cell = Cell(
-                    build_cache["branch"] * num_branches,
-                    parents,
-                    xyzr=xyzr[branch_counter : branch_counter + num_branches],
-                )
+
             build_cache["cell"].append(cell)
             branch_counter += num_branches
 
