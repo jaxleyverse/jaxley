@@ -202,7 +202,7 @@ def build_init_and_step_fn(
 def add_stimuli(
     externals: dict,
     external_inds: dict,
-    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+    data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
 ) -> tuple[dict, dict]:
     """Extends the external inputs with the stimuli.
 
@@ -233,7 +233,7 @@ def add_stimuli(
 def add_clamps(
     externals: dict,
     external_inds: dict,
-    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
 ) -> tuple[dict, dict]:
     """Adds clamps to the external inputs.
 
@@ -264,8 +264,8 @@ def integrate(
     params: list[dict[str, Array]] = [],
     *,
     param_state: list[dict] | None = None,
-    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
-    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
+    data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
     t_max: float | None = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",

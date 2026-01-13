@@ -2516,7 +2516,7 @@ class Module(ABC):
     def data_stimulate(
         self,
         current: ArrayLike,
-        data_stimuli: tuple[List, List, pd.DataFrame] | None = None,
+        data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
         verbose: bool = False,
     ) -> tuple[Array, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
@@ -2534,7 +2534,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_clamps: tuple[List, List, pd.DataFrame] | None = None,
+        data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
         verbose: bool = False,
     ):
         """Insert a clamp into the module within jit (or grad).
@@ -2559,7 +2559,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_external_input: tuple[List, List, List] | None,
+        data_external_input: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None,
         view: pd.DataFrame,
         verbose: bool = False,
     ):
