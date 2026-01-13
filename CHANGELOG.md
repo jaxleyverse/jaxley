@@ -1,3 +1,10 @@
+# 0.14.0
+
+### 🧩 New features
+
+- Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
+
+
 # 0.13.0
 
 ### 🧩 New features
