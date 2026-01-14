@@ -11,7 +11,7 @@ from jax.tree_util import tree_map, tree_map_with_path
 
 
 def _remove_currents_from_states(states: dict[str, Array], current_keys: list[str]):
-    """Copies states without the currents through channels and synapses.
+    """Shallow copy of the states, excluding the currents through channels and synapses.
 
     Args:
         states: States (including currents) of the system.
