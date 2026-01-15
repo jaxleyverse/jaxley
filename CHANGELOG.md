@@ -4,6 +4,10 @@
 
 - Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
 
+### 🐛 Bug fixes
+
+- Fix issue where `build_dynamic_state_utils` `remove_observables` performed in-place deletions on full state dict (#775, @chaseking)
+
 
 # 0.13.0
 
