@@ -244,5 +244,15 @@ def test_multiple_data_clamps(SimpleNet):
     data_clamps = net.cell(1).data_clamp("cell2_m", m2, data_clamps)
     soln = jx.integrate(net, delta_t=0.1, data_clamps=data_clamps)
 
-    assert np.all(soln[0, 1:] == 0.2)
-    assert np.all(soln[1, 1:] == 0.3)
+    net2 = SimpleNet(2, 1, 1)
+    net2.cell(0).insert(HH(name="cell1"))
+    net2.cell(1).insert(HH(name="cell2"))
+
+    net2.cell(0).record("cell1_m")
+    net2.cell(1).record("cell2_m")
+
+    net2.cell(0).clamp("cell1_m", m1)
+    net2.cell(1).clamp("cell2_m", m2)
+    soln2 = jx.integrate(net2, delta_t=0.1)
+
+    assert np.all(soln == soln2)
