@@ -2516,7 +2516,7 @@ class Module(ABC):
     def data_stimulate(
         self,
         current: ArrayLike,
-        data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+        data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
         verbose: bool = False,
     ) -> tuple[Array, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
@@ -2534,7 +2534,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_clamps: tuple[ArrayLike, pd.DataFrame] | None = None,
+        data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
         verbose: bool = False,
     ):
         """Insert a clamp into the module within jit (or grad).
@@ -2559,7 +2559,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_external_input: tuple[ArrayLike, pd.DataFrame] | None,
+        data_external_input: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None,
         view: pd.DataFrame,
         verbose: bool = False,
     ):
@@ -2587,14 +2587,14 @@ class Module(ABC):
         ], "Number of comps and clamps do not match."
 
         if data_external_input is not None:
-            external_input = data_external_input[1]
-            external_input = jnp.concatenate([external_input, state_array])
-            inds = data_external_input[2]
+            external_state_names, external_input, inds = data_external_input
+            external_state_names.append(state_name)
+            external_input.append(state_array)
+            inds.append(view.index.to_numpy())
         else:
-            external_input = state_array
-            inds = pd.DataFrame().from_dict({})
-
-        inds = pd.concat([inds, view])
+            external_state_names = [state_name]
+            external_input = [state_array]
+            inds = [view.index.to_numpy()]
 
         if verbose:
             if state_name == "i":
@@ -2602,7 +2602,7 @@ class Module(ABC):
             else:
                 print(f"Added {len(view)} clamps.")
 
-        return (state_name, external_input, inds)
+        return (external_state_names, external_input, inds)
 
     def delete_stimuli(self):
         """Removes all stimuli from the module."""

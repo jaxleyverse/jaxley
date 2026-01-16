@@ -202,7 +202,7 @@ def build_init_and_step_fn(
 def add_stimuli(
     externals: dict,
     external_inds: dict,
-    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+    data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
 ) -> tuple[dict, dict]:
     """Extends the external inputs with the stimuli.
 
@@ -218,13 +218,14 @@ def add_stimuli(
     if "i" in externals.keys() or data_stimuli is not None:
         if "i" in externals.keys():
             if data_stimuli is not None:
-                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
-                external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[2].index.to_numpy()]
-                )
+                # Current stimuli can all be stacked because it's the same state var
+                all_currents = jnp.concatenate(data_stimuli[1])
+                externals["i"] = jnp.concatenate([externals["i"], all_currents])
+                all_inds = jnp.concatenate(data_stimuli[2])
+                external_inds["i"] = jnp.concatenate([external_inds["i"], all_inds])
         else:
-            externals["i"] = data_stimuli[1]
-            external_inds["i"] = data_stimuli[2].index.to_numpy()
+            externals["i"] = jnp.concatenate(data_stimuli[1])
+            external_inds["i"] = jnp.concatenate(data_stimuli[2])
 
     return externals, external_inds
 
@@ -232,7 +233,7 @@ def add_stimuli(
 def add_clamps(
     externals: dict,
     external_inds: dict,
-    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
 ) -> tuple[dict, dict]:
     """Adds clamps to the external inputs.
 
@@ -246,15 +247,14 @@ def add_clamps(
     """
     # If a clamp is inserted, add it to the external inputs.
     if data_clamps is not None:
-        state_name, clamps, inds = data_clamps
-        if state_name in externals.keys():
-            externals[state_name] = jnp.concatenate([externals[state_name], clamps])
-            external_inds[state_name] = jnp.concatenate(
-                [external_inds[state_name], inds.index.to_numpy()]
-            )
-        else:
-            externals[state_name] = clamps
-            external_inds[state_name] = inds.index.to_numpy()
+        state_names, clamps, inds = data_clamps
+        for name, clamp, ind in zip(state_names, clamps, inds):
+            if name in externals.keys():
+                externals[name] = jnp.concatenate([externals[name], clamp])
+                external_inds[name] = jnp.concatenate([external_inds[name], ind])
+            else:
+                externals[name] = clamp
+                external_inds[name] = ind
 
     return externals, external_inds
 
@@ -264,8 +264,8 @@ def integrate(
     params: list[dict[str, Array]] = [],
     *,
     param_state: list[dict] | None = None,
-    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
-    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
+    data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
     t_max: float | None = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
