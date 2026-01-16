@@ -68,6 +68,23 @@ def connect(
             IonotropicSynapse(),
         )
         print(net.edges)
+
+    Troubleshooting
+    ^^^^^^^^^^^^^^^
+
+    For large networks, using `connect()` might take a long time when selecting
+    a large amount of cells at once. When encountering this problem, one can
+    connect the network using functions not in the public Jaxley API.
+
+    Example 3: Connect N/2 nodes with another set of N/2 nodes.
+
+    ::
+        N = len(net.nodes)
+        pre_nodes = net.nodes.loc[range(N // 2)]
+        post_nodes = net.nodes.loc[range(N//2, N)]
+
+        net._append_multiple_synapses(pre_nodes, post_nodes, IonotropicSynapse())
+
     """
     assert is_same_network(
         pre, post
