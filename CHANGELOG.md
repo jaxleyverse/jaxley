@@ -3,7 +3,13 @@
 ### 🧩 New features
 
 - Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
-- Add handling of inhomogeneous branches (#779,@NicolasRR)
+- Add handling of inhomogeneous branches for import and export of morphologies. (#779,@NicolasRR)
+
+### 🐛 Bug fixes
+
+- Fix issue where `build_dynamic_state_utils` `remove_observables` performed in-place deletions on full state dict (#775, @chaseking)
+- Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka)
+
 
 # 0.13.0
 
