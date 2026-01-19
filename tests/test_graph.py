@@ -17,6 +17,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import pytest
+import numbers
 
 import jaxley as jx
 from jaxley import connect
@@ -472,9 +473,7 @@ def test_from_graph_inhom_compartments(file):
         for key in a.keys():
             v1, v2 = a[key], b[key]
 
-            if isinstance(v1, float) or (
-                isinstance(v1, np.ndarray) and np.issubdtype(v1.dtype, np.floating)
-            ):
+            if isinstance(v1, numbers.Number) :
                 if not np.isclose(v1, v2, atol=1e-5, equal_nan=True).all():
                     return False
             else:
