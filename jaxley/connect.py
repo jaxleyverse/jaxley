@@ -72,14 +72,23 @@ def connect(
     Troubleshooting
     ^^^^^^^^^^^^^^^
 
-    For large networks, using `connect()` might take a long time when selecting
+    For large networks, using ``connect()`` might take a long time when selecting
     a large amount of cells at once. When encountering this problem, one can
     connect the network using functions not in the public Jaxley API.
 
-    Example 3: Connect N/2 nodes with another set of N/2 nodes.
+    Below, we connect the first half of all compartments in a network to the
+    second half. Notice two things: First, we used the pandas function ``.loc`` on
+    ``.nodes`` directly, which is faster than the Jaxley method ``select`` (because
+    select builds a ``View`` of the net). We then use ``_append_multiple_synapses``
+    instead of ``connect`` to connect the synapses, since ``connect`` only accepts
+    ``View`` as input.
 
-    ::
-        N = len(net.nodes)
+
+    .. code-block:: python
+
+        cell = jx.Cell()
+        net = jx.Network([cell for _ in range(N)])
+
         pre_nodes = net.nodes.loc[range(N // 2)]
         post_nodes = net.nodes.loc[range(N//2, N)]
 
