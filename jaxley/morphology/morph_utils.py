@@ -14,7 +14,8 @@ def morph_delete(module_view) -> "Cell":
     This function can only delete entire branches. It does not support deleting
     compartments of a branch.
 
-    This function deletes all existing recordings, stimuli, and trainable parameters.
+    This function deletes all existing recordings, stimuli, trainable parameters, and
+    channels.
 
     Args:
         module_view: View of a `jx.Cell`. Defines the branches to be deleted.
@@ -89,7 +90,8 @@ def morph_connect(module_view1, module_view2) -> "Cell":
     Both morphologies must have the same number of compartments per branch in all
     branches.
 
-    This function deletes all existing recordings, stimuli, and trainable parameters.
+    This function deletes all existing recordings, stimuli, trainable parameters, and
+    channels.
 
     Args:
         module_view1: View of a ``jx.Cell()``. Must have been created with a
