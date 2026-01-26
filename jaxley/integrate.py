@@ -439,10 +439,8 @@ def integrate(
             nsteps_to_return <= length
         ), "The desired simulation duration is longer than `prod(nested_length)`."
         if externals:
-            dummy_external = jnp.zeros(
-                (size_difference, externals[example_key].shape[1])
-            )
             for key in externals.keys():
+                dummy_external = jnp.zeros((size_difference, externals[key].shape[1]))
                 externals[key] = jnp.concatenate([externals[key], dummy_external])
 
     # Record the initial state.
