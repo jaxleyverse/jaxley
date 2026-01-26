@@ -263,7 +263,7 @@ def test_multiple_data_clamps(SimpleNet):
 
 
 def test_checkpointing_multiple_clamps(SimpleNet):
-    """Test that checkpointing works with multiple data clamps of different shapes."""
+    """Test that checkpointing works with multiple clamps of different shapes."""
     net = SimpleNet(3, 1, 1)
     net.insert(HH())
 
@@ -275,6 +275,17 @@ def test_checkpointing_multiple_clamps(SimpleNet):
     net.cell([1, 2]).record("HH_h")
 
     checkpoints = tuple(int(np.ceil(len(time) ** (1 / 5))) for _ in range(5))
+
+    # Test with clamp()
+    net.cell(0).clamp("HH_m", m_clamp)
+    net.cell([1, 2]).clamp("HH_h", h_clamp)
+
+    soln = jx.integrate(net, delta_t=0.1, checkpoint_lengths=checkpoints)
+    assert np.all(soln[0, 1:] == 0.2)
+    assert np.all(soln[1:, 1:] == 0.4)
+
+    # Test with data_clamp()
+    net.delete_clamps()
 
     def simulate(clamps):
         data_clamps = net.cell(0).data_clamp("HH_m", clamps[0], None)
