@@ -216,6 +216,9 @@ class Module(ABC):
             "exp_euler": {"exp_euler_transition": None},
         }
 
+        # Checks if to_jax() has already been called on module
+        self.has_gathered_synapses: bool = False
+
         # needs to be set at the end
         self.base: Module = self
 
@@ -980,6 +983,10 @@ class Module(ABC):
         simulation, these parameters have to be moved to be `jnp.ndarrays` such that
         they can be processed on GPU/TPU and such that the simulation can be
         differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
+
+        WARNING: after the first `.to_jax()` or `.integrate()` call on a Module,
+        every change to the Module will require another `.to_jax()` call in order
+        for the `.integrate()` function to work properly.
         """
         self.base.jaxnodes = {}
         for key, value in self.base.nodes.to_dict(orient="list").items():
@@ -999,6 +1006,18 @@ class Module(ABC):
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
             for key in synapse.synapse_states:
                 self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
+
+
+        if not self.has_gathered_synapses:
+            # Gather synaptic indicies
+            grouped_syns = self.base.edges.groupby("type", sort=False, group_keys=False)
+            self.pre_syn_inds = grouped_syns["pre_index"].apply(list)
+            self.post_syn_inds = grouped_syns["post_index"].apply(list)
+            self.synapse_names = list(grouped_syns.indices.keys())
+
+        # Show that synapses have been gathered
+        self.has_gathered_synapses = True
+
 
     def show(
         self,
@@ -3843,6 +3862,8 @@ class View(Module):
 
         # TODO FROM #447:
         self.debug_states = pointer.debug_states
+
+        self.is_integratable: bool = False
 
         if len(self.nodes) == 0:
             raise ValueError("Nothing in view. Check your indices.")

@@ -341,6 +341,9 @@ def integrate(
         cell._init_morph_jaxley_dhs_solve(allowed_nodes_per_level=16)
         v = jx.integrate(cell, voltage_solver="jaxley.dhs.gpu")
 
+    WARNING: after the first `.to_jax()` or `.integrate()` call on a Module,
+    every change to the Module will require another `.to_jax()` call in order
+    for the `.integrate()` function to work properly.
     """
     if voltage_solver == "jaxley.dhs":
         # Automatically infer the voltage solver.
@@ -350,6 +353,7 @@ def integrate(
             voltage_solver = "jaxley.dhs.cpu"
 
     assert module.initialized, "Module is not initialized, run `._initialize()`."
+
     module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
 
     # Initialize the external inputs and their indices.
