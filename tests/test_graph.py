@@ -12,12 +12,13 @@ jax.config.update("jax_platform_name", "cpu")
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
+import numbers
+
 import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
 import pytest
-import numbers
 
 import jaxley as jx
 from jaxley import connect
@@ -473,7 +474,7 @@ def test_from_graph_inhom_compartments(file):
         for key in a.keys():
             v1, v2 = a[key], b[key]
 
-            if isinstance(v1, numbers.Number) :
+            if isinstance(v1, numbers.Number):
                 if not np.isclose(v1, v2, atol=1e-5, equal_nan=True).all():
                     return False
             else:
