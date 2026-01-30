@@ -3,6 +3,7 @@
 ### 🧩 New features
 
 - Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
+- Add handling of inhomogeneous branches for import and export of morphologies. (#779,@NicolasRR)
 
 ### 🐛 Bug fixes
 
