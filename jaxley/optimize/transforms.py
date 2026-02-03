@@ -66,7 +66,9 @@ class LogisticTransform(SigmoidTransform):
     """Logistic transformation."""
 
     def __init__(self, lower: ArrayLike, upper: ArrayLike) -> None:
-        """This transform maps any value bijectively to the interval [lower, upper].
+        """Maps unconstrained values to [lower, upper] like SigmoidTransform, but with
+        latent rescaled to standard logistic scale (variance π²/3), i.e. unit-variance
+        unconstrained space.
 
         Args:
             lower (ArrayLike): Lower bound of the interval.
