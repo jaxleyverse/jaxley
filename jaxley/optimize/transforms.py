@@ -62,6 +62,29 @@ class SigmoidTransform(Transform):
         return x
 
 
+class LogisticTransform(SigmoidTransform):
+    """Logistic transformation."""
+
+    def __init__(self, lower: ArrayLike, upper: ArrayLike) -> None:
+        """Maps unconstrained values to [lower, upper] like SigmoidTransform, but with
+        latent rescaled to standard logistic scale (variance π²/3), i.e. unit-variance
+        unconstrained space.
+
+        Args:
+            lower (ArrayLike): Lower bound of the interval.
+            upper (ArrayLike): Upper bound of the interval.
+        """
+        super().__init__(lower, upper)
+
+    def forward(self, x: ArrayLike) -> Array:
+        x_logit = x * jnp.pi / jnp.sqrt(3)  # rescale (logistic has variance π²/3)
+        return super().forward(x_logit)
+
+    def inverse(self, y: ArrayLike) -> Array:
+        x_logit = super().inverse(y)
+        return x_logit * jnp.sqrt(3) / jnp.pi  # Scale to unit variance
+
+
 class SoftplusTransform(Transform):
     """Softplus transformation."""
 
