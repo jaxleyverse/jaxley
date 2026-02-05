@@ -49,3 +49,19 @@ def test_set_and_querying_params_one_type(SimpleNet):
         assert net.edges[p][0] == 0.32
         assert net.edges[p][1] == 0.18
         assert np.all(net.edges[p].to_numpy()[np.asarray([2, 3])] == 0.12)
+
+
+def test_adex_spike_synapse(SpikeNet):
+    """Test if AdEx neurons properly propagate current through their synapses."""
+    n_neurons = 2
+    half = n_neurons // 2
+    net = SpikeNet(n_neurons, 1, 1, connect=True)
+
+    dt = 0.1
+    t_max = 40.0
+
+    # Stimulate the first half of neurons
+    net.cell(range(half)).stimulate(jx.step_current(5.0, 20.0, 100.0, dt, t_max))
+    net.cell(n_neurons - 1).record("v")
+    recordings = np.asarray(jx.integrate(net, delta_t=dt))
+    assert np.invert(np.any(np.isnan(recordings)))

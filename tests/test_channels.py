@@ -16,6 +16,7 @@ import pytest
 import jaxley as jx
 from jaxley.channels import (
     HH,
+    AdEx,
     CaL,
     CaT,
     Channel,
@@ -585,5 +586,60 @@ def test_multicompartment_izhikevich(SimpleCell):
     t_max = 40.0
 
     cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 0.02, dt, t_max))
+    recordings = jx.integrate(cell, delta_t=dt)
+    assert np.invert(np.any(np.isnan(recordings)))
+
+
+def test_adex():
+    """Test that AdEx produces expected spiking behavior."""
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Ignore surrogate gradient warning
+        cell = jx.Cell()
+        cell.insert(AdEx())
+
+    # Set parameters for reliable spiking (from test_adex.py)
+    cell.set("capacitance", 200.0)
+    cell.set("radius", 33.0)
+    cell.set("length", 100.0)
+    cell.set("v", -58.0)
+    cell.record("v")
+    cell.record("AdEx_spikes")
+
+    dt = 0.1
+    t_max = 100.0
+
+    cell.stimulate(jx.step_current(5.0, 80.0, 100.0, dt, t_max))
+    recordings = jx.integrate(cell, delta_t=dt)
+
+    # Check that simulation runs without NaN
+    assert np.invert(np.any(np.isnan(recordings)))
+
+    # Check that spikes occurred (voltage should have been reset at some point)
+    v = np.asarray(recordings[0]).flatten()
+    spikes = np.asarray(recordings[1]).flatten()
+    assert np.any(spikes > 0), "AdEx should produce spikes with this stimulation"
+
+
+def test_multicompartment_adex(SimpleCell):
+    """Test that AdEx can be run in multicompartment simulation."""
+    import warnings
+
+    cell = SimpleCell(2, 4)
+    # Insert AdEx only in "soma" compartment, Leak elsewhere
+    cell.insert(Leak())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Ignore surrogate gradient warning
+        cell.branch(0).comp(0).insert(AdEx())
+
+    cell.set("capacitance", 200.0)
+    cell.record("v")
+    cell.branch(0).comp(0).record("AdEx_spikes")
+
+    dt = 0.1
+    t_max = 40.0
+
+    cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 100.0, dt, t_max))
     recordings = jx.integrate(cell, delta_t=dt)
     assert np.invert(np.any(np.isnan(recordings)))
