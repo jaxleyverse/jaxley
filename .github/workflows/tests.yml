@@ -88,7 +88,7 @@ jobs:
         git fetch origin main
 
         # Check if CHANGELOG.md was updated
-        changed_files=$(git diff --name-only origin/main)
+        changed_files=$(git diff --name-only origin/main...HEAD)
         if echo "$changed_files" | grep -q 'CHANGELOG.md'; then
           echo "CHANGELOG.md was updated"
         else
