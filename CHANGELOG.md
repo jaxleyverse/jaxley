@@ -1,3 +1,9 @@
+# 0.14.0
+
+### 🧩 New features
+- Add AdEx simplified neuron model, similar to the implementation of Izhikevich channel.
+Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model as an effective description of neuronal activity.'
+
 # 0.13.0
 
 ### 🧩 New features
