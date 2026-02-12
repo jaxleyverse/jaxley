@@ -3,12 +3,14 @@
 
 import json
 import os
+import warnings
 from copy import deepcopy
 from typing import Optional
 
 import pytest
 
 import jaxley as jx
+from jaxley.channels import AdEx
 from jaxley.synapses import IonotropicSynapse
 from tests.test_regression import generate_regression_report, load_json
 
@@ -135,6 +137,62 @@ def SimpleNet(SimpleCell):
                 * ncells
             )
             if connect:
+                jx.connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())
+            nets[key] = net
+        return deepcopy(nets[key]) if copy and not force_init else nets[key]
+
+    yield get_or_build_net
+    nets = {}
+
+
+@pytest.fixture(scope="session")
+def SpikeNet(SimpleComp):
+    """Fixture for creating a network with AdEx spiking neurons."""
+    nets = {}
+
+    def get_or_build_net(
+        ncells: int,
+        nbranches: int,
+        ncomp: int,
+        connect: bool = False,
+        copy: bool = True,
+        force_init: bool = False,
+    ) -> jx.Network:
+        """Create or retrieve a spiking network with AdEx neurons.
+
+        Args:
+            ncells: Number of cells in the network.
+            nbranches: Number of branches in each cell.
+            ncomp: Number of compartments in each branch.
+            connect: Whether to connect cells with synapses.
+            copy: Whether to return a copy of the network. Default is True.
+            force_init: Force the init from scratch. Default is False.
+
+        Returns:
+            jx.Network() with AdEx neurons."""
+        if key := (ncells, nbranches, ncomp, connect) not in nets or force_init:
+            # Build cells with AdEx
+            cells = []
+            for _ in range(ncells):
+                # Simple branch structure
+                parents = [-1]
+                depth = 0
+                while nbranches > len(parents):
+                    parents = [-1] + [b // 2 for b in range(0, 2**depth - 2)]
+                    depth += 1
+                parents = parents[:nbranches]
+
+                comp = SimpleComp(force_init=force_init)
+                branch = jx.Branch([comp] * ncomp)
+                cell = jx.Cell([branch] * nbranches, parents)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")  # Ignore surrogate warning
+                    cell.insert(AdEx())
+                cell.set("capacitance", 200.0)
+                cells.append(cell)
+
+            net = jx.Network(cells)
+            if connect and ncells >= 2:
                 jx.connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())
             nets[key] = net
         return deepcopy(nets[key]) if copy and not force_init else nets[key]

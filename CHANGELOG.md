@@ -2,6 +2,8 @@
 
 ### 🧩 New features
 
+- Add AdEx simplified neuron model, similar to the implementation of Izhikevich channel.
+Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model as an effective description of neuronal activity.'
 - Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
 - Add handling of inhomogeneous branches for import and export of morphologies. (#779,@NicolasRR)
 - Add an logistic transformation (`jaxley.optimize.transforms.LogisticTransform`) (#788, @jnsbck)
