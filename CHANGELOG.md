@@ -1,8 +1,18 @@
 # 0.14.0
 
 ### 🧩 New features
+
 - Add AdEx simplified neuron model, similar to the implementation of Izhikevich channel.
 Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model as an effective description of neuronal activity.'
+- Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
+- Add handling of inhomogeneous branches for import and export of morphologies. (#779,@NicolasRR)
+- Add an logistic transformation (`jaxley.optimize.transforms.LogisticTransform`) (#788, @jnsbck)
+
+### 🐛 Bug fixes
+
+- Fix issue where `build_dynamic_state_utils` `remove_observables` performed in-place deletions on full state dict (#775, @chaseking)
+- Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka) and fixed checkpointing for this case (#786, @kyralianaka)
+
 
 # 0.13.0
 

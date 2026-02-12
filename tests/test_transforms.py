@@ -82,7 +82,9 @@ def test_bounds():
 @pytest.mark.parametrize(
     "transform",
     [
+        jt.IdentityTransform(),
         jt.SigmoidTransform(-2, 2),
+        jt.LogisticTransform(1e-3, 1e3),
         jt.SoftplusTransform(2),
         jt.NegSoftplusTransform(2),
         jt.AffineTransform(1.0, 1.0),
@@ -108,7 +110,9 @@ def test_jit(transform):
 @pytest.mark.parametrize(
     "transform",
     [
+        jt.IdentityTransform(),
         jt.SigmoidTransform(-2, 2),
+        jt.LogisticTransform(1e-3, 1e3),
         jt.SoftplusTransform(2),
         jt.NegSoftplusTransform(2),
         jt.AffineTransform(1.0, 1.0),

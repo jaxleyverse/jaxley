@@ -107,6 +107,7 @@ Optimization
    :nosignatures:
 
    jaxley.optimize.transforms.SigmoidTransform
+   jaxley.optimize.transforms.LogisticTransform
    jaxley.optimize.transforms.SoftplusTransform
    jaxley.optimize.transforms.NegSoftplusTransform
    jaxley.optimize.transforms.AffineTransform
