@@ -2,11 +2,12 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from __future__ import annotations
 
+import functools
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from warnings import warn
 
 import jax.numpy as jnp
@@ -15,6 +16,7 @@ import numpy as np
 import pandas as pd
 from jax import Array, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
+from jax.scipy.linalg import expm
 from jax.typing import ArrayLike
 from matplotlib.axes import Axes
 
@@ -22,6 +24,7 @@ from jaxley.channels import Channel
 from jaxley.pumps import Pump
 from jaxley.solver_voltage import (
     step_voltage_explicit,
+    step_voltage_exponential,
     step_voltage_implicit_with_dhs_solve,
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_stone,
@@ -64,6 +67,7 @@ def only_allow_module(func):
     Decorates methods of Module that cannot be called on Views of Modules instances.
     and have to be called on the Module itself."""
 
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         module_name = self.base.__class__.__name__
         method_name = func.__name__
@@ -175,6 +179,7 @@ class Module(ABC):
         # List of types of all `jx.Channel`s.
         self.channels: List[Channel] = []
         self.membrane_current_names: List[str] = []
+        self.synapse_current_names: List[str] = []
 
         # List of all pumps.
         self.pumped_ions: List[str] = []
@@ -207,6 +212,10 @@ class Module(ABC):
         # For debugging the solver. Will be empty by default and only filled if
         # `self._init_morph_for_debugging` is run.
         self.debug_states = {}
+
+        self.solver_customizers = {
+            "exp_euler": {"exp_euler_transition": None},
+        }
 
         # needs to be set at the end
         self.base: Module = self
@@ -522,7 +531,33 @@ class Module(ABC):
         Determines if global or local indices are used for viewing the module.
 
         Args:
-            scope: either "global" or "local"."""
+            scope: either "global" or "local".
+
+        .. rubric:: Example usage
+
+        Access the 0-th compartment of the 2nd branch of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=3)
+            cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.set_scope("local")     # this is also the default
+            cell.branch(2).comp(0).insert(Na())
+
+        Access the sixth (global) compartment of the cell:
+
+        .. code-block:: python
+
+            cell.set_scope("global")
+            cell.comp(6).insert(K())
+
+        Note that we are inserting into the same compartment in both cases.
+        Since there are 3 compartments per branch, the global index of the
+        first compartment in the third branch is six. Locally, the first
+        compartment is naturally 0.
+
+        """
         assert scope in ["global", "local"], "Invalid scope."
         self._scope = scope
 
@@ -536,7 +571,30 @@ class Module(ABC):
             scope: either "global" or "local".
 
         Returns:
-            View with the specified scope."""
+            View with the specified scope.
+
+        .. rubric:: Example usage
+
+        Access the 0-th compartment of the 2nd branch of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=3)
+            cell = jx.Cell(branch, parents=[-1, 0, 0])
+            cell.scope("global").branch(2).scope("local").comp(0).insert(K())
+
+        Access the sixth (global) compartment of the cell:
+
+        .. code-block:: python
+
+            cell.scope("global").comp(6).insert(Na())
+
+        Note in both cases we are inserting into the same compartment.
+        Since there are 3 compartments per branch, the global index of the
+        first compartment in the third branch is six. Locally, the first
+        compartment is naturally 0."""
+
         view = self.view
         view.set_scope(scope)
         return view
@@ -704,26 +762,93 @@ class Module(ABC):
             yield self._at_nodes(name, idx)
 
     @property
-    def cells(self):
+    def cells(self) -> Iterator[View]:
         """Iterate over all cells in the module.
 
-        Returns a generator that yields a View of each cell."""
+        Returns a generator that yields a View of each cell.
+
+        .. rubric:: Example usage
+
+        Iterating over the cells of a network:
+
+        .. code-block:: python
+
+            cell = jx.Cell()
+            net = jx.Network([cell] * 4)
+
+            for cell in net.cells:
+                print("Radius of cell: ", len(cell.nodes["radius"]))
+        """
         yield from self._iter_submodules("cell")
 
     @property
-    def branches(self):
+    def branches(self) -> Iterator[View]:
         """Iterate over all branches in the module.
 
-        Returns a generator that yields a View of each branch."""
+        Returns a generator that yields a View of each branch.
+
+        .. rubric:: Example usage
+
+        Iterating over the branches of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch1 = jx.Branch([comp] * 2)
+            branch2 = jx.Branch([comp] * 3)
+            cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
+            nodes_per_branch = [len(branch.nodes) for branch in cell.branches]
+
+        """
         yield from self._iter_submodules("branch")
 
     @property
-    def comps(self):
+    def comps(self) -> Iterator[View]:
         """Iterate over all compartments in the module.
         Can be called on any module, i.e. `net.comps`, `cell.comps` or
         `branch.comps`. `__iter__` does not allow for this.
 
-        Returns a generator that yields a View of each compartment."""
+        Returns a generator that yields a View of each compartment.
+
+        .. rubric:: Example usage
+
+        Iterating over the compartments of a branch:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 2)
+            branch.comp(0).insert(Na())
+            branch.comp(0).insert(K())
+            num_channels_per_comp = [len(comp.channels) for comp in branch.comps]
+
+        Iterating over the compartments of a cell:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            cell = jx.Cell([comp], parents=[-1])
+            cell.set_scope("global")
+            num_channels_per_comp = [len(comp.channels) for comp in cell.comps]
+
+        Iterating over the compartments of a network:
+
+        .. code-block:: python
+
+            cell1 = jx.Cell()
+            cell1.insert(Na())
+            cell2 = jx.Cell()
+            cell2.insert(K())
+            cell2.insert(Na())
+            net = jx.Network([cell1, cell1, cell2])
+            net.set_scope("global")
+            num_channels_per_comp = [len(comp.channels) for comp in net.comps]
+
+        Note above that you need to set the network and branch scopes to global
+        in order to get an iterator for all the compartments in the network.
+
+        """
         yield from self._iter_submodules("comp")
 
     def __iter__(self):
@@ -731,8 +856,7 @@ class Module(ABC):
 
         Internally calls `cells`, `branches`, `comps` at the appropriate level.
 
-        Example usage
-        ^^^^^^^^^^^^^
+        .. rubric:: Example usage
 
         .. code-block:: python
 
@@ -938,6 +1062,7 @@ class Module(ABC):
         self._init_solver_jaxley_dhs_solve(
             allowed_nodes_per_level=allowed_nodes_per_level
         )
+        self._init_solver_jaxley_exp_euler_solve()
         self.initialized_solver = True
 
     def _init_solver_jax_spsolve(self):
@@ -1081,6 +1206,23 @@ class Module(ABC):
             key: The name of the parameter to set.
             val: The value to set the parameter to. If it is `ArrayLike` then it
                 must be of shape `(len(num_compartments))`.
+
+        .. rubric:: Example usage
+
+        Setting the sodium maximal conductance of a compartment:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.insert(Na())
+            comp.set("Na_gNa", 0.008)
+
+        Setting the parameter of a synapse for all synapses within a network:
+
+        .. code-block:: python
+
+            net.select(edges="all").set("IonotropicSynapse_gS", 5e-4)
+
         """
         if key in [f"axial_diffusion_{ion_name}" for ion_name in self.diffusion_states]:
             assert val > 0, (
@@ -1201,6 +1343,21 @@ class Module(ABC):
             groups.
             - Unless the morphology was read from an SWC file, when the radiuses of the
             compartments are not the same within the branch that is modified.
+
+        .. rubric:: Example usage
+
+        Changing how many compartments each branch in a cell consists of:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 4)
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.branch(0).set_ncomp(1)
+            cell.branch(1).set_ncomp(2)
+            cell.branch(2).set_ncomp(3)
+            cell.branch(3).set_ncomp(4)
+
         """
         assert len(self.base.externals) == 0, "No stimuli allowed!"
         assert len(self.base.recordings) == 0, "No recordings allowed!"
@@ -1393,6 +1550,17 @@ class Module(ABC):
                 current parameter value is averaged over all shared parameters.
             verbose: Whether to print the number of parameters that are added and the
                 total number of parameters.
+
+        .. rubric:: Example usage
+
+        Making a channel parameter in a compartment trainable:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            comp.make_trainable("radius")
+            parameters = comp.get_parameters()  # -> [{'radius': Array([1.], dtype=float32)}]
+
         """
         if key in ["radius", "length"]:
             # Add an additional warning if the neuron was read from SWC.
@@ -1491,6 +1659,19 @@ class Module(ABC):
 
         Args:
             trainable_params: The trainable parameters returned by `get_parameters()`.
+
+        .. rubric:: Example usage
+
+        Write new parameters to the model after training:
+
+        .. code-block:: python
+
+            parameters = net.get_parameters()
+            # Assume you have some training function that gives you new parameters
+            new_parameters = train_network(net, parameters)
+            net.write_trainables(new_parameters)
+            print(net.nodes) # outputs nodes of the model with the new parameters
+
         """
         # We do not support views. Why? `jaxedges` does not have any NaN
         # elements, whereas edges does. Because of this, we already need special
@@ -1514,7 +1695,10 @@ class Module(ABC):
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
         # trainable and so its value never gets used below.
-        all_states = self.base.get_all_states(pstate, all_params, delta_t=0.025)
+        all_states = self.base.get_all_states(pstate)
+        all_states = self.base.append_channel_currents_to_states(
+            all_states, all_params, delta_t=0.025
+        )
 
         # Loop only over the keys in `pstate` to avoid unnecessary computation.
         for parameter in pstate:
@@ -1532,29 +1716,6 @@ class Module(ABC):
                 self.base.edges.loc[condition, key] = all_params[key]
             for key in list(synapse.synapse_states.keys()):
                 self.base.edges.loc[condition, key] = all_states[key]
-
-    @deprecated(
-        "0.11.0",
-        (
-            " Instead, please use, e.g., "
-            "`jx.morphology_utils.distance(cell[0, 0], cell[2, 1], kind='direct')`. "
-            "Note that, unlike `cell[0, 0].distance(cell[2, 1]), that "
-            "function returns a list of distances (to all endpoints)."
-        ),
-    )
-    def distance(self, endpoint: "View") -> float:
-        """Return the direct distance between two compartments.
-
-        This function computes the direct distance. To compute the pathwise distance,
-        use `distance_pathwise()`.
-
-        Args:
-            endpoint: The compartment to which to compute the distance to.
-        """
-        assert len(self.xyzr) == 1 and len(endpoint.xyzr) == 1
-        start_xyz = jnp.mean(self.xyzr[0][:, :3], axis=0)
-        end_xyz = jnp.mean(endpoint.xyzr[0][:, :3], axis=0)
-        return jnp.sqrt(jnp.sum((start_xyz - end_xyz) ** 2))
 
     def delete_trainables(self):
         """Removes all trainable parameters from the module."""
@@ -1577,15 +1738,18 @@ class Module(ABC):
     def add_to_group(self, group_name: str):
         """Add a view of the module to a group.
 
-        Groups can then be indexed. For example:
+        Args:
+            group_name: The name of the group.
+
+        .. rubric:: Example usage
+
+        Define an excitatory group and use it to set parameters.
 
         .. code-block:: python
 
+            # net = ...
             net.cell(0).add_to_group("excitatory")
             net.excitatory.set("radius", 0.1)
-
-        Args:
-            group_name: The name of the group.
         """
         if group_name not in self.base.group_names:
             channel_names = [channel._name for channel in self.base.channels]
@@ -1624,6 +1788,18 @@ class Module(ABC):
         Returns:
             A list of all trainable parameters in the form of
                 [{"gNa": jnp.array([0.1, 0.2, 0.3])}, ...].
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            import jaxley as jx
+
+            cell = jx.Cell()
+            cell.make_trainable("radius")
+
+            params = module.get_parameters()
+            v = jx.integrate(cell, params=params, t_max=10.0)
         """
         trainable_params = []
         for inds, key in zip(
@@ -1656,18 +1832,15 @@ class Module(ABC):
 
         pstate can be obtained by calling `params_to_pstate()`.
 
-        .. code-block:: python
-
-            params = module.get_parameters() # i.e. [0, 1, 2]
-            pstate = params_to_pstate(params, module.indices_set_by_trainables)
-            module.to_jax() # needed for call to module.jaxnodes
-
         Args:
             pstate: The state of the trainable parameters. pstate takes the form
-                [{
-                    "key": "gNa", "indices": jnp.array([0, 1, 2]),
-                    "val": jnp.array([0.1, 0.2, 0.3])
-                }, ...].
+
+                .. code-block:: python
+
+                    [{
+                        "key": "gNa", "indices": jnp.array([0, 1, 2]),
+                        "val": jnp.array([0.1, 0.2, 0.3])
+                    }, ...]
             voltage_solver: The voltage solver that is used. Since `jax.sparse` and
                 `jaxley.xyz` require different formats of the axial conductances, this
                 function will default to different building methods.
@@ -1745,6 +1918,278 @@ class Module(ABC):
         )
         return params
 
+    def _init_solver_jaxley_exp_euler_solve(self):
+        solve_indexer = {}
+        df = self._comp_edges
+
+        # Comp-to-comp. These lead to off-diagonals on the G matrix.
+        df_offdiags = df.query("type == 0")
+        solve_indexer["offdiag_inds"] = df_offdiags.index.to_numpy()
+        sink_offdiags = df_offdiags["sink"].to_numpy()
+        source_offdiags = df_offdiags["source"].to_numpy()
+
+        # Diagonals.
+        #
+        # The equations are:
+        # dv1 / dt = gA (v2 - v1) + gB (v0 - v1)
+        # Thus, the diagonal is gA + gB, but these terms are not explicitly part of the
+        # `.comp_edges` table as "self-connections". Instead, we extract them from
+        # the conductance between, e.g., v1 and v2. Notably, as you will see below,
+        # a similar conductance also comes up for branchpoints, so we directly
+        # include them here.
+        df_diags = df.query("type in [0, 1, 2]")
+        solve_indexer["diag_inds"] = df_diags.index.to_numpy()
+        solve_indexer["diag_sinks"] = df_diags["sink"].to_numpy()
+        sink_diags = np.arange(self._n_nodes)  # `._n_nodes` includes the branchpoints.
+        source_diags = np.arange(self._n_nodes)
+
+        # Branchpoints.
+        # The branchpoint voltage vBP is a weighted average of all neighboring
+        # compartments:
+        #
+        # v_BP = (g1 v1 + g2 v2) / (g1 + g2)
+        #
+        # Here, g1 and g2 are the `compartment-to-branchpoint` conductances.
+        #
+        # The branchpoint voltages influence the states as follows:
+        #
+        # v1 = gX (vBP - v1) + gY (v0 - v1) + ...
+        #
+        # Here, gX is a branchpoint-to-compartment conductance, and gY is an example
+        # for a compartment-to-compartment conductance.
+        #
+        # Now, substitute the branchpoint voltage in to the second equation:
+        #
+        # v1 = gX (g1 v1 + g2 v2 - v1) + gY (v0 - v1) + ...
+        # v1 = gX g1 v1 + gX g2 v2 - gX v1 + gY (v0 - v1) + ...
+        # (for simplicity in notation, we neglect the normalizer for v_BP, but it is
+        # of course implemented below).
+        #
+        # In the code below, we build the `gX g1` and `gX g2` terms. Notably, the
+        # `-gX v1` term is already accounted for in the `Diagonals` section above,
+        # because we consider also `comp_edges` of type [1, 2] there.
+        #
+        # Step 1) First, we obtain the normalizers (g1 + g2) for every branchpoint.
+        # To achive this, we group by branchpoints, and add each comp-to-bp conductance.
+        to_bp = df.query("type in [3, 4]").copy()
+        to_bp["group"] = to_bp.groupby("sink").ngroup()
+        solve_indexer["comp_to_bp_inds"] = to_bp.index.to_numpy()
+        solve_indexer["comp_to_bp_group_sinks"] = to_bp["group"].to_numpy()
+
+        # Step 3) For every compartment, we have have to weigh the impact from
+        # the branchpoint with the branchpoint-to-compartment conductance gX.
+        # First: Extract all bp-to-comp condcutances:
+        df_bp_to_comp = df.query("type in [1, 2]")
+        solve_indexer["bp_to_comp_inds"] = df_bp_to_comp.index.to_numpy()
+
+        # We will perform an outer join that matches all compartments to their
+        # branchpoint. To this end, we match all cases where the source of a bp-to-comp
+        # conductance (i.e., a branchpoint) matches the sink of a comp-to-bp
+        # conductance.
+        df_bp_to_comp = df_bp_to_comp.set_index("source", drop=False)
+        df_bp_to_comp["index"] = np.arange(len(df_bp_to_comp))
+        to_bp = to_bp.set_index("sink", drop=False)
+        to_bp["index"] = np.arange(len(to_bp))
+        bp_conns = df_bp_to_comp.join(
+            to_bp, how="outer", lsuffix="_left", rsuffix="_right"
+        )[["sink_left", "source_right", "index_left", "index_right"]]
+        bp_conns = bp_conns.rename(
+            columns={"sink_left": "sink", "source_right": "source"}
+        )
+        # Now, compute gX * g1 / (g1 + g2).
+        solve_indexer["bp_to_comp_inds_expanded"] = bp_conns["index_left"].to_numpy()
+        solve_indexer["comp_to_bp_inds_expanded"] = bp_conns["index_right"].to_numpy()
+        sink_branchpoint = bp_conns["sink"].to_numpy()
+        source_branchpoint = bp_conns["source"].to_numpy()
+
+        # Step 4: Concatenate diagonals, comp-to-comps, and branchpoint influences.
+        solve_indexer["rows"] = jnp.concatenate(
+            [sink_diags, sink_offdiags, sink_branchpoint]
+        )
+        solve_indexer["cols"] = jnp.concatenate(
+            [source_diags, source_offdiags, source_branchpoint]
+        )
+
+        # Save the exponential Euler solve indexer.
+        self._exp_euler_solve_indexer = solve_indexer
+
+    @only_allow_module
+    def customize_solver_exp_euler(
+        self,
+        exp_euler_transition: Optional[Array] = None,
+    ):
+        r"""Sets internal attributes which customize the exponential Euler solver.
+
+        This function only takes effect when ``jx.integrate(..., solver='exp_euler')``.
+
+        The current state of these arguments is stored in ``module.solver_customizers``.
+
+        Args:
+            exp_euler_transition: A matrix of shape (ncomp x ncomp), where ``ncomp`` is
+                the number of compartments. This matrix is returned by
+                ``module.build_exp_euler_transition_matrix(delta_t)``. If passed, the
+                matrix will _not_ be computed at the beginning of ``jx.integrate()``.
+                This can provide massive speed-ups, but it requires that the
+                capacitance, axial resistivity, length, and radius or every compartment
+                is known upfront (i.e., they are not being optimized or considered
+                as free parameters). To revert back to using computing the matrix
+                automatically within ``jx.integrate()``, run
+                ``module.customize_solver_exp_euler(exp_euler_transition=None)``.
+
+        .. rubric:: Example usage
+
+        Optimize solver speed by pre-computing the exponential Euler transition matrix:
+
+        .. code-block:: python
+
+            delta_t = 0.025
+            cell = jx.Cell()
+            cell.customize_solver_exp_euler(
+                exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
+            )
+            v = jx.integrate(cell, delta_t=delta_t, t_max=100.0)
+        """
+        if exp_euler_transition is not None:
+            self.solver_customizers["exp_euler"][
+                "exp_euler_transition"
+            ] = exp_euler_transition
+
+    @only_allow_module
+    def _compute_transition_matrix(
+        self, axial_conductances: Array
+    ) -> Tuple[Array, Array, Array]:
+        """Compute the conductance matrix G such that dv/dt = G * v_{t}.
+
+        For the linear ODE dv/dt = G * v_{t}, we can perform an exponential Euler step
+        of size dt via: v(t + dt) = e^{G * dt} * v(t).
+
+        To obtain the matrix, the code below runs three subroutines:
+        1) Extract all compartment-to-compartment conductances.
+        2) Fill the diagonal.
+        3) Deal with branchpoints.
+
+        Args:
+            axial_conductances: An array which contains the the axial conductances
+                for every compartment edge (including those from and to branchpoints).
+                Shape (C,), where C is the number of edges. To obtain this term,
+                run `module.get_all_parameters()["axial_conductances"]["v"]`.
+
+        Returns:
+            Values, row indices, and column indices for the matrix. The indices can
+            include entries for branchpoints (but the corresponding values should then
+            be zero).
+        """
+        indexer = self._exp_euler_solve_indexer
+
+        # Comp-to-comp. These lead to off-diagonals on the G matrix.
+        g_offdiags = axial_conductances[indexer["offdiag_inds"]]
+
+        # Diagonals.
+        # This includes branchpoints (for easier handling of networks), but they will
+        # just be zero.
+        g_diags = jnp.zeros(self._n_nodes)
+        axial_conds_diag_influencers = axial_conductances[indexer["diag_inds"]]
+        g_diags = g_diags.at[indexer["diag_sinks"]].add(-axial_conds_diag_influencers)
+
+        # Branchpoints.
+        if len(indexer["comp_to_bp_inds"]) > 0:
+            g_comp_to_bp = axial_conductances[indexer["comp_to_bp_inds"]]
+            normalizers = jnp.zeros(np.max(indexer["comp_to_bp_group_sinks"] + 1))
+            normalizers = normalizers.at[indexer["comp_to_bp_group_sinks"]].add(
+                g_comp_to_bp
+            )
+            normalizers = normalizers[indexer["comp_to_bp_group_sinks"]]
+
+            # Step 2) Normalize the compartment-to-branchpoint conductances. In the
+            # notation from above:
+            # g1 / (g1 + g2)
+            g_norm = g_comp_to_bp / normalizers
+
+            # Step 3) For every compartment, we have have to weigh the impact from
+            # the branchpoint with the branchpoint-to-compartment conductance gX.
+            # First: Extract all bp-to-comp condcutances:
+            g_bp_to_comp = axial_conductances[indexer["bp_to_comp_inds"]]
+            # Now, compute gX * g1 / (g1 + g2).
+            g_branchpoint = (
+                g_bp_to_comp[indexer["bp_to_comp_inds_expanded"]]
+                * g_norm[indexer["comp_to_bp_inds_expanded"]]
+            )
+        else:
+            g_branchpoint = jnp.asarray([])
+        # Step 4: Concatenate diagonals, comp-to-comps, and branchpoint influences.
+        vals = jnp.concatenate([g_diags, g_offdiags, g_branchpoint])
+        rows = indexer["rows"]
+        cols = indexer["cols"]
+        return vals, rows, cols
+
+    @only_allow_module
+    def build_exp_euler_transition_matrix(
+        self,
+        delta_t: float,
+        axial_conductances: Optional[Array] = None,
+    ) -> Array:
+        r"""Compute the exponential of the transition matrix of the voltage diffusion.
+
+        For the linear ODE
+
+        .. math::
+
+            \frac{dv}{dt} = G \, v(t),
+
+        an exponential Euler step of size :math:`dt` is given by
+
+        .. math::
+
+            v(t + dt) = e^{G \, dt} \, v(t).
+
+        The returned matrix is already stripped of entries corresponding to
+        branch points, i.e. it has shape ``(ncomp, ncomp)``. It is intended to be
+        applied to ``voltages[self._internal_node_inds]``.
+
+        Args:
+            delta_t: The time step used to compute the matrix exponential e^{G * dt}.
+            axial_conductances: An array which contains the the axial conductances
+                for every compartment edge (including those from and to branchpoints),
+                for voltage and for all diffused ions. Shape (N+1, C), where N is the
+                number of diffused ions (+1 for voltage), and C is the number of edges.
+                To obtain this term, run `module.get_all_parameters()`.
+
+        Returns:
+            The transition matrix for the voltage and every diffused state as a matrix
+            of shape (N+1, M, M), where N is the number of diffused states and M is the
+            number of compartments.
+        """
+        if axial_conductances is None:
+            self.to_jax()  # `.get_all_parameters()` requires `.jaxnodes`.
+            axial_conductances = self.get_all_parameters(pstate=[])[
+                "axial_conductances"
+            ]
+
+        # vmap across voltage and all diffused ions.
+        axial_conds = jnp.asarray(list(axial_conductances.values()))
+        vals, rows, cols = vmap(self._compute_transition_matrix)(axial_conds)
+
+        # Instantiate a dense matrix (for voltage and every diffused ion) such that
+        # we can perform a matrix exponential.
+        idx = self._internal_node_inds
+
+        def build_dense(vals: Array, rows: Array, cols: Array, n: int) -> Array:
+            """Instatiate the transition matrix and exclude branchpoints."""
+            # [np.ix_(idx, idx)] excludes branchpoints.
+            return jnp.zeros((n, n)).at[(rows, cols)].add(vals)[np.ix_(idx, idx)]
+
+        # `ncomp` excludes the number of branchpoints, because the transition matrix
+        # is defined only on "compartment" states.
+        transition_matrix = vmap(build_dense, in_axes=(0, 0, 0, None))(
+            vals, rows, cols, self._n_nodes
+        )
+
+        # Compute the matrix exponential for voltage and every diffused ion.
+        transition_matrix_exp = vmap(lambda M: expm(M * delta_t, max_squarings=16))(
+            transition_matrix
+        )
+        return transition_matrix_exp
+
     @only_allow_module
     def _get_states_from_nodes_and_edges(self) -> dict[str, Array]:
         """Return states as they are set in the `.nodes` and `.edges` tables.
@@ -1763,19 +2208,19 @@ class Module(ABC):
         return states
 
     @only_allow_module
-    def get_all_states(
-        self, pstate: list[dict], all_params, delta_t: float
-    ) -> dict[str, Array]:
+    def get_all_states(self, pstate: list[dict]) -> dict[str, Array]:
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Get the full initial state of the module from jaxnodes and trainables.
 
+        Note that the returned states do _not_ yet contain the currents.
+        These can be appended to the states by running
+        `module.append_channel_currents_to_states`.
+
         Args:
             pstate: The state of the trainable parameters.
-            all_params: All parameters of the module.
-            delta_t: The time step.
 
         Returns:
-            A dictionary of all states of the module.
+            A dictionary of all states of the module (without currents).
         """
         states = self.base._get_states_from_nodes_and_edges()
 
@@ -1790,7 +2235,27 @@ class Module(ABC):
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
                 # `.set()` to work. This is done with `[:, None]`.
                 states[key] = states[key].at[inds].set(set_param[:, None])
+        return states
 
+    @only_allow_module
+    def append_channel_currents_to_states(
+        self, states, all_params, delta_t: float
+    ) -> dict[str, Array]:
+        # TODO FROM #447: MAKE THIS WORK FOR VIEW?
+        """Return states that have additional entries for the currents.
+
+        In order to allow recording channel currents, Jaxley internally treats
+        membrane and synaptic currents as states. This function appends these
+        currents to the `states` dictionary returned by `get_all_states()`.
+
+        Args:
+            states: A dictionary which contains compartment states (but no currents).
+            all_params: All parameters of the module.
+            delta_t: The time step.
+
+        Returns:
+            A dictionary of all states of the module, including currents.
+        """
         # Add to the states the initial current through every channel.
         states, _ = self.base._channel_currents(
             states, delta_t, self.channels + self.pumps, self.nodes, all_params
@@ -1861,9 +2326,7 @@ class Module(ABC):
 
         for channel in self.base.channels + self.base.pumps:
             name = channel._name
-            channel_indices = channel_nodes.loc[channel_nodes[name]][
-                "global_comp_index"
-            ].to_numpy()
+            channel_indices = channel_nodes.loc[channel_nodes[name]].index.to_numpy()
             voltages = channel_nodes.loc[channel_indices, "v"].to_numpy()
 
             channel_param_names = list(channel.channel_params.keys())
@@ -2073,7 +2536,7 @@ class Module(ABC):
     def data_stimulate(
         self,
         current: ArrayLike,
-        data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+        data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
         verbose: bool = False,
     ) -> tuple[Array, pd.DataFrame]:
         """Insert a stimulus into the module within jit (or grad).
@@ -2091,7 +2554,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_clamps: tuple[ArrayLike, pd.DataFrame] | None = None,
+        data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
         verbose: bool = False,
     ):
         """Insert a clamp into the module within jit (or grad).
@@ -2116,7 +2579,7 @@ class Module(ABC):
         self,
         state_name: str,
         state_array: ArrayLike,
-        data_external_input: tuple[ArrayLike, pd.DataFrame] | None,
+        data_external_input: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None,
         view: pd.DataFrame,
         verbose: bool = False,
     ):
@@ -2144,14 +2607,14 @@ class Module(ABC):
         ], "Number of comps and clamps do not match."
 
         if data_external_input is not None:
-            external_input = data_external_input[1]
-            external_input = jnp.concatenate([external_input, state_array])
-            inds = data_external_input[2]
+            external_state_names, external_input, inds = data_external_input
+            external_state_names.append(state_name)
+            external_input.append(state_array)
+            inds.append(view.index.to_numpy())
         else:
-            external_input = state_array
-            inds = pd.DataFrame().from_dict({})
-
-        inds = pd.concat([inds, view])
+            external_state_names = [state_name]
+            external_input = [state_array]
+            inds = [view.index.to_numpy()]
 
         if verbose:
             if state_name == "i":
@@ -2159,7 +2622,7 @@ class Module(ABC):
             else:
                 print(f"Added {len(view)} clamps.")
 
-        return (state_name, external_input, inds)
+        return (external_state_names, external_input, inds)
 
     def delete_stimuli(self):
         """Removes all stimuli from the module."""
@@ -2238,7 +2701,32 @@ class Module(ABC):
 
         Args:
             state: Name of the state that should be diffused.
+
+        .. rubric:: Example usage
+
+        Diffuse calicum ions across a cell:
+
+        .. code-block:: python
+
+            import jaxley as jx
+            from jaxley.pumps import CaNernstReversal
+
+            comp = jx.Compartment()
+            branch = jx.Branch(comp, ncomp=2)
+            cell = jx.Cell(branch, parents=[-1, 0])
+
+            cell.insert(CaNernstReversal())
+            cell.diffuse("CaCon_i") # Diffuse calcium ions through the cell
+
+            cell.branch(0).set("CaCon_i", 0.2)
+            cell.record("CaCon_i")
+            simulated_concentrations = jx.integrate(cell, t_max=5.0)
+
         """
+        assert not isinstance(
+            self, View
+        ), "You can only diffuse ions in the entire module."
+
         self.base.diffusion_states.append(state)
         self.base.nodes.loc[self._nodes_in_view, f"axial_diffusion_{state}"] = 1.0
 
@@ -2268,7 +2756,38 @@ class Module(ABC):
         """Remove a channel or pump from the module.
 
         Args:
-            channel: The channel to remove."""
+            channel: The channel to remove.
+
+        .. rubric:: Example usage
+
+        The example below inserts two channels and then deletes the sodium channel:
+
+        ::
+
+            from jaxley.channels import Na, K
+
+            cell = jx.Cell()
+            cell.insert(Na())
+            cell.insert(K())
+
+            cell.delete(Na())
+
+        The example below inserts two channels and then deletes both of them:
+
+        ::
+
+            from jaxley.channels import Na, K
+
+            cell = jx.Cell()
+            cell.insert(Na())
+            cell.insert(K())
+
+            # Loop over all channels and delete each one. Note: The `list(...)` is
+            # important here because `.delete()` modifies the `.channels`.
+            for channel in list(net.channels):
+                cell.delete(channel)
+
+        """
         name = channel._name
         channel_names = [c._name for c in self.channels + self.pumps]
         all_channel_names = [c._name for c in self.base.channels]
@@ -2276,6 +2795,17 @@ class Module(ABC):
         if name in channel_names:
             channel_cols = list(channel.channel_params.keys())
             channel_cols += list(channel.channel_states.keys())
+
+            # We have to be careful to not remove a column if other channels
+            # also have that state. For example, if two channels have a shared state,
+            # then, we should not remove this column even if one of the channels
+            # is deleted.
+            remaining_params = []
+            for channel_in_module in self.base.channels:
+                if channel_in_module._name != name:
+                    remaining_params += list(channel_in_module.channel_params.keys())
+            channel_cols = [x for x in channel_cols if x not in remaining_params]
+
             self.base.nodes.loc[self._nodes_in_view, channel_cols] = float("nan")
             self.base.nodes.loc[self._nodes_in_view, name] = False
 
@@ -2292,8 +2822,13 @@ class Module(ABC):
                         "`cell.delete(HH())` (ie you forgot to initialize the channel "
                         "via round brackets: `HH()`."
                     )
-                self.base.membrane_current_names.remove(channel.current_name)
+
                 self.base.nodes.drop(columns=channel_cols + [name], inplace=True)
+
+            # Re-compute the current names.
+            self.base.membrane_current_names = list(
+                np.unique([channel.current_name for channel in self.base.channels])
+            )
         else:
             raise ValueError(f"Channel {name} not found in the module.")
 
@@ -2423,7 +2958,14 @@ class Module(ABC):
                 "sinks": np.asarray(self._comp_edges["sink"].to_list()),
                 "sources": np.asarray(self._comp_edges["source"].to_list()),
                 "types": np.asarray(self._comp_edges["type"].to_list()),
+                "n_nodes": self._n_nodes,
             }
+        elif solver == "exp_euler":
+            solver_kwargs = {
+                "matrix_exponential": params["exp_euler_transition"],
+                "internal_node_inds": self._internal_node_inds,
+            }
+        # From here on: Implicit Euler schemes.
         elif voltage_solver == "jax.sparse":
             solver_kwargs = {
                 "internal_node_inds": self._internal_node_inds,
@@ -2517,10 +3059,32 @@ class Module(ABC):
             updated_states = vmapped(
                 *state_vals.values(), *solver_kwargs.values(), delta_t
             )
+        elif solver == "exp_euler":
+            # Why the if-case? See explanation in `if solver in ["bwd_euler", ...]`.
+            if len(self.diffusion_states) == 0:
+                updated_states = step_voltage_exponential(
+                    state_vals["states"][0],
+                    state_vals["linear_terms"][0],
+                    state_vals["constant_terms"][0],
+                    state_vals["axial_conductances"][0],
+                    solver_kwargs["matrix_exponential"][0],
+                    solver_kwargs["internal_node_inds"],
+                    delta_t,
+                )
+                # Add `vmap` dimension.
+                updated_states = jnp.expand_dims(updated_states, axis=0)
+            else:
+                nones = [None] * (len(solver_kwargs) - 1)
+                vmapped = vmap(
+                    step_voltage_exponential, in_axes=(0, 0, 0, 0, 0, *nones, None)
+                )
+                updated_states = vmapped(
+                    *state_vals.values(), *solver_kwargs.values(), delta_t
+                )
         else:
             raise ValueError(
                 f"You specified `solver={solver}`. The only allowed solvers are "
-                "['bwd_euler', 'fwd_euler', 'crank_nicolson']."
+                "['bwd_euler', 'fwd_euler', 'crank_nicolson', 'exp_euler']."
             )
 
         u["v"] = updated_states[0]
@@ -2892,6 +3456,18 @@ class Module(ABC):
             update_nodes: Whether `.nodes` should be updated or not. Setting this to
                 `False` largely speeds up moving, especially for big networks, but
                 `.nodes` or `.show` will not show the new xyz coordinates.
+
+        .. rubric:: Example usage
+
+        Move an entire cell, which moves its branches accordingly:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp])
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.move(20.0, 30.0, 5.0)
+
         """
         for i in self._branches_in_view:
             self.base.xyzr[i][:, :3] += np.array([x, y, z])
@@ -2920,6 +3496,19 @@ class Module(ABC):
             update_nodes: Whether `.nodes` should be updated or not. Setting this to
                 `False` largely speeds up moving, especially for big networks, but
                 `.nodes` or `.show` will not show the new xyz coordinates.
+
+
+        .. rubric:: Example usage
+
+        Move an entire cell to a specified location.:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp])
+            cell = jx.Cell([branch] * 3, parents=[-1,0,0])
+            cell.move_to(20.0, 30.0, 5.0)
+
         """
         # Test if any coordinate values are NaN which would greatly affect moving
         if np.any(np.concatenate(self.xyzr, axis=0)[:, :3] == np.nan):
@@ -3097,6 +3686,7 @@ class View(Module):
         self.initialized_solver = pointer.initialized_solver
         self.initialized_syns = pointer.initialized_syns
         self.allow_make_trainable = pointer.allow_make_trainable
+        self.solver_customizers = pointer.solver_customizers
 
         # attrs affected by view
         # indices need to be update first, since they are used in the following
@@ -3501,8 +4091,7 @@ def to_graph(
         A networkx compartment. Has the same structure as a graph built with
         `build_compartment_graph()`.
 
-    Example usage
-    ^^^^^^^^^^^^^
+    .. rubric:: Example usage
 
     ::
 

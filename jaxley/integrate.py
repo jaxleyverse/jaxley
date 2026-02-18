@@ -23,17 +23,49 @@ def build_init_and_step_fn(
     """Return ``init_fn`` and ``step_fn`` which initialize modules and run update steps.
 
     This method can be used to gain additional control over the simulation workflow.
-    It exposes the ``step`` function, which can be used to perform step-by-step updates
+    It exposes a step function, which can be used to perform step-by-step updates
     of the differential equations.
 
     Args:
-        module: A `Module` object that e.g. a cell.
-        voltage_solver: Voltage solver used in step. Defaults to "jaxley.stone".
-        solver: ODE solver. Defaults to "bwd_euler".
+        module: A ``jx.Module`` object that, for example a ``jx.Cell``.
+        voltage_solver: Voltage solver used in step. Defaults to "jaxley.dhs".
+        solver: ODE solver. One of
+            { "bwd_euler" | "crank_nicolson" "| "fwd_euler" | "exp_euler" }.
 
     Returns:
-        init_fn, step_fn: Functions that initialize the state and parameters, and
-            perform a single integration step, respectively.
+
+        * ``init_fn(params, all_states=None, param_state=None, delta_t=0.025)``
+
+          Callable which initializes the states and parameters.
+
+          * Args:
+
+            * ``params`` (list[dict]): returned by `.get_parameters()`.
+            * ``all_states`` (dict | None = None): typically `None`.
+            * ``param_state`` (list[dict] | None = None): returned by `.data_set()`.
+            * ``delta_t`` (float = 0.025): the time step.
+
+          * Returns:
+
+            * ``all_states`` (dict).
+            * ``all_params`` (dict), which can be passed to the `step_fn`.
+
+        * ``step_fn(all_states, all_params, external_inds, externals, delta_t=0.025)``
+
+          Callable which performs a single integration step.
+
+          * Args:
+
+            * ``all_states`` (dict): returned by `init_fn()`.
+            * ``all_params`` (dict): returned by `init_fn()`.
+            * ``externals`` (dict): obtained with `module.externals.copy()` but using
+              only the external input at the current time step (see examples below).
+            * ``external_inds`` (dict): obtained with `module.external_inds.copy()`.
+            * ``delta_t`` (float): the time step.
+
+          * Returns:
+
+            * Updated ``all_states``  (dict).
 
     Example usage
     ^^^^^^^^^^^^^
@@ -70,10 +102,12 @@ def build_init_and_step_fn(
         # Initialize.
         init_fn, step_fn = build_init_and_step_fn(cell)
         states, params = init_fn(params)
-        recordings = [
-            states[rec_state][rec_ind][None]
-            for rec_state, rec_ind in zip(rec_states, rec_inds)
-        ]
+        recordings = [jnp.asarray(
+            [
+                all_states[rec_state][rec_ind]
+                for rec_state, rec_ind in zip(rec_states, rec_inds)
+            ]
+        )]
 
         # Loop over the ODE. The `step_fn` can be jitted for improving speed.
         steps = int(t_max / delta_t)  # Steps to integrate
@@ -124,11 +158,11 @@ def build_init_and_step_fn(
             pstate += param_state
 
         all_params = module.get_all_parameters(pstate)
-        all_states = (
-            module.get_all_states(pstate, all_params, delta_t)
-            if all_states is None
-            else all_states
-        )
+        if all_states is None:
+            all_states = module.get_all_states(pstate)
+            all_states = module.append_channel_currents_to_states(
+                all_states, all_params, delta_t
+            )
         return all_states, all_params
 
     def step_fn(
@@ -168,7 +202,7 @@ def build_init_and_step_fn(
 def add_stimuli(
     externals: dict,
     external_inds: dict,
-    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
+    data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
 ) -> tuple[dict, dict]:
     """Extends the external inputs with the stimuli.
 
@@ -184,13 +218,14 @@ def add_stimuli(
     if "i" in externals.keys() or data_stimuli is not None:
         if "i" in externals.keys():
             if data_stimuli is not None:
-                externals["i"] = jnp.concatenate([externals["i"], data_stimuli[1]])
-                external_inds["i"] = jnp.concatenate(
-                    [external_inds["i"], data_stimuli[2].index.to_numpy()]
-                )
+                # Current stimuli can all be stacked because it's the same state var
+                all_currents = jnp.concatenate(data_stimuli[1])
+                externals["i"] = jnp.concatenate([externals["i"], all_currents])
+                all_inds = jnp.concatenate(data_stimuli[2])
+                external_inds["i"] = jnp.concatenate([external_inds["i"], all_inds])
         else:
-            externals["i"] = data_stimuli[1]
-            external_inds["i"] = data_stimuli[2].index.to_numpy()
+            externals["i"] = jnp.concatenate(data_stimuli[1])
+            external_inds["i"] = jnp.concatenate(data_stimuli[2])
 
     return externals, external_inds
 
@@ -198,7 +233,7 @@ def add_stimuli(
 def add_clamps(
     externals: dict,
     external_inds: dict,
-    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
 ) -> tuple[dict, dict]:
     """Adds clamps to the external inputs.
 
@@ -212,15 +247,14 @@ def add_clamps(
     """
     # If a clamp is inserted, add it to the external inputs.
     if data_clamps is not None:
-        state_name, clamps, inds = data_clamps
-        if state_name in externals.keys():
-            externals[state_name] = jnp.concatenate([externals[state_name], clamps])
-            external_inds[state_name] = jnp.concatenate(
-                [external_inds[state_name], inds.index.to_numpy()]
-            )
-        else:
-            externals[state_name] = clamps
-            external_inds[state_name] = inds.index.to_numpy()
+        state_names, clamps, inds = data_clamps
+        for name, clamp, ind in zip(state_names, clamps, inds):
+            if name in externals.keys():
+                externals[name] = jnp.concatenate([externals[name], clamp])
+                external_inds[name] = jnp.concatenate([external_inds[name], ind])
+            else:
+                externals[name] = clamp
+                external_inds[name] = ind
 
     return externals, external_inds
 
@@ -230,8 +264,8 @@ def integrate(
     params: list[dict[str, Array]] = [],
     *,
     param_state: list[dict] | None = None,
-    data_stimuli: tuple[ArrayLike, pd.DataFrame] | None = None,
-    data_clamps: tuple[str, ArrayLike, pd.DataFrame] | None = None,
+    data_stimuli: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
+    data_clamps: tuple[List[str], List[ArrayLike], List[ArrayLike]] | None = None,
     t_max: float | None = None,
     delta_t: float = 0.025,
     solver: str = "bwd_euler",
@@ -254,7 +288,8 @@ def integrate(
             with zeros. If `t_max` is smaller, then the stimulus with be truncated.
         delta_t: Time step of the solver in milliseconds.
         solver: Which ODE solver to use. Either of ["fwd_euler", "bwd_euler",
-            "crank_nicolson"].
+            "crank_nicolson", "exp_euler"]. Note that `exp_euler` is still
+            experimental and is not yet optimized for networks.
         voltage_solver: Algorithm to solve quasi-tridiagonal linear system describing
             the voltage equations. The different options only take effect when
             `solver` is either `bwd_euler` or `crank_nicolson`. The options for
@@ -366,6 +401,15 @@ def integrate(
     )
     all_states, all_params = init_fn(params, all_states, param_state, delta_t)
 
+    if solver == "exp_euler":
+        exp_matrix = module.solver_customizers["exp_euler"]["exp_euler_transition"]
+        if exp_matrix is None:
+            exp_matrix = module.build_exp_euler_transition_matrix(
+                delta_t=delta_t,
+                axial_conductances=all_params["axial_conductances"],
+            )
+        all_params["exp_euler_transition"] = exp_matrix
+
     def _body_fun(state, externals):
         state = step_fn(state, all_params, externals, external_inds, delta_t)
         recs = jnp.asarray(
@@ -395,10 +439,8 @@ def integrate(
             nsteps_to_return <= length
         ), "The desired simulation duration is longer than `prod(nested_length)`."
         if externals:
-            dummy_external = jnp.zeros(
-                (size_difference, externals[example_key].shape[1])
-            )
             for key in externals.keys():
+                dummy_external = jnp.zeros((size_difference, externals[key].shape[1]))
                 externals[key] = jnp.concatenate([externals[key], dummy_external])
 
     # Record the initial state.

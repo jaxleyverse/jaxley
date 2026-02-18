@@ -20,8 +20,22 @@ class Transform(ABC):
         pass
 
     @abstractmethod
-    def inverse(self, x: ArrayLike) -> Array:
+    def inverse(self, y: ArrayLike) -> Array:
         pass
+
+
+class IdentityTransform(Transform):
+    """Identity transformation."""
+
+    def __init__(self) -> None:
+        """This transform does nothing to its input."""
+        super().__init__()
+
+    def forward(self, x: ArrayLike) -> Array:
+        return x
+
+    def inverse(self, y: ArrayLike) -> Array:
+        return y
 
 
 class SigmoidTransform(Transform):
@@ -48,23 +62,52 @@ class SigmoidTransform(Transform):
         return x
 
 
+class LogisticTransform(SigmoidTransform):
+    """Logistic transformation."""
+
+    def __init__(self, lower: ArrayLike, upper: ArrayLike) -> None:
+        """Maps unconstrained values to [lower, upper] like SigmoidTransform, but with
+        latent rescaled to standard logistic scale (variance π²/3), i.e. unit-variance
+        unconstrained space.
+
+        Args:
+            lower (ArrayLike): Lower bound of the interval.
+            upper (ArrayLike): Upper bound of the interval.
+        """
+        super().__init__(lower, upper)
+
+    def forward(self, x: ArrayLike) -> Array:
+        x_logit = x * jnp.pi / jnp.sqrt(3)  # rescale (logistic has variance π²/3)
+        return super().forward(x_logit)
+
+    def inverse(self, y: ArrayLike) -> Array:
+        x_logit = super().inverse(y)
+        return x_logit * jnp.sqrt(3) / jnp.pi  # Scale to unit variance
+
+
 class SoftplusTransform(Transform):
     """Softplus transformation."""
 
-    def __init__(self, lower: ArrayLike) -> None:
+    def __init__(self, lower: ArrayLike, threshold: float = 20.0) -> None:
         """This transform maps any value bijectively to the interval [lower, inf).
 
         Args:
             lower (ArrayLike): Lower bound of the interval.
+            threshold (float, optional): Threshold to use linearity for numerical stability.
         """
         super().__init__()
         self.lower = lower
+        self.threshold = threshold
 
     def forward(self, x: ArrayLike) -> Array:
-        return jnp.log1p(save_exp(x)) + self.lower
+        return jnp.where(x > self.threshold, x, jnp.log1p(save_exp(x))) + self.lower
 
-    def inverse(self, y: ArrayLike) -> Array:
-        return jnp.log(save_exp(y - self.lower) - 1.0)
+    def inverse(self, y):
+        """Inverse of the forward mapping."""
+        linear_mask = y > self.lower + self.threshold
+        linear_inv = y - self.lower
+        softplus_inv = jnp.log(save_exp(y - self.lower) - 1.0)
+        return jnp.where(linear_mask, linear_inv, softplus_inv)
 
 
 class NegSoftplusTransform(SoftplusTransform):

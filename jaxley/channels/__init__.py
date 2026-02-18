@@ -3,6 +3,7 @@
 
 from jaxley.channels.channel import Channel  # isort: skip
 from jaxley.channels.hh import HH
+from jaxley.channels.non_capacitive.adex import AdEx
 from jaxley.channels.non_capacitive.izhikevich import Izhikevich
 from jaxley.channels.non_capacitive.rate import Rate
 from jaxley.channels.non_capacitive.spike import Fire
@@ -11,6 +12,7 @@ from jaxley.channels.pospischil import CaL, CaT, K, Km, Leak, Na
 __all__ = [
     "Channel",
     "HH",
+    "AdEx",
     "Izhikevich",
     "Rate",
     "Fire",

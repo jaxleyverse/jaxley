@@ -16,6 +16,7 @@ import pytest
 import jaxley as jx
 from jaxley.channels import (
     HH,
+    AdEx,
     CaL,
     CaT,
     Channel,
@@ -209,6 +210,33 @@ def test_init_states(SimpleCell):
     assert np.abs(v[0, 0] - v[0, -1]) < 0.02
 
 
+def test_init_states_with_groups_in_net():
+    """PR #711: we had issues with the interaction of groups, nets, and init_states."""
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=2)
+    cell1 = jx.Cell(branch, [-1, 0, 1])
+    cell2 = jx.Cell(branch, [-1, 0, 1, 2])
+    cell3 = jx.Cell(branch, [-1, 0])
+    net = jx.Network([cell1, cell2, cell3])
+
+    net.cell(0).branch(1).add_to_group("apical")
+    net.cell(1).branch(3).add_to_group("apical")
+    net.cell(2).branch(1).add_to_group("apical")
+
+    net.apical.insert(HH())
+    net.cell(0).branch(1).set("v", -80.0)
+    net.cell(1).branch(3).set("v", -90.0)
+    net.cell(2).branch(1).set("v", -100.0)
+
+    net.init_states()
+    init_state = net.nodes["HH_m"].to_numpy()[[2, 3, 12, 13, 16, 17]]
+    true_init_state = np.asarray(
+        [0.00804324, 0.00804324, 0.00210994, 0.00210994, 0.00053298, 0.00053298]
+    )
+    error = np.max(np.abs(true_init_state - init_state))
+    assert error < 1e-4, "init_states error is too big for networks."
+
+
 class KCA11(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
@@ -376,6 +404,12 @@ def test_delete_channel(SimpleBranch):
     branch3.insert(K())
     branch3.delete(K())
 
+    branch4 = SimpleBranch(ncomp=3)
+    branch4.insert(CaL())
+    branch4.insert(CaT())
+    branch4.delete(CaL())
+    branch4.delete(CaT())
+
     def channel_present(view, channel, partial=False):
         states_and_params = list(channel.channel_states.keys()) + list(
             channel.channel_params.keys()
@@ -422,7 +456,23 @@ def test_delete_channel(SimpleBranch):
     assert not channel_present(branch4, Leak())
 
 
-@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+def test_no_removal_of_shared_params():
+    """If a param is present in a different channel, then it should not be removed."""
+    na1 = Na("Na1")
+    na1.channel_params["shared_gNa"] = na1.channel_params.pop("Na1_gNa")
+    na2 = Na("Na2")
+    na2.channel_params["shared_gNa"] = na2.channel_params.pop("Na2_gNa")
+
+    cell = jx.Cell()
+    cell.insert(na1)
+    cell.insert(na2)
+    cell.delete(na1)
+
+    # This fails if `shared_gNa` is no longer a column of `.nodes`.
+    _ = cell.nodes["shared_gNa"]
+
+
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
 def test_lif(solver):
     cell = jx.Cell()
     cell.insert(Leak())
@@ -440,7 +490,7 @@ def test_lif(solver):
     assert np.sum(v[1]) == 6.0
 
 
-@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler"])
+@pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
 def test_izhikevich(solver):
     cell = jx.Cell()
     cell.insert(Izhikevich())
@@ -536,5 +586,60 @@ def test_multicompartment_izhikevich(SimpleCell):
     t_max = 40.0
 
     cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 0.02, dt, t_max))
+    recordings = jx.integrate(cell, delta_t=dt)
+    assert np.invert(np.any(np.isnan(recordings)))
+
+
+def test_adex():
+    """Test that AdEx produces expected spiking behavior."""
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Ignore surrogate gradient warning
+        cell = jx.Cell()
+        cell.insert(AdEx())
+
+    # Set parameters for reliable spiking (from test_adex.py)
+    cell.set("capacitance", 200.0)
+    cell.set("radius", 33.0)
+    cell.set("length", 100.0)
+    cell.set("v", -58.0)
+    cell.record("v")
+    cell.record("AdEx_spikes")
+
+    dt = 0.1
+    t_max = 100.0
+
+    cell.stimulate(jx.step_current(5.0, 80.0, 100.0, dt, t_max))
+    recordings = jx.integrate(cell, delta_t=dt)
+
+    # Check that simulation runs without NaN
+    assert np.invert(np.any(np.isnan(recordings)))
+
+    # Check that spikes occurred (voltage should have been reset at some point)
+    v = np.asarray(recordings[0]).flatten()
+    spikes = np.asarray(recordings[1]).flatten()
+    assert np.any(spikes > 0), "AdEx should produce spikes with this stimulation"
+
+
+def test_multicompartment_adex(SimpleCell):
+    """Test that AdEx can be run in multicompartment simulation."""
+    import warnings
+
+    cell = SimpleCell(2, 4)
+    # Insert AdEx only in "soma" compartment, Leak elsewhere
+    cell.insert(Leak())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Ignore surrogate gradient warning
+        cell.branch(0).comp(0).insert(AdEx())
+
+    cell.set("capacitance", 200.0)
+    cell.record("v")
+    cell.branch(0).comp(0).record("AdEx_spikes")
+
+    dt = 0.1
+    t_max = 40.0
+
+    cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 100.0, dt, t_max))
     recordings = jx.integrate(cell, delta_t=dt)
     assert np.invert(np.any(np.isnan(recordings)))

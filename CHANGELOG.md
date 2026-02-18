@@ -1,4 +1,118 @@
-# 0.11.4 (pre-release)
+# 0.14.0
+
+### 🧩 New features
+
+- Add AdEx simplified neuron model, similar to the implementation of Izhikevich channel.
+Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model as an effective description of neuronal activity.'
+- Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
+- Add handling of inhomogeneous branches for import and export of morphologies. (#779,@NicolasRR)
+- Add an logistic transformation (`jaxley.optimize.transforms.LogisticTransform`) (#788, @jnsbck)
+
+### 🐛 Bug fixes
+
+- Fix issue where `build_dynamic_state_utils` `remove_observables` performed in-place deletions on full state dict (#775, @chaseking)
+- Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka) and fixed checkpointing for this case (#786, @kyralianaka)
+
+
+# 0.13.0
+
+### 🧩 New features
+
+- Add utilities to process the ``all_states`` dictionary such that it only contains
+"true" ODE states (i.e., it removes branchpoint states, membrane states that are NaN
+because the channel does not exist there, and ionic currents). In addition, the
+utilities can flatten the states to a vector (#719, @matthijspals, @michaeldeistler):
+```python
+import jaxley as jx
+from jaxley.integrate import build_init_and_step_fn
+from jaxley.utils.dynamics import build_dynamic_state_utils
+
+cell = jx.Cell()
+params = cell.get_parameters()
+
+init_fn, step_fn = build_init_and_step_fn(cell)
+remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(cell)
+
+all_states, all_params = init_fn(params)
+
+dynamic_states = flatten(remove_observables(all_states))
+recovered_all_states = add_observables(unflatten(dynamic_states), all_params, delta_t=0.025)
+```
+
+### 📚 Documentation
+
+- Improved documentation for ``build_init_and_step_fn``
+(#719, @matthijspals, @michaeldeistler)
+- Improved examples in documentation (#759, @michaeldeistler)
+- Manually remove some functions from the documentation (#759, @michaeldeistler)
+
+
+# 0.12.0
+
+### 🧩 New features
+
+- Exponential Euler solver (#743, @michaeldeistler):
+```python
+jx.integrate(cell, solver="exp_euler")
+```
+This solver is slow on CPU, but can be very performant on GPU, especially when length,
+radius, axial resistivity, and capacitance do not change across simulations (i.e.,
+they are no parameters). In that case, the transition matrix for exponential Euler can
+be precomputed (and it is no longer computed at every call to `jx.integrate`):
+```python
+cell.customize_solver_exp_euler(
+    exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
+)  # Pre-compute the update matrix. Has to be rerun for new values of radius, l, ra, C.
+jx.integrate(cell, solver="exp_euler")
+```
+- Forward Euler solver for branched morphologies (#743, @michaeldeistler).
+
+### 🛠️ Internal updates
+
+-  separate getting the currents from `get_all_states()` (#727, @michaeldeistler). To
+restore the previous behaviour, do:
+```python
+states = cell.get_all_states(pstate)
+states = cell.append_channel_currents_to_states(states, all_params, delta_t)
+```
+
+### 🐛 Bug fixes
+
+- bugfix for `cell.vis(..., type="morph")` (#725, @michaeldeistler, thanks to
+Elisabeth Galyo for reporting)
+
+### 📚 Documentation
+
+- Added example usage to many user-facing Module functions (#716, @alexpejovic)
+- Update GPU installation instructions to use CUDA 13 (#732, @michaeldeistler)
+- Update citation (#739, @michaeldeistler)
+- new how-to guide on choosing a solver (#743, @michaeldeistler)
+- fixes for documentation rendering (#743, @michaeldeistler)
+
+
+# 0.11.5
+
+### 🐛 Bug fixes
+
+- bugfix for `.delete()` when multiple channels have the same `current_name` or a
+shared parameter/state (#713, @michaeldeistler)
+- safe softplus, use linear function above certain threshold. This avoids an unwanted
+clipping  operation due to the save_exp (#714 @matthijspals)
+
+### 📚 Documentation
+
+- typo fixes for several tutorial notebooks (#721, @michaeldeistler, thanks @martricks
+for reporting)
+- update tutorial on building channel and synapse models: now includes pitfalls and
+recommendations (#723, @michaeldeistler)
+
+
+# 0.11.4
+
+### 🐛 Bug fixes
+
+- bugfix for indexing when `init_states()` is run on a `jx.Network` (#711,
+@michaeldeistler)
 
 ### 📚 Documentation
 

@@ -23,6 +23,7 @@ Simulation
 
    jaxley.integrate
    jaxley.integrate.build_init_and_step_fn
+   jaxley.utils.dynamics.build_dynamic_state_utils
 
 
 Morphologies
@@ -106,6 +107,7 @@ Optimization
    :nosignatures:
 
    jaxley.optimize.transforms.SigmoidTransform
+   jaxley.optimize.transforms.LogisticTransform
    jaxley.optimize.transforms.SoftplusTransform
    jaxley.optimize.transforms.NegSoftplusTransform
    jaxley.optimize.transforms.AffineTransform

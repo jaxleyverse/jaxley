@@ -399,9 +399,9 @@ class Network(Module):
             syn_voltage_terms += gathered_syn_currents[0]
             syn_constant_terms -= gathered_syn_currents[1]
 
-            # Add the synaptic currents through every compartment as state.
-            # `post_syn_currents` is a `ArrayLike` of as many elements as there are
-            # compartments in the network.
+            # Add the synaptic currents through every synapse as a state.
+            # `synapse_currents` is a `ArrayLike` of as many elements as there are
+            # synapses in the network.
             # `[0]` because we only use the non-perturbed voltage.
             states[f"i_{synapse_type._name}"] = synapse_currents[0]
 
@@ -423,6 +423,21 @@ class Network(Module):
             within_layer_offset: Offset between cells within the same layer.
             between_layer_offset: Offset between layers.
             vertical_layers: If True, layers are arranged vertically.
+
+        .. rubric:: Example usage
+
+        Arrange a network into layers and visualize it:
+
+        .. code-block:: python
+
+            comp = jx.Compartment()
+            branch = jx.Branch([comp] * 4)
+            cell = jx.Cell([branch], parents=[-1])
+            net = jx.Network([cell] * 3)
+            net.arrange_in_layers([2, 1])
+            net.vis(detail="point")
+            plt.show()
+
         """
         assert (
             np.sum(layers) == self.shape[0]
@@ -599,6 +614,10 @@ class Network(Module):
         self._add_params_to_edges(synapse_type, indices)
         self.base.edges["controlled_by_param"] = 0
         self._edges_in_view = self.edges.index.to_numpy()
+
+        current_name = f"i_{synapse_type._name}"
+        if current_name not in self.base.synapse_current_names:
+            self.base.synapse_current_names.append(current_name)
 
     def _add_params_to_edges(self, synapse_type, indices):
         # Add parameters and states to the `.edges` table.
