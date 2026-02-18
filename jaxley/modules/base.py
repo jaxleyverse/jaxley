@@ -1802,19 +1802,17 @@ class Module(ABC):
             v = jx.integrate(cell, params=params, t_max=10.0)
         """
         trainable_params = []
-        for inds, key in zip(
+        for comp_inds, param in zip(
             self.indices_set_by_trainables, self.trainable_param_names
         ):
-            first_inds = inds[:, 0] if inds.ndim >= 2 else inds
-            # Determine if this is a node or edge parameter
-            if key in self.nodes.columns:
-                # Fetch current values from nodes DataFrame
-                values = jnp.array(self.nodes.loc[first_inds, key])
-            elif key in self.edges.columns:
-                values = jnp.array(self.edges.loc[first_inds, key])
-            else:
-                raise KeyError(f"Parameter '{key}' not found in nodes or edges.")
-            trainable_params.append({key: values})
+            data = self.nodes if param in self.nodes.columns else None
+            data = self.edges if param in self.edges.columns else data
+            assert data is not None, f"Parameter '{param}' not found in nodes or edges"
+            param_vals = jnp.nanmean(
+                jnp.asarray([data.loc[inds, param].to_numpy() for inds in comp_inds]),
+                axis = 1
+            )
+            trainable_params.append({param: param_vals})
         return trainable_params
 
     @only_allow_module
