@@ -3688,7 +3688,6 @@ class View(Module):
         self._branchpoints = (
             ptr_nodes if ptr_nodes.empty else ptr_nodes.loc[self._branchpoints_in_view]
         )
-        self.xyzr = self._xyzr_in_view()
         self.ncomp = len(self.nodes)
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
@@ -3742,6 +3741,10 @@ class View(Module):
 
         if len(self.nodes) == 0:
             raise ValueError("Nothing in view. Check your indices.")
+
+    @functools.cached_property
+    def xyzr(self):
+        return self._xyzr_in_view()
 
     def _set_inds_in_view(
         self,
