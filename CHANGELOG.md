@@ -12,7 +12,7 @@ Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model 
 
 - Fix issue where `build_dynamic_state_utils` `remove_observables` performed in-place deletions on full state dict (#775, @chaseking)
 - Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka) and fixed checkpointing for this case (#786, @kyralianaka)
-
+- Fix issue causing some `View`s to take too long to create (#791, @alexpejovic)
 
 # 0.13.0
 
