@@ -260,7 +260,7 @@ def connectivity_matrix_connect(
     pre_cell_view: "View",
     post_cell_view: "View",
     synapse_type: "Synapse",
-    connectivity_matrix: np.ndarray[bool],
+    connectivity_matrix: np.ndarray,
     random_post_comp: bool = False,
 ):
     """Connect cells of a network with synapses via a boolean connectivity matrix.

@@ -58,6 +58,7 @@ class Synapse:
         return self
 
     def update_states(
+        self,
         states: dict[str, Array],
         delta_t: float,
         pre_voltage: ArrayLike,
@@ -78,6 +79,7 @@ class Synapse:
         raise NotImplementedError
 
     def compute_current(
+        self,
         states: dict[str, Array],
         pre_voltage: ArrayLike,
         post_voltage: ArrayLike,

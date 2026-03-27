@@ -16,7 +16,7 @@ class Channel:
 
     As in NEURON, a `Channel` is considered a distributed process, which means that its
     conductances are to be specified in `S/cm2` and its currents are to be specified in
-    `uA/cm2`."""
+    `mA/cm2`."""
 
     _name = None
     channel_params = None
@@ -96,7 +96,7 @@ class Channel:
             params: Parameters of the channel (conductances in `S/cm2`).
 
         Returns:
-            Current in `uA/cm2`.
+            Current in `mA/cm2`.
         """
         raise NotImplementedError
 
