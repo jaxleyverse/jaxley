@@ -13,6 +13,7 @@ Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model 
 - Fix issue where `build_dynamic_state_utils` `remove_observables` performed in-place deletions on full state dict (#775, @chaseking)
 - Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka) and fixed checkpointing for this case (#786, @kyralianaka)
 - Fix issue causing some `View`s to take too long to create (#791, @alexpejovic)
+- Fix missing `self` in `Synapse` base class, stale `uA/cm2` docstrings, invalid `np.ndarray[bool]` annotation, and duplicate import (#792, @haoyu-haoyu)
 
 # 0.13.0
 
