@@ -22,15 +22,15 @@ def _pad_comp_edges(comp_edges) -> np.ndarray:
     compartment at the end of every solve vector, and `-1` indexes that no-op slot.
     """
     if isinstance(comp_edges, np.ndarray) and comp_edges.dtype != object:
-        return comp_edges.astype(int, copy=False)
+        return comp_edges.astype(np.int32, copy=False)
 
     comp_edges = list(comp_edges)
     if len(comp_edges) == 0:
-        return np.empty((0, 0, 2), dtype=int)
+        return np.empty((0, 0, 2), dtype=np.int32)
 
-    level_arrays = [np.asarray(level, dtype=int) for level in comp_edges]
+    level_arrays = [np.asarray(level, dtype=np.int32) for level in comp_edges]
     max_width = max(level.shape[0] for level in level_arrays)
-    padded = np.full((len(level_arrays), max_width, 2), -1, dtype=int)
+    padded = np.full((len(level_arrays), max_width, 2), -1, dtype=np.int32)
 
     for idx, level in enumerate(level_arrays):
         if level.ndim != 2 or level.shape[1] != 2:
@@ -55,8 +55,8 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
     """
     ordered_comp_edges = solve_indexer["node_order_grouped"]
     flipped_comp_edges = list(reversed(ordered_comp_edges))
-    all_children = solve_indexer["all_children"]
-    all_parents = solve_indexer["all_parents"]
+    all_children = np.asarray(solve_indexer["all_children"], dtype=np.int32)
+    all_parents = np.asarray(solve_indexer["all_parents"], dtype=np.int32)
 
     steps = len(flipped_comp_edges)
 
@@ -329,23 +329,14 @@ def _comp_based_backsub_recursive_doubling(
     solve_effect = solves / diags
 
     num_recursive_steps = int(np.ceil(np.log2(steps + 1))) if steps > 0 else 0
-    parent_jump = jnp.asarray(parent_lookup)
+    parent_jump = jnp.asarray(parent_lookup, dtype=jnp.int32)
 
-    def _recursive_doubling_body(_, carry):
-        solve_effect, lower_effect, parent_jump = carry
-
+    # Only O(log2(steps)) iterations; unrolling these often recovers GPU runtime
+    # without significantly increasing compile time.
+    for _ in range(num_recursive_steps):
         solve_effect = lower_effect * solve_effect[parent_jump] + solve_effect
         lower_effect = lower_effect * lower_effect[parent_jump]
         parent_jump = parent_jump[parent_jump]
-
-        return solve_effect, lower_effect, parent_jump
-
-    solve_effect, _, _ = fori_loop(
-        0,
-        num_recursive_steps,
-        _recursive_doubling_body,
-        (solve_effect, lower_effect, parent_jump),
-    )
 
     # We have to return a `diags` because the final solution is computed as
     # `solves/diags` (see `step_voltage_implicit_with_dhs_solve`). For recursive
