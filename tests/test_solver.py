@@ -1,6 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
 
@@ -8,6 +10,7 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import connect
 from jaxley.solver_gate import exponential_euler
+from jaxley.solver_voltage import _make_dhs_solve
 from jaxley.synapses import IonotropicSynapse
 
 
@@ -70,3 +73,42 @@ def test_exp_euler_solver_customization(SimpleCell):
     )
     v = jx.integrate(cell, solver="exp_euler")
     assert np.invert(np.any(np.isnan(v)))
+
+
+@pytest.mark.parametrize("optimize_for_gpu", [False, True])
+def test_dhs_solve_handles_ragged_grouped_edges(optimize_for_gpu):
+    solve_indexer = {
+        "node_order_grouped": [
+            np.asarray([[1, 0], [2, 0]], dtype=int),
+            np.asarray([[3, 1]], dtype=int),
+        ],
+        "all_children": np.asarray([1, 2, 3], dtype=int),
+        "all_parents": np.asarray([0, 0, 1], dtype=int),
+        "parent_lookup": np.asarray([-1, 0, 0, 1, -1], dtype=int),
+    }
+    solve = _make_dhs_solve(
+        solve_indexer=solve_indexer,
+        optimize_for_gpu=optimize_for_gpu,
+        n_nodes=4,
+    )
+
+    diags = jnp.asarray([4.0, 5.0, 6.0, 7.0, 1.0])
+    lowers = jnp.asarray([0.0, -0.4, -0.3, -0.2, 0.0])
+    uppers = jnp.asarray([0.0, -0.5, -0.1, -0.6, 0.0])
+    rhs = jnp.asarray([1.0, 2.0, 3.0, 4.0, 0.0])
+
+    matrix = np.diag(np.asarray(diags))
+    for child, parent in zip(
+        solve_indexer["all_children"], solve_indexer["all_parents"]
+    ):
+        matrix[parent, child] = float(uppers[child])
+        matrix[child, parent] = float(lowers[child])
+
+    expected = np.linalg.solve(matrix, np.asarray(rhs))
+    actual = np.asarray(jax.jit(solve)(diags, lowers, uppers, rhs))
+    np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6)
+
+    grad_fn = jax.jit(jax.grad(lambda b: jnp.sum(solve(diags, lowers, uppers, b))))
+    actual_grad = np.asarray(grad_fn(rhs))
+    expected_grad = np.linalg.solve(matrix.T, np.ones_like(expected))
+    np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-6, atol=1e-6)

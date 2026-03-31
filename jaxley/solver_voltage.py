@@ -14,6 +14,34 @@ from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from jaxley.solver_gate import exponential_euler
 
 
+def _pad_comp_edges(comp_edges) -> np.ndarray:
+    """Convert grouped DHS edges to a dense integer array padded with `-1`.
+
+    `node_order_grouped` is often stored as a ragged list of arrays, one per depth
+    level. Padding with `-1` is safe because the voltage solve appends a spurious
+    compartment at the end of every solve vector, and `-1` indexes that no-op slot.
+    """
+    if isinstance(comp_edges, np.ndarray) and comp_edges.dtype != object:
+        return comp_edges.astype(int, copy=False)
+
+    comp_edges = list(comp_edges)
+    if len(comp_edges) == 0:
+        return np.empty((0, 0, 2), dtype=int)
+
+    level_arrays = [np.asarray(level, dtype=int) for level in comp_edges]
+    max_width = max(level.shape[0] for level in level_arrays)
+    padded = np.full((len(level_arrays), max_width, 2), -1, dtype=int)
+
+    for idx, level in enumerate(level_arrays):
+        if level.ndim != 2 or level.shape[1] != 2:
+            raise ValueError(
+                "Expected each DHS level to have shape (num_edges_in_level, 2)."
+            )
+        padded[idx, : level.shape[0], :] = level
+
+    return padded
+
+
 def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
     """Create a DHS solve function with custom JVP for efficient differentiation.
 
@@ -32,8 +60,8 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
 
     steps = len(flipped_comp_edges)
 
-    ordered_comp_edges_np = np.asarray(ordered_comp_edges)
-    flipped_comp_edges_np = np.asarray(flipped_comp_edges)
+    ordered_comp_edges_np = _pad_comp_edges(ordered_comp_edges)
+    flipped_comp_edges_np = _pad_comp_edges(flipped_comp_edges)
 
     def _raw_solve(diags, lowers, uppers, solves):
         """Solve the tree-structured linear system (no custom JVP)."""
@@ -54,7 +82,7 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
             d, s = diags, solves
             for i in range(steps):
                 d, s, _, _, _ = _comp_based_triang(
-                    i, (d, s, lowers, uppers, flipped_comp_edges)
+                    i, (d, s, lowers, uppers, flipped_comp_edges_np)
                 )
 
             d, s = _comp_based_backsub_recursive_doubling(
