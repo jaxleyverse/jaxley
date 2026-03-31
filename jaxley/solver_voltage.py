@@ -79,8 +79,11 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
 
             return solves_out / diags_out
         else:
-            init = (diags, solves, lowers, uppers, flipped_comp_edges_np)
-            d, s, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
+            d, s = diags, solves
+            for i in range(steps):
+                d, s, _, _, _ = _comp_based_triang(
+                    i, (d, s, lowers, uppers, flipped_comp_edges_np)
+                )
 
             d, s = _comp_based_backsub_recursive_doubling(
                 d, s, lowers, steps, solve_indexer["parent_lookup"]
@@ -166,10 +169,11 @@ def step_voltage_implicit_with_dhs_solve(
         map_to_solve_order_lower_and_upper: An array of indices that permutes
             the concatenation of lowers and uppers into the order of the solve:
             `lowers_and_uppers = lowers_and_uppers[map_to_solve_order_lower_and_upper]`.
-        optimize_for_gpu: If True, it uses a compilation-friendly DHS variant with
-            level-wise triangularization and recursive-doubling backsubstitution.
-            This mode prioritizes lower compilation time for large morphologies while
-            retaining high runtime performance on accelerators.
+        optimize_for_gpu: If True, it does two things: (1) it unrolls the for-loop
+            for the triangularization stage. (2) It uses recursive doubling (also
+            unrolled) for the backsubstitution stage. Setting this to `True` will
+            largely speed up runs on GPU, but it will slow down compilation time and
+            run time on CPU.
     """
     axial_conductances = delta_t * axial_conductances
 
