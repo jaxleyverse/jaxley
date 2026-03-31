@@ -95,8 +95,21 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
     return _solve
 
 
-# Cache to avoid re-creating the solve function on every call.
-_dhs_solve_cache: Dict[tuple[int, bool, int], Any] = {}
+# Cache key for storing the compiled solve function directly on the solve_indexer
+# dict. Using a tuple key avoids collisions with the string keys it already uses.
+# The cached function is automatically discarded when the owning Module (and its
+# _dhs_solve_indexer dict) is garbage-collected, and naturally invalidated when
+# _init_solver_jaxley_dhs_solve() creates a fresh dict.
+_SOLVE_FN_KEY = "_cached_solve_fn"
+
+
+def _get_dhs_solve(solve_indexer: dict, optimize_for_gpu: bool, n_nodes: int):
+    cache_key = (_SOLVE_FN_KEY, optimize_for_gpu, n_nodes)
+    solve_fn = solve_indexer.get(cache_key)
+    if solve_fn is None:
+        solve_fn = _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes)
+        solve_indexer[cache_key] = solve_fn
+    return solve_fn
 
 
 def step_voltage_implicit_with_dhs_solve(
@@ -172,12 +185,7 @@ def step_voltage_implicit_with_dhs_solve(
         lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
 
         # Get or create the solve function with custom JVP.
-        cache_key = (id(solve_indexer), optimize_for_gpu, int(n_nodes))
-        if cache_key not in _dhs_solve_cache:
-            _dhs_solve_cache[cache_key] = _make_dhs_solve(
-                solve_indexer, optimize_for_gpu, n_nodes
-            )
-        dhs_solve = _dhs_solve_cache[cache_key]
+        dhs_solve = _get_dhs_solve(solve_indexer, optimize_for_gpu, int(n_nodes))
 
         # Solve the voltage equations with efficient custom JVP.
         solution = dhs_solve(diags, lowers, uppers, solves)
