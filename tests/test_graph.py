@@ -266,9 +266,10 @@ def test_from_graph_vs_NEURON(file):
     errors = neuron_df["neuron_idx"].to_frame()
     errors["jx_idx"] = jx_df["jx_idx"]
     errors[["x", "y", "z"]] = neuron_df[["x", "y", "z"]] - jx_df[["x", "y", "z"]]
-    errors["xyz"] = np.sqrt((errors[["x", "y", "z"]] ** 2).sum(axis=1))
-    errors["radius"] = neuron_df["radius"] - jx_df["radius"]
-    errors["length"] = neuron_df["length"] - jx_df["length"]
+    xyz_vals = errors[["x", "y", "z"]].to_numpy(dtype=float)
+    errors["xyz"] = np.sqrt((xyz_vals**2).sum(axis=1))
+    errors["radius"] = (neuron_df["radius"] - jx_df["radius"]).astype(float)
+    errors["length"] = (neuron_df["length"] - jx_df["length"]).astype(float)
 
     assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) == 0
     assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) == 0
