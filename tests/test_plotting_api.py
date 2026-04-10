@@ -172,32 +172,36 @@ def test_volume_plotting(
     for module in [comp, branch, cell, net]:
         module.compute_xyz()
 
-    fname = os.path.join(
-        os.path.dirname(__file__), "swc_files", "morph_ca1_n120_250.swc"
-    )
-    morph_cell = SimpleMorphCell(fname, ncomp=1)
+    fpaths = []
+    for name in ["morph_ca1_n120_250.swc", "morph_ca1_n120_250_single_point_soma.swc"]:
+        base_dir = os.path.dirname(__file__)
+        fpath = os.path.join(base_dir, "swc_files", name)
+        fpaths.append(fpath)
 
-    fig, ax = plt.subplots()
-    for module in [comp, branch, cell, morph_cell]:
-        module.vis(type="comp", ax=ax, resolution=6)
-    net.vis(type="comp", ax=ax, cell_plot_kwargs={"resolution": 6})
-    plt.close(fig)
+    for fname in fpaths:
+        morph_cell = SimpleMorphCell(fname, ncomp=1)
 
-    # test 3D plotting
-    for module in [comp, branch, cell, morph_cell]:
-        module.vis(type="comp", dims=[0, 1, 2], resolution=6)
-    net.vis(type="comp", dims=[0, 1, 2], cell_plot_kwargs={"resolution": 6})
-    plt.close()
+        fig, ax = plt.subplots()
+        for module in [comp, branch, cell, morph_cell]:
+            module.vis(type="comp", ax=ax, resolution=6)
+        net.vis(type="comp", ax=ax, cell_plot_kwargs={"resolution": 6})
+        plt.close(fig)
 
-    # test morph plotting (does not work if no radii in xyzr)
-    morph_cell.branch(1).vis(type="morph")
-    morph_cell.branch(1).vis(
-        type="morph", dims=[0, 1, 2], resolution=6
-    )  # plotting whole thing takes too long
-    plt.close()
+        # test 3D plotting
+        for module in [comp, branch, cell, morph_cell]:
+            module.vis(type="comp", dims=[0, 1, 2], resolution=6)
+        net.vis(type="comp", dims=[0, 1, 2], cell_plot_kwargs={"resolution": 6})
+        plt.close()
 
-    # In #725, we had discovered a bug when `ncomp=2`. This test ensures that this
-    # bug does not resurface.
-    morph_cell = SimpleMorphCell(fname, ncomp=2)
-    morph_cell.vis(type="morph", dims=[0, 1], linewidth=0.0, resolution=6)
-    plt.close()
+        # test morph plotting (does not work if no radii in xyzr)
+        morph_cell.branch(1).vis(type="morph")
+        morph_cell.branch(1).vis(
+            type="morph", dims=[0, 1, 2], resolution=6
+        )  # plotting whole thing takes too long
+        plt.close()
+
+        # In #725, we had discovered a bug when `ncomp=2`. This test ensures that this
+        # bug does not resurface.
+        morph_cell = SimpleMorphCell(fname, ncomp=2)
+        morph_cell.vis(type="morph", dims=[0, 1], linewidth=0.0, resolution=6)
+        plt.close()
