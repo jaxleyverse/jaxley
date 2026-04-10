@@ -306,9 +306,9 @@ class Network(Module):
         synapse_names = list(grouped_syns.indices.keys())
 
         for i, synapse_type in enumerate(syn_channels):
-            assert synapse_names[i] == synapse_type._name, (
-                "Mixup in the ordering of synapses. Please create an issue on Github."
-            )
+            assert (
+                synapse_names[i] == synapse_type._name
+            ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
 
@@ -358,9 +358,9 @@ class Network(Module):
         # offset.
         diff = 1e-3
         for i, synapse_type in enumerate(syn_channels):
-            assert synapse_names[i] == synapse_type._name, (
-                "Mixup in the ordering of synapses. Please create an issue on Github."
-            )
+            assert (
+                synapse_names[i] == synapse_type._name
+            ), "Mixup in the ordering of synapses. Please create an issue on Github."
             synapse_param_names = list(synapse_type.synapse_params.keys())
             synapse_state_names = list(synapse_type.synapse_states.keys())
 
@@ -450,9 +450,9 @@ class Network(Module):
             plt.show()
 
         """
-        assert np.sum(layers) == self.shape[0], (
-            "The number of cells in the layers must match the number of cells in the network."
-        )
+        assert (
+            np.sum(layers) == self.shape[0]
+        ), "The number of cells in the layers must match the number of cells in the network."
         cells_in_layers = [
             list(range(sum(layers[:i]), sum(layers[: i + 1])))
             for i in range(len(layers))
