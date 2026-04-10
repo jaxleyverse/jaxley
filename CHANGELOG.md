@@ -14,6 +14,7 @@ Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model 
 - Allow data_clamp to clamp multiple different states without silently only clamping the last state (#773, @kyralianaka) and fixed checkpointing for this case (#786, @kyralianaka)
 - Fix issue causing some `View`s to take too long to create (#791, @alexpejovic)
 - jx.integrate took O(n^2) time with n compartments on the backwards pass. Instead of backpropagating through the forward solve, we use a custom_jvp (another tridiagonal solve) (#795 @manuelgloeckler)
+- Fix single point branch plotting with type="comp" (#797, @jnsbck)
 
 # 0.13.0
 

@@ -376,7 +376,7 @@ def plot_comps(
                     **kwargs,
                 )
             else:
-                ax.add_artist(plt.Circle(locs[0, dims], radius, color=color))
+                ax.add_artist(plt.Circle(locs[0, dims], radius[0], color=color))
         else:
             lens = np.sqrt(np.nansum(np.diff(locs, axis=0) ** 2, axis=1))
             lens = np.cumsum([0] + lens.tolist())
