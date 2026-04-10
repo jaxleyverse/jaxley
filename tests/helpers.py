@@ -154,10 +154,10 @@ def equal_both_nan_or_empty_df(a: pd.DataFrame, b: pd.DataFrame) -> bool:
         b = b.drop(columns="xyzr")
     if a.empty and b.empty:
         return True
-    a[a.isna()] = -1
-    b[b.isna()] = -1
     if set(a.columns) != set(b.columns):
         return False
     else:
         a = a[b.columns]
-    return (a == b).all()
+
+    equal = a.eq(b) | (a.isna() & b.isna())
+    return bool(equal.to_numpy().all())

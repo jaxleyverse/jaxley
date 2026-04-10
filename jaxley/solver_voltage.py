@@ -14,6 +14,132 @@ from tridiax.stone import stone_backsub_lower, stone_triang_upper
 from jaxley.solver_gate import exponential_euler
 
 
+def _pad_comp_edges(comp_edges) -> np.ndarray:
+    """Convert grouped DHS edges to a dense integer array padded with `-1`.
+
+    `node_order_grouped` is often stored as a ragged list of arrays, one per depth
+    level. Padding with `-1` is safe because the voltage solve appends a spurious
+    compartment at the end of every solve vector, and `-1` indexes that no-op slot.
+    """
+    if isinstance(comp_edges, np.ndarray) and comp_edges.dtype != object:
+        return comp_edges.astype(np.int32, copy=False)
+
+    comp_edges = list(comp_edges)
+    if len(comp_edges) == 0:
+        return np.empty((0, 0, 2), dtype=np.int32)
+
+    level_arrays = [np.asarray(level, dtype=np.int32) for level in comp_edges]
+    max_width = max(level.shape[0] for level in level_arrays)
+    padded = np.full((len(level_arrays), max_width, 2), -1, dtype=np.int32)
+
+    for idx, level in enumerate(level_arrays):
+        if level.ndim != 2 or level.shape[1] != 2:
+            raise ValueError(
+                "Expected each DHS level to have shape (num_edges_in_level, 2)."
+            )
+        padded[idx, : level.shape[0], :] = level
+
+    return padded
+
+
+def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
+    """Create a DHS solve function with custom JVP for efficient differentiation.
+
+    The tridiagonal solve A x = b has JVP: dx = A^{-1} (db - dA x). This means the
+    tangent is itself a solve with the same matrix A but a different RHS. By using a
+    custom_jvp, we avoid JAX having to differentiate through the O(n)-step fori_loop,
+    which causes O(n^2) memory traffic in the backward pass.
+
+    JAX automatically derives the transpose (VJP) from the custom JVP rule, so this
+    works for both forward-mode and reverse-mode differentiation.
+    """
+    ordered_comp_edges = solve_indexer["node_order_grouped"]
+    flipped_comp_edges = list(reversed(ordered_comp_edges))
+    all_children = np.asarray(solve_indexer["all_children"], dtype=np.int32)
+    all_parents = np.asarray(solve_indexer["all_parents"], dtype=np.int32)
+
+    steps = len(flipped_comp_edges)
+
+    ordered_comp_edges_np = _pad_comp_edges(ordered_comp_edges)
+    flipped_comp_edges_np = _pad_comp_edges(flipped_comp_edges)
+
+    def _raw_solve(diags, lowers, uppers, solves):
+        """Solve the tree-structured linear system (no custom JVP)."""
+        if not optimize_for_gpu:
+            init = (diags, solves, lowers, uppers, flipped_comp_edges_np)
+            diags_out, solves_out, _, _, _ = fori_loop(
+                0, steps, _comp_based_triang, init
+            )
+
+            lowers_norm = lowers / diags_out
+            solves_norm = solves_out / diags_out
+            diags_out = jnp.ones_like(solves_norm)
+            init = (solves_norm, lowers_norm, ordered_comp_edges_np)
+            solves_out, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
+
+            return solves_out / diags_out
+        else:
+            d, s = diags, solves
+            for i in range(steps):
+                d, s, _, _, _ = _comp_based_triang(
+                    i, (d, s, lowers, uppers, flipped_comp_edges_np)
+                )
+
+            d, s = _comp_based_backsub_recursive_doubling(
+                d, s, lowers, steps, solve_indexer["parent_lookup"]
+            )
+            return s / d
+
+    @jax.custom_jvp
+    def _solve(diags, lowers, uppers, solves):
+        return _raw_solve(diags, lowers, uppers, solves)
+
+    @_solve.defjvp
+    def _solve_jvp(primals, tangents):
+        diags, lowers, uppers, solves = primals
+        d_diags, d_lowers, d_uppers, d_solves = tangents
+
+        # Primal output: x = A^{-1} b
+        x = _raw_solve(diags, lowers, uppers, solves)
+
+        # Compute dA @ x. For each edge (child, parent), the matrix entries are:
+        #   A[parent, child] = uppers[child]
+        #   A[child, parent] = lowers[child]
+        # (this is consistent with the triangulation multiplier using `uppers`).
+        #
+        # Therefore:
+        #   (dA @ x)[parent] += d_uppers[child] * x[child]
+        #   (dA @ x)[child]  += d_lowers[child] * x[parent]
+        dA_x = d_diags * x
+        dA_x = dA_x.at[all_parents].add(d_uppers[all_children] * x[all_children])
+        dA_x = dA_x.at[all_children].add(d_lowers[all_children] * x[all_parents])
+
+        # JVP: dx = A^{-1} (db - dA @ x)
+        new_rhs = d_solves - dA_x
+        dx = _raw_solve(diags, lowers, uppers, new_rhs)
+
+        return x, dx
+
+    return _solve
+
+
+# Cache key for storing the compiled solve function directly on the solve_indexer
+# dict. Using a tuple key avoids collisions with the string keys it already uses.
+# The cached function is automatically discarded when the owning Module (and its
+# _dhs_solve_indexer dict) is garbage-collected, and naturally invalidated when
+# _init_solver_jaxley_dhs_solve() creates a fresh dict.
+_SOLVE_FN_KEY = "_cached_solve_fn"
+
+
+def _get_dhs_solve(solve_indexer: dict, optimize_for_gpu: bool, n_nodes: int):
+    cache_key = (_SOLVE_FN_KEY, optimize_for_gpu, n_nodes)
+    solve_fn = solve_indexer.get(cache_key)
+    if solve_fn is None:
+        solve_fn = _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes)
+        solve_indexer[cache_key] = solve_fn
+    return solve_fn
+
+
 def step_voltage_implicit_with_dhs_solve(
     voltages,
     voltage_terms,
@@ -79,8 +205,6 @@ def step_voltage_implicit_with_dhs_solve(
         # Reorder the lower and upper values.
         lowers = lowers_and_uppers[solve_indexer["map_to_solve_order_lower"]]
         uppers = lowers_and_uppers[solve_indexer["map_to_solve_order_upper"]]
-        ordered_comp_edges = solve_indexer["node_order_grouped"]
-        flipped_comp_edges = list(reversed(ordered_comp_edges))
 
         # Add a spurious compartment that is modified by the masking.
         diags = jnp.concatenate([diags, jnp.asarray([1.0])])
@@ -88,46 +212,17 @@ def step_voltage_implicit_with_dhs_solve(
         uppers = jnp.concatenate([uppers, jnp.asarray([0.0])])
         lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
 
-        # Solve the voltage equations.
-        #
-        steps = len(flipped_comp_edges)
-        if not optimize_for_gpu:
-            # Cast from a list to a np.array.
-            # `ordered_comp_edges` has shape `(num_levels, num_comps_per_level, 2)`,
-            # and `num_comps_per_level=1` for CPU.
-            ordered_comp_edges = np.asarray(ordered_comp_edges)
-            flipped_comp_edges = np.asarray(flipped_comp_edges)
+        # Get or create the solve function with custom JVP.
+        dhs_solve = _get_dhs_solve(solve_indexer, optimize_for_gpu, int(n_nodes))
 
-            # Triangulate.
-            steps = len(flipped_comp_edges)
-            init = (diags, solves, lowers, uppers, flipped_comp_edges)
-            diags, solves, _, _, _ = fori_loop(0, steps, _comp_based_triang, init)
+        # Solve the voltage equations with efficient custom JVP.
+        solution = dhs_solve(diags, lowers, uppers, solves)
 
-            # Backsubstitute.
-            lowers /= diags
-            solves /= diags
-            diags = jnp.ones_like(solves)
-            init = (solves, lowers, ordered_comp_edges)
-            solves, _, _ = fori_loop(0, steps, _comp_based_backsub, init)
-        else:
-            # Triangulate by unrolling the loop of the levels.
-            for i in range(steps):
-                diags, solves, _, _, _ = _comp_based_triang(
-                    i, (diags, solves, lowers, uppers, flipped_comp_edges)
-                )
+        # Remove the spurious compartment.
+        solution = solution[:-1]
+    else:
+        solution = solves / diags
 
-            # Backsubstitute with recursive doubling.
-            diags, solves = _comp_based_backsub_recursive_doubling(
-                diags, solves, lowers, steps, n_nodes, solve_indexer["parent_lookup"]
-            )
-
-        # Remove the spurious compartment. This compartment got modified by masking of
-        # compartments in certain levels.
-        diags = diags[:-1]
-        solves = solves[:-1]
-
-    # Get inverse of the diagonalized matrix.
-    solution = solves / diags
     solution = solution[solve_indexer["inv_map_to_solve_order"]]
 
     return solution
@@ -180,7 +275,6 @@ def _comp_based_backsub_recursive_doubling(
     solves: ArrayLike,
     lowers: ArrayLike,
     steps: int,
-    n_nodes: int,
     parent_lookup: np.ndarray,
 ) -> tuple[Array, Array]:
     """Backsubstitute with recursive doubling.
@@ -238,17 +332,15 @@ def _comp_based_backsub_recursive_doubling(
     lower_effect = -lowers / diags
     solve_effect = solves / diags
 
-    step = 1
-    while step <= steps:
-        # For each node, get its k-step parent, where k=`step`.
-        k_step_parent = np.arange(n_nodes + 1)
-        for _ in range(step):
-            k_step_parent = parent_lookup[k_step_parent]
+    num_recursive_steps = int(np.ceil(np.log2(steps + 1))) if steps > 0 else 0
+    parent_jump = jnp.asarray(parent_lookup, dtype=jnp.int32)
 
-        # Update.
-        solve_effect = lower_effect * solve_effect[k_step_parent] + solve_effect
-        lower_effect *= lower_effect[k_step_parent]
-        step *= 2
+    # Only O(log2(steps)) iterations; unrolling these often recovers GPU runtime
+    # without significantly increasing compile time.
+    for _ in range(num_recursive_steps):
+        solve_effect = lower_effect * solve_effect[parent_jump] + solve_effect
+        lower_effect = lower_effect * lower_effect[parent_jump]
+        parent_jump = parent_jump[parent_jump]
 
     # We have to return a `diags` because the final solution is computed as
     # `solves/diags` (see `step_voltage_implicit_with_dhs_solve`). For recursive

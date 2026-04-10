@@ -1193,6 +1193,18 @@ class Module(ABC):
             parents[nodes[:, 0]] = nodes[:, 1]
         self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
+        # Precompute flat child/parent index arrays for the custom JVP of the solve.
+        # These are used to efficiently compute dA @ x (the matrix-vector product of
+        # the tangent matrix with the primal solution).
+        node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
+        if len(node_order_grouped) > 0:
+            all_edges = np.concatenate(node_order_grouped, axis=0)
+            self._dhs_solve_indexer["all_children"] = all_edges[:, 0].astype(int)
+            self._dhs_solve_indexer["all_parents"] = all_edges[:, 1].astype(int)
+        else:
+            self._dhs_solve_indexer["all_children"] = np.asarray([], dtype=int)
+            self._dhs_solve_indexer["all_parents"] = np.asarray([], dtype=int)
+
     def set(self, key: str, val: float | ArrayLike):
         """Set parameter of module (or its view) to a new value.
 
@@ -2416,7 +2428,7 @@ class Module(ABC):
         self.base.recordings = self.base.recordings.loc[~has_duplicates]
         if verbose:
             print(
-                f"Added {len(in_view)-sum(has_duplicates)} recordings. See `.recordings` for details."
+                f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.recordings` for details."
             )
 
     def _update_view(self):
@@ -3400,7 +3412,7 @@ class Module(ABC):
                     num_children_of_parent = num_children[parents[b]]
                     if num_children_of_parent > 1:
                         y_offset = (
-                            ((index_of_child[b] / (num_children_of_parent - 1))) - 0.5
+                            (index_of_child[b] / (num_children_of_parent - 1)) - 0.5
                         ) * y_offset_multiplier[levels[b]]
                     else:
                         y_offset = 0.0
@@ -3500,7 +3512,7 @@ class Module(ABC):
         # can only iterate over cells for networks
         # lambda makes sure that generator can be created multiple times
         base_is_net = self.base._current_view == "network"
-        cells = lambda: (self.cells if base_is_net else [self])
+        cells = lambda: self.cells if base_is_net else [self]
 
         root_xyz_cells = np.array([c.xyzr[0][0, :3] for c in cells()])
         root_xyz = root_xyz_cells[0] if isinstance(x, float) else root_xyz_cells
