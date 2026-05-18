@@ -6,7 +6,7 @@ from jax.typing import ArrayLike
 
 def save_exp(x, max_value: float = 20.0):
     """Clip the input to a maximum value and return its exponential."""
-    x = jnp.clip(x, a_max=max_value)
+    x = jnp.minimum(x, max_value)
     return jnp.exp(x)
 
 
