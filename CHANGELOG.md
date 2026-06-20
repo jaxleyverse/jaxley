@@ -7,6 +7,7 @@ Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model 
 - Add an identity transformation (`jaxley.optimize.transforms.IdentityTransform`) (#777, @chaseking)
 - Add handling of inhomogeneous branches for import and export of morphologies. (#779,@NicolasRR)
 - Add an logistic transformation (`jaxley.optimize.transforms.LogisticTransform`) (#788, @jnsbck)
+- Add a uniform distribution (`jaxley.optimize.utils.Uniform`) (#707, @iamkzntsv)
 
 ### 🐛 Bug fixes
 

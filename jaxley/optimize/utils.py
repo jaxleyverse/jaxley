@@ -15,7 +15,8 @@ def l2_norm(x: "PyTree") -> jnp.array:
 
 
 class Uniform:
-    """Multidimensional uniform distribution with sample and logprob methods."""
+    """Uniform distribution with sample and log_prob methods."""
+
     def __init__(self, lower: float, upper: float):
         self.lower = lower
         self.upper = upper
@@ -30,7 +31,9 @@ class Uniform:
         Returns:
             Samples from the uniform distribution.
         """
-        return jax.random.uniform(key, shape, minval=self.lower, maxval=self.upper)
+        return jax.random.uniform(
+            key, shape=shape, minval=self.lower, maxval=self.upper
+        )
 
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
         """Computes the log probability of the uniform distribution.
@@ -42,4 +45,8 @@ class Uniform:
             The log probability of the uniform distribution.
         """
         in_bounds = (x >= self.lower) & (x <= self.upper)
-        return jnp.where(in_bounds, -jnp.log(self.upper - self.lower), -jnp.inf)
+        log_p = jnp.where(in_bounds, -jnp.log(self.upper - self.lower), -jnp.inf)
+        if x.ndim > 1:
+            return jnp.sum(log_p, axis=tuple(range(1, x.ndim)))
+
+        return log_p
