@@ -128,12 +128,14 @@ def test_distance_swc(SimpleMorphCell):
         1,
         max_branch_len=2_000.0,
         ignore_swc_tracing_interruptions=True,
+        swc_backend="graph",
     )
     cell.set("axial_resistivity", 100.0)
     # Reasonable default values for most models.
     frequency = 100.0
     d_lambda = 0.1  # Larger -> more coarse-grained.
 
+    ncomps = []
     for branch in cell.branches:
         diameter = 2 * branch.nodes["radius"].to_numpy()[0]
         c_m = branch.nodes["capacitance"].to_numpy()[0]
@@ -141,15 +143,14 @@ def test_distance_swc(SimpleMorphCell):
         l = branch.nodes["length"].to_numpy()[0]
 
         lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
-        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
-        branch.set_ncomp(ncomp, initialize=False)
+        ncomps.append(int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1)
 
-    # After the loop, you have to run `cell.initialize()` because we passed
-    # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
-    cell.initialize()
+    cell.branch("all").set_ncomp(ncomps)
 
+    # TODO: Record by the nearest compartment to a fixed xyz via `cdist`, like
+    # `test_swc.py` - so that renumbering cannot invalidate them.
     dists_pathwise = distance_pathwise(cell.soma.branch(0).comp(0), cell)
-    dists_direct_250610 = np.asarray(
+    pathwise_250610 = np.asarray(
         [
             0.0,
             368.06401336,
@@ -160,11 +161,11 @@ def test_distance_swc(SimpleMorphCell):
             760.54892662,
         ]
     )
-    error = np.max(np.asarray(dists_pathwise)[::10] - dists_direct_250610)
+    error = np.max(np.abs(np.asarray(dists_pathwise)[::10] - pathwise_250610))
     assert error < 1e-8, f"Error for pathwise distance is to large: {error} > 1e-8."
 
     dists_direct = distance_direct(cell.soma.branch(0).comp(0), cell)
-    dists_direct_250610 = np.asarray(
+    direct_250610 = np.asarray(
         [
             0.0,
             194.3651027,
@@ -175,5 +176,5 @@ def test_distance_swc(SimpleMorphCell):
             428.11599931,
         ]
     )
-    error = np.max(np.asarray(dists_direct)[::10] - dists_direct_250610)
+    error = np.max(np.abs(np.asarray(dists_direct)[::10] - direct_250610))
     assert error < 1e-8, f"Error for direct distance is to large: {error} > 1e-8."

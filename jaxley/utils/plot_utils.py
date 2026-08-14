@@ -1,10 +1,11 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
@@ -489,5 +490,62 @@ def plot_morph(
                 ax=ax,
                 **kwargs,
             )
+
+    return ax
+
+
+def plot_comp_graph(
+    graph: nx.Graph,
+    dims: Tuple[int, int] = (0, 1),
+    ax: Optional[Axes] = None,
+    show_radii: bool = False,
+    jitter: float = 0.0,
+    scale_radii: float = 1.0,
+    radii_kwargs: Optional[Dict[str, Any]] = None,
+    **kwargs,
+) -> Axes:
+    """Visualize a graph using NetworkX, with optional display of node radii as circles.
+
+    Args:
+        graph: The graph to visualize.
+        dims: Dimensions of xyz to use for visualization (default (0,1) - xy plane).
+        ax: Matplotlib Axes to plot on. If None, a new one is created.
+        show_radii: Whether to show radii as circles around nodes.
+        jitter: Amount of positional jitter/noise to add to node positions.
+            Can be helpful if nodes overlap.
+        scale_radii: Scaling factor for node radii when drawing circles.
+        radii_kwargs: Additional keyword arguments for Circle patches.
+        kwargs: Additional keyword arguments for nx.draw.
+
+    Returns:
+        The matplotlib Axes with the plot.
+    """
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(4, 4))
+
+    if radii_kwargs is None:
+        radii_kwargs = {}
+
+    def add_jitter(x: Any) -> Any:
+        """Add uniform random jitter to a numpy array."""
+        return x + np.random.uniform(-jitter, jitter, size=len(x))
+
+    # Build 2D position dictionary for nx.draw
+    pos = {
+        k: add_jitter(np.array([data["xyz"[d]] for d in dims]))
+        for k, data in graph.nodes(data=True)
+    }
+
+    nx.draw(graph, pos=pos, ax=ax, **kwargs)
+
+    if show_radii:
+        patch_kwargs = dict(edgecolor="C3", facecolor="none", linewidth=1.0, zorder=3)
+        patch_kwargs.update(radii_kwargs)
+
+        for k, data in graph.nodes(data=True):
+            r = data.get("radius", None)
+            if r is not None:
+                R = float(r) * float(scale_radii)
+                ax.add_patch(Circle(pos[k], R, **patch_kwargs))
 
     return ax

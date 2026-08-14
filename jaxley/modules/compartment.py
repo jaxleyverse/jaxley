@@ -16,8 +16,6 @@ from jaxley.utils.morph_attributes import (
     cylinder_area,
     cylinder_resistive_load,
     cylinder_volume,
-    morph_attrs_from_xyzr,
-    split_xyzr_into_equal_length_segments,
 )
 
 

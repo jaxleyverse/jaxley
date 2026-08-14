@@ -3,7 +3,9 @@
 
 from typing import List, Optional
 
-from jaxley.io.graph import build_compartment_graph, from_graph, to_swc_graph
+import jaxley.io.graph as graph
+import jaxley.io.neuron as neuron
+from jaxley.io.neuron import assert_NEURON
 from jaxley.modules import Cell
 
 
@@ -16,6 +18,7 @@ def read_swc(
     backend: str = "graph",
     ignore_swc_tracing_interruptions: bool = True,
     relevant_type_ids: Optional[List[int]] = None,
+    root: Optional[int] = None,
 ) -> Cell:
     """Reads SWC file into a `Cell`.
 
@@ -34,34 +37,71 @@ def read_swc(
             file will be used to generate groups `soma`, `axon`, `basal`, `apical`. See
             here:
             http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
-        backend: The backend to use. Currently only `graph` is supported.
+        backend: One of `graph`, `legacy` or `neuron`. The `graph` backend uses
+            `NetworkX` to read the SWC file and construct the compartment graph. The
+            `neuron` backend uses `NEURON`'s `h.Import3d_SWC_read()` to do this, and so
+            reproduces NEURON's compartment geometry exactly. The `legacy` backend uses
+            the old SWC reader, which will be deprecated in the future.
         ignore_swc_tracing_interruptions: Whether to ignore discontinuities in the swc
             tracing order. If False, this will result in split branches at these points.
         relevant_type_ids: All type ids that are not in this list will be ignored for
             tracing the morphology. This means that branches which have multiple type
             ids (which are not in `relevant_type_ids`) will be considered as one branch.
             If `None`, we default to `[1, 2, 3, 4]`.
+        root: The SWC node that the morphology is rooted at. Branches are oriented away
+            from it and the branch containing it becomes branch 0, so this determines the
+            parent of every branch. Defaults to the SWC root (the lowest node index),
+            which is what NEURON roots at. Ignored by the `neuron` backend, which takes
+            the root from NEURON.
 
     Returns:
         A `Cell` object."""
 
-    if backend == "graph":
-        swc_graph = to_swc_graph(fname)
-        comp_graph = build_compartment_graph(
+    if backend.lower() == "graph":
+        swc_df = graph.swc_to_pandas(fname)
+        swc_graph = graph.swc_to_nx(swc_df, relevant_ids=relevant_type_ids)
+        comp_graph = graph.build_compartment_graph(
             swc_graph,
             ncomp=ncomp,
-            root=None,
             min_radius=min_radius,
             max_len=max_branch_len,
             ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
-            relevant_type_ids=relevant_type_ids,
+            root=root,
         )
-        module = from_graph(
+        module = graph.from_graph(
             comp_graph,
             assign_groups=assign_groups,
-            solve_root=None,
-            traverse_for_solve_order=True,  # Traverse to fix potential tracing errors.
         )
-        return module
+    elif backend.lower() == "legacy":
+        import jaxley.io.legacy as legacy
+
+        swc_graph = legacy.to_swc_graph(fname)
+        comp_graph = legacy.build_compartment_graph(
+            swc_graph,
+            ncomp=ncomp,
+            min_radius=min_radius,
+            max_len=max_branch_len,
+            ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
+            root=root,
+        )
+        module = legacy.from_graph(
+            comp_graph,
+            assign_groups=assign_groups,
+        )
+    elif backend.lower() == "neuron":
+        # Check if NEURON is available
+        assert_NEURON()
+
+        neuron.swc_to_hoc(fname, min_radius=min_radius)
+        swc_graph = neuron.hoc_to_nx(relevant_ids=relevant_type_ids)
+        comp_graph = neuron.build_compartment_graph(ncomp=ncomp)
+        module = graph.from_graph(
+            comp_graph,
+            assign_groups=assign_groups,
+        )
     else:
-        raise ValueError(f"Unknown backend: {backend}. Use either `custom` or `graph`.")
+        raise ValueError(
+            f"Unknown backend: {backend}. Use one of `graph`, `legacy` or `neuron`."
+        )
+
+    return module

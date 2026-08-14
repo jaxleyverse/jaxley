@@ -7,7 +7,17 @@ import warnings
 from abc import ABC
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 from warnings import warn
 
 import jax.numpy as jnp
@@ -42,14 +52,18 @@ from jaxley.utils.cell_utils import (
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
 from jaxley.utils.jax_utils import infer_device
-from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
+from jaxley.utils.misc_utils import (
+    cumsum_leading_zero,
+    deprecated,
+    deprecated_kwargs,
+    is_str_all,
+)
 from jaxley.utils.morph_attributes import (
+    compartmentalize_branch,
     compute_axial_conductances,
     cylinder_area,
     cylinder_resistive_load,
     cylinder_volume,
-    morph_attrs_from_xyzr,
-    split_xyzr_into_equal_length_segments,
 )
 from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
@@ -78,6 +92,17 @@ def only_allow_module(func):
         return func(self, *args, **kwargs)
 
     return wrapper
+
+
+def infer_module_type(module) -> Optional[str]:
+    """Return which of the four module types `module` is, following its inheritance.
+
+    Walks the MRO, so that a subclass of `Cell` or `Network` is recognised as the type it
+    derives from. `Module._module_type` returns the concrete class name instead.
+    """
+    types = ["compartment", "branch", "cell", "network"]
+    inheritance = [c.__name__.lower() for c in type(module).__mro__]
+    return next((t for t in types if t in inheritance), None)
 
 
 class Module(ABC):
@@ -357,9 +382,7 @@ class Module(ABC):
         """Init attributes critical for View.
 
         Needs to be called at init of a Module."""
-        modules = ["compartment", "branch", "cell", "network"]
-        module_inheritance = [c.__name__.lower() for c in self.__class__.__mro__]
-        module_type = next((t for t in modules if t in module_inheritance), None)
+        module_type = infer_module_type(self)
         self._current_view = "comp" if module_type == "compartment" else module_type
         self._nodes_in_view = self.nodes.index.to_numpy()
         self._edges_in_view = self.edges.index.to_numpy()
@@ -373,28 +396,20 @@ class Module(ABC):
     def _compute_coords_of_comp_centers(self) -> np.ndarray:
         """Compute xyz coordinates of compartment centers.
 
-        Centers are the midpoint between the compartment endpoints on the morphology
-        as defined by xyzr.
+        Centers are defined as the point on the morphology (xyzr) at half of the
+        compartment's arc length.
 
-        Note: For sake of performance, interpolation is not done for each branch
-        individually, but only once along a concatenated (and padded) array of all branches.
-        This means for ncomps = [2,4] and normalized cum_branch_lens of [[0,1],[0,1]] we would
-        interpolate xyz at the locations comp_ends = [[0,0.5,1], [0,0.25,0.5,0.75,1]],
-        where 0 is the start of the branch and 1 is the end point at the full branch_len.
-        To avoid do this in one go we set comp_ends = [0,0.5,1,2,2.25,2.5,2.75,3], and
-        norm_cum_branch_len = [0,1,2,3] incrememting and also padding them by 1 to
-        avoid overlapping branch_lens i.e. norm_cum_branch_len = [0,1,1,2] for only
-        incrementing.
+        Note: Interpolation is done once along a concatenated (and padded) array of all
+        branches.
         """
         nodes_by_branches = self.nodes.groupby("global_branch_index")
         ncomps = nodes_by_branches["global_comp_index"].nunique().to_numpy()
 
-        comp_ends = [
-            np.linspace(0, 1, ncomp + 1) + 2 * i for i, ncomp in enumerate(ncomps)
+        comp_centers = [
+            (np.arange(ncomp) + 0.5) / ncomp + 2 * i for i, ncomp in enumerate(ncomps)
         ]
-        comp_ends = np.hstack(comp_ends)
+        comp_centers = np.hstack(comp_centers)
 
-        comp_ends = comp_ends.reshape(-1)
         cum_branch_lens = []
         for i, xyzr in enumerate(self.xyzr):
             branch_len = np.sqrt(np.sum(np.diff(xyzr[:, :3], axis=0) ** 2, axis=1))
@@ -406,13 +421,7 @@ class Module(ABC):
             cum_branch_lens.append(cum_branch_len)
         cum_branch_lens = np.hstack(cum_branch_lens)
         xyz = np.vstack(self.xyzr)[:, :3]
-        xyz = v_interp(comp_ends, cum_branch_lens, xyz).T
-        centers = (xyz[:-1] + xyz[1:]) / 2  # unaware of inter vs intra comp centers
-        cum_ncomps = np.cumsum(ncomps)
-        # this means centers between comps have to be removed here
-        between_comp_inds = (cum_ncomps + np.arange(len(cum_ncomps)))[:-1]
-        centers = np.delete(centers, between_comp_inds, axis=0)
-        return centers
+        return v_interp(comp_centers, cum_branch_lens, xyz).T
 
     def compute_compartment_centers(self):
         """Add compartment centers to nodes dataframe"""
@@ -1123,11 +1132,14 @@ class Module(ABC):
         if np.any(np.isnan(self.xyzr[0][:, :3])):
             self.compute_xyz()
             self.compute_compartment_centers()
-        comp_graph = to_graph(self)
 
-        # Export to graph and traverse it to identify the solve order.
+        # Build the graph of compartments and branchpoints and traverse it to identify the
+        # solve order.
+        solve_graph = nx.Graph()
+        solve_graph.add_nodes_from(range(len(self.nodes)))  # needed if no branchpoints
+        solve_graph.add_edges_from(self._comp_edges[["source", "sink"]].values.tolist())
         node_order, node_to_solve_index_mapping = dhs_solve_index(
-            comp_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
+            solve_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
         )
 
         # Set the order in which compartments are processed during Dendritic Hierarchical
@@ -1314,22 +1326,34 @@ class Module(ABC):
             raise KeyError("Key not recognized.")
         return param_state
 
+    @deprecated_kwargs(
+        "1.1.0",
+        ["initialize"],
+        amend_msg=" `set_ncomp` now rebuilds `nodes` in a single pass, so deferring the "
+        "initialization no longer saves any work.",
+    )
     def set_ncomp(
-        self, ncomp: int, min_radius: Optional[float] = None, initialize: bool = True
-    ):
+        self, ncomp: Union[int, Sequence[int]], initialize: Optional[bool] = None
+    ) -> None:
         """Set the number of compartments with which the branch is discretized.
 
+        `ncomp` is always per branch. Every branch in the view is rediscretized and
+        the module is initialized once at the end. To give every branch in the view
+        its own number of compartments a sequence can be passed, e.g. for the
+        d-lambda rule::
+
+            cell.set_ncomp(4)                            # 4 comps in every branch
+            cell.branch("all").set_ncomp([3, 5, 1, ...])  # one value per branch
+
+        To discretize non-uniformly at import time, pass a callable as `ncomp` to
+        `jaxley.io.graph.build_compartment_graph()`.
+
         Args:
-            ncomp: The number of compartments that the branch should be discretized
-                into.
-            min_radius: Only used if the morphology was read from an SWC file. If passed
-                the radius is capped to be at least this value.
-            initialize: If `False`, it skips the initialization stage and the user
-                has to run it manually afterwards. This is useful when `set_ncomp`
-                is run in a loop (e.g. for the d_lambda rule), where one can
-                initialize only once after the entire loop to largely speed up
-                computation time. If `False`, then the user has to run
-                `cell.initialize()` manually afterwards.
+            ncomp: The number of compartments that each branch should be discretized
+                into. Either an `int`, applied to every branch in the view, or one `int`
+                per branch in the view.
+            initialize: Deprecated, removed in 1.1.0. Rediscretizing now rebuilds `nodes`
+                in a single pass, so skipping the initialization no longer saves work.
 
         Raises:
             - When there are stimuli in any compartment in the module.
@@ -1363,36 +1387,56 @@ class Module(ABC):
         assert len(self.base.trainable_params) == 0, "No trainables allowed!"
 
         assert self.base._module_type != "network", "This is not allowed for networks."
-        assert not (
-            self.base._module_type == "cell"
-            and (
-                len(self._branches_in_view) == len(self.base._branches_in_view)
-                and len(self.base._branches_in_view) > 1
-            )
-        ), "This is not allowed for a `cell`, use `cell.branch(i)` instead."
 
-        # Update all attributes that are affected by compartment structure.
-        view = self.nodes.copy()
-        all_nodes = self.base.nodes
-        start_idx = self.nodes["global_comp_index"].to_numpy()[0]
-        ncomp_per_branch = self.base.ncomp_per_branch
+        # `ncomp` is always per branch: `set_ncomp` only re-splices the compartments
+        # within a branch and can never change the number of branches. So a single `int`
+        # over a multi-branch view unambiguously means "this many compartments in each of
+        # them", and needs no special casing.
+        viewed_branches = pd.unique(self.nodes["global_branch_index"])
+        is_scalar = isinstance(ncomp, (int, np.integer))
+        ncomps = [ncomp] * len(viewed_branches) if is_scalar else list(ncomp)
+        assert len(ncomps) == len(viewed_branches), (
+            f"Got {len(ncomps)} ncomp values for {len(viewed_branches)} branches in "
+            "view. Pass either a single int or one int per branch."
+        )
+        self._rediscretize(
+            {int(b): int(n) for b, n in zip(viewed_branches, ncomps)},
+            True if initialize is None else initialize,
+        )
+
+    def _compartmentalize_branch(self, branch_index: int, ncomp: int) -> pd.DataFrame:
+        """Split branch `branch_index` into `ncomp` compartments and return them.
+
+        Raises if the branch cannot be split, which is the case when the user has edited its
+        compartments by hand. Splitting recomputes the branch from `xyzr`, so those edits
+        would be lost without warning.
+        """
+        # TODO: this recomputes from `xyzr` what `build_compartment_graph()` already does, via
+        # the same `compartmentalize()` core, so the two have to agree and are pinned only by
+        # tests. Routing `set_ncomp` through the graph pipeline would merge them.
+
+        # By column rather than `self.base.branch(i)`, which a `Branch` does not support.
+        nodes = self.base.nodes
+        view = nodes[nodes["global_branch_index"] == branch_index]
+        current_ncomp = len(view)
         channel_names = [c._name for c in self.base.channels]
-        channel_param_names = list(
-            chain(*[c.channel_params for c in self.base.channels])
+        channel_param_names = [p for c in self.base.channels for p in c.channel_params]
+        channel_state_names = [s for c in self.base.channels for s in c.channel_states]
+
+        branch_xyzr = pd.DataFrame(
+            self.base.xyzr[branch_index], columns=["x", "y", "z", "radius"]
         )
-        channel_state_names = list(
-            chain(*[c.channel_states for c in self.base.channels])
+        current_nodes = view[["x", "y", "z", "radius", "length"]]
+
+        # `iloc[1:-1]`: `compartmentalize_branch` also returns the two branch ends.
+        recompartmentalize = lambda n: (
+            compartmentalize_branch(branch_xyzr, ncomp=n)
+            .iloc[1:-1]
+            .reset_index(drop=True)
         )
-
-        within_branch_radiuses = view["radius"].to_numpy()
-        compartment_lengths = view["length"].to_numpy()
-        num_previous_ncomp = len(within_branch_radiuses)
-        branch_indices = pd.unique(view["global_branch_index"])
-
-        xyzr = self.base.xyzr[branch_indices[0]]
-        xyzr_is_available = np.invert(np.any(np.isnan(xyzr[:, 3])))
-
-        assert len(branch_indices) <= 1, "You can only modify ncomp of a single branch."
+        orig_nodes = recompartmentalize(current_ncomp)
+        orig_nodes.index = current_nodes.index
+        updt_nodes = recompartmentalize(ncomp)
 
         error_msg = lambda name: (
             f"You previously modified the {name} of individual compartments, but "
@@ -1401,21 +1445,18 @@ class Module(ABC):
             f"then modify the radiuses and lengths of compartments."
         )
 
-        if (
-            ~np.all(within_branch_radiuses == within_branch_radiuses[0])
-            and not xyzr_is_available
-        ):
+        if not np.allclose(current_nodes["radius"], orig_nodes["radius"]):
             raise ValueError(error_msg("radius"))
+
+        if not np.allclose(current_nodes["length"], orig_nodes["length"]):
+            raise ValueError(error_msg("length"))
 
         for property_name in ["length", "capacitance", "axial_resistivity"]:
             compartment_properties = view[property_name].to_numpy()
             if ~np.all(compartment_properties == compartment_properties[0]):
                 raise ValueError(error_msg(property_name))
 
-        if (
-            num_previous_ncomp > 1
-            and not (self.nodes[channel_names].var() == 0.0).all()
-        ):
+        if current_ncomp > 1 and not (view[channel_names].var() < 1e-10).all():
             raise ValueError(
                 "Some channel exists only in some compartments of the branch which you "
                 "are trying to modify. This is not allowed. First specify the number "
@@ -1424,9 +1465,9 @@ class Module(ABC):
             )
 
         if (
-            num_previous_ncomp > 1
+            current_ncomp > 1
             and not (
-                self.nodes[channel_param_names + channel_state_names].var() == 0.0
+                view[channel_param_names + channel_state_names].var() < 1e-10
             ).all()
         ):
             raise ValueError(
@@ -1436,96 +1477,67 @@ class Module(ABC):
                 "`.set_ncomp()` and then insert the channels accordingly."
             )
 
-        for group_name in self.group_names:
+        for group_name in self.base.group_names:
             group_ncomp = view[group_name].sum()
-            assert group_ncomp == 0 or group_ncomp == num_previous_ncomp, (
+            assert group_ncomp == 0 or group_ncomp == current_ncomp, (
                 f"{group_ncomp} compartments within the branch are part of the "
                 f"group '{group_name}', but the other "
-                f"{num_previous_ncomp - group_ncomp} compartments are not. This "
+                f"{current_ncomp - group_ncomp} compartments are not. This "
                 f"is not allowed: Every compartment must belong to the same group for "
                 f"`.set_ncomp()` to work."
             )
 
-        # Add new rows as the average of all rows. Special case for the length is below.
-        start_index = int(self.nodes.index.to_numpy()[0])
-        average_row = self.nodes.mean(skipna=False, numeric_only=False)
-        average_row = pd.DataFrame([average_row])
-        view = pd.concat([average_row] * ncomp, axis="rows", ignore_index=True)
+        return updt_nodes
 
-        # Set the correct datatype after having performed an average which cast
-        # everything to float.
-        integer_cols = ["global_cell_index", "global_branch_index", "global_comp_index"]
-        view[integer_cols] = view[integer_cols].astype(int)
+    def _rediscretize(self, ncomp_of_branch: Dict[int, int], initialize: bool = True):
+        """Split each branch in `ncomp_of_branch` into its new number of compartments.
 
-        # Whether or not a channel or group exists in a compartment is a boolean.
-        boolean_cols = channel_names + self.base.group_names
-        view[boolean_cols] = view[boolean_cols].astype(bool)
+        Branches that are not listed stay untouched.
+        """
+        # A from-scratch module has no radius in `xyzr`, which the geometry is read off.
+        if np.any(np.isnan(self.base.xyzr[min(ncomp_of_branch)][:, 3])):
+            self.base.compute_xyz()
+            for b, branch_nodes in self.base.nodes.groupby("global_branch_index"):
+                self.base.xyzr[b][:, 3] = branch_nodes["radius"].mean()
 
-        # Special treatment for the lengths and radiuses. These are not being set as
-        # the average because we:
-        # 1) Want to maintain the total length of a branch.
-        # 2) Want to use the SWC inferred radius.
-        #
-        # Compute new compartment lengths.
-        comp_lengths = np.sum(compartment_lengths) / ncomp
-        view["length"] = comp_lengths
+        # Sorted, so these line up with the row order below.
+        changed = sorted(ncomp_of_branch)
+        updated = {
+            b: self._compartmentalize_branch(b, ncomp_of_branch[b]) for b in changed
+        }
 
-        # Compute new compartment radiuses.
-        if xyzr_is_available:
-            # If all xyzr-radiuses of the branch are available, then use them to
-            # compute the new compartment radiuses.
-            comp_xyzrs = split_xyzr_into_equal_length_segments(xyzr, ncomp)
-            morph_attrs = np.asarray(
-                [morph_attrs_from_xyzr(xyzr, min_radius, ncomp) for xyzr in comp_xyzrs]
-            )
-            view["radius"] = morph_attrs[:, 0]
-            view["area"] = morph_attrs[:, 1]
-            view["volume"] = morph_attrs[:, 2]
-            view["resistive_load_in"] = morph_attrs[:, 3]
-            view["resistive_load_out"] = morph_attrs[:, 4]
-        else:
-            view["radius"] = within_branch_radiuses[0] * np.ones(ncomp)
-            l = comp_lengths
-            r = within_branch_radiuses[0]
-            # l/2 because we want the input load (left half of the cylinder) and
-            # the output load (right half of the cylinder).
-            resistive_load = cylinder_resistive_load(l / 2, r)
-            view["area"] = cylinder_area(l, r)
-            view["volume"] = cylinder_volume(l, r)
-            view["resistive_load_out"] = resistive_load
-            view["resistive_load_in"] = resistive_load
+        ncomp_per_branch = np.asarray(self.base.ncomp_per_branch).copy()
+        ncomp_per_branch[changed] = [ncomp_of_branch[b] for b in changed]
 
-        # Update `.nodes`.
-        # 1) Delete N rows starting from start_idx
-        number_deleted = num_previous_ncomp
-        all_nodes = all_nodes.drop(index=range(start_idx, start_idx + number_deleted))
+        # Pick the row for every compartment of the new table, then take them all at once.
+        # A changed branch repeats its first row, which carries its channels, groups and
+        # parameters; the new geometry is written over those copies further down. Every other
+        # branch keeps its own rows.
+        nodes = self.base.nodes
+        old_cumsum = np.asarray(self.base.cumsum_ncomp)
+        take, is_new = [], []
+        for b in range(len(ncomp_per_branch)):
+            if b in ncomp_of_branch:
+                take.append(np.full(ncomp_per_branch[b], old_cumsum[b]))
+            else:
+                take.append(np.arange(old_cumsum[b], old_cumsum[b + 1]))
+            is_new.append(np.full(len(take[-1]), b in ncomp_of_branch))
+        take, is_new = np.concatenate(take), np.concatenate(is_new)
 
-        # 2) Insert M new rows at the same location
-        df1 = all_nodes.iloc[:start_idx]  # Rows before the insertion point
-        df2 = all_nodes.iloc[start_idx:]  # Rows after the insertion point
+        new_nodes = nodes.iloc[take].reset_index(drop=True)
+        geometry = pd.concat([updated[b] for b in changed], ignore_index=True)
+        for col in geometry.columns:
+            if col in new_nodes.columns:
+                new_nodes.loc[is_new, col] = geometry[col].to_numpy()
+        new_nodes["global_comp_index"] = new_nodes.index
 
-        # 3) Combine the parts: before, new rows, and after
-        view.index = np.arange(len(view)).astype(int) + start_index
-        df2.index -= num_previous_ncomp
-        df2.index += ncomp
-        all_nodes = pd.concat([df1, view, df2])
-
-        # Override `comp_index` to just be a consecutive list.
-        all_nodes["global_comp_index"] = np.arange(len(all_nodes))
-
-        # Update compartment structure arguments.
-        ncomp_per_branch[branch_indices] = ncomp
-        ncomp = int(np.max(ncomp_per_branch))
         cumsum_ncomp = cumsum_leading_zero(ncomp_per_branch)
-        internal_node_inds = np.arange(cumsum_ncomp[-1])
-
-        self.base.nodes = all_nodes
+        self.base.nodes = new_nodes
         self.base.ncomp_per_branch = ncomp_per_branch
-        self.base.ncomp = ncomp
+        self.base.ncomp = int(np.max(ncomp_per_branch))
         self.base.cumsum_ncomp = cumsum_ncomp
-        self.base._internal_node_inds = internal_node_inds
+        self.base._internal_node_inds = np.arange(cumsum_ncomp[-1])
 
-        # Update the morphology indexing (e.g., `.comp_edges`).
         if initialize:
             self.base.initialize()
 
@@ -3523,8 +3535,9 @@ class Module(ABC):
 
                 self.xyzr[b][:, :3] = np.asarray([start_point, end_point])
             else:
-                # Dummy to keey the index `endpoints[parent[b]]` above working.
-                endpoints.append(np.zeros((2,)))
+                # Dummy to keep the index `endpoints[parent[b]]` above working. Must be
+                # 3 long, since it is indexed as a full xyz start point above.
+                endpoints.append(np.zeros((3,)))
 
     def move(
         self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = False
@@ -4143,142 +4156,3 @@ class View(Module):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         pass
-
-
-########################################################################################
-###################################### TO GRAPH ########################################
-########################################################################################
-
-
-def to_graph(
-    module: "jx.Module", synapses: bool = False, channels: bool = False
-) -> nx.DiGraph:
-    """Export a `jx.Module` as a networkX compartment graph.
-
-    Constructs a nx.DiGraph from the module. Each compartment in the module
-    is represented by a node in the graph. The edges between the nodes represent
-    the connections between the compartments. These edges can either be connections
-    between compartments within the same branch, between different branches or
-    even between different cells. In the latter case the synapse parameters
-    are stored as edge attributes. Only function allows one synapse per edge!
-    Additionally, global attributes of the module, for example `ncomp`, are stored as
-    graph attributes.
-
-    Exported graphs can be imported again to `jaxley` using the `from_graph` method.
-
-    Args:
-        module: A jaxley module or view instance.
-        synapses: Whether to export synapses to the graph.
-        channels: Whether to export ion channels to the graph.
-
-    Returns:
-        A networkx compartment. Has the same structure as a graph built with
-        `build_compartment_graph()`.
-
-    .. rubric:: Example usage
-
-    ::
-
-        cell = jx.read_swc("path_to_swc.swc", ncomp=1)
-        comp_graph = to_graph(cell)
-    """
-    module_graph = nx.DiGraph()
-
-    # add global attrs
-    module_graph.graph["type"] = module.__class__.__name__.lower()
-    for attr in [
-        "ncomp",
-        "externals",
-        "external_inds",
-        "recordings",
-        "trainable_params",
-        "indices_set_by_trainables",
-    ]:
-        module_graph.graph[attr] = getattr(module, attr)
-
-    # add nodes
-    nodes = module.nodes.copy()
-    nodes = nodes.drop([col for col in nodes.columns if "local" in col], axis=1)
-    nodes.columns = [col.replace("global_", "") for col in nodes.columns]
-
-    if channels:
-        module_graph.graph["channels"] = module.channels
-        module_graph.graph["membrane_current_names"] = [
-            c.current_name for c in module.channels
-        ]
-    else:
-        for c in module.channels:
-            nodes = nodes.drop(c.name, axis=1)
-            # errors="ignore" because some channels might have the same parameter or
-            # state name (if the channels share parameters).
-            nodes = nodes.drop(list(c.channel_params), axis=1, errors="ignore")
-            nodes = nodes.drop(list(c.channel_states), axis=1, errors="ignore")
-
-    nodes["type"] = "comp"
-    for col in nodes.columns:  # col wise adding preserves dtypes
-        module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
-
-    module._branchpoints["type"] = "branchpoint"
-    for col in module._branchpoints.columns:
-        module_graph.add_nodes_from(
-            module._branchpoints[[col]].to_dict(orient="index").items()
-        )
-
-    module_graph.graph["group_names"] = module.group_names
-
-    for i, branch_data in nodes.groupby("branch_index"):
-        inds = branch_data.index.values
-        # Special handling for xyzr. In the module, xyzr is currently stored in a list,
-        # where each list entry indicates one _branch_. In the `comp_graph`, each
-        # compartment is assigned its own `xyzr`. Here, we cast from the branch
-        # representation to the compartment representation.
-        xyzr = module.xyzr[i]
-        ncomp_per_branch = len(branch_data)
-        xyzr_per_comp = np.array_split(xyzr, ncomp_per_branch)
-        for i, comp_index in enumerate(inds):
-            module_graph.nodes[comp_index]["xyzr"] = xyzr_per_comp[i]
-
-    edges = module._comp_edges.copy()
-    condition1 = edges["type"].isin([2, 3])
-    condition2 = edges["type"] == 0
-    condition3 = edges["source"] < edges["sink"]
-    edges = edges[condition1 | (condition3 & condition2)][["source", "sink"]]
-    if len(edges) > 0:
-        module_graph.add_edges_from(edges.to_numpy())
-    module_graph.graph["type"] = module.__class__.__name__.lower()
-
-    if synapses:
-        syn_edges = module.edges.copy()
-        multiple_syn_per_edge = syn_edges[["pre_index", "post_index"]].duplicated(
-            keep=False
-        )
-        dupl_inds = multiple_syn_per_edge.index[multiple_syn_per_edge].values
-        if multiple_syn_per_edge.any():
-            warn(
-                f"CAUTION: Synapses {dupl_inds} are connecting the same compartments. "
-                "Exporting synapses to the graph only works if the same two "
-                "compartments are connected by at most one synapse."
-            )
-        module_graph.graph["synapses"] = module.synapses
-        module_graph.graph["synapse_param_names"] = module.synapse_param_names
-        module_graph.graph["synapse_state_names"] = module.synapse_state_names
-        module_graph.graph["synapse_names"] = module.synapse_names
-        module_graph.graph["synapse_current_names"] = module.synapse_current_names
-
-        syn_edges.columns = syn_edges.columns
-        syn_edges["syn_type"] = syn_edges["type"]
-        syn_edges["type"] = "synapse"
-        syn_edges = syn_edges.set_index(["pre_index", "post_index"])
-
-        if not syn_edges.empty:
-            for (i, j), edge_data in syn_edges.iterrows():
-                module_graph.add_edge(i, j, **edge_data.to_dict())
-    else:
-        for s in module.synapses:
-            nodes = nodes.drop(c.name, axis=1)
-            # errors="ignore" because some channels might have the same parameter or
-            # state name (if the channels share parameters).
-            nodes = nodes.drop(list(s.node_params), axis=1, errors="ignore")
-            nodes = nodes.drop(list(s.node_states), axis=1, errors="ignore")
-
-    return module_graph

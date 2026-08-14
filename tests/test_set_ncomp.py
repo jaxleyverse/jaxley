@@ -47,10 +47,26 @@ def test_raise_for_heterogenous_channel_properties(SimpleBranch):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_entire_cells(SimpleCell):
+def test_set_ncomp_for_entire_cells(SimpleCell):
+    """`set_ncomp` on an entire cell sets the number of comps of every branch.
+
+    `ncomp` is always per branch: `set_ncomp` re-splices the compartments within a
+    branch and never changes the number of branches."""
+    cell = SimpleCell(3, 4)
+    cell.set_ncomp(2)
+    assert list(cell.ncomp_per_branch) == [2, 2, 2]
+    assert len(cell.nodes) == 6
+
+    # One value per branch.
+    cell = SimpleCell(3, 4)
+    cell.branch("all").set_ncomp([1, 2, 3])
+    assert list(cell.ncomp_per_branch) == [1, 2, 3]
+    assert len(cell.nodes) == 6
+
+    # Mismatched length raises.
     cell = SimpleCell(3, 4)
     with pytest.raises(AssertionError):
-        cell.set_ncomp(2)
+        cell.branch("all").set_ncomp([1, 2])
 
 
 def test_raise_for_networks(SimpleCell):
@@ -209,6 +225,7 @@ def test_dlambda_rule(SimpleMorphCell):
     frequency = 100.0
     d_lambda = 0.1  # Larger -> more coarse-grained.
 
+    ncomps = []
     for branch in cell.branches:
         diameter = 2 * branch.nodes["radius"].to_numpy()[0]
         c_m = branch.nodes["capacitance"].to_numpy()[0]
@@ -216,12 +233,9 @@ def test_dlambda_rule(SimpleMorphCell):
         l = branch.nodes["length"].to_numpy()[0]
 
         lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
-        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
-        branch.set_ncomp(ncomp, initialize=False)
+        ncomps.append(int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1)
 
-    # After the loop, you have to run `cell.initialize()` because we passed
-    # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
-    cell.initialize()
+    cell.branch("all").set_ncomp(ncomps)
     cell[0, 0].record()
     v = jx.integrate(cell, t_max=1.0)
     assert np.invert(np.any(np.isnan(v))), "Found NaN after d_lambda rule."

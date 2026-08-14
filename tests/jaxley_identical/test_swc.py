@@ -22,6 +22,11 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.synapses import IonotropicSynapse
 
+# TODO: regenerate test voltages. The hardcoded voltages were recorded with the legacy SWC
+# reader, which numbers branches differently from `jaxley.io.graph`. Use
+# `select_evenly_spaced_nodes` instead.
+SWC_BACKEND = "graph"
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
@@ -36,7 +41,9 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", file)
-    cell = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
+    cell = SimpleMorphCell(
+        fname, ncomp=2, max_branch_len=300.0, swc_backend=SWC_BACKEND
+    )
     _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
     cell.soma.branch(0).loc(1.0).record()
@@ -106,8 +113,12 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, f"../swc_files/{morph}.swc")
-    cell1 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
-    cell2 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
+    cell1 = SimpleMorphCell(
+        fname, ncomp=2, max_branch_len=300.0, swc_backend=SWC_BACKEND
+    )
+    cell2 = SimpleMorphCell(
+        fname, ncomp=2, max_branch_len=300.0, swc_backend=SWC_BACKEND
+    )
 
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
@@ -209,13 +220,15 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
     assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
 
 
-# This test will be skipped for now, due to weird quirk of the swc file, which has two
-# different radii for the same xyz coordinates (L10364: 10362 -> 10549). This is handled
-# by the differently by the two swc reader backends (graph seems to be the correct one,
-# compared to NEURON).
-@pytest.mark.skip
+# TODO: Pick recording indices geometrically (see `tests/jaxley_vs_neuron/test_swc.py`),
+# with `select_evenly_spaced_nodes(neuron_section_graph(), 10)`.
+@pytest.mark.skip(
+    reason="The SWC file gives two different radii for the same xyz coordinate "
+    "(L10364: 10362 -> 10549), which the backends handle differently. Against NEURON, "
+    "`graph` appears to be the correct one."
+)
 @pytest.mark.slow
-@pytest.mark.parametrize("swc_backend", ["custom", "graph"])
+@pytest.mark.parametrize("swc_backend", ["graph", "legacy", "neuron"])
 def test_swc_morph(swc_backend, SimpleMorphCell):
     gt_apical = {}
     gt_soma = {}
@@ -244,15 +257,19 @@ def test_swc_morph(swc_backend, SimpleMorphCell):
     gt_axon["axonal_CaPump_decay"] = 287.19873
 
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "../swc_files", "bbp_with_axon.swc")  # n120
+    fname = os.path.join(dirname, "../swc_files", "bbp_with_axon.swc")
     cell = SimpleMorphCell(fname, ncomp=2, swc_backend=swc_backend)
 
-    # custom swc reader does not label the root branch that is added to the soma
-    # while the graph swc reader does. This is accounted for here.
-    cell.groups["soma"] = (
-        cell.groups["soma"][2:] if swc_backend == "graph" else cell.groups["soma"]
-    )
-    apical_inds = cell.groups["apical"]
+    # This used to trim the first two compartments off the `soma` group, to undo the graph
+    # reader labelling an extra root branch that it added to the soma. That no longer happens:
+    # the soma is a single branch, so the group holds exactly `ncomp` compartments and the
+    # trim would empty it.
+
+    # cell.groups["soma"] = (
+    #     cell.groups["soma"][2:] if swc_backend == "graph" else cell.groups["soma"]
+    # )
+    # apical_inds = cell.groups["apical"]
+    apical_inds = cell.apical.nodes.index.to_numpy()
 
     ########## APICAL ##########
     cell.apical.set("capacitance", 2.0)

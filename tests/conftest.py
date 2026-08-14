@@ -10,6 +10,12 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import Fire, Leak
+from jaxley.io.graph import (
+    build_compartment_graph,
+    from_graph,
+    swc_to_nx,
+    swc_to_pandas,
+)
 from jaxley.synapses import IonotropicSynapse, SpikeSynapse
 from tests.test_regression import generate_regression_report, load_json
 
@@ -176,7 +182,14 @@ def SimpleMorphCell():
         dirname = os.path.dirname(__file__)
         default_fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
         fname = default_fname if fname is None else fname
-        if key := (fname, ncomp, max_branch_len) not in cells or force_init:
+        key = (
+            fname,
+            ncomp,
+            max_branch_len,
+            swc_backend,
+            ignore_swc_tracing_interruptions,
+        )
+        if key not in cells or force_init:
             cells[key] = jx.read_swc(
                 fname,
                 ncomp=ncomp,
@@ -185,6 +198,7 @@ def SimpleMorphCell():
                 backend=swc_backend,
                 ignore_swc_tracing_interruptions=ignore_swc_tracing_interruptions,
             )
+
         return deepcopy(cells[key]) if copy and not force_init else cells[key]
 
     yield get_or_build_cell
@@ -236,16 +250,6 @@ def SpikeNet(SimpleCell):
 
     yield get_or_build_net
     spike_nets = {}
-
-
-def pytest_collection_modifyitems(config, items):
-    if config.getoption("--runslow"):
-        # --runslow given in cli: do not skip slow tests
-        return
-    skip_slow = pytest.mark.skip(reason="need --runslow option to run")
-    for item in items:
-        if "slow" in item.keywords:
-            item.add_marker(skip_slow)
 
 
 def pytest_collection_modifyitems(config, items):

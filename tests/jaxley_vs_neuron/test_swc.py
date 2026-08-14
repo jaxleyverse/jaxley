@@ -12,14 +12,21 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import numpy as np
 import pytest
 from neuron import h
+from scipy.spatial.distance import cdist
 
 import jaxley as jx
 from jaxley.channels import HH
+from tests.helpers import (
+    neuron_section_graph,
+    neuron_seg_xyz,
+    select_evenly_spaced_nodes,
+)
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
 
 
+@pytest.mark.parametrize("backend", ["graph", "neuron", "legacy"])
 @pytest.mark.parametrize(
     "file",
     [
@@ -30,13 +37,13 @@ _ = h.load_file("import3d.hoc")
         "morph_variable_radiuses_within_branch.swc",
     ],
 )
-def test_swc_voltages(file, SimpleMorphCell):
-    """Check if voltages of SWC recording match.
+def test_swc_voltages(file, backend):
+    """Check if voltages of SWC recording match, for every SWC reader backend.
 
-    To match the branch indices between NEURON and jaxley, we rely on comparing the
-    length of the branches.
+    Recording sites are picked in NEURON (spread evenly over the morphology) and
+    matched to jaxley by their nearest compartment center.
 
-    It tests whether, on average over time, the voltage is off by less than 0.5 mV
+    It tests whether, on average over time, the voltage is off by less than 0.3 mV
     for every recording.
     """
     dirname = os.path.dirname(__file__)
@@ -48,13 +55,20 @@ def test_swc_voltages(file, SimpleMorphCell):
     t_max = 30.0
     dt = 0.025
 
-    stim_loc = 0.51
-    loc = 0.51
-
     if file == "morph_variable_radiuses_within_branch.swc":
         ncomp_per_branch = 1
     else:
         ncomp_per_branch = 3
+
+    # needs to be run before NEURON import, since jaxley's NEURON backend overwrites
+    # the NEURON `h` object otherwise
+    cell = jx.read_swc(
+        fname,
+        ncomp=ncomp_per_branch,
+        backend=backend,
+        max_branch_len=2_000.0,
+        ignore_swc_tracing_interruptions=False,
+    )
 
     ##################### NEURON ##################
     h.secondorder = 0
@@ -62,70 +76,53 @@ def test_swc_voltages(file, SimpleMorphCell):
     for sec in h.allsec():
         h.delete_section(sec=sec)
 
-    cell = h.Import3d_SWC_read()
-    cell.input(fname)
-    i3d = h.Import3d_GUI(cell, False)
+    nrn_cell = h.Import3d_SWC_read()
+    nrn_cell.input(fname)
+    i3d = h.Import3d_GUI(nrn_cell, False)
     i3d.instantiate(None)
 
     for sec in h.allsec():
         sec.nseg = ncomp_per_branch
 
-    pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
+    sections = list(h.allsec())
+    middle = lambda sec: [sec(seg.x) for seg in sec][ncomp_per_branch // 2]
+
+    # Sites spread over the morphology, and the xyz of each so jaxley can be matched.
+    neuron_inds = select_evenly_spaced_nodes(neuron_section_graph(), 10)
+    rec_xyz = np.stack([neuron_seg_xyz(middle(sections[i])) for i in neuron_inds])
+    stim_xyz = neuron_seg_xyz(middle(h.soma[0]))
 
     ####################### jaxley ##################
-    cell = SimpleMorphCell(
-        fname,
-        ncomp_per_branch,
-        max_branch_len=2_000.0,
-        ignore_swc_tracing_interruptions=False,
-    )
-
-    pathlengths = []
-    for branch in cell.branches:
-        pathlengths.append(branch.nodes["length"].sum())
-    pathlengths_jaxley = np.asarray(pathlengths)
-
     cell.insert(HH())
-
-    jaxley_inds = [0, 1, 2, 5, 10, 16, 20, 40, 60, 80]
-    jaxley_inds = [ind for ind in jaxley_inds if ind < len(pathlengths_jaxley)]
-
-    neuron_inds = []
-    for jaxley_ind in jaxley_inds:
-        for i, p in enumerate(pathlengths_jaxley):
-            if i == jaxley_ind:
-                closest_match = np.argmin(np.abs(pathlengths_neuron - p))
-                neuron_inds.append(closest_match)
+    # Match the NEURON sites to the nearest jaxley compartment.
+    comp_xyz = cell.nodes[["x", "y", "z"]].to_numpy()
+    jaxley_inds = cell.nodes.index[cdist(rec_xyz, comp_xyz).argmin(axis=1)].to_numpy()
+    stim_ind = cell.nodes.index[cdist([stim_xyz], comp_xyz).argmin(axis=1)][0]
 
     cell.set("axial_resistivity", 100.0)
     cell.set("v", -62.0)
     cell.set("HH_m", 0.074901)
     cell.set("HH_h", 0.4889)
     cell.set("HH_n", 0.3644787)
-    cell.soma.branch(0).loc(stim_loc).stimulate(
+    cell.scope("global").comp(stim_ind).stimulate(
         jx.step_current(i_delay, i_dur, i_amp, dt, t_max)
     )
     for i in jaxley_inds:
-        cell.branch(i).loc(loc).record(verbose=False)
+        cell.scope("global").comp(i).record(verbose=False)
 
     voltages_jaxley = jx.integrate(cell, delta_t=dt, voltage_solver="jaxley.dhs.cpu")
 
     ################### NEURON #################
-    stim = h.IClamp(h.soma[0](stim_loc))
+    stim = h.IClamp(middle(h.soma[0]))
     stim.delay = i_delay
     stim.dur = i_dur
     stim.amp = i_amp
 
-    counter = 0
     voltage_recs = {}
-
-    for r in neuron_inds:
-        for i, sec in enumerate(h.allsec()):
-            if i == r:
-                v = h.Vector()
-                v.record(sec(loc)._ref_v)
-                voltage_recs[f"v{counter}"] = v
-                counter += 1
+    for counter, r in enumerate(neuron_inds):
+        v = h.Vector()
+        v.record(middle(sections[r])._ref_v)
+        voltage_recs[f"v{counter}"] = v
 
     for sec in h.allsec():
         sec.insert("hh")
@@ -155,5 +152,9 @@ def test_swc_voltages(file, SimpleMorphCell):
     voltages_neuron = np.asarray([voltage_recs[key] for key in voltage_recs])
     errors = np.mean(np.abs(voltages_jaxley - voltages_neuron), axis=1)
 
+    print(f"Errors: {errors}")
+
     ###################### check ################
-    assert all(errors < 0.5), f"Error {np.max(errors)} > 0.5. Voltages do not match."
+    assert all(
+        errors < 0.3
+    ), f"{backend}: error {np.max(errors)} > 0.3. Voltages do not match."

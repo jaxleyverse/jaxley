@@ -5,126 +5,6 @@ import numpy as np
 import pandas as pd
 
 
-def get_segment_xyzrL(section, comp_idx=None, loc=None, ncomp=8):
-    assert (
-        comp_idx is not None or loc is not None
-    ), "Either comp_idx or loc must be provided."
-    assert not (
-        comp_idx is not None and loc is not None
-    ), "Only one of comp_idx or loc can be provided."
-
-    comp_len = 1 / ncomp
-    loc = comp_len / 2 + comp_idx * comp_len if loc is None else loc
-
-    n3d = section.n3d()
-    x3d = np.array([section.x3d(i) for i in range(n3d)])
-    y3d = np.array([section.y3d(i) for i in range(n3d)])
-    z3d = np.array([section.z3d(i) for i in range(n3d)])
-    L = np.array([section.arc3d(i) for i in range(n3d)])  # Cumulative arc lengths
-    r3d = np.array([section.diam3d(i) / 2 for i in range(n3d)])
-    if loc is None:
-        return x3d, y3d, z3d, r3d
-    else:
-        total_length = L[-1]
-        target_length = loc * total_length
-
-        # Find segment containing target_length
-        for i in range(1, n3d):
-            if L[i] >= target_length:
-                break
-        else:
-            i = n3d - 1
-
-        # Interpolate between points i-1 and i
-        L0, L1 = L[i - 1], L[i]
-        t = (target_length - L0) / (L1 - L0)
-        x = x3d[i - 1] + t * (x3d[i] - x3d[i - 1])
-        y = y3d[i - 1] + t * (y3d[i] - y3d[i - 1])
-        z = z3d[i - 1] + t * (z3d[i] - z3d[i - 1])
-        r = r3d[i - 1] + t * (r3d[i] - r3d[i - 1])
-        return x, y, z, r, L[-1] / ncomp
-
-
-def jaxley2neuron_by_coords(jx_cell, neuron_secs, comp_idx=None, loc=None, ncomp=8):
-    neuron_coords = {
-        i: np.vstack(get_segment_xyzrL(sec, comp_idx=comp_idx, loc=loc, ncomp=ncomp))[
-            :3
-        ].T
-        for i, sec in enumerate(neuron_secs)
-    }
-    neuron_coords = np.vstack(
-        [np.hstack([k * np.ones((v.shape[0], 1)), v]) for k, v in neuron_coords.items()]
-    )
-    neuron_coords = pd.DataFrame(
-        neuron_coords, columns=["global_branch_index", "x", "y", "z"]
-    )
-    neuron_coords["global_branch_index"] = neuron_coords["global_branch_index"].astype(
-        int
-    )
-
-    neuron_loc_xyz = neuron_coords.groupby("global_branch_index").mean()
-    jaxley_loc_xyz = (
-        jx_cell.branch("all")
-        .loc(loc)
-        .nodes.set_index("global_branch_index")[["x", "y", "z"]]
-    )
-
-    jaxley2neuron_inds = {}
-    for i, xyz in enumerate(jaxley_loc_xyz.to_numpy()):
-        d = np.sqrt(((neuron_loc_xyz - xyz) ** 2)).sum(axis=1)
-        jaxley2neuron_inds[i] = d.argmin()
-    return jaxley2neuron_inds
-
-
-def jaxley2neuron_by_group(
-    jx_cell,
-    neuron_secs,
-    comp_idx=None,
-    loc=None,
-    ncomp=8,
-    num_apical=20,
-    num_tuft=20,
-    num_basal=10,
-):
-    y_apical = (
-        jx_cell.apical.nodes.groupby("global_branch_index")
-        .mean()["y"]
-        .abs()
-        .sort_values()
-    )
-    trunk_inds = y_apical.index[:num_apical].tolist()
-    tuft_inds = y_apical.index[-num_tuft:].tolist()
-    basal_inds = (
-        jx_cell.basal.nodes["global_branch_index"].unique()[:num_basal].tolist()
-    )
-
-    jaxley2neuron = jaxley2neuron_by_coords(
-        jx_cell, neuron_secs, comp_idx=comp_idx, loc=loc, ncomp=ncomp
-    )
-
-    neuron_trunk_inds = [jaxley2neuron[i] for i in trunk_inds]
-    neuron_tuft_inds = [jaxley2neuron[i] for i in tuft_inds]
-    neuron_basal_inds = [jaxley2neuron[i] for i in basal_inds]
-
-    neuron_inds = {
-        "trunk": neuron_trunk_inds,
-        "tuft": neuron_tuft_inds,
-        "basal": neuron_basal_inds,
-    }
-    jaxley_inds = {"trunk": trunk_inds, "tuft": tuft_inds, "basal": basal_inds}
-    return neuron_inds, jaxley_inds
-
-
-def match_stim_loc(jx_cell, neuron_sec, comp_idx=None, loc=None, ncomp=8):
-    stim_coords = get_segment_xyzrL(
-        neuron_sec, comp_idx=comp_idx, loc=loc, ncomp=ncomp
-    )[:3]
-    stim_idx = (
-        ((jx_cell.nodes[["x", "y", "z"]] - stim_coords) ** 2).sum(axis=1).argmin()
-    )
-    return stim_idx
-
-
 def import_neuron_morph(fname, ncomp=8):
     from neuron import h
 
@@ -147,17 +27,83 @@ def import_neuron_morph(fname, ncomp=8):
 
 
 def equal_both_nan_or_empty_df(a: pd.DataFrame, b: pd.DataFrame) -> bool:
-    """Return whether all elements of two dataframes are identical."""
-    if "xyzr" in a.columns:
-        a = a.drop(columns="xyzr")
-    if "xyzr" in b.columns:
-        b = b.drop(columns="xyzr")
+    """Return whether all elements of two dataframes are identical, NaN counting as equal.
+
+    Column order is ignored. Missing values are compared with a mask.
+    """
+    a = a.drop(columns="xyzr", errors="ignore")
+    b = b.drop(columns="xyzr", errors="ignore")
     if a.empty and b.empty:
         return True
-    a[a.isna()] = -1
-    b[b.isna()] = -1
-    if set(a.columns) != set(b.columns):
+    if set(a.columns) != set(b.columns) or not a.index.equals(b.index):
         return False
-    else:
-        a = a[b.columns]
-    return (a == b).all()
+    b = b[a.columns]
+    return bool(((a == b) | (a.isna() & b.isna())).fillna(False).all().all())
+
+
+def neuron_seg_xyz(seg) -> np.ndarray:
+    """Return the xyz coordinate of the center of a NEURON segment.
+
+    NEURON only exposes the traced 3d points, so the center is interpolated along arc.
+    """
+    sec = seg.sec
+    n3d = sec.n3d()
+    arc = np.array([sec.arc3d(i) for i in range(n3d)])
+    norm_arc = arc / arc[-1]
+    return np.array(
+        [
+            np.interp(seg.x, norm_arc, [getattr(sec, f"{c}3d")(i) for i in range(n3d)])
+            for c in "xyz"
+        ]
+    )
+
+
+def neuron_section_graph():
+    """Return a graph of NEURON's sections, each node at the section's center."""
+    import networkx as nx
+    from neuron import h
+
+    name2idx = {sec.name(): n for n, sec in enumerate(h.allsec())}
+    graph = nx.Graph()
+    for n, sec in enumerate(h.allsec()):
+        centers = np.stack([neuron_seg_xyz(seg) for seg in sec])
+        graph.add_node(n, **dict(zip("xyz", centers.mean(axis=0))))
+        if sec.parentseg():
+            graph.add_edge(name2idx[sec.parentseg().sec.name()], n)
+    return graph
+
+
+def select_evenly_spaced_nodes(graph, num_nodes: int) -> list:
+    """Select approximately evenly spaced nodes, by distance along the graph.
+
+    Farthest-point sampling with euclidean edge lengths. Every node needs `x`, `y`, `z`.
+    Ties break on coordinates, so the result does not depend on node insertion order.
+    """
+    import networkx as nx
+
+    if num_nodes >= len(graph):
+        return list(graph.nodes)
+
+    pos = lambda n: np.array([graph.nodes[n][k] for k in "xyz"], dtype=float)
+    graph = graph.to_undirected()
+    for u, v in graph.edges:
+        graph.edges[u, v]["length"] = float(np.linalg.norm(pos(u) - pos(v)))
+
+    coord_key = lambda n: tuple(pos(n))
+    start = min(
+        graph.nodes, key=lambda n: (float(np.linalg.norm(pos(n))), coord_key(n))
+    )
+    selected = [start]
+    min_dist = dict.fromkeys(graph.nodes, np.inf)
+    min_dist.update(
+        nx.single_source_dijkstra_path_length(graph, start, weight="length")
+    )
+
+    while len(selected) < num_nodes:
+        remaining = (n for n in graph.nodes if n not in selected)
+        candidate = max(remaining, key=lambda n: (min_dist[n], coord_key(n)))
+        selected.append(candidate)
+        dists = nx.single_source_dijkstra_path_length(graph, candidate, weight="length")
+        for n, d in dists.items():
+            min_dist[n] = min(min_dist[n], d)
+    return selected
