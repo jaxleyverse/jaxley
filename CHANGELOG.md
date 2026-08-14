@@ -28,6 +28,15 @@ print(cell.branch(0).comp(1).recording("v"))  # Only the recording in branch 0, 
 ```
 - Synapses can now use the states and parameters of pre- and post-synaptic
 compartments (#765, @michaeldeistler)
+- new `neuron` backend for the SWC reader: `jx.read_swc(..., backend="neuron")` imports through
+NEURON's own `Import3d`, so it reproduces NEURON's compartment length, radius, area and volume
+exactly. It doubles as a reference for the other backends.
+- non-uniform discretization at import time: `build_compartment_graph(..., ncomp=callable)` takes
+a per-branch rule, e.g. the d-lambda rule.
+- `set_ncomp()` accepts one value per branch, e.g. `cell.branch("all").set_ncomp([3, 5, 1])`.
+- `to_graph()` and `from_graph()` are exact inverses, so `set_ncomp()`, `morph_delete()` and
+`morph_connect()` now rebuild the module from a graph instead of splicing `DataFrame`s in place.
+`to_graph(module, channels=False, synapses=False)` exports the bare morphology.
 
 ### API changes
 
@@ -89,6 +98,35 @@ from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 - `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
 - Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
 @michaeldeistler)
+
+### 🐛 Bug fixes
+
+- compartment centers are now the point at half the compartment's arc length, rather than the
+midpoint of the chord between its ends. This lead to notable impact on simulation results for 
+long compartments of curved branches.
+- branch tracing no longer depends on the order of nodes in the SWC file.
+
+### ⚡ Performance
+
+- reading `morph_l5pc_with_axon.swc` is ~6x faster (at `ncomp=1`).
+- `set_ncomp()` over a whole cell drops from 829 s to 1.6 s (~500x faster), since it rebuilds `nodes` in a single
+pass rather than re-splicing per branch.
+
+### 🛠️ Internal updates
+
+- the SWC import is now five inspectable steps: `swc_to_pandas()` (edit SWC on file level) -> `swc_to_nx()`
+ (edit SWC-graph; i.e. smooth branches) -> `build_compartment_graph()` (inspect compartment graph) 
+ -> `from_graph()`, each usable on its own.
+- The code is simpler, much more explicit about the choices it makes (i.e. mostly SWC order agnostic) and 
+  reduces linecount by ~10% (Further line count reduction should be possible).
+- `to_graph()` moved from `jaxley.modules.base` to `jaxley.io.graph`, and `graph_vis()` to
+`jaxley.utils.plot_utils` as `plot_comp_graph()`. Simpler dependencies.
+- the `initialize` argument of `set_ncomp()` is deprecated and will be removed in `v1.1.0`; it no
+longer skips any work.
+- all three backends are now ground truthed against NEURON on compartment length, radius, area and volume.
+Compartments are now matched geometrically (by center coords), independent of index ordering.
+- the previous reader is kept as `jaxley.io.legacy` (`backend="legacy"`) as a backup option until the new 
+reader has proven reliable.
 
 ### 📚 Documentation
 

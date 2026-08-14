@@ -5,8 +5,9 @@ from typing import Dict, List, Union
 
 import jax.numpy as jnp
 import networkx as nx
+import pandas as pd
 
-from jaxley.modules.base import to_graph
+from jaxley.io.graph import to_graph
 
 
 def distance_direct(
@@ -90,11 +91,11 @@ def distance_pathwise(
     root = startpoint.nodes.index[0]
     endpoint_inds = endpoints.nodes.index
     graph = to_graph(startpoint.base)
-    graph = nx.to_undirected(graph)
 
-    # Set default for branchpoints.
+    # Branchpoints and tips have length=0
     for _, data in graph.nodes(data=True):
-        data.setdefault("length", 0.0)
+        if pd.isna(data.get("length")):
+            data["length"] = 0.0
 
     def edge_weight(u: int, v: int, d: Dict) -> float:
         """

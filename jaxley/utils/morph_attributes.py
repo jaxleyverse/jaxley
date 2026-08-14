@@ -1,6 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import List, Optional
+from typing import Tuple
+from warnings import warn
 
 import jax.numpy as jnp
 import numpy as np
@@ -8,251 +9,213 @@ import pandas as pd
 from jax import Array
 from jax.typing import ArrayLike
 
+from jaxley.utils.misc_utils import cumsum_leading_zero
 
-def morph_attrs_from_xyzr(
-    xyzr: np.ndarray,
-    min_radius: Optional[float],
+
+def _cumulative_cone_props(
+    ls: np.ndarray, rs: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    r"""Cumulative frustum integrals along a path, evaluated at each of the points.
+
+    The path is a chain of truncated cones. Each returned array starts at 0 and gives
+    the integral from `ls[0]` to `ls[i]` of:
+
+    - `radius`: :math:`\int r \, dl`, the length-weighted radius.
+    - `area`: the surface area of the frustums.
+    - `volume`: :math:`\int \pi r^2 \, dl`.
+    - `load`: :math:`\frac{1}{\pi} \int r^{-2} \, dl`, the resistive load.
+
+    Being cumulative, the value over any sub-path is the difference of its two ends.
+
+    Args:
+        ls: Cumulative path length of each point, shape `(N,)`, non-decreasing.
+        rs: Radius of each point, shape `(N,)`.
+
+    Returns:
+        4 arrays of shape `(N,)`: the cumulative radius, area, volume and resistive
+        load.
+    """
+    dl = np.diff(ls)
+    r1, r2 = rs[:-1], rs[1:]
+    dr = r2 - r1
+
+    radius = (r1 + r2) / 2 * dl
+    area = np.pi * (r1 + r2) * np.sqrt(dl**2 + dr**2)
+    volume = np.pi * dl / 3 * (r1**2 + r1 * r2 + r2**2)
+
+    load = np.empty_like(dl)
+    is_constant = np.isclose(dr, 0)
+    load[is_constant] = dl[is_constant] / r1[is_constant] ** 2  # cylinder
+    load[~is_constant] = (  # truncated cone
+        dl[~is_constant]
+        / dr[~is_constant]
+        * (1 / r1[~is_constant] - 1 / r2[~is_constant])
+    )
+    load = load / np.pi
+
+    return tuple(cumsum_leading_zero(x) for x in (radius, area, volume, load))
+
+
+def compute_cone_props(
+    ls: np.ndarray, rs: np.ndarray, bounds: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    r"""Frustum properties of the compartments delimited by `bounds` along a path.
+
+    The path is radii `rs` at path lengths `ls`, treated as a chain of truncated cones.
+    Every compartment boundary and midpoint is added to the path, so that each returned
+    quantity is a difference of the cumulative integrals of `_cumulative_cone_props()`.
+
+    Args:
+        ls: Cumulative path length of each point, shape `(N,)`.
+        rs: Radius of each point, shape `(N,)`.
+        bounds: The `ncomp + 1` compartment boundaries along the path.
+
+    Returns:
+        Five arrays of shape `(ncomp,)`: the length-weighted average radius, the surface
+        area, the volume, and the resistive loads of the first and second half of each
+        compartment (`resistive_load_in` and `resistive_load_out`).
+    """
+    bounds = np.asarray(bounds, dtype=float)
+    assert np.all(np.diff(bounds) > 0), "Compartment bounds must be increasing."
+
+    # Knots: every compartment boundary and midpoint.
+    mids = (bounds[:-1] + bounds[1:]) / 2
+    knots = np.empty(len(bounds) + len(mids))
+    knots[0::2], knots[1::2] = bounds, mids
+
+    # Add knots to the path, unless a point already sits on it. If the radius
+    # steps between them, the second segment would count the step's area twice.
+    at = np.searchsorted(ls, knots)
+    exists = np.zeros(len(knots), dtype=bool)
+    inside = at < len(ls)
+    atol = 1e-12 * max(ls[-1], 1.0)  # absolute, so it scales with the path
+    exists[inside] = np.abs(ls[at[inside]] - knots[inside]) <= atol
+
+    insert = ~exists
+    ls_at_knots = np.insert(ls, at[insert], knots[insert])
+    rs_at_knots = np.insert(rs, at[insert], np.interp(knots[insert], ls, rs))
+    # Where each knot ended up: its insertion point, shifted by the knots added before it.
+    pos = at + np.cumsum(insert) - insert
+
+    cum_radius, cum_area, cum_volume, cum_load = _cumulative_cone_props(
+        ls_at_knots, rs_at_knots
+    )
+    start, mid, end = pos[0:-2:2], pos[1::2], pos[2::2]
+
+    return (
+        (cum_radius[end] - cum_radius[start]) / (ls_at_knots[end] - ls_at_knots[start]),
+        cum_area[end] - cum_area[start],
+        cum_volume[end] - cum_volume[start],
+        cum_load[mid] - cum_load[start],
+        cum_load[end] - cum_load[mid],
+    )
+
+
+COMP_ATTRS = [
+    "length",
+    "x",
+    "y",
+    "z",
+    "radius",
+    "area",
+    "volume",
+    "resistive_load_in",
+    "resistive_load_out",
+]
+
+
+def compartmentalize_branch(
+    branch_nodes: pd.DataFrame,
     ncomp: int,
-) -> float:
-    """Return radius, area, volume, and resistive loads of a comp given its SWC xyzr.
+) -> pd.DataFrame:
+    """Interpolate or integrate node attributes along branch.
+
+    Takes a dataframe with nodes (index) and node attributes (columns) and returns a
+    dataframe of compartments and compartment attributes. Compartments are spaced at
+    equidistant points along the branch. Node attributes, like radius are linearly
+    interpolated along its length.
+
+    Example: 4 compartments | edges = - | nodes = o | comp_nodes = x
+    o-----------o----------o---o---o---o--------o
+    o-------x---o----x-----o--xo---o---ox-------o
 
     Args:
-        radius_fns: Functions which, given compartment locations return the radius.
-        branch_indices: The indices of the branches for which to return the radiuses.
-        min_radius: If passed, the radiuses are clipped to be at least as large.
-        ncomp: The number of compartments that every branch is discretized into.
-    """
-    # Extract 3D coordinates and radii
-    positions = xyzr[:, :3]  # shape (N, 3): x, y, z
-    radii = xyzr[:, 3]  # shape (N,): radius at each point
-
-    if len(xyzr) > 1:
-        # Compute Euclidean distances between consecutive points
-        position_deltas = np.diff(positions, axis=0)  # shape (N-1, 3)
-        segment_lengths = np.linalg.norm(position_deltas, axis=1)  # shape (N-1,)
-
-        avg_radius = swc_radius(segment_lengths, radii)
-        total_surface_area = swc_area(segment_lengths, radii)
-        total_volume = swc_volume(segment_lengths, radii)
-
-        # Finally, we compute the input and output resistive loads. For this, we first
-        # have to split the xyzr into two: the ones on the left half of the
-        # compartment, and the ones on the right half.
-        xyzr_split = split_xyzr_into_equal_length_segments(xyzr, 2)
-        resistive_load = []
-        for xyzr_half in xyzr_split:
-            # Extract 3D coordinates and radii
-            positions_half = xyzr_half[:, :3]  # shape (N, 3): x, y, z
-            radii_half = xyzr_half[:, 3]  # shape (N,): radius at each point
-
-            # Compute Euclidean distances between consecutive points
-            position_deltas_half = np.diff(positions_half, axis=0)  # shape (N-1, 3)
-            segment_lengths_half = np.linalg.norm(
-                position_deltas_half, axis=1
-            )  # shape (N-1,)
-            resistive_load.append(swc_resistive_load(segment_lengths_half, radii_half))
-    else:
-        avg_radius = radii.mean()
-        total_surface_area = 4 * np.pi * radii[0] ** 2 / ncomp  # Surface of a sphere.
-        total_volume = 4 / 3 * np.pi * radii[0] ** 3 / ncomp  # Volume of a sphere.
-
-        # Resistive load.
-        # For single point, the total length of a branch is: length = radius.
-        # Thus, the length of a compartment is `radius/ncomp`.
-        length = radii[0] / ncomp
-        resistive_load = [length / radii[0] ** 2 / np.pi] * 2
-
-    if min_radius is None:
-        assert (
-            avg_radius > 0.0
-        ), "Radius 0.0 in SWC file. Set `read_swc(..., min_radius=...)`."
-    else:
-        avg_radius = (
-            min_radius
-            if (avg_radius < min_radius or np.isnan(avg_radius))
-            else avg_radius
-        )
-    return avg_radius, total_surface_area, total_volume, *resistive_load
-
-
-def split_xyzr_into_equal_length_segments(
-    xyzr: np.ndarray, ncomp: int
-) -> List[np.ndarray]:
-    """Split xyzr into equal-length segments by inserting interpolated points as needed.
-
-    This function was written by ChatGPT, based on the prompt:
-    ```I have an array of shape 100x3. The 3 indicate x, y, z coordinates. I want to
-    split this array into 4 segments, each with equal euclidean length. To have
-    euclidean length exactly equal, I would like to insert additional points into
-    the 100x3 array (to make it length 100 + 4 segments - 1). These points should be
-    linear interpolation of neighboring points. In the final split array, the newly
-    inserted nodes should be the last point of one segment and the first point of
-    another segment.```
-
-    Args:
-        points: Array of 3D coordinates representing a path.
-        num_segments: Number of segments to split the path into.
+        branch_nodes: DataFrame of node attributes for nodes in a branch.
+            needs to include morph attributes `x`, `y`, `z`, `radius`.
+        ncomp: Number of compartments per branch.
 
     Returns:
-        A list of `num_segments` arrays, each containing the 3D coordinates
-        of one segment. The segments have (approximately) equal Euclidean
-        length, and split points are interpolated between original points.
+        DataFrame of compartments and compartment attributes, the columns being
+        `COMP_ATTRS`.
     """
+    for attr in set(["x", "y", "z", "radius"]):
+        assert attr in branch_nodes.columns, f"Branch nodes must contain '{attr}'."
+
+    xyzr = branch_nodes[["x", "y", "z", "radius"]].to_numpy(dtype=float)
+    return pd.DataFrame(compartmentalize(xyzr, ncomp), columns=COMP_ATTRS)
+
+
+def compartmentalize(xyzr: np.ndarray, ncomp: int) -> dict:
+    """Split a branch into `ncomp` compartments. The array core of the function above.
+
+    Kept apart from `compartmentalize_branch()` so that callers which run it once per branch
+    do not pay for a DataFrame going in and another coming out each time.
+
+    Args:
+        xyzr: The branch's traced points, shape (N, 4), ordered along the branch.
+        ncomp: Number of compartments to split the branch into.
+
+    Returns:
+        One array of length `ncomp + 2` per entry of `COMP_ATTRS`. The first and last entry
+        of each are the branch's two ends, which have no attributes other than a position.
+    """
+    # NEURON's `Import3d` builds a cylinder of length 2*r along +x for a single-point soma.
     if len(xyzr) == 1:
-        return [xyzr] * ncomp
+        xyzr = np.repeat(xyzr, 2, axis=0)
+        xyzr[:, 0] += [-xyzr[0, 3], xyzr[0, 3]]
 
-    # Compute distances between consecutive points
-    xyz = xyzr[:, :3]
+    branch_xyz, rs = xyzr[:, :3], xyzr[:, 3]
+    edge_lens = np.linalg.norm(np.diff(branch_xyz, axis=0), axis=1)
+    ls = cumsum_leading_zero(edge_lens)  # path length
+    branch_len = ls[-1]
 
-    # Compute distances and cumulative distances
-    deltas = np.diff(xyz, axis=0)
-    dists = np.linalg.norm(deltas, axis=1)
-    cum_dists = np.concatenate([[0], np.cumsum(dists)])
-    total_length = cum_dists[-1]
+    if branch_len < 1e-8:
+        warn(
+            "Found a branch with length 0. To avoid NaN while integrating the "
+            "ODE, we capped this length to 0.1 um. The underlying cause for the "
+            "branch with length 0 is likely a strange SWC file. The "
+            "most common reason for this is that the SWC contains a soma "
+            "traced by a single point, and a dendrite that connects to the soma "
+            "has no further child nodes."
+        )
+        branch_len = 0.1  # cap, as promised by the warning above
+    comp_len = branch_len / ncomp
 
-    # Target cumulative distances where we want to split
-    target_dists = np.linspace(0, total_length, ncomp + 1)
+    # Create node indices and attributes for branch-tips/branchpoints and comps
+    # is_comp, comp_len, comp_id, x, y, z, r, area, volume, res_in, res_out
+    cone_prop_cols = COMP_ATTRS[4:]
+    n_rows = ncomp + 2
 
-    # Find insertion indices and interpolation factors
-    idxs = np.searchsorted(cum_dists, target_dists, side="right") - 1
-    idxs = np.clip(idxs, 0, len(xyz) - 2)  # Ensure valid indices
-    local_dist = target_dists - cum_dists[idxs]
+    is_comp = np.zeros(n_rows, dtype=bool)
+    is_comp[1:-1] = True
 
-    # When two traced SWC are right on top of each other, their dists=0. Then, when
-    # these points lie exactly at the point where the xyz is supposed to be split,
-    # we get `segment_lens=0`, which causes frac to be infinity.
-    dists = np.where(dists < 1e-14, 1e-14, dists)
-    segment_lens = dists[idxs]
-    frac = (local_dist / segment_lens)[:, None]  # shape (n, 1)
+    data = {col: np.full(n_rows, np.nan) for col in COMP_ATTRS}
+    data["length"][is_comp] = comp_len
 
-    # Interpolate split points
-    split_points = xyzr[idxs] + frac * (xyzr[idxs + 1] - xyzr[idxs])
+    # Interpolate along the branch. The two branch ends bracket the compartment centers,
+    # so the tip/branchpoint rows get the branch's end coordinates.
+    comp_centers = np.linspace(comp_len / 2, branch_len - comp_len / 2, ncomp)
+    comp_centers = np.array([0, *comp_centers, branch_len])
 
-    # Build final list of points with inserted nodes
-    all_points = [split_points[0]]
-    compartment_xyzrs = []
+    for i, col in enumerate(["x", "y", "z"]):
+        data[col] = np.interp(comp_centers, ls, branch_xyz[:, i])
 
-    for i in range(1, len(split_points)):
-        # Collect original points between splits.
-        mask = (cum_dists > target_dists[i - 1]) & (cum_dists < target_dists[i])
-        between_points = xyzr[mask]
-        segment = np.vstack([all_points[-1], *between_points, split_points[i]])
-        compartment_xyzrs.append(segment)
-        all_points.append(split_points[i])
-    return compartment_xyzrs
+    # radius, area, volume, resistive_load_in, resistive_load_out of every compartment
+    comp_ends = np.linspace(0, branch_len, ncomp + 1)
+    for col, values in zip(cone_prop_cols, compute_cone_props(ls, rs, comp_ends)):
+        data[col][is_comp] = values
 
-
-def swc_radius(lengths: np.ndarray, radii: np.ndarray) -> np.ndarray:
-    r"""Return the radius of a branch given its SWC coordinates.
-
-    This function computes the average radius, weighted by the length between
-    two SWC points.
-
-    Args:
-        lengths: Array of shape `(N-1)`, indicating the spacing between all SWC
-            points within the branch.
-        radii: Array of shape `(N)`, indicating the radius of each SWC point.
-
-    Returns:
-        A radius as a scalar value."""
-    radius_weights = np.zeros(len(lengths) + 1)
-    radius_weights[1:] += lengths
-    radius_weights[:-1] += lengths
-    radius_weights /= np.sum(radius_weights)
-    return np.sum(radii * radius_weights)
-
-
-def swc_area(lengths: np.ndarray, radii: np.ndarray) -> np.ndarray:
-    r"""Return the surface area of a compartment given its SWC coordinates.
-
-    This function makes a truncated cone approximation between any two SWC points
-    and then computes the surface area.
-
-    Args:
-        lengths: Array of shape `(N-1)`, indicating the spacing between all SWC
-            points within the compartment.
-        radii: Array of shape `(N)`, indicating the radius of each SWC point.
-
-    Returns:
-        A membrane surface area as a scalar value."""
-    radius_start = radii[:-1]
-    radius_end = radii[1:]
-    delta_radii = radius_end - radius_start
-    slant_lengths = np.sqrt(delta_radii**2 + lengths**2)
-    frustum_surface_areas = np.pi * (radius_start + radius_end) * slant_lengths
-    return np.sum(frustum_surface_areas)
-
-
-def swc_volume(lengths: np.ndarray, radii: np.ndarray) -> np.ndarray:
-    r"""Return the volume of a compartment given its SWC coordinates.
-
-    This function makes a truncated cone approximation between any two SWC points
-    and then computes the volume. This function is used only for ion diffusion.
-
-    Args:
-        lengths: Array of shape `(N-1)`, indicating the spacing between all SWC
-            points within the compartment.
-        radii: Array of shape `(N)`, indicating the radius of each SWC point.
-
-    Returns:
-        A volume as a scalar value."""
-    radius_start = radii[:-1]
-    radius_end = radii[1:]
-    volume = (
-        (np.pi / 3)
-        * lengths
-        * (radius_start**2 + radius_start * radius_end + radius_end**2)
-    )
-    return np.sum(volume)
-
-
-def swc_resistive_load(lengths: np.ndarray, radii: np.ndarray) -> np.ndarray:
-    r"""Return the resistive load of a compartment given its SWC coordinates.
-
-    The resistive load is defined as the integral over :math:`1/(\pi r^2)`, i.e.,
-
-    .. math::
-
-        r_l = \frac{1}{\pi} \int \frac{1}{r^2} \, dl
-
-    As an example, if the radius is constant, then we obtain :math:`l / r^2 / \pi`,
-    which corresponds exactly to the length divided by the cross section.
-
-    This function makes a truncated cone approximation between any two SWC points
-    and then computes the resistive load with the equation above. In the function
-    `compute_axial_conductances()`, the resistive load gets multiplied by the
-    axial resistivity (r_a, in :math:`\ohm` cm) to obtain the resistance between
-    compartments.
-
-    Args:
-        lengths: Array of shape `(N-1)`, indicating the spacing between all SWC
-            points within the compartment.
-        radii: Array of shape `(N)`, indicating the radius of each SWC point.
-
-    Returns:
-        A resistive load as a scalar value."""
-    lengths = np.asarray(lengths)
-    radius_start = np.asarray(radii[:-1])
-    radius_end = np.asarray(radii[1:])
-    delta_radius = radius_end - radius_start
-
-    segment_integrals = np.empty_like(lengths)
-
-    # Segments with constant radius.
-    is_constant_radius = np.isclose(delta_radius, 0)
-    segment_integrals[is_constant_radius] = (
-        lengths[is_constant_radius] / radius_start[is_constant_radius] ** 2
-    )
-
-    # Segments with varying radius (truncated cone).
-    is_varying_radius = ~is_constant_radius
-    segment_integrals[is_varying_radius] = (
-        lengths[is_varying_radius]
-        / delta_radius[is_varying_radius]
-        * (1 / radius_start[is_varying_radius] - 1 / radius_end[is_varying_radius])
-    )
-
-    return np.sum(segment_integrals) / jnp.pi
+    return data
 
 
 def cylinder_area(length: ArrayLike, radius: ArrayLike) -> Array:
@@ -270,14 +233,8 @@ def cylinder_area(length: ArrayLike, radius: ArrayLike) -> Array:
 def cylinder_volume(length: ArrayLike, radius: ArrayLike) -> Array:
     r"""Return the volume of a cylindric compartment, given its length and radius.
 
-    The resistive load is defined as the integral over :math:`1/(\pi r^2)`, i.e.,
-
-    .. math::
-
-        r_l = \frac{1}{\pi} \int \frac{1}{r^2} \, dl
-
-    For a cylinder, the radius is constant, so we obtain :math:`l / r^2 / \pi`.
-    This corresponds exactly to the length divided by the cross section.
+    The radius is constant along a cylinder, so the volume is the cross section times the
+    length, :math:`\pi r^2 l`.
 
     Args:
         lengths: The lengths of M cylindric compartments, shape (M,).
