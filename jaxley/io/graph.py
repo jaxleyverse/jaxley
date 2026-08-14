@@ -1171,6 +1171,12 @@ def to_graph(module: Module, channels: bool = True, synapses: bool = True) -> nx
         dropped += [p for c in module.channels for p in c.channel_params]
         dropped += [s for c in module.channels for s in c.channel_states]
         nodes = nodes.drop(columns=dropped, errors="ignore")
+    if not synapses:
+        # A synapse's own parameters live on the edges, but it can also claim columns on
+        # the compartments it connects (`node_params` / `node_states`).
+        dropped = [p for s in module.synapses for p in s.node_params]
+        dropped += [st for s in module.synapses for st in s.node_states]
+        nodes = nodes.drop(columns=dropped, errors="ignore")
     nodes["global_branch_index"] = nodes["global_branch_index"].astype(pd.Int64Dtype())
     nodes["global_cell_index"] = nodes["global_cell_index"].astype(pd.Int64Dtype())
     nodes["global_comp_index"] = nodes["global_comp_index"].astype(pd.Int64Dtype())

@@ -21,7 +21,11 @@ def _assert_editable(view, caller: str) -> None:
     )
     for state, label, fix in [
         ("rec_info", "recordings", "delete_recordings"),
-        ("externals", "external states (stimuli or clamps)", "delete_stimuli()` or `cell.delete_clamps"),
+        (
+            "externals",
+            "external states (stimuli or clamps)",
+            "delete_stimuli()` or `cell.delete_clamps",
+        ),
         ("trainable_params", "trainable parameters", "delete_trainables"),
     ]:
         found = len(getattr(module, state))
@@ -44,8 +48,9 @@ def morph_delete(module_view) -> "Cell":
     This function can only delete entire branches. It does not support deleting
     compartments of a branch.
 
-    This function deletes all existing recordings, stimuli, trainable parameters, and
-    channels.
+    This function deletes all existing recordings, stimuli, and trainable parameters.
+    Channels are kept: the module is rebuilt from its compartment graph, which carries
+    them.
 
     Args:
         module_view: View of a `jx.Cell`. Defines the branches to be deleted.
