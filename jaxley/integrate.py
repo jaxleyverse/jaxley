@@ -2,9 +2,8 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from collections.abc import Callable
 from math import prod
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple
 
-import jax
 import jax.numpy as jnp
 import pandas as pd
 from jax import Array
@@ -374,8 +373,29 @@ def integrate(
 
     if module.recordings.empty:
         raise ValueError("No recordings are set. Please set them.")
-    rec_inds = module.recordings.rec_index.to_numpy()
-    rec_states = module.recordings.state.to_numpy()
+
+    # Group the recordings by state so that each recorded state is read with a
+    # single vectorized gather.
+    rec_info = module.recordings.reset_index(drop=True)
+    rec_groups = []
+    concat_positions = []
+    for state_name, group in rec_info.groupby("state", sort=False):
+        rec_groups.append((state_name, group["rec_index"].to_numpy()))
+        concat_positions.extend(group.index)
+
+    # Permutation restoring the user's requested recording order once the
+    # per-state gathers are concatenated. Monotonic positions mean concatenating
+    # already yields that order, so no permutation is emitted (the common case of
+    # a single recorded state).
+    positions = pd.Index(concat_positions)
+    rec_order = None if positions.is_monotonic_increasing else positions.argsort()
+
+    # Function to efficiently gather recorded states from dict of states
+    def gather_recs(state: Dict[str, Array]) -> Array:
+        """Return all recorded values, using one gather per recorded state."""
+        parts = [state[state_name][inds] for state_name, inds in rec_groups]
+        recs = parts[0] if len(parts) == 1 else jnp.concatenate(parts)
+        return recs if rec_order is None else recs[rec_order]
 
     # Shorten or pad stimulus depending on `t_max`.
     if t_max is not None:
@@ -412,12 +432,7 @@ def integrate(
 
     def _body_fun(state, externals):
         state = step_fn(state, all_params, externals, external_inds, delta_t)
-        recs = jnp.asarray(
-            [
-                state[rec_state][rec_ind]
-                for rec_state, rec_ind in zip(rec_states, rec_inds)
-            ]
-        )
+        recs = gather_recs(state)
         return state, recs
 
     # If necessary, pad the stimulus with zeros in order to simulate sufficiently long.
@@ -444,12 +459,7 @@ def integrate(
                 externals[key] = jnp.concatenate([externals[key], dummy_external])
 
     # Record the initial state.
-    init_recs = jnp.asarray(
-        [
-            all_states[rec_state][rec_ind]
-            for rec_state, rec_ind in zip(rec_states, rec_inds)
-        ]
-    )
+    init_recs = gather_recs(all_states)
     init_recording = jnp.expand_dims(init_recs, axis=0)
 
     # Run simulation.
