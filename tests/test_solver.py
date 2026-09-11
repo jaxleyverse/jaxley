@@ -112,3 +112,60 @@ def test_dhs_solve_handles_ragged_grouped_edges(optimize_for_gpu):
     actual_grad = np.asarray(grad_fn(rhs))
     expected_grad = np.linalg.solve(matrix.T, np.ones_like(expected))
     np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-6, atol=1e-6)
+
+
+def test_dhs_vmap_closed_over_rhs_matches_arg():
+    """``jit(vmap(DHS))`` must agree for argument vs closed-over multi-column RHS.
+
+    On jax/jaxlib in roughly ``[0.5.3, 0.8.1]``, the old RHS form
+    ``v[i] + dt * c[i]`` inside ``step_voltage_implicit_with_dhs_solve`` returned
+    wrong primals when the RHS matrix was a compile-time constant (jax#33479 /
+    xla#34260). This regression guards the scale-before-gather rewrite.
+    """
+    from jaxley.channels import Leak
+    from jaxley.integrate import build_init_and_step_fn
+    from jaxley.solver_voltage import step_voltage_implicit_with_dhs_solve
+
+    branch = jx.Branch(jx.Compartment(), ncomp=4)
+    cell = jx.Cell([branch] * 3, parents=[-1, 0, 0])
+    cell.insert(Leak())
+    cell.to_jax()
+    build_init_and_step_fn(cell, voltage_solver="jaxley.dhs.cpu")
+
+    N = len(cell.nodes)
+    n_nodes = int(cell._n_nodes)
+    dt = 0.025
+    idxr = cell._dhs_solve_indexer
+    internal = cell._internal_node_inds
+    sinks = np.asarray(cell._comp_edges["sink"].to_list())
+    ap = cell.get_all_parameters([])
+    axial = jnp.asarray(ap["axial_conductances"]["v"])
+    g_leak = jnp.asarray(ap["Leak_gLeak"][:N])
+    cm = jnp.asarray(ap["capacitance"][:N])
+    vt = jnp.zeros((n_nodes,)).at[:N].set(g_leak / cm)
+    B = jax.random.normal(jax.random.PRNGKey(0), (N, 8))
+
+    def solve_col(rhs):
+        voltages = jnp.zeros((n_nodes,)).at[:N].set(rhs)
+        out = step_voltage_implicit_with_dhs_solve(
+            voltages,
+            vt,
+            jnp.zeros_like(voltages),
+            axial,
+            internal,
+            sinks,
+            n_nodes,
+            idxr,
+            False,
+            dt,
+        )
+        return out[:N]
+
+    def solve_mat(M):
+        return jax.vmap(solve_col, in_axes=1, out_axes=1)(M)
+
+    eager = solve_mat(B)
+    as_arg = jax.jit(solve_mat)(B)
+    closed = jax.jit(lambda: solve_mat(B))()
+    np.testing.assert_allclose(as_arg, eager, rtol=1e-10, atol=1e-10)
+    np.testing.assert_allclose(closed, eager, rtol=1e-10, atol=1e-10)
