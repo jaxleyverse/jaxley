@@ -16,6 +16,7 @@ Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model 
 - Fix single point branch plotting with type="comp" (#797, @jnsbck)
 - jx.integrate took O(n^2) time with n compartments on the backwards pass. Instead of backpropagating through the forward solve, we now use a custom_jvp (another tridiagonal solve, which is O(n)) (#795 @manuelgloeckler)
 - Fix compatibility with newer JAX versions by avoiding the deprecated `jnp.clip(..., a_max=...)` keyword in `solver_gate.save_exp` (#798, @lorenzosquadrani)
+- Fix incorrect implicit voltage RHS under `jit(vmap)` on jax/jaxlib 0.5.3–0.8.1 by assembling as set-then-add instead of `v[i] + dt * c[i]` (@matthijspals)
 
 # 0.13.0
 
