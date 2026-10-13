@@ -1,3 +1,9 @@
+# 0.15.0
+
+### 🛠️ Internal updates
+
+- Improve compilation speed for models with large amounts of recordings (#808, @alexpejovic)
+
 # 0.14.0
 
 ### 🧩 New features
