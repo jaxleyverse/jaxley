@@ -1193,9 +1193,9 @@ class Module(ABC):
             parents[nodes[:, 0]] = nodes[:, 1]
         self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
 
-        # Precompute flat child/parent index arrays for the custom JVP of the solve.
-        # These are used to efficiently compute dA @ x (the matrix-vector product of
-        # the tangent matrix with the primal solution).
+        # Precompute flat child/parent index arrays for the adjoint of the solve.
+        # These are used to efficiently compute A @ x (the matrix-vector product
+        # which JAX differentiates to get dA @ x).
         node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
         if len(node_order_grouped) > 0:
             all_edges = np.concatenate(node_order_grouped, axis=0)

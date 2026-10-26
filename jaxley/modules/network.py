@@ -263,7 +263,7 @@ class Network(Module):
             self._dhs_solve_indexer["node_order"]
         )
 
-        # Precompute flat child/parent index arrays for the custom JVP of the solve.
+        # Precompute flat child/parent index arrays for the adjoint of the solve.
         node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
         if len(node_order_grouped) > 0:
             all_edges = np.concatenate(node_order_grouped, axis=0)

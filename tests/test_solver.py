@@ -112,3 +112,21 @@ def test_dhs_solve_handles_ragged_grouped_edges(optimize_for_gpu):
     actual_grad = np.asarray(grad_fn(rhs))
     expected_grad = np.linalg.solve(matrix.T, np.ones_like(expected))
     np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-6, atol=1e-6)
+
+    # Gradients w.r.t. the (non-symmetric) matrix, compared to a dense solve.
+    children = solve_indexer["all_children"]
+    parents = solve_indexer["all_parents"]
+
+    def dense_solve(diags, lowers, uppers, b):
+        matrix = jnp.diag(diags)
+        matrix = matrix.at[parents, children].set(uppers[children])
+        matrix = matrix.at[children, parents].set(lowers[children])
+        return jnp.linalg.solve(matrix, b)
+
+    weights = jnp.arange(1.0, 6.0)
+    loss = lambda solver: lambda *args: jnp.sum(weights * solver(*args))
+    argnums = (0, 1, 2, 3)
+    actual_grads = jax.jit(jax.grad(loss(solve), argnums))(diags, lowers, uppers, rhs)
+    expected_grads = jax.grad(loss(dense_solve), argnums)(diags, lowers, uppers, rhs)
+    for actual_grad, expected_grad in zip(actual_grads, expected_grads):
+        np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-6, atol=1e-6)

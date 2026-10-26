@@ -43,15 +43,15 @@ def _pad_comp_edges(comp_edges) -> np.ndarray:
 
 
 def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
-    """Create a DHS solve function with custom JVP for efficient differentiation.
+    """Create a DHS solve function with an adjoint solve for efficient differentiation.
 
-    The tridiagonal solve A x = b has JVP: dx = A^{-1} (db - dA x). This means the
-    tangent is itself a solve with the same matrix A but a different RHS. By using a
-    custom_jvp, we avoid JAX having to differentiate through the O(n)-step fori_loop,
-    which causes O(n^2) memory traffic in the backward pass.
+    The tridiagonal solve A x = b has JVP: dx = A^{-1} (db - dA x), and VJP:
+    db = A^{-T} g. Both are themselves solves, so with `jax.lax.custom_linear_solve`
+    we avoid JAX having to differentiate (or transpose) the O(n)-step fori_loop, which
+    causes O(n^2) memory traffic in the backward pass.
 
-    JAX automatically derives the transpose (VJP) from the custom JVP rule, so this
-    works for both forward-mode and reverse-mode differentiation.
+    A^T has the same tree structure as A, with `lowers` and `uppers` swapped, so the
+    adjoint is the same DHS solve.
     """
     ordered_comp_edges = solve_indexer["node_order_grouped"]
     flipped_comp_edges = list(reversed(ordered_comp_edges))
@@ -64,7 +64,7 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
     flipped_comp_edges_np = _pad_comp_edges(flipped_comp_edges)
 
     def _raw_solve(diags, lowers, uppers, solves):
-        """Solve the tree-structured linear system (no custom JVP)."""
+        """Solve the tree-structured linear system (not differentiable efficiently)."""
         if not optimize_for_gpu:
             init = (diags, solves, lowers, uppers, flipped_comp_edges_np)
             diags_out, solves_out, _, _, _ = fori_loop(
@@ -90,35 +90,25 @@ def _make_dhs_solve(solve_indexer, optimize_for_gpu, n_nodes):
             )
             return s / d
 
-    @jax.custom_jvp
     def _solve(diags, lowers, uppers, solves):
-        return _raw_solve(diags, lowers, uppers, solves)
-
-    @_solve.defjvp
-    def _solve_jvp(primals, tangents):
-        diags, lowers, uppers, solves = primals
-        d_diags, d_lowers, d_uppers, d_solves = tangents
-
-        # Primal output: x = A^{-1} b
-        x = _raw_solve(diags, lowers, uppers, solves)
-
-        # Compute dA @ x. For each edge (child, parent), the matrix entries are:
+        # Compute A @ x. For each edge (child, parent), the matrix entries are:
         #   A[parent, child] = uppers[child]
         #   A[child, parent] = lowers[child]
         # (this is consistent with the triangulation multiplier using `uppers`).
-        #
-        # Therefore:
-        #   (dA @ x)[parent] += d_uppers[child] * x[child]
-        #   (dA @ x)[child]  += d_lowers[child] * x[parent]
-        dA_x = d_diags * x
-        dA_x = dA_x.at[all_parents].add(d_uppers[all_children] * x[all_children])
-        dA_x = dA_x.at[all_children].add(d_lowers[all_children] * x[all_parents])
+        # JAX differentiates this w.r.t. `diags`, `lowers`, and `uppers` to get dA @ x.
+        def matvec(x):
+            Ax = diags * x
+            Ax = Ax.at[all_parents].add(uppers[all_children] * x[all_children])
+            Ax = Ax.at[all_children].add(lowers[all_children] * x[all_parents])
+            return Ax
 
-        # JVP: dx = A^{-1} (db - dA @ x)
-        new_rhs = d_solves - dA_x
-        dx = _raw_solve(diags, lowers, uppers, new_rhs)
-
-        return x, dx
+        return jax.lax.custom_linear_solve(
+            matvec,
+            solves,
+            solve=lambda _, b: _raw_solve(diags, lowers, uppers, b),
+            # A^T swaps the roles of `lowers` and `uppers`.
+            transpose_solve=lambda _, b: _raw_solve(diags, uppers, lowers, b),
+        )
 
     return _solve
 
@@ -212,10 +202,10 @@ def step_voltage_implicit_with_dhs_solve(
         uppers = jnp.concatenate([uppers, jnp.asarray([0.0])])
         lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
 
-        # Get or create the solve function with custom JVP.
+        # Get or create the solve function with adjoint solve.
         dhs_solve = _get_dhs_solve(solve_indexer, optimize_for_gpu, int(n_nodes))
 
-        # Solve the voltage equations with efficient custom JVP.
+        # Solve the voltage equations with efficient adjoint solve.
         solution = dhs_solve(diags, lowers, uppers, solves)
 
         # Remove the spurious compartment.

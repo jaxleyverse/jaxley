@@ -3,6 +3,7 @@
 ### 🛠️ Internal updates
 
 - Improve compilation speed for models with large amounts of recordings (#808, @alexpejovic)
+- The backward pass of the `jaxley.dhs` voltage solve is now an explicit adjoint solve via `jax.lax.custom_linear_solve` (a DHS solve with `lowers` and `uppers` swapped) instead of JAX's transpose of the custom JVP, which reduces gradient memory, especially for `jaxley.dhs.gpu` (@jnsbck)
 
 # 0.14.0
 
