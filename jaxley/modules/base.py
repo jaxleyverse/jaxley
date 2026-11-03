@@ -3359,16 +3359,24 @@ class Module(ABC):
         for s in channel_state_names:
             channel_states[s] = states[s][indices]
 
-        v_and_perturbed = jnp.stack(
-            [modified_state[indices], modified_state[indices] + diff]
-        )
         comp_cur_fn = vmap(channel.compute_current, in_axes=(0, 0, 0, None))
-        membrane_currents = vmap(comp_cur_fn, in_axes=(None, None, 0, None))(
-            channel_states, channel_params, v_and_perturbed, delta_t
-        )
-        voltage_term = (membrane_currents[1] - membrane_currents[0]) / diff
-        constant_term = membrane_currents[0] - voltage_term * modified_state[indices]
-        return membrane_currents[0], voltage_term, -constant_term
+        v = modified_state[indices]
+        if channel.exact_linearization:
+            # Exact slope instead of the finite difference below: see `Channel`.
+            current, voltage_term = jax.jvp(
+                lambda v: comp_cur_fn(channel_states, channel_params, v, delta_t),
+                (v,),
+                (jnp.ones_like(v),),
+            )
+        else:
+            v_and_perturbed = jnp.stack([v, v + diff])
+            membrane_currents = vmap(comp_cur_fn, in_axes=(None, None, 0, None))(
+                channel_states, channel_params, v_and_perturbed, delta_t
+            )
+            current = membrane_currents[0]
+            voltage_term = (membrane_currents[1] - current) / diff
+        constant_term = current - voltage_term * v
+        return current, voltage_term, -constant_term
 
     def _step_synapse(
         self,

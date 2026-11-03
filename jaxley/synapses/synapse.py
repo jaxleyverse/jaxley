@@ -17,6 +17,16 @@ class Synapse:
     _name = None
     synapse_params = None
     synapse_states = None
+    # If True, the slope of `compute_current` w.r.t. voltage is taken with
+    # `jax.jvp` instead of a finite difference (two calls `1e-3` apart). This is
+    # more accurate for any current: the finite difference loses
+    # ~`eps * |I| / 1e-3` to cancellation in float32, its reverse pass splits each
+    # cotangent into two `1/1e-3`-scaled terms that nearly cancel, and for
+    # nonlinear currents it yields a secant rather than the tangent. It is opt-in
+    # because it changes results relative to the finite-difference default and
+    # requires `compute_current` to be differentiable in `v` (no `custom_vjp`,
+    # `stop_gradient`, or constant-valued guards around singularities).
+    exact_linearization = False
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
