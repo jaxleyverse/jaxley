@@ -58,21 +58,26 @@ def test_fwd_euler_and_crank_nicolson(SimpleNet):
 
 
 def test_exp_euler_solver_customization(SimpleCell):
-    cell = SimpleCell(2, 3)
+    """Passing the default transition matrix explicitly gives the default result."""
     delta_t = 0.025
-
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=delta_t, t_max=5.0
     )
-    cell.branch(0).comp(0).stimulate(current)
-    cell.branch(0).comp(1).record()
-    cell.insert(HH())
 
-    cell.customize_solver_exp_euler(
-        exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
-    )
-    v = jx.integrate(cell, solver="exp_euler")
-    assert np.invert(np.any(np.isnan(v)))
+    voltages = []
+    for customize in [False, True]:
+        cell = SimpleCell(2, 3)
+        cell.branch(0).comp(0).stimulate(current)
+        cell.branch(0).comp(1).record()
+        cell.insert(HH())
+        if customize:
+            cell.customize_solver_exp_euler(
+                exp_euler_transition=cell.build_exp_euler_transition_matrix(delta_t)
+            )
+        voltages.append(jx.integrate(cell, solver="exp_euler"))
+
+    assert np.invert(np.any(np.isnan(voltages[1])))
+    np.testing.assert_allclose(voltages[1], voltages[0])
 
 
 @pytest.mark.parametrize("optimize_for_gpu", [False, True])

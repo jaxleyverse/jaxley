@@ -45,92 +45,11 @@ def get_segment_xyzrL(section, comp_idx=None, loc=None, ncomp=8):
         return x, y, z, r, L[-1] / ncomp
 
 
-def jaxley2neuron_by_coords(jx_cell, neuron_secs, comp_idx=None, loc=None, ncomp=8):
-    neuron_coords = {
-        i: np.vstack(get_segment_xyzrL(sec, comp_idx=comp_idx, loc=loc, ncomp=ncomp))[
-            :3
-        ].T
-        for i, sec in enumerate(neuron_secs)
-    }
-    neuron_coords = np.vstack(
-        [np.hstack([k * np.ones((v.shape[0], 1)), v]) for k, v in neuron_coords.items()]
-    )
-    neuron_coords = pd.DataFrame(
-        neuron_coords, columns=["global_branch_index", "x", "y", "z"]
-    )
-    neuron_coords["global_branch_index"] = neuron_coords["global_branch_index"].astype(
-        int
-    )
-
-    neuron_loc_xyz = neuron_coords.groupby("global_branch_index").mean()
-    jaxley_loc_xyz = (
-        jx_cell.branch("all")
-        .loc(loc)
-        .nodes.set_index("global_branch_index")[["x", "y", "z"]]
-    )
-
-    jaxley2neuron_inds = {}
-    for i, xyz in enumerate(jaxley_loc_xyz.to_numpy()):
-        d = np.sqrt(((neuron_loc_xyz - xyz) ** 2)).sum(axis=1)
-        jaxley2neuron_inds[i] = d.argmin()
-    return jaxley2neuron_inds
-
-
-def jaxley2neuron_by_group(
-    jx_cell,
-    neuron_secs,
-    comp_idx=None,
-    loc=None,
-    ncomp=8,
-    num_apical=20,
-    num_tuft=20,
-    num_basal=10,
-):
-    y_apical = (
-        jx_cell.apical.nodes.groupby("global_branch_index")
-        .mean()["y"]
-        .abs()
-        .sort_values()
-    )
-    trunk_inds = y_apical.index[:num_apical].tolist()
-    tuft_inds = y_apical.index[-num_tuft:].tolist()
-    basal_inds = (
-        jx_cell.basal.nodes["global_branch_index"].unique()[:num_basal].tolist()
-    )
-
-    jaxley2neuron = jaxley2neuron_by_coords(
-        jx_cell, neuron_secs, comp_idx=comp_idx, loc=loc, ncomp=ncomp
-    )
-
-    neuron_trunk_inds = [jaxley2neuron[i] for i in trunk_inds]
-    neuron_tuft_inds = [jaxley2neuron[i] for i in tuft_inds]
-    neuron_basal_inds = [jaxley2neuron[i] for i in basal_inds]
-
-    neuron_inds = {
-        "trunk": neuron_trunk_inds,
-        "tuft": neuron_tuft_inds,
-        "basal": neuron_basal_inds,
-    }
-    jaxley_inds = {"trunk": trunk_inds, "tuft": tuft_inds, "basal": basal_inds}
-    return neuron_inds, jaxley_inds
-
-
-def match_stim_loc(jx_cell, neuron_sec, comp_idx=None, loc=None, ncomp=8):
-    stim_coords = get_segment_xyzrL(
-        neuron_sec, comp_idx=comp_idx, loc=loc, ncomp=ncomp
-    )[:3]
-    stim_idx = (
-        ((jx_cell.nodes[["x", "y", "z"]] - stim_coords) ** 2).sum(axis=1).argmin()
-    )
-    return stim_idx
-
-
 def import_neuron_morph(fname, ncomp=8):
     from neuron import h
 
     _ = h.load_file("stdlib.hoc")
     _ = h.load_file("import3d.hoc")
-    ncomp = 8
 
     ##################### NEURON ##################
     for sec in h.allsec():

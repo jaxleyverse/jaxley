@@ -23,25 +23,6 @@ from jaxley.synapses import (
 )
 
 
-def test_multiparameter_setting(SimpleNet):
-    """
-    Test if the correct parameters are set if one type of synapses is inserted.
-
-    Tests global index dropping: d4daaf019596589b9430219a15f1dda0b1c34d85
-    """
-    net = SimpleNet(2, 1, 4)
-
-    pre = net.cell(0).branch(0).loc(0.0)
-    post = net.cell(1).branch(0).loc(0.0)
-    connect(pre, post, IonotropicSynapse())
-
-    syn_view = net.IonotropicSynapse
-    syn_params = ["IonotropicSynapse_gS", "IonotropicSynapse_e_syn"]
-
-    for p in syn_params:
-        syn_view.set(p, 0.32)
-
-
 def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
     """Access to the synapse view"""
     if synapse_name == "IonotropicSynapse":

@@ -247,7 +247,9 @@ def test_from_graph_vs_NEURON(file):
     for k in range(len(neuron_inds)):
         neuron_comp_k = np.array(
             [
-                get_segment_xyzrL(list(h.allsec())[neuron_inds[k]], comp_idx=i)
+                get_segment_xyzrL(
+                    list(h.allsec())[neuron_inds[k]], comp_idx=i, ncomp=ncomp
+                )
                 for i in range(ncomp)
             ]
         )
@@ -276,17 +278,48 @@ def test_from_graph_vs_NEURON(file):
     assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) == 0
 
 
-def test_edges_only_to_jaxley():
-    """Test if edge graph can pe imported into to jaxley."""
-    sets_of_edges = [
-        [(0, 1), (1, 2), (2, 3)],
-        [(0, 1), (1, 2), (1, 3), (2, 4), (2, 5), (3, 6), (3, 7)],
-    ]
-    for edges in sets_of_edges:
-        graph = nx.Graph(edges)
-        swc_graph = _add_missing_graph_attrs(graph)
-        comp_graph = build_compartment_graph(swc_graph, ncomp=1, min_radius=1.0)
-        edge_module = from_graph(comp_graph)
+def _module_from_edges(edges):
+    swc_graph = _add_missing_graph_attrs(nx.Graph(edges))
+    comp_graph = build_compartment_graph(swc_graph, ncomp=1, min_radius=1.0)
+    return from_graph(comp_graph)
+
+
+@pytest.mark.parametrize(
+    "edges, parents, lengths",
+    [
+        # An unbranched path of three edges becomes one branch of length 3.
+        ([(0, 1), (1, 2), (2, 3)], [-1], [3.0]),
+        # A binary tree becomes one branch per edge, each of length 1.
+        (
+            [(0, 1), (1, 2), (1, 3), (2, 4), (2, 5), (3, 6), (3, 7)],
+            [-1, 0, 1, 1, 0, 4, 4],
+            [1.0] * 7,
+        ),
+    ],
+)
+def test_edges_only_to_jaxley(edges, parents, lengths):
+    """Test if a graph of edges only (no xyz, no radius) can be imported into jaxley.
+
+    Without coordinates, every edge gets the default length of 1.
+    """
+    edge_module = _module_from_edges(edges)
+    assert edge_module.comb_parents.tolist() == parents
+    np.testing.assert_allclose(edge_module.nodes["length"], lengths)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Without xyz coordinates, area, volume and resistive loads are NaN. To be "
+    "fixed with the graph/SWC reader rework (Phase 6 of the v1 plan).",
+)
+def test_edges_only_module_simulates():
+    edge_module = _module_from_edges([(0, 1), (1, 2), (2, 3)])
+    edge_module.insert(HH())
+    edge_module.record()
+    # The stimulus is divided by the (NaN) membrane area.
+    edge_module.stimulate(jx.step_current(0.1, 0.5, 0.1, 0.025, 1.0))
+    v = jx.integrate(edge_module, t_max=1.0)
+    assert np.all(np.isfinite(v))
 
 
 @pytest.mark.parametrize("ncomp", [1, 3])

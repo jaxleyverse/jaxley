@@ -100,7 +100,10 @@ def test_distance_within_jit(SimpleCell, kind: str):
     else:
         raise ValueError
 
-    def simulate(sigmoid_offset, global_scaling):
+    def conductances(sigmoid_offset, global_scaling):
+        return global_scaling / (jnp.exp(-(jnp.asarray(dists) + sigmoid_offset)))
+
+    def build_pstate(sigmoid_offset, global_scaling):
         pstate = None
         counter = 0
         for branch in cell:
@@ -108,14 +111,26 @@ def test_distance_within_jit(SimpleCell, kind: str):
                 dist = dists[counter]
                 conductance = global_scaling / (jnp.exp(-(dist + sigmoid_offset)))
                 pstate = comp.data_set("Leak_gLeak", conductance * 1e-4, pstate)
+                counter += 1
+        return pstate
+
+    def simulate(sigmoid_offset, global_scaling):
+        pstate = build_pstate(sigmoid_offset, global_scaling)
         return jx.integrate(cell, param_state=pstate)
 
     sigmoid_offset = jnp.ones((1,))
     global_scaling = jnp.ones((1,))
 
+    # Every compartment gets the conductance computed from its own distance.
+    pstate = build_pstate(sigmoid_offset, global_scaling)
+    set_values = jnp.concatenate([p["val"] for p in pstate])
+    expected = conductances(sigmoid_offset, global_scaling) * 1e-4
+    np.testing.assert_allclose(set_values, expected)
+
     jitted_simulate = jit(simulate)
     v = jitted_simulate(sigmoid_offset, global_scaling)
     assert np.invert(np.any(np.isnan(v)))
+    np.testing.assert_allclose(v, simulate(sigmoid_offset, global_scaling))
 
 
 def test_distance_swc(SimpleMorphCell):
@@ -160,7 +175,7 @@ def test_distance_swc(SimpleMorphCell):
             760.54892662,
         ]
     )
-    error = np.max(np.asarray(dists_pathwise)[::10] - dists_direct_250610)
+    error = np.max(np.abs(np.asarray(dists_pathwise)[::10] - dists_direct_250610))
     assert error < 1e-8, f"Error for pathwise distance is to large: {error} > 1e-8."
 
     dists_direct = distance_direct(cell.soma.branch(0).comp(0), cell)
@@ -175,5 +190,5 @@ def test_distance_swc(SimpleMorphCell):
             428.11599931,
         ]
     )
-    error = np.max(np.asarray(dists_direct)[::10] - dists_direct_250610)
+    error = np.max(np.abs(np.asarray(dists_direct)[::10] - dists_direct_250610))
     assert error < 1e-8, f"Error for direct distance is to large: {error} > 1e-8."
