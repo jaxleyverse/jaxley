@@ -1,5 +1,10 @@
 # 0.15.0
 
+### 🐛 Bug fixes
+
+- Filter synaptic recordings by the requested state or current's synapse type,
+  while preserving the selected view, to avoid unrelated or out-of-bounds indices (#793, @Jlei61).
+
 ### 🛠️ Internal updates
 
 - Improve compilation speed for models with large amounts of recordings (#808, @alexpejovic)

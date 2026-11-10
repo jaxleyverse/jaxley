@@ -2415,9 +2415,17 @@ class Module(ABC):
         if state in comp_states:
             in_view = self._nodes_in_view
         elif state in edge_states:
-            in_view = self.base.edges.iloc[
-                self._edges_in_view.tolist()
-            ].index_within_type.to_numpy(dtype=int)
+            # State arrays use indices within their synapse type. Restrict the
+            # viewed edges to the owner of the requested state or current first.
+            type_inds = [
+                i
+                for i, synapse in enumerate(self.base.synapses)
+                if state in synapse.synapse_states or state == f"i_{synapse._name}"
+            ]
+            edges = self.base.edges.iloc[self._edges_in_view]
+            in_view = edges.loc[
+                edges.type_ind.isin(type_inds), "index_within_type"
+            ].to_numpy(dtype=int)
         else:
             raise KeyError(f"{state} is not a recognized state in this module.")
 
