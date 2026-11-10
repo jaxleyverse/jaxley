@@ -269,8 +269,8 @@ class Na(Channel):
     ) -> dict[str, float]:
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(voltage)
-        alpha_h, beta_h = self.h_gate(voltage)
+        alpha_m, beta_m = m_gate(voltage)
+        alpha_h, beta_h = h_gate(voltage)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
@@ -386,7 +386,7 @@ class K(Channel):
     ) -> dict[str, float]:
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_n, beta_n = self.n_gate(voltage)
+        alpha_n, beta_n = n_gate(voltage)
         return {f"{prefix}_n": alpha_n / (alpha_n + beta_n)}
 
     def init_params(

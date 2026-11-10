@@ -61,7 +61,7 @@ plt.plot(v.T)  # Plot voltage trace.
 
 ## Installation
 
-`Jaxley` is available on [`PyPI`](https://pypi.org/project/jaxley/):
+`Jaxley` is available on [`PyPI`](https://pypi.org/project/jaxley/) and requires Python 3.14 or later:
 ```sh
 pip install jaxley
 ```
