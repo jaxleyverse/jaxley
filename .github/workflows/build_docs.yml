@@ -18,9 +18,9 @@ jobs:
         lfs: false
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.14'
 
     - name: Cache dependency
       id: cache-dependencies

@@ -42,7 +42,6 @@ class CaNernstReversal(Pump):
         self,
         name: Optional[str] = None,
     ):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)

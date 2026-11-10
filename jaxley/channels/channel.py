@@ -16,7 +16,7 @@ class Channel:
 
     As in NEURON, a `Channel` is considered a distributed process, which means that its
     conductances are to be specified in `S/cm2` and its currents are to be specified in
-    `uA/cm2`."""
+    `mA/cm2`."""
 
     _name = None
     channel_params = None
@@ -24,11 +24,6 @@ class Channel:
     current_name = None
 
     def __init__(self, name: Optional[str] = None):
-        contact = (
-            "If you have any questions, please reach out via email to "
-            "michael.deistler@uni-tuebingen.de or create an issue on Github: "
-            "https://github.com/jaxleyverse/jaxley/issues. Thank you!"
-        )
         self._name = name if name else self.__class__.__name__
 
     @property
@@ -104,7 +99,7 @@ class Channel:
             delta_t: The time step in ms.
 
         Returns:
-            Current in `uA/cm2`.
+            Current in `mA/cm2`.
         """
         raise NotImplementedError
 

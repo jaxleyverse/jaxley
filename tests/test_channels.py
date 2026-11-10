@@ -26,7 +26,6 @@ class CaPump(Channel):
         self,
         name: Optional[str] = None,
     ):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
@@ -98,7 +97,6 @@ class CaNernstReversal(Channel):
         self,
         name: Optional[str] = None,
     ):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
@@ -261,9 +259,34 @@ def test_init_states_with_groups_in_net():
     assert error < 1e-4, "init_states error is too big for networks."
 
 
+def test_init_states_split_hh_matches_hh():
+    """`init_states()` with jaxley's `Na`, `K` and `Leak` matches the `HH` channel.
+
+    `Na.init_state` and `K.init_state` used to call gate methods that do not exist,
+    so `init_states()` raised an `AttributeError` on any module with these channels.
+    """
+    voltages = [-80.0, -65.0, -50.0]
+    split = jx.Branch(jx.Compartment(), ncomp=3)
+    split.insert(jx.channels.Na())
+    split.insert(jx.channels.K())
+    split.insert(jx.channels.Leak())
+    combined = jx.Branch(jx.Compartment(), ncomp=3)
+    combined.insert(HH())
+    for module in [split, combined]:
+        for i, v in enumerate(voltages):
+            module.comp(i).set("v", v)
+        module.init_states()
+
+    for split_state, hh_state in [("Na_m", "HH_m"), ("Na_h", "HH_h"), ("K_n", "HH_n")]:
+        np.testing.assert_allclose(
+            split.nodes[split_state].to_numpy(), combined.nodes[hh_state].to_numpy()
+        )
+    # The steady state depends on the voltage, so the states differ per compartment.
+    assert len(np.unique(split.nodes["Na_m"].to_numpy())) == len(voltages)
+
+
 class KCA11(Channel):
     def __init__(self, name: Optional[str] = None):
-        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -365,7 +388,6 @@ def test_multiple_channel_currents(SimpleCell):
         """The channel which uses currents of Dummy1 and Dummy2 to update its states."""
 
         def __init__(self, name: Optional[str] = None):
-            self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
             self.channel_params = {}
             self.channel_states = {"cumulative": 0.0}
@@ -393,7 +415,6 @@ def test_multiple_channel_currents(SimpleCell):
 
     class Dummy1(Channel):
         def __init__(self, name: Optional[str] = None):
-            self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
             self.channel_params = {}
             self.channel_states = {}
@@ -419,7 +440,6 @@ def test_multiple_channel_currents(SimpleCell):
 
     class Dummy2(Channel):
         def __init__(self, name: Optional[str] = None):
-            self.current_is_in_mA_per_cm2 = True
             super().__init__(name)
             self.channel_params = {}
             self.channel_states = {}

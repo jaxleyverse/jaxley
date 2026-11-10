@@ -189,8 +189,8 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         cell.record()
         cell.stimulate(jx.step_current(0, 1, 2, delta_t, t_max))
 
-        rec_inds = cell.recordings.rec_index.to_numpy()
-        rec_states = cell.recordings.state.to_numpy()
+        rec_inds = cell.rec_info.rec_index.to_numpy()
+        rec_states = cell.rec_info.state.to_numpy()
         externals = cell.externals.copy()
         external_inds = cell.external_inds.copy()
 
