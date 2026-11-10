@@ -74,7 +74,7 @@ If you want to learn more, check out our material:
 Installation
 ------------
 
-``Jaxley`` is available on `PyPI <https://pypi.org/project/jaxley/>`_:
+``Jaxley`` is available on `PyPI <https://pypi.org/project/jaxley/>`_ and requires Python 3.14 or later:
 
 .. code-block:: none
 

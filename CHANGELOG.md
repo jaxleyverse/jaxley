@@ -89,6 +89,18 @@ from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 - `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
 - Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
 @michaeldeistler)
+- Jaxley now requires Python `>=3.14` and `networkx>=3.3`. JAX only guarantees support of python 3.12 until July 27.
+
+### 🐛 Bug fixes
+
+- `init_states()` no longer raises an `AttributeError` for modules with the `Na` or `K`
+channels from `jaxley.channels` (@jnsbck)
+- The `Channel` docstrings now state the correct unit of `compute_current` (`mA/cm2`)
+(@jnsbck)
+
+### 🛠️ Internal updates
+
+- CI runs on Python 3.14. The `dev` extra installs `jaxley-mech` from its `v1.0.0` branch until jaxley-mech 1.0 is released (@jnsbck)
 
 ### 📚 Documentation
 

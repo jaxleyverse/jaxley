@@ -22,20 +22,16 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Development Status :: 3 - Alpha",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 readme = "README.md"
 keywords = ["neuroscience", "biophysics", "simulator", "jax"]
 dependencies = [
-    # See #571 for the pin on the JAX version. Jaxley runs with newer versions of JAX
-    # but is much slower on CPU. Newer versions can be made equally fast by setting
-    # `os.environ['XLA_FLAGS'] = '--xla_cpu_use_thunk_runtime=false'` at the beginning
-    # of a jupyter notebook.
     "jax",
     "matplotlib",
     "numpy",
     "pandas>=2.2.0",
     "tridiax",
-    "networkx",
+    "networkx>=3.3",
 ]
 
 [project.optional-dependencies]
@@ -63,7 +59,9 @@ doc = [
 dev = [
     "black",
     "isort",
-    "jaxley-mech",
+    # TODO before the 1.0.0 release: replace with `jaxley-mech>=1.0` once jaxley-mech
+    # 1.0 is on PyPI. PyPI rejects packages with direct URL dependencies.
+    "jaxley-mech @ git+https://github.com/jaxleyverse/jaxley-mech.git@v1.0.0",
     "neuron",
     "pytest",
     "pyright",

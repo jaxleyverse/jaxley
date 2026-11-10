@@ -464,7 +464,10 @@ def test_data_set_vector(SimpleNet):
 
     param_state = None
     param_state = net.data_set("length", np.repeat(1.0, 16), param_state)
-    with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
+    # Newer JAX versions say "types" instead of "shapes".
+    with pytest.raises(
+        ValueError, match="Incompatible (shapes|types) for broadcasting"
+    ):
         param_state = net.comp(range(2)).data_set(
             "radius", np.array([0.1, 0.2]), param_state
         )

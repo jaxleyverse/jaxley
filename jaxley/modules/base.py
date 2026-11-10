@@ -2477,7 +2477,7 @@ class Module(ABC):
         self.base.rec_info = self.base.rec_info.reset_index(drop=True)
         if verbose:
             print(
-                f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.recordings` for details."
+                f"Added {len(in_view) - sum(has_duplicates)} recordings. See `.rec_info` for details."
             )
 
     @only_allow_module
