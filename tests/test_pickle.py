@@ -4,6 +4,7 @@
 import os
 import pickle
 
+import pandas as pd
 import pytest
 
 import jaxley as jx
@@ -30,11 +31,12 @@ jx.connect(
     "module", [comp, branch, cell, morph_cell, net], ids=lambda x: x.__class__.__name__
 )
 def test_pickle(module):
-    pickled = pickle.dumps(module)
-    unpickled = pickle.loads(pickled)
+    unpickled = pickle.loads(pickle.dumps(module))
+    assert type(unpickled) is type(module)
+    pd.testing.assert_frame_equal(unpickled.nodes, module.nodes)
+    pd.testing.assert_frame_equal(unpickled.edges, module.edges)
+    pd.testing.assert_frame_equal(unpickled.rec_info, module.rec_info)
 
     view = module.select(0)
-    pickled = pickle.dumps(view)
-    unpickled = pickle.loads(pickled)
-
-    # assert module == unpickled # TODO: implement __eq__ for all classes
+    unpickled_view = pickle.loads(pickle.dumps(view))
+    pd.testing.assert_frame_equal(unpickled_view.nodes, view.nodes)

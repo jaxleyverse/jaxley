@@ -97,10 +97,14 @@ from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 channels from `jaxley.channels` (@jnsbck)
 - The `Channel` docstrings now state the correct unit of `compute_current` (`mA/cm2`)
 (@jnsbck)
+- Graphs without xyz coordinates (e.g. `nx.Graph(edges)` passed to
+`build_compartment_graph`) got edge lengths of `1e-5` instead of the default length `1`
+(@jnsbck)
 
 ### 🛠️ Internal updates
 
 - CI runs on Python 3.14. The `dev` extra installs `jaxley-mech` from its `v1.0.0` branch until jaxley-mech 1.0 is released (@jnsbck)
+- Fixed broken/obsolete (e.g. `assert all(df1 == df2)` always passes) and removed dead tests + flags (@jnsbck)
 
 ### 📚 Documentation
 

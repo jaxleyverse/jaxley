@@ -413,11 +413,39 @@ def test_ion_is_diffused_but_not_pumped():
     assert max_diff_to_mean < 1e-4, f"Error {max_diff_to_mean} > 1e-4"
 
 
+def test_ion_diffusion_conserves_ion_amount():
+    """Without currents or pumps, diffusion only redistributes the ion.
+
+    All compartments have the same volume, so the summed concentration is constant.
+    """
+    comp = jx.Compartment()
+    branch = jx.Branch(comp, ncomp=2)
+    cell = jx.Cell(branch, parents=[-1, 0, 0])
+    cell.insert(CaNernstReversal())  # Defines `CaCon_i`, but no calcium current.
+    cell.diffuse("CaCon_i")
+    cell.set("axial_diffusion_CaCon_i", 1.0)
+    cell.branch(0).set("CaCon_i", 0.2)
+    cell.branch(1).set("CaCon_i", 0.1)
+    cell.record("CaCon_i")
+
+    cacon_i = jx.integrate(cell, t_max=5.0)
+    total = np.sum(cacon_i, axis=0)
+    np.testing.assert_allclose(total, total[0], rtol=1e-6)
+    # And the ion really did diffuse.
+    assert not np.allclose(cacon_i[:, -1], cacon_i[:, 0])
+
+
 def test_ion_is_pumped_but_not_diffused():
     """Test whether there is no NaN when an ion is pumped but not diffused."""
     cell = _build_calcium_cell()
+    cell.insert(CaPump())
     cacon_i = jx.integrate(cell, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
     assert np.invert(np.any(np.isnan(cacon_i))), "Found NaN when ion is not diffused!"
+
+    # The pump must change the calcium concentration compared to no pump.
+    unpumped_cell = _build_calcium_cell()
+    unpumped = jx.integrate(unpumped_cell, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
+    assert not np.allclose(cacon_i, unpumped), "The pump has no effect."
 
 
 def test_ion_diffusion_compartment():

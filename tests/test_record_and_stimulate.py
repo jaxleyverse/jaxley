@@ -28,6 +28,12 @@ def test_record_and_stimulate_api(SimpleCell):
     )
     cell.branch(1).loc(1.0).stimulate(current)
 
+    # Branch 0, loc 0.0 is compartment 0; branch 1, loc 1.0 is compartment 3.
+    assert cell.rec_info.rec_index.tolist() == [0, 3]
+    assert cell.rec_info.state.tolist() == ["v", "v"]
+    np.testing.assert_array_equal(cell.external_inds["i"], [3])
+    np.testing.assert_array_equal(cell.externals["i"], current[None])
+
     cell.delete_recordings()
     cell.delete_stimuli()
 
@@ -73,13 +79,13 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     # Other synapse types must not contribute recording indices (#793).
     for state in ["TestSynapse_c", "i_TestSynapse"]:
         net.record(state, verbose=False)
-        assert net.recordings.rec_index.tolist() == [0]
+        assert net.rec_info.rec_index.tolist() == [0]
         net.delete_recordings()
 
     # Mixed views must preserve the selected edge's index within its type.
     for state in ["IonotropicSynapse_s", "i_IonotropicSynapse"]:
         net.select(edges=np.array([1, 2])).record(state, verbose=False)
-        assert net.recordings.rec_index.tolist() == [1]
+        assert net.rec_info.rec_index.tolist() == [1]
         net.delete_recordings()
 
     current = jx.step_current(
@@ -132,11 +138,11 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
 
         # On average the synaptic trace spikes around 10 steps after voltage.
         offset_syn = 10
-        assert np.all(np.abs(maxima_2 - maxima_1 - offset_syn)) < 5.0
+        assert np.all(np.abs(maxima_2 - maxima_1 - offset_syn) < 5.0)
 
         # On average the membrane trace spikes around 0 steps after voltage.
         offset_mem = 0
-        assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem)) < 5.0
+        assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem) < 5.0)
 
 
 def test_empty_recordings(SimpleComp):

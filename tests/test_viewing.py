@@ -28,19 +28,31 @@ def test_getitem(SimpleBranch, SimpleCell, SimpleNet):
     net = SimpleNet(3, 3, 4)
 
     # test API equivalence
-    assert all(net.cell(0).branch(0).show() == net[0, 0].show())
-    assert all(net.cell([0, 1]).branch(0).show() == net[[0, 1], 0].show())
-    assert all(net.cell(0).branch([0, 1]).show() == net[0, [0, 1]].show())
-    assert all(net.cell([0, 1]).branch([0, 1]).show() == net[[0, 1], [0, 1]].show())
+    pd.testing.assert_frame_equal(net.cell(0).branch(0).show(), net[0, 0].show())
+    pd.testing.assert_frame_equal(
+        net.cell([0, 1]).branch(0).show(), net[[0, 1], 0].show()
+    )
+    pd.testing.assert_frame_equal(
+        net.cell(0).branch([0, 1]).show(), net[0, [0, 1]].show()
+    )
+    pd.testing.assert_frame_equal(
+        net.cell([0, 1]).branch([0, 1]).show(), net[[0, 1], [0, 1]].show()
+    )
 
-    assert all(net.cell(0).branch(0).comp(0).show() == net[0, 0, 0].show())
-    assert all(cell.branch(0).comp(0).show() == cell[0, 0].show())
-    assert all(cell.branch(0).show() == cell[0].show())
+    pd.testing.assert_frame_equal(
+        net.cell(0).branch(0).comp(0).show(), net[0, 0, 0].show()
+    )
+    pd.testing.assert_frame_equal(cell.branch(0).comp(0).show(), cell[0, 0].show())
+    pd.testing.assert_frame_equal(cell.branch(0).show(), cell[0].show())
 
     # test indexing of comps
-    assert branch[:2]
-    assert cell[:2, :2]
-    assert net[:2, :2, :2]
+    pd.testing.assert_frame_equal(branch[:2].show(), branch.comp([0, 1]).show())
+    pd.testing.assert_frame_equal(
+        cell[:2, :2].show(), cell.branch([0, 1]).comp([0, 1]).show()
+    )
+    pd.testing.assert_frame_equal(
+        net[:2, :2, :2].show(), net.cell([0, 1]).branch([0, 1]).comp([0, 1]).show()
+    )
 
     # test iterability
     for cell in net.cells:
@@ -145,8 +157,8 @@ def test_set_and_insert(SimpleBranch, SimpleCell, SimpleNet):
     net4.cell(2).branch(2).set("length", 2.0)
     net4.cell(4).branch(3).comp(0).set("length", 2.0)
 
-    assert all(net1.show() == net2.show())
-    assert all(net3.show() == net4.show())
+    pd.testing.assert_frame_equal(net1.show(), net2.show())
+    pd.testing.assert_frame_equal(net3.show(), net4.show())
 
     # insert at into a branch
     branch1 = deepcopy(branch)
@@ -154,7 +166,7 @@ def test_set_and_insert(SimpleBranch, SimpleCell, SimpleNet):
 
     branch1.comp(0).insert(HH())
     branch2[0].insert(HH())
-    assert all(branch1.show() == branch2.show())
+    pd.testing.assert_frame_equal(branch1.show(), branch2.show())
 
     # test insert multiple stimuli
     single_current = jx.step_current(
@@ -318,15 +330,26 @@ def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, Simple
                 ), f"Failed for {type(index)}"
 
                 # test indexing into module and view
-                assert module.comp(index), f"Failed for {type(index)}"
-                assert View(module).comp(index), f"Failed for {type(index)}"
+                comp_inds = module.comp(index).nodes.index
+                assert len(comp_inds) > 0, f"Failed for {type(index)}"
+                np.testing.assert_array_equal(
+                    View(module).comp(index).nodes.index,
+                    comp_inds,
+                    err_msg=f"Failed for {type(index)}",
+                )
 
                 expected_inds = all_inds[index]
                 assert np.all(module.select(nodes=index).nodes.index == expected_inds)
 
             # for loc test float and list of floats
-            assert module.loc(0.0), "Failed for float"
-            assert module.loc([0.0, 0.5, 1.0]), "Failed for List[float]"
+            np.testing.assert_array_equal(
+                module.loc(0.0).nodes.index,
+                module.comp(0).nodes.index,
+                err_msg="Failed for float",
+            )
+            assert len(module.loc([0.0, 0.5, 1.0]).nodes) == 3 * len(
+                module.comp(0).nodes
+            ), "Failed for List[float]"
         else:
             with pytest.raises(AssertionError):
                 module.comp(0)
@@ -619,10 +642,10 @@ def test_view_equals_module(SimpleComp, SimpleBranch):
     assert comp._comp_edges.columns.equals(branch.comp(0)._comp_edges.columns)
 
 
-@pytest.mark.parametrize("ncomp", [1, 4])
+# `ncomp=1` is excluded: with a single compartment, every `loc` touches a branchpoint.
+@pytest.mark.parametrize("ncomp", [2, 4])
 def test_comp_edge_indexing(SimpleCell, ncomp: int):
     """Test whether `_comp_edges` are tracked correctly when viewing."""
-    ncomp = 4
     cell = SimpleCell(5, ncomp)
     # branchpoint on one side of branch.
     assert len(cell.branch(0)._comp_edges) == (ncomp - 1) * 2 + 2
@@ -689,4 +712,9 @@ def test_module_inheritance():
     custom_network = CustomNetwork([custom_cell])
     custom_child_network = CustomChildNetwork([custom_cell])
 
-    custom_child_network.cell(0).branch(0).comp(0).nodes
+    assert type(custom_network.cell(0).branch(0).comp(0).base) is CustomNetwork
+    assert isinstance(custom_child_network, jx.Network)
+    comp_view = custom_child_network.cell(0).branch(0).comp(0)
+    assert type(comp_view.base) is CustomChildNetwork
+    assert len(comp_view.nodes) == 1
+    assert len(custom_child_network.nodes) == 3

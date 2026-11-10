@@ -668,11 +668,11 @@ def test_multicompartment_lif(SimpleCell):
 def test_multicompartment_izhikevich(SimpleCell):
     """Test that Izhikevich can be run in multicompartment simulation."""
     cell = SimpleCell(2, 4)
-    # Leak everywhere, fire only in "soma".
+    # Leak everywhere, Izhikevich only in "soma".
     cell.insert(Leak())
-    cell.branch(0).comp(0).insert(Fire())
+    cell.branch(0).comp(0).insert(Izhikevich())
     cell.record("v")
-    cell.branch(0).comp(0).record("Fire_spikes")
+    cell.branch(0).comp(0).record("Izhikevich_u")
 
     dt = 0.1
     t_max = 40.0
@@ -680,6 +680,8 @@ def test_multicompartment_izhikevich(SimpleCell):
     cell.branch(0).comp(0).stimulate(jx.step_current(5.0, 20.0, 0.02, dt, t_max))
     recordings = jx.integrate(cell, delta_t=dt)
     assert np.invert(np.any(np.isnan(recordings)))
+    # The recovery variable `u` only changes if the Izhikevich dynamics run.
+    assert np.ptp(recordings[-1]) > 0.0
 
 
 def test_adex():
