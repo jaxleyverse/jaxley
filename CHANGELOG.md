@@ -3,7 +3,7 @@
 ### 🐛 Bug fixes
 
 - Filter synaptic recordings by the requested state or current's synapse type,
-  while preserving the selected view, to avoid unrelated or out-of-bounds indices (#793).
+  while preserving the selected view, to avoid unrelated or out-of-bounds indices (#793, @Jlei61).
 
 ### 🛠️ Internal updates
 

@@ -2422,7 +2422,7 @@ class Module(ABC):
                 for i, synapse in enumerate(self.base.synapses)
                 if state in synapse.synapse_states or state == f"i_{synapse._name}"
             ]
-            edges = self.base.edges.iloc[self._edges_in_view.tolist()]
+            edges = self.base.edges.iloc[self._edges_in_view]
             in_view = edges.loc[
                 edges.type_ind.isin(type_inds), "index_within_type"
             ].to_numpy(dtype=int)
