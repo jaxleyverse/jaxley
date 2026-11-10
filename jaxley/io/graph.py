@@ -177,8 +177,9 @@ def _add_edge_lengths(graph: nx.Graph, min_len: float = 1e-5) -> nx.DiGraph:
             else 2 * graph.nodes[i]["r"]
         )
         # min_len ensures that 2 nodes cannot lie on top of each other
-        # this is important for the compartmentalization
-        graph.edges[i, j]["l"] = d_ij if d_ij >= min_len else min_len
+        # this is important for compartmentalization. NaN (no xyz coordinates)
+        # is kept, so that `_add_missing_graph_attrs` falls back to the default length.
+        graph.edges[i, j]["l"] = min_len if d_ij < min_len else d_ij
     return graph
 
 

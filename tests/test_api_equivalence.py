@@ -8,11 +8,12 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.connect import connect
+from jaxley.connect import connect, connectivity_matrix_connect, fully_connect
 from jaxley.integrate import build_init_and_step_fn
 from jaxley.synapses import IonotropicSynapse
 
@@ -150,43 +151,57 @@ def test_solver_backends_net(SimpleNet):
 
 
 def test_api_equivalence_synapses(SimpleNet):
-    """Test whether ways of adding synapses are equivalent."""
-    net1 = SimpleNet(2, 4, 4)
+    """Test whether the ways of adding synapses are equivalent.
 
+    `connect` with explicit locations, `fully_connect` and
+    `connectivity_matrix_connect` all place the synapses 0 -> 1 and 1 -> 0 at branch
+    0, compartment 0 of each cell.
+    """
+    net1 = SimpleNet(2, 4, 4)
     connect(
-        net1.cell(0).branch(0).loc(1.0),
-        net1.cell(1).branch(3).loc(1.0),
+        net1.cell(0).branch(0).comp(0),
+        net1.cell(1).branch(0).comp(0),
         IonotropicSynapse(),
     )
     connect(
-        net1.cell(1).branch(1).loc(0.8),
-        net1.cell(0).branch(3).loc(0.1),
+        net1.cell(1).branch(0).comp(0),
+        net1.cell(0).branch(0).comp(0),
         IonotropicSynapse(),
     )
 
     net2 = SimpleNet(2, 4, 4)
-    pre = net2.cell(0).branch(0).loc(1.0)
-    post = net2.cell(1).branch(3).loc(1.0)
-    connect(pre, post, IonotropicSynapse())
+    fully_connect(net2.cell(0), net2.cell(1), IonotropicSynapse())
+    fully_connect(net2.cell(1), net2.cell(0), IonotropicSynapse())
 
-    pre = net2.cell(1).branch(1).loc(0.8)
-    post = net2.cell(0).branch(3).loc(0.1)
-    connect(pre, post, IonotropicSynapse())
+    net3 = SimpleNet(2, 4, 4)
+    connectivity_matrix_connect(
+        net3.cell("all"),
+        net3.cell("all"),
+        IonotropicSynapse(),
+        np.array([[False, True], [True, False]]),
+    )
 
-    for net in [net1, net2]:
-        current = jx.step_current(
-            i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    nets = [net1, net2, net3]
+    endpoints = ["pre_index", "post_index"]
+    for net in nets[1:]:
+        pd.testing.assert_frame_equal(
+            net.edges[endpoints].sort_values(endpoints).reset_index(drop=True),
+            net1.edges[endpoints].sort_values(endpoints).reset_index(drop=True),
         )
+
+    current = jx.step_current(
+        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
+    )
+    for net in nets:
         net.cell(0).branch(0).loc(0.0).stimulate(current)
         net.cell(0).branch(0).loc(0.5).record()
         net.cell(1).branch(3).loc(0.5).record()
 
-    voltages1 = jx.integrate(net1)
-    voltages2 = jx.integrate(net2)
-
-    assert (
-        np.max(np.abs(voltages1 - voltages2)) < 1e-8
-    ), "Voltages do not match between synapse APIs."
+    voltages = [jx.integrate(net) for net in nets]
+    for v in voltages[1:]:
+        assert (
+            np.max(np.abs(voltages[0] - v)) < 1e-8
+        ), "Voltages do not match between synapse APIs."
 
 
 def test_api_equivalence_continued_simulation(SimpleCell):

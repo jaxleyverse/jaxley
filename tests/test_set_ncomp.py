@@ -222,6 +222,8 @@ def test_dlambda_rule(SimpleMorphCell):
     # After the loop, you have to run `cell.initialize()` because we passed
     # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
     cell.initialize()
+    ncomp_per_branch = cell.nodes.groupby("global_branch_index").size().tolist()
+    assert ncomp_per_branch == [1, 115, 15, 3, 87, 87, 31, 9, 47, 3]
     cell[0, 0].record()
     v = jx.integrate(cell, t_max=1.0)
     assert np.invert(np.any(np.isnan(v))), "Found NaN after d_lambda rule."

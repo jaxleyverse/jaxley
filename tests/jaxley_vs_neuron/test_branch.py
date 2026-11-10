@@ -15,7 +15,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from jaxley_mech.channels.l5pc import CaHVA
-from neuron import h, rxd
+from neuron import h
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -326,6 +326,10 @@ def _jaxley_clamped(dt, t_max, diams, v_init, length):
 
 
 def _neuron_clamped(dt, t_max, diams, v_init, length):
+    # Imported here: `rxd` is built against numpy 1.x in some NEURON versions, and a
+    # module-level import breaks collection of the whole file.
+    from neuron import rxd
+
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "arm64/.libs/libnrnmech.so")
     h.nrn_load_dll(fname)
@@ -392,7 +396,11 @@ def _neuron_clamped(dt, t_max, diams, v_init, length):
     return np.stack([v1, v2, cacon1, cacon2])
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(
+    run=False,
+    reason="Known NEURON/Jaxley difference (see docstring). It also needs a compiled "
+    "`arm64/.libs/libnrnmech.so`, so running it only wastes a long simulation.",
+)
 def test_similarity_voltage_clamp_cacon_i_behavior():
     """Test whether two compartments were one is clamped gives same results.
 

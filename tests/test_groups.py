@@ -10,6 +10,7 @@ jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 from jax import jit, value_and_grad
 
 import jaxley as jx
@@ -27,6 +28,11 @@ def test_subclassing_groups_cell_api(SimpleCell):
     # The following lines are made possible by PR #324.
     cell.subtree.branch(0).set("radius", 0.1)
     cell.subtree.branch(0).comp("all").make_trainable("length")
+
+    radius = cell.nodes.groupby("global_branch_index")["radius"].unique()
+    assert radius[0].tolist() == [0.1]
+    assert all(radius[b].tolist() == [1.0] for b in [1, 2, 3, 4])
+    assert cell.num_trainable_params == 4  # One length per compartment of branch 0.
 
 
 def test_stacking_groups_api(SimpleNet):
@@ -53,6 +59,11 @@ def test_subclassing_groups_net_api(SimpleNet):
     net.excitatory.cell(0).set("radius", 0.1)
     net.excitatory.cell(0).branch("all").make_trainable("length")
 
+    radius = net.nodes.groupby("global_cell_index")["radius"].unique()
+    assert radius[0].tolist() == [0.1]
+    assert all(radius[c].tolist() == [1.0] for c in range(1, 10))
+    assert net.num_trainable_params == 2  # One length per branch of cell 0.
+
 
 def test_subclassing_groups_net_set_equivalence(SimpleNet):
     """Test whether calling `.set` on subclasses group is same as on view."""
@@ -61,9 +72,10 @@ def test_subclassing_groups_net_set_equivalence(SimpleNet):
 
     net1.cell([0, 3, 5]).add_to_group("excitatory")
 
-    # The following lines are made possible by PR #324.
-    net1.excitatory.cell([0, 3]).branch(0).comp("all").set("radius", 0.14)
-    net1.excitatory.cell([0, 5]).branch(1).comp("all").set("length", 0.16)
+    # The following lines are made possible by PR #324. Indices within a group are
+    # local: `excitatory.cell(1)` is cell 3 and `excitatory.cell(2)` is cell 5.
+    net1.excitatory.cell([0, 1]).branch(0).comp("all").set("radius", 0.14)
+    net1.excitatory.cell([0, 2]).branch(1).comp("all").set("length", 0.16)
     net1.excitatory.cell("all").branch(1).comp(2).set("axial_resistivity", 1100.0)
 
     net2.cell([0, 3]).branch(0).comp("all").set("radius", 0.14)
@@ -71,7 +83,7 @@ def test_subclassing_groups_net_set_equivalence(SimpleNet):
     net2.cell([0, 3, 5]).branch(1).comp(2).set("axial_resistivity", 1100.0)
 
     net1.nodes.drop(columns=["excitatory"], inplace=True)
-    assert all(net1.nodes == net2.nodes)
+    pd.testing.assert_frame_equal(net1.nodes, net2.nodes)
 
 
 def test_subclassing_groups_net_make_trainable_equivalence(SimpleNet):
@@ -123,7 +135,7 @@ def test_fully_connect_groups_equivalence(SimpleNet):
     post = net2.cell([6, 8])
     fully_connect(pre, post, IonotropicSynapse())
 
-    assert all(net1.edges == net2.edges)
+    pd.testing.assert_frame_equal(net1.edges, net2.edges)
 
 
 def test_set_ncomp_changes_groups(SimpleCell):

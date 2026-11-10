@@ -35,7 +35,6 @@ class Dummy1(Channel):
     ):
         """Update state."""
         dummy_state = states["Dummy_s"]
-        print("dummy_state1", dummy_state)
         return {"Dummy_s": dummy_state + 0.01}
 
     def compute_current(
@@ -67,7 +66,6 @@ class Dummy2(Channel):
     ):
         """Update state."""
         dummy_state = states["Dummy_s"]
-        print("dummy_state2", dummy_state)
         return {"Dummy_s": dummy_state + 0.01}
 
     def compute_current(
@@ -233,7 +231,8 @@ class CaPump(Channel):
 def test_shared_state():
     """Test whether two channels can share a state.
 
-    This has to be copied into a notebook and executed with `jax.disable_jit():`."""
+    Each channel adds 0.01 to `Dummy_s` per step, so with both channels the state
+    grows twice as fast."""
     comp1 = jx.Compartment()
     comp1.insert(Dummy1())
 
@@ -244,15 +243,20 @@ def test_shared_state():
     comp3.insert(Dummy1())
     comp3.insert(Dummy2())
 
-    voltages = []
+    states = []
     for comp in [comp1, comp2, comp3]:
-        comp.record()
+        comp.record("Dummy_s")
         current = jx.step_current(
             i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
         )
         comp.stimulate(current)
 
-        voltages.append(jx.integrate(comp))
+        states.append(jx.integrate(comp)[0])
+
+    num_steps = len(states[0]) - 1
+    np.testing.assert_allclose(states[0], 0.01 * np.arange(num_steps + 1))
+    np.testing.assert_allclose(states[1], states[0])
+    np.testing.assert_allclose(states[2], 2 * states[0])
 
 
 def test_current_as_state_multicompartment():
@@ -264,4 +268,8 @@ def test_current_as_state_multicompartment():
     branch.comp(0).insert(CaPump())  # uses `states["i_Ca"]`
 
     branch.comp(0).record()
-    _ = jx.integrate(branch, t_max=1.0)
+    branch.comp(0).record("CaCon_i")
+    v, cacon_i = jx.integrate(branch, t_max=1.0)
+    assert np.invert(np.any(np.isnan(v)))
+    # Calcium flows in through `CaHVA`, and the pump sees that current.
+    assert cacon_i[-1] > cacon_i[0]

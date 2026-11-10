@@ -15,7 +15,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from jaxley_mech.channels.l5pc import CaHVA
-from neuron import h, rxd
+from neuron import h
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -305,6 +305,10 @@ def _jaxley_ion_diffusion(
 def _neuron_ion_diffusion(
     dt, t_max, i_delay, i_dur, i_amp, v_init, diams, lengths, r_as
 ):
+    # Imported here: `rxd` is built against numpy 1.x in some NEURON versions, and a
+    # module-level import breaks collection of the whole file.
+    from neuron import rxd
+
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../arm64/.libs/libnrnmech.so")
     h.nrn_load_dll(fname)

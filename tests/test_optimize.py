@@ -48,7 +48,14 @@ def test_type_optimizer_api(SimpleComp):
 
     _, grad = grad_fn(opt_params)
     updates, opt_state = optimizer.update(grad, opt_state)
-    opt_params = optax.apply_updates(opt_params, updates)
+    new_params = optax.apply_updates(opt_params, updates)
+
+    # The first SGD step is `-lr * grad`, with the learning rate of each type.
+    for old, new, g in zip(opt_params, new_params, grad):
+        (key,) = old.keys()
+        expected = old[key] - lrs[key][0] * g[key]
+        np.testing.assert_allclose(new[key], expected, rtol=1e-6)
+        assert not np.allclose(new[key], old[key])
 
 
 def test_type_optimizer(SimpleComp):

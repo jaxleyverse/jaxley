@@ -33,11 +33,12 @@ def test_grad_against_finite_diff_initial_state(key, SimpleComp):
     step_size = 0.01
 
     # Finite differences.
-    comp.set(key, val)
+    # Central differences: forward differences are off by ~7% for `HH_m`.
+    comp.set(key, val - step_size)
     r1 = simulate()
     comp.set(key, val + step_size)
     r2 = simulate()
-    finitediff_grad = (r2 - r1) / step_size
+    finitediff_grad = (r2 - r1) / (2 * step_size)
 
     # Autodiff gradient.
     grad_fn = value_and_grad(simulate_with_params)
@@ -47,8 +48,8 @@ def test_grad_against_finite_diff_initial_state(key, SimpleComp):
     v, g = grad_fn(params)
     autodiff_grad = g[0][key]
 
-    # Less than 5% error on the gradient difference.
-    assert jnp.abs(autodiff_grad - finitediff_grad) / autodiff_grad < 0.05
+    # Less than 1% relative error on the gradient.
+    assert jnp.abs(autodiff_grad - finitediff_grad) / jnp.abs(autodiff_grad) < 0.01
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])
@@ -70,11 +71,12 @@ def test_branch_grad_against_finite_diff_initial_state(key, SimpleBranch):
     step_size = 0.01
 
     # Finite differences.
-    branch.loc(0.0).set(key, val)
+    # Central differences: forward differences are off by ~7% for `HH_m`.
+    branch.loc(0.0).set(key, val - step_size)
     r1 = simulate()
     branch.loc(0.0).set(key, val + step_size)
     r2 = simulate()
-    finitediff_grad = (r2 - r1) / step_size
+    finitediff_grad = (r2 - r1) / (2 * step_size)
 
     # Autodiff gradient.
     grad_fn = value_and_grad(simulate_with_params)
@@ -84,5 +86,5 @@ def test_branch_grad_against_finite_diff_initial_state(key, SimpleBranch):
     v, g = grad_fn(params)
     autodiff_grad = g[0][key]
 
-    # Less than 6% error on the gradient difference, error for HH_m is around 5.2%.
-    assert jnp.abs(autodiff_grad - finitediff_grad) / autodiff_grad < 0.06
+    # Less than 1% relative error on the gradient.
+    assert jnp.abs(autodiff_grad - finitediff_grad) / jnp.abs(autodiff_grad) < 0.01

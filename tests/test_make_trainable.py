@@ -40,8 +40,17 @@ def test_make_trainable(SimpleCell):
     cell.branch([0, 1]).make_trainable("length")
     cell.branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
     cell.branch([0, 1]).make_trainable("HH_gNa")
+    assert cell.num_trainable_params == 8
 
-    cell.get_parameters()
+    params = cell.get_parameters()
+    assert [list(p) for p in params] == [
+        ["radius"],
+        ["length"],
+        ["axial_resistivity"],
+        ["HH_gNa"],
+    ]
+    np.testing.assert_array_equal(params[0]["radius"], [1.0, 1.0])
+    np.testing.assert_array_equal(params[2]["axial_resistivity"], [600.0, 700.0])
 
 
 def test_delete_trainables(SimpleCell):
@@ -52,10 +61,15 @@ def test_delete_trainables(SimpleCell):
     assert cell.num_trainable_params == 1
 
     cell.delete_trainables()
+    assert cell.num_trainable_params == 0
+    assert cell.get_parameters() == []
+    assert cell.indices_set_by_trainables == []
+
     cell.branch(0).loc(0.0).make_trainable("length", 12.0)
     assert cell.num_trainable_params == 1
-
-    cell.get_parameters()
+    params = cell.get_parameters()
+    assert len(params) == 1
+    np.testing.assert_array_equal(params[0]["length"], [12.0])
 
 
 def test_make_trainable_network(SimpleCell):
@@ -70,17 +84,18 @@ def test_make_trainable_network(SimpleCell):
         IonotropicSynapse(),
     )
 
-    cell.branch(0).loc(0.0).set("length", 12.0)
-    cell.branch(1).loc(1.0).set("HH_gNa", 0.2)
+    net.cell(0).branch(0).loc(0.0).set("length", 12.0)
+    net.cell(0).branch(1).loc(1.0).set("HH_gNa", 0.2)
 
-    cell.branch([0, 1]).make_trainable("radius", 1.0)
-    cell.branch([0, 1]).make_trainable("length")
-    cell.branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
-    cell.branch([0, 1]).make_trainable("HH_gNa")
+    net.cell(0).branch([0, 1]).make_trainable("radius", 1.0)
+    net.cell(0).branch([0, 1]).make_trainable("length")
+    net.cell(0).branch([0, 1]).make_trainable("axial_resistivity", [600.0, 700.0])
+    net.cell(0).branch([0, 1]).make_trainable("HH_gNa")
 
-    cell.get_parameters()
+    net.get_parameters()
     net.IonotropicSynapse.set("IonotropicSynapse_gS", 0.1)
-    assert cell.num_trainable_params == 8  # `set()` is ignored.
+    assert net.num_trainable_params == 8  # `set()` is ignored.
+    assert cell.num_trainable_params == 0  # The network holds its own copy.
 
 
 def test_diverse_synapse_types(SimpleNet):
@@ -318,12 +333,13 @@ def test_make_trainable_corresponds_to_set_pospischil(SimpleNet):
 
     net2.cell(0).insert(Na())
     net2.insert(K())
-    net2.cell("all").branch("all").loc("all").make_trainable("vt")
+    net2.set("vt", 0.05)
     params2 = net2.get_parameters()
-    params2[0]["vt"] = params2[0]["vt"].at[:].set(0.05)
     net2.to_jax()
     pstate2 = params_to_pstate(params2, net2.indices_set_by_trainables)
     all_params2 = net2.get_all_parameters(pstate2)
+    # One value per compartment; the remaining entries are not compartments.
+    assert np.sum(all_params1["vt"] == 0.05) == len(net1.nodes)
     assert np.array_equal(all_params1["vt"], all_params2["vt"], equal_nan=True)
     assert np.array_equal(all_params1["Na_gNa"], all_params2["Na_gNa"], equal_nan=True)
     assert np.array_equal(all_params1["K_gK"], all_params2["K_gK"], equal_nan=True)
