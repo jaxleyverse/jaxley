@@ -57,9 +57,6 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-tests/regression_test_results.json
-tests/regression_test_baselines.json
-tests/regression_test_report.txt
 
 # Translations
 *.mo
