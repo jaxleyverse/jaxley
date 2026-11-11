@@ -580,7 +580,7 @@ def test_lif(solver):
 
 
 @pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
-def test_izhikevich(solver):
+def test_izhikevich(solver, golden):
     cell = jx.Cell()
     cell.insert(Izhikevich())
     cell.record("v")
@@ -591,26 +591,10 @@ def test_izhikevich(solver):
     cell.stimulate(jx.step_current(10.0, 180.0, 0.012, dt, t_max))
     v = jx.integrate(cell, delta_t=dt, solver=solver)
 
-    v_250307 = jnp.asarray(
-        [
-            -70.0,
-            -65.0123028,
-            -69.20009282,
-            -71.46372414,
-            -70.71902502,
-            -53.02998553,
-            -63.15451445,
-            -67.04028155,
-            -69.77691688,
-            -71.87443646,
-            -82.1561912,
-        ]
-    )
-    max_error = np.max(np.abs(v[0, ::200] - v_250307))
-    assert max_error < 1e-8, f"Error {max_error} to large."
+    golden.check({"v": np.asarray(v[0, ::200])}, atol=1e-8)
 
 
-def test_rate_channel():
+def test_rate_channel(golden):
     cell = jx.Cell()
     cell.set("length", 1.0 / (2 * pi * 1e-5))
     cell.set("radius", 1.0)  # 1.0 is also the default.
@@ -625,24 +609,7 @@ def test_rate_channel():
     t_max = 10.0
     v = jx.integrate(cell, t_max=t_max, delta_t=dt)
 
-    v_250307 = jnp.asarray(
-        [
-            2.0,
-            2.73575888,
-            3.00642945,
-            3.10600359,
-            3.14263486,
-            3.15611076,
-            1.16106826,
-            0.42713314,
-            0.1571335,
-            0.05780618,
-            0.02126571,
-            0.00782322,
-        ]
-    )
-    max_error = np.max(np.abs(v[0] - v_250307))
-    assert max_error < 1e-8, f"Error {max_error} to large."
+    golden.check({"v": np.asarray(v[0])}, atol=1e-8)
 
 
 def test_multicompartment_lif():

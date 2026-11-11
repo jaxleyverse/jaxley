@@ -2,6 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 """Settings shared by all tests. Modules for tests are built with `tests/builders.py`."""
 
+import re
 import sys
 
 import jax
@@ -38,6 +39,58 @@ def pytest_configure(config):
         jax.config.update("jax_compilation_cache_dir", str(config.cache.mkdir("jax")))
         jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
         jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--force-regen",
+        action="store_true",
+        help="Overwrite the golden values (`.npz` files) with the current results.",
+    )
+
+
+class Golden:
+    """Compares arrays with golden values stored next to the test.
+
+    The file is `<test module>/<test name>.npz`, next to the test module. If it is
+    missing, or with `pytest --force-regen`, the current values are written and the
+    test fails, so that a regeneration is always visible.
+    """
+
+    def __init__(self, request):
+        name = re.sub(r"\W", "_", request.node.name)
+        self.path = request.path.with_suffix("") / f"{name}.npz"
+        self.force_regen = request.config.getoption("force_regen")
+
+    def check(self, arrays: dict, atol=0.0, rtol=0.0, tolerances=None):
+        """Compare `arrays` (`{name: array}`) with the golden values.
+
+        `atol` and `rtol` apply to all arrays. `tolerances` replaces them for single
+        arrays, e.g. `tolerances={"cacon": dict(atol=1e-10)}` (unset values are 0).
+        """
+        arrays = {key: np.asarray(value) for key, value in arrays.items()}
+        if self.force_regen or not self.path.exists():
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(self.path, **arrays)
+            pytest.fail(f"Golden values written to {self.path}, check and commit it.")
+
+        with np.load(self.path) as stored:
+            expected = dict(stored)
+        assert set(arrays) == set(expected), f"Keys differ from {self.path}"
+        for key, value in arrays.items():
+            tol = dict(atol=atol, rtol=rtol)
+            if tolerances and key in tolerances:
+                tol = dict(atol=0.0, rtol=0.0) | tolerances[key]
+            assert value.shape == expected[key].shape, f"Shape of {key} changed"
+            np.testing.assert_allclose(
+                value, expected[key], **tol, err_msg=f"{key} differs from {self.path}"
+            )
+
+
+@pytest.fixture
+def golden(request):
+    """Golden values of the test, see `Golden`."""
+    return Golden(request)
 
 
 @pytest.fixture(autouse=True)

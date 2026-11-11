@@ -128,7 +128,7 @@ def test_distance_within_jit(kind: str):
     np.testing.assert_allclose(v, simulate(sigmoid_offset, global_scaling))
 
 
-def test_distance_swc():
+def test_distance_swc(golden):
     """Ensures that the distance computation for an SWC file remains unchanged."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
@@ -153,32 +153,11 @@ def test_distance_swc():
     # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
     cell.initialize()
 
-    dists_pathwise = distance_pathwise(cell.soma.branch(0).comp(0), cell)
-    dists_direct_250610 = np.asarray(
-        [
-            0.0,
-            368.06401336,
-            692.67274231,
-            864.42547931,
-            806.69255969,
-            743.73139166,
-            760.54892662,
-        ]
+    soma = cell.soma.branch(0).comp(0)
+    golden.check(
+        {
+            "pathwise": np.asarray(distance_pathwise(soma, cell))[::10],
+            "direct": np.asarray(distance_direct(soma, cell))[::10],
+        },
+        atol=1e-8,
     )
-    error = np.max(np.abs(np.asarray(dists_pathwise)[::10] - dists_direct_250610))
-    assert error < 1e-8, f"Error for pathwise distance is to large: {error} > 1e-8."
-
-    dists_direct = distance_direct(cell.soma.branch(0).comp(0), cell)
-    dists_direct_250610 = np.asarray(
-        [
-            0.0,
-            194.3651027,
-            383.63095437,
-            467.20607951,
-            483.88675182,
-            413.21848932,
-            428.11599931,
-        ]
-    )
-    error = np.max(np.abs(np.asarray(dists_direct)[::10] - dists_direct_250610))
-    assert error < 1e-8, f"Error for direct distance is to large: {error} > 1e-8."

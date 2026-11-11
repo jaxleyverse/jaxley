@@ -17,7 +17,7 @@ from tests import builders as build
 
 
 @pytest.mark.slow
-def test_network_grad():
+def test_network_grad(golden):
     net = build.net(ncells=7, nbranches=5, ncomp=4)
     net.insert(HH())
 
@@ -68,34 +68,11 @@ def test_network_grad():
     grad_fn = value_and_grad(simulate)
     v, g = grad_fn(params)
 
-    value_300724 = jnp.asarray(-592.26920963)
-    max_error = np.max(np.abs(v - value_300724))
-    tolerance = 1e-8
-    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
-    grad_300724 = [
-        {"HH_gNa": jnp.asarray([-1420.82493379])},
-        {"HH_gK": jnp.asarray([36.76796492, 14.50837022, 127.31361882])},
-        {
-            "HH_gLeak": jnp.asarray(
-                [
-                    -1511.83061117,
-                    -657.06543355,
-                    -276.59064858,
-                    -348.48049676,
-                    -10613.6754718,
-                    -1240.62600873,
-                    -268475.23225046,
-                ]
-            )
-        },
-        {"IonotropicSynapse_gS": jnp.asarray([-149134.15237682])},
-        {"TestSynapse_gC": jnp.asarray([-75.34438431, -163.50398586])},
-    ]
-
-    for true_g, new_g in zip(grad_300724, g):
-        for key in true_g:
-            max_error = np.max(np.abs(true_g[key] - new_g[key]))
-            tolerance = 1e-3  # Leak cond has a huge gradient...
-            assert (
-                max_error <= tolerance
-            ), f"Error for {key} is {max_error} > {tolerance}"
+    # Gradients range from ~10 to ~3e5, so they are compared with a relative tolerance.
+    # The check fails if a trainable parameter is added or missing.
+    grads = {f"grad_{key}": np.asarray(val) for d in g for key, val in d.items()}
+    golden.check(
+        {"value": np.asarray(v), **grads},
+        rtol=1e-8,
+        tolerances={"value": dict(atol=1e-8)},
+    )
