@@ -1880,14 +1880,26 @@ class Module(ABC):
             synapse_inds = self.base.edges.groupby("type").rank()["global_edge_index"]
             synapse_inds = (synapse_inds.astype(int) - 1).to_numpy()
             if key in self.base.synapse_param_names:
-                inds = synapse_inds[inds]
+                # Keep `make_trainable`'s -1 padding as -1 instead of wrapping it.
+                inds = (
+                    jnp.asarray(synapse_inds)
+                    .at[inds]
+                    .get(mode="fill", fill_value=-1, wrap_negative_indices=False)
+                )
 
             if key in params:  # Only parameters, not initial states.
+                # -1 entries in `inds` are padding from `make_trainable`. JAX wraps
+                # negative indices by default, so every scatter with `inds` needs
+                # `wrap_negative_indices=False` to drop them instead.
                 # `inds` is of shape `(num_params, num_comps_per_param)`.
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
                 # `.set()` to work. This is done with `[:, None]`.
-                params[key] = params[key].at[inds].set(set_param[:, None])
+                params[key] = (
+                    params[key]
+                    .at[inds]
+                    .set(set_param[:, None], wrap_negative_indices=False)
+                )
 
             # If radius and length are updated by the pstate, then we have to also
             # update 1) area, 2) source_frustum, and 3) sink_frustum.
@@ -1897,13 +1909,25 @@ class Module(ABC):
                 # l/2 because we want the input load (left half of the cylinder) and
                 # the output load (right half of the cylinder).
                 resistive_load = cylinder_resistive_load(l / 2, r)
-                params["area"] = params["area"].at[inds].set(cylinder_area(l, r))
-                params["volume"] = params["volume"].at[inds].set(cylinder_volume(l, r))
+                params["area"] = (
+                    params["area"]
+                    .at[inds]
+                    .set(cylinder_area(l, r), wrap_negative_indices=False)
+                )
+                params["volume"] = (
+                    params["volume"]
+                    .at[inds]
+                    .set(cylinder_volume(l, r), wrap_negative_indices=False)
+                )
                 params["resistive_load_out"] = (
-                    params["resistive_load_out"].at[inds].set(resistive_load)
+                    params["resistive_load_out"]
+                    .at[inds]
+                    .set(resistive_load, wrap_negative_indices=False)
                 )
                 params["resistive_load_in"] = (
-                    params["resistive_load_in"].at[inds].set(resistive_load)
+                    params["resistive_load_in"]
+                    .at[inds]
+                    .set(resistive_load, wrap_negative_indices=False)
                 )
 
         # Compute conductance params and add them to the params dictionary.
@@ -2228,7 +2252,11 @@ class Module(ABC):
                 # `set_param` is of shape `(num_params,)`
                 # We need to unsqueeze `set_param` to make it `(num_params, 1)` for the
                 # `.set()` to work. This is done with `[:, None]`.
-                states[key] = states[key].at[inds].set(set_param[:, None])
+                states[key] = (
+                    states[key]
+                    .at[inds]
+                    .set(set_param[:, None], wrap_negative_indices=False)
+                )
         return states
 
     @only_allow_module
