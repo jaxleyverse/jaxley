@@ -3,15 +3,10 @@
 
 from copy import deepcopy
 
-import jax
-import pandas as pd
-import pytest
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
@@ -20,12 +15,13 @@ from jaxley.modules.base import View
 from jaxley.synapses import TestSynapse
 from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
 from jaxley.utils.misc_utils import cumsum_leading_zero
+from tests import builders as build
 
 
-def test_getitem(SimpleBranch, SimpleCell, SimpleNet):
-    branch = SimpleBranch(4)
-    cell = SimpleCell(3, 4)
-    net = SimpleNet(3, 3, 4)
+def test_getitem():
+    branch = build.branch(ncomp=4)
+    cell = build.cell(nbranches=3, ncomp=4)
+    net = build.net(ncells=3, nbranches=3, ncomp=4)
 
     # test API equivalence
     pd.testing.assert_frame_equal(net.cell(0).branch(0).show(), net[0, 0].show())
@@ -67,8 +63,8 @@ def test_getitem(SimpleBranch, SimpleCell, SimpleNet):
         pass
 
 
-def test_loc_v_comp(SimpleBranch):
-    branch = SimpleBranch(4)
+def test_loc_v_comp():
+    branch = build.branch(ncomp=4)
     ncomps = branch.ncomp_per_branch
     branch_ind = 0
 
@@ -82,11 +78,11 @@ def test_loc_v_comp(SimpleBranch):
     assert np.all(branch.comp(inferred_ind).show() == branch.loc(0.4).show())
 
 
-def test_shape(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
-    comp = SimpleComp()
-    branch = SimpleBranch(4)
-    cell = SimpleCell(3, 4)
-    net = SimpleNet(3, 3, 4)
+def test_shape():
+    comp = build.comp()
+    branch = build.branch(ncomp=4)
+    cell = build.cell(nbranches=3, ncomp=4)
+    net = build.net(ncells=3, nbranches=3, ncomp=4)
 
     assert net.shape == (3, 3 * 3, 3 * 3 * 4)
     assert cell.shape == (3, 3 * 4)
@@ -105,10 +101,10 @@ def test_shape(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     assert net.cell(0).branch(0).comp(0).shape == (1, 1, 1)
 
 
-def test_set_and_insert(SimpleBranch, SimpleCell, SimpleNet):
-    branch = SimpleBranch(4)
-    cell = SimpleCell(5, 4)
-    net = SimpleNet(5, 5, 4)
+def test_set_and_insert():
+    branch = build.branch(ncomp=4)
+    cell = build.cell(nbranches=5, ncomp=4)
+    net = build.net(ncells=5, nbranches=5, ncomp=4)
     net1 = deepcopy(net)
     net2 = deepcopy(net)
     net3 = deepcopy(net)
@@ -192,8 +188,8 @@ def test_set_and_insert(SimpleBranch, SimpleCell, SimpleNet):
     assert np.all(cell1.recordings == cell2.recordings)
 
 
-def test_local_indexing(SimpleNet):
-    net = SimpleNet(2, 5, 4)
+def test_local_indexing():
+    net = build.net(ncells=2, nbranches=5, ncomp=4)
 
     local_idxs = net.nodes[
         ["local_cell_index", "local_branch_index", "local_comp_index"]
@@ -209,10 +205,10 @@ def test_local_indexing(SimpleNet):
                 global_index += 1
 
 
-def test_indexing_a_compartment_of_many_branches(SimpleBranch):
-    branch1 = SimpleBranch(ncomp=3)
-    branch2 = SimpleBranch(ncomp=4)
-    branch3 = SimpleBranch(ncomp=5)
+def test_indexing_a_compartment_of_many_branches():
+    branch1 = build.branch(ncomp=3)
+    branch2 = build.branch(ncomp=4)
+    branch3 = build.branch(ncomp=5)
     cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
     cell2 = jx.Cell([branch3, branch2], parents=[-1, 0])
     net = jx.Network([cell1, cell2])
@@ -238,7 +234,7 @@ def test_indexing_a_compartment_of_many_branches(SimpleBranch):
 
 
 # make sure all attrs in module also have a corresponding attr in view
-def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
+def test_view_attrs():
     """Check if all attributes of Module have a corresponding attribute in View.
 
     To ensure that View behaves like a Module as much as possible, View should support
@@ -281,10 +277,10 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
     ]  # for network
 
     for module in [
-        SimpleComp(),
-        SimpleBranch(2),
-        SimpleCell(2, 3),
-        SimpleNet(2, 2, 3, connect=True),
+        build.comp(),
+        build.branch(ncomp=2),
+        build.cell(nbranches=2, ncomp=3),
+        build.net(ncells=2, nbranches=2, ncomp=3, connect=True),
     ]:
         for name, attr in module.__dict__.items():
             if name not in exceptions:
@@ -297,15 +293,15 @@ def test_view_attrs(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
                 ), f"Type mismatch: {name}, Module type: {type(getattr(module, name))}, View type: {type(getattr(view, name))}"
 
 
-def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
+def test_view_supported_index_types():
     """Check if different ways to index into Modules/Views work correctly."""
     # test int, range, slice, list, np.array, pd.Index
 
     for module in [
-        SimpleComp(),
-        SimpleBranch(4),
-        SimpleCell(3, 4),
-        SimpleNet(2, 3, 4),
+        build.comp(),
+        build.branch(ncomp=4),
+        build.cell(nbranches=3, ncomp=4),
+        build.net(ncells=2, nbranches=3, ncomp=4),
     ]:
         index_types = [
             0,
@@ -362,9 +358,9 @@ def test_view_supported_index_types(SimpleComp, SimpleBranch, SimpleCell, Simple
                 assert np.all(module.select(edges=index).edges.index == expected_inds)
 
 
-def test_select(SimpleNet):
+def test_select():
     """Ensure `select` works correctly and returns expected View of Modules."""
-    net = SimpleNet(3, 3, 2, connect=False)
+    net = build.net(ncells=3, nbranches=3, ncomp=2)
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
     np.random.seed(0)
@@ -399,10 +395,10 @@ def test_select(SimpleNet):
     ), "Selecting nodes and edges by index failed for edges."
 
 
-def test_viewing(SimpleCell, SimpleNet):
+def test_viewing():
     """Test that the View object is working correctly."""
-    cell = SimpleCell(3, 3)
-    net = SimpleNet(3, 3, 3)
+    cell = build.cell(nbranches=3, ncomp=3)
+    net = build.net(ncells=3, nbranches=3, ncomp=3)
 
     # test parameter sharing works correctly
     nodes1 = net.branch(0).comp("all").nodes
@@ -451,9 +447,9 @@ def test_viewing(SimpleCell, SimpleNet):
         net.scope("global").comp(999)  # Nothing should be in View
 
 
-def test_scope(SimpleCell):
+def test_scope():
     """Ensure scope has the intended effect for Modules and Views."""
-    cell = SimpleCell(3, 3)
+    cell = build.cell(nbranches=3, ncomp=3)
 
     view = cell.scope("global").branch(1)
     assert view._scope == "global"
@@ -483,9 +479,9 @@ def test_scope(SimpleCell):
     )
 
 
-def test_context_manager(SimpleCell):
+def test_context_manager():
     """Test that context manager works correctly for Module."""
-    cell = SimpleCell(3, 3)
+    cell = build.cell(nbranches=3, ncomp=3)
 
     with cell.branch(0).comp(0) as comp:
         comp.set("v", -71)
@@ -506,10 +502,10 @@ def test_context_manager(SimpleCell):
     ), "Context management of View not working."
 
 
-def test_iter(SimpleBranch):
+def test_iter():
     """Test that __iter__ works correctly for all modules."""
-    branch1 = SimpleBranch(2)
-    branch2 = SimpleBranch(3)
+    branch1 = build.branch(ncomp=2)
+    branch2 = build.branch(ncomp=3)
     cell = jx.Cell([branch1, branch1, branch2], parents=[-1, 0, 0])
     net = jx.Network([cell] * 2)
 
@@ -565,9 +561,9 @@ def test_iter(SimpleBranch):
     assert np.all(cell.nodes["v"] == -73), "Setting parameters with __iter__ failed."
 
 
-def test_synapse_and_channel_filtering(SimpleNet):
+def test_synapse_and_channel_filtering():
     """Test that synapses and channels are filtered correctly by View."""
-    net = SimpleNet(3, 3, 3, connect=False)
+    net = build.net(ncells=3, nbranches=3, ncomp=3)
     net.insert(HH())
     connect(net[0, 0, :], net[1, 0, :], TestSynapse())
 
@@ -591,10 +587,10 @@ def test_synapse_and_channel_filtering(SimpleNet):
     assert np.all(edges1 == edges2)
 
 
-def test_view_equals_module(SimpleComp, SimpleBranch):
+def test_view_equals_module():
     """Test that View behaves the same as Module for important attrs and methods."""
-    comp = SimpleComp(copy=True)
-    branch = SimpleBranch(3)
+    comp = build.comp()
+    branch = build.branch(ncomp=3)
 
     comp.insert(HH())
     branch.comp([0, 1]).insert(HH())
@@ -644,9 +640,9 @@ def test_view_equals_module(SimpleComp, SimpleBranch):
 
 # `ncomp=1` is excluded: with a single compartment, every `loc` touches a branchpoint.
 @pytest.mark.parametrize("ncomp", [2, 4])
-def test_comp_edge_indexing(SimpleCell, ncomp: int):
+def test_comp_edge_indexing(ncomp: int):
     """Test whether `_comp_edges` are tracked correctly when viewing."""
-    cell = SimpleCell(5, ncomp)
+    cell = build.cell(nbranches=5, ncomp=ncomp)
     # branchpoint on one side of branch.
     assert len(cell.branch(0)._comp_edges) == (ncomp - 1) * 2 + 2
     # branchpoint on both sides of branch.

@@ -2,7 +2,7 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 """Performance benchmarks for a few common models. Local only, not run in CI.
 
-Run with `pytest -m perf` (without `-n`), which prints a table of seconds per scenario:
+Run with `pytest -m perf` (always serial), which prints a table of seconds per scenario:
 
 - build: constructing the model (e.g. reading the SWC file, inserting channels). JAX's
   one-time start-up costs are excluded by `_warm_up()`; without it, the first

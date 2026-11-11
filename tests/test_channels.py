@@ -1,22 +1,19 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-import jax
-from jax import Array
-from jax.typing import ArrayLike
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 from math import pi
 from typing import Dict, Optional
 
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jax import Array
+from jax.typing import ArrayLike
 from jaxley_mech.channels.pospischil import CaL, CaT, K, Km, Leak, Na
 
 import jaxley as jx
 from jaxley.channels import HH, AdEx, Channel, Fire, Izhikevich, Rate
 from jaxley.solver_gate import exponential_euler, save_exp
+from tests import builders as build
 
 
 class CaPump(Channel):
@@ -202,13 +199,13 @@ def test_integration_with_renamed_channels():
 
 
 @pytest.mark.slow
-def test_init_states(SimpleCell):
+def test_init_states():
     """Functional test for `init_states()`.
 
     Checks whether, if everything is initialized in its steady state, the voltage
     after 10ms is almost exactly the same as after 0ms.
     """
-    cell = SimpleCell(2, 4)
+    cell = build.cell(nbranches=2, ncomp=4)
     cell.branch(0).loc(0.0).record()
 
     cell.branch(0).insert(Na())
@@ -355,7 +352,7 @@ class KCA11(Channel):
         return m_inf, tau_m
 
 
-def test_init_states_complex_channel(SimpleCell):
+def test_init_states_complex_channel():
     """Test for `init_states()` with a more complicated channel model.
 
     The channel model used for this test uses the `states` in `init_state` and it also
@@ -363,7 +360,7 @@ def test_init_states_complex_channel(SimpleCell):
     an issue I had with Jaxley in v0.2.0 (fixed in v0.2.1).
     """
     ## Create cell
-    cell = SimpleCell(3, 1)
+    cell = build.cell(nbranches=3, ncomp=1)
 
     # CA channels.
     cell.branch([0, 1]).insert(CaNernstReversal())
@@ -381,7 +378,7 @@ def test_init_states_complex_channel(SimpleCell):
     assert np.invert(np.any(np.isnan(voltages))), "NaN voltage found"
 
 
-def test_multiple_channel_currents(SimpleCell):
+def test_multiple_channel_currents():
     """Test whether all channels can"""
 
     class User(Channel):
@@ -465,7 +462,7 @@ def test_multiple_channel_currents(SimpleCell):
 
     dt = 0.025  # ms
     t_max = 5.0  # ms
-    cell = SimpleCell(1, 1)
+    cell = build.cell(nbranches=1, ncomp=1)
     cell.branch(0).loc(0.0).stimulate(
         jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
     )
@@ -482,21 +479,21 @@ def test_multiple_channel_currents(SimpleCell):
     assert np.abs(target - s[0, -1]) < 1e-8
 
 
-def test_delete_channel(SimpleBranch):
+def test_delete_channel():
     # test complete removal of a channel from a module
-    branch1 = SimpleBranch(ncomp=3)
+    branch1 = build.branch(ncomp=3)
     branch1.comp(0).insert(K())
     branch1.delete(K())
 
-    branch2 = SimpleBranch(ncomp=3)
+    branch2 = build.branch(ncomp=3)
     branch2.comp(0).insert(K())
     branch2.comp(0).delete(K())
 
-    branch3 = SimpleBranch(ncomp=3)
+    branch3 = build.branch(ncomp=3)
     branch3.insert(K())
     branch3.delete(K())
 
-    branch4 = SimpleBranch(ncomp=3)
+    branch4 = build.branch(ncomp=3)
     branch4.insert(CaL())
     branch4.insert(CaT())
     branch4.delete(CaL())
@@ -531,7 +528,7 @@ def test_delete_channel(SimpleBranch):
         assert not channel_present(branch, K())
 
     # test correct channels are removed only in the viewed part of the module
-    branch4 = SimpleBranch(ncomp=3)
+    branch4 = build.branch(ncomp=3)
     branch4.insert(HH())
     branch4.comp(0).insert(K())
     branch4.comp([1, 2]).insert(Leak())
@@ -648,9 +645,9 @@ def test_rate_channel():
     assert max_error < 1e-8, f"Error {max_error} to large."
 
 
-def test_multicompartment_lif(SimpleCell):
+def test_multicompartment_lif():
     """Test that LIF can be run in multicompartment simulation."""
-    cell = SimpleCell(2, 4)
+    cell = build.cell(nbranches=2, ncomp=4)
     # Leak everywhere, fire only in "soma".
     cell.insert(Leak())
     cell.branch(0).comp(0).insert(Fire())
@@ -665,9 +662,9 @@ def test_multicompartment_lif(SimpleCell):
     assert np.invert(np.any(np.isnan(recordings)))
 
 
-def test_multicompartment_izhikevich(SimpleCell):
+def test_multicompartment_izhikevich():
     """Test that Izhikevich can be run in multicompartment simulation."""
-    cell = SimpleCell(2, 4)
+    cell = build.cell(nbranches=2, ncomp=4)
     # Leak everywhere, Izhikevich only in "soma".
     cell.insert(Leak())
     cell.branch(0).comp(0).insert(Izhikevich())
@@ -716,11 +713,11 @@ def test_adex():
     assert np.any(spikes > 0), "AdEx should produce spikes with this stimulation"
 
 
-def test_multicompartment_adex(SimpleCell):
+def test_multicompartment_adex():
     """Test that AdEx can be run in multicompartment simulation."""
     import warnings
 
-    cell = SimpleCell(2, 4)
+    cell = build.cell(nbranches=2, ncomp=4)
     # Insert AdEx only in "soma" compartment, Leak elsewhere
     cell.insert(Leak())
     with warnings.catch_warnings():

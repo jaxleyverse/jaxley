@@ -2,15 +2,10 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from typing import Optional
 
-import jax
-from jax import Array
-from jax.typing import ArrayLike
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import jax.numpy as jnp
 import numpy as np
+from jax import Array
+from jax.typing import ArrayLike
 
 import jaxley as jx
 from jaxley.channels import Channel

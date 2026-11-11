@@ -12,6 +12,7 @@ from jaxley.connect import connect
 from jaxley.solver_gate import exponential_euler
 from jaxley.solver_voltage import _make_dhs_solve
 from jaxley.synapses import IonotropicSynapse
+from tests import builders as build
 
 
 @pytest.mark.parametrize("x_inf", [3.0, 30.0])
@@ -26,9 +27,9 @@ def test_exp_euler(x_inf):
     assert np.abs(fwd_euler - exp_euler) / np.abs(fwd_euler) < 1e-4
 
 
-def test_fwd_euler_and_crank_nicolson(SimpleNet):
+def test_fwd_euler_and_crank_nicolson():
     """Compare accuracies of different solvers."""
-    net = SimpleNet(2, 3, 4, connect=True)
+    net = build.net(ncells=2, nbranches=3, ncomp=4, connect=True)
 
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
@@ -57,7 +58,7 @@ def test_fwd_euler_and_crank_nicolson(SimpleNet):
     assert np.max(np.abs(bwd_v - exp_v)) < 4.0
 
 
-def test_exp_euler_solver_customization(SimpleCell):
+def test_exp_euler_solver_customization():
     """Passing the default transition matrix explicitly gives the default result."""
     delta_t = 0.025
     current = jx.step_current(
@@ -66,7 +67,7 @@ def test_exp_euler_solver_customization(SimpleCell):
 
     voltages = []
     for customize in [False, True]:
-        cell = SimpleCell(2, 3)
+        cell = build.cell(nbranches=2, ncomp=3)
         cell.branch(0).comp(0).stimulate(current)
         cell.branch(0).comp(1).record()
         cell.insert(HH())

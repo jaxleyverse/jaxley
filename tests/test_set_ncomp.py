@@ -3,43 +3,39 @@
 
 import os
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import jax.numpy as jnp
 import numpy as np
 import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
+from tests import builders as build
 
 
 @pytest.mark.parametrize(
     "property", ["radius", "capacitance", "length", "axial_resistivity"]
 )
-def test_raise_for_heterogenous_modules(SimpleBranch, property):
-    branch0 = SimpleBranch(4)
-    branch1 = SimpleBranch(4)
+def test_raise_for_heterogenous_modules(property):
+    branch0 = build.branch(ncomp=4)
+    branch1 = build.branch(ncomp=4)
     branch1.comp(1).set(property, 1.5)
     cell = jx.Cell([branch0, branch1], parents=[-1, 0])
     with pytest.raises(ValueError):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_heterogenous_channel_existence(SimpleBranch):
-    branch0 = SimpleBranch(4)
-    branch1 = SimpleBranch(4)
+def test_raise_for_heterogenous_channel_existence():
+    branch0 = build.branch(ncomp=4)
+    branch1 = build.branch(ncomp=4)
     branch1.comp(2).insert(HH())
     cell = jx.Cell([branch0, branch1], parents=[-1, 0])
     with pytest.raises(ValueError):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_heterogenous_channel_properties(SimpleBranch):
-    branch0 = SimpleBranch(4)
-    branch1 = SimpleBranch(4)
+def test_raise_for_heterogenous_channel_properties():
+    branch0 = build.branch(ncomp=4)
+    branch1 = build.branch(ncomp=4)
     branch1.insert(HH())
     branch1.comp(3).set("HH_gNa", 0.5)
     cell = jx.Cell([branch0, branch1], parents=[-1, 0])
@@ -47,47 +43,45 @@ def test_raise_for_heterogenous_channel_properties(SimpleBranch):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_entire_cells(SimpleCell):
-    cell = SimpleCell(3, 4)
+def test_raise_for_entire_cells():
+    cell = build.cell(nbranches=3, ncomp=4)
     with pytest.raises(AssertionError):
         cell.set_ncomp(2)
 
 
-def test_raise_for_networks(SimpleCell):
-    cell1 = SimpleCell(3, 4)
-    cell2 = SimpleCell(3, 4)
+def test_raise_for_networks():
+    cell1 = build.cell(nbranches=3, ncomp=4)
+    cell2 = build.cell(nbranches=3, ncomp=4)
     net = jx.Network([cell1, cell2])
     with pytest.raises(AssertionError):
         net.cell(0).branch(1).set_ncomp(2)
 
 
-def test_raise_for_recording(SimpleCell):
-    cell = SimpleCell(3, 2)
+def test_raise_for_recording():
+    cell = build.cell(nbranches=3, ncomp=2)
     cell.branch(0).comp(0).record()
     with pytest.raises(AssertionError):
         cell.branch(1).set_ncomp(2)
 
 
-def test_raise_for_stimulus(SimpleCell):
-    cell = SimpleCell(3, 2)
+def test_raise_for_stimulus():
+    cell = build.cell(nbranches=3, ncomp=2)
     cell.branch(0).comp(0).stimulate(0.4 * jnp.ones(100))
     with pytest.raises(AssertionError):
         cell.branch(1).set_ncomp(2)
 
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
-def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(
-    SimpleBranch, new_ncomp
-):
+def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(new_ncomp):
     """Test whether a module built from scratch matches module built with `set_ncomp()`.
 
     This makes one branch, whose `ncomp` is not modified, heterogenous.
     """
-    branch1 = SimpleBranch(new_ncomp)
+    branch1 = build.branch(ncomp=new_ncomp)
 
     # The second branch is originally instantiated to have 4 ncomp, but is later
     # modified to have `new_ncomp` compartments.
-    branch2 = SimpleBranch(4)
+    branch2 = build.branch(ncomp=4)
     branch2.comp("all").set("length", 10.0)
     total_branch_len = 4 * 10.0
 
@@ -108,15 +102,13 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_branch(
 
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
-def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
-    SimpleBranch, new_ncomp
-):
+def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(new_ncomp):
     """Test whether a module built from scratch matches module built with `set_ncomp()`."""
-    branch1 = SimpleBranch(new_ncomp)
+    branch1 = build.branch(ncomp=new_ncomp)
 
     # The second branch is originally instantiated to have 4 ncomp, but is later
     # modified to have `new_ncomp` compartments.
-    branch2 = SimpleBranch(4)
+    branch2 = build.branch(ncomp=4)
     branch2.comp("all").set("length", 10.0)
     total_branch_len = 4 * 10.0
 
@@ -143,13 +135,13 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_250.swc", "morph_3_types_single_point_soma.swc"]
 )
-def test_api_equivalence_swc_lengths_and_radiuses(SimpleMorphCell, new_ncomp, file):
+def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file):
     """Test if the radiuses and lengths of an SWC morph are reconstructed correctly."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    cell1 = SimpleMorphCell(fname, ncomp=new_ncomp)
-    cell2 = SimpleMorphCell(fname, ncomp=1)
+    cell1 = build.swc_cell(fname, ncomp=new_ncomp)
+    cell2 = build.swc_cell(fname, ncomp=1)
 
     for b in range(cell2.total_nbranches):
         cell2.branch(b).set_ncomp(new_ncomp)
@@ -164,13 +156,13 @@ def test_api_equivalence_swc_lengths_and_radiuses(SimpleMorphCell, new_ncomp, fi
 
 @pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
 @pytest.mark.parametrize("file", ["morph_ca1_n120_250.swc"])
-def test_simulation_accuracy_swc_init_vs_set_ncomp(SimpleMorphCell, new_ncomp, file):
+def test_simulation_accuracy_swc_init_vs_set_ncomp(new_ncomp, file):
     """Test whether an SWC initially built with 4 ncomp works after `set_ncomp()`."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    cell1 = SimpleMorphCell(fname, ncomp=new_ncomp)
-    cell2 = SimpleMorphCell(fname, ncomp=1)
+    cell1 = build.swc_cell(fname, ncomp=new_ncomp)
+    cell2 = build.swc_cell(fname, ncomp=1)
 
     for b in range(cell2.total_nbranches):
         cell2.branch(b).set_ncomp(new_ncomp)
@@ -187,15 +179,15 @@ def test_simulation_accuracy_swc_init_vs_set_ncomp(SimpleMorphCell, new_ncomp, f
     assert max_error < 1e-8, f"Too large voltage deviation, {max_error} > 1e-8"
 
 
-def test_set_ncomp_raises_for_inhomogeneous(SimpleCell):
+def test_set_ncomp_raises_for_inhomogeneous():
     """Test whether groups get updated appropriately after `set_ncomp`."""
-    cell = SimpleCell(3, 4)
+    cell = build.cell(nbranches=3, ncomp=4)
     cell.branch(0).comp(0).add_to_group("exc")
     with pytest.raises(AssertionError):
         cell.branch(0).set_ncomp(2)
 
 
-def test_dlambda_rule(SimpleMorphCell):
+def test_dlambda_rule():
     """Run `set_ncomp` on every branch with the d-lambda rule.
 
     If you have to modify this test, make sure to also modify the how-to guide."""
@@ -203,7 +195,7 @@ def test_dlambda_rule(SimpleMorphCell):
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", file)
 
-    cell = SimpleMorphCell(fname, ncomp=1)
+    cell = build.swc_cell(fname, ncomp=1)
 
     # Reasonable default values for most models.
     frequency = 100.0

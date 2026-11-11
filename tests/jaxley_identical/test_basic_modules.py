@@ -1,14 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from jax import config
-
-config.update("jax_enable_x64", True)
-config.update("jax_platform_name", "cpu")
-
-import os
-
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
 from math import pi
 
@@ -22,10 +14,11 @@ from jaxley.channels import HH
 from jaxley.connect import connect, fully_connect
 from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal
 from jaxley.synapses import IonotropicSynapse, TestSynapse
+from tests import builders as build
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, SimpleNet):
+def test_compartment(voltage_solver):
     """Test a compartment."""
     dt = 0.025  # ms
     current = jx.step_current(
@@ -52,7 +45,7 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
     )
 
     # Test compartment.
-    comp = SimpleComp()
+    comp = build.comp()
     comp.insert(HH())
     comp.record()
     comp.stimulate(current)
@@ -61,7 +54,7 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
     assert max_error <= tolerance, f"Compartment error is {max_error} > {tolerance}"
 
     # Test branch of a single compartment.
-    branch = SimpleBranch(ncomp=1)
+    branch = build.branch(ncomp=1)
     branch.insert(HH())
     branch.record()
     branch.stimulate(current)
@@ -70,7 +63,7 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
     assert max_error <= tolerance, f"Branch error is {max_error} > {tolerance}"
 
     # Test cell of a single compartment.
-    cell = SimpleCell(1, 1)
+    cell = build.cell(nbranches=1, ncomp=1)
     cell.insert(HH())
     cell.record()
     cell.stimulate(current)
@@ -79,7 +72,7 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
     assert max_error <= tolerance, f"Cell error is {max_error} > {tolerance}"
 
     # Test net of a single compartment.
-    net = SimpleNet(1, 1, 1)
+    net = build.net(ncells=1, nbranches=1, ncomp=1)
     net.insert(HH())
     net.record()
     net.stimulate(current)
@@ -89,13 +82,13 @@ def test_compartment(voltage_solver, SimpleComp, SimpleBranch, SimpleCell, Simpl
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_branch(voltage_solver, SimpleBranch):
+def test_branch(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
-    branch = SimpleBranch(2)
+    branch = build.branch(ncomp=2)
     branch.insert(HH())
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(current)
@@ -125,13 +118,13 @@ def test_branch(voltage_solver, SimpleBranch):
 
 
 @pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
-def test_branch_uneven_radiuses(SimpleBranch, solver):
+def test_branch_uneven_radiuses(solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=2.0, delta_t=0.025, t_max=10.0
     )
 
-    branch = SimpleBranch(8)
+    branch = build.branch(ncomp=8)
     branch.set("axial_resistivity", 500.0)
 
     rands1 = np.linspace(20, 300, 8)
@@ -200,13 +193,13 @@ def test_branch_uneven_radiuses(SimpleBranch, solver):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_cell(voltage_solver, SimpleCell):
+def test_cell(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
-    cell = SimpleCell(3, 2)
+    cell = build.cell(nbranches=3, ncomp=2)
     cell.insert(HH())
     cell.branch(1).loc(0.0).record()
     cell.branch(1).loc(0.0).stimulate(current)
@@ -244,17 +237,17 @@ def test_cell(voltage_solver, SimpleCell):
         ("bwd_euler", "jax.sparse"),
     ],
 )
-def test_complex_cell(solver, voltage_solver, SimpleBranch):
+def test_complex_cell(solver, voltage_solver):
     """Test cell with a variety of channels, pumps, diffusion, and comps per branch."""
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
 
-    branch1 = SimpleBranch(ncomp=1)
-    branch2 = SimpleBranch(ncomp=2)
-    branch3 = SimpleBranch(ncomp=3)
-    branch4 = SimpleBranch(ncomp=4)
+    branch1 = build.branch(ncomp=1)
+    branch2 = build.branch(ncomp=2)
+    branch3 = build.branch(ncomp=3)
+    branch4 = build.branch(ncomp=4)
     cell = jx.Cell([branch1, branch2, branch3, branch4], parents=[-1, 0, 0, 1])
     cell.set("axial_resistivity", 10_000.0)
     cell.insert(HH())
@@ -336,15 +329,15 @@ def test_complex_cell(solver, voltage_solver, SimpleBranch):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_net(voltage_solver, SimpleCell):
+def test_net(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
-    # net = SimpleNet(2, 3, 2)
-    cell1 = SimpleCell(3, 2)
-    cell2 = SimpleCell(3, 2)
+    # net = build.net(ncells=2, nbranches=3, ncomp=2)
+    cell1 = build.cell(nbranches=3, ncomp=2)
+    cell2 = build.cell(nbranches=3, ncomp=2)
     net = jx.Network([cell1, cell2])
 
     connect(
@@ -412,8 +405,8 @@ def test_net(voltage_solver, SimpleCell):
         ("bwd_euler", "jax.sparse"),
     ],
 )
-def test_complex_net(solver, voltage_solver, SimpleCell):
-    cell = SimpleCell(5, 4)
+def test_complex_net(solver, voltage_solver):
+    cell = build.cell(nbranches=5, ncomp=4)
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
         # allowed_nodes_per_level=32.
@@ -503,9 +496,9 @@ def test_complex_net(solver, voltage_solver, SimpleCell):
 @pytest.mark.parametrize(
     "voltage_solver", ["jaxley.dhs.cpu", "jaxley.dhs.gpu", "jax.sparse"]
 )
-def test_mixed_net(voltage_solver, SimpleCell):
+def test_mixed_net(voltage_solver):
     simple_cell = jx.Cell()
-    morph_cell = SimpleCell(5, 4)
+    morph_cell = build.cell(nbranches=5, ncomp=4)
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
         # allowed_nodes_per_level=32.

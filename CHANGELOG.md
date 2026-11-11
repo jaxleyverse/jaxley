@@ -106,6 +106,7 @@ channels from `jaxley.channels` (#814, @jnsbck)
 - CI runs on Python 3.14. The `dev` extra installs `jaxley-mech` from its `v1.0.0` branch until jaxley-mech 1.0 is released (#814, @jnsbck)
 - Fixed broken/obsolete (e.g. `assert all(df1 == df2)` always passes) and removed dead tests + flags (#815, @jnsbck)
 - Removed old regression CI. Regression is now local only. Use `pytest -m perf` or `python tests/perf_regression.py --base main` to print ratios against a git ref. Skipped by plain `pytest` (#816, @jnsbck)
+- Cached build fns replace old fixtures such as `SimpleComp`, whose cache was broken. enable fp64 once in `tests/conftest.py` and seed `np.random` before each test. Add compile cache `.pytest_cache/`, for faster testing. Runs ~3.5× faster when warm (`pytest --cache-clear` resets it). Tests run on 4 workers by default (`pytest-xdist`, `-n 0` for serial; `pytest -m perf` always serial) (#818, @jnsbck)
 
 ### 📚 Documentation
 

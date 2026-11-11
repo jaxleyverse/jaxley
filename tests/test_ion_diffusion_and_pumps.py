@@ -2,16 +2,11 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from typing import Optional
 
-import jax
+import jax.numpy as jnp
+import numpy as np
 import pytest
 from jax import Array
 from jax.typing import ArrayLike
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
-import jax.numpy as jnp
-import numpy as np
 from jaxley_mech.channels.l5pc import CaHVA, CaLVA
 from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
 from jaxley_mech.channels.pospischil import K, Leak, Na

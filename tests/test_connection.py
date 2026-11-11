@@ -1,12 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-from jaxley.utils.cell_utils import local_index_of_loc
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import numpy as np
 import pytest
@@ -19,13 +13,15 @@ from jaxley.connect import (
     sparse_connect,
 )
 from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.utils.cell_utils import local_index_of_loc
+from tests import builders as build
 
 
-def test_connect(SimpleBranch, SimpleCell, SimpleNet):
-    branch = SimpleBranch(4)
-    cell = SimpleCell(3, 4)
-    net1 = SimpleNet(4, 3, 8)
-    net2 = SimpleNet(4, 3, 8)
+def test_connect():
+    branch = build.branch(ncomp=4)
+    cell = build.cell(nbranches=3, ncomp=4)
+    net1 = build.net(ncells=4, nbranches=3, ncomp=8)
+    net2 = build.net(ncells=4, nbranches=3, ncomp=8)
 
     cell1_net1 = net1[0, 0, 0]
     cell2_net1 = net1[1, 0, 0]
@@ -71,8 +67,8 @@ def test_connect(SimpleBranch, SimpleCell, SimpleNet):
     assert (first_set_edges["type"] == "TestSynapse").all()
 
 
-def test_fully_connect(SimpleNet):
-    net1 = SimpleNet(16, 3, 8)
+def test_fully_connect():
+    net1 = build.net(ncells=16, nbranches=3, ncomp=8)
     for i in range(4):
         fully_connect(net1[i], net1[4:8], TestSynapse())
 
@@ -117,7 +113,7 @@ def test_fully_connect(SimpleNet):
     )
 
     # Test with random post synaptic compartment selection
-    net2 = SimpleNet(16, 3, 8)
+    net2 = build.net(ncells=16, nbranches=3, ncomp=8)
     _ = np.random.seed(0)
     for i in range(4):
         fully_connect(net2[i], net2[4:8], TestSynapse(), random_post_comp=True)
@@ -163,8 +159,8 @@ def test_fully_connect(SimpleNet):
     )
 
 
-def test_sparse_connect(SimpleNet):
-    net1 = SimpleNet(4 * 4, 4, 4)
+def test_sparse_connect():
+    net1 = build.net(ncells=4 * 4, nbranches=4, ncomp=4)
     _ = np.random.seed(0)
 
     for i in range(4):
@@ -178,7 +174,7 @@ def test_sparse_connect(SimpleNet):
     )
 
     # Test with random post synaptic compartment selection
-    net2 = SimpleNet(4 * 4, 4, 4)
+    net2 = build.net(ncells=4 * 4, nbranches=4, ncomp=4)
     _ = np.random.seed(0)
 
     for i in range(4):
@@ -192,8 +188,8 @@ def test_sparse_connect(SimpleNet):
     )
 
 
-def test_connectivity_matrix_connect(SimpleNet):
-    net = SimpleNet(4 * 4, 3, 8)
+def test_connectivity_matrix_connect():
+    net = build.net(ncells=4 * 4, nbranches=3, ncomp=8)
 
     n_by_n_adjacency_matrix = np.array(
         [[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 0, 0]], dtype=bool
@@ -219,7 +215,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
     inds_of_connected_cells = np.stack(np.where(m_by_n_adjacency_matrix)).T
 
-    net = SimpleNet(4 * 4, 3, 8)
+    net = build.net(ncells=4 * 4, nbranches=3, ncomp=8)
     with pytest.raises(AssertionError):
         connectivity_matrix_connect(
             net[:4], net[:4], TestSynapse(), m_by_n_adjacency_matrix
@@ -240,7 +236,7 @@ def test_connectivity_matrix_connect(SimpleNet):
     )
 
     # Test with different cell views
-    net = SimpleNet(4 * 4, 3, 8)
+    net = build.net(ncells=4 * 4, nbranches=3, ncomp=8)
     connectivity_matrix_connect(
         net[1:4], net[2:6], TestSynapse(), m_by_n_adjacency_matrix
     )

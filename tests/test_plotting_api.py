@@ -4,25 +4,26 @@
 import os
 from copy import deepcopy
 
-import jax
-
-from jaxley.connect import connect
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 import jaxley as jx
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse
+from tests import builders as build
 
 
-def test_cell(SimpleMorphCell):
+@pytest.fixture(autouse=True)
+def close_figures():
+    yield
+    plt.close("all")
+
+
+def test_cell():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
-    cell = SimpleMorphCell(fname, ncomp=1)
+    cell = build.swc_cell(fname, ncomp=1)
     cell.branch(0).set_ncomp(2)  # test inhomogeneous ncomp
 
     # Plot 1.
@@ -37,12 +38,12 @@ def test_cell(SimpleMorphCell):
     ax = cell.soma.vis()
 
 
-def test_network(SimpleMorphCell):
+def test_network():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
-    cell1 = SimpleMorphCell(fname, ncomp=1)
-    cell2 = SimpleMorphCell(fname, ncomp=1)
-    cell3 = SimpleMorphCell(fname, ncomp=1)
+    cell1 = build.swc_cell(fname, ncomp=1)
+    cell2 = build.swc_cell(fname, ncomp=1)
+    cell3 = build.swc_cell(fname, ncomp=1)
 
     net = jx.Network([cell1, cell2, cell3])
     connect(
@@ -84,10 +85,10 @@ def test_network(SimpleMorphCell):
     ax = net.excitatory.vis()
 
 
-def test_vis_networks_built_from_scratch(SimpleComp, SimpleBranch, SimpleCell):
-    comp = SimpleComp(copy=True)
-    branch = SimpleBranch(4)
-    cell = SimpleCell(5, 3)
+def test_vis_networks_built_from_scratch():
+    comp = build.comp()
+    branch = build.branch(ncomp=4)
+    cell = build.cell(nbranches=5, ncomp=3)
     cell.branch(0).set_ncomp(3)  # test inhomogeneous ncomp
 
     net = jx.Network([cell, cell])
@@ -123,10 +124,10 @@ def test_vis_networks_built_from_scratch(SimpleComp, SimpleBranch, SimpleCell):
     ax = branch.vis(ax=ax)
 
 
-def test_mixed_network(SimpleMorphCell):
+def test_mixed_network():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
-    cell1 = SimpleMorphCell(fname, ncomp=1)
+    cell1 = build.swc_cell(fname, ncomp=1)
 
     comp = jx.Compartment()
     branch = jx.Branch(comp, 4)
@@ -160,14 +161,12 @@ def test_mixed_network(SimpleMorphCell):
     _ = net.vis(detail="full")
 
 
-def test_volume_plotting(
-    SimpleComp, SimpleBranch, SimpleCell, SimpleNet, SimpleMorphCell
-):
-    comp = SimpleComp()
-    branch = SimpleBranch(2)
-    cell = SimpleCell(2, 2)
+def test_volume_plotting():
+    comp = build.comp()
+    branch = build.branch(ncomp=2)
+    cell = build.cell(nbranches=2, ncomp=2)
     cell.branch(0).set_ncomp(3)  # test inhomogeneous ncomp
-    net = SimpleNet(2, 2, 2)
+    net = build.net(ncells=2, nbranches=2, ncomp=2)
 
     for module in [comp, branch, cell, net]:
         module.compute_xyz()
@@ -179,7 +178,7 @@ def test_volume_plotting(
         fpaths.append(fpath)
 
     for fname in fpaths:
-        morph_cell = SimpleMorphCell(fname, ncomp=1)
+        morph_cell = build.swc_cell(fname, ncomp=1)
 
         fig, ax = plt.subplots()
         for module in [comp, branch, cell, morph_cell]:
@@ -202,6 +201,6 @@ def test_volume_plotting(
 
         # In #725, we had discovered a bug when `ncomp=2`. This test ensures that this
         # bug does not resurface.
-        morph_cell = SimpleMorphCell(fname, ncomp=2)
+        morph_cell = build.swc_cell(fname, ncomp=2)
         morph_cell.vis(type="morph", dims=[0, 1], linewidth=0.0, resolution=6)
         plt.close()

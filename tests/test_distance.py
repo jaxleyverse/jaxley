@@ -3,12 +3,6 @@
 
 import os
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
-import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -17,13 +11,14 @@ from jax import jit
 import jaxley as jx
 from jaxley.channels import Leak
 from jaxley.morphology import distance_direct, distance_pathwise
+from tests import builders as build
 
 
-def test_direct_distance(SimpleCell):
+def test_direct_distance():
     ncomp = 4
     length = 15.0
 
-    cell = SimpleCell(5, ncomp)
+    cell = build.cell(nbranches=5, ncomp=ncomp)
     cell.branch("all").loc("all").set("length", length)
     cell.compute_xyz()
     cell.compute_compartment_centers()
@@ -69,10 +64,10 @@ def test_direct_distance(SimpleCell):
     assert dist[0] == (3 * ncomp - 1) * length
 
 
-def test_pathwise_distance(SimpleCell):
+def test_pathwise_distance():
     ncomp = 4
     length = 25.0
-    cell = SimpleCell(5, ncomp)
+    cell = build.cell(nbranches=5, ncomp=ncomp)
     cell.branch("all").loc("all").set("length", length)
     pathdist = distance_pathwise(cell[0, 0], cell)
     cell.nodes["path_dist"] = pathdist
@@ -84,8 +79,8 @@ def test_pathwise_distance(SimpleCell):
 
 
 @pytest.mark.parametrize("kind", ["direct", "pathwise"])
-def test_distance_within_jit(SimpleCell, kind: str):
-    cell = SimpleCell(2, 3)
+def test_distance_within_jit(kind: str):
+    cell = build.cell(nbranches=2, ncomp=3)
     cell.insert(Leak())
     cell.compute_xyz()
     cell.compute_compartment_centers()
@@ -133,17 +128,12 @@ def test_distance_within_jit(SimpleCell, kind: str):
     np.testing.assert_allclose(v, simulate(sigmoid_offset, global_scaling))
 
 
-def test_distance_swc(SimpleMorphCell):
+def test_distance_swc():
     """Ensures that the distance computation for an SWC file remains unchanged."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
 
-    cell = SimpleMorphCell(
-        fname,
-        1,
-        max_branch_len=2_000.0,
-        ignore_swc_tracing_interruptions=True,
-    )
+    cell = build.swc_cell(fname, ncomp=1, max_branch_len=2_000.0)
     cell.set("axial_resistivity", 100.0)
     # Reasonable default values for most models.
     frequency = 100.0

@@ -2,10 +2,6 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -14,6 +10,7 @@ from jax import jit
 import jaxley as jx
 import jaxley.optimize.transforms as jt
 from jaxley.optimize.transforms import ParamTransform
+from tests import builders as build
 
 
 def test_joint_inverse():
@@ -155,8 +152,8 @@ def test_correct(transform):
     "transform",
     [jt.SigmoidTransform(-2, 2), jt.SoftplusTransform(2), jt.NegSoftplusTransform(2)],
 )
-def test_user_api(transform, SimpleCell):
-    cell = SimpleCell(3, 2)
+def test_user_api(transform):
+    cell = build.cell(nbranches=3, ncomp=2)
 
     cell.branch("all").make_trainable("radius")
     cell.branch(2).make_trainable("radius")

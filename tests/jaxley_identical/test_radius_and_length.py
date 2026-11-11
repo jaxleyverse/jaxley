@@ -1,17 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from jax import config
 
-from jaxley.connect import connect
-
-config.update("jax_enable_x64", True)
-config.update("jax_platform_name", "cpu")
-
-import os
 from math import pi
-
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
 import jax.numpy as jnp
 import numpy as np
@@ -19,17 +10,19 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse
+from tests import builders as build
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_radius_and_length_compartment(voltage_solver, SimpleComp):
+def test_radius_and_length_compartment(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
-    comp = SimpleComp()
+    comp = build.comp()
 
     np.random.seed(1)
     comp.set("length", 5 * np.random.rand(1))
@@ -64,13 +57,13 @@ def test_radius_and_length_compartment(voltage_solver, SimpleComp):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_radius_and_length_branch(voltage_solver, SimpleBranch):
+def test_radius_and_length_branch(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
-    branch = SimpleBranch(ncomp=2)
+    branch = build.branch(ncomp=2)
 
     np.random.seed(1)
     branch.set("length", np.flip(5 * np.random.rand(2)))
@@ -105,14 +98,14 @@ def test_radius_and_length_branch(voltage_solver, SimpleBranch):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_radius_and_length_cell(voltage_solver, SimpleCell):
+def test_radius_and_length_cell(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
     num_branches = 3
-    cell = SimpleCell(num_branches, ncomp=2)
+    cell = build.cell(nbranches=num_branches, ncomp=2)
 
     np.random.seed(1)
     rands1 = 5 * np.random.rand(2 * num_branches)
@@ -150,14 +143,14 @@ def test_radius_and_length_cell(voltage_solver, SimpleCell):
 
 
 @pytest.mark.parametrize("voltage_solver", ["jaxley.dhs.cpu"])
-def test_radius_and_length_net(voltage_solver, SimpleNet):
+def test_radius_and_length_net(voltage_solver):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.02, delta_t=0.025, t_max=5.0
     )
 
     num_branches = 3
-    net = SimpleNet(2, num_branches, 2)
+    net = build.net(ncells=2, nbranches=num_branches, ncomp=2)
 
     np.random.seed(1)
     rands1 = 5 * np.random.rand(2 * num_branches)

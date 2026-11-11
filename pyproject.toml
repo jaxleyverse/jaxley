@@ -64,13 +64,16 @@ dev = [
     "jaxley-mech @ git+https://github.com/jaxleyverse/jaxley-mech.git@v1.0.0",
     "neuron",
     "pytest",
+    "pytest-xdist",
     "pyright",
     "optax",
     "jupyter",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-m 'not perf'"  # `pytest -m perf` overrides this.
+# 4 workers by default (`-n 0` runs serially). `pytest -m perf` overrides the marker
+# filter and runs serially (see `tests/conftest.py`).
+addopts = "-m 'not perf' -n 4"
 markers = [
     "slow: marks tests as slow (T > 10s)",
     "perf: performance benchmarks, local only (run with `pytest -m perf`)",

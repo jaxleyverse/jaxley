@@ -1,14 +1,9 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import os
 
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import numpy as np
 import pytest
 from neuron import h

@@ -1,14 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from jax import config
-
-config.update("jax_enable_x64", True)
-config.update("jax_platform_name", "cpu")
-
-import os
-
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 
 from math import pi
 
@@ -21,11 +13,12 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
+from tests import builders as build
 
 
 @pytest.mark.slow
-def test_network_grad(SimpleNet):
-    net = SimpleNet(7, 5, 4)
+def test_network_grad():
+    net = build.net(ncells=7, nbranches=5, ncomp=4)
     net.insert(HH())
 
     _ = np.random.seed(0)
