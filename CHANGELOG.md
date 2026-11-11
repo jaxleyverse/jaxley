@@ -105,7 +105,7 @@ channels from `jaxley.channels` (#814, @jnsbck)
 
 - CI runs on Python 3.14. The `dev` extra installs `jaxley-mech` from its `v1.0.0` branch until jaxley-mech 1.0 is released (#814, @jnsbck)
 - Fixed broken/obsolete (e.g. `assert all(df1 == df2)` always passes) and removed dead tests + flags (#815, @jnsbck)
-- Removed old regression CI. Regression is now local only. Use `pytets -m perf` or `python tests/perf_regression.py --base main` to print ratios against a git ref. Skipped by plain `pytest` (#816, @jnsbck)
+- Removed old regression CI. Regression is now local only. Use `pytest -m perf` or `python tests/perf_regression.py --base main` to print ratios against a git ref. Skipped by plain `pytest` (#816, @jnsbck)
 
 ### 📚 Documentation
 

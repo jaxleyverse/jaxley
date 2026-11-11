@@ -5,11 +5,10 @@
     python tests/perf_regression.py --base main
     python tests/perf_regression.py --base HEAD --scenario cell net --repeats 5
 
-Runs the scenarios of `tests/test_perf.py` with the `jaxley/` of the base ref (taken
-with `git archive`, which does not touch your checkout) and with the `jaxley/` of the
-working tree. Every run is a fresh process, base and head alternate, and the fastest
-of `--repeats` runs counts. Prints the seconds of both and head / base, marking ratios
-above 1.2 with `*`. Expect a few percent of noise.
+Runs `tests/test_perf.py` in fresh processes, once with the `jaxley/` of the base ref
+(taken with `git archive`, which does not touch your checkout) and once with the
+`jaxley/` of the working tree, `--repeats` times each. Prints the fastest seconds of
+both and head / base. Expect ~10% of noise.
 """
 
 import argparse
@@ -22,94 +21,60 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-import test_perf  # From this directory, which is on `sys.path` when run as a script.
+from test_perf import COLUMNS, SCENARIOS, format_table
 
-REPO = Path(__file__).resolve().parent.parent
-
-
-def worker(jaxley_root: str, out: str, names: list):
-    """Times the scenarios `names` and writes the results to `out`."""
-    import jaxley
-
-    # Make sure that `PYTHONPATH` won over the installed jaxley.
-    expected = Path(jaxley_root).resolve() / "jaxley"
-    assert Path(jaxley.__file__).resolve().parent == expected, jaxley.__file__
-
-    test_perf.warm_up()
-    timings, errors = {}, {}
-    for name in names:
-        try:
-            timings[name] = test_perf.measure(name)
-        except Exception as e:  # E.g., the scenario uses an API the base lacks.
-            errors[name] = f"{type(e).__name__}: {e}"
-    Path(out).write_text(json.dumps({"timings": timings, "errors": errors}))
+TEST_PERF = Path(__file__).resolve().with_name("test_perf.py")
+REPO = TEST_PERF.parent.parent
 
 
-def run_worker(jaxley_root: Path, names: list, tmp: str) -> dict:
-    """Runs `worker` in a fresh process that imports jaxley from `jaxley_root`."""
-    out = Path(tmp) / "results.json"
-    cmd = [sys.executable, __file__, "--worker", str(jaxley_root), str(out), *names]
+def run(jaxley_root, names: list) -> dict:
+    """Times the scenarios `names` in a fresh process that imports `jaxley_root`."""
     env = {**os.environ, "PYTHONPATH": str(jaxley_root)}
-    proc = subprocess.run(cmd, cwd=tmp, env=env, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(f"Run with {jaxley_root} failed:\n{proc.stderr[-3000:]}")
-    return json.loads(out.read_text())
+    cmd = [sys.executable, str(TEST_PERF), *names]
+    out = subprocess.run(cmd, env=env, check=True, stdout=subprocess.PIPE, text=True)
+    return json.loads(out.stdout.splitlines()[-1])
 
 
 def fastest(runs: list) -> dict:
-    """Per scenario and column, the fastest time over all runs."""
-    results = {}
-    for name in runs[0]["timings"]:
-        timings = [run["timings"][name] for run in runs]
-        results[name] = {col: min(t[col] for t in timings) for col in timings[0]}
-    return results
+    """Per scenario and column, the fastest of all runs."""
+    return {
+        name: {c: min(r[name][c] for r in runs) for c in COLUMNS} for name in runs[0]
+    }
 
 
 def main():
-    if sys.argv[1:2] == ["--worker"]:
-        return worker(sys.argv[2], sys.argv[3], sys.argv[4:])
-
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--base", default="main", help="git ref (default: main)")
     parser.add_argument("--repeats", type=int, default=3, help="runs per side")
-    parser.add_argument(
-        "--scenario", nargs="+", default=list(test_perf.SCENARIOS), help="names"
-    )
+    parser.add_argument("--scenario", nargs="+", default=list(SCENARIOS))
     args = parser.parse_args()
 
+    runs = {"base": [], "head": []}
     with tempfile.TemporaryDirectory() as tmp:
+        git_archive = ["git", "archive", args.base, "jaxley"]
         archive = subprocess.run(
-            ["git", "archive", args.base, "jaxley"],
-            cwd=REPO,
-            check=True,
-            capture_output=True,
-        ).stdout
-        with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
-            tar.extractall(Path(tmp) / "base", filter="data")
+            git_archive, cwd=REPO, check=True, stdout=subprocess.PIPE
+        )
+        tarfile.open(fileobj=io.BytesIO(archive.stdout)).extractall(tmp, filter="data")
 
-        roots = {"base": Path(tmp) / "base", "head": REPO}
-        runs = {"base": [], "head": []}
+        roots = {"base": tmp, "head": REPO}
         for i in range(args.repeats):
-            for side in ("base", "head") if i % 2 == 0 else ("head", "base"):
+            for side in runs:
                 print(f"run {i + 1}/{args.repeats}: {side}", flush=True)
-                runs[side].append(run_worker(roots[side], args.scenario, tmp))
+                runs[side].append(run(roots[side], args.scenario))
 
-    for side in ("base", "head"):
-        for name, error in runs[side][0]["errors"].items():
-            print(f"{name} failed on {side}: {error}")
     base, head = fastest(runs["base"]), fastest(runs["head"])
-    ratios = {name: None for name in args.scenario}
-    for name in set(base) & set(head):
-        ratios[name] = {col: head[name][col] / base[name][col] for col in head[name]}
-
+    ratios = {
+        name: {c: head[name][c] / base[name][c] for c in COLUMNS} for name in head
+    }
     print()
-    print(test_perf.format_table(base, f"base [s] ({args.base})"))
+    print(format_table(base, f"base [s] ({args.base})"))
     print()
-    print(test_perf.format_table(head, "head [s] (working tree)"))
+    print(format_table(head, "head [s] (working tree)"))
     print()
-    print(test_perf.format_table(ratios, "head / base", "{:.2f}", mark_above=1.2))
+    print(format_table(ratios, "head / base", fmt=".2f"))
 
 
 if __name__ == "__main__":

@@ -5,8 +5,8 @@
 Run with `pytest -m perf` (without `-n`), which prints a table of seconds per scenario:
 
 - build: constructing the model (e.g. reading the SWC file, inserting channels). JAX's
-  one-time start-up costs are excluded by `warm_up()`; without it, the first `read_swc`
-  in a process takes ~10 s longer.
+  one-time start-up costs are excluded by `_warm_up()`; without it, the first
+  `read_swc` in a process takes ~10 s longer.
 - compile: tracing and compiling `jit(simulate)`.
 - simulate: one run of the compiled simulation (fastest of 3).
 - grad compile, grad: the same for `jit(grad(loss))`.
@@ -14,8 +14,11 @@ Run with `pytest -m perf` (without `-n`), which prints a table of seconds per sc
 To compare against another git ref, run `python tests/perf_regression.py --base main`.
 """
 
+import json
 import os
+import sys
 import time
+from functools import cache
 
 import jax
 
@@ -104,7 +107,8 @@ def net_large():
 SCENARIOS = {f.__name__: f for f in [comp, cell, cell_vmap, net, net_large]}
 
 
-def warm_up():
+@cache
+def _warm_up():
     """Builds the models once (untimed), so that one-time JAX costs (compiling the small
     eager ops used while building) do not depend on which scenario runs first."""
     _ca1_cell()
@@ -127,6 +131,7 @@ def _compile_and_time(fn, params):
 
 def measure(name: str) -> dict:
     """Runs one scenario and returns its timings in seconds."""
+    _warm_up()
     t0 = time.perf_counter()
     simulate, params = SCENARIOS[name]()
     build = time.perf_counter() - t0
@@ -136,40 +141,31 @@ def measure(name: str) -> dict:
 
     compile_time, run_time = _compile_and_time(simulate, params)
     grad_compile_time, grad_time = _compile_and_time(jax.grad(loss), params)
-    return dict(
-        zip(COLUMNS, [build, compile_time, run_time, grad_compile_time, grad_time])
-    )
+    return {
+        "build": build,
+        "compile": compile_time,
+        "simulate": run_time,
+        "grad compile": grad_compile_time,
+        "grad": grad_time,
+    }
 
 
-def format_table(results, title, fmt="{:.3f}", mark_above=None) -> str:
-    """Formats `{scenario: {column: value}}` as a table.
-
-    Missing values are shown as '-', values above `mark_above` get a '*'."""
-
-    def cell(v):
-        if v is None:
-            return "- "
-        return fmt.format(v) + ("*" if mark_above and v > mark_above else " ")
-
-    rows = [[title] + [c + " " for c in COLUMNS]]
-    for name, values in results.items():
-        values = values or {}
-        rows.append([name] + [cell(values.get(c)) for c in COLUMNS])
-    widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
-    lines = []
-    for row in rows:
-        cells = [row[0].ljust(widths[0])]
-        cells += [c.rjust(w) for c, w in zip(row[1:], widths[1:])]
-        lines.append("  ".join(cells).rstrip())
+def format_table(results: dict, title: str, fmt: str = ".3f") -> str:
+    """Formats `{scenario: {column: value}}` as a table."""
+    width = max(len(name) for name in [title, *results])
+    lines = [title.ljust(width) + "".join(f"{c:>14}" for c in COLUMNS)]
+    for name, row in results.items():
+        values = "".join(f"{row[c]:>14{fmt}}" for c in COLUMNS)
+        lines.append(name.ljust(width) + values)
     return "\n".join(lines)
-
-
-@pytest.fixture(scope="module")
-def warmed_up():
-    warm_up()
 
 
 @pytest.mark.perf
 @pytest.mark.parametrize("name", SCENARIOS)
-def test_perf(name, warmed_up):
+def test_perf(name):
     RESULTS[name] = measure(name)
+
+
+if __name__ == "__main__":
+    # Used by `perf_regression.py`: prints the timings of the given scenarios as JSON.
+    print(json.dumps({name: measure(name) for name in sys.argv[1:]}))
