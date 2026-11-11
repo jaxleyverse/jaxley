@@ -1601,40 +1601,47 @@ class Module(ABC):
         data = self.edges if key in self.edges.columns else data
 
         assert data is not None, f"Key '{key}' not found in nodes or edges"
-        not_nan = ~data[key].isna()
-        data = data.loc[not_nan].copy()
-        assert (
-            len(data) > 0
-        ), "No settable parameters found in the selected compartments."
 
-        grouped_view = data.groupby("controlled_by_param")
-        # Because of this `x.index.values` we cannot support `make_trainable()` on
-        # the module level for synapse parameters (but only for `SynapseView`).
-        comp_inds = list(
-            grouped_view.apply(lambda x: x.index.values, include_groups=False)
+        # Build the `(num_params, max_group_size)` index and value matrices without
+        # a Python loop over groups. This used to be a `groupby(...).apply(...)`
+        # plus one `.loc` gather per group, stacked with `jnp.stack`. All three are
+        # O(number of groups) in Python, and `jnp.stack` over a list is quadratic in
+        # it (284s for 21k groups), which made `select(edges=...).make_trainable()`
+        # on a multi-million-edge network effectively never finish.
+        #
+        # `groupby` drops NaN keys; the second term reproduces that. `.to_numpy()`
+        # may return a read-only view, so this must not be an in-place `&=`.
+        keep = (
+            data[key].notna().to_numpy()
+            & data["controlled_by_param"].notna().to_numpy()
         )
+        assert keep.any(), "No settable parameters found in the selected compartments."
+        row_index = data.index.to_numpy()[keep]
+        group_key = data["controlled_by_param"].to_numpy()[keep]
+        values = data[key].to_numpy()[keep]
 
-        # check if all shapes in comp_inds are the same. If not the case this means
-        # the groups in controlled_by_param have different sizes, i.e. due to different
-        # number of comps for two different branches. In this case we pad the smaller
-        # groups with -1 to make them the same size.
-        lens = np.array([inds.shape[0] for inds in comp_inds])
-        max_len = np.max(lens)
-        pad = lambda x: np.pad(x, (0, max_len - x.shape[0]), constant_values=-1)
-        if not np.all(lens == max_len):
-            comp_inds = [
-                pad(inds) if inds.shape[0] < max_len else inds for inds in comp_inds
-            ]
+        # `groupby` orders groups by key and preserves row order within a group. A
+        # stable argsort reproduces exactly that, so the parameter order (and hence
+        # the order of the gradients returned to the user) is unchanged.
+        order = np.argsort(group_key, kind="stable")
+        _, starts, counts = np.unique(
+            group_key[order], return_index=True, return_counts=True
+        )
+        max_len = counts.max()
+        row = np.repeat(np.arange(len(counts)), counts)
+        col = np.arange(len(order)) - np.repeat(starts, counts)
 
-        # Sorted inds are only used to infer the correct starting values.
-        indices_per_param = jnp.stack(comp_inds)
+        # Groups in `controlled_by_param` can have different sizes, e.g. because two
+        # branches have a different number of comps. Smaller groups are padded: -1
+        # in the indices and NaN in the values (ignored by the `nanmean` below),
+        # exactly as before.
+        comp_inds = np.full((len(counts), max_len), -1, dtype=int)
+        padded_vals = np.full((len(counts), max_len), np.nan)
+        comp_inds[row, col] = row_index[order]
+        padded_vals[row, col] = values[order]
 
-        # Assign dummy param (ignored by nanmean later). This adds a new row to the
-        # `data` (which is, e.g., self.nodes). That new row has index `-1`, which does
-        # not clash with any other node index (they are in
-        # `[0, ..., num_total_comps-1]`).
-        data.loc[-1, key] = np.nan
-        param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
+        indices_per_param = jnp.asarray(comp_inds)
+        param_vals = jnp.asarray(padded_vals)
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
