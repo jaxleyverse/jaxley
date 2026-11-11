@@ -1,20 +1,16 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import os
 
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import numpy as np
 import pytest
 from neuron import h
 
 import jaxley as jx
 from jaxley.channels import HH
+from tests import builders as build
 
 _ = h.load_file("stdlib.hoc")
 _ = h.load_file("import3d.hoc")
@@ -30,7 +26,7 @@ _ = h.load_file("import3d.hoc")
         "morph_variable_radiuses_within_branch.swc",
     ],
 )
-def test_swc_voltages(file, SimpleMorphCell):
+def test_swc_voltages(file):
     """Check if voltages of SWC recording match.
 
     To match the branch indices between NEURON and jaxley, we rely on comparing the
@@ -73,9 +69,9 @@ def test_swc_voltages(file, SimpleMorphCell):
     pathlengths_neuron = np.asarray([sec.L for sec in h.allsec()])
 
     ####################### jaxley ##################
-    cell = SimpleMorphCell(
+    cell = build.swc_cell(
         fname,
-        ncomp_per_branch,
+        ncomp=ncomp_per_branch,
         max_branch_len=2_000.0,
         ignore_swc_tracing_interruptions=False,
     )

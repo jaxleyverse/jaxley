@@ -1,10 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import pytest
@@ -12,17 +8,18 @@ from jax import value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
+from tests import builders as build
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])
-def test_grad_against_finite_diff_initial_state(key, SimpleComp):
+def test_grad_against_finite_diff_initial_state(key):
     def simulate():
         return jnp.sum(jx.integrate(comp))
 
     def simulate_with_params(params):
         return jnp.sum(jx.integrate(comp, params=params))
 
-    comp = SimpleComp(copy=True)
+    comp = build.comp()
     comp.insert(HH())
     comp.record()
     comp.stimulate(
@@ -53,14 +50,14 @@ def test_grad_against_finite_diff_initial_state(key, SimpleComp):
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])
-def test_branch_grad_against_finite_diff_initial_state(key, SimpleBranch):
+def test_branch_grad_against_finite_diff_initial_state(key):
     def simulate():
         return jnp.sum(jx.integrate(branch))
 
     def simulate_with_params(params):
         return jnp.sum(jx.integrate(branch, params=params))
 
-    branch = SimpleBranch(4)
+    branch = build.branch(ncomp=4)
     branch.loc(0.0).record()
     branch.loc(0.0).stimulate(
         jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)

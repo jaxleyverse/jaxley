@@ -1,10 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import jax.numpy as jnp
 import numpy as np
@@ -15,11 +11,12 @@ import jaxley as jx
 from jaxley.channels import HH
 from jaxley.optimize import TypeOptimizer
 from jaxley.optimize.utils import l2_norm
+from tests import builders as build
 
 
-def test_type_optimizer_api(SimpleComp):
+def test_type_optimizer_api():
     """Tests whether optimization recovers a ground truth parameter set."""
-    comp = SimpleComp(copy=True)
+    comp = build.comp()
     comp.insert(HH())
     comp.record()
     current = jx.step_current(
@@ -58,9 +55,9 @@ def test_type_optimizer_api(SimpleComp):
         assert not np.allclose(new[key], old[key])
 
 
-def test_type_optimizer(SimpleComp):
+def test_type_optimizer():
     """Tests whether optimization recovers a ground truth parameter set."""
-    comp = SimpleComp(copy=True)
+    comp = build.comp()
     comp.insert(HH())
     comp.record()
     current = jx.step_current(

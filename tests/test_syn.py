@@ -1,19 +1,16 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import os
+import warnings
 
 import numpy as np
 import pytest
 from jax.nn import relu
 
 import jaxley as jx
-from jaxley.channels import HH, Leak
+from jaxley.channels import HH, AdEx, Fire, Leak
 from jaxley.connect import connect
 from jaxley.synapses import (
     AlphaSynapse,
@@ -21,16 +18,22 @@ from jaxley.synapses import (
     CurrentSynapse,
     DynamicSynapse,
     IonotropicSynapse,
+    SpikeSynapse,
     Synapse,
     TestSynapse,
 )
+from tests import builders as build
 
 
-def test_adex_spike_synapse(AdExNet):
+def test_adex_spike_synapse():
     """Test if AdEx neurons properly propagate current through their synapses."""
     n_neurons = 2
     half = n_neurons // 2
-    net = AdExNet(n_neurons, 1, 1, connect=True)
+    net = build.net(ncells=n_neurons, nbranches=1, ncomp=1, connect=True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Ignore surrogate warning.
+        net.insert(AdEx())
+    net.set("capacitance", 200.0)
 
     dt = 0.1
     t_max = 40.0
@@ -42,11 +45,16 @@ def test_adex_spike_synapse(AdExNet):
     assert np.invert(np.any(np.isnan(recordings)))
 
 
-def test_spike_synapse(SpikeNet):
+def test_spike_synapse():
     """Test if SNNs function properly propogate current through their synapses."""
     n_neurons = 2
     half = n_neurons // 2
-    net = SpikeNet(n_neurons, 1, 1, connect=True)
+    net = build.net(ncells=n_neurons, nbranches=1, ncomp=1)
+    net.insert(Fire())
+    net.insert(Leak())
+    jx.fully_connect(
+        net.cell(range(half)), net.cell(range(half, n_neurons)), SpikeSynapse()
+    )
 
     dt = 0.1
     t_max = 40.0
@@ -61,8 +69,8 @@ def test_spike_synapse(SpikeNet):
 @pytest.mark.parametrize(
     "synapse", [CurrentSynapse, ConductanceSynapse, DynamicSynapse, IonotropicSynapse]
 )
-def test_synapse_correctness(SimpleNet, synapse):
-    net = SimpleNet(2, 1, 1)
+def test_synapse_correctness(synapse):
+    net = build.net(ncells=2, nbranches=1, ncomp=1)
     connect(net.cell(0), net.cell(1), synapse())
     net.insert(Leak())
     net.cell(1).record()
@@ -88,8 +96,8 @@ def test_synapse_correctness(SimpleNet, synapse):
         lambda x: x**2,
     ],
 )
-def test_synapse_nonlinearity(SimpleNet, synapse, nonlinearity):
-    net = SimpleNet(2, 1, 1)
+def test_synapse_nonlinearity(synapse, nonlinearity):
+    net = build.net(ncells=2, nbranches=1, ncomp=1)
 
     connect(net.cell(0), net.cell(1), synapse(nonlinearity))
     net.insert(Leak())
