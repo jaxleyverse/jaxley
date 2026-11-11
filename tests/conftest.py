@@ -1,8 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import json
 import os
+import sys
 import warnings
 from copy import deepcopy
 from typing import Optional
@@ -12,7 +12,6 @@ import pytest
 import jaxley as jx
 from jaxley.channels import AdEx, Fire, Leak
 from jaxley.synapses import IonotropicSynapse, SpikeSynapse
-from tests.test_regression import generate_regression_report, load_json
 
 
 @pytest.fixture(scope="session")
@@ -295,74 +294,10 @@ def SpikeNet(SimpleCell):
     spike_nets = {}
 
 
-def pytest_collection_modifyitems(config, items):
-    if config.getoption("--runslow"):
-        # --runslow given in cli: do not skip slow tests
-        return
-    skip_slow = pytest.mark.skip(reason="need --runslow option to run")
-    for item in items:
-        if "slow" in item.keywords:
-            item.add_marker(skip_slow)
-
-
-def pytest_collection_modifyitems(config, items):
-    NEW_BASELINE = (
-        int(os.environ["NEW_BASELINE"]) if "NEW_BASELINE" in os.environ else 0
-    )
-
-    dirname = os.path.dirname(__file__)
-    baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
-
-    def should_skip_regression():
-        return not NEW_BASELINE and not os.path.exists(baseline_fname)
-
-    if should_skip_regression():
-        for item in items:
-            if "regression" in item.keywords:
-                skip_regression = pytest.mark.skip(
-                    reason="need NEW_BASELINE env to run"
-                )
-                item.add_marker(skip_regression)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def print_session_report(request, pytestconfig):
-    """Cleanup a testing directory once we are finished."""
-    NEW_BASELINE = (
-        int(os.environ["NEW_BASELINE"]) if "NEW_BASELINE" in os.environ else 0
-    )
-
-    dirname = os.path.dirname(__file__)
-    baseline_fname = os.path.join(dirname, "regression_test_baselines.json")
-    results_fname = os.path.join(dirname, "regression_test_results.json")
-
-    collected_regression_tests = [
-        item for item in request.session.items if item.get_closest_marker("regression")
-    ]
-
-    def update_baseline():
-        results = load_json(results_fname)
-        with open(baseline_fname, "w") as f:
-            json.dump(results, f, indent=2)
-        os.remove(results_fname)
-
-    def print_regression_report():
-        baselines = load_json(baseline_fname)
-        results = load_json(results_fname)
-
-        report = generate_regression_report(baselines, results)
-        # "No baselines found. Run `git checkout main;UPDATE_BASELINE=1 pytest -m regression; git checkout -`"
-        with open(dirname + "/regression_test_report.txt", "w") as f:
-            f.write(report)
-
-        # the following allows to print the report to the console despite pytest
-        # capturing the output and without specifying the "-s" flag
-        capmanager = request.config.pluginmanager.getplugin("capturemanager")
-        with capmanager.global_and_fixture_disabled():
-            print("\n\n\nRegression Test Report\n----------------------\n")
-            print(report)
-
-    if len(collected_regression_tests) > 0:
-        if NEW_BASELINE:
-            request.addfinalizer(update_baseline)
-        request.addfinalizer(print_regression_report)
+def pytest_terminal_summary(terminalreporter):
+    """Print the timings of `pytest -m perf` (see `tests/test_perf.py`)."""
+    perf = sys.modules.get("tests.test_perf")
+    if perf is not None and perf.RESULTS:
+        backend = perf.jax.default_backend()
+        table = perf.format_table(perf.RESULTS, f"perf [s] ({backend})")
+        terminalreporter.write_line("\n" + table)

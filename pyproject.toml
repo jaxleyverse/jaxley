@@ -70,9 +70,10 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+addopts = "-m 'not perf'"  # `pytest -m perf` overrides this.
 markers = [
     "slow: marks tests as slow (T > 10s)",
-    "regression: marks regression tests",
+    "perf: performance benchmarks, local only (run with `pytest -m perf`)",
 ]
 
 [tool.isort]
