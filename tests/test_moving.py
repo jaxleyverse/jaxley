@@ -1,10 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 import os
 
@@ -13,11 +9,12 @@ import numpy as np
 from jax import jit
 
 import jaxley as jx
+from tests import builders as build
 
 
-def test_move_cell(SimpleBranch, SimpleCell):
+def test_move_cell():
     # Test move on a cell with compute_xyz()
-    cell = SimpleCell(5, ncomp=4)
+    cell = build.cell(nbranches=5, ncomp=4)
     cell.compute_xyz()
     cell.move(20.0, 30.0, 5.0)
     assert cell.xyzr[0][0, 0] == 20.0
@@ -25,7 +22,7 @@ def test_move_cell(SimpleBranch, SimpleCell):
     assert cell.xyzr[0][0, 2] == 5.0
 
     # Test move_to on a cell that starts with a specified xyzr
-    branch = SimpleBranch(ncomp=4)
+    branch = build.branch(ncomp=4)
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -45,8 +42,8 @@ def test_move_cell(SimpleBranch, SimpleCell):
     assert cell.xyzr[0][0, 3] == 10.0
 
 
-def test_move_network(SimpleCell):
-    cell = SimpleCell(3, 3)
+def test_move_network():
+    cell = build.cell(nbranches=3, ncomp=3)
     cell.compute_xyz()
     net = jx.Network([cell, cell, cell])
     net.move(20.0, 30.0, 5.0)
@@ -56,15 +53,15 @@ def test_move_network(SimpleCell):
         assert net.xyzr[i][0, 2] == 5.0
 
 
-def test_move_to_cell(SimpleBranch, SimpleCell):
-    cell = SimpleCell(5, 4)
+def test_move_to_cell():
+    cell = build.cell(nbranches=5, ncomp=4)
     cell.compute_xyz()
     cell.move_to(20.0, 30.0, 5.0)
     assert cell.xyzr[0][0, 0] == 20.0
     assert cell.xyzr[0][0, 1] == 30.0
     assert cell.xyzr[0][0, 2] == 5.0
 
-    branch = SimpleBranch(ncomp=4)
+    branch = build.branch(ncomp=4)
     cell = jx.Cell(
         branch,
         parents=[-1],
@@ -84,8 +81,8 @@ def test_move_to_cell(SimpleBranch, SimpleCell):
     assert cell.xyzr[0][0, 3] == 10.0
 
 
-def test_move_to_network(SimpleNet):
-    net = SimpleNet(3, 3, 4)
+def test_move_to_network():
+    net = build.net(ncells=3, nbranches=3, ncomp=4)
     net.compute_xyz()
     net.move_to(10.0, 20.0, 30.0)
     # Branch 0 of cell 0
@@ -98,10 +95,10 @@ def test_move_to_network(SimpleNet):
     assert net.xyzr[3][0, 2] == 30.0
 
 
-def test_move_to_arrays(SimpleNet):
+def test_move_to_arrays():
     """Test with network"""
     ncomp = 4
-    net = SimpleNet(3, 3, ncomp)
+    net = build.net(ncells=3, nbranches=3, ncomp=ncomp)
     net.compute_xyz()
     x_coords = np.array([10.0, 20.0, 30.0])
     y_coords = np.array([5.0, 15.0, 25.0])
@@ -116,8 +113,8 @@ def test_move_to_arrays(SimpleNet):
     assert net.xyzr[6][0, 1] == 25.0
 
 
-def test_move_to_cellview(SimpleNet):
-    net = SimpleNet(3, 3, 2)
+def test_move_to_cellview():
+    net = build.net(ncells=3, nbranches=3, ncomp=2)
     net.compute_xyz()
 
     # Test with float input
@@ -127,7 +124,7 @@ def test_move_to_cellview(SimpleNet):
     assert net.xyzr[0][0, 2] == 40.0
 
     # Test with array input
-    net = SimpleNet(4, 3, 2)
+    net = build.net(ncells=4, nbranches=3, ncomp=2)
     net.compute_xyz()
     testx = np.array([1.0, 2.0, 3.0])
     testy = np.array([4.0, 5.0, 6.0])
@@ -139,12 +136,12 @@ def test_move_to_cellview(SimpleNet):
     assert net.xyzr[9][0, 0] == 0.0
 
 
-def test_move_to_swc_cell(SimpleMorphCell):
+def test_move_to_swc_cell():
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
-    cell1 = SimpleMorphCell(fname, ncomp=1)
-    cell2 = SimpleMorphCell(fname, ncomp=1)
-    cell3 = SimpleMorphCell(fname, ncomp=1)
+    cell1 = build.swc_cell(fname, ncomp=1)
+    cell2 = build.swc_cell(fname, ncomp=1)
+    cell3 = build.swc_cell(fname, ncomp=1)
 
     # Try move_to on a cell
     cell1.move_to(10.0, 20.0, 30.0)

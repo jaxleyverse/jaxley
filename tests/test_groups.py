@@ -2,26 +2,22 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 import jax
-import pytest
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
-
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+import pytest
 from jax import jit, value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse
+from tests import builders as build
 
 
-def test_subclassing_groups_cell_api(SimpleCell):
+def test_subclassing_groups_cell_api():
     """Test whether `cell.group.branch(0)` works."""
-    cell = SimpleCell(5, 4)
+    cell = build.cell(nbranches=5, ncomp=4)
 
     cell.branch([0, 3, 4]).add_to_group("subtree")
 
@@ -35,9 +31,9 @@ def test_subclassing_groups_cell_api(SimpleCell):
     assert cell.num_trainable_params == 4  # One length per compartment of branch 0.
 
 
-def test_stacking_groups_api(SimpleNet):
+def test_stacking_groups_api():
     """Test whether groups can be intersected (e.g., `net.exc.soma`)."""
-    net = SimpleNet(5, 2, 4)
+    net = build.net(ncells=5, nbranches=2, ncomp=4)
 
     net.cell([0, 1, 2]).add_to_group("exc")
     net.cell("all").branch(0).comp(0).add_to_group("soma")
@@ -50,8 +46,8 @@ def test_stacking_groups_api(SimpleNet):
     assert params[0]["length"] == jnp.asarray([10.0])
 
 
-def test_subclassing_groups_net_api(SimpleNet):
-    net = SimpleNet(10, 2, 4)
+def test_subclassing_groups_net_api():
+    net = build.net(ncells=10, nbranches=2, ncomp=4)
 
     net.cell([0, 3, 5]).add_to_group("excitatory")
 
@@ -65,10 +61,10 @@ def test_subclassing_groups_net_api(SimpleNet):
     assert net.num_trainable_params == 2  # One length per branch of cell 0.
 
 
-def test_subclassing_groups_net_set_equivalence(SimpleNet):
+def test_subclassing_groups_net_set_equivalence():
     """Test whether calling `.set` on subclasses group is same as on view."""
-    net1 = SimpleNet(10, 2, 4)
-    net2 = SimpleNet(10, 2, 4)
+    net1 = build.net(ncells=10, nbranches=2, ncomp=4)
+    net2 = build.net(ncells=10, nbranches=2, ncomp=4)
 
     net1.cell([0, 3, 5]).add_to_group("excitatory")
 
@@ -86,10 +82,10 @@ def test_subclassing_groups_net_set_equivalence(SimpleNet):
     pd.testing.assert_frame_equal(net1.nodes, net2.nodes)
 
 
-def test_subclassing_groups_net_make_trainable_equivalence(SimpleNet):
+def test_subclassing_groups_net_make_trainable_equivalence():
     """Test whether calling `.maek_trainable` on subclasses group is same as on view."""
-    net1 = SimpleNet(10, 2, 4)
-    net2 = SimpleNet(10, 2, 4)
+    net1 = build.net(ncells=10, nbranches=2, ncomp=4)
+    net2 = build.net(ncells=10, nbranches=2, ncomp=4)
 
     net1.cell([0, 3, 5]).add_to_group("excitatory")
 
@@ -119,10 +115,10 @@ def test_subclassing_groups_net_make_trainable_equivalence(SimpleNet):
         assert jnp.array_equal(inds1, inds2)
 
 
-def test_fully_connect_groups_equivalence(SimpleNet):
+def test_fully_connect_groups_equivalence():
     """Test whether groups can be used with `fully_connect`."""
-    net1 = SimpleNet(10, 2, 4)
-    net2 = SimpleNet(10, 2, 4)
+    net1 = build.net(ncells=10, nbranches=2, ncomp=4)
+    net2 = build.net(ncells=10, nbranches=2, ncomp=4)
 
     net1.cell([0, 3, 5]).add_to_group("layer1")
     net1.cell([6, 8]).add_to_group("layer2")
@@ -138,9 +134,9 @@ def test_fully_connect_groups_equivalence(SimpleNet):
     pd.testing.assert_frame_equal(net1.edges, net2.edges)
 
 
-def test_set_ncomp_changes_groups(SimpleCell):
+def test_set_ncomp_changes_groups():
     """Test whether groups get updated appropriately after `set_ncomp`."""
-    cell = SimpleCell(3, 4)
+    cell = build.cell(nbranches=3, ncomp=4)
     cell.branch(0).add_to_group("exc")
     cell.branch(0).set_ncomp(1)
     assert len(cell.exc.nodes) == 1
@@ -150,12 +146,12 @@ def test_set_ncomp_changes_groups(SimpleCell):
     assert len(cell.exc.nodes) == 6  # 2 from branch(0) and 4 from branch(1).
 
 
-def test_groups_are_carried_over_from_constituents(SimpleCell):
-    cell1 = SimpleCell(2, 3)
+def test_groups_are_carried_over_from_constituents():
+    cell1 = build.cell(nbranches=2, ncomp=3)
     cell1.set("radius", np.arange(6))
     cell1.branch(1).add_to_group("soma")
 
-    cell2 = SimpleCell(2, 3)
+    cell2 = build.cell(nbranches=2, ncomp=3)
     cell2.set("radius", 10 * np.arange(6))
     cell2.branch(0).add_to_group("axon")
 

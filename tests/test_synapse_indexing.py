@@ -1,10 +1,6 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
 
 from typing import List
 
@@ -21,6 +17,7 @@ from jaxley.synapses import (
     Synapse,
     TestSynapse,
 )
+from tests import builders as build
 
 
 def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
@@ -48,10 +45,10 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
     "synapse_type",
     [IonotropicSynapse, CurrentSynapse, TestSynapse, ConductanceSynapse],
 )
-def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
+def test_set_and_querying_params_one_type(synapse_type):
     """Test if the correct parameters are set if one type of synapses is inserted."""
     synapse_type = synapse_type()
-    net = SimpleNet(4, 1, 4)
+    net = build.net(ncells=4, nbranches=1, ncomp=4)
 
     for pre_ind in [0, 1]:
         for post_ind in [2, 3]:
@@ -88,10 +85,10 @@ def test_set_and_querying_params_one_type(synapse_type, SimpleNet):
 @pytest.mark.parametrize(
     "synapse_type", [CurrentSynapse, ConductanceSynapse, TestSynapse]
 )
-def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
+def test_set_and_querying_params_two_types(synapse_type):
     """Test whether the correct parameters are set."""
     synapse_type = synapse_type()
-    net = SimpleNet(4, 1, 4)
+    net = build.net(ncells=4, nbranches=1, ncomp=4)
 
     for pre_ind in [0, 1]:
         for post_ind, synapse in zip([2, 3], [IonotropicSynapse(), synapse_type]):
@@ -146,12 +143,12 @@ def test_set_and_querying_params_two_types(synapse_type, SimpleNet):
 @pytest.mark.parametrize(
     "synapse_type", [CurrentSynapse, ConductanceSynapse, TestSynapse]
 )
-def test_shuffling_order_of_set(synapse_type, SimpleNet):
+def test_shuffling_order_of_set(synapse_type):
     """Test whether the result is the same if the order of synapses is changed."""
     synapse_type = synapse_type()
 
-    net1 = SimpleNet(4, 1, 4)
-    net2 = SimpleNet(4, 1, 4)
+    net1 = build.net(ncells=4, nbranches=1, ncomp=4)
+    net2 = build.net(ncells=4, nbranches=1, ncomp=4)
 
     connect(
         net1.cell(0).branch(0).loc(1.0),
@@ -201,9 +198,9 @@ def test_shuffling_order_of_set(synapse_type, SimpleNet):
     assert np.max(np.abs(voltages1 - voltages2)) < 1e-8
 
 
-def test_synapse_recording_order(SimpleNet):
+def test_synapse_recording_order():
     """Ensure that record finds the correct synapse index"""
-    net1 = SimpleNet(4, 1, 1)
+    net1 = build.net(ncells=4, nbranches=1, ncomp=1)
     jx.fully_connect(net1.cell([0, 1]), net1.cell([3]), IonotropicSynapse())
     net1.IonotropicSynapse.record("IonotropicSynapse_s")
     stim = np.zeros_like(np.arange(0, 2, 0.025))  # 2 ms stimulus
@@ -211,7 +208,7 @@ def test_synapse_recording_order(SimpleNet):
     net1.cell(1).stimulate(stim)
     soln1 = jx.integrate(net1)
 
-    net2 = SimpleNet(4, 1, 1)
+    net2 = build.net(ncells=4, nbranches=1, ncomp=1)
     # Addition of these extra synapses should not throw off the indices recorded
     jx.fully_connect(net2.cell([0, 1]), net2.cell([2]), TestSynapse())
     jx.fully_connect(net2.cell([0, 1]), net2.cell([3]), IonotropicSynapse())

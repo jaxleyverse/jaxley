@@ -1,17 +1,10 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-from jax import config
-
-from jaxley.connect import connect
-
-config.update("jax_enable_x64", True)
-config.update("jax_platform_name", "cpu")
 
 import os
 from math import pi
 
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -20,7 +13,9 @@ from jaxley_mech.channels.pospischil import K, Leak, Na
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse
+from tests import builders as build
 
 
 @pytest.mark.slow
@@ -28,7 +23,7 @@ from jaxley.synapses import IonotropicSynapse
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
 )
-def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
+def test_swc_cell(voltage_solver: str, file: str):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
@@ -36,7 +31,7 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", file)
-    cell = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
+    cell = build.swc_cell(fname, ncomp=2, max_branch_len=300.0)
     _ = cell.soma  # Only to test whether the `soma` group was created.
     cell.insert(HH())
     cell.soma.branch(0).loc(1.0).record()
@@ -98,7 +93,7 @@ def test_swc_cell(voltage_solver: str, file: str, SimpleMorphCell):
         # Don't run .gpu on large morph, compile time is ~40 seconds.
     ],
 )
-def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
+def test_swc_net(voltage_solver: str, morph: str):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
@@ -106,8 +101,8 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, f"../swc_files/{morph}.swc")
-    cell1 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
-    cell2 = SimpleMorphCell(fname, ncomp=2, max_branch_len=300.0)
+    cell1 = build.swc_cell(fname, ncomp=2, max_branch_len=300.0)
+    cell2 = build.swc_cell(fname, ncomp=2, max_branch_len=300.0)
 
     if voltage_solver == "jaxley.dhs.gpu":
         # On CPU we have to run this manually. On GPU, it gets run automatically with
@@ -216,7 +211,7 @@ def test_swc_net(voltage_solver: str, morph: str, SimpleMorphCell):
 @pytest.mark.skip
 @pytest.mark.slow
 @pytest.mark.parametrize("swc_backend", ["custom", "graph"])
-def test_swc_morph(swc_backend, SimpleMorphCell):
+def test_swc_morph(swc_backend):
     gt_apical = {}
     gt_soma = {}
     gt_axon = {}
@@ -245,7 +240,7 @@ def test_swc_morph(swc_backend, SimpleMorphCell):
 
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "../swc_files", "bbp_with_axon.swc")  # n120
-    cell = SimpleMorphCell(fname, ncomp=2, swc_backend=swc_backend)
+    cell = build.swc_cell(fname, ncomp=2, backend=swc_backend)
 
     # custom swc reader does not label the root branch that is added to the soma
     # while the graph swc reader does. This is accounted for here.

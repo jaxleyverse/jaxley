@@ -1,18 +1,9 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+import numbers
 import os
 from copy import deepcopy
-
-import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
-
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".8"
-
-import numbers
 
 import jax.numpy as jnp
 import networkx as nx
@@ -33,6 +24,7 @@ from jaxley.io.graph import (
 from jaxley.modules.base import to_graph
 from jaxley.morphology import morph_connect, morph_delete
 from jaxley.synapses import IonotropicSynapse, TestSynapse
+from tests import builders as build
 
 # from jaxley.utils.misc_utils import recursive_compare
 from tests.helpers import (
@@ -43,16 +35,14 @@ from tests.helpers import (
 
 
 # test exporting and re-importing of different modules
-def test_graph_import_export_cycle(
-    SimpleComp, SimpleBranch, SimpleCell, SimpleNet, SimpleMorphCell
-):
+def test_graph_import_export_cycle():
     """Export and import a module and check whether .nodes and .edges remain same."""
     np.random.seed(0)
-    comp = SimpleComp()
-    branch = SimpleBranch(4)
-    cell = SimpleCell(5, 4)
-    morph_cell = SimpleMorphCell(ncomp=1)
-    net = SimpleNet(3, 5, 4)
+    comp = build.comp()
+    branch = build.branch(ncomp=4)
+    cell = build.cell(nbranches=5, ncomp=4)
+    morph_cell = build.swc_cell(ncomp=1)
+    net = build.net(ncells=3, nbranches=5, ncomp=4)
 
     # add synapses
     connect(net[0, 0, 0], net[1, 0, 0], IonotropicSynapse())

@@ -2,10 +2,6 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 import jax
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -16,9 +12,10 @@ from jaxley.channels import HH
 from jaxley.connect import connect, connectivity_matrix_connect, fully_connect
 from jaxley.integrate import build_init_and_step_fn
 from jaxley.synapses import IonotropicSynapse
+from tests import builders as build
 
 
-def test_api_equivalence_morphology(SimpleComp):
+def test_api_equivalence_morphology():
     """Test the API for how one can build morphologies from scratch."""
     ncomp_per_branch = 2
     depth = 2
@@ -28,7 +25,7 @@ def test_api_equivalence_morphology(SimpleComp):
     parents = jnp.asarray(parents)
     num_branches = len(parents)
 
-    comp = SimpleComp()
+    comp = build.comp()
 
     branch1 = jx.Branch([comp for _ in range(ncomp_per_branch)])
     cell1 = jx.Cell([branch1 for _ in range(num_branches)], parents=parents)
@@ -52,9 +49,9 @@ def test_api_equivalence_morphology(SimpleComp):
     ), "Voltages do not match between morphology APIs."
 
 
-def test_solver_backends_comp(SimpleComp):
+def test_solver_backends_comp():
     """Test whether ways of adding synapses are equivalent."""
-    comp = SimpleComp()
+    comp = build.comp()
 
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
@@ -73,9 +70,9 @@ def test_solver_backends_comp(SimpleComp):
     assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
-def test_solver_backends_branch(SimpleBranch):
+def test_solver_backends_branch():
     """Test whether ways of adding synapses are equivalent."""
-    branch = SimpleBranch(4)
+    branch = build.branch(ncomp=4)
 
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
@@ -95,9 +92,9 @@ def test_solver_backends_branch(SimpleBranch):
 
 
 @pytest.mark.slow
-def test_solver_backends_cell(SimpleCell):
+def test_solver_backends_cell():
     """Test whether ways of adding synapses are equivalent."""
-    cell = SimpleCell(4, 4)
+    cell = build.cell(nbranches=4, ncomp=4)
 
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
@@ -117,9 +114,9 @@ def test_solver_backends_cell(SimpleCell):
     assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
-def test_solver_backends_net(SimpleNet):
+def test_solver_backends_net():
     """Test whether ways of adding synapses are equivalent."""
-    net = SimpleNet(2, 4, 4)
+    net = build.net(ncells=2, nbranches=4, ncomp=4)
 
     connect(
         net.cell(0).branch(0).loc(1.0),
@@ -150,14 +147,14 @@ def test_solver_backends_net(SimpleNet):
     assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
 
 
-def test_api_equivalence_synapses(SimpleNet):
+def test_api_equivalence_synapses():
     """Test whether the ways of adding synapses are equivalent.
 
     `connect` with explicit locations, `fully_connect` and
     `connectivity_matrix_connect` all place the synapses 0 -> 1 and 1 -> 0 at branch
     0, compartment 0 of each cell.
     """
-    net1 = SimpleNet(2, 4, 4)
+    net1 = build.net(ncells=2, nbranches=4, ncomp=4)
     connect(
         net1.cell(0).branch(0).comp(0),
         net1.cell(1).branch(0).comp(0),
@@ -169,11 +166,11 @@ def test_api_equivalence_synapses(SimpleNet):
         IonotropicSynapse(),
     )
 
-    net2 = SimpleNet(2, 4, 4)
+    net2 = build.net(ncells=2, nbranches=4, ncomp=4)
     fully_connect(net2.cell(0), net2.cell(1), IonotropicSynapse())
     fully_connect(net2.cell(1), net2.cell(0), IonotropicSynapse())
 
-    net3 = SimpleNet(2, 4, 4)
+    net3 = build.net(ncells=2, nbranches=4, ncomp=4)
     connectivity_matrix_connect(
         net3.cell("all"),
         net3.cell("all"),
@@ -204,8 +201,8 @@ def test_api_equivalence_synapses(SimpleNet):
         ), "Voltages do not match between synapse APIs."
 
 
-def test_api_equivalence_continued_simulation(SimpleCell):
-    cell = SimpleCell(3, 2)
+def test_api_equivalence_continued_simulation():
+    cell = build.cell(nbranches=3, ncomp=2)
     cell.insert(HH())
     cell[0, 1].record()
 
@@ -217,7 +214,7 @@ def test_api_equivalence_continued_simulation(SimpleCell):
     assert np.max(np.abs(v1 - v2)) < 1e-8
 
 
-def test_api_equivalence_network_matches_cell(SimpleBranch):
+def test_api_equivalence_network_matches_cell():
     """Test whether a network with w=0 synapses equals the individual cells.
 
     This runs an unequal number of compartments per branch."""
@@ -226,9 +223,9 @@ def test_api_equivalence_network_matches_cell(SimpleBranch):
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
 
-    branch1 = SimpleBranch(ncomp=1)
-    branch2 = SimpleBranch(ncomp=2)
-    branch3 = SimpleBranch(ncomp=3)
+    branch1 = build.branch(ncomp=1)
+    branch2 = build.branch(ncomp=2)
+    branch3 = build.branch(ncomp=3)
     cell1 = jx.Cell([branch1, branch2, branch3], parents=[-1, 0, 0])
     cell2 = jx.Cell([branch1, branch2], parents=[-1, 0])
     cell1.insert(HH())
@@ -260,8 +257,8 @@ def test_api_equivalence_network_matches_cell(SimpleBranch):
     assert max_error < 1e-8, f"Error is {max_error}"
 
 
-def test_api_init_step_to_integrate(SimpleCell):
-    cell = SimpleCell(3, 2)
+def test_api_init_step_to_integrate():
+    cell = build.cell(nbranches=3, ncomp=2)
     cell.insert(HH())
     cell[0, 1].record()
 

@@ -1,24 +1,20 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import jax
-import pytest
-
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platform_name", "cpu")
-
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import fully_connect
 from jaxley.synapses import IonotropicSynapse, TestSynapse
+from tests import builders as build
 
 
-def test_record_and_stimulate_api(SimpleCell):
+def test_record_and_stimulate_api():
     """Test the API for recording and stimulating."""
-    cell = SimpleCell(3, 2)
+    cell = build.cell(nbranches=3, ncomp=2)
 
     cell.branch(0).loc(0.0).record()
     cell.branch(1).loc(1.0).record()
@@ -38,9 +34,9 @@ def test_record_and_stimulate_api(SimpleCell):
     cell.delete_stimuli()
 
 
-def test_record_shape(SimpleCell):
+def test_record_shape():
     """Test the API for recording and stimulating."""
-    cell = SimpleCell(3, 2)
+    cell = build.cell(nbranches=3, ncomp=2)
 
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
@@ -60,7 +56,7 @@ def test_record_shape(SimpleCell):
     ), f"Shape of recordings ({voltages.shape}) is not right."
 
 
-def test_record_synaptic_and_membrane_states(SimpleNet):
+def test_record_synaptic_and_membrane_states():
     """Tests recording of synaptic and membrane states.
 
     Tests are functional, not just API. They test whether the voltage and synaptic
@@ -69,7 +65,7 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
 
     _ = np.random.seed(0)  # Seed because connectivity is at random postsyn locs.
 
-    net = SimpleNet(3, 1, 4)
+    net = build.net(ncells=3, nbranches=1, ncomp=4)
     net.insert(HH())
 
     fully_connect(net.cell([0]), net.cell([1]), IonotropicSynapse())
@@ -145,17 +141,17 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
         assert np.all(np.abs(maxima_3 - maxima_1 - offset_mem) < 5.0)
 
 
-def test_empty_recordings(SimpleComp):
+def test_empty_recordings():
     # Create an empty compartment
-    comp = SimpleComp()
+    comp = build.comp()
 
     # Check if a ValueError is raised when integrating an empty compartment
     with pytest.raises(ValueError):
         v = jx.integrate(comp, delta_t=0.025, t_max=10.0)
 
 
-def test_write_recordings(SimpleNet):
-    net = SimpleNet(2, 1, 2, connect=True)
+def test_write_recordings():
+    net = build.net(ncells=2, nbranches=1, ncomp=2, connect=True)
     net.cell(0).branch(0).comp(0).record()
     net.cell(1).branch(0).comp(0).record()
     net.IonotropicSynapse.edge(0).record("IonotropicSynapse_s")
