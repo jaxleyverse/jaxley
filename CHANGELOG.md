@@ -89,22 +89,23 @@ from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 - `cell.recordings` has been renamed to `cell.rec_info` (#750, @michaeldeistler)
 - Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
 @michaeldeistler)
-- Jaxley now requires Python `>=3.14` and `networkx>=3.3`. JAX only guarantees support of python 3.12 until July 27.
+- Jaxley now requires Python `>=3.14` and `networkx>=3.3`. JAX only guarantees support of python 3.12 until July 2027 (#814, @jnsbck)
 
 ### 🐛 Bug fixes
 
 - `init_states()` no longer raises an `AttributeError` for modules with the `Na` or `K`
-channels from `jaxley.channels` (@jnsbck)
+channels from `jaxley.channels` (#814, @jnsbck)
 - The `Channel` docstrings now state the correct unit of `compute_current` (`mA/cm2`)
-(@jnsbck)
+(#814, @jnsbck)
 - Graphs without xyz coordinates (e.g. `nx.Graph(edges)` passed to
 `build_compartment_graph`) got edge lengths of `1e-5` instead of the default length `1`
-(@jnsbck)
+(#815, @jnsbck)
 
 ### 🛠️ Internal updates
 
-- CI runs on Python 3.14. The `dev` extra installs `jaxley-mech` from its `v1.0.0` branch until jaxley-mech 1.0 is released (@jnsbck)
-- Fixed broken/obsolete (e.g. `assert all(df1 == df2)` always passes) and removed dead tests + flags (@jnsbck)
+- CI runs on Python 3.14. The `dev` extra installs `jaxley-mech` from its `v1.0.0` branch until jaxley-mech 1.0 is released (#814, @jnsbck)
+- Fixed broken/obsolete (e.g. `assert all(df1 == df2)` always passes) and removed dead tests + flags (#815, @jnsbck)
+- Removed old regression CI. Regression is now local only. Use `pytest -m perf` or `python tests/perf_regression.py --base main` to print ratios against a git ref. Skipped by plain `pytest` (#816, @jnsbck)
 
 ### 📚 Documentation
 
