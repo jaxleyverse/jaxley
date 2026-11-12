@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 
+from jaxley.utils.cell_utils import params_to_pstate
+
 
 def get_segment_xyzrL(section, comp_idx=None, loc=None, ncomp=8):
     assert (
@@ -80,3 +82,24 @@ def equal_both_nan_or_empty_df(a: pd.DataFrame, b: pd.DataFrame) -> bool:
 
     equal = a.eq(b) | (a.isna() & b.isna())
     return bool(equal.to_numpy().all())
+
+
+# Accessors for jaxley internals. The data backend of v1 changes these internals, so
+# tests read them only through these functions, which then are the only place to update.
+
+
+def all_parameters(module, params=[], pstate=None) -> dict:
+    """All parameters of `module` as a simulation sees them.
+
+    The defaults, overwritten by the trainable `params` (from `get_parameters()`) or,
+    if given, by `pstate` (e.g. from `data_set`).
+    """
+    module.to_jax()
+    if pstate is None:
+        pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    return module.get_all_parameters(pstate)
+
+
+def comp_edges(module) -> pd.DataFrame:
+    """The compartment-to-compartment edges used by the voltage solver."""
+    return module._comp_edges

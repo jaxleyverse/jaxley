@@ -109,6 +109,8 @@ channels from `jaxley.channels` (#814, @jnsbck)
 - Cached build fns replace old fixtures such as `SimpleComp`, whose cache was broken. enable fp64 once in `tests/conftest.py` and seed `np.random` before each test. Add compile cache `.pytest_cache/`, for faster testing. Runs ~3.5× faster when warm (`pytest --cache-clear` resets it). Tests run on 4 workers by default (`pytest-xdist`, `-n 0` for serial; `pytest -m perf` always serial) (#818, @jnsbck)
 - Hardcoded testvalues now stored as `.npz` files. Regenerate them after a deliberate numerical change with `pytest --force-regen`. `test_network_grad` now uses relative tolerance instead of absolute since values range from 10 to 3e5. Also fails if a parameter is added or missing (@jnsbck)
 - Development and documentation dependencies changed to dependency groups (`dev`, `doc`): installed with `uv sync` (add `--group doc` for the docs) or `pip install -e . --group dev --group doc` (pip >= 25.1). CI now caches compiled JAX programs between runs. (@jnsbck)
+- Small refactor of test channels and helpers (@jnsbck)
+
 
 ### 📚 Documentation
 
