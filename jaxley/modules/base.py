@@ -953,6 +953,8 @@ class Module(ABC):
             for pump in module.pumps:
                 if pump._name not in [c._name for c in self.pumps]:
                     self.base.pumps.append(pump)
+                if pump.ion_name not in self.pumped_ions:
+                    self.base.pumped_ions.append(pump.ion_name)
                 if pump.current_name not in self.membrane_current_names:
                     self.base.membrane_current_names.append(pump.current_name)
             for group in module.group_names:

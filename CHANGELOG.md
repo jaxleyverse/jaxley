@@ -2,6 +2,8 @@
 
 ### 🐛 Bug fixes
 
+- Preserve pumped ions when composing branches, cells, and networks from modules
+  containing pumps (#811, @Jlei61).
 - Filter synaptic recordings by the requested state or current's synapse type,
   while preserving the selected view, to avoid unrelated or out-of-bounds indices (#793, @Jlei61).
 
