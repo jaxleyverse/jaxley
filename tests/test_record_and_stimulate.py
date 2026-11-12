@@ -70,6 +70,18 @@ def test_record_synaptic_and_membrane_states(SimpleNet):
     fully_connect(net.cell([1]), net.cell([2]), TestSynapse())
     fully_connect(net.cell([2]), net.cell([0]), IonotropicSynapse())
 
+    # Other synapse types must not contribute recording indices (#793).
+    for state in ["TestSynapse_c", "i_TestSynapse"]:
+        net.record(state, verbose=False)
+        assert net.recordings.rec_index.tolist() == [0]
+        net.delete_recordings()
+
+    # Mixed views must preserve the selected edge's index within its type.
+    for state in ["IonotropicSynapse_s", "i_IonotropicSynapse"]:
+        net.select(edges=np.array([1, 2])).record(state, verbose=False)
+        assert net.recordings.rec_index.tolist() == [1]
+        net.delete_recordings()
+
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
