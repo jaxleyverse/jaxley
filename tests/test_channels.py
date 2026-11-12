@@ -1,147 +1,18 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 from math import pi
-from typing import Dict, Optional
+from typing import Optional
 
 import jax.numpy as jnp
 import numpy as np
 import pytest
 from jax import Array
-from jax.typing import ArrayLike
 from jaxley_mech.channels.pospischil import CaL, CaT, K, Km, Leak, Na
 
 import jaxley as jx
 from jaxley.channels import HH, AdEx, Channel, Fire, Izhikevich, Rate
-from jaxley.solver_gate import exponential_euler, save_exp
 from tests import builders as build
-
-
-class CaPump(Channel):
-    """Calcium dynamics tracking inside calcium concentration, modeled after Destexhe et al. 1994."""
-
-    def __init__(
-        self,
-        name: Optional[str] = None,
-    ):
-        super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
-            f"{self._name}_decay": 80,  # Rate of removal of calcium in ms
-            f"{self._name}_depth": 0.1,  # Depth of shell in um
-            f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
-        }
-        self.channel_states = {
-            f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
-        }
-        self.current_name = f"i_Ca"
-        self.META = {
-            "reference": "Modified from Destexhe et al., 1994",
-            "mechanism": "Calcium dynamics",
-        }
-
-    def update_states(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Update internal calcium concentration based on calcium current and decay."""
-        prefix = self._name
-        ica = states["i_Ca"] / 1_000.0
-        cai = states["CaCon_i"]
-        gamma = params[f"{prefix}_gamma"]
-        decay = params[f"{prefix}_decay"]
-        depth = params[f"{prefix}_depth"]
-        minCai = params[f"{prefix}_minCai"]
-
-        FARADAY = 96485  # Coulombs per mole
-
-        # Calculate the contribution of calcium currents to cai change
-        drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
-
-        cai_tau = decay
-        cai_inf = minCai + decay * drive_channel
-        new_cai = exponential_euler(cai, delta_t, cai_inf, cai_tau)
-
-        return {f"CaCon_i": new_cai}
-
-    def compute_current(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """This dynamics model does not directly contribute to the membrane current."""
-        return 0
-
-    def init_state(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Initialize the state at fixed point of gate dynamics."""
-        return {}
-
-
-class CaNernstReversal(Channel):
-    """Compute Calcium reversal from inner and outer concentration of calcium."""
-
-    def __init__(
-        self,
-        name: Optional[str] = None,
-    ):
-        super().__init__(name)
-        self.channel_constants = {
-            "F": 96485.3329,  # C/mol (Faraday's constant)
-            "T": 279.45,  # Kelvin (temperature)
-            "R": 8.314,  # J/(mol K) (gas constant)
-        }
-        self.channel_params = {}
-        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
-        self.current_name = f"i_Ca"
-
-    def update_states(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Update internal calcium concentration based on calcium current and decay."""
-        R, T, F = (
-            self.channel_constants["R"],
-            self.channel_constants["T"],
-            self.channel_constants["F"],
-        )
-        Cai = states["CaCon_i"]
-        Cao = states["CaCon_e"]
-        C = R * T / (2 * F) * 1000  # mV
-        vCa = C * jnp.log(Cao / Cai)
-        return {"eCa": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
-
-    def compute_current(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """This dynamics model does not directly contribute to the membrane current."""
-        return 0
-
-    def init_state(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Initialize the state at fixed point of gate dynamics."""
-        return {}
+from tests.mechanisms import KCA11, CaNernstReversal, CaPump
 
 
 def test_channel_set_name():
@@ -280,76 +151,6 @@ def test_init_states_split_hh_matches_hh():
         )
     # The steady state depends on the voltage, so the states differ per compartment.
     assert len(np.unique(split.nodes["Na_m"].to_numpy())) == len(voltages)
-
-
-class KCA11(Channel):
-    def __init__(self, name: Optional[str] = None):
-        super().__init__(name)
-        prefix = self._name
-        self.channel_params = {
-            f"{prefix}_q10_ch": 3,
-            f"{prefix}_q10_ch0": 22,
-            "celsius": 22,
-        }
-        self.channel_states = {f"{prefix}_m": 0.02, "CaCon_i": 1e-4}
-        self.current_name = f"i_K"
-
-    def update_states(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Update state."""
-        prefix = self._name
-        m = states[f"{prefix}_m"]
-        q10 = params[f"{prefix}_q10_ch"] ** (
-            (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
-        )
-        cai = states["CaCon_i"]
-        new_m = exponential_euler(m, delta_t, *self.m_gate(voltage, cai, q10))
-        return {f"{prefix}_m": new_m}
-
-    def compute_current(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Return current."""
-        prefix = self._name
-        m = states[f"{prefix}_m"]
-        g = 0.03 * m * 1000  # mS/cm^2
-        return g * (voltage + 80.0)
-
-    def init_state(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
-        q10 = params[f"{prefix}_q10_ch"] ** (
-            (params["celsius"] - params[f"{prefix}_q10_ch0"]) / 10
-        )
-        cai = states["CaCon_i"]
-        m_inf, _ = self.m_gate(voltage, cai, q10)
-        return {f"{prefix}_m": m_inf}
-
-    @staticmethod
-    def m_gate(v, cai, q10):
-        cai = cai * 1e3
-        v_half = -66 + 137 * save_exp(-0.3044 * cai) + 30.24 * save_exp(-0.04141 * cai)
-        alpha = 25.0
-
-        beta = 0.075 / save_exp((v - v_half) / 10)
-        m_inf = alpha / (alpha + beta)
-        tau_m = 1.0 * q10
-        return m_inf, tau_m
 
 
 def test_init_states_complex_channel():
@@ -580,7 +381,7 @@ def test_lif(solver):
 
 
 @pytest.mark.parametrize("solver", ["fwd_euler", "bwd_euler", "exp_euler"])
-def test_izhikevich(solver):
+def test_izhikevich(solver, golden):
     cell = jx.Cell()
     cell.insert(Izhikevich())
     cell.record("v")
@@ -591,26 +392,10 @@ def test_izhikevich(solver):
     cell.stimulate(jx.step_current(10.0, 180.0, 0.012, dt, t_max))
     v = jx.integrate(cell, delta_t=dt, solver=solver)
 
-    v_250307 = jnp.asarray(
-        [
-            -70.0,
-            -65.0123028,
-            -69.20009282,
-            -71.46372414,
-            -70.71902502,
-            -53.02998553,
-            -63.15451445,
-            -67.04028155,
-            -69.77691688,
-            -71.87443646,
-            -82.1561912,
-        ]
-    )
-    max_error = np.max(np.abs(v[0, ::200] - v_250307))
-    assert max_error < 1e-8, f"Error {max_error} to large."
+    golden.check({"v": np.asarray(v[0, ::200])}, atol=1e-8)
 
 
-def test_rate_channel():
+def test_rate_channel(golden):
     cell = jx.Cell()
     cell.set("length", 1.0 / (2 * pi * 1e-5))
     cell.set("radius", 1.0)  # 1.0 is also the default.
@@ -625,24 +410,7 @@ def test_rate_channel():
     t_max = 10.0
     v = jx.integrate(cell, t_max=t_max, delta_t=dt)
 
-    v_250307 = jnp.asarray(
-        [
-            2.0,
-            2.73575888,
-            3.00642945,
-            3.10600359,
-            3.14263486,
-            3.15611076,
-            1.16106826,
-            0.42713314,
-            0.1571335,
-            0.05780618,
-            0.02126571,
-            0.00782322,
-        ]
-    )
-    max_error = np.max(np.abs(v[0] - v_250307))
-    assert max_error < 1e-8, f"Error {max_error} to large."
+    golden.check({"v": np.asarray(v[0])}, atol=1e-8)
 
 
 def test_multicompartment_lif():

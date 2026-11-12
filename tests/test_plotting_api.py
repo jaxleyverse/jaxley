@@ -22,7 +22,7 @@ def close_figures():
 
 def test_cell():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
     cell = build.swc_cell(fname, ncomp=1)
     cell.branch(0).set_ncomp(2)  # test inhomogeneous ncomp
 
@@ -40,7 +40,7 @@ def test_cell():
 
 def test_network():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
     cell1 = build.swc_cell(fname, ncomp=1)
     cell2 = build.swc_cell(fname, ncomp=1)
     cell3 = build.swc_cell(fname, ncomp=1)
@@ -126,7 +126,7 @@ def test_vis_networks_built_from_scratch():
 
 def test_mixed_network():
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
     cell1 = build.swc_cell(fname, ncomp=1)
 
     comp = jx.Compartment()
@@ -177,20 +177,19 @@ def test_volume_plotting():
         fpath = os.path.join(base_dir, "swc_files", name)
         fpaths.append(fpath)
 
+    # The simple modules only once, in 2D and 3D.
+    _, ax = plt.subplots()
+    for module in [comp, branch, cell]:
+        module.vis(type="comp", ax=ax, resolution=6)
+        module.vis(type="comp", dims=[0, 1, 2], resolution=6)
+    net.vis(type="comp", ax=ax, cell_plot_kwargs={"resolution": 6})
+    net.vis(type="comp", dims=[0, 1, 2], cell_plot_kwargs={"resolution": 6})
+
     for fname in fpaths:
         morph_cell = build.swc_cell(fname, ncomp=1)
-
-        fig, ax = plt.subplots()
-        for module in [comp, branch, cell, morph_cell]:
-            module.vis(type="comp", ax=ax, resolution=6)
-        net.vis(type="comp", ax=ax, cell_plot_kwargs={"resolution": 6})
-        plt.close(fig)
-
-        # test 3D plotting
-        for module in [comp, branch, cell, morph_cell]:
-            module.vis(type="comp", dims=[0, 1, 2], resolution=6)
-        net.vis(type="comp", dims=[0, 1, 2], cell_plot_kwargs={"resolution": 6})
-        plt.close()
+        morph_cell.vis(type="comp", resolution=6)
+        morph_cell.vis(type="comp", dims=[0, 1, 2], resolution=6)
+        plt.close("all")
 
         # test morph plotting (does not work if no radii in xyzr)
         morph_cell.branch(1).vis(type="morph")

@@ -12,6 +12,7 @@ import jaxley as jx
 from jaxley.channels import Leak
 from jaxley.morphology import distance_direct, distance_pathwise
 from tests import builders as build
+from tests.helpers import apply_d_lambda_rule
 
 
 def test_direct_distance():
@@ -128,57 +129,20 @@ def test_distance_within_jit(kind: str):
     np.testing.assert_allclose(v, simulate(sigmoid_offset, global_scaling))
 
 
-def test_distance_swc():
+def test_distance_swc(golden):
     """Ensures that the distance computation for an SWC file remains unchanged."""
     dirname = os.path.dirname(__file__)
     fname = os.path.join(dirname, "swc_files", "morph_ca1_n120_250.swc")
 
     cell = build.swc_cell(fname, ncomp=1, max_branch_len=2_000.0)
     cell.set("axial_resistivity", 100.0)
-    # Reasonable default values for most models.
-    frequency = 100.0
-    d_lambda = 0.1  # Larger -> more coarse-grained.
+    apply_d_lambda_rule(cell)
 
-    for branch in cell.branches:
-        diameter = 2 * branch.nodes["radius"].to_numpy()[0]
-        c_m = branch.nodes["capacitance"].to_numpy()[0]
-        r_a = branch.nodes["axial_resistivity"].to_numpy()[0]
-        l = branch.nodes["length"].to_numpy()[0]
-
-        lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
-        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
-        branch.set_ncomp(ncomp, initialize=False)
-
-    # After the loop, you have to run `cell.initialize()` because we passed
-    # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
-    cell.initialize()
-
-    dists_pathwise = distance_pathwise(cell.soma.branch(0).comp(0), cell)
-    dists_direct_250610 = np.asarray(
-        [
-            0.0,
-            368.06401336,
-            692.67274231,
-            864.42547931,
-            806.69255969,
-            743.73139166,
-            760.54892662,
-        ]
+    soma = cell.soma.branch(0).comp(0)
+    golden.check(
+        {
+            "pathwise": np.asarray(distance_pathwise(soma, cell))[::10],
+            "direct": np.asarray(distance_direct(soma, cell))[::10],
+        },
+        atol=1e-8,
     )
-    error = np.max(np.abs(np.asarray(dists_pathwise)[::10] - dists_direct_250610))
-    assert error < 1e-8, f"Error for pathwise distance is to large: {error} > 1e-8."
-
-    dists_direct = distance_direct(cell.soma.branch(0).comp(0), cell)
-    dists_direct_250610 = np.asarray(
-        [
-            0.0,
-            194.3651027,
-            383.63095437,
-            467.20607951,
-            483.88675182,
-            413.21848932,
-            428.11599931,
-        ]
-    )
-    error = np.max(np.abs(np.asarray(dists_direct)[::10] - dists_direct_250610))
-    assert error < 1e-8, f"Error for direct distance is to large: {error} > 1e-8."

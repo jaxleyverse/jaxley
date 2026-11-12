@@ -1,8 +1,16 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
+from math import pi
+
 import numpy as np
 import pandas as pd
+
+import jaxley as jx
+from jaxley.channels import HH
+from jaxley.connect import fully_connect
+from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.utils.cell_utils import params_to_pstate
 
 
 def get_segment_xyzrL(section, comp_idx=None, loc=None, ncomp=8):
@@ -80,3 +88,81 @@ def equal_both_nan_or_empty_df(a: pd.DataFrame, b: pd.DataFrame) -> bool:
 
     equal = a.eq(b) | (a.isna() & b.isna())
     return bool(equal.to_numpy().all())
+
+
+def apply_d_lambda_rule(cell, frequency: float = 100.0, d_lambda: float = 0.1):
+    """Set the number of compartments of every branch with the d_lambda rule.
+
+    The same rule as in the how-to guide (see `test_set_ncomp::test_dlambda_rule`).
+    """
+    for branch in cell.branches:
+        diameter = 2 * branch.nodes["radius"].to_numpy()[0]
+        c_m = branch.nodes["capacitance"].to_numpy()[0]
+        r_a = branch.nodes["axial_resistivity"].to_numpy()[0]
+        length = branch.nodes["length"].to_numpy()[0]
+
+        lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
+        ncomp = int((length / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
+        branch.set_ncomp(ncomp, initialize=False)
+    cell.initialize()
+
+
+def wire_seven_cell_net(net, stimulated_cells: int = 3):
+    """Set up the 7-cell network of the golden tests (`jaxley_identical/`).
+
+    HH everywhere; ionotropic and test synapses from cells 0-2 to cells 3-5 and from
+    cells 3-5 to cell 6 (random postsynaptic compartments, seed 0); the first
+    `stimulated_cells` cells are stimulated and cell 6 is recorded.
+    """
+    net.insert(HH())
+
+    _ = np.random.seed(0)
+    pre = net.cell([0, 1, 2])
+    post = net.cell([3, 4, 5])
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
+
+    pre = net.cell([3, 4, 5])
+    post = net.cell(6)
+    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
+    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
+
+    area = 2 * pi * 10.0 * 1.0
+    point_process_to_dist_factor = 100_000.0 / area
+    net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
+    net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
+    net.IonotropicSynapse.edge([0, 2, 4]).set(
+        "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
+    )
+    net.TestSynapse.edge([0, 3, 5]).set(
+        "TestSynapse_gC", 0.24 / point_process_to_dist_factor
+    )
+
+    current = jx.step_current(
+        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
+    )
+    for i in range(stimulated_cells):
+        net.cell(i).branch(0).loc(0.0).stimulate(current)
+
+    net.cell(6).branch(0).loc(0.0).record()
+
+
+# Accessors for jaxley internals. The data backend of v1 changes these internals, so
+# tests read them only through these functions, which then are the only place to update.
+
+
+def all_parameters(module, params=[], pstate=None) -> dict:
+    """All parameters of `module` as a simulation sees them.
+
+    The defaults, overwritten by the trainable `params` (from `get_parameters()`) or,
+    if given, by `pstate` (e.g. from `data_set`).
+    """
+    module.to_jax()
+    if pstate is None:
+        pstate = params_to_pstate(params, module.indices_set_by_trainables)
+    return module.get_all_parameters(pstate)
+
+
+def comp_edges(module) -> pd.DataFrame:
+    """The compartment-to-compartment edges used by the voltage solver."""
+    return module._comp_edges

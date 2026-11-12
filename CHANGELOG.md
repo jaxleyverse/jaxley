@@ -107,6 +107,10 @@ channels from `jaxley.channels` (#814, @jnsbck)
 - Fixed broken/obsolete (e.g. `assert all(df1 == df2)` always passes) and removed dead tests + flags (#815, @jnsbck)
 - Removed old regression CI. Regression is now local only. Use `pytest -m perf` or `python tests/perf_regression.py --base main` to print ratios against a git ref. Skipped by plain `pytest` (#816, @jnsbck)
 - Cached build fns replace old fixtures such as `SimpleComp`, whose cache was broken. enable fp64 once in `tests/conftest.py` and seed `np.random` before each test. Add compile cache `.pytest_cache/`, for faster testing. Runs ~3.5× faster when warm (`pytest --cache-clear` resets it). Tests run on 4 workers by default (`pytest-xdist`, `-n 0` for serial; `pytest -m perf` always serial) (#818, @jnsbck)
+- Hardcoded testvalues now stored as `.npz` files. Regenerate them after a deliberate numerical change with `pytest --force-regen`. `test_network_grad` now uses relative tolerance instead of absolute since values range from 10 to 3e5. Also fails if a parameter is added or missing (@jnsbck)
+- Development and documentation dependencies changed to dependency groups (`dev`, `doc`): installed with `uv sync` (add `--group doc` for the docs) or `pip install -e . --group dev --group doc` (pip >= 25.1). CI now caches compiled JAX programs between runs. (@jnsbck)
+- Small refactor of test channels and helpers (@jnsbck)
+- Faster and less repetitive tests: one compilation per gradient check, merged near-identical tests, smaller SWC files where the full ones add nothing, and shared helpers for the d_lambda rule and the 7-cell golden network. New tests for `vmap`, checkpointed gradients, finite-difference gradients of parameters and the convergence order of the solvers. `test_from_graph_vs_NEURON` could never fail; it now compares for real and is marked as an expected failure until the new SWC reader (#660) (@jnsbck)
 
 ### 📚 Documentation
 
