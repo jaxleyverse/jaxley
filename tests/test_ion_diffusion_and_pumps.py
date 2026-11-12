@@ -1,210 +1,17 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import Optional
 
-import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax import Array
-from jax.typing import ArrayLike
-from jaxley_mech.channels.l5pc import CaHVA, CaLVA
+from jaxley_mech.channels.l5pc import CaHVA
 from jaxley_mech.channels.l5pc import CaPump as CaPumpAsChannel
 from jaxley_mech.channels.pospischil import K, Leak, Na
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.channels.channel import Channel
-from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump, Pump
-
-
-class NaPump(Pump):
-    """A dummy pump which is only used for internal `Jaxley` tests.
-
-    Modeled after the calcium channel in Destexhe et al. 1994.
-    """
-
-    def __init__(self, name: Optional[str] = None):
-        super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minNai": 1e-4,  # Minimum intracell. ca concentration in mM.
-        }
-        self.channel_states = {"i_Na": 1e-8, "NaCon_i": 5e-05}
-        self.ion_name = "NaCon_i"
-        self.current_name = "i_NaPump"
-        self.META = {
-            "reference": "Made up by Jaxley developers (@michaeldeistler)",
-            "mechanism": "Sodium dynamics",
-        }
-
-    def update_states(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        modified_state: Array,
-        delta_t: float,
-    ):
-        """Update states if necessary (but this pump has no states to update)."""
-        return {"NaCon_i": states["NaCon_i"], "i_Na": states["i_Na"]}
-
-    def compute_current(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        modified_state: Array,
-        delta_t: float,
-    ):
-        """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
-        ica = states["i_Na"] / 1_000.0
-        gamma = params[f"{prefix}_gamma"]
-        decay = params[f"{prefix}_decay"]
-        depth = params[f"{prefix}_depth"]
-        minCai = params[f"{prefix}_minNai"]
-
-        FARADAY = 96485  # Coulombs per mole.
-
-        # Calculate the contribution of calcium currents to cai change.
-        drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
-        state_decay = (modified_state - minCai) / decay
-        diff = drive_channel - state_decay
-        return -diff
-
-    def init_state(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        modified_state: Array,
-        delta_t: float,
-    ):
-        """Initialize states of channel."""
-        return {}
-
-
-class NaNernstReversal(Channel):
-    """Compute Calcium reversal from inner and outer concentration of calcium."""
-
-    def __init__(
-        self,
-        name: Optional[str] = None,
-    ):
-        super().__init__(name)
-        self.channel_constants = {
-            "F": 96485.3329,  # C/mol (Faraday's constant)
-            "T": 279.45,  # Kelvin (temperature)
-            "R": 8.314,  # J/(mol K) (gas constant)
-        }
-        self.channel_params = {}
-        self.channel_states = {"eNa": 0.0, "NaCon_i": 5e-05, "NaCon_e": 3.0}
-        self.current_name = f"i_Na"
-        self.META = {"ion": "Na"}
-
-    def update_states(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Update internal calcium concentration based on calcium current and decay."""
-        R, T, F = (
-            self.channel_constants["R"],
-            self.channel_constants["T"],
-            self.channel_constants["F"],
-        )
-        Nai = states["NaCon_i"]
-        Nao = states["NaCon_e"]
-        C = R * T / (2 * F) * 1000  # mV
-        vNa = C * jnp.log(Nao / Nai)
-        return {"eNa": vNa, "NaCon_i": Nai, "NaCon_e": Nao}
-
-    def compute_current(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """This dynamics model does not directly contribute to the membrane current."""
-        return 0
-
-    def init_state(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        voltage: Array,
-        delta_t: float,
-    ):
-        """Initialize the state at fixed point of gate dynamics."""
-        return {}
-
-
-class CaPump2(Pump):
-    """A copy of the Calcium dynamics tracking inside calcium concentration.
-
-    Modeled after Destexhe et al. 1994.
-    """
-
-    def __init__(self, name: Optional[str] = None):
-        super().__init__(name)
-        self.channel_params = {
-            f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered).
-            f"{self._name}_decay": 80,  # Buffering time constant in ms.
-            f"{self._name}_depth": 0.1,  # Depth of shell in um.
-            f"{self._name}_minCai": 1e-4,  # Minimum intracell. ca concentration in mM.
-        }
-        self.channel_states = {"i_Ca": 1e-8, "CaCon_i": 5e-05}
-        self.ion_name = "CaCon_i"
-        self.current_name = "i_CaPump"
-        self.META = {
-            "reference": "Modified from Destexhe et al., 1994",
-            "mechanism": "Calcium dynamics",
-        }
-
-    def update_states(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        modified_state: Array,
-        delta_t: float,
-    ):
-        """Update states if necessary (but this pump has no states to update)."""
-        return {"CaCon_i": states["CaCon_i"], "i_Ca": states["i_Ca"]}
-
-    def compute_current(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        modified_state: Array,
-        delta_t: float,
-    ):
-        """Return change of calcium concentration based on calcium current and decay."""
-        prefix = self._name
-        ica = states["i_Ca"] / 1_000.0
-        gamma = params[f"{prefix}_gamma"]
-        decay = params[f"{prefix}_decay"]
-        depth = params[f"{prefix}_depth"]
-        minCai = params[f"{prefix}_minCai"]
-
-        FARADAY = 96485  # Coulombs per mole.
-
-        # Calculate the contribution of calcium currents to cai change.
-        drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
-        state_decay = (modified_state - minCai) / decay
-        diff = drive_channel - state_decay
-        return -diff
-
-    def init_state(
-        self,
-        states: dict[str, Array],
-        params: dict[str, Array],
-        modified_state: Array,
-        delta_t: float,
-    ):
-        """Initialize states of channel."""
-        return {}
+from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump
+from tests import builders as build
+from tests.mechanisms import NaNernstReversal, NaPump
 
 
 def _build_active_cell():
@@ -240,7 +47,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.delete(CaFaradayConcentrationChange())
     # Return to the channel that should really be inserted.
     cell.insert(NaPump())
-    cell.insert(CaPump2())
+    cell.insert(CaPump(name="CaPump2"))
     cell.diffuse("CaCon_i")
     cell.diffuse("NaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
@@ -254,7 +61,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.insert(CaPump())
     cell.diffuse("CaCon_i")
     cell.insert(NaPump())
-    cell.insert(CaPump2())
+    cell.insert(CaPump(name="CaPump2"))
     cell.diffuse("NaCon_i")
     # Delete and diffuse again to test `delete_diffusion` method.
     cell.delete_diffusion("NaCon_i")
@@ -270,7 +77,7 @@ def test_that_order_of_insert_does_not_matter():
     cell.insert(CaPump())
     cell.insert(NaPump())
     cell.diffuse("NaCon_i")
-    cell.insert(CaPump2())
+    cell.insert(CaPump(name="CaPump2"))
     cell.diffuse("CaCon_i")
     cell.set("CaHVA_gCaHVA", 0.0001)
     cell.set("axial_diffusion_CaCon_i", 200.0)
@@ -280,7 +87,7 @@ def test_that_order_of_insert_does_not_matter():
 
     ############################ Option 4:
     cell = _build_active_cell()
-    cell.insert(CaPump2())
+    cell.insert(CaPump(name="CaPump2"))
     cell.insert(CaPump())
     cell.insert(NaPump())
     cell.diffuse("CaCon_i")
@@ -443,64 +250,32 @@ def test_ion_is_pumped_but_not_diffused():
     assert not np.allclose(cacon_i, unpumped), "The pump has no effect."
 
 
-def test_ion_diffusion_compartment():
-    """Test whether `diffuse()` on a compartment does not lead to NaN."""
-    comp = jx.Compartment()
-    comp.insert(CaHVA())
-    comp.insert(CaNernstReversal())
-    comp.diffuse("CaCon_i")
-    comp.set("axial_diffusion_CaCon_i", 1.0)
-    comp.record("v")
-    comp.record("CaCon_i")
-    recs = jx.integrate(comp, t_max=10.0, voltage_solver="jaxley.dhs.cpu")
-    assert np.invert(np.any(np.isnan(recs)))
-
-
-def test_ion_diffusion_branch():
-    """Test whether `diffuse()` on a branch does not lead to NaN.
-
-    By the side, this tests the `fwd_euler` solver together with ion diffusion.
-    """
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp=2)
-    branch.insert(CaHVA())
-    branch.insert(CaNernstReversal())
-    branch.diffuse("CaCon_i")
-    branch.set("axial_diffusion_CaCon_i", 1.0)
-    branch.record("v")
-    branch.record("CaCon_i")
-    recs = jx.integrate(branch, t_max=10.0, solver="fwd_euler")
-    assert np.invert(np.any(np.isnan(recs)))
-
-
-def test_ion_diffusion_cell():
-    """Test whether `diffuse()` on a cell does not lead to NaN."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp=2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
-    cell.insert(CaHVA())
-    cell.insert(CaNernstReversal())
-    cell.diffuse("CaCon_i")
-    cell.set("axial_diffusion_CaCon_i", 1.0)
-    cell.record("v")
-    cell.record("CaCon_i")
-    recs = jx.integrate(cell, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
-    assert np.invert(np.any(np.isnan(recs)))
-
-
-def test_ion_diffusion_net():
-    """Test whether `diffuse()` on a network does not lead to NaN."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp=2)
-    cell = jx.Cell(branch, parents=[-1, 0])
-    net = jx.Network([cell, cell])
-    net.insert(CaHVA())
-    net.insert(CaNernstReversal())
-    net.diffuse("CaCon_i")
-    net.set("axial_diffusion_CaCon_i", 1.0)
-    net.record("v")
-    net.record("CaCon_i")
-    recs = jx.integrate(net, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
+@pytest.mark.parametrize(
+    "module_type, kwargs",
+    [
+        ("comp", dict(t_max=10.0, voltage_solver="jaxley.dhs.cpu")),
+        ("branch", dict(t_max=10.0, solver="fwd_euler")),  # Also tests `fwd_euler`.
+        ("cell", dict(t_max=5.0, voltage_solver="jaxley.dhs.cpu")),
+        ("net", dict(t_max=5.0, voltage_solver="jaxley.dhs.cpu")),
+    ],
+)
+def test_ion_diffusion_runs(module_type, kwargs):
+    """`diffuse()` on any kind of module does not lead to NaN."""
+    if module_type == "comp":
+        module = build.comp()
+    elif module_type == "branch":
+        module = build.branch(ncomp=2)
+    elif module_type == "cell":
+        module = build.cell(nbranches=3, ncomp=2)
+    else:
+        module = build.net(ncells=2, nbranches=2, ncomp=2)
+    module.insert(CaHVA())
+    module.insert(CaNernstReversal())
+    module.diffuse("CaCon_i")
+    module.set("axial_diffusion_CaCon_i", 1.0)
+    module.record("v")
+    module.record("CaCon_i")
+    recs = jx.integrate(module, **kwargs)
     assert np.invert(np.any(np.isnan(recs)))
 
 

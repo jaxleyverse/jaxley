@@ -5,7 +5,6 @@
 import os
 from math import pi
 
-import jax.numpy as jnp
 import numpy as np
 import pytest
 from jaxley_mech.channels.l5pc import *
@@ -23,7 +22,7 @@ from tests import builders as build
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_single_point_soma.swc", "morph_ca1_n120.swc"]
 )
-def test_swc_cell(voltage_solver: str, file: str):
+def test_swc_cell(voltage_solver: str, file: str, golden):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
@@ -39,47 +38,10 @@ def test_swc_cell(voltage_solver: str, file: str):
 
     voltages = jx.integrate(cell, delta_t=dt, voltage_solver=voltage_solver)
 
-    if file == "morph_ca1_n120_single_point_soma.swc":
-        voltages_170425 = jnp.asarray(
-            [
-                [
-                    -70.0,
-                    -66.53085703,
-                    -59.29790807,
-                    -53.52391766,
-                    -52.35430432,
-                    -47.27344832,
-                    -26.23156449,
-                    26.36152268,
-                    2.32087057,
-                    -25.39217393,
-                    -48.79067959,
-                ]
-            ]
-        )
-    elif file == "morph_ca1_n120.swc":
-        voltages_170425 = jnp.asarray(
-            [
-                [
-                    -70.0,
-                    -66.53085703,
-                    -56.74039791,
-                    -49.09988229,
-                    -45.18674417,
-                    -18.02906416,
-                    24.57915633,
-                    -1.09081191,
-                    -27.87178471,
-                    -50.71482553,
-                    -70.38637602,
-                ]
-            ]
-        )
-    else:
-        raise NameError
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_170425))
-    tolerance = 1e-8
-    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+    golden.check(
+        {"voltages": np.asarray(voltages[:, ::20])},
+        atol=1e-8,
+    )
 
 
 @pytest.mark.slow
@@ -93,7 +55,7 @@ def test_swc_cell(voltage_solver: str, file: str):
         # Don't run .gpu on large morph, compile time is ~40 seconds.
     ],
 )
-def test_swc_net(voltage_solver: str, morph: str):
+def test_swc_net(voltage_solver: str, morph: str, golden):
     dt = 0.025  # ms
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.2, delta_t=0.025, t_max=5.0
@@ -137,71 +99,10 @@ def test_swc_net(voltage_solver: str, morph: str):
 
     voltages = jx.integrate(network, delta_t=dt, voltage_solver=voltage_solver)
 
-    if morph == "morph_ca1_n120":
-        voltages_250508 = np.asarray(
-            [
-                [
-                    -70.0,
-                    -66.53085703,
-                    -56.74039791,
-                    -49.09988229,
-                    -45.18674417,
-                    -18.02906416,
-                    24.57915633,
-                    -1.09081191,
-                    -27.87178471,
-                    -50.71482553,
-                    -70.38637602,
-                ],
-                [
-                    -70.0,
-                    -65.71986463,
-                    -55.51779941,
-                    -46.97870197,
-                    -37.46298705,
-                    16.25680606,
-                    13.7342436,
-                    -14.51311616,
-                    -38.04526019,
-                    -60.3871947,
-                    -71.55525201,
-                ],
-            ]
-        )
-    else:
-        voltages_250508 = np.asarray(
-            [
-                [
-                    -70.0,
-                    -66.53085703,
-                    -49.21898099,
-                    -22.94224484,
-                    28.74045665,
-                    2.91546483,
-                    -23.02591871,
-                    -42.61463332,
-                    -64.1234962,
-                    -71.49147031,
-                    -73.34623772,
-                ],
-                [
-                    -70.0,
-                    -65.59415424,
-                    -47.68599328,
-                    -16.57527038,
-                    27.41181873,
-                    -0.68072272,
-                    -25.03181138,
-                    -44.1761724,
-                    -64.08079883,
-                    -70.0792351,
-                    -71.66197441,
-                ],
-            ]
-        )
-    max_error = np.max(np.abs(voltages[:, ::20] - voltages_250508))
-    tolerance = 1e-8
-    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"
+    golden.check(
+        {"voltages": np.asarray(voltages[:, ::20])},
+        atol=1e-8,
+    )
 
 
 # This test will be skipped for now, due to weird quirk of the swc file, which has two
@@ -211,7 +112,7 @@ def test_swc_net(voltage_solver: str, morph: str):
 @pytest.mark.skip
 @pytest.mark.slow
 @pytest.mark.parametrize("swc_backend", ["custom", "graph"])
-def test_swc_morph(swc_backend):
+def test_swc_morph(swc_backend, golden):
     gt_apical = {}
     gt_soma = {}
     gt_axon = {}
@@ -329,51 +230,7 @@ def test_swc_morph(swc_backend):
 
     voltages = jx.integrate(cell)
 
-    voltages_250130 = jnp.asarray(
-        [
-            -65.0,
-            -66.22422623,
-            -67.23001452,
-            -68.06298803,
-            -68.75766951,
-            -33.91317711,
-            -55.24503749,
-            -46.11452291,
-            -42.18960646,
-            -51.12861864,
-            -43.65442616,
-            -40.62727385,
-            -49.56110473,
-            -43.24030949,
-            -36.71731271,
-            -48.7405489,
-            -42.98507829,
-            -34.64282586,
-            -48.24427898,
-            -42.6412365,
-            -34.70568206,
-            -47.90643598,
-            -42.15688181,
-            -36.17711814,
-            -47.65564274,
-            -41.52265914,
-            -38.1627371,
-            -47.44680473,
-            -40.70730741,
-            -40.15298353,
-            -47.25483146,
-            -39.63994798,
-            -41.96818737,
-            -47.06569105,
-            -38.17257448,
-            -43.50053648,
-            -46.87517934,
-            -65.40488865,
-            -69.96981343,
-            -72.24384111,
-            -73.46204372,
-        ]
+    golden.check(
+        {"voltages": np.asarray(voltages[:, ::100])},
+        atol=1e-8,
     )
-    max_error = np.max(np.abs(voltages[:, ::100] - voltages_250130))
-    tolerance = 1e-8
-    assert max_error <= tolerance, f"Error is {max_error} > {tolerance}"

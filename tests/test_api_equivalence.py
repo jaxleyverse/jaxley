@@ -49,102 +49,50 @@ def test_api_equivalence_morphology():
     ), "Voltages do not match between morphology APIs."
 
 
-def test_solver_backends_comp():
-    """Test whether ways of adding synapses are equivalent."""
-    comp = build.comp()
-
+def _stimulated_module(module_type: str):
+    """A stimulated and recorded module, for comparing voltage solvers."""
     current = jx.step_current(
         i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
     )
-    comp.stimulate(current)
-    comp.record()
-
-    voltages_jx_cpu = jx.integrate(comp, voltage_solver="jaxley.dhs.cpu")
-    voltages_jx_gpu = jx.integrate(comp, voltage_solver="jaxley.dhs.gpu")
-    voltages_jx_sparse = jx.integrate(comp, voltage_solver="jax.sparse")
-
-    message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
-    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
-    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
-
-
-def test_solver_backends_branch():
-    """Test whether ways of adding synapses are equivalent."""
-    branch = build.branch(ncomp=4)
-
-    current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
-    )
-    branch.loc(0.0).stimulate(current)
-    branch.loc(0.5).record()
-
-    voltages_jx_cpu = jx.integrate(branch, voltage_solver="jaxley.dhs.cpu")
-    voltages_jx_gpu = jx.integrate(branch, voltage_solver="jaxley.dhs.gpu")
-    voltages_jx_sparse = jx.integrate(branch, voltage_solver="jax.sparse")
-
-    message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
-    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
-    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
+    if module_type == "comp":
+        module = build.comp()
+        module.stimulate(current)
+        module.record()
+    elif module_type == "branch":
+        module = build.branch(ncomp=4)
+        module.loc(0.0).stimulate(current)
+        module.loc(0.5).record()
+    elif module_type == "cell":
+        module = build.cell(nbranches=4, ncomp=4)
+        module.branch(0).loc(0.0).stimulate(current)
+        module.branch(0).loc(0.5).record()
+        module.branch(3).loc(0.5).record()
+    else:
+        module = build.net(ncells=2, nbranches=4, ncomp=4)
+        connect(
+            module.cell(0).branch(0).loc(1.0),
+            module.cell(1).branch(3).loc(1.0),
+            IonotropicSynapse(),
+        )
+        connect(
+            module.cell(1).branch(1).loc(0.8),
+            module.cell(0).branch(3).loc(0.1),
+            IonotropicSynapse(),
+        )
+        module.cell(0).branch(0).loc(0.0).stimulate(current)
+        module.cell(0).branch(0).loc(0.5).record()
+        module.cell(1).branch(3).loc(0.5).record()
+    return module
 
 
-@pytest.mark.slow
-def test_solver_backends_cell():
-    """Test whether ways of adding synapses are equivalent."""
-    cell = build.cell(nbranches=4, ncomp=4)
-
-    current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
-    )
-    cell.branch(0).loc(0.0).stimulate(current)
-    cell.branch(0).loc(0.5).record()
-    cell.branch(3).loc(0.5).record()
-
-    voltages_jx_cpu = jx.integrate(cell, voltage_solver="jaxley.dhs.cpu")
-    voltages_jx_gpu = jx.integrate(cell, voltage_solver="jaxley.dhs.gpu")
-    voltages_jx_sparse = jx.integrate(cell, voltage_solver="jax.sparse")
-
-    message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
-    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
-    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
-
-
-def test_solver_backends_net():
-    """Test whether ways of adding synapses are equivalent."""
-    net = build.net(ncells=2, nbranches=4, ncomp=4)
-
-    connect(
-        net.cell(0).branch(0).loc(1.0),
-        net.cell(1).branch(3).loc(1.0),
-        IonotropicSynapse(),
-    )
-    connect(
-        net.cell(1).branch(1).loc(0.8),
-        net.cell(0).branch(3).loc(0.1),
-        IonotropicSynapse(),
-    )
-
-    current = jx.step_current(
-        i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0
-    )
-    net.cell(0).branch(0).loc(0.0).stimulate(current)
-    net.cell(0).branch(0).loc(0.5).record()
-    net.cell(1).branch(3).loc(0.5).record()
-
-    voltages_jx_cpu = jx.integrate(net, voltage_solver="jaxley.dhs.cpu")
-    voltages_jx_gpu = jx.integrate(net, voltage_solver="jaxley.dhs.gpu")
-    voltages_jx_sparse = jx.integrate(net, voltage_solver="jax.sparse")
-
-    message = "Voltages do not match between"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_gpu))
-    assert max_error < 1e-8, f"{message} cpu/gpu. Error={max_error}"
-    max_error = np.max(np.abs(voltages_jx_cpu - voltages_jx_sparse))
-    assert max_error < 1e-8, f"{message} cpu/sparse. Error={max_error}"
+@pytest.mark.parametrize("module_type", ["comp", "branch", "cell", "net"])
+def test_voltage_solvers_match(module_type):
+    """The DHS solver (CPU and GPU variant) and the sparse solver give the same voltages."""
+    module = _stimulated_module(module_type)
+    v_cpu = jx.integrate(module, voltage_solver="jaxley.dhs.cpu")
+    for voltage_solver in ["jaxley.dhs.gpu", "jax.sparse"]:
+        v = jx.integrate(module, voltage_solver=voltage_solver)
+        np.testing.assert_allclose(v, v_cpu, atol=1e-8, rtol=0, err_msg=voltage_solver)
 
 
 def test_api_equivalence_synapses():

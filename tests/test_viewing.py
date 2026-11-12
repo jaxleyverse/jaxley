@@ -16,6 +16,7 @@ from jaxley.synapses import TestSynapse
 from jaxley.utils.cell_utils import loc_of_index, local_index_of_loc
 from jaxley.utils.misc_utils import cumsum_leading_zero
 from tests import builders as build
+from tests.helpers import comp_edges
 
 
 def test_getitem():
@@ -635,7 +636,7 @@ def test_view_equals_module():
         ]
     )
 
-    assert comp._comp_edges.columns.equals(branch.comp(0)._comp_edges.columns)
+    assert comp_edges(comp).columns.equals(comp_edges(branch.comp(0)).columns)
 
 
 # `ncomp=1` is excluded: with a single compartment, every `loc` touches a branchpoint.
@@ -644,38 +645,38 @@ def test_comp_edge_indexing(ncomp: int):
     """Test whether `_comp_edges` are tracked correctly when viewing."""
     cell = build.cell(nbranches=5, ncomp=ncomp)
     # branchpoint on one side of branch.
-    assert len(cell.branch(0)._comp_edges) == (ncomp - 1) * 2 + 2
+    assert len(comp_edges(cell.branch(0))) == (ncomp - 1) * 2 + 2
     # branchpoint on both sides of branch.
-    assert len(cell.branch(1)._comp_edges) == (ncomp - 1) * 2 + 4
+    assert len(comp_edges(cell.branch(1))) == (ncomp - 1) * 2 + 4
     # branchpoint on one side of branch.
-    assert len(cell.branch(2)._comp_edges) == (ncomp - 1) * 2 + 2
+    assert len(comp_edges(cell.branch(2))) == (ncomp - 1) * 2 + 2
 
-    assert len(cell.branch([0, 1])._comp_edges) == (ncomp - 1) * 2 * 2 + 2 + 4
+    assert len(comp_edges(cell.branch([0, 1]))) == (ncomp - 1) * 2 * 2 + 2 + 4
 
     # .comp() should never return any branchpoints.
-    assert len(cell.branch(1).comp(0)._comp_edges) == 0
-    assert len(cell.branch([0, 1]).comp(0)._comp_edges) == 0
-    assert len(cell.branch("all").comp(0)._comp_edges) == 0
+    assert len(comp_edges(cell.branch(1).comp(0))) == 0
+    assert len(comp_edges(cell.branch([0, 1]).comp(0))) == 0
+    assert len(comp_edges(cell.branch("all").comp(0))) == 0
 
     # .loc() should not return any branchpoints if the value != 0.0 or 1.0.
-    assert len(cell.branch(1).loc(0.1)._comp_edges) == 0
-    assert len(cell.branch([0, 1]).loc(0.2)._comp_edges) == 0
-    assert len(cell.branch("all").loc(0.9)._comp_edges) == 0
+    assert len(comp_edges(cell.branch(1).loc(0.1))) == 0
+    assert len(comp_edges(cell.branch([0, 1]).loc(0.2))) == 0
+    assert len(comp_edges(cell.branch("all").loc(0.9))) == 0
 
     # .loc(0.0) or .loc(1.0) should return edges to the branchpoint.
-    assert len(cell.branch(1).loc(0.0)._comp_edges) == 2
-    assert len(cell.branch(0).loc(0.0)._comp_edges) == 0  # 0 is a tip branch.
-    assert len(cell.branch(1).loc(1.0)._comp_edges) == 2
-    assert len(cell.branch([0, 1]).loc(1.0)._comp_edges) == 4  # 0 + 1 have endpoints.
-    assert len(cell.branch([0, 2]).loc(1.0)._comp_edges) == 2  # only 0 has endpoint.
+    assert len(comp_edges(cell.branch(1).loc(0.0))) == 2
+    assert len(comp_edges(cell.branch(0).loc(0.0))) == 0  # 0 is a tip branch.
+    assert len(comp_edges(cell.branch(1).loc(1.0))) == 2
+    assert len(comp_edges(cell.branch([0, 1]).loc(1.0))) == 4  # 0 + 1 have endpoints.
+    assert len(comp_edges(cell.branch([0, 2]).loc(1.0))) == 2  # only 0 has endpoint.
 
     # Finally, a few checks that `.loc(0.0)` and `.loc(1.0)` return the correct
     # `comp_edges`.
-    assert ncomp - 1 in cell.branch(0).loc(1.0)._comp_edges["sink"].to_numpy().tolist()
-    assert ncomp in cell.branch(1).loc(0.0)._comp_edges["sink"].to_numpy().tolist()
+    assert ncomp - 1 in comp_edges(cell.branch(0).loc(1.0))["sink"].to_numpy().tolist()
+    assert ncomp in comp_edges(cell.branch(1).loc(0.0))["sink"].to_numpy().tolist()
     assert (
         2 * ncomp - 1
-        not in cell.branch(1).loc(0.0)._comp_edges["sink"].to_numpy().tolist()
+        not in comp_edges(cell.branch(1).loc(0.0))["sink"].to_numpy().tolist()
     )
 
 

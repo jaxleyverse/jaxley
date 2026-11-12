@@ -34,7 +34,9 @@ dependencies = [
     "networkx>=3.3",
 ]
 
-[project.optional-dependencies]
+# Not published with the package. `uv sync` installs `dev`, `--group doc` adds the
+# docs dependencies. With pip (>= 25.1): `pip install -e . --group dev --group doc`.
+[dependency-groups]
 doc = [
     "jupyter_contrib_nbextensions",
     "notebook <= 6.4.12",
@@ -56,11 +58,12 @@ doc = [
     "optax",
     "sphinx-book-theme",
 ]
+
 dev = [
     "black",
     "isort",
     # TODO before the 1.0.0 release: replace with `jaxley-mech>=1.0` once jaxley-mech
-    # 1.0 is on PyPI. PyPI rejects packages with direct URL dependencies.
+    # 1.0 is on PyPI.
     "jaxley-mech @ git+https://github.com/jaxleyverse/jaxley-mech.git@v1.0.0",
     "neuron",
     "pytest",

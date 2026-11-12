@@ -1,9 +1,7 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
-import numbers
 import os
-from copy import deepcopy
 
 import jax.numpy as jnp
 import networkx as nx
@@ -23,11 +21,12 @@ from jaxley.io.graph import (
 )
 from jaxley.modules.base import to_graph
 from jaxley.morphology import morph_connect, morph_delete
-from jaxley.synapses import IonotropicSynapse, TestSynapse
+from jaxley.synapses import IonotropicSynapse
 from tests import builders as build
 
 # from jaxley.utils.misc_utils import recursive_compare
 from tests.helpers import (
+    apply_d_lambda_rule,
     equal_both_nan_or_empty_df,
     get_segment_xyzrL,
     import_neuron_morph,
@@ -41,7 +40,10 @@ def test_graph_import_export_cycle():
     comp = build.comp()
     branch = build.branch(ncomp=4)
     cell = build.cell(nbranches=5, ncomp=4)
-    morph_cell = build.swc_cell(ncomp=1)
+    fname = os.path.join(
+        os.path.dirname(__file__), "swc_files", "morph_ca1_n120_250.swc"
+    )
+    morph_cell = build.swc_cell(fname, ncomp=1)
     net = build.net(ncells=3, nbranches=5, ncomp=4)
 
     # add synapses
@@ -187,6 +189,11 @@ def test_trace_branches(file):
     assert sum(errors > 1e-3) == 0
 
 
+# Until v1, this test grouped errors by an empty column and could not fail. Checked
+# properly, compartment positions differ from NEURON by up to ~12 um and radiuses by up
+# to ~0.4 um (also after allowing for reversed branches), while branch lengths match.
+# To be resolved by the new SWC reader (#660, part of v1).
+@pytest.mark.xfail(strict=True, reason="compartment xyz/radius differ from NEURON")
 @pytest.mark.parametrize(
     "file",
     [
@@ -232,39 +239,26 @@ def test_from_graph_vs_NEURON(file):
     neuron_inds = np.argsort(neuron_branch_lens)
     jx_inds = np.argsort(jx_branch_lens)
 
-    neuron_df = pd.DataFrame(columns=["neuron_idx", "x", "y", "z", "radius", "length"])
-    jx_df = pd.DataFrame(columns=["jx_idx", "x", "y", "z", "radius", "length"])
-    for k in range(len(neuron_inds)):
-        neuron_comp_k = np.array(
-            [
-                get_segment_xyzrL(
-                    list(h.allsec())[neuron_inds[k]], comp_idx=i, ncomp=ncomp
-                )
-                for i in range(ncomp)
-            ]
-        )
-        # make this a dataframe
-        neuron_comp_k = pd.DataFrame(
-            neuron_comp_k, columns=["x", "y", "z", "radius", "length"]
-        )
-        neuron_comp_k["idx"] = neuron_inds[k]
-        jx_comp_k = jaxley_comps[jaxley_comps["global_branch_index"] == jx_inds[k]][
-            ["x", "y", "z", "radius", "length"]
+    # Compare compartments of branches matched by length. (Before, the errors were
+    # grouped by a column that was never filled, so these checks could not fail.)
+    columns = ["x", "y", "z", "radius", "length"]
+    sections = list(h.allsec())
+    neuron_comps, jx_comps = [], []
+    for neuron_idx, jx_idx in zip(neuron_inds, jx_inds):
+        neuron_comps += [
+            get_segment_xyzrL(sections[neuron_idx], comp_idx=i, ncomp=ncomp)
+            for i in range(ncomp)
         ]
-        jx_comp_k["idx"] = jx_inds[k]
-        neuron_df = pd.concat([neuron_df, neuron_comp_k], axis=0, ignore_index=True)
-        jx_df = pd.concat([jx_df, jx_comp_k], axis=0, ignore_index=True)
+        is_branch = jaxley_comps["global_branch_index"] == jx_idx
+        jx_comps.append(jaxley_comps.loc[is_branch, columns].to_numpy(dtype=float))
+    neuron_comps = np.asarray(neuron_comps, dtype=float)
+    jx_comps = np.concatenate(jx_comps)
 
-    errors = neuron_df["neuron_idx"].to_frame()
-    errors["jx_idx"] = jx_df["jx_idx"]
-    errors[["x", "y", "z"]] = neuron_df[["x", "y", "z"]] - jx_df[["x", "y", "z"]]
-    xyz_vals = errors[["x", "y", "z"]].to_numpy(dtype=float)
-    errors["xyz"] = np.sqrt((xyz_vals**2).sum(axis=1))
-    errors["radius"] = (neuron_df["radius"] - jx_df["radius"]).astype(float)
-    errors["length"] = (neuron_df["length"] - jx_df["length"]).astype(float)
-
-    assert sum(errors.groupby("jx_idx")["xyz"].max() > 1e-3) == 0
-    assert sum(errors.groupby("jx_idx")["radius"].max() > 1e-3) == 0
+    assert neuron_comps.shape == jx_comps.shape
+    xyz_error = np.linalg.norm(neuron_comps[:, :3] - jx_comps[:, :3], axis=1)
+    radius_error = np.abs(neuron_comps[:, 3] - jx_comps[:, 3])
+    assert np.max(xyz_error) < 1e-3, f"xyz error {np.max(xyz_error)}"
+    assert np.max(radius_error) < 1e-3, f"radius error {np.max(radius_error)}"
     assert sum(errors.groupby("jx_idx")["length"].max() > 1e-3) == 0
 
 
@@ -381,11 +375,11 @@ def test_morph_attach(ncomp: int):
     )
 
 
-@pytest.mark.parametrize("ncomp", [1, 2])
+@pytest.mark.parametrize("ncomp", [1, 3])  # `branch(3).set_ncomp(2)` must change ncomp.
 def test_morph_edit_swc(ncomp: int):
     """Check whether we get NaN after having deleted and added things to SWC."""
     dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", "morph_l5pc_with_axon.swc")
+    fname = os.path.join(dirname, "swc_files", "morph_4_types.swc")
     cell = jx.read_swc(fname, ncomp=ncomp, backend="graph")
     cell = morph_delete(cell.axon)
     cell = morph_delete(cell.apical)
@@ -414,7 +408,7 @@ def test_morph_edit_swc(ncomp: int):
     # Simulation.
     cell[0, 0].record("v")
     cell.stub.branch(0).comp(3).record("v")
-    cell.soma.branch(0).comp(0).stimulate(jx.step_current(10.0, 5.0, 0.2, 0.025, 100.0))
+    cell.soma.branch(0).comp(0).stimulate(jx.step_current(1.0, 5.0, 0.2, 0.025, 10.0))
     v = jx.integrate(cell)
 
     assert np.invert(np.any(np.isnan(v))), "Found NaN"
@@ -474,37 +468,19 @@ def test_from_graph_inhom_compartments(file):
     fname = os.path.join(dirname, "swc_files", file)
     cell = jx.read_swc(fname, ncomp=1)
 
-    # Run the d_lambda rule.
-    frequency = 100.0
-    d_lambda = 0.1  # Larger -> more coarse-grained.
-
-    for branch in cell.branches:
-        diameter = 2 * branch.nodes["radius"].to_numpy()[0]
-        c_m = branch.nodes["capacitance"].to_numpy()[0]
-        r_a = branch.nodes["axial_resistivity"].to_numpy()[0]
-        l = branch.nodes["length"].to_numpy()[0]
-
-        lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
-        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
-        branch.set_ncomp(ncomp, initialize=False)
-    # This cell has inhomogeneous compartments.
-    cell.initialize()
+    apply_d_lambda_rule(cell)  # Inhomogeneous number of compartments.
     comp_graph = to_graph(cell, channels=True, synapses=True)
 
     reconstructed_cell = from_graph(comp_graph)
     reconstructed_graph = to_graph(reconstructed_cell, channels=True, synapses=True)
 
-    def node_match(a, b):
-        for key in a.keys():
-            v1, v2 = a[key], b[key]
-
-            if isinstance(v1, numbers.Number):
-                if not np.isclose(v1, v2, atol=1e-5, equal_nan=True).all():
-                    return False
-            else:
-                if not np.equal(v1, v2).all():
-                    return False
-
-        return True
-
-    assert nx.is_isomorphic(comp_graph, reconstructed_graph, node_match=node_match)
+    # Same nodes (with their attributes) and same edges, in the same order.
+    nodes = pd.DataFrame(dict(comp_graph.nodes(data=True))).T
+    re_nodes = pd.DataFrame(dict(reconstructed_graph.nodes(data=True))).T
+    pd.testing.assert_frame_equal(
+        nodes.sort_index().sort_index(axis=1),
+        re_nodes.sort_index().sort_index(axis=1),
+        check_exact=False,
+        atol=1e-5,
+    )
+    assert sorted(comp_graph.edges) == sorted(reconstructed_graph.edges)

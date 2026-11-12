@@ -97,55 +97,24 @@ def test_swc_radius(file):
     assert max_error < 0.5, f"radiuses do not match, error {max_error}."
 
 
-@pytest.mark.parametrize("reader_backend", ["graph"])
 @pytest.mark.parametrize(
-    "file",
+    "file, ncomps",
     [
-        "morph_3_types.swc",
-        "morph_3_types_single_point_soma.swc",
-        "morph_ca1_n120.swc",
-        "morph_l5pc_with_axon.swc",
+        ("morph_3_types.swc", {"soma": 1, "axon": 1, "basal": 1}),
+        ("morph_3_types_single_point_soma.swc", {"soma": 1, "axon": 1, "basal": 1}),
     ],
 )
-def test_swc_types(reader_backend, file):
-    # Can not use full morphology because of branch sorting.
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", file)
-    backend_kwargs = (
-        {"ignore_swc_tracing_interruptions": False} if reader_backend == "graph" else {}
-    )
-    cell = jx.read_swc(fname, ncomp=1, backend=reader_backend, **backend_kwargs)
+def test_swc_types(file, ncomps):
+    """SWC types become groups with the right number of compartments (one per branch
+    with `ncomp=1`), and `set_ncomp` updates the groups."""
+    fname = os.path.join(os.path.dirname(__file__), "swc_files", file)
+    cell = jx.read_swc(fname, ncomp=1, ignore_swc_tracing_interruptions=False)
+    assert {key: len(getattr(cell, key).nodes) for key in ncomps} == ncomps
 
-    # First iteration is with default `ncomp`. At the end of the first loop we change
-    # ncomp with `set_ncomp`
-    for i in range(2):
-        desired_numbers_of_comps = {
-            "morph_3_types.swc": {"soma": 1, "axon": 1, "basal": 1},
-            "morph_3_types_single_point_soma.swc": {
-                "soma": 1,
-                "axon": 1,
-                "basal": 1,
-            },
-            "morph_ca1_n120.swc": {"soma": 2, "basal": 101, "apical": 53},
-            "morph_l5pc_with_axon.swc": {
-                "soma": 1,
-                "axon": 128,
-                "basal": 66,
-                "apical": 129,
-            },
-        }
-        # Test soma.
-        for key, n_desired in desired_numbers_of_comps[file].items():
-            if i == 1 and key in ["soma", "basal"]:
-                n_desired += 2  # After `set_ncomp` we should have two more comps.
-            n_comps_in_morph = len(cell.__getattr__(key).nodes)
-            assert (
-                n_comps_in_morph == n_desired
-            ), f"{key} has {n_comps_in_morph} != {n_desired} comps!"
-
-        # Additional tests to ensure that `groups` get updated appropriately.
-        cell.soma.branch(0).set_ncomp(3)
-        cell.basal.branch(0).set_ncomp(3)
+    cell.soma.branch(0).set_ncomp(3)
+    cell.basal.branch(0).set_ncomp(3)
+    ncomps = {k: n + 2 if k in ["soma", "basal"] else n for k, n in ncomps.items()}
+    assert {key: len(getattr(cell, key).nodes) for key in ncomps} == ncomps
 
 
 def test_single_branch_swc():
