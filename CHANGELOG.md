@@ -110,7 +110,7 @@ channels from `jaxley.channels` (#814, @jnsbck)
 - Hardcoded testvalues now stored as `.npz` files. Regenerate them after a deliberate numerical change with `pytest --force-regen`. `test_network_grad` now uses relative tolerance instead of absolute since values range from 10 to 3e5. Also fails if a parameter is added or missing (@jnsbck)
 - Development and documentation dependencies changed to dependency groups (`dev`, `doc`): installed with `uv sync` (add `--group doc` for the docs) or `pip install -e . --group dev --group doc` (pip >= 25.1). CI now caches compiled JAX programs between runs. (@jnsbck)
 - Small refactor of test channels and helpers (@jnsbck)
-
+- Faster and less repetitive tests: one compilation per gradient check, merged near-identical tests, smaller SWC files where the full ones add nothing, and shared helpers for the d_lambda rule and the 7-cell golden network. New tests for `vmap`, checkpointed gradients, finite-difference gradients of parameters and the convergence order of the solvers. `test_from_graph_vs_NEURON` could never fail; it now compares for real and is marked as an expected failure until the new SWC reader (#660) (@jnsbck)
 
 ### 📚 Documentation
 

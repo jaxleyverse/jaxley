@@ -178,7 +178,7 @@ def test_jit_and_grad_network():
         return loss
 
     # Compute the gradient of the loss with respect to the parameters
-    grad_loss = value_and_grad(loss, argnums=(0, 1))
+    grad_loss = jit(value_and_grad(loss, argnums=(0, 1)))
     value, gradient = grad_loss(opt_params, jnp.asarray(0.1))
     opt_params_grads = gradient[0]
     pstate_params_grads = gradient[1]

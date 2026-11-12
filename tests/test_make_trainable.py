@@ -136,79 +136,37 @@ def test_diverse_synapse_types():
     assert np.all(all_params["IonotropicSynapse_gS"][1] == 5.5)
 
 
-def test_make_all_trainable_corresponds_to_set():
-    # Scenario 1.
+@pytest.mark.parametrize("site", ["net", "cell", "branch", "loc"])
+@pytest.mark.parametrize("subset", [False, True], ids=["all_trainable", "subset"])
+def test_make_trainable_corresponds_to_set(site, subset):
+    """`make_trainable` + modified parameters equals `set`, for HH inserted into the
+    whole network or only a part of it, and all or a subset of it trainable."""
+    if subset:
+        cell, branch = 0, 1
+        get_params_trainable, get_params_set_ = (
+            get_params_subset_trainable,
+            get_params_set_subset,
+        )
+    else:
+        cell, branch = 1, 0
+        get_params_trainable, get_params_set_ = get_params_all_trainable, get_params_set
+
+    def where(net):
+        """Where HH is inserted."""
+        if site == "net":
+            return net
+        if site == "cell":
+            return net.cell(cell)
+        if site == "branch":
+            return net.cell(cell).branch(branch)
+        return net.cell(cell).branch(branch).loc(0.4)
+
     net1 = build.net(ncells=2, nbranches=4, ncomp=1)
     net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.insert(HH())
-    params1 = get_params_all_trainable(net1)
-    net2.insert(HH())
-    params2 = get_params_set(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-    # Scenario 2.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.cell(1).insert(HH())
-    params1 = get_params_all_trainable(net1)
-    net2.cell(1).insert(HH())
-    params2 = get_params_set(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-    # Scenario 3.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.cell(1).branch(0).insert(HH())
-    params1 = get_params_all_trainable(net1)
-    net2.cell(1).branch(0).insert(HH())
-    params2 = get_params_set(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-    # Scenario 4.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.cell(1).branch(0).loc(0.4).insert(HH())
-    params1 = get_params_all_trainable(net1)
-    net2.cell(1).branch(0).loc(0.4).insert(HH())
-    params2 = get_params_set(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-
-def test_make_subset_trainable_corresponds_to_set():
-    # Scenario 1.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.insert(HH())
-    params1 = get_params_subset_trainable(net1)
-    net2.insert(HH())
-    params2 = get_params_set_subset(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-    # Scenario 2.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.cell(0).insert(HH())
-    params1 = get_params_subset_trainable(net1)
-    net2.cell(0).insert(HH())
-    params2 = get_params_set_subset(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-    # Scenario 3.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.cell(0).branch(1).insert(HH())
-    params1 = get_params_subset_trainable(net1)
-    net2.cell(0).branch(1).insert(HH())
-    params2 = get_params_set_subset(net2)
-    assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
-
-    # Scenario 4.
-    net1 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net2 = build.net(ncells=2, nbranches=4, ncomp=1)
-    net1.cell(0).branch(1).loc(0.4).insert(HH())
-    params1 = get_params_subset_trainable(net1)
-    net2.cell(0).branch(1).loc(0.4).insert(HH())
-    params2 = get_params_set_subset(net2)
+    where(net1).insert(HH())
+    where(net2).insert(HH())
+    params1 = get_params_trainable(net1)
+    params2 = get_params_set_(net2)
     assert np.array_equal(params1["HH_gNa"], params2["HH_gNa"], equal_nan=True)
 
 

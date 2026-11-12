@@ -146,3 +146,5 @@ def test_predefined_spike_trains():
     v = jx.integrate(net, delta_t=dt)
 
     assert np.invert(np.any(np.isnan(v)))
+    # The spikes evoke EPSPs (the cell rests at -70 mV).
+    assert np.max(v) > -60.0

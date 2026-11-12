@@ -2,86 +2,82 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 
+import jax
 import jax.numpy as jnp
 import pytest
 from jax import value_and_grad
 
 import jaxley as jx
 from jaxley.channels import HH
+from jaxley.connect import connect
+from jaxley.synapses import IonotropicSynapse
 from tests import builders as build
 
 
 @pytest.mark.parametrize("key", ["HH_m", "v"])
-def test_grad_against_finite_diff_initial_state(key):
-    def simulate():
-        return jnp.sum(jx.integrate(comp))
+@pytest.mark.parametrize("module_type", ["comp", "branch"])
+def test_grad_against_finite_diff_initial_state(module_type, key):
+    """The gradient w.r.t. an initial state matches central finite differences."""
+    module = build.comp() if module_type == "comp" else build.branch(ncomp=4)
 
-    def simulate_with_params(params):
-        return jnp.sum(jx.integrate(comp, params=params))
+    def site():  # A new view each time, so that it sees inserted channels.
+        return module if module_type == "comp" else module.loc(0.0)
 
-    comp = build.comp()
-    comp.insert(HH())
-    comp.record()
-    comp.stimulate(
+    site().record()
+    site().stimulate(
         jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
     )
+    site().insert(HH())
+    site().set(key, 0.2 if key == "HH_m" else -70.0)
+    site().make_trainable(key)
+    params = module.get_parameters()
 
-    val = 0.2 if key == "HH_m" else -70.0
-    step_size = 0.01
-
-    # Finite differences.
-    # Central differences: forward differences are off by ~7% for `HH_m`.
-    comp.set(key, val - step_size)
-    r1 = simulate()
-    comp.set(key, val + step_size)
-    r2 = simulate()
-    finitediff_grad = (r2 - r1) / (2 * step_size)
-
-    # Autodiff gradient.
-    grad_fn = value_and_grad(simulate_with_params)
-    comp.set(key, val)
-    comp.make_trainable(key)
-    params = comp.get_parameters()
-    v, g = grad_fn(params)
-    autodiff_grad = g[0][key]
-
-    # Less than 1% relative error on the gradient.
-    assert jnp.abs(autodiff_grad - finitediff_grad) / jnp.abs(autodiff_grad) < 0.01
-
-
-@pytest.mark.parametrize("key", ["HH_m", "v"])
-def test_branch_grad_against_finite_diff_initial_state(key):
-    def simulate():
-        return jnp.sum(jx.integrate(branch))
-
-    def simulate_with_params(params):
-        return jnp.sum(jx.integrate(branch, params=params))
-
-    branch = build.branch(ncomp=4)
-    branch.loc(0.0).record()
-    branch.loc(0.0).stimulate(
-        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=5.0)
+    # One compiled function for the gradient and both finite-difference evaluations.
+    loss_and_grad = jax.jit(
+        value_and_grad(lambda p: jnp.sum(jx.integrate(module, params=p)))
     )
-    branch.loc(0.0).insert(HH())
+    _, grad = loss_and_grad(params)
 
-    val = 0.2 if key == "HH_m" else -70.0
-    step_size = 0.01
-
-    # Finite differences.
     # Central differences: forward differences are off by ~7% for `HH_m`.
-    branch.loc(0.0).set(key, val - step_size)
-    r1 = simulate()
-    branch.loc(0.0).set(key, val + step_size)
-    r2 = simulate()
-    finitediff_grad = (r2 - r1) / (2 * step_size)
-
-    # Autodiff gradient.
-    grad_fn = value_and_grad(simulate_with_params)
-    branch.loc(0.0).set(key, val)
-    branch.loc(0.0).make_trainable(key)
-    params = branch.get_parameters()
-    v, g = grad_fn(params)
-    autodiff_grad = g[0][key]
+    step = 0.01
+    loss_plus, _ = loss_and_grad(jax.tree.map(lambda x: x + step, params))
+    loss_minus, _ = loss_and_grad(jax.tree.map(lambda x: x - step, params))
+    finite_diff = (loss_plus - loss_minus) / (2 * step)
 
     # Less than 1% relative error on the gradient.
-    assert jnp.abs(autodiff_grad - finitediff_grad) / jnp.abs(autodiff_grad) < 0.01
+    autodiff = grad[0][key]
+    assert jnp.all(jnp.abs(autodiff - finite_diff) / jnp.abs(autodiff) < 0.01)
+
+
+@pytest.mark.parametrize("key", ["radius", "length", "HH_gNa", "IonotropicSynapse_gS"])
+def test_grad_against_finite_diff_parameters(key):
+    """The gradient w.r.t. a parameter matches central finite differences.
+
+    The parameter is scaled by `1 +- eps`, which is compared with the gradient in the
+    direction of the parameter itself."""
+    net = build.net(ncells=2, nbranches=2, ncomp=2)
+    net.insert(HH())
+    connect(
+        net.cell(0).branch(0).comp(0),
+        net.cell(1).branch(1).comp(1),
+        IonotropicSynapse(),
+    )
+    net.cell(0).branch(0).comp(0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=10.0)
+    )
+    net.cell(1).branch(1).comp(1).record()
+    net.make_trainable(key)
+    params = net.get_parameters()
+
+    loss_and_grad = jax.jit(
+        value_and_grad(lambda p: jnp.sum(jx.integrate(net, params=p)))
+    )
+    _, grad = loss_and_grad(params)
+    directional = sum(jnp.sum(g[key] * p[key]) for g, p in zip(grad, params))
+
+    eps = 1e-4
+    loss_plus, _ = loss_and_grad(jax.tree.map(lambda x: x * (1 + eps), params))
+    loss_minus, _ = loss_and_grad(jax.tree.map(lambda x: x * (1 - eps), params))
+    finite_diff = (loss_plus - loss_minus) / (2 * eps)
+
+    assert jnp.abs(directional - finite_diff) / jnp.abs(directional) < 0.01

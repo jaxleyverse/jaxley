@@ -131,52 +131,33 @@ def test_simulation_accuracy_api_equivalence_init_vs_setncomp_cell(new_ncomp):
     assert max_error < 1e-8, f"Too large voltage deviation, {max_error} > 1e-8"
 
 
-@pytest.mark.parametrize("new_ncomp", [1, 4, 5])
+@pytest.mark.parametrize("new_ncomp", [2, 5])
 @pytest.mark.parametrize(
     "file", ["morph_ca1_n120_250.swc", "morph_3_types_single_point_soma.swc"]
 )
-def test_api_equivalence_swc_lengths_and_radiuses(new_ncomp, file):
-    """Test if the radiuses and lengths of an SWC morph are reconstructed correctly."""
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", file)
-
+def test_swc_set_ncomp_matches_read_swc(new_ncomp, file):
+    """`set_ncomp()` on every branch of an SWC cell matches reading the SWC file with
+    that `ncomp`: same radiuses and lengths, and the same voltages."""
+    fname = os.path.join(os.path.dirname(__file__), "swc_files", file)
     cell1 = build.swc_cell(fname, ncomp=new_ncomp)
     cell2 = build.swc_cell(fname, ncomp=1)
+    for branch in cell2.branches:
+        branch.set_ncomp(new_ncomp, initialize=False)
+    cell2.initialize()
 
-    for b in range(cell2.total_nbranches):
-        cell2.branch(b).set_ncomp(new_ncomp)
+    for key in ["radius", "length"]:
+        np.testing.assert_allclose(
+            cell1.nodes[key], cell2.nodes[key], rtol=1e-5, atol=1e-8, err_msg=key
+        )
 
-    for property_name in ["radius", "length"]:
-        cell1_vals = cell1.nodes[property_name].to_numpy()
-        cell2_vals = cell2.nodes[property_name].to_numpy()
-        assert np.allclose(
-            cell1_vals, cell2_vals
-        ), f"Too large difference in {property_name}"
-
-
-@pytest.mark.parametrize("new_ncomp", [1, 2, 4, 5, 8])
-@pytest.mark.parametrize("file", ["morph_ca1_n120_250.swc"])
-def test_simulation_accuracy_swc_init_vs_set_ncomp(new_ncomp, file):
-    """Test whether an SWC initially built with 4 ncomp works after `set_ncomp()`."""
-    dirname = os.path.dirname(__file__)
-    fname = os.path.join(dirname, "swc_files", file)
-
-    cell1 = build.swc_cell(fname, ncomp=new_ncomp)
-    cell2 = build.swc_cell(fname, ncomp=1)
-
-    for b in range(cell2.total_nbranches):
-        cell2.branch(b).set_ncomp(new_ncomp)
-
+    last_branch = cell1.total_nbranches - 1
     for cell in [cell1, cell2]:
         cell.branch(0).comp(0).stimulate(0.4 * jnp.ones(100))
         cell.branch(0).comp(new_ncomp - 1).record()
-        cell.branch(3).comp(0).record()
-        cell.branch(5).comp(new_ncomp - 1).record()
-
+        cell.branch(last_branch).comp(new_ncomp - 1).record()
     v1 = jx.integrate(cell1, voltage_solver="jax.sparse")
     v2 = jx.integrate(cell2, voltage_solver="jax.sparse")
-    max_error = np.max(np.abs(v1 - v2))
-    assert max_error < 1e-8, f"Too large voltage deviation, {max_error} > 1e-8"
+    np.testing.assert_allclose(v1, v2, atol=1e-8, rtol=0)
 
 
 def test_set_ncomp_raises_for_inhomogeneous():

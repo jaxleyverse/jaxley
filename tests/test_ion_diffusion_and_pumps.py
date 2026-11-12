@@ -10,6 +10,7 @@ from jaxley_mech.channels.pospischil import K, Leak, Na
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.pumps import CaFaradayConcentrationChange, CaNernstReversal, CaPump
+from tests import builders as build
 from tests.mechanisms import NaNernstReversal, NaPump
 
 
@@ -249,64 +250,32 @@ def test_ion_is_pumped_but_not_diffused():
     assert not np.allclose(cacon_i, unpumped), "The pump has no effect."
 
 
-def test_ion_diffusion_compartment():
-    """Test whether `diffuse()` on a compartment does not lead to NaN."""
-    comp = jx.Compartment()
-    comp.insert(CaHVA())
-    comp.insert(CaNernstReversal())
-    comp.diffuse("CaCon_i")
-    comp.set("axial_diffusion_CaCon_i", 1.0)
-    comp.record("v")
-    comp.record("CaCon_i")
-    recs = jx.integrate(comp, t_max=10.0, voltage_solver="jaxley.dhs.cpu")
-    assert np.invert(np.any(np.isnan(recs)))
-
-
-def test_ion_diffusion_branch():
-    """Test whether `diffuse()` on a branch does not lead to NaN.
-
-    By the side, this tests the `fwd_euler` solver together with ion diffusion.
-    """
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp=2)
-    branch.insert(CaHVA())
-    branch.insert(CaNernstReversal())
-    branch.diffuse("CaCon_i")
-    branch.set("axial_diffusion_CaCon_i", 1.0)
-    branch.record("v")
-    branch.record("CaCon_i")
-    recs = jx.integrate(branch, t_max=10.0, solver="fwd_euler")
-    assert np.invert(np.any(np.isnan(recs)))
-
-
-def test_ion_diffusion_cell():
-    """Test whether `diffuse()` on a cell does not lead to NaN."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp=2)
-    cell = jx.Cell(branch, parents=[-1, 0, 0])
-    cell.insert(CaHVA())
-    cell.insert(CaNernstReversal())
-    cell.diffuse("CaCon_i")
-    cell.set("axial_diffusion_CaCon_i", 1.0)
-    cell.record("v")
-    cell.record("CaCon_i")
-    recs = jx.integrate(cell, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
-    assert np.invert(np.any(np.isnan(recs)))
-
-
-def test_ion_diffusion_net():
-    """Test whether `diffuse()` on a network does not lead to NaN."""
-    comp = jx.Compartment()
-    branch = jx.Branch(comp, ncomp=2)
-    cell = jx.Cell(branch, parents=[-1, 0])
-    net = jx.Network([cell, cell])
-    net.insert(CaHVA())
-    net.insert(CaNernstReversal())
-    net.diffuse("CaCon_i")
-    net.set("axial_diffusion_CaCon_i", 1.0)
-    net.record("v")
-    net.record("CaCon_i")
-    recs = jx.integrate(net, t_max=5.0, voltage_solver="jaxley.dhs.cpu")
+@pytest.mark.parametrize(
+    "module_type, kwargs",
+    [
+        ("comp", dict(t_max=10.0, voltage_solver="jaxley.dhs.cpu")),
+        ("branch", dict(t_max=10.0, solver="fwd_euler")),  # Also tests `fwd_euler`.
+        ("cell", dict(t_max=5.0, voltage_solver="jaxley.dhs.cpu")),
+        ("net", dict(t_max=5.0, voltage_solver="jaxley.dhs.cpu")),
+    ],
+)
+def test_ion_diffusion_runs(module_type, kwargs):
+    """`diffuse()` on any kind of module does not lead to NaN."""
+    if module_type == "comp":
+        module = build.comp()
+    elif module_type == "branch":
+        module = build.branch(ncomp=2)
+    elif module_type == "cell":
+        module = build.cell(nbranches=3, ncomp=2)
+    else:
+        module = build.net(ncells=2, nbranches=2, ncomp=2)
+    module.insert(CaHVA())
+    module.insert(CaNernstReversal())
+    module.diffuse("CaCon_i")
+    module.set("axial_diffusion_CaCon_i", 1.0)
+    module.record("v")
+    module.record("CaCon_i")
+    recs = jx.integrate(module, **kwargs)
     assert np.invert(np.any(np.isnan(recs)))
 
 

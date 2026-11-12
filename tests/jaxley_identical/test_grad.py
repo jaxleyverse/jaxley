@@ -2,55 +2,20 @@
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
 
 
-from math import pi
-
 import jax.numpy as jnp
 import numpy as np
 import pytest
 from jax import value_and_grad
 
 import jaxley as jx
-from jaxley.channels import HH
-from jaxley.connect import fully_connect
-from jaxley.synapses import IonotropicSynapse, TestSynapse
 from tests import builders as build
+from tests.helpers import wire_seven_cell_net
 
 
 @pytest.mark.slow
 def test_network_grad(golden):
     net = build.net(ncells=7, nbranches=5, ncomp=4)
-    net.insert(HH())
-
-    _ = np.random.seed(0)
-    pre = net.cell([0, 1, 2])
-    post = net.cell([3, 4, 5])
-    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
-    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
-
-    pre = net.cell([3, 4, 5])
-    post = net.cell(6)
-    fully_connect(pre, post, IonotropicSynapse(), random_post_comp=True)
-    fully_connect(pre, post, TestSynapse(), random_post_comp=True)
-
-    area = 2 * pi * 10.0 * 1.0
-    point_process_to_dist_factor = 100_000.0 / area
-
-    net.set("IonotropicSynapse_gS", 0.44 / point_process_to_dist_factor)
-    net.set("TestSynapse_gC", 0.62 / point_process_to_dist_factor)
-    net.IonotropicSynapse.edge([0, 2, 4]).set(
-        "IonotropicSynapse_gS", 0.32 / point_process_to_dist_factor
-    )
-    net.TestSynapse.edge([0, 3, 5]).set(
-        "TestSynapse_gC", 0.24 / point_process_to_dist_factor
-    )
-
-    current = jx.step_current(
-        i_delay=0.5, i_dur=0.5, i_amp=0.1, delta_t=0.025, t_max=10.0
-    )
-    for i in range(3):
-        net.cell(i).branch(0).loc(0.0).stimulate(current)
-
-    net.cell(6).branch(0).loc(0.0).record()
+    wire_seven_cell_net(net)
 
     def simulate(params):
         return jnp.sum(

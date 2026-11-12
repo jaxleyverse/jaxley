@@ -12,6 +12,7 @@ import jaxley as jx
 from jaxley.channels import Leak
 from jaxley.morphology import distance_direct, distance_pathwise
 from tests import builders as build
+from tests.helpers import apply_d_lambda_rule
 
 
 def test_direct_distance():
@@ -135,23 +136,7 @@ def test_distance_swc(golden):
 
     cell = build.swc_cell(fname, ncomp=1, max_branch_len=2_000.0)
     cell.set("axial_resistivity", 100.0)
-    # Reasonable default values for most models.
-    frequency = 100.0
-    d_lambda = 0.1  # Larger -> more coarse-grained.
-
-    for branch in cell.branches:
-        diameter = 2 * branch.nodes["radius"].to_numpy()[0]
-        c_m = branch.nodes["capacitance"].to_numpy()[0]
-        r_a = branch.nodes["axial_resistivity"].to_numpy()[0]
-        l = branch.nodes["length"].to_numpy()[0]
-
-        lambda_f = 1e5 * np.sqrt(diameter / (4 * np.pi * frequency * c_m * r_a))
-        ncomp = int((l / (d_lambda * lambda_f) + 0.9) / 2) * 2 + 1
-        branch.set_ncomp(ncomp, initialize=False)
-
-    # After the loop, you have to run `cell.initialize()` because we passed
-    # `set_ncomp(..., initialize=False)` for speeding up the loop over branches.
-    cell.initialize()
+    apply_d_lambda_rule(cell)
 
     soma = cell.soma.branch(0).comp(0)
     golden.check(

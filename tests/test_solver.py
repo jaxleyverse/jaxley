@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 import jaxley as jx
-from jaxley.channels import HH
+from jaxley.channels import HH, Leak
 from jaxley.connect import connect
 from jaxley.solver_gate import exponential_euler
 from jaxley.solver_voltage import _make_dhs_solve
@@ -118,3 +118,26 @@ def test_dhs_solve_handles_ragged_grouped_edges(optimize_for_gpu):
     actual_grad = np.asarray(grad_fn(rhs))
     expected_grad = np.linalg.solve(matrix.T, np.ones_like(expected))
     np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-6, atol=1e-6)
+
+
+@pytest.mark.parametrize("solver, order", [("bwd_euler", 1), ("crank_nicolson", 2)])
+def test_convergence_order(solver, order):
+    """On a passive branch, halving the time step divides the error by 2**order."""
+
+    def simulate(dt):
+        branch = build.branch(ncomp=4)
+        branch.insert(Leak())
+        branch.comp(0).stimulate(jx.step_current(0.0, 10.0, 0.1, dt, 5.0))
+        branch.comp(3).record()
+        return np.asarray(jx.integrate(branch, delta_t=dt, solver=solver)[0])
+
+    dts = [0.1, 0.05, 0.025]
+    fine = dts[-1] / 16
+    reference = simulate(fine)
+    errors = []
+    for dt in dts:
+        v = simulate(dt)
+        ref = reference[:: round(dt / fine)][: len(v)]
+        errors.append(np.max(np.abs(v[: len(ref)] - ref)))
+    ratios = np.asarray(errors[:-1]) / np.asarray(errors[1:])
+    assert np.all(np.abs(np.log2(ratios) - order) < 0.25), (errors, ratios)
