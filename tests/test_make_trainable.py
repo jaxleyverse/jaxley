@@ -584,6 +584,121 @@ def test_param_sharing_w_different_group_sizes():
     assert np.array_equal(params1["radius"], params2["radius"], equal_nan=True)
 
 
+def _build_net_w_padded_last_comp(SimpleCell, with_synapses=False):
+    """Network whose last compartment is hit if `make_trainable`'s -1 padding wraps.
+
+    Comps: cell 0 -> [0], cell 1 -> [1, 2], cell 2 -> [3]. A network of single-branch
+    cells has no branchpoint nodes, so index -1 is a real compartment (cell 2), which
+    the tests below never make trainable.
+    """
+    net = jx.Network([SimpleCell(1, 1), SimpleCell(1, 2), SimpleCell(1, 1)])
+    net.insert(HH())
+    if with_synapses:
+        # Four synapses of one type -> edges 0..3, edge 3 is never made trainable.
+        for pre, post in [(0, 1), (1, 2), (2, 0), (0, 2)]:
+            connect(
+                net.cell(pre).branch(0).loc(0.0),
+                net.cell(post).branch(0).loc(0.0),
+                IonotropicSynapse(),
+            )
+    # Give the last comp non-cylindrical geometry (like an SWC frustum). If the -1
+    # padding wraps, `get_all_parameters` rewrites its geometry as
+    # `cylinder_*(length[-1], radius[-1])`, which is a no-op for a plain cylinder.
+    for i, key in enumerate(
+        ["area", "volume", "resistive_load_out", "resistive_load_in"]
+    ):
+        net.nodes.loc[net.nodes.index[-1], key] *= 1.5 + 0.1 * i
+    net.cell(2).stimulate(jx.step_current(1.0, 5.0, 0.1, 0.025, 10.0), verbose=False)
+    net.cell(2).record(verbose=False)
+    return net
+
+
+@pytest.mark.parametrize(
+    "key", ["radius", "area", "volume", "resistive_load_out", "resistive_load_in"]
+)
+def test_padding_does_not_overwrite_last_comp_param(SimpleCell, key):
+    """Groups of different sizes are padded with -1 by `make_trainable`. Check that
+    this padding does not wrap around and overwrite the (untrained) last compartment.
+    """
+    net = _build_net_w_padded_last_comp(SimpleCell)
+    # cell 0 has 1 comp, cell 1 has 2 -> cell 0's group is padded to [0, -1].
+    net.cell([0, 1]).make_trainable("radius", 5.0, verbose=False)
+    params = net.get_parameters()
+    net.to_jax()
+    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    all_params = net.get_all_parameters(pstate)
+
+    ref = _build_net_w_padded_last_comp(SimpleCell)
+    params = ref.get_parameters()
+    ref.to_jax()
+    pstate = params_to_pstate(params, ref.indices_set_by_trainables)
+    ref_all_params = ref.get_all_parameters(pstate)
+
+    assert not np.allclose(all_params[key][0], ref_all_params[key][0])
+    assert np.allclose(all_params[key][-1], ref_all_params[key][-1])
+
+
+def test_padding_does_not_overwrite_last_comp_state(SimpleCell):
+    """Same as above, but for an initial state made trainable."""
+    net = _build_net_w_padded_last_comp(SimpleCell)
+    net.cell([0, 1]).make_trainable("v", -30.0, verbose=False)
+    params = net.get_parameters()
+    net.to_jax()
+    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    all_states = net.get_all_states(pstate)
+
+    ref = _build_net_w_padded_last_comp(SimpleCell)
+    params = ref.get_parameters()
+    ref.to_jax()
+    pstate = params_to_pstate(params, ref.indices_set_by_trainables)
+    ref_all_states = ref.get_all_states(pstate)
+
+    assert not np.allclose(all_states["v"][0], ref_all_states["v"][0])
+    assert np.allclose(all_states["v"][-1], ref_all_states["v"][-1])
+
+
+def test_padding_does_not_overwrite_last_synapse_param(SimpleCell):
+    """Same as above, but for a synapse parameter. The padded edge indices are mapped
+    to per-synapse-type indices, which must also keep -1 as padding."""
+    net = _build_net_w_padded_last_comp(SimpleCell, with_synapses=True)
+    view = net.IonotropicSynapse.edge([0, 1, 2])
+    # Set after `.edge()`, which resets it. Groups {0}, {1, 2} -> {0} padded to [0, -1].
+    view.edges["controlled_by_param"] = [0, 1, 1]
+    view.make_trainable("IonotropicSynapse_gS", [2.2, 3.3], verbose=False)
+    params = net.get_parameters()
+    net.to_jax()
+    pstate = params_to_pstate(params, net.indices_set_by_trainables)
+    all_params = net.get_all_parameters(pstate)
+
+    ref = _build_net_w_padded_last_comp(SimpleCell, with_synapses=True)
+    params = ref.get_parameters()
+    ref.to_jax()
+    pstate = params_to_pstate(params, ref.indices_set_by_trainables)
+    ref_all_params = ref.get_all_parameters(pstate)
+
+    assert np.allclose(all_params["IonotropicSynapse_gS"][:3], [2.2, 3.3, 3.3])
+    assert np.allclose(
+        all_params["IonotropicSynapse_gS"][3], ref_all_params["IonotropicSynapse_gS"][3]
+    )
+
+
+def test_padding_does_not_change_voltage_of_last_cell(SimpleCell):
+    """End-to-end: the voltage of the untrained last cell is unaffected by padding."""
+    net = _build_net_w_padded_last_comp(SimpleCell)
+    net.cell([0, 1]).make_trainable("radius", verbose=False)
+    net.cell([0, 1]).make_trainable("v", verbose=False)
+    params = net.get_parameters()
+
+    ref = _build_net_w_padded_last_comp(SimpleCell)
+    for i in range(2):
+        ref.cell(i).set("radius", 5.0)
+        ref.cell(i).set("v", -30.0)
+
+    v = jx.integrate(net, params=params)
+    v_ref = jx.integrate(ref)
+    assert np.max(np.abs(v - v_ref)) < 1e-8
+
+
 def test_updates_of_membrane_area():
     """Runs `.set("radius")` and checks whether this updates the membrane area."""
     comp = jx.Compartment()
