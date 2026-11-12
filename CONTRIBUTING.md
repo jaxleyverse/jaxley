@@ -13,9 +13,10 @@ your feature branch to the upstream `Jaxley` ([details](https://docs.github.com/
 
 ### Development environment
 
-Clone [the repo](https://github.com/jaxleyverse/jaxley) and install via `setup.py`
-using `pip install -e ".[dev, doc]"` (the dev flag installs development and testing
-dependencies, the doc flag install documentation dependencies).
+Clone [the repo](https://github.com/jaxleyverse/jaxley) and install it with `uv sync`,
+which installs the development and testing dependencies (the `dev` group) into `.venv`.
+Add `--group doc` for the documentation dependencies. With pip (>= 25.1), use
+`pip install -e . --group dev --group doc`.
 
 ### Style conventions
 
