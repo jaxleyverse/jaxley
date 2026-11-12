@@ -6,6 +6,9 @@
   containing pumps (#811, @Jlei61).
 - Filter synaptic recordings by the requested state or current's synapse type,
   while preserving the selected view, to avoid unrelated or out-of-bounds indices (#793, @Jlei61).
+- Fix wrong implicit voltage solves under `jit(vmap(...))` of a closed-over input on
+  jaxlib 0.5.3–0.8.1 by assembling the solve's right-hand side as `(v + dt * c)[i]` on
+  those versions (#809, @Matthijspals).
 
 ### 🛠️ Internal updates
 
@@ -29,7 +32,6 @@ Implements Brette et al. (2005), 'Adaptive exponential integrate-and-fire model 
 - Fix single point branch plotting with type="comp" (#797, @jnsbck)
 - jx.integrate took O(n^2) time with n compartments on the backwards pass. Instead of backpropagating through the forward solve, we now use a custom_jvp (another tridiagonal solve, which is O(n)) (#795 @manuelgloeckler)
 - Fix compatibility with newer JAX versions by avoiding the deprecated `jnp.clip(..., a_max=...)` keyword in `solver_gate.save_exp` (#798, @lorenzosquadrani)
-- Fix edge case incorrect implicit voltage RHS under `jit(vmap)` on jax/jaxlib 0.5.3–0.8.1 by assembling as `(v + dt * c)[i]` instead of `v[i] + dt * c[i]` (@matthijspals)
 
 # 0.13.0
 

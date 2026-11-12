@@ -1,9 +1,11 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
+import re
 from typing import Any, Dict
 
 import jax
 import jax.numpy as jnp
+import jaxlib
 import numpy as np
 from jax import Array
 from jax.experimental.sparse.linalg import spsolve as jax_spsolve
@@ -12,6 +14,22 @@ from jax.typing import ArrayLike
 from tridiax.stone import stone_backsub_lower, stone_triang_upper
 
 from jaxley.solver_gate import exponential_euler
+
+# jaxlib 0.5.3 to 0.8.1 miscompile `v[i] + dt * c[i]` under `jit(vmap(...))` with
+# constant inputs (openxla/xla#34260). Summing before gathering avoids this.
+_JAXLIB_VERSION = tuple(map(int, re.findall(r"\d+", jaxlib.__version__)[:3]))
+_RHS_WORKAROUND = (0, 5, 3) <= _JAXLIB_VERSION < (0, 8, 2)
+
+
+def _build_rhs(voltages, constant_terms, internal_node_inds, n_nodes, delta_t):
+    """Return the right-hand side of the implicit voltage solve."""
+    if _RHS_WORKAROUND:
+        rhs = (voltages + delta_t * constant_terms)[internal_node_inds]
+    else:
+        rhs = (
+            voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
+        )
+    return jnp.zeros(n_nodes).at[internal_node_inds].set(rhs)
 
 
 def _pad_comp_edges(comp_edges) -> np.ndarray:
@@ -187,10 +205,7 @@ def step_voltage_implicit_with_dhs_solve(
         diags = diags.at[sinks].add(axial_conductances)
 
     # Build solve.
-    solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].set(
-        (voltages + delta_t * constant_terms)[internal_node_inds]
-    )
+    solves = _build_rhs(voltages, constant_terms, internal_node_inds, n_nodes, delta_t)
 
     # Why `n_nodes > 1`? For compartments (or point neurons), we save computation and
     # compile time by skipping the entire solve procedure.
@@ -376,10 +391,7 @@ def step_voltage_implicit_with_jax_spsolve(
         diags = diags.at[sinks].add(axial_conductances)
 
     # Build solve.
-    solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].set(
-        (voltages + delta_t * constant_terms)[internal_node_inds]
-    )
+    solves = _build_rhs(voltages, constant_terms, internal_node_inds, n_nodes, delta_t)
 
     # Concatenate diagonals and off-diagonals (which are just `-axial_conductances`).
     all_values = jnp.concatenate([diags, -axial_conductances])
@@ -546,10 +558,7 @@ def step_voltage_implicit_with_stone(
     uppers = -axial_conductances[upper_inds]
 
     # Build solve.
-    solves = jnp.zeros(n_nodes)
-    solves = solves.at[internal_node_inds].set(
-        (voltages + delta_t * constant_terms)[internal_node_inds]
-    )
+    solves = _build_rhs(voltages, constant_terms, internal_node_inds, n_nodes, delta_t)
 
     # Solve the tridiagonal system.
     diags, lowers, solves = stone_triang_upper(lowers, diags, uppers, solves)
