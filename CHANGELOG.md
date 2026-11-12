@@ -6,6 +6,9 @@
   containing pumps (#811, @Jlei61).
 - Filter synaptic recordings by the requested state or current's synapse type,
   while preserving the selected view, to avoid unrelated or out-of-bounds indices (#793, @Jlei61).
+- Fix wrong implicit voltage solves under `jit(vmap(...))` of a closed-over input on
+  jaxlib 0.5.3–0.8.1 by assembling the solve's right-hand side as `(v + dt * c)[i]` on
+  those versions (#809, @Matthijspals).
 
 ### 🛠️ Internal updates
 
