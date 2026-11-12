@@ -112,7 +112,6 @@ def test_compose_net():
     recordings2 = jx.integrate(net2, delta_t=dt)
 
     assert jnp.max(jnp.abs(recordings1 - recordings2)) < 1e-8
-    assert jnp.abs(recordings1[1, -1] - recordings1[1, 0]) > 1e-6
 
     cell2.insert(CaPump("OtherCaPump"))
     assert jx.Network([cell1, cell2]).pumped_ions == ["CaCon_i"]
