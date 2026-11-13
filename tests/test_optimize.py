@@ -14,7 +14,7 @@ from jax import jit, value_and_grad
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.optimize import TypeOptimizer
-from jaxley.optimize.utils import l2_norm
+from jaxley.optimize.utils import Uniform, l2_norm
 
 
 def test_type_optimizer_api(SimpleComp):
@@ -127,3 +127,23 @@ def test_l2_norm_utility():
         0.04,
     ]
     assert l2_norm(pytree).item() == true_norm
+
+
+def test_uniform_distribution():
+    key = jax.random.PRNGKey(0)
+    lower, upper = 0.0, 1.0
+    N, D = 10, 3
+
+    dist = Uniform(lower, upper)
+
+    samples = dist.sample(key, shape=(N, D))
+    assert samples.shape == (N, D)
+
+    samples_nd = dist.sample(key, shape=(N, D))
+    log_probs = dist.log_prob(samples_nd)
+    assert log_probs.shape == (N,)
+    assert jnp.allclose(log_probs, 0.0)
+
+    assert jnp.isfinite(dist.log_prob(jnp.array([0.5])))
+    assert jnp.isneginf(dist.log_prob(jnp.array([-0.1])))
+    assert jnp.isneginf(dist.log_prob(jnp.array([1.1])))
