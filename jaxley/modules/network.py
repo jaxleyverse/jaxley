@@ -19,7 +19,7 @@ from jaxley.utils.cell_utils import (
     loc_of_index,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
-from jaxley.utils.solver_utils import dhs_group_comps_into_levels
+from jaxley.utils.solver_utils import dhs_level_indexer
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -178,96 +178,44 @@ class Network(Module):
     def _init_solver_jaxley_dhs_solve(self, *args, **kwargs) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
-        This function first generates the networkX `comp_graph`, then traverses it
-        to identify the solve order, and then pre-computes the relevant attributes used
-        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+        Concatenate the solve orders of the cells, offset by the nodes (compartments
+        and branchpoints) of the cells before them.
         """
-        offset = 0
-        lower_and_upper_offset = 0
+        indexers = [cell._dhs_solve_indexer for cell in self._cells_list]
+        n_nodes = np.asarray([cell._n_nodes for cell in self._cells_list])
+        offsets = cumsum_leading_zero(n_nodes)[:-1]
+        # Every cell has `n_nodes - 1` lowers and as many uppers.
+        lower_and_upper_offsets = cumsum_leading_zero(2 * (n_nodes - 1))[:-1]
 
-        dhs_map_dict = {}
-        dhs_inv_map_to_node_order = []
-        dhs_map_to_node_order = []
-        dhs_map_to_node_order_lower = []
-        dhs_map_to_node_order_upper = []
-        dhs_node_order = []
-        dhs_parent_lookup = []
+        def concatenate(key, offsets):
+            return np.concatenate([ind[key] + o for ind, o in zip(indexers, offsets)])
 
-        for cell in self._cells_list:
-            dhs_map_dict.update(
-                {
-                    k + offset: v + offset
-                    for k, v in cell._dhs_solve_indexer["map_dict"].items()
-                }
-            )
-            dhs_inv_map_to_node_order.append(
-                cell._dhs_solve_indexer["inv_map_to_solve_order"] + offset
-            )
-            dhs_map_to_node_order.append(
-                cell._dhs_solve_indexer["map_to_solve_order"] + offset
-            )
-
-            dhs_map_to_node_order_lower.append(
-                cell._dhs_solve_indexer["map_to_solve_order_lower"]
-                + lower_and_upper_offset
-            )
-            dhs_map_to_node_order_upper.append(
-                cell._dhs_solve_indexer["map_to_solve_order_upper"]
-                + lower_and_upper_offset
-            )
-
-            # For point neurons, node order is empty. In that case [:, :2] would
-            # fail. Thus, we need the if-case `len(node_order) == 0`.
-            node_order = cell._dhs_solve_indexer["node_order"]
-            if self._solver_device == "cpu" or len(node_order) == 0:
-                # On CPU, we want to solve all cells sequentially for minimal compile
-                # time. Because of this, we also add `offset` to the `level`.
-                dhs_node_order.append(node_order + offset)
+        node_order = []
+        for indexer, offset in zip(indexers, offsets):
+            # Columns: node, parent, level.
+            cell_node_order = indexer["node_order"].copy()
+            if self._solver_device == "cpu":
+                # On CPU, cells are solved one after the other for minimal compile
+                # time, so the level is offset too.
+                cell_node_order += offset
             else:
-                # Only :2 because node_order contains [node, parent, level], and we
-                # do not want to offset the level when solving cells in parallel.
-                dhs_node_order.append(node_order.at[:, :2].add(offset))
+                # On GPU, cells are solved in parallel.
+                cell_node_order[:, :2] += offset
+            node_order.append(cell_node_order)
+        node_order = np.concatenate(node_order, axis=0)
 
-            # Discard the last one because it is a [-1] which just absorbs all
-            # compartments that are already finished with their recursion. We append
-            # such a compartment after this loop again.
-            parent_lookup = cell._dhs_solve_indexer["parent_lookup"].copy()[:-1]
-            parent_lookup[1:] += offset
-            dhs_parent_lookup.append(parent_lookup)
-
-            offset += cell._n_nodes  # Compartment-offset.
-            lower_and_upper_offset += (cell._n_nodes - 1) * 2
-
-        self._dhs_solve_indexer = {}
-        self._dhs_solve_indexer["inv_map_to_solve_order"] = np.concatenate(
-            dhs_inv_map_to_node_order
-        )
-        self._dhs_solve_indexer["map_to_solve_order"] = np.concatenate(
-            dhs_map_to_node_order
-        )
-        self._dhs_solve_indexer["map_to_solve_order_lower"] = np.concatenate(
-            dhs_map_to_node_order_lower
-        )
-        self._dhs_solve_indexer["map_to_solve_order_upper"] = np.concatenate(
-            dhs_map_to_node_order_upper
-        )
-        self._dhs_solve_indexer["node_order"] = np.concatenate(dhs_node_order, axis=0)
-        self._dhs_solve_indexer["parent_lookup"] = np.concatenate(
-            dhs_parent_lookup + [[-1]]
-        )
-        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
-            self._dhs_solve_indexer["node_order"]
-        )
-
-        # Precompute flat child/parent index arrays for the custom JVP of the solve.
-        node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
-        if len(node_order_grouped) > 0:
-            all_edges = np.concatenate(node_order_grouped, axis=0)
-            self._dhs_solve_indexer["all_children"] = all_edges[:, 0].astype(int)
-            self._dhs_solve_indexer["all_parents"] = all_edges[:, 1].astype(int)
-        else:
-            self._dhs_solve_indexer["all_children"] = np.asarray([], dtype=int)
-            self._dhs_solve_indexer["all_parents"] = np.asarray([], dtype=int)
+        self._dhs_solve_indexer = {
+            "inv_map_to_solve_order": concatenate("inv_map_to_solve_order", offsets),
+            "map_to_solve_order": concatenate("map_to_solve_order", offsets),
+            "map_to_solve_order_lower": concatenate(
+                "map_to_solve_order_lower", lower_and_upper_offsets
+            ),
+            "map_to_solve_order_upper": concatenate(
+                "map_to_solve_order_upper", lower_and_upper_offsets
+            ),
+            "node_order": node_order,
+        }
+        self._dhs_solve_indexer.update(dhs_level_indexer(node_order, self._n_nodes))
 
         self._init_view()
 

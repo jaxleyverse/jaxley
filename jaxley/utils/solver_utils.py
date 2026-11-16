@@ -1,12 +1,10 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-import jax.numpy as jnp
 import networkx as nx
 import numpy as np
 import pandas as pd
-from jax import Array
 
 
 def convert_to_csc(
@@ -44,7 +42,7 @@ def convert_to_csc(
 
 def comp_edges_to_indices(
     comp_edges: pd.DataFrame,
-) -> tuple[int, Array, Array, Array]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Generates sparse matrix indices from the table of node edges.
 
     This is only used for the `jax.sparse` voltage solver.
@@ -53,84 +51,57 @@ def comp_edges_to_indices(
         comp_edges: Dataframe with three columns (sink, source, type).
 
     Returns:
-        n_nodes: The number of total nodes (including branchpoints).
         data_inds: The indices to reorder the data.
         indices and indptr: Indices passed to the sparse matrix solver.
     """
-    # Build indices for diagonals.
-    sources = np.asarray(comp_edges["source"].to_list())
-    sinks = np.asarray(comp_edges["sink"].to_list())
+    sources = comp_edges["source"].to_numpy()
+    sinks = comp_edges["sink"].to_numpy()
     n_nodes = np.max(sinks) + 1 if len(sinks) > 0 else 1
-    diagonal_inds = jnp.stack([jnp.arange(n_nodes), jnp.arange(n_nodes)])
 
-    # Build indices for off-diagonals.
-    off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
-
-    # Concatenate indices of diagonals and off-diagonals.
-    all_inds = jnp.concatenate([diagonal_inds, off_diagonal_inds], axis=1)
+    # (row, col) indices of the diagonal, followed by the off-diagonals.
+    rows = np.concatenate([np.arange(n_nodes), sources]).astype(int)
+    cols = np.concatenate([np.arange(n_nodes), sinks]).astype(int)
 
     # Cast (row, col) indices to the format required for the `jax` sparse solver.
-    data_inds, indices, indptr = convert_to_csc(
-        num_elements=all_inds.shape[1],
-        row_ind=all_inds[0],
-        col_ind=all_inds[1],
-    )
-    return data_inds, indices, indptr
+    return convert_to_csc(num_elements=len(rows), row_ind=rows, col_ind=cols)
 
 
 def dhs_permutation_indices(
-    lowers_and_uppers,
-    offdiag_inds,
-    node_order,
-    mapping_dict,
-):
-    """Return mapping to the DHS solve order, also for lower and upper diagonal vals."""
-    edge_data = {}
-    for edge, v in zip(offdiag_inds.T, lowers_and_uppers):
-        edge_data[tuple(edge.tolist())] = v
+    offdiag_inds: np.ndarray, node_order: np.ndarray, solve_index: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return mapping to the DHS solve order, also for lower and upper diagonal vals.
 
-    ordered_comp_edges = {}
-    for i, j in edge_data.keys():
-        new_i = mapping_dict[i]
-        new_j = mapping_dict[j]
-        ordered_comp_edges[(new_i, new_j)] = edge_data[(i, j)]
+    Args:
+        offdiag_inds: Array of shape `(2, num_edges)`, the (source, sink) node of every
+            compartment edge.
+        node_order: Array of shape `(N, 3)`, (node, parent, level) of every edge
+            traversed by the solve.
+        solve_index: For every node, its index in the solve order.
 
-    lowers = {}
-    uppers = {}
-    for ij in ordered_comp_edges.keys():
-        if ij[0] < ij[1]:
-            lowers[ij] = ordered_comp_edges[ij]
-        else:
-            uppers[ij] = ordered_comp_edges[ij]
+    Returns:
+        - The positions of the off-diagonal entries (edges) in the solve order: first
+          the lowers (parent -> child), then the uppers (child -> parent), each sorted
+          by the child (which has exactly one parent).
+        - `node_order` with nodes and parents replaced by their solve index.
+    """
+    # `reshape` because a single compartment has no edges.
+    source, sink = solve_index[np.asarray(offdiag_inds, dtype=int).reshape(2, -1)]
+    is_lower = source < sink
+    lowers = np.flatnonzero(is_lower)[np.argsort(sink[is_lower])]
+    uppers = np.flatnonzero(~is_lower)[np.argsort(source[~is_lower])]
 
-    # We have to sort lowers and uppers to be in the solve order.
-    children = []
-    for key in lowers.keys():
-        children.append(key[1])
-    lower_sorting = np.argsort(children)
-
-    parents = []
-    for key in uppers.keys():
-        parents.append(key[0])
-    upper_sorting = np.argsort(parents)
-
-    lowers = jnp.asarray(list(lowers.values()))[lower_sorting]
-    uppers = jnp.asarray(list(uppers.values()))[upper_sorting]
-
-    # Adapt node order.
-    new_node_order = []
-    for n in node_order:
-        new_node_order.append(
-            [mapping_dict[int(n[0])], mapping_dict[int(n[1])], int(n[2])]
-        )
-    # We need `.reshape(-1, 3)` because `new_node_order` is empty for point-neurons.
-    # However, for networks, we still want to be able to concatenate this empty array
-    # with `(N, 3)` arrays (e.g., from morph detailed neurons). The line below ensures
-    # that `new_node_order` is of shape (0, 3) if it is empty.
-    new_node_order = jnp.asarray(new_node_order, dtype=int).reshape(-1, 3)
-
-    lowers_and_uppers = jnp.concatenate([lowers, uppers])
-    return lowers_and_uppers, new_node_order
+    # `reshape` because `node_order` is empty for point neurons. For networks, it must
+    # still have shape (0, 3) to be concatenated with that of other cells.
+    node_order = np.asarray(node_order, dtype=int).reshape(-1, 3)
+    new_node_order = np.stack(
+        [
+            solve_index[node_order[:, 0]],
+            solve_index[node_order[:, 1]],
+            node_order[:, 2],
+        ],
+        axis=1,
+    )
+    return np.concatenate([lowers, uppers]), new_node_order
 
 
 def dhs_solve_index(
@@ -232,21 +203,42 @@ def dhs_group_comps_into_levels(new_node_order: np.ndarray) -> List[np.ndarray]:
             `N` is the number of compartment edges to be processed.
 
     Returns:
-        Array of shape (num_levels, allowed_nodes_per_level, 2), where 2 indicates
-        (node, parent).
+        List of length `num_levels`. Each element has shape `(num_comps_per_level, 2)`,
+        where 2 indicates (node, parent).
     """
+    new_node_order = np.asarray(new_node_order, dtype=int).reshape(-1, 3)
     if len(new_node_order) == 0:
-        # If len == 0, we need to ensure that there are 3 columns, otherwise
-        # pd.DataFrame() will throw an error.
-        new_node_order = np.zeros((0, 3)).astype(int)
+        return []
 
-    # Group the edges by their level. Each level is processed in parallel.
-    nodes = pd.DataFrame(new_node_order, columns=["node", "parent", "level"])
-    grouping = nodes.groupby("level")
-    nodes = grouping["node"].apply(list).to_numpy()
-    parents = grouping["parent"].apply(list).to_numpy()
-    nodes_and_parents = [np.stack([n, p]).T for n, p in zip(nodes, parents)]
+    # Sort by level. The sort is stable, so nodes keep their order within a level.
+    by_level = new_node_order[np.argsort(new_node_order[:, 2], kind="stable")]
+    _, num_per_level = np.unique(by_level[:, 2], return_counts=True)
+    return np.split(by_level[:, :2], np.cumsum(num_per_level)[:-1])
 
-    # `nodes_and_parents` is a List of length `num_levels`. Each element has shape
-    # `(num_comps_per_level, 2)`.
-    return nodes_and_parents
+
+def dhs_level_indexer(node_order: np.ndarray, num_nodes: int) -> Dict[str, Any]:
+    """Return the parts of the DHS solve indexer that follow from the solve order.
+
+    Args:
+        node_order: Array of shape (N, 3), (node, parent, level) in the solve order.
+        num_nodes: Number of nodes (compartments and branchpoints).
+
+    Returns:
+        - `node_order_grouped`: (node, parent) of every level, see
+          `dhs_group_comps_into_levels()`.
+        - `parent_lookup`: the parent of every node, `-1` for roots and for one extra
+          entry at the end. E.g.: `parent = parent_lookup[node]`.
+        - `all_children`, `all_parents`: `node_order_grouped`, flattened. Used for the
+          custom JVP of the solve.
+    """
+    node_order = np.asarray(node_order, dtype=int).reshape(-1, 3)
+    node_order_grouped = dhs_group_comps_into_levels(node_order)
+    parent_lookup = np.full(num_nodes + 1, -1)
+    parent_lookup[node_order[:, 0]] = node_order[:, 1]
+    edges = np.concatenate([np.zeros((0, 2), dtype=int)] + node_order_grouped)
+    return {
+        "node_order_grouped": node_order_grouped,
+        "parent_lookup": parent_lookup,
+        "all_children": edges[:, 0],
+        "all_parents": edges[:, 1],
+    }

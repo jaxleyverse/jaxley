@@ -55,7 +55,7 @@ from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
     comp_edges_to_indices,
     convert_to_csc,
-    dhs_group_comps_into_levels,
+    dhs_level_indexer,
     dhs_permutation_indices,
     dhs_solve_index,
 )
@@ -1125,17 +1125,20 @@ class Module(ABC):
         if np.any(np.isnan(self.xyzr[0][:, :3])):
             self.compute_xyz()
             self.compute_compartment_centers()
-        comp_graph = to_graph(self)
 
-        # Export to graph and traverse it to identify the solve order.
+        # The solve order is a breadth-first traversal of the compartment graph. It
+        # only needs the topology of the graph. Nodes and edges are added in the same
+        # order as in `to_graph()`, because that order determines the traversal.
+        comp_graph = nx.DiGraph()
+        comp_graph.add_nodes_from(self.nodes.index.tolist())
+        comp_graph.add_nodes_from(self._branchpoints.index.tolist())
+        edges = self._comp_edges
+        towards_end = (edges["type"] == 0) & (edges["source"] < edges["sink"])
+        edges = edges[edges["type"].isin([2, 3]) | towards_end]
+        comp_graph.add_edges_from(edges[["source", "sink"]].to_numpy())
         node_order, node_to_solve_index_mapping = dhs_solve_index(
             comp_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
         )
-
-        # Set the order in which compartments are processed during Dendritic Hierarchical
-        # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
-        # the values correspond to compartment indices.
-        dhs_node_order = np.asarray(node_order[1:])
 
         # We have to change the order of compartments at every time step of the solve.
         # Because of this, we make it as efficient as possible to perform this ordering
@@ -1144,22 +1147,18 @@ class Module(ABC):
         # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
         # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
         # ```
+        # So `inv_mapping_array[node]` is the solve index of a node.
         map_dict = node_to_solve_index_mapping  # Abbreviation.
         inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
-        mapping_array = np.argsort(inv_mapping_array)
-        #
-        self._dhs_solve_indexer = {}
-        self._dhs_solve_indexer["map_dict"] = map_dict
-        self._dhs_solve_indexer["inv_map_to_solve_order"] = inv_mapping_array
-        self._dhs_solve_indexer["map_to_solve_order"] = mapping_array
+        self._dhs_solve_indexer = {
+            "inv_map_to_solve_order": inv_mapping_array,
+            "map_to_solve_order": np.argsort(inv_mapping_array),
+        }
 
-        # Define the matrix permutation for DHS.
-        lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
+        # Define the matrix permutation for DHS. The first entry of `node_order` is the
+        # root, which has no parent.
         lower_and_upper_inds, new_node_order = dhs_permutation_indices(
-            lower_and_upper_inds,
-            self._off_diagonal_inds,
-            dhs_node_order,
-            self._dhs_solve_indexer["map_dict"],
+            self._off_diagonal_inds, node_order[1:], inv_mapping_array
         )
 
         # Concatenate a `0` such that the `lower` and `upper` will have the same
@@ -1169,43 +1168,15 @@ class Module(ABC):
         # Here, we assume that `comp_edges` has lowers first and uppers only after that
         # (by using `[:self._n_nodes-1]`). TODO we should make this more robust in the
         # future as we move towards simulating _any_ graph.
-        self._dhs_solve_indexer["map_to_solve_order_lower"] = jnp.concatenate(
-            [
-                jnp.asarray([0]).astype(int),
-                lower_and_upper_inds.astype(int)[: self._n_nodes - 1],
-            ]
+        num_lowers = self._n_nodes - 1
+        self._dhs_solve_indexer["map_to_solve_order_lower"] = np.concatenate(
+            [[0], lower_and_upper_inds[:num_lowers]]
         )
-        self._dhs_solve_indexer["map_to_solve_order_upper"] = jnp.concatenate(
-            [
-                jnp.asarray([0]).astype(int),
-                lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
-            ]
+        self._dhs_solve_indexer["map_to_solve_order_upper"] = np.concatenate(
+            [[0], lower_and_upper_inds[num_lowers:]]
         )
         self._dhs_solve_indexer["node_order"] = new_node_order
-        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
-            new_node_order
-        )
-
-        # Define a simple lookup table that allows to retrieve the parent of a node.
-        # E.g.:
-        # ```parent_node = parents[node]``` or:
-        # ```two_step_parent = parents[parents[node]]```.
-        parents = -1 * np.ones(self._n_nodes + 1)
-        for nodes in self._dhs_solve_indexer["node_order_grouped"]:
-            parents[nodes[:, 0]] = nodes[:, 1]
-        self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
-
-        # Precompute flat child/parent index arrays for the custom JVP of the solve.
-        # These are used to efficiently compute dA @ x (the matrix-vector product of
-        # the tangent matrix with the primal solution).
-        node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
-        if len(node_order_grouped) > 0:
-            all_edges = np.concatenate(node_order_grouped, axis=0)
-            self._dhs_solve_indexer["all_children"] = all_edges[:, 0].astype(int)
-            self._dhs_solve_indexer["all_parents"] = all_edges[:, 1].astype(int)
-        else:
-            self._dhs_solve_indexer["all_children"] = np.asarray([], dtype=int)
-            self._dhs_solve_indexer["all_parents"] = np.asarray([], dtype=int)
+        self._dhs_solve_indexer.update(dhs_level_indexer(new_node_order, self._n_nodes))
 
     def set(self, key: str, val: float | ArrayLike):
         """Set parameter of module (or its view) to a new value.
@@ -2001,12 +1972,12 @@ class Module(ABC):
         source_branchpoint = bp_conns["source"].to_numpy()
 
         # Step 4: Concatenate diagonals, comp-to-comps, and branchpoint influences.
-        solve_indexer["rows"] = jnp.concatenate(
+        solve_indexer["rows"] = np.concatenate(
             [sink_diags, sink_offdiags, sink_branchpoint]
-        )
-        solve_indexer["cols"] = jnp.concatenate(
+        ).astype(int)
+        solve_indexer["cols"] = np.concatenate(
             [source_diags, source_offdiags, source_branchpoint]
-        )
+        ).astype(int)
 
         # Save the exponential Euler solve indexer.
         self._exp_euler_solve_indexer = solve_indexer
