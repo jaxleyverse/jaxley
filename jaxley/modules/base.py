@@ -41,8 +41,13 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
-from jaxley.utils.jax_utils import infer_device
-from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
+from jaxley.utils.jax_utils import infer_device, to_device
+from jaxley.utils.misc_utils import (
+    cumsum_leading_zero,
+    deprecated,
+    is_str_all,
+    read_only,
+)
 from jaxley.utils.morph_attributes import (
     compute_axial_conductances,
     cylinder_area,
@@ -1602,35 +1607,35 @@ class Module(ABC):
             ]
 
         # Sorted inds are only used to infer the correct starting values.
-        indices_per_param = jnp.stack(comp_inds)
+        indices_per_param = np.stack(comp_inds)
 
         # Assign dummy param (ignored by nanmean later). This adds a new row to the
         # `data` (which is, e.g., self.nodes). That new row has index `-1`, which does
         # not clash with any other node index (they are in
         # `[0, ..., num_total_comps-1]`).
         data.loc[-1, key] = np.nan
-        param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
+        param_vals = np.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
         if init_val is not None:
             if isinstance(init_val, float):
-                new_params = jnp.asarray([init_val] * num_created_parameters)
+                new_params = np.full(num_created_parameters, init_val)
             elif isinstance(init_val, list):
                 assert len(init_val) == num_created_parameters, (
                     f"len(init_val)={len(init_val)}, but trying to create "
                     f"{num_created_parameters} parameters."
                 )
-                new_params = jnp.asarray(init_val)
+                new_params = np.asarray(init_val)
             else:
                 raise ValueError(
                     f"init_val must a float, list, or None, but it is a "
                     f"{type(init_val).__name__}."
                 )
         else:
-            new_params = jnp.nanmean(param_vals, axis=1)
-        self.base.trainable_params.append({key: new_params})
-        self.base.indices_set_by_trainables.append(indices_per_param)
+            new_params = np.nanmean(param_vals, axis=1)
+        self.base.trainable_params.append({key: read_only(new_params, dtype=float)})
+        self.base.indices_set_by_trainables.append(read_only(indices_per_param))
         self.base.num_trainable_params += num_created_parameters
         if verbose:
             print(
@@ -1766,7 +1771,8 @@ class Module(ABC):
         """Get all trainable parameters.
 
         The returned parameters should be passed to
-        ``jx.integrate(..., params=params)``.
+        ``jx.integrate(..., params=params)``. They are JAX arrays, copied from the
+        module: changing them does not change the module.
 
         Returns:
             A list of all trainable parameters in the form of
@@ -1784,7 +1790,7 @@ class Module(ABC):
             params = module.get_parameters()
             v = jx.integrate(cell, params=params, t_max=10.0)
         """
-        return self.trainable_params
+        return [{k: to_device(v) for k, v in p.items()} for p in self.trainable_params]
 
     @only_allow_module
     def get_all_parameters(self, pstate: list[dict]) -> dict[str, Array]:
@@ -2582,32 +2588,20 @@ class Module(ABC):
         comp_states, edge_states = self._get_state_names()
         if key not in comp_states + edge_states:
             raise KeyError(f"{key} is not a recognized state in this module.")
-        values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
-        batch_size = values.shape[0]
-        num_inserted = (
-            len(self._nodes_in_view) if key in comp_states else len(self._edges_in_view)
-        )
-        is_multiple = num_inserted == batch_size
-        values = values if is_multiple else jnp.repeat(values, num_inserted, axis=0)
-        assert batch_size in [
-            1,
-            num_inserted,
-        ], "Number of comps and stimuli do not match."
+        inds = self._nodes_in_view if key in comp_states else self._edges_in_view
+        num_inserted = len(inds)
 
-        if key in self.base.externals.keys():
-            self.base.externals[key] = jnp.concatenate(
-                [self.base.externals[key], values]
-            )
-            self.base.external_inds[key] = jnp.concatenate(
-                [self.base.external_inds[key], self._nodes_in_view]
-            )
-        else:
-            if key in comp_states:
-                self.base.externals[key] = values
-                self.base.external_inds[key] = self._nodes_in_view
-            else:
-                self.base.externals[key] = values
-                self.base.external_inds[key] = self._edges_in_view
+        values = np.asarray(values, dtype=float)
+        values = values if values.ndim == 2 else values[None]
+        if values.shape[0] == 1:
+            values = np.repeat(values, num_inserted, axis=0)
+        assert len(values) == num_inserted, "Number of comps and stimuli do not match."
+
+        if key in self.base.externals:
+            values = np.concatenate([self.base.externals[key], values])
+            inds = np.concatenate([self.base.external_inds[key], inds])
+        self.base.externals[key] = read_only(values)
+        self.base.external_inds[key] = read_only(inds)
         if verbose:
             print(
                 f"Added {num_inserted} external_states. See `.externals` for details."
@@ -2725,8 +2719,10 @@ class Module(ABC):
                     base_exts.pop(state_name, None)
                     base_exts_inds.pop(state_name, None)
                 else:
-                    base_exts[state_name] = base_exts[state_name][keep_inds]
-                    base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+                    base_exts[state_name] = read_only(base_exts[state_name][keep_inds])
+                    base_exts_inds[state_name] = read_only(
+                        base_exts_inds[state_name][keep_inds]
+                    )
                 self._update_view()
             else:
                 pass  # does not have to be deleted if not in externals
@@ -3822,10 +3818,6 @@ class View(Module):
         self._set_externals_in_view()
         self.group_names = self.base.group_names
 
-        self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
-            pointer
-        )  # run after trainables
-
         self._current_view = "view"  # if not instantiated via `comp`, `cell` etc.
         self._update_local_indices()
 
@@ -3917,31 +3909,6 @@ class View(Module):
         elif has_node_inds and has_edge_inds:
             self._nodes_in_view = nodes
             self._edges_in_view = edges
-
-    def _jax_arrays_in_view(self, pointer: Union[Module, View]):
-        """Update jaxnodes/jaxedges to show only those currently in view."""
-        a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
-        jaxnodes = {} if pointer.jaxnodes is not None else None
-        if self.jaxnodes is not None:
-            comp_inds = pointer.jaxnodes["global_comp_index"]
-            common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
-            jaxnodes = {
-                k: v[common_inds]
-                for k, v in pointer.jaxnodes.items()
-                if len(common_inds) > 0
-            }
-
-        jaxedges = {} if pointer.jaxedges is not None else None
-        if pointer.jaxedges is not None:
-            for key, values in self.base.jaxedges.items():
-                if (syn_name := key.split("_")[0]) in self.synapse_names:
-                    syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
-                    inds = np.intersect1d(
-                        self._edges_in_view, syn_edges.index, return_indices=True
-                    )[2]
-                    if len(inds) > 0:
-                        jaxedges[key] = values[inds]
-        return jaxnodes, jaxedges
 
     def _set_externals_in_view(self):
         """Update external inputs to show only those currently in view."""

@@ -5,12 +5,34 @@ from typing import Any, Callable, Dict, Optional, Sequence, Tuple, TypeVar
 
 import jax
 import jax.numpy as jnp
-from jax.typing import ArrayLike
+import numpy as np
+from jax.typing import ArrayLike, DTypeLike
 
 Carry = TypeVar("Carry")
 Input = TypeVar("Input")
 Output = TypeVar("Output")
 Func = TypeVar("Func", bound=Callable)
+
+
+def to_device(
+    x: ArrayLike, dtype: Optional[DTypeLike] = None, device: Optional[Any] = None
+) -> jax.Array:
+    """Move an array to a JAX device without compiling an XLA program.
+
+    `jnp.asarray(x)` compiles a small XLA program for every new shape, even if `x`
+    already has the right dtype. `jax.device_put()` of an array whose dtype JAX
+    supports does not.
+
+    Args:
+        x: A NumPy or JAX array.
+        dtype: The dtype of the result. Defaults to the dtype of `x`, as JAX stores it
+            (64-bit dtypes become 32-bit ones unless `jax_enable_x64` is set).
+        device: A `jax.Device` (or sharding) to put the array on. Defaults to JAX's
+            default device.
+    """
+    x = np.asarray(x)
+    dtype = jax.dtypes.canonicalize_dtype(x.dtype if dtype is None else dtype)
+    return jax.device_put(x.astype(dtype, copy=False), device)
 
 
 def nested_checkpoint_scan(
