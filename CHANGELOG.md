@@ -1,3 +1,10 @@
+# 0.14.2
+
+### 🐛 Bug fixes
+
+- Ensure `make_trainable` -1 padding does not index the last compartment.
+  Also, bump minimum Python to 3.11 and JAX to 0.7.0 (#821, @alexpejovic).
+
 # 0.14.1
 
 ### 🐛 Bug fixes
