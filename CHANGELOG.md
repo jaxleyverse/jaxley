@@ -28,6 +28,14 @@ print(cell.branch(0).comp(1).recording("v"))  # Only the recording in branch 0, 
 ```
 - Synapses can now use the states and parameters of pre- and post-synaptic
 compartments (#765, @michaeldeistler)
+- `module.to_jax(dtype=None, device=None)` It now returns a copy of the module with JAX
+arrays. Convert once to simulate a module many times, or to simulate
+in another dtype (e.g. float32 while `jax_enable_x64` is on) or on another device
+(#821, @jnsbck):
+```python
+jax_net = net.to_jax(dtype=jnp.float32)
+v = jx.integrate(jax_net)
+```
 
 ### API changes
 
@@ -90,6 +98,16 @@ from jaxley_mech.channels.pospischil import Na, K, Leak, CaL, CaT, M
 - Remove `solve_inf_gate_exponential`. Replace with `exponential_euler` (#766,
 @michaeldeistler)
 - Jaxley now requires Python `>=3.14` and `networkx>=3.3`. JAX only guarantees support of python 3.12 until July 2027 (#814, @jnsbck)
+- `module.to_jax()` returns a converted copy instead of filling `module.jaxnodes` and
+`module.jaxedges`. The copy cannot be changed (`set`, `insert`, `stimulate`, ... raise
+an error). `jx.integrate()` converts a module that is not converted yet and no longer
+changes the module it simulates (#821, @jnsbck)
+- `get_parameters()` returns copies of the trainable parameters, so changing them no
+longer changes the module. Stimuli, clamps and trainable parameters are stored as
+read-only NumPy arrays (#821, @jnsbck)
+- `distance_direct()` returns a NumPy array. Removed the unused `equal_segments`,
+`linear_segments`, `get_num_neighbours`, `merge_cells` and `compute_children_in_level`
+from `jaxley.utils.cell_utils` (#821, @jnsbck)
 
 ### 🐛 Bug fixes
 
@@ -100,6 +118,8 @@ channels from `jaxley.channels` (#814, @jnsbck)
 - Graphs without xyz coordinates (e.g. `nx.Graph(edges)` passed to
 `build_compartment_graph`) got edge lengths of `1e-5` instead of the default length `1`
 (#815, @jnsbck)
+- `compute_xyz()` no longer fails for a branch without coordinates whose parent branch
+has coordinates (#821, @jnsbck)
 
 ### 🛠️ Internal updates
 
@@ -110,6 +130,15 @@ channels from `jaxley.channels` (#814, @jnsbck)
 - Hardcoded testvalues now stored as `.npz` files. Regenerate them after a deliberate numerical change with `pytest --force-regen`. `test_network_grad` now uses relative tolerance instead of absolute since values range from 10 to 3e5. Also fails if a parameter is added or missing (@jnsbck)
 - Development and documentation dependencies changed to dependency groups (`dev`, `doc`): installed with `uv sync` (add `--group doc` for the docs) or `pip install -e . --group dev --group doc` (pip >= 25.1). CI now caches compiled JAX programs between runs. (@jnsbck)
 - Small refactor of test channels and helpers (@jnsbck)
+- Building and changing models no longer compiles XLA programs: the morphology, the
+solver setup, the geometry, stimuli and trainable parameters use NumPy, and the
+compartment graph and solver setup are vectorized. In a fresh process, e.g.,
+`read_swc` of an L5PC takes 2.1 s instead of 23.8 s and a network of 1000 small cells
+0.25 s instead of 10.5 s, and the test suite runs ~40% faster. `jx.integrate()` no
+longer converts the module inside `jit`, so compiled simulations are smaller: compiling
+the simulation (gradient) of a network of 1000 small cells takes 0.89 s (2.7 s) instead
+of 2.5 s (4.2 s) (#821, @jnsbck)
+- `tests/test_perf.py` turns off garbage collection while timing (#821, @jnsbck)
 - Faster and less repetitive tests: one compilation per gradient check, merged near-identical tests, smaller SWC files where the full ones add nothing, and shared helpers for the d_lambda rule and the 7-cell golden network. New tests for `vmap`, checkpointed gradients, finite-difference gradients of parameters and the convergence order of the solvers. `test_from_graph_vs_NEURON` could never fail; it now compares for real and is marked as an expected failure until the new SWC reader (#660) (@jnsbck)
 
 ### 📚 Documentation
