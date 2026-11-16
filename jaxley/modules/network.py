@@ -1,6 +1,5 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-import itertools
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 from warnings import warn
@@ -80,11 +79,9 @@ class Network(Module):
         self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.ncomp_per_branch
-        ).tolist()
-        self.nodes["global_cell_index"] = list(
-            itertools.chain(
-                *[[i] * int(cell.cumsum_ncomp[-1]) for i, cell in enumerate(cells)]
-            )
+        )
+        self.nodes["global_cell_index"] = np.repeat(
+            np.arange(len(cells)), [cell.cumsum_ncomp[-1] for cell in cells]
         )
         offset = 0
         node_indices = []
@@ -96,9 +93,13 @@ class Network(Module):
         self.nodes.index = np.concatenate(node_indices)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)
 
-        parents = [cell.comb_parents for cell in cells]
-        self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self._cumsum_nbranches[i]) for i, p in enumerate(parents)]
+        # The parents of every cell, offset by the branches of the cells before it. The
+        # root keeps its `-1`.
+        self.comb_parents = np.concatenate(
+            [
+                np.concatenate([cell.comb_parents[:1], cell.comb_parents[1:] + offset])
+                for cell, offset in zip(cells, self._cumsum_nbranches)
+            ]
         )
 
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
@@ -120,7 +121,7 @@ class Network(Module):
 
         # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are
         # unique).
-        nbranchpoints = jnp.asarray([len(cell._par_inds) for cell in cells])
+        nbranchpoints = np.asarray([len(cell._par_inds) for cell in cells])
         self._cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
         # Channels.
@@ -148,36 +149,31 @@ class Network(Module):
         it is faster to just collect the graph attributes of each `cell` and
         concatenate them (which is what we do here).
         """
-        # Compartment edges, branchpoints, internal_node_inds.
-        offset = 0
-        self._comp_edges = []
-        self._branchpoints = []
-        for cell in self._cells_list:
-            # Compartment edges
-            edges = cell._comp_edges.copy()
-            edges[["source", "sink"]] += offset
-            self._comp_edges.append(edges)
+        cells = self._cells_list
+        # Node offset of every cell (its compartments and branchpoints).
+        offsets = cumsum_leading_zero([cell._n_nodes for cell in cells])
 
-            # Branchpoints.
-            branchpoints = cell._branchpoints.copy()
-            branchpoints.index = branchpoints.index + offset
-            # This if-case avoids a warning later, at `pd.concat(self._branchpoints)`:
-            # Pandas warns if some of the concatenated elements are all empty.
-            if len(branchpoints) > 0:
-                self._branchpoints.append(branchpoints)
+        # Compartment edges.
+        self._comp_edges = pd.concat([c._comp_edges for c in cells], ignore_index=True)
+        edge_offsets = np.repeat(offsets[:-1], [len(c._comp_edges) for c in cells])
+        self._comp_edges["source"] += edge_offsets
+        self._comp_edges["sink"] += edge_offsets
 
-            offset += cell._n_nodes  # Compartment-offset.
-        self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
-        if len(self._branchpoints) > 0:
-            self._branchpoints = pd.concat(self._branchpoints)
+        # Branchpoints. Cells without branchpoints are left out, because pandas warns
+        # when concatenating empty DataFrames.
+        with_bps = [i for i, cell in enumerate(cells) if len(cell._branchpoints) > 0]
+        if len(with_bps) > 0:
+            self._branchpoints = pd.concat([cells[i]._branchpoints for i in with_bps])
+            self._branchpoints.index = np.concatenate(
+                [cells[i]._branchpoints.index + offsets[i] for i in with_bps]
+            )
         else:
             self._branchpoints: pd.DataFrame = pd.DataFrame(columns=["x", "y", "z"])
-        self._n_nodes = offset
+        self._n_nodes = offsets[-1]
 
-        # off_diagonal_inds
-        sources = np.asarray(self._comp_edges["source"].to_list())
-        sinks = np.asarray(self._comp_edges["sink"].to_list())
-        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
+        sources = self._comp_edges["source"].to_numpy()
+        sinks = self._comp_edges["sink"].to_numpy()
+        self._off_diagonal_inds = np.stack([sources, sinks]).astype(int)
 
     def _init_solver_jaxley_dhs_solve(self, *args, **kwargs) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.

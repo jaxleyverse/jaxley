@@ -3,7 +3,6 @@
 
 from typing import Callable, Dict, List, Optional, Tuple
 
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
@@ -63,7 +62,7 @@ class Compartment(Module):
         self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-        self._internal_node_inds = jnp.asarray([0])
+        self._internal_node_inds = np.asarray([0])
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]

@@ -164,7 +164,7 @@ class Module(ABC):
 
         self._cumsum_nbranches: Optional[np.ndarray] = None
 
-        self.comb_parents: ArrayLike = jnp.asarray([-1])
+        self.comb_parents: np.ndarray = np.asarray([-1])
 
         self.initialized_solver: bool = False
         self.initialized_syns: bool = False
@@ -3817,7 +3817,7 @@ class View(Module):
         self.ncomp = len(self.nodes)
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
-        self._cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
+        self._cumsum_nbranches = np.cumsum(self.nbranches_per_cell)
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
         self.ncomp_per_branch = self.base.ncomp_per_branch[self._branches_in_view]

@@ -1,7 +1,5 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-from typing import List
-
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -9,94 +7,6 @@ from jax import Array, vmap
 from jax.typing import ArrayLike
 
 from jaxley.utils.misc_utils import cumsum_leading_zero
-
-
-def equal_segments(branch_property: list, ncomp_per_branch: int):
-    """Generates segments where some property is the same in each segment.
-
-    Args:
-        branch_property: List of values of the property in each branch. Should have
-            `len(branch_property) == num_branches`.
-    """
-    assert isinstance(branch_property, list), "branch_property must be a list."
-    return jnp.asarray([branch_property] * ncomp_per_branch).T
-
-
-def linear_segments(
-    initial_val: float, endpoint_vals: list, parents: ArrayLike, ncomp_per_branch: int
-):
-    """Generates segments where some property is linearly interpolated.
-
-    Args:
-        initial_val: The value at the tip of the soma.
-        endpoint_vals: The value at the endpoints of each branch.
-    """
-    branch_property = endpoint_vals + [initial_val]
-    num_branches = len(parents)
-    # Compute radiuses by linear interpolation.
-    endpoint_radiuses = jnp.asarray(branch_property)
-
-    def compute_rad(branch_ind, loc):
-        start = endpoint_radiuses[parents[branch_ind]]
-        end = endpoint_radiuses[branch_ind]
-        return (end - start) * loc + start
-
-    branch_inds_of_each_comp = jnp.tile(jnp.arange(num_branches), ncomp_per_branch)
-    locs_of_each_comp = jnp.linspace(1, 0, ncomp_per_branch).repeat(num_branches)
-    rad_of_each_comp = compute_rad(branch_inds_of_each_comp, locs_of_each_comp)
-
-    return jnp.reshape(rad_of_each_comp, (ncomp_per_branch, num_branches)).T
-
-
-def merge_cells(
-    cumsum_num_branches: List[int],
-    cumsum_num_branchpoints: List[int],
-    arrs: List[List[np.ndarray]],
-    exclude_first: bool = True,
-) -> np.ndarray:
-    """
-    Build full list of which branches are solved in which iteration.
-
-    From the branching pattern of single cells, this "merges" them into a single
-    ordering of branches.
-
-    Args:
-        cumsum_num_branches: cumulative number of branches. E.g., for three cells with
-            10, 15, and 5 branches respectively, this will should be a list containing
-            `[0, 10, 25, 30]`.
-        arrs: A list of a list of arrays that should be merged.
-        exclude_first: If `True`, the first element of each list in `arrs` will remain
-            unchanged. Useful if a `-1` (which indicates "no parent") entry should not
-            be changed.
-
-    Returns:
-        A list of arrays which contain the branch indices that are computed at each
-        level (i.e., iteration).
-    """
-    ps = []
-    for i, att in enumerate(arrs):
-        p = att
-        if exclude_first:
-            raise NotImplementedError
-            p = [p[0]] + [p_in_level + cumsum_num_branches[i] for p_in_level in p[1:]]
-        else:
-            p = [
-                p_in_level
-                + np.asarray([cumsum_num_branches[i], cumsum_num_branchpoints[i]])
-                for p_in_level in p
-            ]
-        ps.append(p)
-
-    max_len = max([len(att) for att in arrs])
-    combined_parents_in_level = []
-    for i in range(max_len):
-        current_ps = []
-        for p in ps:
-            if len(p) > i:
-                current_ps.append(p[i])
-        combined_parents_in_level.append(np.concatenate(current_ps))
-
-    return combined_parents_in_level
 
 
 def compute_levels(parents):
@@ -110,28 +20,10 @@ def compute_levels(parents):
     return levels
 
 
-def compute_children_in_level(
-    levels: np.ndarray, children_row_and_col: np.ndarray
-) -> List[np.ndarray]:
-    num_branches = len(levels)
-    children_in_each_level = []
-    for l in range(1, np.max(levels) + 1):
-        children_in_current_level = []
-        for b in range(num_branches):
-            if levels[b] == l:
-                children_in_current_level.append(children_row_and_col[b - 1])
-        children_in_current_level = np.asarray(children_in_current_level)
-        children_in_each_level.append(children_in_current_level)
-    return children_in_each_level
-
-
-def _compute_num_children(parents):
-    num_branches = len(parents)
-    num_children = []
-    for b in range(num_branches):
-        n = np.sum(np.asarray(parents) == b)
-        num_children.append(n)
-    return num_children
+def _compute_num_children(parents) -> np.ndarray:
+    """Return the number of children of every branch."""
+    parents = np.asarray(parents)
+    return np.bincount(parents[parents >= 0], minlength=len(parents))
 
 
 def _compute_index_of_child(parents):
@@ -152,7 +44,7 @@ def _compute_index_of_child(parents):
     return index_of_child
 
 
-def compute_children_indices(parents) -> list[Array]:
+def compute_children_indices(parents) -> list[np.ndarray]:
     """Return all children indices of every branch.
 
     Example:
@@ -161,27 +53,12 @@ def compute_children_indices(parents) -> list[Array]:
     compute_children_indices(parents) -> [[1, 2], [], []]
     ```
     """
-    num_branches = len(parents)
-    child_indices = []
-    for b in range(num_branches):
-        child_indices.append(np.where(parents == b)[0])
-    return child_indices
-
-
-def get_num_neighbours(
-    num_children: ArrayLike,
-    ncomp_per_branch: int,
-    num_branches: int,
-):
-    """
-    Number of neighbours of each compartment.
-    """
-    num_neighbours = 2 * jnp.ones((num_branches * ncomp_per_branch))
-    num_neighbours = num_neighbours.at[ncomp_per_branch - 1].set(1.0)
-    num_neighbours = num_neighbours.at[jnp.arange(num_branches) * ncomp_per_branch].set(
-        num_children + 1.0
-    )
-    return num_neighbours
+    parents = np.asarray(parents)
+    num_children = _compute_num_children(parents)
+    # Sorting by parent puts the roots (-1) first, then the children of every branch,
+    # in ascending order (the sort is stable).
+    by_parent = np.argsort(parents, kind="stable")[len(parents) - num_children.sum() :]
+    return np.split(by_parent, np.cumsum(num_children)[:-1])
 
 
 def local_index_of_loc(
@@ -219,7 +96,7 @@ def remap_to_consecutive(arr):
 
     E.g. `[0, 0, 1, 4, 4, 6, 6] -> [0, 0, 1, 2, 2, 3, 3]`
     """
-    _, inverse_indices = jnp.unique(arr, return_inverse=True)
+    _, inverse_indices = np.unique(arr, return_inverse=True)
     return inverse_indices
 
 
@@ -293,7 +170,7 @@ def query_channel_states_and_params(d, keys, idcs):
 
 def compute_children_and_parents(
     branch_edges: pd.DataFrame,
-) -> tuple[Array, Array, Array, int]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Build indices used during `._init_morph_custom_spsolve()."""
     par_inds = branch_edges["parent_branch_index"].to_numpy()
     child_inds = branch_edges["child_branch_index"].to_numpy()
