@@ -157,7 +157,7 @@ def all_parameters(module, params=[], pstate=None) -> dict:
     The defaults, overwritten by the trainable `params` (from `get_parameters()`) or,
     if given, by `pstate` (e.g. from `data_set`).
     """
-    module.to_jax()
+    module = module.to_jax()
     if pstate is None:
         pstate = params_to_pstate(params, module.indices_set_by_trainables)
     return module.get_all_parameters(pstate)

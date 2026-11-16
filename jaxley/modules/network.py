@@ -11,7 +11,7 @@ from jax import Array, vmap
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from jaxley.modules.base import Module
+from jaxley.modules.base import Module, forbid_after_to_jax
 from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
     compute_children_and_parents,
@@ -556,6 +556,7 @@ class Network(Module):
         self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.base.synapses.append(synapse_type)
 
+    @forbid_after_to_jax
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name
