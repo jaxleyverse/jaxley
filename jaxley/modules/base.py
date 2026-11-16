@@ -420,12 +420,16 @@ class Module(ABC):
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
 
         # Estimate the branchpoint xyz as the mean of the xyz of all neighboring
-        # compartments.
-        for branchpoint in self.base._branchpoints.index:
-            edges = self.base._comp_edges.copy()
-            neighbors = edges[edges["sink"] == branchpoint]["source"]
-            neighbor_xyz = self.base.nodes.loc[neighbors, ["x", "y", "z"]].mean()
-            self.base._branchpoints.loc[branchpoint, ["x", "y", "z"]] = neighbor_xyz
+        # compartments (those with an edge to the branchpoint).
+        branchpoints = self.base._branchpoints.index
+        if len(branchpoints) > 0:
+            edges = self.base._comp_edges
+            to_bp = edges[edges["sink"].isin(branchpoints)]
+            xyz = self.base.nodes.loc[to_bp["source"], ["x", "y", "z"]].to_numpy()
+            mean_xyz = pd.DataFrame(xyz).groupby(to_bp["sink"].to_numpy()).mean()
+            self.base._branchpoints.loc[mean_xyz.index, ["x", "y", "z"]] = (
+                mean_xyz.to_numpy()
+            )
 
     def _reformat_index(self, idx: Any, dtype: type = int) -> np.ndarray:
         """Transforms different types of indices into an array.
@@ -3468,16 +3472,8 @@ class Module(ABC):
         index_of_child = _compute_index_of_child(parents)
         levels = compute_levels(parents)
 
-        # Extract branch.
-        inds_branch = self.nodes.groupby("global_branch_index")[
-            "global_comp_index"
-        ].apply(list)
-        branch_lens = [
-            np.sum(
-                self.nodes.set_index("global_comp_index").loc[np.asarray(i), "length"]
-            )
-            for i in inds_branch
-        ]
+        branch_lens = self.nodes.groupby("global_branch_index")["length"].sum()
+        branch_lens = branch_lens.to_numpy()
         endpoints = []
 
         # Different levels will get a different "angle" at which the children emerge from
@@ -3516,8 +3512,8 @@ class Module(ABC):
 
                 self.xyzr[b][:, :3] = np.asarray([start_point, end_point])
             else:
-                # Dummy to keey the index `endpoints[parent[b]]` above working.
-                endpoints.append(np.zeros((2,)))
+                # A branch with coordinates: its children start at its last point.
+                endpoints.append(self.xyzr[b][-1, :3])
 
     def move(
         self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = False

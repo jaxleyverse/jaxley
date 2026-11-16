@@ -1,9 +1,8 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from jax import Array, vmap
+from jax import Array
 from jax.typing import ArrayLike
 
 from jaxley.utils.misc_utils import cumsum_leading_zero
@@ -100,7 +99,31 @@ def remap_to_consecutive(arr):
     return inverse_indices
 
 
-v_interp = vmap(jnp.interp, in_axes=(None, None, 1))
+def v_interp(x: ArrayLike, xp: ArrayLike, fp: ArrayLike) -> np.ndarray:
+    """Linear interpolation of every column of `fp`, shape `(fp.shape[1], *x.shape)`.
+
+    NumPy version of `vmap(jnp.interp, in_axes=(None, None, 1))`, with the same rule
+    at duplicated points in `xp`: a query at a duplicated last point returns the
+    earlier value, where `np.interp` returns the later one.
+
+    Args:
+        x: Locations at which to interpolate.
+        xp: Increasing locations of the data points.
+        fp: Values at the data points, shape `(len(xp), num_columns)`.
+    """
+    shape = np.shape(x)
+    x = np.asarray(x, dtype=float).reshape(-1)
+    xp = np.asarray(xp, dtype=float)
+    fp = np.asarray(fp, dtype=float)
+    i = np.clip(np.searchsorted(xp, x, side="right"), 1, len(xp) - 1)
+    df = fp[i] - fp[i - 1]
+    dx = (xp[i] - xp[i - 1])[:, None]
+    delta = (x - xp[i - 1])[:, None]
+    dx0 = np.abs(dx) <= np.spacing(np.finfo(xp.dtype).eps)
+    f = np.where(dx0, fp[i - 1], fp[i - 1] + (delta / np.where(dx0, 1, dx)) * df)
+    f = np.where((x < xp[0])[:, None], fp[0], f)
+    f = np.where((x > xp[-1])[:, None], fp[-1], f)
+    return f.T.reshape(fp.shape[1], *shape)
 
 
 def interpolate_xyzr(loc: float, coords: np.ndarray):
