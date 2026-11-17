@@ -1601,47 +1601,26 @@ class Module(ABC):
         data = self.edges if key in self.edges.columns else data
 
         assert data is not None, f"Key '{key}' not found in nodes or edges"
+        data = data.loc[data[key].notna()]
+        assert (
+            len(data) > 0
+        ), "No settable parameters found in the selected compartments."
 
-        # Build the `(num_params, max_group_size)` index and value matrices without
-        # a Python loop over groups. This used to be a `groupby(...).apply(...)`
-        # plus one `.loc` gather per group, stacked with `jnp.stack`. All three are
-        # O(number of groups) in Python, and `jnp.stack` over a list is quadratic in
-        # it (284s for 21k groups), which made `select(edges=...).make_trainable()`
-        # on a multi-million-edge network effectively never finish.
-        #
-        # `groupby` drops NaN keys; the second term reproduces that. `.to_numpy()`
-        # may return a read-only view, so this must not be an in-place `&=`.
-        keep = (
-            data[key].notna().to_numpy()
-            & data["controlled_by_param"].notna().to_numpy()
-        )
-        assert keep.any(), "No settable parameters found in the selected compartments."
-        row_index = data.index.to_numpy()[keep]
-        group_key = data["controlled_by_param"].to_numpy()[keep]
-        values = data[key].to_numpy()[keep]
-
-        # `groupby` orders groups by key and preserves row order within a group. A
-        # stable argsort reproduces exactly that, so the parameter order (and hence
-        # the order of the gradients returned to the user) is unchanged.
-        order = np.argsort(group_key, kind="stable")
-        _, starts, counts = np.unique(
-            group_key[order], return_index=True, return_counts=True
-        )
-        max_len = counts.max()
-        row = np.repeat(np.arange(len(counts)), counts)
-        col = np.arange(len(order)) - np.repeat(starts, counts)
-
-        # Groups in `controlled_by_param` can have different sizes, e.g. because two
-        # branches have a different number of comps. Smaller groups are padded: -1
-        # in the indices and NaN in the values (ignored by the `nanmean` below),
-        # exactly as before.
-        comp_inds = np.full((len(counts), max_len), -1, dtype=int)
-        padded_vals = np.full((len(counts), max_len), np.nan)
-        comp_inds[row, col] = row_index[order]
-        padded_vals[row, col] = values[order]
+        # Scatter each row into a `(num_params, max_group_size)` matrix: the row is
+        # its group number and the column its position within the group. This keeps
+        # the `groupby` order but avoids a Python loop over groups. Smaller groups
+        # are padded with -1 (indices) and NaN (values, ignored by `nanmean` below).
+        grouped = data.groupby("controlled_by_param")
+        row = grouped.ngroup().to_numpy()
+        col = grouped.cumcount().to_numpy()
+        shape = (row.max() + 1, col.max() + 1)
+        comp_inds = np.full(shape, -1)
+        comp_inds[row, col] = data.index.to_numpy()
+        vals = np.full(shape, np.nan)
+        vals[row, col] = data[key].to_numpy()
 
         indices_per_param = jnp.asarray(comp_inds)
-        param_vals = jnp.asarray(padded_vals)
+        param_vals = jnp.asarray(vals)
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
