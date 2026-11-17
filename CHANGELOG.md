@@ -4,9 +4,8 @@
 
 - Ensure `make_trainable` -1 padding does not index the last compartment.
   Also, bump minimum Python to 3.11 and JAX to 0.7.0 (#821, @alexpejovic).
-- Speed up `make_trainable` for many parameter groups by vectorizing the
-  construction of its index and value matrices instead of using a pandas `groupby`
-  (@alexpejovic).
+- Speed up `make_trainable` for many parameter groups by eliminating static 
+  for loops for the construction of its index and value matrices (@alexpejovic).
 
 # 0.14.1
 
