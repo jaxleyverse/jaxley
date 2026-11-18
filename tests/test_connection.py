@@ -66,6 +66,14 @@ def test_connect():
     )
     assert (first_set_edges["type"] == "TestSynapse").all()
 
+    # Node params of a synapse type live in every compartment. A later `connect` must
+    # only fill in defaults, not reset values that were set in between (it did).
+    connect(net1[0, 0, 0], net1[1, 0, 0], IonotropicSynapse())
+    net1.cell(1).set("IonotropicSynapse_e_syn", -80.0)
+    connect(net1[0, 0, 1], net1[2, 0, 0], IonotropicSynapse())
+    assert (net1.cell(1).nodes["IonotropicSynapse_e_syn"] == -80.0).all()
+    assert (net1.cell([0, 2, 3]).nodes["IonotropicSynapse_e_syn"] == 0.0).all()
+
 
 def test_fully_connect():
     net1 = build.net(ncells=16, nbranches=3, ncomp=8)

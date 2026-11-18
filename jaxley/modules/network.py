@@ -590,10 +590,15 @@ class Network(Module):
         pre_nodes = pd.DataFrame({"pre_index": pre_nodes.index})
         post_nodes = pd.DataFrame({"post_index": post_nodes.index})
 
-        for key, value in synapse_type.node_params.items():
-            self.base.nodes[key] = value
-        for key, value in synapse_type.node_states.items():
-            self.base.nodes[key] = value
+        # Node params and states of a synapse type exist in every compartment. Fill
+        # in defaults only where there is no value yet, so that later `connect`
+        # calls keep values that were set in between.
+        node_defaults = {**synapse_type.node_params, **synapse_type.node_states}
+        for key, value in node_defaults.items():
+            if key in self.base.nodes.columns:
+                self.base.nodes[key] = self.base.nodes[key].fillna(value)
+            else:
+                self.base.nodes[key] = value
 
         new_rows = pd.concat(
             [
