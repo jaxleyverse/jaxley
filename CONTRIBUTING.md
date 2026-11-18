@@ -37,6 +37,15 @@ directory.
 checks fail please make sure you have installed the latest versions for each of them
 and run them locally.
 
+### NumPy for building, JAX for simulating
+
+Code that builds or changes a module (constructors, views, `set`, `insert`, `connect`,
+`stimulate`, `make_trainable`, the solver setup, ...) uses NumPy, and modules store
+NumPy arrays. This is to avoid `jax.numpy` call soutside of `jax.jit`, which otherwise
+compiles a small XLA program for each new input shape, which is unceccsary overhead.
+`jax.numpy` is for code that runs inside `jax.jit`: `step`, the solvers and the
+mechanisms. Elementwise helpers, such as `cylinder_area`, work with both.
+
 ## Online documentation
 
 Most of [the documentation](https://jaxley.readthedocs.io/en/latest/) is written in

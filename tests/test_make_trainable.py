@@ -123,15 +123,20 @@ def test_diverse_synapse_types():
     assert np.all(all_params["TestSynapse_gC"][0] == 3.3)
     assert np.all(all_params["TestSynapse_gC"][1] == 4.4)
 
-    # Add another trainable parameter and test again.
+    # Add another trainable parameter and test again. The first two keep the values
+    # set above (`get_parameters()` returns copies, so they are passed again).
     net.IonotropicSynapse.edge(1).make_trainable("IonotropicSynapse_gS")
     assert net.num_trainable_params == 4
 
-    params = net.get_parameters()
+    new_params = net.get_parameters()
+    new_params[:2] = params[:2]
 
-    # Modify the trainable parameters.
-    params[2]["IonotropicSynapse_gS"] = params[2]["IonotropicSynapse_gS"].at[:].set(5.5)
-    all_params = all_parameters(net, params)
+    # Modify the new trainable parameter. It overlaps with the first one, and the
+    # later one wins.
+    new_params[2]["IonotropicSynapse_gS"] = (
+        new_params[2]["IonotropicSynapse_gS"].at[:].set(5.5)
+    )
+    all_params = all_parameters(net, new_params)
     assert np.all(all_params["IonotropicSynapse_gS"][0] == 2.2)
     assert np.all(all_params["IonotropicSynapse_gS"][1] == 5.5)
 

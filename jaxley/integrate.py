@@ -86,7 +86,7 @@ def build_init_and_step_fn(
         cell.stimulate(jx.step_current(0, 1, 2, delta_t, t_max))
         params = cell.get_parameters()
 
-        cell.to_jax()
+        cell = cell.to_jax()
         rec_inds = cell.rec_info.rec_index.to_numpy()
         rec_states = cell.rec_info.state.to_numpy()
         externals = cell.externals.copy()
@@ -130,6 +130,8 @@ def build_init_and_step_fn(
         rec = jnp.stack(recordings, axis=0).T
 
     """
+    module = module._as_jax()
+
     # Initialize the external inputs and their indices.
     external_inds = module.external_inds.copy()
 
@@ -321,6 +323,18 @@ def integrate(
     If ``t_max`` is not passed, then you must have inserted a stimulus, and ``t_max``
     will match the stimulus length.
 
+    Simulating a module many times
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    ``jx.integrate`` converts the module to JAX arrays with ``module.to_jax()``,
+    unless it was converted already. To simulate the same module many times (e.g. in
+    a training loop), convert it once:
+
+    ::
+
+        jax_cell = cell.to_jax()
+        v = jx.integrate(jax_cell, t_max=10.0)
+
     Customizing the solver
     ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -349,7 +363,7 @@ def integrate(
             voltage_solver = "jaxley.dhs.cpu"
 
     assert module.initialized, "Module is not initialized, run `._initialize()`."
-    module.to_jax()  # Creates `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
+    module = module._as_jax()  # A copy with JAX arrays, unless it is one already.
 
     # Initialize the external inputs and their indices.
     externals = module.externals.copy()
@@ -406,7 +420,11 @@ def integrate(
             if t_max_steps > externals[key].shape[0]:
                 if key == "i":
                     pad = jnp.zeros(
-                        (t_max_steps - externals["i"].shape[0], externals["i"].shape[1])
+                        (
+                            t_max_steps - externals["i"].shape[0],
+                            externals["i"].shape[1],
+                        ),
+                        dtype=externals["i"].dtype,
                     )
                     externals["i"] = jnp.concatenate((externals["i"], pad))
                 else:
@@ -455,7 +473,10 @@ def integrate(
         ), "The desired simulation duration is longer than `prod(nested_length)`."
         if externals:
             for key in externals.keys():
-                dummy_external = jnp.zeros((size_difference, externals[key].shape[1]))
+                dummy_external = jnp.zeros(
+                    (size_difference, externals[key].shape[1]),
+                    dtype=externals[key].dtype,
+                )
                 externals[key] = jnp.concatenate([externals[key], dummy_external])
 
     # Record the initial state.

@@ -4,7 +4,6 @@
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
@@ -80,7 +79,7 @@ class Cell(Module):
 
         self.total_nbranches = len(branch_list)
         self.nbranches_per_cell = [len(branch_list)]
-        self.comb_parents = jnp.asarray(parents)
+        self.comb_parents = np.asarray(parents)
         self.comb_children = compute_children_indices(self.comb_parents)
         self._cumsum_nbranches = np.asarray([0, len(branch_list)])
 
@@ -96,8 +95,8 @@ class Cell(Module):
         self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.ncomp_per_branch
-        ).tolist()
-        self.nodes["global_cell_index"] = np.repeat(0, self.cumsum_ncomp[-1]).tolist()
+        )
+        self.nodes["global_cell_index"] = np.zeros(self.cumsum_ncomp[-1], dtype=int)
 
         # Appending general parameters (radius, length, r_a, cm) and channel parameters,
         # as well as the states (v, and channel states).
@@ -137,89 +136,53 @@ class Cell(Module):
         `type == 3`: parent-compartment --> branchpoint
         `type == 4`: child-compartment --> branchpoint
         """
-        # Edges between compartments within the branches.
-        comp_edges = pd.concat(
-            [
-                pd.DataFrame()
-                .from_dict(
-                    {
-                        "source": list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp))
-                        + list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp)),
-                        "sink": list(range(1 + cumsum_ncomp, ncomp + cumsum_ncomp))
-                        + list(range(cumsum_ncomp, ncomp - 1 + cumsum_ncomp)),
-                        "ordered": [1] * (ncomp - 1) + [0] * (ncomp - 1),
-                    }
-                )
-                .astype(int)
-                for ncomp, cumsum_ncomp in zip(self.ncomp_per_branch, self.cumsum_ncomp)
-            ]
-        )
-        comp_edges["type"] = 0
 
-        # Edges from branchpoints to compartments.
-        branchpoint_to_parent_edges = pd.DataFrame().from_dict(
-            {
-                "source": np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1],
-                "sink": self.cumsum_ncomp[self._par_inds + 1] - 1,
-                "type": 1,
-                "ordered": 0,
-            }
+        def edges(source, sink, ordered, type):
+            n = len(source)
+            return np.stack([source, sink, np.full(n, ordered), np.full(n, type)], 1)
+
+        # Edges between compartments within the branches. For every branch, first the
+        # edges towards its end (`ordered=1`), then the edges back (`ordered=0`).
+        nedges = self.ncomp_per_branch - 1
+        branch = np.repeat(np.arange(len(nedges)), nedges)
+        position = np.arange(len(branch)) - np.repeat(
+            np.cumsum(nedges) - nedges, nedges
         )
-        branchpoint_to_child_edges = pd.DataFrame().from_dict(
-            {
-                "source": self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1],
-                "sink": self.cumsum_ncomp[self._child_inds],
-                "type": 2,
-                "ordered": 1,
-            }
+        comp = self.cumsum_ncomp[branch] + position  # All but the last of each branch.
+        within_branch = np.concatenate(
+            [edges(comp, comp + 1, 1, 0), edges(comp + 1, comp, 0, 0)]
         )
-        comp_edges = pd.concat(
-            [
-                comp_edges,
-                branchpoint_to_parent_edges,
-                branchpoint_to_child_edges,
-            ],
-            ignore_index=True,
+        order = np.argsort(np.concatenate([2 * branch, 2 * branch + 1]), kind="stable")
+
+        # Edges between branchpoints and the last compartment of the parent branch or
+        # the first compartment of a child branch.
+        parent_bp = np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
+        parent = self.cumsum_ncomp[self._par_inds + 1] - 1
+        child_bp = self._child_belongs_to_branchpoint + self.cumsum_ncomp[-1]
+        child = self.cumsum_ncomp[self._child_inds]
+
+        all_edges = [
+            within_branch[order],
+            edges(parent_bp, parent, 0, 1),
+            edges(child_bp, child, 1, 2),
+            edges(parent, parent_bp, 1, 3),
+            edges(child, child_bp, 0, 4),
+        ]
+        self._comp_edges = pd.DataFrame(
+            np.concatenate(all_edges).astype(int),
+            columns=["source", "sink", "ordered", "type"],
         )
 
-        # Edges from compartments to branchpoints.
-        parent_to_branchpoint_edges = branchpoint_to_parent_edges.rename(
-            columns={"sink": "source", "source": "sink"}
-        )
-        parent_to_branchpoint_edges["type"] = 3
-        parent_to_branchpoint_edges["ordered"] = 1
-        child_to_branchpoint_edges = branchpoint_to_child_edges.rename(
-            columns={"sink": "source", "source": "sink"}
-        )
-        child_to_branchpoint_edges["type"] = 4
-        child_to_branchpoint_edges["ordered"] = 0
-
-        self._comp_edges = pd.concat(
-            [
-                comp_edges,
-                parent_to_branchpoint_edges,
-                child_to_branchpoint_edges,
-            ],
-            ignore_index=True,
-        )
-
-        # Branchpoints.
-        #
-        # Get last xyz of parent.
-        branchpoint_xyz = []
-        for i in self._par_inds:
-            branchpoint_xyz.append(self.xyzr[i][-1, :3])
-        if len(branchpoint_xyz) > 0:
-            # It is initialized as empty pd.DataFrame in `base.py`.
+        # Branchpoints are at the last traced point of their parent branch. Without
+        # branchpoints, `_branchpoints` stays the empty DataFrame from `base.py`.
+        if len(self._par_inds) > 0:
             self._branchpoints = pd.DataFrame(
-                np.asarray(branchpoint_xyz), columns=["x", "y", "z"]
-            )
-            # Create offset for the branchpoints.
-            self._branchpoints.index = (
-                np.arange(len(self._par_inds)) + self.cumsum_ncomp[-1]
+                np.asarray([self.xyzr[i][-1, :3] for i in self._par_inds]),
+                columns=["x", "y", "z"],
+                index=parent_bp,
             )
 
-        sources = np.asarray(self._comp_edges["source"].to_list())
-        sinks = np.asarray(self._comp_edges["sink"].to_list())
+        sources = self._comp_edges["source"].to_numpy()
+        sinks = self._comp_edges["sink"].to_numpy()
         self._n_nodes = np.max(sinks) + 1 if len(sinks) > 0 else 1
-        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
+        self._off_diagonal_inds = np.stack([sources, sinks])

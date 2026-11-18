@@ -18,8 +18,9 @@ def gather_synapes(
     All this does it that it sums the synaptic currents that come into a particular
     compartment. It returns an array of as many elements as there are compartments.
     """
-    incoming_currents_voltages = jnp.zeros((number_of_compartments,))
-    incoming_currents_content = jnp.zeros((number_of_compartments,))
+    dtype = jnp.result_type(current_each_synapse_voltage_term)
+    incoming_currents_voltages = jnp.zeros((number_of_compartments,), dtype=dtype)
+    incoming_currents_content = jnp.zeros((number_of_compartments,), dtype=dtype)
 
     dnums = ScatterDimensionNumbers(
         update_window_dims=(),

@@ -10,6 +10,7 @@ from itertools import chain
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 from warnings import warn
 
+import jax
 import jax.numpy as jnp
 import networkx as nx
 import numpy as np
@@ -17,7 +18,7 @@ import pandas as pd
 from jax import Array, vmap
 from jax.lax import ScatterDimensionNumbers, scatter_add
 from jax.scipy.linalg import expm
-from jax.typing import ArrayLike
+from jax.typing import ArrayLike, DTypeLike
 from matplotlib.axes import Axes
 
 from jaxley.channels import Channel
@@ -41,8 +42,13 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
-from jaxley.utils.jax_utils import infer_device
-from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
+from jaxley.utils.jax_utils import infer_device, to_device
+from jaxley.utils.misc_utils import (
+    cumsum_leading_zero,
+    deprecated,
+    is_str_all,
+    read_only,
+)
 from jaxley.utils.morph_attributes import (
     compute_axial_conductances,
     cylinder_area,
@@ -55,10 +61,28 @@ from jaxley.utils.plot_utils import plot_comps, plot_graph, plot_morph
 from jaxley.utils.solver_utils import (
     comp_edges_to_indices,
     convert_to_csc,
-    dhs_group_comps_into_levels,
+    dhs_level_indexer,
     dhs_permutation_indices,
     dhs_solve_index,
 )
+
+
+def forbid_after_to_jax(func):
+    """Decorator for methods that change a module: they raise on `to_jax()` copies.
+
+    A module returned by `to_jax()` is a snapshot for simulation, so changing it would
+    not change what is simulated."""
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.base._is_jax:
+            raise RuntimeError(
+                f"`{func.__name__}()` cannot change a module returned by `to_jax()`. "
+                f"Call it on the original module, then call `to_jax()` again."
+            )
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 def only_allow_module(func):
@@ -164,7 +188,7 @@ class Module(ABC):
 
         self._cumsum_nbranches: Optional[np.ndarray] = None
 
-        self.comb_parents: ArrayLike = jnp.asarray([-1])
+        self.comb_parents: np.ndarray = np.asarray([-1])
 
         self.initialized_solver: bool = False
         self.initialized_syns: bool = False
@@ -197,12 +221,15 @@ class Module(ABC):
         # For recordings.
         self.rec_info: pd.DataFrame = pd.DataFrame().from_dict({})
 
-        # For stimuli or clamps.
-        # E.g. `self.externals = {"v": zeros(1000,2), "i": ones(1000, 2)}`
-        # for 1000 timesteps and two compartments.
+        # For stimuli or clamps (read-only NumPy arrays, JAX arrays after `to_jax()`).
+        # E.g. `self.externals = {"v": zeros(2, 1000), "i": ones(2, 1000)}`
+        # for two compartments and 1000 timesteps.
         self.externals: dict[str, ArrayLike] = {}
-        # E.g. `self.external)inds = {"v": jnp.asarray([0,1]), "i": jnp.asarray([2,3])}`
-        self.external_inds: dict[str, ArrayLike] = {}
+        # E.g. `self.external_inds = {"v": np.asarray([0, 1]), "i": np.asarray([2, 3])}`
+        self.external_inds: dict[str, np.ndarray] = {}
+
+        # Whether this module is a copy for simulation, returned by `to_jax()`.
+        self._is_jax: bool = False
 
         # x, y, z coordinates and radius.
         self.xyzr: List[np.ndarray] = []
@@ -420,12 +447,16 @@ class Module(ABC):
         self.base.nodes.loc[self._nodes_in_view, ["x", "y", "z"]] = centers
 
         # Estimate the branchpoint xyz as the mean of the xyz of all neighboring
-        # compartments.
-        for branchpoint in self.base._branchpoints.index:
-            edges = self.base._comp_edges.copy()
-            neighbors = edges[edges["sink"] == branchpoint]["source"]
-            neighbor_xyz = self.base.nodes.loc[neighbors, ["x", "y", "z"]].mean()
-            self.base._branchpoints.loc[branchpoint, ["x", "y", "z"]] = neighbor_xyz
+        # compartments (those with an edge to the branchpoint).
+        branchpoints = self.base._branchpoints.index
+        if len(branchpoints) > 0:
+            edges = self.base._comp_edges
+            to_bp = edges[edges["sink"].isin(branchpoints)]
+            xyz = self.base.nodes.loc[to_bp["source"], ["x", "y", "z"]].to_numpy()
+            mean_xyz = pd.DataFrame(xyz).groupby(to_bp["sink"].to_numpy()).mean()
+            self.base._branchpoints.loc[mean_xyz.index, ["x", "y", "z"]] = (
+                mean_xyz.to_numpy()
+            )
 
     def _reformat_index(self, idx: Any, dtype: type = int) -> np.ndarray:
         """Transforms different types of indices into an array.
@@ -973,34 +1004,78 @@ class Module(ABC):
             self.base.nodes[name] = self.base.nodes[name].astype(bool)
 
     @only_allow_module
-    def to_jax(self):
-        # TODO FROM #447: Make this work for View?
-        """Move `.nodes` to `.jaxnodes`.
+    def to_jax(
+        self, dtype: Optional[DTypeLike] = None, device: Optional[Any] = None
+    ) -> Module:
+        """Return a copy of the module whose arrays are JAX arrays, for simulation.
 
-        Before the actual simulation is run (via `jx.integrate`), all parameters of
-        the `jx.Module` are stored in `.nodes` (a `pd.DataFrame`). However, for
-        simulation, these parameters have to be moved to be `jnp.ndarrays` such that
-        they can be processed on GPU/TPU and such that the simulation can be
-        differentiated. `.to_jax()` copies the `.nodes` to `.jaxnodes`.
+        Building a module (constructing it, `set`, `insert`, `stimulate`, ...) uses
+        NumPy. `to_jax()` converts everything a simulation needs (parameters, states,
+        stimuli, clamps and trainable parameters) into JAX arrays at once.
+        `jx.integrate()` converts a module that was not converted yet. To simulate a
+        module many times, e.g. in a training loop, convert it once and simulate
+        the result.
+
+        The returned module is a snapshot: later changes to this module do not reach
+        it, and it cannot be changed itself (e.g. with `set` or `insert`).
+
+        Args:
+            dtype: Floating point dtype of the arrays. Defaults to JAX's default
+                (float64 with `jax_enable_x64`, float32 otherwise).
+            device: The `jax.Device` to put the arrays on. Defaults to JAX's default
+                device.
+
+        Returns:
+            A copy of the module with JAX arrays.
+
+        .. rubric:: Example usage
+
+        .. code-block:: python
+
+            cell = jx.Cell()
+            cell.record()
+            jax_cell = cell.to_jax(dtype=jnp.float32)
+            v = jx.integrate(jax_cell, t_max=10.0)
         """
-        self.base.jaxnodes = {}
-        for key, value in self.base.nodes.to_dict(orient="list").items():
-            # inds = jnp.arange(len(value))
-            values = -1 * jnp.ones((self._n_nodes))
-            values = values.at[self.base.nodes.index.to_numpy()].set(value)
-            self.base.jaxnodes[key] = values
+        float_dtype = jax.dtypes.canonicalize_dtype(float if dtype is None else dtype)
 
-        # `jaxedges` contains only parameters (no indices).
-        # `jaxedges` contains only non-Nan elements. This is unlike the channels where
-        # we allow parameter sharing.
-        self.base.jaxedges = {}
-        edges = self.base.edges.to_dict(orient="list")
-        for i, synapse in enumerate(self.base.synapses):
-            condition = np.asarray(edges["type_ind"]) == i
-            for key in synapse.synapse_params:
-                self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
-            for key in synapse.synapse_states:
-                self.base.jaxedges[key] = jnp.asarray(np.asarray(edges[key])[condition])
+        def convert(x):
+            x = np.asarray(x)
+            is_float = np.issubdtype(x.dtype, np.floating)
+            return to_device(x, dtype=float_dtype if is_float else None, device=device)
+
+        # Copy everything apart from the stimuli and clamps, which are converted below
+        # (copying them first would only duplicate potentially large arrays).
+        module = deepcopy(self, memo={id(self.externals): {}})
+        module._is_jax = True
+
+        # `jaxnodes` has one entry per node, so the branchpoints (which are not rows
+        # of `.nodes`) are filled with -1.
+        node_inds = self.nodes.index.to_numpy()
+        module.jaxnodes = {}
+        for key, column in self.nodes.items():
+            values = np.full(self._n_nodes, -1.0)
+            values[node_inds] = column.to_numpy(dtype=float)
+            module.jaxnodes[key] = convert(values)
+
+        # `jaxedges` contains only the parameters and states of every synapse type
+        # (no indices and no NaN, unlike `jaxnodes`).
+        module.jaxedges = {}
+        for i, synapse in enumerate(self.synapses):
+            is_type = self.edges["type_ind"].to_numpy() == i
+            for key in list(synapse.synapse_params) + list(synapse.synapse_states):
+                module.jaxedges[key] = convert(self.edges[key].to_numpy()[is_type])
+
+        module.externals = {key: convert(x) for key, x in self.externals.items()}
+        module.trainable_params = [
+            {key: convert(x) for key, x in params.items()}
+            for params in self.trainable_params
+        ]
+        return module
+
+    def _as_jax(self) -> Module:
+        """Return the module if it was returned by `to_jax()`, otherwise `to_jax()`."""
+        return self if self._is_jax else self.to_jax()
 
     def show(
         self,
@@ -1125,17 +1200,20 @@ class Module(ABC):
         if np.any(np.isnan(self.xyzr[0][:, :3])):
             self.compute_xyz()
             self.compute_compartment_centers()
-        comp_graph = to_graph(self)
 
-        # Export to graph and traverse it to identify the solve order.
+        # The solve order is a breadth-first traversal of the compartment graph. It
+        # only needs the topology of the graph. Nodes and edges are added in the same
+        # order as in `to_graph()`, because that order determines the traversal.
+        comp_graph = nx.DiGraph()
+        comp_graph.add_nodes_from(self.nodes.index.tolist())
+        comp_graph.add_nodes_from(self._branchpoints.index.tolist())
+        edges = self._comp_edges
+        towards_end = (edges["type"] == 0) & (edges["source"] < edges["sink"])
+        edges = edges[edges["type"].isin([2, 3]) | towards_end]
+        comp_graph.add_edges_from(edges[["source", "sink"]].to_numpy())
         node_order, node_to_solve_index_mapping = dhs_solve_index(
             comp_graph, allowed_nodes_per_level=allowed_nodes_per_level, root=root
         )
-
-        # Set the order in which compartments are processed during Dendritic Hierarchical
-        # Scheduling (DHS). The `_dhs_node_order` contains edges between compartments,
-        # the values correspond to compartment indices.
-        dhs_node_order = np.asarray(node_order[1:])
 
         # We have to change the order of compartments at every time step of the solve.
         # Because of this, we make it as efficient as possible to perform this ordering
@@ -1144,22 +1222,18 @@ class Module(ABC):
         # voltages = voltages[mapping_array]  # Permute `voltages` to solve order.
         # voltages = voltages[inv_mapping_array]  # Permute back to compartment order.
         # ```
+        # So `inv_mapping_array[node]` is the solve index of a node.
         map_dict = node_to_solve_index_mapping  # Abbreviation.
         inv_mapping_array = np.array([map_dict[i] for i in sorted(map_dict)])
-        mapping_array = np.argsort(inv_mapping_array)
-        #
-        self._dhs_solve_indexer = {}
-        self._dhs_solve_indexer["map_dict"] = map_dict
-        self._dhs_solve_indexer["inv_map_to_solve_order"] = inv_mapping_array
-        self._dhs_solve_indexer["map_to_solve_order"] = mapping_array
+        self._dhs_solve_indexer = {
+            "inv_map_to_solve_order": inv_mapping_array,
+            "map_to_solve_order": np.argsort(inv_mapping_array),
+        }
 
-        # Define the matrix permutation for DHS.
-        lower_and_upper_inds = np.arange((self._n_nodes - 1) * 2)
+        # Define the matrix permutation for DHS. The first entry of `node_order` is the
+        # root, which has no parent.
         lower_and_upper_inds, new_node_order = dhs_permutation_indices(
-            lower_and_upper_inds,
-            self._off_diagonal_inds,
-            dhs_node_order,
-            self._dhs_solve_indexer["map_dict"],
+            self._off_diagonal_inds, node_order[1:], inv_mapping_array
         )
 
         # Concatenate a `0` such that the `lower` and `upper` will have the same
@@ -1169,44 +1243,17 @@ class Module(ABC):
         # Here, we assume that `comp_edges` has lowers first and uppers only after that
         # (by using `[:self._n_nodes-1]`). TODO we should make this more robust in the
         # future as we move towards simulating _any_ graph.
-        self._dhs_solve_indexer["map_to_solve_order_lower"] = jnp.concatenate(
-            [
-                jnp.asarray([0]).astype(int),
-                lower_and_upper_inds.astype(int)[: self._n_nodes - 1],
-            ]
+        num_lowers = self._n_nodes - 1
+        self._dhs_solve_indexer["map_to_solve_order_lower"] = np.concatenate(
+            [[0], lower_and_upper_inds[:num_lowers]]
         )
-        self._dhs_solve_indexer["map_to_solve_order_upper"] = jnp.concatenate(
-            [
-                jnp.asarray([0]).astype(int),
-                lower_and_upper_inds.astype(int)[self._n_nodes - 1 :],
-            ]
+        self._dhs_solve_indexer["map_to_solve_order_upper"] = np.concatenate(
+            [[0], lower_and_upper_inds[num_lowers:]]
         )
         self._dhs_solve_indexer["node_order"] = new_node_order
-        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
-            new_node_order
-        )
+        self._dhs_solve_indexer.update(dhs_level_indexer(new_node_order, self._n_nodes))
 
-        # Define a simple lookup table that allows to retrieve the parent of a node.
-        # E.g.:
-        # ```parent_node = parents[node]``` or:
-        # ```two_step_parent = parents[parents[node]]```.
-        parents = -1 * np.ones(self._n_nodes + 1)
-        for nodes in self._dhs_solve_indexer["node_order_grouped"]:
-            parents[nodes[:, 0]] = nodes[:, 1]
-        self._dhs_solve_indexer["parent_lookup"] = parents.astype(int)
-
-        # Precompute flat child/parent index arrays for the custom JVP of the solve.
-        # These are used to efficiently compute dA @ x (the matrix-vector product of
-        # the tangent matrix with the primal solution).
-        node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
-        if len(node_order_grouped) > 0:
-            all_edges = np.concatenate(node_order_grouped, axis=0)
-            self._dhs_solve_indexer["all_children"] = all_edges[:, 0].astype(int)
-            self._dhs_solve_indexer["all_parents"] = all_edges[:, 1].astype(int)
-        else:
-            self._dhs_solve_indexer["all_children"] = np.asarray([], dtype=int)
-            self._dhs_solve_indexer["all_parents"] = np.asarray([], dtype=int)
-
+    @forbid_after_to_jax
     def set(self, key: str, val: float | ArrayLike):
         """Set parameter of module (or its view) to a new value.
 
@@ -1328,6 +1375,7 @@ class Module(ABC):
             raise KeyError("Key not recognized.")
         return param_state
 
+    @forbid_after_to_jax
     def set_ncomp(
         self, ncomp: int, min_radius: Optional[float] = None, initialize: bool = True
     ):
@@ -1543,6 +1591,7 @@ class Module(ABC):
         if initialize:
             self.base.initialize()
 
+    @forbid_after_to_jax
     def make_trainable(
         self,
         key: str,
@@ -1627,35 +1676,35 @@ class Module(ABC):
             ]
 
         # Sorted inds are only used to infer the correct starting values.
-        indices_per_param = jnp.stack(comp_inds)
+        indices_per_param = np.stack(comp_inds)
 
         # Assign dummy param (ignored by nanmean later). This adds a new row to the
         # `data` (which is, e.g., self.nodes). That new row has index `-1`, which does
         # not clash with any other node index (they are in
         # `[0, ..., num_total_comps-1]`).
         data.loc[-1, key] = np.nan
-        param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
+        param_vals = np.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
         if init_val is not None:
             if isinstance(init_val, float):
-                new_params = jnp.asarray([init_val] * num_created_parameters)
+                new_params = np.full(num_created_parameters, init_val)
             elif isinstance(init_val, list):
                 assert len(init_val) == num_created_parameters, (
                     f"len(init_val)={len(init_val)}, but trying to create "
                     f"{num_created_parameters} parameters."
                 )
-                new_params = jnp.asarray(init_val)
+                new_params = np.asarray(init_val)
             else:
                 raise ValueError(
                     f"init_val must a float, list, or None, but it is a "
                     f"{type(init_val).__name__}."
                 )
         else:
-            new_params = jnp.nanmean(param_vals, axis=1)
-        self.base.trainable_params.append({key: new_params})
-        self.base.indices_set_by_trainables.append(indices_per_param)
+            new_params = np.nanmean(param_vals, axis=1)
+        self.base.trainable_params.append({key: read_only(new_params, dtype=float)})
+        self.base.indices_set_by_trainables.append(read_only(indices_per_param))
         self.base.num_trainable_params += num_created_parameters
         if verbose:
             print(
@@ -1664,6 +1713,7 @@ class Module(ABC):
                 f"parameters: {self.base.num_trainable_params}"
             )
 
+    @forbid_after_to_jax
     def write_trainables(self, trainable_params: list[dict[str, Array]]):
         """Write the trainables into `.nodes` and `.edges`.
 
@@ -1700,15 +1750,15 @@ class Module(ABC):
         # However, I think it allows us to reuse as much code as possible and it avoids
         # any kind of issues with indexing or parameter sharing (as this is fully
         # taken care of by `get_all_parameters()`).
-        self.base.to_jax()
-        pstate = params_to_pstate(trainable_params, self.base.indices_set_by_trainables)
-        all_params = self.base.get_all_parameters(pstate)
+        module = self.base.to_jax()
+        pstate = params_to_pstate(trainable_params, module.indices_set_by_trainables)
+        all_params = module.get_all_parameters(pstate)
 
         # The value for `delta_t` does not matter here because it is only used to
         # compute the initial current. However, the initial current cannot be made
         # trainable and so its value never gets used below.
-        all_states = self.base.get_all_states(pstate)
-        all_states = self.base.append_channel_currents_to_states(
+        all_states = module.get_all_states(pstate)
+        all_states = module.append_channel_currents_to_states(
             all_states, all_params, delta_t=0.025
         )
 
@@ -1729,6 +1779,7 @@ class Module(ABC):
             for key in list(synapse.synapse_states.keys()):
                 self.base.edges.loc[condition, key] = all_states[key]
 
+    @forbid_after_to_jax
     def delete_trainables(self):
         """Removes all trainable parameters from the module."""
 
@@ -1743,6 +1794,7 @@ class Module(ABC):
             self.base.num_trainable_params = 0
         self._update_view()
 
+    @forbid_after_to_jax
     def add_to_group(self, group_name: str):
         """Add a view of the module to a group.
 
@@ -1791,7 +1843,8 @@ class Module(ABC):
         """Get all trainable parameters.
 
         The returned parameters should be passed to
-        ``jx.integrate(..., params=params)``.
+        ``jx.integrate(..., params=params)``. They are JAX arrays, copied from the
+        module: changing them does not change the module.
 
         Returns:
             A list of all trainable parameters in the form of
@@ -1809,7 +1862,9 @@ class Module(ABC):
             params = module.get_parameters()
             v = jx.integrate(cell, params=params, t_max=10.0)
         """
-        return self.trainable_params
+        if self.base._is_jax and not isinstance(self, View):
+            return [dict(params) for params in self.trainable_params]
+        return [{k: to_device(v) for k, v in p.items()} for p in self.trainable_params]
 
     @only_allow_module
     def get_all_parameters(self, pstate: list[dict]) -> dict[str, Array]:
@@ -1842,6 +1897,8 @@ class Module(ABC):
         Returns:
             A dictionary of all module parameters.
         """
+        module = self._as_jax()
+        jaxnodes, jaxedges = module.jaxnodes, module.jaxedges
         params = {}
         for key in [
             "radius",
@@ -1853,21 +1910,21 @@ class Module(ABC):
             "resistive_load_out",
             "resistive_load_in",
         ]:
-            params[key] = self.base.jaxnodes[key]
+            params[key] = jaxnodes[key]
 
         for key in self.diffusion_states:
-            params[f"axial_diffusion_{key}"] = self.jaxnodes[f"axial_diffusion_{key}"]
+            params[f"axial_diffusion_{key}"] = jaxnodes[f"axial_diffusion_{key}"]
 
         for channel in self.base.channels + self.base.pumps:
             for channel_params in channel.channel_params:
-                params[channel_params] = self.base.jaxnodes[channel_params]
+                params[channel_params] = jaxnodes[channel_params]
 
         for synapse in self.base.synapses:
             for key in synapse.node_params:
-                params[key] = self.base.jaxnodes[key]
+                params[key] = jaxnodes[key]
 
         for synapse_params in self.base.synapse_param_names:
-            params[synapse_params] = self.base.jaxedges[synapse_params]
+            params[synapse_params] = jaxedges[synapse_params]
 
         # Override with those parameters set by `.make_trainable()`.
         for parameter in pstate:
@@ -2001,17 +2058,18 @@ class Module(ABC):
         source_branchpoint = bp_conns["source"].to_numpy()
 
         # Step 4: Concatenate diagonals, comp-to-comps, and branchpoint influences.
-        solve_indexer["rows"] = jnp.concatenate(
+        solve_indexer["rows"] = np.concatenate(
             [sink_diags, sink_offdiags, sink_branchpoint]
-        )
-        solve_indexer["cols"] = jnp.concatenate(
+        ).astype(int)
+        solve_indexer["cols"] = np.concatenate(
             [source_diags, source_offdiags, source_branchpoint]
-        )
+        ).astype(int)
 
         # Save the exponential Euler solve indexer.
         self._exp_euler_solve_indexer = solve_indexer
 
     @only_allow_module
+    @forbid_after_to_jax
     def customize_solver_exp_euler(
         self,
         exp_euler_transition: Optional[Array] = None,
@@ -2158,10 +2216,8 @@ class Module(ABC):
             number of compartments.
         """
         if axial_conductances is None:
-            self.to_jax()  # `.get_all_parameters()` requires `.jaxnodes`.
-            axial_conductances = self.get_all_parameters(pstate=[])[
-                "axial_conductances"
-            ]
+            all_params = self._as_jax().get_all_parameters(pstate=[])
+            axial_conductances = all_params["axial_conductances"]
 
         # vmap across voltage and all diffused ions.
         axial_conds = jnp.asarray(list(axial_conductances.values()))
@@ -2194,18 +2250,17 @@ class Module(ABC):
 
         TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """
-        # Create `.jaxnodes` from `.nodes` and `.jaxedges` from `.edges`.
-        self.base.to_jax()
-        states = {"v": self.base.jaxnodes["v"]}
+        module = self._as_jax()
+        states = {"v": module.jaxnodes["v"]}
         # Join node and edge states into a single state dictionary.
-        for channel in self.base.channels + self.base.pumps:
+        for channel in module.channels + module.pumps:
             for channel_states in channel.channel_states:
-                states[channel_states] = self.base.jaxnodes[channel_states]
-        for synapse in self.base.synapses:
+                states[channel_states] = module.jaxnodes[channel_states]
+        for synapse in module.synapses:
             for key in synapse.node_states:
-                states[key] = self.base.jaxnodes[key]
-        for synapse_states in self.base.synapse_state_names:
-            states[synapse_states] = self.base.jaxedges[synapse_states]
+                states[key] = module.jaxnodes[key]
+        for synapse_states in module.synapse_state_names:
+            states[synapse_states] = module.jaxedges[synapse_states]
         return states
 
     @only_allow_module
@@ -2306,6 +2361,7 @@ class Module(ABC):
         return self
 
     @only_allow_module
+    @forbid_after_to_jax
     def init_states(self, delta_t: float = 0.025):
         # TODO FROM #447: MAKE THIS WORK FOR VIEW?
         """Initialize all mechanisms in their steady state.
@@ -2317,13 +2373,14 @@ class Module(ABC):
         """
         # Update states of the channels.
         channel_nodes = self.base.nodes
-        states = self.base._get_states_from_nodes_and_edges()
+        module = self.base.to_jax()
+        states = module._get_states_from_nodes_and_edges()
 
         # We do not use any `pstate` for initializing. In principle, we could change
         # that by allowing an input `params` and `pstate` to this function.
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
-        params = self.base.get_all_parameters([])
+        params = module.get_all_parameters([])
 
         for channel in self.base.channels + self.base.pumps:
             name = channel._name
@@ -2352,17 +2409,19 @@ class Module(ABC):
                 self.nodes.loc[channel_indices, key] = val
 
     @only_allow_module
+    @forbid_after_to_jax
     def init_params(self):
         """Run `channel.init_params()` to initialize parameters."""
         # Update states of the channels.
         channel_nodes = self.base.nodes
-        states = self.base._get_states_from_nodes_and_edges()
+        module = self.base.to_jax()
+        states = module._get_states_from_nodes_and_edges()
 
         # We do not use any `pstate` for initializing. In principle, we could change
         # that by allowing an input `params` and `pstate` to this function.
         # `voltage_solver` could also be `jax.sparse` here, because both of them
         # build the channel parameters in the same way.
-        params = self.base.get_all_parameters([])
+        params = module.get_all_parameters([])
 
         for channel in self.base.channels:
             name = channel._name
@@ -2460,6 +2519,7 @@ class Module(ABC):
         self.base.debug_states["child_inds"] = self.base._child_inds
         self.base.debug_states["par_inds"] = self.base._par_inds
 
+    @forbid_after_to_jax
     def record(self, state: str = "v", verbose=True):
         comp_states, edge_states = self._get_state_names()
         if state in comp_states:
@@ -2561,6 +2621,7 @@ class Module(ABC):
             self._scope = scope
             self._current_view = current_view
 
+    @forbid_after_to_jax
     def delete_recordings(self):
         """Removes all recordings from the module."""
         if isinstance(self, View):
@@ -2598,6 +2659,7 @@ class Module(ABC):
         """
         self._external_input(state_name, state_array, verbose=verbose)
 
+    @forbid_after_to_jax
     def _external_input(
         self,
         key: str,
@@ -2607,32 +2669,20 @@ class Module(ABC):
         comp_states, edge_states = self._get_state_names()
         if key not in comp_states + edge_states:
             raise KeyError(f"{key} is not a recognized state in this module.")
-        values = values if values.ndim == 2 else jnp.expand_dims(values, axis=0)
-        batch_size = values.shape[0]
-        num_inserted = (
-            len(self._nodes_in_view) if key in comp_states else len(self._edges_in_view)
-        )
-        is_multiple = num_inserted == batch_size
-        values = values if is_multiple else jnp.repeat(values, num_inserted, axis=0)
-        assert batch_size in [
-            1,
-            num_inserted,
-        ], "Number of comps and stimuli do not match."
+        inds = self._nodes_in_view if key in comp_states else self._edges_in_view
+        num_inserted = len(inds)
 
-        if key in self.base.externals.keys():
-            self.base.externals[key] = jnp.concatenate(
-                [self.base.externals[key], values]
-            )
-            self.base.external_inds[key] = jnp.concatenate(
-                [self.base.external_inds[key], self._nodes_in_view]
-            )
-        else:
-            if key in comp_states:
-                self.base.externals[key] = values
-                self.base.external_inds[key] = self._nodes_in_view
-            else:
-                self.base.externals[key] = values
-                self.base.external_inds[key] = self._edges_in_view
+        values = np.asarray(values, dtype=float)
+        values = values if values.ndim == 2 else values[None]
+        if values.shape[0] == 1:
+            values = np.repeat(values, num_inserted, axis=0)
+        assert len(values) == num_inserted, "Number of comps and stimuli do not match."
+
+        if key in self.base.externals:
+            values = np.concatenate([self.base.externals[key], values])
+            inds = np.concatenate([self.base.external_inds[key], inds])
+        self.base.externals[key] = read_only(values)
+        self.base.external_inds[key] = read_only(inds)
         if verbose:
             print(
                 f"Added {num_inserted} external_states. See `.externals` for details."
@@ -2733,6 +2783,7 @@ class Module(ABC):
         """Removes all stimuli from the module."""
         self.delete_clamps("i")
 
+    @forbid_after_to_jax
     def delete_clamps(self, state_name: Optional[str] = None):
         """Removes all clamps of the given state from the module."""
         all_externals = list(self.externals.keys())
@@ -2750,12 +2801,15 @@ class Module(ABC):
                     base_exts.pop(state_name, None)
                     base_exts_inds.pop(state_name, None)
                 else:
-                    base_exts[state_name] = base_exts[state_name][keep_inds]
-                    base_exts_inds[state_name] = base_exts_inds[state_name][keep_inds]
+                    base_exts[state_name] = read_only(base_exts[state_name][keep_inds])
+                    base_exts_inds[state_name] = read_only(
+                        base_exts_inds[state_name][keep_inds]
+                    )
                 self._update_view()
             else:
                 pass  # does not have to be deleted if not in externals
 
+    @forbid_after_to_jax
     def insert(self, channel: Union[Channel, Pump]):
         """Insert a channel or pump into the module.
 
@@ -2801,6 +2855,7 @@ class Module(ABC):
             self.base.nodes.loc[self._nodes_in_view, key] = channel.channel_states[key]
 
     @only_allow_module
+    @forbid_after_to_jax
     def diffuse(self, state: str) -> None:
         """Diffuse a particular state across compartments with Fickian diffusion.
 
@@ -2845,6 +2900,7 @@ class Module(ABC):
         self.base.nodes.loc[state_is_nan, state] = 0.0
 
     @only_allow_module
+    @forbid_after_to_jax
     def delete_diffusion(self, state: str) -> None:
         """Deletes ion diffusion in the entire module.
 
@@ -2857,6 +2913,7 @@ class Module(ABC):
         self.base.diffusion_states.remove(state)
         self.base.nodes.drop(columns=[f"axial_diffusion_{state}"], inplace=True)
 
+    @forbid_after_to_jax
     def delete(self, channel: Union[Channel, Pump]):
         """Remove a channel or pump from the module.
 
@@ -3497,16 +3554,8 @@ class Module(ABC):
         index_of_child = _compute_index_of_child(parents)
         levels = compute_levels(parents)
 
-        # Extract branch.
-        inds_branch = self.nodes.groupby("global_branch_index")[
-            "global_comp_index"
-        ].apply(list)
-        branch_lens = [
-            np.sum(
-                self.nodes.set_index("global_comp_index").loc[np.asarray(i), "length"]
-            )
-            for i in inds_branch
-        ]
+        branch_lens = self.nodes.groupby("global_branch_index")["length"].sum()
+        branch_lens = branch_lens.to_numpy()
         endpoints = []
 
         # Different levels will get a different "angle" at which the children emerge from
@@ -3545,8 +3594,8 @@ class Module(ABC):
 
                 self.xyzr[b][:, :3] = np.asarray([start_point, end_point])
             else:
-                # Dummy to keey the index `endpoints[parent[b]]` above working.
-                endpoints.append(np.zeros((2,)))
+                # A branch with coordinates: its children start at its last point.
+                endpoints.append(self.xyzr[b][-1, :3])
 
     def move(
         self, x: float = 0.0, y: float = 0.0, z: float = 0.0, update_nodes: bool = False
@@ -3792,6 +3841,7 @@ class View(Module):
         self.initialized_solver = pointer.initialized_solver
         self.initialized_syns = pointer.initialized_syns
         self.allow_make_trainable = pointer.allow_make_trainable
+        self._is_jax = self.base._is_jax
         self.solver_customizers = pointer.solver_customizers
 
         # attrs affected by view
@@ -3817,7 +3867,7 @@ class View(Module):
         self.ncomp = len(self.nodes)
         self.total_nbranches = len(self._branches_in_view)
         self.nbranches_per_cell = self._nbranches_per_cell_in_view()
-        self._cumsum_nbranches = jnp.cumsum(np.asarray(self.nbranches_per_cell))
+        self._cumsum_nbranches = np.cumsum(self.nbranches_per_cell)
         self.comb_branches_in_each_level = pointer.comb_branches_in_each_level
         self.branch_edges = pointer.branch_edges.loc[self._branch_edges_in_view]
         self.ncomp_per_branch = self.base.ncomp_per_branch[self._branches_in_view]
@@ -3854,10 +3904,6 @@ class View(Module):
         self.comb_parents = self.base.comb_parents[self._branches_in_view]
         self._set_externals_in_view()
         self.group_names = self.base.group_names
-
-        self.jaxnodes, self.jaxedges = self._jax_arrays_in_view(
-            pointer
-        )  # run after trainables
 
         self._current_view = "view"  # if not instantiated via `comp`, `cell` etc.
         self._update_local_indices()
@@ -3951,31 +3997,6 @@ class View(Module):
             self._nodes_in_view = nodes
             self._edges_in_view = edges
 
-    def _jax_arrays_in_view(self, pointer: Union[Module, View]):
-        """Update jaxnodes/jaxedges to show only those currently in view."""
-        a_intersects_b_at = lambda a, b: jnp.intersect1d(a, b, return_indices=True)[1]
-        jaxnodes = {} if pointer.jaxnodes is not None else None
-        if self.jaxnodes is not None:
-            comp_inds = pointer.jaxnodes["global_comp_index"]
-            common_inds = a_intersects_b_at(comp_inds, self._nodes_in_view)
-            jaxnodes = {
-                k: v[common_inds]
-                for k, v in pointer.jaxnodes.items()
-                if len(common_inds) > 0
-            }
-
-        jaxedges = {} if pointer.jaxedges is not None else None
-        if pointer.jaxedges is not None:
-            for key, values in self.base.jaxedges.items():
-                if (syn_name := key.split("_")[0]) in self.synapse_names:
-                    syn_edges = self.base.edges[self.base.edges["type"] == syn_name]
-                    inds = np.intersect1d(
-                        self._edges_in_view, syn_edges.index, return_indices=True
-                    )[2]
-                    if len(inds) > 0:
-                        jaxedges[key] = values[inds]
-        return jaxnodes, jaxedges
-
     def _set_externals_in_view(self):
         """Update external inputs to show only those currently in view."""
         self.externals = {}
@@ -3986,7 +4007,7 @@ class View(Module):
             in_view = np.isin(inds, self._nodes_in_view)
             inds_in_view = inds[in_view]
             if len(inds_in_view) > 0:
-                self.externals[name] = data[in_view]
+                self.externals[name] = np.asarray(data)[in_view]
                 self.external_inds[name] = inds_in_view
 
     def _filter_trainables(
@@ -4028,10 +4049,10 @@ class View(Module):
             partially_in_view = in_view.any(axis=1) & ~completely_in_view
 
             trainable_params_in_view.append(
-                {k: v[completely_in_view] for k, v in params.items()}
+                {k: np.asarray(v)[completely_in_view] for k, v in params.items()}
             )
             trainable_params_in_view.append(
-                {k: v[partially_in_view] for k, v in params.items()}
+                {k: np.asarray(v)[partially_in_view] for k, v in params.items()}
             )
 
             índices_set_by_trainables_in_view.append(inds[completely_in_view])

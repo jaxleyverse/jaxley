@@ -14,6 +14,7 @@ Run with `pytest -m perf` (always serial), which prints a table of seconds per s
 To compare against another git ref, run `python tests/perf_regression.py --base main`.
 """
 
+import gc
 import json
 import os
 import sys
@@ -115,26 +116,38 @@ def _warm_up():
     _small_cell()
 
 
+def _timed(fn):
+    """Returns `(fn(), seconds)`.
+
+    Like `timeit`, this turns off garbage collection while timing. Otherwise, a full
+    collection (which walks every object in the process) can fall into one side of a
+    comparison by chance.
+    """
+    gc.collect()
+    gc.disable()
+    try:
+        t0 = time.perf_counter()
+        result = fn()
+        return result, time.perf_counter() - t0
+    finally:
+        gc.enable()
+
+
 def _compile_and_time(fn, params):
     """Returns (compile time, fastest of 3 runs)."""
-    t0 = time.perf_counter()
-    compiled = jax.jit(fn).lower(params).compile()
-    compile_time = time.perf_counter() - t0
-    jax.block_until_ready(compiled(params))  # Warm-up.
-    runs = []
-    for _ in range(3):
-        t0 = time.perf_counter()
-        jax.block_until_ready(compiled(params))
-        runs.append(time.perf_counter() - t0)
-    return compile_time, min(runs)
+    compiled, compile_time = _timed(lambda: jax.jit(fn).lower(params).compile())
+
+    def run():
+        return jax.block_until_ready(compiled(params))
+
+    run()  # Warm-up.
+    return compile_time, min(_timed(run)[1] for _ in range(3))
 
 
 def measure(name: str) -> dict:
     """Runs one scenario and returns its timings in seconds."""
     _warm_up()
-    t0 = time.perf_counter()
-    simulate, params = SCENARIOS[name]()
-    build = time.perf_counter() - t0
+    (simulate, params), build = _timed(SCENARIOS[name])
 
     def loss(params):
         return jnp.mean(simulate(params))

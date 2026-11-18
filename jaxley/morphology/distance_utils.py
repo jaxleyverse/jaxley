@@ -3,8 +3,8 @@
 
 from typing import Dict, List, Union
 
-import jax.numpy as jnp
 import networkx as nx
+import numpy as np
 
 from jaxley.modules.base import to_graph
 
@@ -44,7 +44,7 @@ def distance_direct(
 
     start_xyz = startpoint.nodes[["x", "y", "z"]].to_numpy()[0]
     end_xyz = endpoints.nodes[["x", "y", "z"]].to_numpy()
-    return jnp.sqrt(jnp.sum((start_xyz - end_xyz) ** 2, axis=1))
+    return np.sqrt(np.sum((start_xyz - end_xyz) ** 2, axis=1))
 
 
 def distance_pathwise(

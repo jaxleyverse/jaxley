@@ -28,7 +28,7 @@ def test_cycle_consistency():
     cell.insert(Leak())
     cell.insert(CaNernstReversal())
     cell.insert(CaPump())
-    cell.to_jax()
+    cell = cell.to_jax()
 
     init_fn, step_fn = build_init_and_step_fn(cell)
     remove_observables, add_observables, flatten, unflatten = build_dynamic_state_utils(
@@ -52,7 +52,7 @@ def test_build_step_dynamics_fn_branchpoints(branchpoint):
     cell = jx.Cell(branch, parents=parents)
     cell.branch(0).insert(HH())
     cell.insert(Leak())
-    cell.to_jax()
+    cell = cell.to_jax()
 
     # get states and unflatten functions
     init_fn, step_fn = build_init_and_step_fn(cell)
@@ -112,7 +112,7 @@ def test_jit_and_grad_network():
     )
     opt_params = transform.inverse(params)
     params = transform.forward(opt_params)
-    net.to_jax()
+    net = net.to_jax()
 
     # add some inputs
     externals = net.externals.copy()

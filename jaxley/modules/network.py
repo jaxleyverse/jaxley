@@ -1,6 +1,5 @@
 # This file is part of Jaxley, a differentiable neuroscience simulator. Jaxley is
 # licensed under the Apache License Version 2.0, see <https://www.apache.org/licenses/>
-import itertools
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 from warnings import warn
@@ -12,7 +11,7 @@ from jax import Array, vmap
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from jaxley.modules.base import Module
+from jaxley.modules.base import Module, forbid_after_to_jax
 from jaxley.modules.cell import Cell
 from jaxley.utils.cell_utils import (
     compute_children_and_parents,
@@ -20,7 +19,7 @@ from jaxley.utils.cell_utils import (
     loc_of_index,
 )
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
-from jaxley.utils.solver_utils import dhs_group_comps_into_levels
+from jaxley.utils.solver_utils import dhs_level_indexer
 from jaxley.utils.syn_utils import gather_synapes
 
 
@@ -80,11 +79,9 @@ class Network(Module):
         self.nodes["global_comp_index"] = np.arange(self.cumsum_ncomp[-1])
         self.nodes["global_branch_index"] = np.repeat(
             np.arange(self.total_nbranches), self.ncomp_per_branch
-        ).tolist()
-        self.nodes["global_cell_index"] = list(
-            itertools.chain(
-                *[[i] * int(cell.cumsum_ncomp[-1]) for i, cell in enumerate(cells)]
-            )
+        )
+        self.nodes["global_cell_index"] = np.repeat(
+            np.arange(len(cells)), [cell.cumsum_ncomp[-1] for cell in cells]
         )
         offset = 0
         node_indices = []
@@ -96,9 +93,13 @@ class Network(Module):
         self.nodes.index = np.concatenate(node_indices)
         self._internal_node_inds = np.concatenate(self._internal_node_inds)
 
-        parents = [cell.comb_parents for cell in cells]
-        self.comb_parents = jnp.concatenate(
-            [p.at[1:].add(self._cumsum_nbranches[i]) for i, p in enumerate(parents)]
+        # The parents of every cell, offset by the branches of the cells before it. The
+        # root keeps its `-1`.
+        self.comb_parents = np.concatenate(
+            [
+                np.concatenate([cell.comb_parents[:1], cell.comb_parents[1:] + offset])
+                for cell, offset in zip(cells, self._cumsum_nbranches)
+            ]
         )
 
         # Two columns: `parent_branch_index` and `child_branch_index`. One row per
@@ -120,7 +121,7 @@ class Network(Module):
 
         # `nbranchpoints` in each cell == cell._par_inds (because `par_inds` are
         # unique).
-        nbranchpoints = jnp.asarray([len(cell._par_inds) for cell in cells])
+        nbranchpoints = np.asarray([len(cell._par_inds) for cell in cells])
         self._cumsum_nbranchpoints_per_cell = cumsum_leading_zero(nbranchpoints)
 
         # Channels.
@@ -148,130 +149,73 @@ class Network(Module):
         it is faster to just collect the graph attributes of each `cell` and
         concatenate them (which is what we do here).
         """
-        # Compartment edges, branchpoints, internal_node_inds.
-        offset = 0
-        self._comp_edges = []
-        self._branchpoints = []
-        for cell in self._cells_list:
-            # Compartment edges
-            edges = cell._comp_edges.copy()
-            edges[["source", "sink"]] += offset
-            self._comp_edges.append(edges)
+        cells = self._cells_list
+        # Node offset of every cell (its compartments and branchpoints).
+        offsets = cumsum_leading_zero([cell._n_nodes for cell in cells])
 
-            # Branchpoints.
-            branchpoints = cell._branchpoints.copy()
-            branchpoints.index = branchpoints.index + offset
-            # This if-case avoids a warning later, at `pd.concat(self._branchpoints)`:
-            # Pandas warns if some of the concatenated elements are all empty.
-            if len(branchpoints) > 0:
-                self._branchpoints.append(branchpoints)
+        # Compartment edges.
+        self._comp_edges = pd.concat([c._comp_edges for c in cells], ignore_index=True)
+        edge_offsets = np.repeat(offsets[:-1], [len(c._comp_edges) for c in cells])
+        self._comp_edges["source"] += edge_offsets
+        self._comp_edges["sink"] += edge_offsets
 
-            offset += cell._n_nodes  # Compartment-offset.
-        self._comp_edges = pd.concat(self._comp_edges, ignore_index=True)
-        if len(self._branchpoints) > 0:
-            self._branchpoints = pd.concat(self._branchpoints)
+        # Branchpoints. Cells without branchpoints are left out, because pandas warns
+        # when concatenating empty DataFrames.
+        with_bps = [i for i, cell in enumerate(cells) if len(cell._branchpoints) > 0]
+        if len(with_bps) > 0:
+            self._branchpoints = pd.concat([cells[i]._branchpoints for i in with_bps])
+            self._branchpoints.index = np.concatenate(
+                [cells[i]._branchpoints.index + offsets[i] for i in with_bps]
+            )
         else:
             self._branchpoints: pd.DataFrame = pd.DataFrame(columns=["x", "y", "z"])
-        self._n_nodes = offset
+        self._n_nodes = offsets[-1]
 
-        # off_diagonal_inds
-        sources = np.asarray(self._comp_edges["source"].to_list())
-        sinks = np.asarray(self._comp_edges["sink"].to_list())
-        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
+        sources = self._comp_edges["source"].to_numpy()
+        sinks = self._comp_edges["sink"].to_numpy()
+        self._off_diagonal_inds = np.stack([sources, sinks]).astype(int)
 
     def _init_solver_jaxley_dhs_solve(self, *args, **kwargs) -> None:
         """Create module attributes for indexing with the `jaxley.dhs` voltage volver.
 
-        This function first generates the networkX `comp_graph`, then traverses it
-        to identify the solve order, and then pre-computes the relevant attributes used
-        for re-ordering compartments during the voltage solve with `jaxley.dhs`.
+        Concatenate the solve orders of the cells, offset by the nodes (compartments
+        and branchpoints) of the cells before them.
         """
-        offset = 0
-        lower_and_upper_offset = 0
+        indexers = [cell._dhs_solve_indexer for cell in self._cells_list]
+        n_nodes = np.asarray([cell._n_nodes for cell in self._cells_list])
+        offsets = cumsum_leading_zero(n_nodes)[:-1]
+        # Every cell has `n_nodes - 1` lowers and as many uppers.
+        lower_and_upper_offsets = cumsum_leading_zero(2 * (n_nodes - 1))[:-1]
 
-        dhs_map_dict = {}
-        dhs_inv_map_to_node_order = []
-        dhs_map_to_node_order = []
-        dhs_map_to_node_order_lower = []
-        dhs_map_to_node_order_upper = []
-        dhs_node_order = []
-        dhs_parent_lookup = []
+        def concatenate(key, offsets):
+            return np.concatenate([ind[key] + o for ind, o in zip(indexers, offsets)])
 
-        for cell in self._cells_list:
-            dhs_map_dict.update(
-                {
-                    k + offset: v + offset
-                    for k, v in cell._dhs_solve_indexer["map_dict"].items()
-                }
-            )
-            dhs_inv_map_to_node_order.append(
-                cell._dhs_solve_indexer["inv_map_to_solve_order"] + offset
-            )
-            dhs_map_to_node_order.append(
-                cell._dhs_solve_indexer["map_to_solve_order"] + offset
-            )
-
-            dhs_map_to_node_order_lower.append(
-                cell._dhs_solve_indexer["map_to_solve_order_lower"]
-                + lower_and_upper_offset
-            )
-            dhs_map_to_node_order_upper.append(
-                cell._dhs_solve_indexer["map_to_solve_order_upper"]
-                + lower_and_upper_offset
-            )
-
-            # For point neurons, node order is empty. In that case [:, :2] would
-            # fail. Thus, we need the if-case `len(node_order) == 0`.
-            node_order = cell._dhs_solve_indexer["node_order"]
-            if self._solver_device == "cpu" or len(node_order) == 0:
-                # On CPU, we want to solve all cells sequentially for minimal compile
-                # time. Because of this, we also add `offset` to the `level`.
-                dhs_node_order.append(node_order + offset)
+        node_order = []
+        for indexer, offset in zip(indexers, offsets):
+            # Columns: node, parent, level.
+            cell_node_order = indexer["node_order"].copy()
+            if self._solver_device == "cpu":
+                # On CPU, cells are solved one after the other for minimal compile
+                # time, so the level is offset too.
+                cell_node_order += offset
             else:
-                # Only :2 because node_order contains [node, parent, level], and we
-                # do not want to offset the level when solving cells in parallel.
-                dhs_node_order.append(node_order.at[:, :2].add(offset))
+                # On GPU, cells are solved in parallel.
+                cell_node_order[:, :2] += offset
+            node_order.append(cell_node_order)
+        node_order = np.concatenate(node_order, axis=0)
 
-            # Discard the last one because it is a [-1] which just absorbs all
-            # compartments that are already finished with their recursion. We append
-            # such a compartment after this loop again.
-            parent_lookup = cell._dhs_solve_indexer["parent_lookup"].copy()[:-1]
-            parent_lookup[1:] += offset
-            dhs_parent_lookup.append(parent_lookup)
-
-            offset += cell._n_nodes  # Compartment-offset.
-            lower_and_upper_offset += (cell._n_nodes - 1) * 2
-
-        self._dhs_solve_indexer = {}
-        self._dhs_solve_indexer["inv_map_to_solve_order"] = np.concatenate(
-            dhs_inv_map_to_node_order
-        )
-        self._dhs_solve_indexer["map_to_solve_order"] = np.concatenate(
-            dhs_map_to_node_order
-        )
-        self._dhs_solve_indexer["map_to_solve_order_lower"] = np.concatenate(
-            dhs_map_to_node_order_lower
-        )
-        self._dhs_solve_indexer["map_to_solve_order_upper"] = np.concatenate(
-            dhs_map_to_node_order_upper
-        )
-        self._dhs_solve_indexer["node_order"] = np.concatenate(dhs_node_order, axis=0)
-        self._dhs_solve_indexer["parent_lookup"] = np.concatenate(
-            dhs_parent_lookup + [[-1]]
-        )
-        self._dhs_solve_indexer["node_order_grouped"] = dhs_group_comps_into_levels(
-            self._dhs_solve_indexer["node_order"]
-        )
-
-        # Precompute flat child/parent index arrays for the custom JVP of the solve.
-        node_order_grouped = self._dhs_solve_indexer["node_order_grouped"]
-        if len(node_order_grouped) > 0:
-            all_edges = np.concatenate(node_order_grouped, axis=0)
-            self._dhs_solve_indexer["all_children"] = all_edges[:, 0].astype(int)
-            self._dhs_solve_indexer["all_parents"] = all_edges[:, 1].astype(int)
-        else:
-            self._dhs_solve_indexer["all_children"] = np.asarray([], dtype=int)
-            self._dhs_solve_indexer["all_parents"] = np.asarray([], dtype=int)
+        self._dhs_solve_indexer = {
+            "inv_map_to_solve_order": concatenate("inv_map_to_solve_order", offsets),
+            "map_to_solve_order": concatenate("map_to_solve_order", offsets),
+            "map_to_solve_order_lower": concatenate(
+                "map_to_solve_order_lower", lower_and_upper_offsets
+            ),
+            "map_to_solve_order_upper": concatenate(
+                "map_to_solve_order_upper", lower_and_upper_offsets
+            ),
+            "node_order": node_order,
+        }
+        self._dhs_solve_indexer.update(dhs_level_indexer(node_order, self._n_nodes))
 
         self._init_view()
 
@@ -612,6 +556,7 @@ class Network(Module):
         self.base.synapse_state_names += list(synapse_type.synapse_states.keys())
         self.base.synapses.append(synapse_type)
 
+    @forbid_after_to_jax
     def _append_multiple_synapses(self, pre_nodes, post_nodes, synapse_type):
         # Add synapse types to the module and infer their unique identifier.
         synapse_name = synapse_type._name

@@ -4,7 +4,6 @@
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from warnings import warn
 
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
@@ -59,13 +58,13 @@ class Branch(Module):
         self.ncomp_per_branch = np.asarray([self.ncomp])
         self.total_nbranches = 1
         self.nbranches_per_cell = [1]
-        self._cumsum_nbranches = jnp.asarray([0, 1])
+        self._cumsum_nbranches = np.asarray([0, 1])
         self.cumsum_ncomp = cumsum_leading_zero(self.ncomp_per_branch)
 
         # Indexing.
         self.nodes = pd.concat([c.nodes for c in compartment_list], ignore_index=True)
         self._append_params_and_states(self.branch_params, self.branch_states)
-        self.nodes["global_comp_index"] = np.arange(self.ncomp).tolist()
+        self.nodes["global_comp_index"] = np.arange(self.ncomp)
         self.nodes["global_branch_index"] = [0] * self.ncomp
         self.nodes["global_cell_index"] = [0] * self.ncomp
 
@@ -80,7 +79,7 @@ class Branch(Module):
         self._par_inds, self._child_inds, self._child_belongs_to_branchpoint = (
             compute_children_and_parents(self.branch_edges)
         )
-        self._internal_node_inds = jnp.arange(self.ncomp)
+        self._internal_node_inds = np.arange(self.ncomp)
 
         # Coordinates.
         self.xyzr = [float("NaN") * np.zeros((2, 4))]
@@ -102,9 +101,9 @@ class Branch(Module):
         self._n_nodes = self.ncomp
 
         # `off_diagonal_inds`.
-        sources = np.asarray(self._comp_edges["source"].to_list())
-        sinks = np.asarray(self._comp_edges["sink"].to_list())
-        self._off_diagonal_inds = jnp.stack([sources, sinks]).astype(int)
+        sources = self._comp_edges["source"].to_numpy()
+        sinks = self._comp_edges["sink"].to_numpy()
+        self._off_diagonal_inds = np.stack([sources, sinks]).astype(int)
 
     def __len__(self) -> int:
         return self.ncomp

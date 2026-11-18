@@ -29,7 +29,7 @@ def _build_rhs(voltages, constant_terms, internal_node_inds, n_nodes, delta_t):
         rhs = (
             voltages[internal_node_inds] + delta_t * constant_terms[internal_node_inds]
         )
-    return jnp.zeros(n_nodes).at[internal_node_inds].set(rhs)
+    return jnp.zeros(n_nodes, dtype=voltages.dtype).at[internal_node_inds].set(rhs)
 
 
 def _pad_comp_edges(comp_edges) -> np.ndarray:
@@ -222,10 +222,10 @@ def step_voltage_implicit_with_dhs_solve(
         uppers = lowers_and_uppers[solve_indexer["map_to_solve_order_upper"]]
 
         # Add a spurious compartment that is modified by the masking.
-        diags = jnp.concatenate([diags, jnp.asarray([1.0])])
-        solves = jnp.concatenate([solves, jnp.asarray([0.0])])
-        uppers = jnp.concatenate([uppers, jnp.asarray([0.0])])
-        lowers = jnp.concatenate([lowers, jnp.asarray([0.0])])
+        diags = jnp.concatenate([diags, jnp.ones(1, dtype=diags.dtype)])
+        solves = jnp.concatenate([solves, jnp.zeros(1, dtype=solves.dtype)])
+        uppers = jnp.concatenate([uppers, jnp.zeros(1, dtype=uppers.dtype)])
+        lowers = jnp.concatenate([lowers, jnp.zeros(1, dtype=lowers.dtype)])
 
         # Get or create the solve function with custom JVP.
         dhs_solve = _get_dhs_solve(solve_indexer, optimize_for_gpu, int(n_nodes))
@@ -456,7 +456,7 @@ def _voltage_vectorfield(
         # Compute the normalizer for the branchpoint: (g1 + g2)
         # Initialize at one such that we can also just divide the compartment voltages
         # by it.
-        summed_axials = jnp.ones(n_nodes)
+        summed_axials = jnp.ones(n_nodes, dtype=voltages.dtype)
         summed_axials = summed_axials.at[sink_comp_inds].set(0.0)
         summed_axials = summed_axials.at[sink_comp_inds].add(
             axial_conductances[condition]

@@ -319,7 +319,10 @@ def compute_axial_conductances(
     Note that the resulting axial conductances will already by divided by the
     capacitance `cm`.
     """
-    ordered_conds = jnp.zeros((1 + len(diffusion_states), len(comp_edges)))
+    ordered_conds = jnp.zeros(
+        (1 + len(diffusion_states), len(comp_edges)),
+        dtype=jnp.result_type(params["axial_resistivity"]),
+    )
 
     axial_conds = jnp.stack(
         [1 / params["axial_resistivity"]]

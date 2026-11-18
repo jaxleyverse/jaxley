@@ -4,7 +4,6 @@
 import warnings
 from typing import List, Optional, Union
 
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
@@ -21,6 +20,18 @@ def cumsum_leading_zero(array: Union[np.ndarray, List]) -> np.ndarray:
     """Return the `cumsum` of a numpy array and pad with a leading zero."""
     arr = np.asarray(array)
     return np.concatenate([np.asarray([0]), np.cumsum(arr)]).astype(arr.dtype)
+
+
+def read_only(x: Union[np.ndarray, List], dtype: Optional[type] = None) -> np.ndarray:
+    """Return a read-only NumPy copy of `x`.
+
+    Modules store NumPy arrays and never write into them in place (changes create new
+    arrays), so that arrays can be shared. Making them read-only lets accidental
+    in-place writes raise, as they would for JAX arrays.
+    """
+    x = np.array(x, dtype=dtype)  # A copy, so the caller's array stays writeable.
+    x.flags.writeable = False
+    return x
 
 
 def is_str_all(arg, force: bool = True) -> bool:

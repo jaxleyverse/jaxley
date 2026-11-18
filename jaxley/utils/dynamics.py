@@ -227,7 +227,6 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
 
         def loss_fn(params, param_state_value):
             param_state = cell.data_set("Leak_gLeak", param_state_value, None)
-            cell.to_jax()
             dynamic_states, all_params, recordings = init_dynamics(params, param_state)
             steps = int(t_max / delta_t)
             for step in range(steps):
@@ -241,6 +240,7 @@ def build_dynamic_state_utils(module) -> Tuple[Callable, Callable, Callable, Cal
         loss = loss_fn(params, 1e-4)
     """
 
+    module = module._as_jax()
     all_states = module.get_all_states([])
     names_of_currents = module.membrane_current_names + module.synapse_current_names
 
