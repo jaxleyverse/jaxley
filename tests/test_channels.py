@@ -510,3 +510,13 @@ def test_init_params():
     cell.set("temperature", 27.0)  # Reduce temperature by 10 degrees.
     cell.init_params()
     assert np.all(np.abs(cell.nodes["HH_tadj"] - 1 / 2.3) < 1e-8)
+
+
+def test_init_params_on_network_with_branch_points():
+    """`init_params` in a network of branched cells, whose node indices have gaps."""
+    net = jx.Network([build.cell(nbranches=3, ncomp=2) for _ in range(2)])
+    net.insert(HH())
+    net.cell(0).set("temperature", 27.0)  # Reduce temperature by 10 degrees.
+    net.init_params()
+    expected = np.where(net.nodes["global_cell_index"] == 0, 1 / 2.3, 1.0)
+    np.testing.assert_allclose(net.nodes["HH_tadj"], expected, atol=1e-8)
