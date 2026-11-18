@@ -249,6 +249,19 @@ class Module(ABC):
     def __repr__(self):
         return f"{type(self).__name__} with {len(self.channels)} different channels. Use `.nodes` for details."
 
+    def __getstate__(self):
+        """Pickled state, without the solve functions cached by `integrate`.
+
+        They are compiled closures (not picklable) and are rebuilt on demand.
+        """
+        state = self.__dict__.copy()
+        indexer = state.get("_dhs_solve_indexer")
+        if isinstance(indexer, dict):
+            state["_dhs_solve_indexer"] = {
+                k: v for k, v in indexer.items() if not isinstance(k, tuple)
+            }
+        return state
+
     def __str__(self):
         return f"jx.{type(self).__name__}"
 

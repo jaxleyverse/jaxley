@@ -3,6 +3,7 @@
 
 import pickle
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -45,3 +46,12 @@ def test_pickle(name):
     view = module.select(0)
     unpickled_view = pickle.loads(pickle.dumps(view))
     pd.testing.assert_frame_equal(unpickled_view.nodes, view.nodes)
+
+
+def test_pickle_after_integrate():
+    """Simulating a module returned by `to_jax()` caches compiled solve functions on
+    it, which must not stop it from being pickled."""
+    module = _net_with_mechanisms().to_jax()
+    expected = jx.integrate(module, t_max=1.0)
+    unpickled = pickle.loads(pickle.dumps(module))
+    np.testing.assert_allclose(jx.integrate(unpickled, t_max=1.0), expected)
