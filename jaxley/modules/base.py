@@ -3874,12 +3874,7 @@ class View(Module):
         self.synapse_names = np.unique(self.edges["type"]).tolist()
         self._set_synapses_in_view(pointer)
 
-        ptr_recs = pointer.rec_info
-        self.rec_info = (
-            pd.DataFrame()
-            if ptr_recs.empty
-            else ptr_recs.loc[ptr_recs["rec_index"].isin(self._comps_in_view)]
-        )
+        self.rec_info = self._rec_info_in_view(pointer.rec_info)
 
         self.channels = self._channels_in_view(pointer)
         self.pumps = self._pumps_in_view(pointer)
@@ -3994,6 +3989,29 @@ class View(Module):
         elif has_node_inds and has_edge_inds:
             self._nodes_in_view = nodes
             self._edges_in_view = edges
+
+    def _rec_info_in_view(self, recs: pd.DataFrame) -> pd.DataFrame:
+        """The recordings of the compartments and synapses in view.
+
+        `rec_index` is a node index for compartment states and an index within the
+        synapse type for synapse states (see `record()`).
+        """
+        if recs.empty:
+            return pd.DataFrame()
+        comp_states, _ = self.base._get_state_names()
+        is_comp_state = recs["state"].isin(comp_states).to_numpy()
+        in_view = is_comp_state & recs["rec_index"].isin(self._nodes_in_view).to_numpy()
+
+        # Synapse states and currents: keep those of the synapses in view.
+        edges = set(zip(self.edges["type_ind"], self.edges["index_within_type"]))
+        owners = {}  # State name -> type indices of the synapses that have it.
+        for type_ind, synapse in enumerate(self.base.synapses):
+            for state in [*synapse.synapse_states, f"i_{synapse._name}"]:
+                owners.setdefault(state, []).append(type_ind)
+        for row, (state, index) in enumerate(zip(recs["state"], recs["rec_index"])):
+            if not is_comp_state[row]:
+                in_view[row] = any((t, index) in edges for t in owners.get(state, []))
+        return recs.loc[in_view]
 
     def _set_externals_in_view(self):
         """Update external inputs to show only those currently in view."""

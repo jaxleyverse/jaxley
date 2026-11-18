@@ -151,20 +151,28 @@ def test_empty_recordings():
 
 
 def test_write_recordings():
-    net = build.net(ncells=2, nbranches=1, ncomp=2, connect=True)
+    """Views return the recordings of their compartments and synapses, also in
+    networks of branched cells, whose node indices have gaps at the branch points."""
+    net = build.net(ncells=3, nbranches=3, ncomp=2, connect=True)
+    jx.connect(net[1, 0, 0], net[2, 1, 0], TestSynapse())
+    jx.connect(net[1, 0, 0], net[2, 2, 1], IonotropicSynapse())
     net.cell(0).branch(0).comp(0).record()
-    net.cell(1).branch(0).comp(0).record()
-    net.IonotropicSynapse.edge(0).record("IonotropicSynapse_s")
+    net.cell(1).branch(2).comp(1).record()
+    net.IonotropicSynapse.edge(1).record("IonotropicSynapse_s")
     recs = jx.integrate(net, t_max=10.0)
 
     net.write_recordings(recs)
     assert net.cell(0).branch(0).comp(0).recording().shape == (1, 401)
-    assert net.cell(1).branch(0).comp(0).recording("v").shape == (1, 401)
-    assert net.IonotropicSynapse.edge(0).recording("IonotropicSynapse_s").shape == (
+    assert net.cell(1).branch(2).comp(1).recording("v").shape == (1, 401)
+    assert net.IonotropicSynapse.edge(1).recording("IonotropicSynapse_s").shape == (
         1,
         401,
     )
 
     assert net.cell(0).branch(0).comp(0).recording()[0, 0] == -70.0
-    assert net.cell(1).branch(0).comp(0).recording("v")[0, 0] == -70.0
-    assert net.IonotropicSynapse.edge(0).recording("IonotropicSynapse_s")[0, 0] == 0.2
+    assert net.cell(1).branch(2).comp(1).recording("v")[0, 0] == -70.0
+    assert net.IonotropicSynapse.edge(1).recording("IonotropicSynapse_s")[0, 0] == 0.2
+
+    # The synapse recording is not in cell 0, although its index within its type (1)
+    # is a compartment index of cell 0.
+    assert net.cell(0).rec_info.state.tolist() == ["v"]
