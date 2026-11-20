@@ -1601,40 +1601,26 @@ class Module(ABC):
         data = self.edges if key in self.edges.columns else data
 
         assert data is not None, f"Key '{key}' not found in nodes or edges"
-        not_nan = ~data[key].isna()
-        data = data.loc[not_nan].copy()
+        data = data.loc[data[key].notna()]
         assert (
             len(data) > 0
         ), "No settable parameters found in the selected compartments."
 
-        grouped_view = data.groupby("controlled_by_param")
-        # Because of this `x.index.values` we cannot support `make_trainable()` on
-        # the module level for synapse parameters (but only for `SynapseView`).
-        comp_inds = list(
-            grouped_view.apply(lambda x: x.index.values, include_groups=False)
-        )
+        # Scatter each row into a `(num_params, max_group_size)` matrix: the row is
+        # its group number and the column its position within the group. This keeps
+        # the `groupby` order but avoids a Python loop over groups. Smaller groups
+        # are padded with -1 (indices) and NaN (values, ignored by `nanmean` below).
+        grouped = data.groupby("controlled_by_param")
+        row = grouped.ngroup().to_numpy()
+        col = grouped.cumcount().to_numpy()
+        shape = (row.max() + 1, col.max() + 1)
+        comp_inds = np.full(shape, -1)
+        comp_inds[row, col] = data.index.to_numpy()
+        vals = np.full(shape, np.nan)
+        vals[row, col] = data[key].to_numpy()
 
-        # check if all shapes in comp_inds are the same. If not the case this means
-        # the groups in controlled_by_param have different sizes, i.e. due to different
-        # number of comps for two different branches. In this case we pad the smaller
-        # groups with -1 to make them the same size.
-        lens = np.array([inds.shape[0] for inds in comp_inds])
-        max_len = np.max(lens)
-        pad = lambda x: np.pad(x, (0, max_len - x.shape[0]), constant_values=-1)
-        if not np.all(lens == max_len):
-            comp_inds = [
-                pad(inds) if inds.shape[0] < max_len else inds for inds in comp_inds
-            ]
-
-        # Sorted inds are only used to infer the correct starting values.
-        indices_per_param = jnp.stack(comp_inds)
-
-        # Assign dummy param (ignored by nanmean later). This adds a new row to the
-        # `data` (which is, e.g., self.nodes). That new row has index `-1`, which does
-        # not clash with any other node index (they are in
-        # `[0, ..., num_total_comps-1]`).
-        data.loc[-1, key] = np.nan
-        param_vals = jnp.asarray([data.loc[inds, key].to_numpy() for inds in comp_inds])
+        indices_per_param = jnp.asarray(comp_inds)
+        param_vals = jnp.asarray(vals)
 
         # Set the value which the trainable parameter should take.
         num_created_parameters = len(indices_per_param)
