@@ -41,7 +41,7 @@ from jaxley.utils.cell_utils import (
     v_interp,
 )
 from jaxley.utils.debug_solver import compute_morphology_indices
-from jaxley.utils.jax_utils import infer_device
+from jaxley.utils.jax_utils import infer_device, value_and_slope
 from jaxley.utils.misc_utils import cumsum_leading_zero, deprecated, is_str_all
 from jaxley.utils.morph_attributes import (
     compute_axial_conductances,
@@ -3363,10 +3363,8 @@ class Module(ABC):
         v = modified_state[indices]
         if channel.exact_linearization:
             # Exact slope instead of the finite difference below: see `Channel`.
-            current, voltage_term = jax.jvp(
-                lambda v: comp_cur_fn(channel_states, channel_params, v, delta_t),
-                (v,),
-                (jnp.ones_like(v),),
+            current, voltage_term = value_and_slope(
+                lambda v: comp_cur_fn(channel_states, channel_params, v, delta_t), v
             )
         else:
             v_and_perturbed = jnp.stack([v, v + diff])

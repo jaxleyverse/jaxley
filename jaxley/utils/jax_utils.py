@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Tuple, TypeVar
 
 import jax
 import jax.numpy as jnp
+from jax import Array
 from jax.typing import ArrayLike
 
 Carry = TypeVar("Carry")
@@ -87,3 +88,19 @@ def infer_device() -> str:
         return "tpu"
     else:
         return "cpu"
+
+
+def value_and_slope(fn: Callable, *primals: ArrayLike) -> Tuple[Array, Array]:
+    """Return `fn(*primals)` and its derivative when all inputs move together by 1.
+
+    This is `jax.jvp` with all-ones tangents. The output of `fn` is promoted to the
+    dtype of the first input first, because many mechanisms return the integer
+    constant `0` from `compute_current`, and JAX gives integer outputs a `float0`
+    tangent, which cannot be used in arithmetic.
+    """
+    dtype = jnp.asarray(primals[0]).dtype
+    return jax.jvp(
+        lambda *args: jnp.asarray(fn(*args), dtype=dtype),
+        primals,
+        tuple(jnp.ones_like(p) for p in primals),
+    )

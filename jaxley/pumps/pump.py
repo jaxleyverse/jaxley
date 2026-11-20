@@ -17,6 +17,11 @@ class Pump:
     channel_params: dict[str, Array]
     channel_states: dict[str, Array]
     current_name: str
+    # If True, the slope of `compute_current` w.r.t. the ion concentration is taken
+    # with `jax.jvp` instead of a finite difference. See `Channel` for details. It
+    # is opt-in because it changes results relative to the finite-difference
+    # default and requires `compute_current` to be differentiable.
+    exact_linearization: bool = False
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__

@@ -5,7 +5,6 @@ from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 from warnings import warn
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -20,6 +19,7 @@ from jaxley.utils.cell_utils import (
     convert_point_process_to_distributed,
     loc_of_index,
 )
+from jaxley.utils.jax_utils import value_and_slope
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import dhs_group_comps_into_levels
 from jaxley.utils.syn_utils import gather_synapes
@@ -410,7 +410,7 @@ class Network(Module):
             comp_cur_fn = vmap(
                 synapse_type.compute_current, in_axes=(0, 0, 0, 0, 0, 0, 0, 0, None)
             )
-            pre_v = pre_channel_voltages[pre_inds]
+            pre_v = voltages[pre_inds]
             post_v = voltages[post_inds]
             area = params["area"][post_inds]
 
@@ -430,16 +430,15 @@ class Network(Module):
                         delta_t,
                     )
 
-                current, slope = jax.jvp(
-                    current_fn, (pre_v, post_v), (jnp.ones_like(pre_v), jnp.ones_like(post_v))
-                )
+                current, slope = value_and_slope(current_fn, pre_v, post_v)
                 current_dist = convert_point_process_to_distributed(current, area)
                 voltage_term = convert_point_process_to_distributed(slope, area)
             else:
                 pre_v_and_perturbed = jnp.stack([pre_v, pre_v + diff])
                 post_v_and_perturbed = jnp.stack([post_v, post_v + diff])
                 synapse_currents = vmap(
-                    comp_cur_fn, in_axes=(None, None, 0, 0, None, None, None, None, None)
+                    comp_cur_fn,
+                    in_axes=(None, None, 0, 0, None, None, None, None, None),
                 )(
                     synapse_states,
                     synapse_params,
