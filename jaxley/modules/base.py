@@ -191,6 +191,7 @@ class Module(ABC):
         # For trainable parameters.
         self.indices_set_by_trainables: list[ArrayLike] = []
         self.trainable_params: list[dict[str, Array]] = []
+        self.trainable_param_names: list[str] = []
         self.allow_make_trainable: bool = True
         self.num_trainable_params: int = 0
 
@@ -1641,6 +1642,7 @@ class Module(ABC):
         else:
             new_params = jnp.nanmean(param_vals, axis=1)
         self.base.trainable_params.append({key: new_params})
+        self.base.trainable_param_names.append(key)
         self.base.indices_set_by_trainables.append(indices_per_param)
         self.base.num_trainable_params += num_created_parameters
         if verbose:
@@ -1722,10 +1724,14 @@ class Module(ABC):
             trainables_and_inds = self._filter_trainables(is_viewed=False)
             self.base.indices_set_by_trainables = trainables_and_inds[0]
             self.base.trainable_params = trainables_and_inds[1]
+            self.base.trainable_param_names = [
+                list(p.keys())[0] for p in trainables_and_inds[1]
+            ]
             self.base.num_trainable_params -= self.num_trainable_params
         else:
             self.base.indices_set_by_trainables = []
             self.base.trainable_params = []
+            self.base.trainable_param_names = []
             self.base.num_trainable_params = 0
         self._update_view()
 
@@ -1795,7 +1801,19 @@ class Module(ABC):
             params = module.get_parameters()
             v = jx.integrate(cell, params=params, t_max=10.0)
         """
-        return self.trainable_params
+        trainable_params = []
+        for comp_inds, param in zip(
+            self.indices_set_by_trainables, self.trainable_param_names
+        ):
+            data = self.nodes if param in self.nodes.columns else None
+            data = self.edges if param in self.edges.columns else data
+            assert data is not None, f"Parameter '{param}' not found in nodes or edges"
+            param_vals = jnp.nanmean(
+                jnp.asarray([data.loc[inds, param].to_numpy() for inds in comp_inds]),
+                axis = 1
+            )
+            trainable_params.append({param: param_vals})
+        return trainable_params
 
     @only_allow_module
     def get_all_parameters(self, pstate: list[dict]) -> dict[str, Array]:
