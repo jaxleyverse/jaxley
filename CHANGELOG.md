@@ -120,6 +120,17 @@ channels from `jaxley.channels` (#814, @jnsbck)
 (#815, @jnsbck)
 - `compute_xyz()` no longer fails for a branch without coordinates whose parent branch
 has coordinates (#821, @jnsbck)
+- `init_params()` raised a `KeyError` in networks of cells with branch points
+(#XXX, @jnsbck)
+- In networks of cells with branch points, a view's `rec_info` and `recording()` could
+miss recordings of its compartments; synapse recordings of a view are now matched by
+synapse (#XXX, @jnsbck)
+- `connect()` no longer resets the node parameters and states of a synapse type (e.g.
+`IonotropicSynapse_e_syn`) in every compartment (#XXX, @jnsbck)
+- Modules returned by `to_jax()` can be pickled after `jx.integrate()` (#XXX, @jnsbck)
+- `to_graph()` works for networks with synapses (it raised unless `synapses=True`),
+no longer adds a `type` column to the module's branch points, and exports the
+recordings (`rec_info`) (#XXX, @jnsbck)
 
 ### 🛠️ Internal updates
 
