@@ -142,6 +142,33 @@ def test_graph_import_export_cycle():
             jx.integrate(re_module, t_max=0.5)
 
 
+def test_to_graph_of_network_with_synapses():
+    """`to_graph` exports networks with synapses with or without the synapses and the
+    channels, and does not change the module."""
+    net = build.net(ncells=2, nbranches=3, ncomp=2)
+    net.insert(HH())
+    connect(
+        net.cell(0).branch(0).comp(0),
+        net.cell(1).branch(0).comp(0),
+        IonotropicSynapse(),
+    )
+    nodes, branchpoints = net.nodes.copy(), net._branchpoints.copy()
+
+    for channels in [False, True]:
+        for synapses in [False, True]:
+            graph = to_graph(net, channels=channels, synapses=synapses)
+            # Synapse parameters of compartments come along with the synapses only.
+            assert ("IonotropicSynapse_e_syn" in graph.nodes[0]) == synapses
+            assert ("HH_gNa" in graph.nodes[0]) == channels
+            syn_edges = [
+                e for *_, e in graph.edges(data=True) if e.get("type") == "synapse"
+            ]
+            assert len(syn_edges) == (1 if synapses else 0)
+
+    pd.testing.assert_frame_equal(net.nodes, nodes)
+    pd.testing.assert_frame_equal(net._branchpoints, branchpoints)
+
+
 @pytest.mark.parametrize(
     "file",
     [

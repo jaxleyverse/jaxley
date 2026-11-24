@@ -4265,7 +4265,7 @@ def to_graph(
         "ncomp",
         "externals",
         "external_inds",
-        "recordings",
+        "rec_info",
         "trainable_params",
         "indices_set_by_trainables",
     ]:
@@ -4289,15 +4289,20 @@ def to_graph(
             nodes = nodes.drop(list(c.channel_params), axis=1, errors="ignore")
             nodes = nodes.drop(list(c.channel_states), axis=1, errors="ignore")
 
+    if not synapses:
+        # Parameters and states that synapses keep in their compartments (e.g. a
+        # reversal potential) are exported only together with the synapses.
+        for s in module.synapses:
+            nodes = nodes.drop(list(s.node_params), axis=1, errors="ignore")
+            nodes = nodes.drop(list(s.node_states), axis=1, errors="ignore")
+
     nodes["type"] = "comp"
     for col in nodes.columns:  # col wise adding preserves dtypes
         module_graph.add_nodes_from(nodes[[col]].to_dict(orient="index").items())
 
-    module._branchpoints["type"] = "branchpoint"
-    for col in module._branchpoints.columns:
-        module_graph.add_nodes_from(
-            module._branchpoints[[col]].to_dict(orient="index").items()
-        )
+    branchpoints = module._branchpoints.assign(type="branchpoint")
+    for col in branchpoints.columns:
+        module_graph.add_nodes_from(branchpoints[[col]].to_dict(orient="index").items())
 
     module_graph.graph["group_names"] = module.group_names
 
@@ -4348,12 +4353,5 @@ def to_graph(
         if not syn_edges.empty:
             for (i, j), edge_data in syn_edges.iterrows():
                 module_graph.add_edge(i, j, **edge_data.to_dict())
-    else:
-        for s in module.synapses:
-            nodes = nodes.drop(c.name, axis=1)
-            # errors="ignore" because some channels might have the same parameter or
-            # state name (if the channels share parameters).
-            nodes = nodes.drop(list(s.node_params), axis=1, errors="ignore")
-            nodes = nodes.drop(list(s.node_states), axis=1, errors="ignore")
 
     return module_graph
