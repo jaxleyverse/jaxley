@@ -283,11 +283,12 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        exact_linearization: bool,
     ) -> tuple[dict, tuple[Array, Array]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
         states, current_terms = self._synapse_currents(
-            states, syn_channels, params, delta_t, edges
+            states, syn_channels, params, delta_t, edges, exact_linearization
         )
         return states, current_terms
 
@@ -363,6 +364,7 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        exact_linearization: bool,
     ) -> tuple[dict, tuple[Array, Array]]:
         voltages = states["v"]
 
@@ -414,7 +416,7 @@ class Network(Module):
             post_v = voltages[post_inds]
             area = params["area"][post_inds]
 
-            if synapse_type.exact_linearization:
+            if exact_linearization:
                 # Same perturbation as the finite difference below (pre and post
                 # voltage move together), but exact: see `Synapse`.
                 def current_fn(pre, post):

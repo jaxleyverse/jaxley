@@ -2259,7 +2259,7 @@ class Module(ABC):
         """
         # Add to the states the initial current through every channel.
         states, _ = self.base._channel_currents(
-            states, delta_t, self.channels + self.pumps, self.nodes, all_params
+            states, delta_t, self.channels + self.pumps, self.nodes, all_params, False
         )
 
         # Add to the states the initial current through every synapse.
@@ -2269,6 +2269,7 @@ class Module(ABC):
             all_params,
             delta_t,
             self.edges,
+            False
         )
         return states
 
@@ -2947,6 +2948,7 @@ class Module(ABC):
         params: dict[str, Array],
         solver: str = "bwd_euler",
         voltage_solver: str = "jaxley.stone",
+        exact_linearization: bool = False,
     ) -> dict[str, Array]:
         """One step of solving the Ordinary Differential Equation.
 
@@ -2965,6 +2967,7 @@ class Module(ABC):
             voltage_solver: The tridiagonal solver used to diagonalize the
                 coefficient matrix of the ODE system. Either of ["jaxley.thomas",
                 "jaxley.stone"].
+            exact_linearization: Method for getting linear term of ODE.
 
         Returns:
             The updated state of the module.
@@ -2980,7 +2983,7 @@ class Module(ABC):
         # Steps of the channel & pump states and computes the current through these
         # channels and pumps.
         u, (linear_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels + self.pumps, self.nodes, params
+            u, delta_t, self.channels + self.pumps, self.nodes, params, exact_linearization=exact_linearization
         )
 
         # Step of the synapse.
@@ -2990,6 +2993,7 @@ class Module(ABC):
             params,
             delta_t,
             self.edges,
+            exact_linearization=exact_linearization,
         )
 
         # Voltage steps.
@@ -3211,13 +3215,14 @@ class Module(ABC):
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
         params: dict[str, Array],
+        exact_linearization: bool,
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """One step of integration of the channels and of computing their current."""
         states = self._step_channels_state(
             states, delta_t, channels, channel_nodes, params
         )
         states, current_terms = self._channel_currents(
-            states, delta_t, channels, channel_nodes, params
+            states, delta_t, channels, channel_nodes, params, exact_linearization
         )
         return states, current_terms
 
@@ -3270,6 +3275,7 @@ class Module(ABC):
         channels: List[Channel],
         channel_nodes: pd.DataFrame,
         params: dict[str, Array],
+        exact_linearization: bool,
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """Return the current through each channel.
 
@@ -3303,6 +3309,7 @@ class Module(ABC):
                 channel,
                 indices,
                 params,
+                exact_linearization,
             )
             linear_terms[modified_state_name] = (
                 linear_terms[modified_state_name].at[indices].add(linear_term)
@@ -3335,6 +3342,7 @@ class Module(ABC):
         channel: Channel,
         indices: pd.DataFrame,
         params: dict[str, Array],
+        exact_linearization: bool,
     ):
         """Computes current through a channel and its linear and const components.
 
@@ -3361,7 +3369,7 @@ class Module(ABC):
 
         comp_cur_fn = vmap(channel.compute_current, in_axes=(0, 0, 0, None))
         v = modified_state[indices]
-        if channel.exact_linearization:
+        if exact_linearization:
             # Exact slope instead of the finite difference below: see `Channel`.
             current, voltage_term = value_and_slope(
                 lambda v: comp_cur_fn(channel_states, channel_params, v, delta_t), v
@@ -3383,6 +3391,7 @@ class Module(ABC):
         params: dict[str, Array],
         delta_t: float,
         edges: pd.DataFrame,
+        exact_linearization: bool,
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         """One step of integration of the channels.
 
@@ -3399,6 +3408,7 @@ class Module(ABC):
         params,
         delta_t,
         edges: pd.DataFrame,
+        exact_linearization: bool,
     ) -> tuple[dict[str, Array], tuple[Array, Array]]:
         return states, (None, None)
 

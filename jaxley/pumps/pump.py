@@ -17,9 +17,6 @@ class Pump:
     channel_params: dict[str, Array]
     channel_states: dict[str, Array]
     current_name: str
-    # If True, the slope of `compute_current` w.r.t. voltage is taken with
-    # `jax.jvp` instead of a finite difference (two calls `1e-3` apart).
-    exact_linearization: bool = False
 
     def __init__(self, name: Optional[str] = None):
         self._name = name if name else self.__class__.__name__
