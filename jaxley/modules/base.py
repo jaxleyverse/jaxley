@@ -29,6 +29,7 @@ from jaxley.solver_voltage import (
     step_voltage_implicit_with_jax_spsolve,
     step_voltage_implicit_with_stone,
 )
+from jaxley.utils import jax_utils
 from jaxley.utils.cell_utils import (
     _compute_index_of_child,
     _compute_num_children,
@@ -2264,12 +2265,7 @@ class Module(ABC):
 
         # Add to the states the initial current through every synapse.
         states, _ = self.base._synapse_currents(
-            states,
-            self.synapses,
-            all_params,
-            delta_t,
-            self.edges,
-            False
+            states, self.synapses, all_params, delta_t, self.edges, False
         )
         return states
 
@@ -2983,7 +2979,12 @@ class Module(ABC):
         # Steps of the channel & pump states and computes the current through these
         # channels and pumps.
         u, (linear_terms, const_terms) = self._step_channels(
-            u, delta_t, self.channels + self.pumps, self.nodes, params, exact_linearization=exact_linearization
+            u,
+            delta_t,
+            self.channels + self.pumps,
+            self.nodes,
+            params,
+            exact_linearization=exact_linearization,
         )
 
         # Step of the synapse.
@@ -3351,7 +3352,7 @@ class Module(ABC):
         """
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
-        diff = 1e-3
+        diff = jax_utils.LINEARIZATION_DIFF
 
         channel_param_names = list(channel.channel_params.keys())
         channel_state_names = list(channel.channel_states.keys())

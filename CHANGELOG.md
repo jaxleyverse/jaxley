@@ -28,6 +28,8 @@ print(cell.branch(0).comp(1).recording("v"))  # Only the recording in branch 0, 
 ```
 - Synapses can now use the states and parameters of pre- and post-synaptic
 compartments (#765, @michaeldeistler)
+- Option to linearize channel and synapse currents exactly with `jax.jvp` instead of
+finite differences (#826, @alexpejovic):
 
 ### API changes
 

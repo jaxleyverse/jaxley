@@ -425,7 +425,10 @@ def integrate(
                 externals[key] = externals[key][:t_max_steps, :]
 
     init_fn, step_fn = build_init_and_step_fn(
-        module, voltage_solver=voltage_solver, solver=solver, exact_linearization=exact_linearization
+        module,
+        voltage_solver=voltage_solver,
+        solver=solver,
+        exact_linearization=exact_linearization,
     )
     all_states, all_params = init_fn(params, all_states, param_state, delta_t)
 

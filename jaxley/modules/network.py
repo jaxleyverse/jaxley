@@ -14,6 +14,7 @@ from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module
 from jaxley.modules.cell import Cell
+from jaxley.utils import jax_utils
 from jaxley.utils.cell_utils import (
     compute_children_and_parents,
     convert_point_process_to_distributed,
@@ -377,7 +378,7 @@ class Network(Module):
         syn_constant_terms = jnp.zeros_like(voltages)
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
-        diff = 1e-3
+        diff = jax_utils.LINEARIZATION_DIFF
         for i, synapse_type in enumerate(syn_channels):
             assert (
                 synapse_names[i] == synapse_type._name

@@ -14,6 +14,11 @@ Output = TypeVar("Output")
 Func = TypeVar("Func", bound=Callable)
 
 
+# Voltage perturbation (mV) of the finite-difference linearization of channel and
+# synapse currents, used when `exact_linearization=False`. Read at trace time.
+LINEARIZATION_DIFF = 1e-3
+
+
 def nested_checkpoint_scan(
     f: Callable[[Carry, dict[str, ArrayLike]], tuple[Carry, Output]],
     init: Carry,

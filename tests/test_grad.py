@@ -6,11 +6,13 @@ import jax
 import jax.numpy as jnp
 import pytest
 from jax import value_and_grad
+from jaxley_mech.channels.kamiyama09 import Phototransduction
 
 import jaxley as jx
 from jaxley.channels import HH
 from jaxley.connect import connect
 from jaxley.synapses import IonotropicSynapse
+from jaxley.utils import jax_utils
 from tests import builders as build
 
 
@@ -81,3 +83,58 @@ def test_grad_against_finite_diff_parameters(key):
     finite_diff = (loss_plus - loss_minus) / (2 * eps)
 
     assert jnp.abs(directional - finite_diff) / jnp.abs(directional) < 0.01
+
+
+def test_finite_diff_linearization_converges_to_jvp(monkeypatch):
+    """With a shrinking step, finite-difference linearization converges to the JVP.
+
+    `exact_linearization=True` computes the voltage slope of channel and synapse
+    currents with `jax.jvp`; `False` uses a forward difference with step
+    `LINEARIZATION_DIFF`. Values and gradients of the latter must converge to the
+    former at first order in the step."""
+    # HH and synapse currents are linear in the voltage (given their gates), so the
+    # finite difference is exact for them. The `Phototransduction` current is nonlinear
+    # in the voltage.
+    net = build.net(ncells=2, nbranches=2, ncomp=2)
+    net.insert(HH())
+    net.insert(Phototransduction(solver="explicit"))
+    connect(
+        net.cell(0).branch(0).comp(0),
+        net.cell(1).branch(1).comp(1),
+        IonotropicSynapse(),
+    )
+    net.cell(0).branch(0).comp(0).stimulate(
+        jx.step_current(i_delay=0.5, i_dur=1.0, i_amp=0.1, delta_t=0.025, t_max=10.0)
+    )
+    net.cell(1).branch(1).comp(1).record()
+    for key in ["HH_gNa", "HH_gK", "IonotropicSynapse_gS"]:
+        net.make_trainable(key)
+    params = net.get_parameters()
+
+    def loss_and_grad(exact_linearization):
+        # A new jitted function for every step: the step is a trace-time constant.
+        return jax.jit(
+            value_and_grad(
+                lambda p: jnp.sum(
+                    jx.integrate(net, params=p, exact_linearization=exact_linearization)
+                )
+            )
+        )(params)
+
+    def flat(grad):
+        return jnp.concatenate([jnp.ravel(v) for g in grad for v in g.values()])
+
+    ref_loss, ref_grad = loss_and_grad(True)
+    ref_grad = flat(ref_grad)
+
+    loss_errors, grad_errors = [], []
+    for diff in [1e-1, 1e-2, 1e-3, 1e-4]:
+        monkeypatch.setattr(jax_utils, "LINEARIZATION_DIFF", diff)
+        loss, grad = loss_and_grad(False)
+        loss_errors.append(jnp.abs(loss - ref_loss) / jnp.abs(ref_loss))
+        grad_errors.append(jnp.max(jnp.abs(flat(grad) - ref_grad) / jnp.abs(ref_grad)))
+    # First-order convergence: every 10x smaller step reduces the error ~10x.
+    for errors in [loss_errors, grad_errors]:
+        ratios = jnp.asarray(errors[:-1]) / jnp.asarray(errors[1:])
+        assert jnp.all((ratios > 8.0) & (ratios < 12.0)), ratios
+    assert grad_errors[-1] < 1e-5
