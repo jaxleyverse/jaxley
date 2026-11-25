@@ -13,7 +13,9 @@ from tests.helpers import wire_seven_cell_net
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("exact_linearization", [False, True])
+@pytest.mark.parametrize(
+    "exact_linearization", [False, True], ids=["finite_diff", "jvp"]
+)
 def test_network_grad(golden, exact_linearization):
     net = build.net(ncells=7, nbranches=5, ncomp=4)
     wire_seven_cell_net(net)
