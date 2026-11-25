@@ -2,6 +2,7 @@
 
 ### 🐛 Bug fixes
 
+- Preserve cell pairs when randomly selecting postsynaptic compartments (#822, @Jlei61).
 - Ensure `make_trainable` -1 padding does not index the last compartment.
   Also, bump minimum Python to 3.11 and JAX to 0.7.0 (#821, @alexpejovic).
 - Speed up `make_trainable` for many parameter groups by eliminating static 
