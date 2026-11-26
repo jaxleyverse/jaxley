@@ -18,6 +18,7 @@ def build_init_and_step_fn(
     module: Module,
     voltage_solver: str = "jaxley.dhs",
     solver: str = "bwd_euler",
+    exact_linearization: bool = False,
 ) -> Tuple[Callable, Callable]:
     """Return ``init_fn`` and ``step_fn`` which initialize modules and run update steps.
 
@@ -30,6 +31,9 @@ def build_init_and_step_fn(
         voltage_solver: Voltage solver used in step. Defaults to "jaxley.dhs".
         solver: ODE solver. One of
             { "bwd_euler" | "crank_nicolson" "| "fwd_euler" | "exp_euler" }.
+        exact_linearization: Method of retrieving linear form of differential
+            equation with respect to voltage. False uses finite differences, True
+            uses JVP.
 
     Returns:
 
@@ -192,6 +196,7 @@ def build_init_and_step_fn(
             params=all_params,
             solver=solver,
             voltage_solver=voltage_solver,
+            exact_linearization=exact_linearization,
         )
         return state
 
@@ -272,6 +277,7 @@ def integrate(
     checkpoint_lengths: Optional[List[int]] = None,
     all_states: Optional[Dict] = None,
     return_states: bool = False,
+    exact_linearization: bool = False,
 ) -> Array:
     """Solves ODE and simulates neuron model.
 
@@ -307,6 +313,8 @@ def integrate(
             trainable initial states.
         return_states: If True, it returns all states such that the current state of
             the `Module` can be set with `set_states`.
+        exact_linearization: If True, uses the JVP instead of finite differences to
+            get linear form of ODE.
 
     Example usage
     ^^^^^^^^^^^^^
@@ -417,7 +425,10 @@ def integrate(
                 externals[key] = externals[key][:t_max_steps, :]
 
     init_fn, step_fn = build_init_and_step_fn(
-        module, voltage_solver=voltage_solver, solver=solver
+        module,
+        voltage_solver=voltage_solver,
+        solver=solver,
+        exact_linearization=exact_linearization,
     )
     all_states, all_params = init_fn(params, all_states, param_state, delta_t)
 

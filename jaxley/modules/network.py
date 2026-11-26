@@ -14,11 +14,13 @@ from matplotlib.axes import Axes
 
 from jaxley.modules.base import Module
 from jaxley.modules.cell import Cell
+from jaxley.utils import jax_utils
 from jaxley.utils.cell_utils import (
     compute_children_and_parents,
     convert_point_process_to_distributed,
     loc_of_index,
 )
+from jaxley.utils.jax_utils import value_and_slope
 from jaxley.utils.misc_utils import concat_and_ignore_empty, cumsum_leading_zero
 from jaxley.utils.solver_utils import dhs_group_comps_into_levels
 from jaxley.utils.syn_utils import gather_synapes
@@ -282,11 +284,12 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        exact_linearization: bool,
     ) -> tuple[dict, tuple[Array, Array]]:
         """Perform one step of the synapses and obtain their currents."""
         states = self._step_synapse_state(states, syn_channels, params, delta_t, edges)
         states, current_terms = self._synapse_currents(
-            states, syn_channels, params, delta_t, edges
+            states, syn_channels, params, delta_t, edges, exact_linearization
         )
         return states, current_terms
 
@@ -362,6 +365,7 @@ class Network(Module):
         params: Dict,
         delta_t: float,
         edges: pd.DataFrame,
+        exact_linearization: bool,
     ) -> tuple[dict, tuple[Array, Array]]:
         voltages = states["v"]
 
@@ -374,7 +378,7 @@ class Network(Module):
         syn_constant_terms = jnp.zeros_like(voltages)
         # Run with two different voltages that are `diff` apart to infer the slope and
         # offset.
-        diff = 1e-3
+        diff = jax_utils.LINEARIZATION_DIFF
         for i, synapse_type in enumerate(syn_channels):
             assert (
                 synapse_names[i] == synapse_type._name
@@ -406,37 +410,58 @@ class Network(Module):
                 post_params[key] = params[key][post_inds]
 
             # Compute slope and offset of the current through every synapse.
-            pre_v_and_perturbed = jnp.stack(
-                [voltages[pre_inds], voltages[pre_inds] + diff]
-            )
-            post_v_and_perturbed = jnp.stack(
-                [voltages[post_inds], voltages[post_inds] + diff]
-            )
             comp_cur_fn = vmap(
                 synapse_type.compute_current, in_axes=(0, 0, 0, 0, 0, 0, 0, 0, None)
             )
-            synapse_currents = vmap(
-                comp_cur_fn, in_axes=(None, None, 0, 0, None, None, None, None, None)
-            )(
-                synapse_states,
-                synapse_params,
-                pre_v_and_perturbed,
-                post_v_and_perturbed,
-                pre_states,
-                post_states,
-                pre_params,
-                post_params,
-                delta_t,
-            )
-            synapse_currents_dist = convert_point_process_to_distributed(
-                synapse_currents, params["area"][post_inds]
-            )
+            pre_v = voltages[pre_inds]
+            post_v = voltages[post_inds]
+            area = params["area"][post_inds]
+
+            if exact_linearization:
+                # Same perturbation as the finite difference below (pre and post
+                # voltage move together), but exact: see `Synapse`.
+                def current_fn(pre, post):
+                    return comp_cur_fn(
+                        synapse_states,
+                        synapse_params,
+                        pre,
+                        post,
+                        pre_states,
+                        post_states,
+                        pre_params,
+                        post_params,
+                        delta_t,
+                    )
+
+                current, slope = value_and_slope(current_fn, pre_v, post_v)
+                current_dist = convert_point_process_to_distributed(current, area)
+                voltage_term = convert_point_process_to_distributed(slope, area)
+            else:
+                pre_v_and_perturbed = jnp.stack([pre_v, pre_v + diff])
+                post_v_and_perturbed = jnp.stack([post_v, post_v + diff])
+                synapse_currents = vmap(
+                    comp_cur_fn,
+                    in_axes=(None, None, 0, 0, None, None, None, None, None),
+                )(
+                    synapse_states,
+                    synapse_params,
+                    pre_v_and_perturbed,
+                    post_v_and_perturbed,
+                    pre_states,
+                    post_states,
+                    pre_params,
+                    post_params,
+                    delta_t,
+                )
+                synapse_currents_dist = convert_point_process_to_distributed(
+                    synapse_currents, area
+                )
+                current = synapse_currents[0]
+                current_dist = synapse_currents_dist[0]
+                voltage_term = (synapse_currents_dist[1] - current_dist) / diff
 
             # Split into voltage and constant terms.
-            voltage_term = (synapse_currents_dist[1] - synapse_currents_dist[0]) / diff
-            constant_term = (
-                synapse_currents_dist[0] - voltage_term * voltages[post_inds]
-            )
+            constant_term = current_dist - voltage_term * post_v
 
             # Gather slope and offset for every postsynaptic compartment.
             gathered_syn_currents = gather_synapes(
@@ -451,8 +476,7 @@ class Network(Module):
             # Add the synaptic currents through every synapse as a state.
             # `synapse_currents` is a `ArrayLike` of as many elements as there are
             # synapses in the network.
-            # `[0]` because we only use the non-perturbed voltage.
-            states[f"i_{synapse_type._name}"] = synapse_currents[0]
+            states[f"i_{synapse_type._name}"] = current
 
         return states, (syn_voltage_terms, syn_constant_terms)
 
